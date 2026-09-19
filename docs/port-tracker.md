@@ -10,7 +10,7 @@ plans the next wave. Agents never git-commit and never run npm install
 
 | # | Stream | Owns | Status |
 |---|---|---|---|
-| 1 | Driver foundation | `src/server/driver.ts` extensions, `src/server/drivers/**`, `tests/server/drivers/**`, `docs/driver-notes.md` | running |
+| 1 | Driver foundation | `src/server/driver.ts` extensions, `src/server/drivers/**`, `tests/server/drivers/**`, `docs/driver-notes.md` | LANDED: local-sqlite + D1 (miniflare-proven, v5/Windows fight solved) + libsql-http (real Hrana v2, transactional batch where provider allows); shared conformance suite passes on all four incl. @libsql/client cross-check; libsql-http batch is non-transactional by provider design (documented) |
 | 2 | Ruby oracle harness | `tools/oracle/**`, `fixtures/captured/**`, `docs/oracle-harness.md` | LANDED: all 4 rungs; local SQLite decko app byte-stable (sha-verified); smoke + cql-basic fixtures captured. KEY FINDING: CQL `match` is MySQL/PG-only in Ruby (no SQLite oracle possible — needs a future MySQL rung); port gotchas in docs/oracle-harness.md (json~2.7 pin, tzinfo-data, RichText-named basic cardtype trap, slot-id SecureRandom normalization) |
 | 3 | Card name algebra | `src/card/name.ts`, `src/card/name/**`, `tests/card/name/**`, `docs/name-port-notes.md` | running |
 | 4 | Schema + SQLite DDL | `db/**`, `src/server/schema.ts`, `docs/schema-notes.md` | LANDED: 12 core tables, DDL proven on better-sqlite3, 10/10 tests (coordinator-reviewed) |
