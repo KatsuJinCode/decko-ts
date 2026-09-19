@@ -26,15 +26,21 @@
 
 require "json"
 require "socket"
+require "fileutils"
 
 PREFIX      = ENV.fetch("BENCH_PREFIX", "BenchR1")
 RENDER_N    = ENV.fetch("BENCH_RENDER_N", "15").to_i
 WARMUP      = ENV.fetch("BENCH_WARMUP", "3").to_i
 BACKGROUND  = ENV.fetch("BENCH_BACKGROUND", "400").to_i
-REPO_ROOT   = File.expand_path("../..", __dir__)
+# NOTE: __dir__ is NOT reliable under `decko runner` (it load-wraps the
+# script; __dir__ resolved two levels short and File.write died with ENOENT
+# after a full 8-minute run). The documented invocation runs from
+# tools/oracle/decko-oracle-app, so derive the repo root from the CWD.
+REPO_ROOT   = File.expand_path("../../..", Dir.pwd)
 OUT_PATH    = ENV.fetch("BENCH_OUT",
                         File.join(REPO_ROOT, "benchmarks", "results",
                                   "ruby-nesting-r1-r2.json"))
+FileUtils.mkdir_p(File.dirname(OUT_PATH))
 
 DEPTHS = [1, 2, 4, 8, 16, 32].freeze
 FANOUTS = [1, 4, 16].freeze

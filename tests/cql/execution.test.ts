@@ -67,7 +67,7 @@ function card(seed: SeedCard): CardsRow {
 const CARDS: CardsRow[] = [
   // types (type_id 1; content NULL)
   card({ id: 1, name: "Basic", key: "basic", codename: "Basic" }),
-  card({ id: 2, name: "User", key: "user", codename: "User" }),
+  card({ id: 2, name: "User", key: "user", codename: "User", updated_at: T("2026-01-02") }),
   // users (type_id 2)
   card({
     id: 10,
@@ -291,21 +291,25 @@ afterAll(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Default execution options: names resolve during interpretation, so the
+ *  parse-time resolver rides on every call (CqlExecuteOptions.parse). */
+const EXEC_OPTS = { parse: { resolveCardId: RESOLVER } };
+
 /** executeQuery narrowed to the rows shape (everything but count results). */
-async function runRows(statement: unknown, options?: CqlExecuteOptions) {
+async function runRows(statement: unknown, options: CqlExecuteOptions = EXEC_OPTS) {
   const result = await executeQuery(driver, statement, options);
   if ("count" in result) throw new Error(`unexpected count result for ${JSON.stringify(statement)}`);
   return result;
 }
 
-async function ids(statement: unknown, options?: CqlExecuteOptions): Promise<number[]> {
+async function ids(statement: unknown, options: CqlExecuteOptions = EXEC_OPTS): Promise<number[]> {
   const result = await runRows(statement, options);
   return result.rows.map((row) => row.id).sort((a, b) => a - b);
 }
 
-/** The full non-trashed card set (everything except user 10/11 rows and the
- *  trashed card): ids 1, 20-25 minus 23, 30-33. */
-const ALL_TYPE_1 = [1, 20, 21, 22, 24, 25, 30, 31, 32, 33];
+/** The full non-trashed type_id-1 set: type cards 1 and 2, content cards
+ *  20-25 minus trashed 23, junctions 30-33. */
+const ALL_TYPE_1 = [1, 2, 20, 21, 22, 24, 25, 30, 31, 32, 33];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -350,7 +354,7 @@ describe("basic field filters", () => {
   });
 
   it("type: string resolves to a direct type_id condition", async () => {
-    expect(await ids({ type: "User" }, {})).toEqual([10, 11]);
+    expect(await ids({ type: "User" })).toEqual([10, 11]);
   });
 
   it("type: hash ties a codename join", async () => {
@@ -358,7 +362,12 @@ describe("basic field filters", () => {
   });
 
   it("created_at gt comparison (canonical TEXT form compares chronologically)", async () => {
-    expect(await ids({ created_at: ["gt", "2026-01-07"] })).toEqual([24, 25, 30, 31, 32, 33]);
+    // '2026-01-07 00:00:00.000' > '2026-01-07' string-wise, so the Jan 7
+    // card is included — the fixed-width format keeps TEXT ordering equal
+    // to time ordering for full-form values on both sides of the operator.
+    expect(await ids({ created_at: ["gt", "2026-01-07"] })).toEqual([
+      22, 24, 25, 30, 31, 32, 33,
+    ]);
   });
 });
 
@@ -496,16 +505,22 @@ describe("editor / act chains", () => {
 });
 
 describe("sort / limit / offset", () => {
-  const NAME_MATCH_SET = [1, 10, 11, 21, 22, 24, 25, 33];
+  // names containing 'a' (case-insensitive), junction NULL names excluded:
+  // Basic, Joe Admin, Sara Sample, About, Zebra, Alpha Page, status
+  // ("restricted" has no letter 'a').
+  const NAME_MATCH_SET = [1, 10, 11, 21, 22, 24, 33];
+  const NAME_ASC_ORDER = [24, 21, 1, 10, 11, 33, 22];
 
   it("sort by name asc orders by key", async () => {
     const result = await runRows({ name: ["~", "a"], sort: "name", sort_dir: "asc" });
-    expect(result.rows.map((r) => r.id)).toEqual([24, 21, 1, 10, 25, 11, 33, 22]);
+    expect(result.rows.map((r) => r.id)).toEqual(NAME_ASC_ORDER);
   });
 
   it("sort: update defaults to desc", async () => {
     const result = await runRows({ type_id: 1, sort: "update" });
-    expect(result.rows.map((r) => r.id)).toEqual([24, 25, 20, 21, 22, 32, 30, 33, 31, 1]);
+    expect(result.rows.map((r) => r.id)).toEqual([
+      24, 25, 20, 21, 22, 32, 30, 33, 31, 2, 1,
+    ]);
   });
 
   it("limit truncates after sorting", async () => {
@@ -515,7 +530,7 @@ describe("sort / limit / offset", () => {
       sort_dir: "asc",
       limit: 3,
     });
-    expect(result.rows.map((r) => r.id)).toEqual([24, 21, 1]);
+    expect(result.rows.map((r) => r.id)).toEqual(NAME_ASC_ORDER.slice(0, 3));
   });
 
   it("limit + offset round-trips the requested window", async () => {
@@ -526,7 +541,7 @@ describe("sort / limit / offset", () => {
       limit: 3,
       offset: 2,
     });
-    expect(result.rows.map((r) => r.id)).toEqual([1, 10, 25]);
+    expect(result.rows.map((r) => r.id)).toEqual(NAME_ASC_ORDER.slice(2, 5));
   });
 
   it("offset without limit renders no LIMIT (Ruby quirk preserved in execution)", async () => {
@@ -550,9 +565,11 @@ describe("count semantics", () => {
     expect(await executeCount(driver, { type_id: 1, limit: 1 })).toBe(ALL_TYPE_1.length);
   });
 
-  it("count with the permission condition applied", async () => {
+  it("count honors the permission condition", async () => {
     const { executeCount } = await import("../../src/cql/execute.js");
-    expect(await executeCount(driver, { type_id: 1 }, { alwaysOk: false, readRuleIds: [5] })).toBe(1);
+    expect(
+      await executeCount(driver, { type_id: 1 }, { alwaysOk: false, readRuleIds: [5] }),
+    ).toBe(1);
   });
 });
 

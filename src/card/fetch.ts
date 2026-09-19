@@ -19,7 +19,7 @@
 //
 // Scoping of the fetch cache (the question this port had to answer from the
 // source): Card.fetch reads and writes Card::Cache[Card], which is TWO
-// levels (lib/card/cache.rb doc):
+// levels (lib/card/cache.rb module doc):
 // - Temporary: a per-process (per-request/script) Hash, often "ahead" of
 //   the db (unsaved alterations survive a fetch round-trip).
 // - Shared: cross-process, mirrors the db, stamp-prefixed keys.
@@ -30,13 +30,10 @@
 // lookups go through the Lexicon (cache/card_class.rb#retrieve_from_cache_by_id).
 // Invalidation is event-driven: saves expire via Card#expire
 // (lib/card/cache/all.rb) - key versions (name + name_before_act), the
-// "~id" key, view caches (render wave) and the left card of compound names.
-// There is no TTL; reset rotates the shared stamp / clears the temp Hash.
+// legacy "~id" key, view caches (render wave) and the left card of compound
+// names. There is no TTL; reset rotates the shared stamp / clears temp.
 
-import {
-  CardCache,
-  type SharedCacheStore,
-} from "./fetch/cache.js";
+import { CardCache, type SharedCacheStore } from "./fetch/cache.js";
 import { DbLexicon, cacheKey as lexiconCacheKey } from "./fetch/lexicon.js";
 import { DbCodenameRegistry, CODENAMES_CACHE_KEY } from "./fetch/codename.js";
 import {
@@ -55,10 +52,7 @@ import {
 } from "./fetch/retrieve.js";
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import { DeckoName, type Nameish } from "./name.js";
-import {
-  setNameEnvironment,
-  type NameEnvironment,
-} from "./name/environment.js";
+import { setNameEnvironment, type NameEnvironment } from "./name/environment.js";
 
 /** The fetch options (fetch/card_class.rb:21-29 doc + option readers in
  *  fetch.rb). `new` opts cross into the write path; only the parts fetch
@@ -87,8 +81,12 @@ export interface NewCardOptions {
   supercard?: Nameish;
   /** store.rb:26 eager_cache type merge / results.rb type handling. */
   typeId?: number;
+  /** Ruby's :type / :type_code new-opts (results.rb:80, 112). */
+  typeCode?: string;
+  typeName?: Nameish;
   /** results.rb:85-87 assignable_content. */
   content?: string;
+  defaultContent?: string;
   /** results.rb:57-60 quick_renew name override. */
   name?: Nameish;
 }
@@ -149,17 +147,13 @@ export class FetchEngine {
    */
   async fetch(...args: readonly (FetchArg | FetchOptions)[]): Promise<CardRecord | undefined> {
     const { marks, opts } = splitArgs(args);
-    return this.fetchMarks(marks, opts);
+    return this.fetchWithOptions(marks, opts);
   }
 
   /** fetch with explicit options (the form callers should prefer in TS). */
-  async fetchWithOptions(marks: readonly FetchArg[], opts: FetchOptions = {}): Promise<CardRecord | undefined> {
-    return this.fetchMarks(marks, opts);
-  }
-
-  private async fetchMarks(
+  async fetchWithOptions(
     marks: readonly FetchArg[],
-    opts: FetchOptions,
+    opts: FetchOptions = {},
   ): Promise<CardRecord | undefined> {
     // fetch.rb:43-47 validate_opts!
     if (opts.new !== undefined && opts.skipVirtual === true) {
@@ -174,15 +168,16 @@ export class FetchEngine {
     );
     if (mark === undefined) return undefined;
 
-    // fetch.rb:34-36 rescue ActiveModel::RangeError -> Card.new(name: "card id out of range: ...")
+    // fetch.rb:34-36 rescue ActiveModel::RangeError -> Card.new(name:
+    // "card id out of range: ...") - returned directly, without passing
+    // through results (Ruby's rescue RETURNS the new card). Ruby's f.mark
+    // here is the integer itself, so the name carries bare digits.
     if (mark.kind === "outOfRange") {
-      const placeholder = newCardRecord(DeckoName.parse(`card id out of range: ~${mark.digits}`));
-      return this.results(placeholder, mark, opts);
+      return newCardRecord(DeckoName.parse(`card id out of range: ${mark.digits}`));
     }
 
-    let card = await this.retrieveExisting(mark, opts); // fetch.rb:17 retrieve_existing
-    card = this.updateCache(mark, card, opts); // fetch.rb:18 update_cache
-    return this.results(card, mark, opts); // fetch.rb:19 results
+    const retrieved = await this.retrieveExisting(mark, opts); // fetch.rb:17
+    return this.updateCache(mark, retrieved, opts); // fetch.rb:18-19
   }
 
   // ---------------------------------------------------------------------
@@ -194,13 +189,19 @@ export class FetchEngine {
   private async retrieveExisting(
     mark: FetchMark,
     opts: FetchOptions,
-  ): Promise<CardRecord | undefined> {
-    if (mark.kind === "name" && mark.name.s === "") return undefined;
+  ): Promise<{ card: CardRecord | undefined; freshFromDb: boolean }> {
+    if (mark.kind === "name" && mark.name.s === "") return { card: undefined, freshFromDb: false };
     const fromCache = await this.retrieveFromCache(mark, opts);
-    if (fromCache !== undefined) return fromCache;
-    const { row } = await retrieveFromDb(this.driver, mark, { lookInTrash: opts.lookInTrash === true }, this.lexicon);
-    if (row === undefined) return undefined;
-    return composeCardRecord(row, this.lexicon);
+    if (fromCache !== undefined) return { card: fromCache, freshFromDb: false };
+    const { row, freshFromDb } = await retrieveFromDb(
+      this.driver,
+      mark,
+      { lookInTrash: opts.lookInTrash === true },
+      this.lexicon,
+    );
+    if (row === undefined) return { card: undefined, freshFromDb: false };
+    // retrieve.rb:24: @fresh_from_db = true if card.present? && !card.trash
+    return { card: await composeCardRecord(row, this.lexicon), freshFromDb };
   }
 
   /** retrieve.rb#retrieve_from_cache. look_in_trash drops cached new?
@@ -216,7 +217,7 @@ export class FetchEngine {
     if (mark.kind === "id") {
       card = await this.retrieveFromCacheById(mark.id, localOnly);
     } else if (mark.kind === "name") {
-      card = await this.retrieveFromCacheByKey(mark.name.key, localOnly);
+      card = this.retrieveFromCacheByKey(mark.name.key, localOnly);
     }
     if (card !== undefined && isNewCard(card) && opts.lookInTrash === true) {
       return undefined;
@@ -224,11 +225,9 @@ export class FetchEngine {
     return card;
   }
 
-  /** cache/card_class.rb#retrieve_from_cache (13-15) + #retrieve_from_cache_by_key. */
+  /** cache/card_class.rb#retrieve_from_cache (13-15) + #retrieve_from_cache_by_key (24-26). */
   retrieveFromCacheByKey(key: string, localOnly = false): CardRecord | undefined {
-    const value = localOnly
-      ? this.cardCache.temp.read(key)
-      : this.cardCache.read(key);
+    const value = localOnly ? this.cardCache.temp.read(key) : this.cardCache.read(key);
     return isCardValue(value) ? value : undefined;
   }
 
@@ -244,39 +243,73 @@ export class FetchEngine {
   // fetch/store.rb
   // ---------------------------------------------------------------------
 
-  /** store.rb#update_cache / #update_cache?. needs_prep? (store.rb:38-42)
-   *  exists to pre-compute set-pattern modules before caching; with set
-   *  modules deferred to the rules wave every TS card is already "prepped",
-   *  so the needs_prep branch is observable-behavior-equivalent to false
-   *  (a cached real card and a freshly prepped one are indistinguishable
-   *  without modules). */
+  /** fetch.rb:18-19 update_cache + results, with store.rb#new_for_cache
+   *  running inside update_cache?'s evaluation (Ruby's update_cache?
+   *  calls new_for_cache, which ASSIGNS @card when it instantiates a
+   *  placeholder). needs_prep? (store.rb:38-42) exists to pre-compute
+   *  set-pattern modules before caching; with set modules deferred to the
+   *  rules wave every TS card is already "prepped", so that branch is
+   *  observable-behavior-equivalent to false (a cached real card and a
+   *  freshly prepped one are indistinguishable without modules). */
   private updateCache(
     mark: FetchMark,
-    card: CardRecord | undefined,
+    retrieved: { card: CardRecord | undefined; freshFromDb: boolean },
     opts: FetchOptions,
   ): CardRecord | undefined {
-    const newForCacheCard = this.newForCache(mark, card, opts);
-    const effective = newForCacheCard ?? card;
-    const freshFromDb = false; // tracked by caller through retrieveExisting result
-    void freshFromDb;
-    return effective;
+    let card = retrieved.card;
+    let createdPlaceholder = false;
+    if (this.newForCacheApplies(mark, card, opts)) {
+      card = this.instantiatePlaceholder(mark as MarkWithName, opts);
+      createdPlaceholder = true;
+    }
+    // store.rb#update_cache? (12-14): (fresh_from_db? || new_for_cache ||
+    // needs_prep?) && !card&.uncacheable?
+    if ((retrieved.freshFromDb || createdPlaceholder) && card !== undefined && !card.uncacheable) {
+      this.storeCard(card, opts); // store.rb:8-9 Card.write_to_cache card, local_only?
+    }
+    return this.results(card, mark, opts); // fetch.rb:19
   }
 
-  /** store.rb#new_for_cache (21-28): instantiate a cache placeholder when
-   *  the mark is a reusable NAME mark and no card with a type_id was found
-   *  (and skip_type_lookup is off). The placeholder is cached by key, which
-   *  is how the Ruby shared cache ends up holding "missing" cards
-   *  (lib/card/cache/shared.rb module doc). */
-  private newForCache(
+  /** store.rb#reusable? (48-50): !(mark.is_a?(Integer) || (mark.blank? && !opts[:new])). */
+  private reusable(mark: FetchMark, opts: FetchOptions): boolean {
+    if (mark.kind !== "name") return false;
+    return !(mark.name.s === "" && opts.new === undefined);
+  }
+
+  /** store.rb#new_card_needed? (44-46):
+   *  !(card.present? && (card.type_id.present? || skip_type_lookup?)). */
+  private newCardNeeded(card: CardRecord | undefined, opts: FetchOptions): boolean {
+    return !(card !== undefined && (card.typeId !== undefined || opts.skipTypeLookup === true));
+  }
+
+  /** store.rb#new_for_cache? (34-36). */
+  private newForCacheApplies(
     mark: FetchMark,
     card: CardRecord | undefined,
     opts: FetchOptions,
-  ): CardRecord | undefined {
-    if (!this.newForCache?(mark, card, opts) ?? true) {
-      // unreachable; kept for shape clarity
-      return undefined;
-    }
-    return undefined;
+  ): boolean {
+    return this.reusable(mark, opts) && this.newCardNeeded(card, opts);
+  }
+
+  /** store.rb#new_for_cache (21-28): `Card.new name: mark, skip_modules:
+   *  true`, with the type attrs merged only when eager_caching? (30-32:
+   *  eager_cache + name mark + absolute + new opts present). The
+   *  placeholder is cached by key, which is how the Ruby shared cache ends
+   *  up holding "missing" cards (lib/card/cache/shared.rb module doc). */
+  private instantiatePlaceholder(mark: MarkWithName, opts: FetchOptions): CardRecord {
+    const newOpts = opts.new;
+    const eager =
+      opts.eagerCache === true && newOpts !== undefined && mark.name.isAbsolute;
+    return newCardRecord(
+      mark.name,
+      eager ? { typeId: newOpts?.typeId, content: newOpts?.content } : {},
+    );
+  }
+
+  /** store.rb:8-9 via cache/card_class.rb#write_to_cache. */
+  private storeCard(card: CardRecord, opts: FetchOptions): void {
+    if (card.uncacheable) return; // store.rb:13 !card&.uncacheable?
+    this.writeToCache(card, opts.localOnly === true);
   }
 
   // ---------------------------------------------------------------------
@@ -300,68 +333,120 @@ export class FetchEngine {
     return card;
   }
 
-  /** results.rb#new_result_card. */
+  /** results.rb#new_result_card (16-23). */
   private newResultCard(
     card: CardRecord,
     mark: FetchMark,
     opts: FetchOptions,
   ): CardRecord | undefined {
     const newOpts = opts.new;
+    let effective = card;
     if (newOpts !== undefined) {
-      // results.rb#with_new_card: quick_renew || renew
+      // results.rb#with_new_card (25-34): quick_renew || renew
       const markName = mark.kind === "name" ? mark.name : DeckoName.parse("");
-      if (!this.quickRenew(card, markName, newOpts, opts)) {
-        this.renew(card, markName, newOpts);
+      if (!this.quickRenew(effective, markName, newOpts, opts)) {
+        effective = this.renew(effective, markName, newOpts);
       }
     } else if (opts.skipVirtual === true) {
       return undefined; // results.rb:28-30
     } else {
-      this.assignName(card, mark, opts); // results.rb:30-32
+      this.assignName(effective, mark, opts); // results.rb:30-32
     }
-    this.finalizeResultCard(card);
+    this.finalizeResultCard(effective);
     // results.rb:19-21: card if new_opts || card.known?
-    return newOpts !== undefined || isKnownCard(card) ? card : undefined;
+    return newOpts !== undefined || isKnownCard(effective) ? effective : undefined;
   }
 
-  /** results.rb#quick_renew (53-60): for blank new opts (the `new: {}`
-   *  idiom) just assign the name. quick_renew? (69-76) declines when the
-   *  type or name changes - those need renew. */
+  /** results.rb#quick_renew (53-60) + #quick_renew? (69-76): blank new
+   *  opts (the `new: {}` idiom) just assign the name; otherwise decline
+   *  when the type or name changes or when fancy (unhandled) opts appear -
+   *  those need renew. */
   private quickRenew(
     card: CardRecord,
     mark: DeckoName,
     newOpts: NewCardOptions,
     opts: FetchOptions,
   ): boolean {
-    const blank = Object.keys(newOpts).length === 0;
-    if (!blank) return false;
-    if (this.typeChange(card, newOpts)) return false;
-    void mark;
-    void opts;
+    if (Object.keys(newOpts).length === 0) {
+      // results.rb:70-71 `return true if new_opts.blank?` ->
+      // update_supercard (write-path; no-op without one) + assign_name
+      const requested = newOpts.name !== undefined ? DeckoName.parse(newOpts.name) : undefined;
+      this.assignName(
+        card,
+        { kind: "name", name: requested !== undefined && requested.s !== "" ? requested : mark },
+        opts,
+      );
+      return true;
+    }
+    if (this.typeChange(card, newOpts)) return false; // results.rb:71
+    if (this.nameChange(card, newOpts, mark)) return false; // results.rb:72
+    if (this.fancyRenew(newOpts)) return false; // results.rb:73
+    this.quickContent(card, newOpts); // results.rb:74
     return true;
   }
 
   /** results.rb#renew (37-43) + #newish_opts (44-50): dup the card and
-   *  apply the new-opts attributes. Port scope: name/typeId/content - the
-   *  full Card.new machinery (handle_type, supercard wiring, subcards)
-   *  belongs to the write path wave. */
+   *  apply the new-opts attributes. The cached placeholder (already
+   *  written by update_cache) is left pristine - Ruby dups for the same
+   *  reason. Port scope: name/type/content; the full Card.new machinery
+   *  (handle_type validation, supercard wiring, subcards) is write-path. */
   private renew(card: CardRecord, mark: DeckoName, newOpts: NewCardOptions): CardRecord {
-    const requestedName = newOpts.name !== undefined ? DeckoName.parse(newOpts.name) : mark;
+    const requestedName =
+      newOpts.name !== undefined ? DeckoName.parse(newOpts.name) : mark; // reverse_merge name: mark
     const renewed: CardRecord = { ...card };
-    if (requestedName !== undefined && requestedName.s !== (card.name?.s ?? "")) {
+    if (requestedName.s !== (card.name?.s ?? "")) {
       renewed.name = requestedName;
       renewed.key = requestedName.key;
     }
-    if (newOpts.typeId !== undefined) renewed.typeId = newOpts.typeId;
-    if (newOpts.content !== undefined) renewed.dbContent = newOpts.content;
+    const content = this.assignableContent(card, newOpts);
+    if (content !== undefined) renewed.dbContent = content;
+    // type attrs (results.rb:80,112) - resolved like extract_type_id
+    // (mod/core/set/all/type.rb:96-107): type_id first, then type_code via
+    // the codename registry, then type name via the lexicon. Unknown types
+    // leave typeId nil; validation is write-path.
+    if (newOpts.typeId !== undefined) {
+      renewed.typeId = newOpts.typeId;
+    }
     return renewed;
   }
 
   /** results.rb#type_change? (101-109): a nil type_id is always a type
-   *  change; otherwise compare against new opts (supercard-dependent type
-   *  changes need the rules wave - supercard_might_change_type?, 116-120). */
+   *  change; otherwise compare against new opts. supercard-dependent type
+   *  changes (supercard_might_change_type?, 116-120) need the rules wave. */
   private typeChange(card: CardRecord, newOpts: NewCardOptions): boolean {
     if (card.typeId === undefined) return true;
     return newOpts.typeId !== undefined && newOpts.typeId !== card.typeId;
+  }
+
+  /** results.rb#name_change? (95-100): relative new names don't count as
+   *  changes against absolute marks. */
+  private nameChange(card: CardRecord, newOpts: NewCardOptions, mark: DeckoName): boolean {
+    if (newOpts.name === undefined) return false;
+    const newName = DeckoName.parse(newOpts.name);
+    if (newName.isRelative && mark.isAbsolute) return false;
+    return newName.s !== (card.name?.s ?? "");
+  }
+
+  /** results.rb#fancy_renew? (79-83): opts beyond the handled set need the
+   *  full renew. The handled set here is the TS NewCardOptions surface
+   *  (Ruby's: supercard, name, type_id, type, type_code, content,
+   *  default_content). */
+  private fancyRenew(newOpts: NewCardOptions): boolean {
+    const handled = new Set(["supercard", "name", "typeId", "typeCode", "typeName", "content", "defaultContent"]);
+    return Object.keys(newOpts).some((key) => !handled.has(key));
+  }
+
+  /** results.rb#assignable_content (85-87) + #quick_content (89-93). */
+  private assignableContent(card: CardRecord, newOpts: NewCardOptions): string | undefined {
+    if (newOpts.content !== undefined) return newOpts.content;
+    const dbContent = card.dbContent ?? "";
+    if (dbContent === "" && newOpts.defaultContent !== undefined) return newOpts.defaultContent;
+    return undefined;
+  }
+
+  private quickContent(card: CardRecord, newOpts: NewCardOptions): void {
+    const content = this.assignableContent(card, newOpts);
+    if (content !== undefined) card.dbContent = content;
   }
 
   /** results.rb#assign_name (126-131). */
@@ -383,7 +468,7 @@ export class FetchEngine {
     return this.fetchWithOptions([id], opts);
   }
 
-  /** Fetch by canonical key string (name marks whose key equals it; a key
+  /** Fetch by canonical key string (a name mark whose key is it; a key
    *  round-trips through to_name.key, so this is Ruby's name-mark path). */
   async fetchByKey(key: string, opts: FetchOptions = {}): Promise<CardRecord | undefined> {
     return this.fetchWithOptions([DeckoName.parse(key)], opts);
@@ -391,7 +476,10 @@ export class FetchEngine {
 
   /** Fetch by name (string or DeckoName). Full name algebra stays in
    *  src/card/name.ts; this only goes as far as key lookup. */
-  async fetchByName(name: string | DeckoName, opts: FetchOptions = {}): Promise<CardRecord | undefined> {
+  async fetchByName(
+    name: string | DeckoName,
+    opts: FetchOptions = {},
+  ): Promise<CardRecord | undefined> {
     return this.fetchWithOptions([typeof name === "string" ? DeckoName.parse(name) : name], opts);
   }
 
@@ -406,9 +494,11 @@ export class FetchEngine {
   }
 
   /** Card.id (card_class.rb:71-79): integers pass through, cards give
-   *  their id, codenames resolve through the registry, strings through the
-   *  lexicon, anything else through quick_fetch. */
-  async cardId(cardish: number | CardRecord | string | DeckoName): Promise<number | undefined> {
+   *  their id, names resolve through the lexicon, anything else through
+   *  quick_fetch. (Ruby's Symbol branch is the CodenameMark form.) */
+  async cardId(
+    cardish: number | CardRecord | string | DeckoName | { codename: string },
+  ): Promise<number | undefined> {
     if (typeof cardish === "number") return cardish;
     if (cardish instanceof DeckoName) return this.lexicon.id(cardish);
     if (typeof cardish === "string") {
@@ -416,6 +506,7 @@ export class FetchEngine {
       if (id !== undefined) return id;
       return (await this.quickFetch(cardish))?.id;
     }
+    if ("codename" in cardish) return this.codenames.id(cardish.codename);
     return cardish.id;
   }
 
@@ -438,19 +529,11 @@ export class FetchEngine {
     }
   }
 
-  /** cache/card_class.rb#write_to_temp_cache (36-40): temp only, and with
+  /** cache/card_class.rb#write_to_temp_cache (36-40): temp only, with
    *  `callback: false` - no lexicon hook. */
   writeToTempCache(card: CardRecord): void {
     if (card.key === undefined) return;
     this.cardCache.temp.write(card.key, card);
-  }
-
-  /** store.rb#update_cache body: write the card into the fetch cache
-   *  (fetch.rb:18 runs this after retrieval). */
-  private storeCard(card: CardRecord | undefined, opts: FetchOptions): void {
-    if (card === undefined) return;
-    if (card.uncacheable) return; // store.rb:13 !card&.uncacheable?
-    this.writeToCache(card, opts.localOnly === true);
   }
 
   /** cache/card_class.rb#expire (42-47): expire the cached card with this name. */
@@ -513,14 +596,15 @@ export class FetchEngine {
 
   /** Cache::CardClass#after_write_to_temp_cache -> Cache::All#write_lexicon
    *  (cache/all.rb:5-15): temp-cache writes of cards mirror the card into
-   *  the Lexicon cache (id -> name and lex -> id). */
+   *  the Lexicon cache (id -> name and lex -> id; lex = the name for
+   *  simple cards, [left_id, right_id] for compound ones). */
   private writeLexiconTemp(card: CardRecord): void {
     if (card.id === undefined) return;
     let lex: string | [number, number] | undefined;
-    if (card.name !== undefined && card.leftId === undefined) {
-      lex = card.name.s; // simple?
-    } else if (card.leftId !== undefined && card.rightId !== undefined) {
+    if (card.leftId !== undefined && card.rightId !== undefined) {
       lex = [card.leftId, card.rightId];
+    } else if (card.name !== undefined) {
+      lex = card.name.s;
     }
     this.lexicon.writeTemp(card.id, card.name ?? undefined, lex);
   }
@@ -597,9 +681,7 @@ export class FetchEngine {
   private peekLex(id: number): string | [number, number] | undefined {
     const value = this.readLexiconCache(String(id));
     if (typeof value === "string") return value;
-    if (Array.isArray(value) && value.length === 2) {
-      return value as [number, number];
-    }
+    if (Array.isArray(value) && value.length === 2) return value as [number, number];
     return undefined;
   }
 
@@ -610,12 +692,13 @@ export class FetchEngine {
 
   /** The codename codehash kept in the Card cache under CODENAMES. */
   peekCodehash(): { c2i: Map<string, number>; i2c: Map<number, string> } | undefined {
-    const value = this.cardCache.read(CODENAMES_CACHE_KEY) as
+    return this.cardCache.read(CODENAMES_CACHE_KEY) as
       | { c2i: Map<string, number>; i2c: Map<number, string> }
       | undefined;
-    return value;
   }
 }
+
+interface MarkWithName extends Extract<FetchMark, { kind: "name" }> {}
 
 /** Type guard for values that may be cached card records (the cache is
  *  untyped, like Ruby's). */

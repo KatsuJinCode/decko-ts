@@ -11,7 +11,7 @@
 //      Lexicon.id); `trash = false` unless look_in_trash
 //      (retrieve.rb#retrieval_from_db_query).
 
-import { DeckoName } from "../name.js";
+import { DeckoName, type Nameish } from "../name.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
@@ -22,6 +22,21 @@ import type { DbCodenameRegistry } from "./codename.js";
 /** Mark regexes (lib/card/name.rb:16-17). */
 const ID_MARK_REGEXP = /^~(\d+)$/;
 const CODENAME_MARK_REGEXP = /^:(\w+)$/;
+
+/** A mark argument with arrays flattened out. */
+type FlatArg = number | string | DeckoName | CardRecord | CodenameMarkArg;
+
+function flattenArgs(args: readonly FetchArg[]): FlatArg[] {
+  const out: FlatArg[] = [];
+  const walk = (items: readonly FetchArg[]): void => {
+    for (const item of items) {
+      if (Array.isArray(item)) walk(item);
+      else out.push(item as FlatArg);
+    }
+  };
+  walk(args);
+  return out;
+}
 
 /** Ruby Symbol argument surface (see src/card/name.ts CodenameMark). */
 export interface CodenameMarkArg {
@@ -52,15 +67,21 @@ export type FetchMark =
 export interface MarkOptions {
   /** opts[:new][:supercard] - relative name marks are absolutized against
    *  it (fetch.rb#normalize_mark). */
-  newSupercardName?: DeckoName | string;
+  newSupercardName?: Nameish;
 }
 
-function isCodenameMark(arg: FetchArg): arg is CodenameMarkArg {
+function isCodenameMark(arg: FlatArg): arg is CodenameMarkArg {
   return typeof arg === "object" && arg !== null && "codename" in arg;
 }
 
-function isCardRecord(arg: FetchArg): arg is CardRecord {
-  return typeof arg === "object" && arg !== null && !isCodenameMark(arg) && !(arg instanceof DeckoName) && "key" in arg;
+function isCardRecord(arg: FlatArg): arg is CardRecord {
+  return (
+    typeof arg === "object" &&
+    arg !== null &&
+    !isCodenameMark(arg) &&
+    !(arg instanceof DeckoName) &&
+    "key" in arg
+  );
 }
 
 /**
@@ -74,9 +95,8 @@ export async function normalizeMark(
   lexicon: DbLexicon,
   codenames: DbCodenameRegistry,
 ): Promise<FetchMark | undefined> {
-  const flat = args.flat(Infinity) as Exclude<FetchArg, readonly FetchArg[]>[];
-  let mark: Exclude<FetchArg, readonly FetchArg[]> | undefined =
-    flat.length <= 1 ? flat[0] : undefined;
+  const flat = flattenArgs(args);
+  const mark: FlatArg | undefined = flat.length <= 1 ? flat[0] : undefined;
 
   if (mark === undefined) {
     // mark.size > 1 -> Card::Name[mark] -> compose parts
@@ -100,11 +120,8 @@ export async function normalizeMark(
 /** fetch.rb#normalize_mark: relative name marks become absolute against
  *  opts[:new][:supercard]. */
 function absolutize(mark: FetchMark & { kind: "name" }, opts: MarkOptions): FetchMark {
-  if (opts.newSupercardName === undefined) return mark;
-  const supercard =
-    typeof opts.newSupercardName === "string"
-      ? DeckoName.parse(opts.newSupercardName)
-      : opts.newSupercardName;
+  if (opts.newSupercardName === undefined || opts.newSupercardName === null) return mark;
+  const supercard = DeckoName.parse(opts.newSupercardName as Exclude<Nameish, null | undefined>);
   return { kind: "name", name: mark.name.absoluteName(supercard) };
 }
 
@@ -114,7 +131,7 @@ function absolutize(mark: FetchMark & { kind: "name" }, opts: MarkOptions): Fetc
  *  fall through to a name. Returns undefined for everything else, which
  *  then becomes a name mark. */
 async function idFromMark(
-  mark: Exclude<FetchArg, readonly FetchArg[]>,
+  mark: FlatArg,
   lexicon: DbLexicon,
   codenames: DbCodenameRegistry,
 ): Promise<number | undefined | { outOfRange: string }> {
@@ -173,7 +190,7 @@ async function idFromStringStrict(
  *  Integer -> Lexicon.name; Symbol -> Codename.name!; String/nil -> new;
  *  Array -> compose. */
 async function nameFromMark(
-  mark: Exclude<FetchArg, readonly FetchArg[]>,
+  mark: FlatArg | undefined,
   lexicon: DbLexicon,
   codenames: DbCodenameRegistry,
 ): Promise<DeckoName> {
@@ -197,7 +214,7 @@ async function nameFromMark(
 
 /** Multi-mark fetch (Card.fetch "A", "B") composes the parts into one name. */
 async function nameFromMarkParts(
-  parts: readonly Exclude<FetchArg, readonly FetchArg[]>[],
+  parts: readonly FlatArg[],
   lexicon: DbLexicon,
   codenames: DbCodenameRegistry,
 ): Promise<DeckoName> {

@@ -65,6 +65,21 @@ export class DbCodenameRegistry {
     await this.codehash();
   }
 
+  // ---- sync peeks (memo only; undefined until the codehash is loaded) -----
+
+  peekId(codename: string): number | undefined {
+    return this.codehashValue?.c2i.get(codename);
+  }
+
+  peekNameForId(id: number): string | undefined {
+    return this.codehashValue?.i2c.get(id);
+  }
+
+  peekName(codename: string): string | undefined {
+    const id = this.peekId(codename);
+    return id === undefined ? undefined : this.codehashValue?.i2c.get(id);
+  }
+
   /** codename.rb#codehash / #load_codehash: Card.cache.fetch("CODENAMES")
    *  { process_codenames }. The fetch value is the codehash; the in-memory
    *  memo avoids re-parsing Maps out of the cache on every call. */

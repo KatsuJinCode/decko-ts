@@ -25,14 +25,21 @@
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import type { CardsRow } from "../server/schema.js";
 import { parseCql } from "./parser.js";
-import type { QueryNode } from "./ast.js";
+import type { ParseOptions, QueryNode } from "./ast.js";
 import { generateSql } from "./sql.js";
 import type { SqlOptions } from "./sql.js";
 
-/** Execution-time options: today exactly the generator's permission
- *  switches; a stable name so execution options can grow without moving
- *  callers off the sql.ts surface. */
-export interface CqlExecuteOptions extends SqlOptions {}
+/**
+ * Execution-time options. Names in CQL (type: "User", part: "Home",
+ * edited_by: "Joe Admin") resolve to ids DURING interpretation, so the
+ * parse-time resolvers must flow through the execution entry — Ruby reads
+ * them from Card::Lexicon / Card::Codename globals; the port injects them.
+ */
+export interface CqlExecuteOptions extends SqlOptions {
+  /** ParseOptions for interpretation: vars, context, resolveCardId,
+   *  resolveCodename, nameToKey, onWarning (see src/cql/ast.ts). */
+  parse?: ParseOptions;
+}
 
 /** One executed SELECT: the SQL that actually ran (diagnostics + the
  *  parameterization contract), its params, and the rows. `rows` is typed
@@ -66,7 +73,7 @@ export async function executeQuery(
   cqlQuery: unknown,
   options: CqlExecuteOptions = {},
 ): Promise<CqlQueryResult> {
-  const root = parseCql(cqlQuery);
+  const root = parseCql(cqlQuery, options.parse);
   if (root.mods.return === "count") {
     return executeCountNode(driver, root, options);
   }
@@ -86,8 +93,8 @@ export async function executeCount(
   cqlQuery: unknown,
   options: CqlExecuteOptions = {},
 ): Promise<number> {
-  const root = parseCql(cqlQuery);
-  const result = await executeCountNode(driver, root);
+  const root = parseCql(cqlQuery, options.parse);
+  const result = await executeCountNode(driver, root, options);
   return result.count;
 }
 

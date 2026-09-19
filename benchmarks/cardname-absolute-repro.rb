@@ -5,6 +5,7 @@ require "active_support/core_ext"
 require "cardname"
 # cardname's core_ext.rb sits at lib root and is never auto-required by the gem
 require "core_ext"
+require "english"
 
 context = Cardname.new("Test Context Main")
 
@@ -20,7 +21,7 @@ puts "== stale-match variant (a prior unrelated regex ran first):"
 "zzz7" =~ /zzz(\d+)/
 puts "prior match set last_match group1=#{$LAST_MATCH_INFO[1].inspect}"
 begin
-  n2 = Cardname["_2"]
+  n2 = Cardname.new("_2")
   puts n2.absolute(context).inspect
 rescue StandardError => e
   puts "CRASH: #{e.class}: #{e.message}"
@@ -28,7 +29,7 @@ end
 
 puts "== _LR form, fresh state:"
 begin
-  n3 = Cardname["_L2R"]
+  n3 = Cardname.new("_L2R")
   puts n3.absolute(context).inspect
 rescue StandardError => e
   puts "CRASH: #{e.class}: #{e.message}"
@@ -36,7 +37,7 @@ end
 
 puts "== control: _left (no \$LAST_MATCH_INFO use on that branch):"
 begin
-  n4 = Cardname["_left"]
+  n4 = Cardname.new("_left")
   puts n4.absolute(context).inspect
 rescue StandardError => e
   puts "CRASH: #{e.class}: #{e.message}"
