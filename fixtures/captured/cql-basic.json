@@ -1,0 +1,112 @@
+{
+  "queries": {
+    "content_exact": {
+      "query": {
+        "content": "the nested child body"
+      },
+      "result": [
+        "Oracle Rich+rich_child"
+      ]
+    },
+    "created_by_bot": {
+      "query": {
+        "created_by": "Decko Bot",
+        "limit": 5,
+        "sort": "name"
+      },
+      "result": [
+        "*all+*read",
+        "*all+*default",
+        "Cardtype+description",
+        "User+description",
+        "Cardtype+*type"
+      ]
+    },
+    "exact_name": {
+      "query": {
+        "name": "Oracle Junction"
+      },
+      "result": [
+        "Oracle Junction"
+      ]
+    },
+    "left_children": {
+      "query": {
+        "left": "Oracle Junction",
+        "sort": "name"
+      },
+      "result": [
+        "Oracle Junction+child_one",
+        "Oracle Junction+child_two"
+      ]
+    },
+    "match_sentinel": {
+      "query": {
+        "match": "Oracle"
+      },
+      "result": "CAPTURE_ERROR: RuntimeError: %{func} not implemented"
+    },
+    "no_results": {
+      "query": {
+        "name": "No Such Card At All"
+      },
+      "result": []
+    },
+    "not_cardtypes": {
+      "query": {
+        "limit": 3,
+        "not": {
+          "type": "Cardtype"
+        },
+        "sort": "name",
+        "type": "Search"
+      },
+      "result": [
+        "*to+*right+*content options",
+        "*from+*right+*content options",
+        "*cc+*right+*content options"
+      ]
+    },
+    "plus_condition": {
+      "query": {
+        "plus": "child_one",
+        "sort": "name"
+      },
+      "result": [
+        "Oracle Junction"
+      ]
+    },
+    "right_child": {
+      "query": {
+        "right": "child_one"
+      },
+      "result": [
+        "Oracle Junction+child_one"
+      ]
+    },
+    "type_dir_desc": {
+      "query": {
+        "dir": "desc",
+        "limit": 3,
+        "sort": "name",
+        "type": "Search"
+      },
+      "result": [
+        "Oracle Search",
+        "Cards with accounts",
+        "*search"
+      ]
+    },
+    "type_limit": {
+      "query": {
+        "limit": 2,
+        "sort": "name",
+        "type": "Search"
+      },
+      "result": [
+        "*to+*right+*content options",
+        "*from+*right+*content options"
+      ]
+    }
+  }
+}

@@ -1,0 +1,120 @@
+// Reference SQLDatabaseDriver over better-sqlite3 — the dev/test workhorse
+// for decko-ts. Part of the storage-driver foundation (upstream proposal
+// decko-commons/decko#1282).
+//
+// better-sqlite3 is synchronous under the hood; the async signatures of
+// SQLDatabaseDriver are satisfied with resolved promises. Everything runs on
+// the calling thread, so this driver is only appropriate for local
+// development, tests and CLI tooling — never for an edge deployment.
+
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
+import Database from "better-sqlite3";
+
+/**
+ * The better-sqlite3 v13 statement members this driver relies on, verified
+ * at RUNTIME on this machine (better-sqlite3 13.0.3, Windows, node 24):
+ * `reader` (false for writes), `columns()` (throws on non-reading
+ * statements), `raw().all()` (array rows), and `run()` returning
+ * `{changes, lastInsertRowId}` as number|bigint.
+ *
+ * Why a local interface instead of growing the shared ambient shim: the
+ * module declaration for better-sqlite3 lives in tests/schema/
+ * better-sqlite3.d.ts (schema stream, `export =` style), and TypeScript
+ * does not merge a second `declare module` block into an `export =`
+ * declaration — verified with a minimal repro. prepare()'s result is
+ * therefore narrowed through this interface at the single boundary below.
+ * If @types/better-sqlite3 is ever added, replace this interface with the
+ * real definitions.
+ */
+export interface BetterSqlite3Statement {
+  readonly reader: boolean;
+  run(...params: unknown[]): { changes: number | bigint; lastInsertRowid: number | bigint };
+  all(...params: unknown[]): Record<string, unknown>[];
+  raw(): { all(...params: unknown[]): unknown[][] };
+  columns(): { name: string; type: string | null }[];
+}
+
+/** The database members this driver uses; see BetterSqlite3Statement for
+ *  why this exists. `transaction(fn)` returns a wrapped function; calling
+ *  it runs fn inside BEGIN/COMMIT/ROLLBACK — an exception rolls back and
+ *  rethrows (runtime-verified). */
+export interface BetterSqlite3Database {
+  prepare(sql: string): BetterSqlite3Statement;
+  transaction<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => R;
+  close(): void;
+}
+export interface LocalSqliteDriverOptions {
+  /** SQLite database path. `":memory:"` (the default) keeps everything in
+   *  RAM; any other path is opened or created on disk. */
+  path?: string;
+  /** Open the database read-only (SQLITE_OPEN_READONLY). */
+  readonly?: boolean;
+}
+
+/** Normalized row object: column name -> SQLite value. Duplicate column
+ *  names collapse (last one wins), mirroring better-sqlite3's own
+ *  object-row behavior. */
+export type SqliteRow = Record<string, unknown>;
+
+export class LocalSqliteDriver implements SQLDatabaseDriver {
+  private readonly db: BetterSqlite3Database;
+
+  constructor(options: LocalSqliteDriverOptions = {}) {
+    this.db = new Database(options.path ?? ":memory:", {
+      readonly: options.readonly ?? false,
+    }) as unknown as BetterSqlite3Database;
+  }
+
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    const stmt = this.db.prepare(sql);
+    if (stmt.reader) {
+      // Reading statement: better-sqlite3's .all() gives object rows but no
+      // change counters, so rowsAffected is reported as 0 and
+      // lastInsertRowId is omitted. SQLite does track a connection-level
+      // last_insert_rowid(), but surfacing it here would make read results
+      // inconsistent between this driver and the remote adapters.
+      const rows = stmt.all(...params) as T[];
+      return { rows, rowsAffected: 0 };
+    }
+    const info = stmt.run(...params);
+    return {
+      rows: [],
+      rowsAffected: Number(info.changes),
+      lastInsertRowId: rowIdOrOmit(info.lastInsertRowid),
+    };
+  }
+
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    if (statements.length === 0) return [];
+    // A single synchronous SQLite transaction: every statement in the batch
+    // commits together or, on any error, rolls back and the error is
+    // rethrown. Statement results are collected in order.
+    const runBatch = this.db.transaction(() => statements.map((s) => this.executeOne(s)));
+    return runBatch();
+  }
+
+  /** Close the underlying database handle. Not part of SQLDatabaseDriver —
+   *  local resource cleanup only. */
+  close(): void {
+    this.db.close();
+  }
+
+  private executeOne(statement: SQLStatement): SQLQueryResult<SqliteRow> {
+    const stmt = this.db.prepare(statement.sql);
+    if (stmt.reader) {
+      return { rows: stmt.all(...statement.params), rowsAffected: 0 };
+    }
+    const info = stmt.run(...statement.params);
+    return {
+      rows: [],
+      rowsAffected: Number(info.changes),
+      lastInsertRowId: rowIdOrOmit(info.lastInsertRowid),
+    };
+  }
+}
+
+/** SQLite reports 0 for "no insert happened"; the driver contract treats
+ *  lastInsertRowId as optional, so 0 becomes "omitted". */
+function rowIdOrOmit(lastInsertRowId: number | bigint): number | bigint | undefined {
+  return BigInt(lastInsertRowId) > 0n ? lastInsertRowId : undefined;
+}
