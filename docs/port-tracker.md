@@ -13,7 +13,7 @@ plans the next wave. Agents never git-commit and never run npm install
 | 1 | Driver foundation | `src/server/driver.ts` extensions, `src/server/drivers/**`, `tests/server/drivers/**`, `docs/driver-notes.md` | running |
 | 2 | Ruby oracle harness | `tools/oracle/**`, `fixtures/captured/**`, `docs/oracle-harness.md` | running |
 | 3 | Card name algebra | `src/card/name.ts`, `src/card/name/**`, `tests/card/name/**`, `docs/name-port-notes.md` | running |
-| 4 | Schema + SQLite DDL | `db/**`, `src/server/schema.ts`, `docs/schema-notes.md` | running |
+| 4 | Schema + SQLite DDL | `db/**`, `src/server/schema.ts`, `docs/schema-notes.md` | LANDED: 12 core tables, DDL proven on better-sqlite3, 10/10 tests (coordinator-reviewed) |
 | 5 | CQL parser | `src/cql/**`, `tests/cql/**`, `docs/cql-port-notes.md` | running |
 
 ## Wave 2+ backlog (planned when wave 1 lands)
