@@ -6,11 +6,11 @@ require "cardname"
 # cardname's core_ext.rb sits at lib root and is never auto-required by the gem
 require "core_ext"
 
-context = Cardname["Test Context Main"]
+context = Cardname.new("Test Context Main")
 
 puts "== fresh match state, _1 absolutization:"
 begin
-  n = Cardname["_1"]
+  n = Cardname.new("_1")
   puts n.absolute(context).inspect
 rescue StandardError => e
   puts "CRASH: #{e.class}: #{e.message}"

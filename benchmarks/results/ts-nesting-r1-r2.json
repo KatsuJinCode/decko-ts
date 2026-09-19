@@ -1,0 +1,510 @@
+{
+  "benchmark": "ts-nesting-r1-r2",
+  "commitments": [
+    "R1",
+    "R2",
+    "R4"
+  ],
+  "date": "2026-09-19T22:55:16.786Z",
+  "engine": "ts-decko-ts",
+  "status": "PENDING",
+  "environment": {
+    "host": "Jace2",
+    "os": "win32",
+    "osVersion": "v24.19.0",
+    "cpuModel": "Intel(R) Core(TM) i7-14700F",
+    "cpuCount": 28,
+    "ramBytes": 34188599296,
+    "corpusPath": "C:\\localProjects\\decko-ts\\benchmarks\\corpus\\bench-corpus.sqlite3",
+    "corpusSizeBytes": 207360000
+  },
+  "config": {
+    "renderN": 15,
+    "warmup": 3,
+    "prefix": "BenchR1",
+    "nestSyntax": "{{name|open}} / {{name|content}}",
+    "note": "identical shape battery to results/ruby-nesting-r1-r2.json; cross-environment comparison requires both artifacts' environment blocks"
+  },
+  "shapes": [
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 1,
+        "root": "BenchR1_chain_open_d01_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 1,
+        "root": "BenchR1_chain_open_d01_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 1,
+        "root": "BenchR1_chain_content_d01_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 1,
+        "root": "BenchR1_chain_content_d01_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 2,
+        "root": "BenchR1_chain_open_d02_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 2,
+        "root": "BenchR1_chain_open_d02_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 2,
+        "root": "BenchR1_chain_content_d02_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 2,
+        "root": "BenchR1_chain_content_d02_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 4,
+        "root": "BenchR1_chain_open_d04_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 4,
+        "root": "BenchR1_chain_open_d04_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 4,
+        "root": "BenchR1_chain_content_d04_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 4,
+        "root": "BenchR1_chain_content_d04_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 8,
+        "root": "BenchR1_chain_open_d08_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 8,
+        "root": "BenchR1_chain_open_d08_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 8,
+        "root": "BenchR1_chain_content_d08_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 8,
+        "root": "BenchR1_chain_content_d08_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 16,
+        "root": "BenchR1_chain_open_d16_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 16,
+        "root": "BenchR1_chain_open_d16_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 16,
+        "root": "BenchR1_chain_content_d16_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 16,
+        "root": "BenchR1_chain_content_d16_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 32,
+        "root": "BenchR1_chain_open_d32_n01",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "open",
+        "depth": 32,
+        "root": "BenchR1_chain_open_d32_n01",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 32,
+        "root": "BenchR1_chain_content_d32_n01",
+        "view": "content",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "chain",
+        "nestStyle": "content",
+        "depth": 32,
+        "root": "BenchR1_chain_content_d32_n01",
+        "view": "content",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 1,
+        "root": "BenchR1_fan_f01_root",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 1,
+        "root": "BenchR1_fan_f01_root",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 4,
+        "root": "BenchR1_fan_f04_root",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 4,
+        "root": "BenchR1_fan_f04_root",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 16,
+        "root": "BenchR1_fan_f16_root",
+        "view": "open",
+        "mode": "warm",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    },
+    {
+      "shape": {
+        "kind": "fan",
+        "nestStyle": "open",
+        "fanout": 16,
+        "root": "BenchR1_fan_f16_root",
+        "view": "open",
+        "mode": "cold",
+        "renderN": 15,
+        "warmup": 3
+      },
+      "outcome": {
+        "status": "pending",
+        "pendingReason": "render engine not landed (wave 3): register a render-engine handler"
+      }
+    }
+  ]
+}

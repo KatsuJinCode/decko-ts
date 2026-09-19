@@ -2,12 +2,14 @@
  * Value-normalization helpers for the CQL port.
  *
  * All behavior is ported from card-1.110.0 + cardname-0.20.0 (cited per
- * function). Where a helper needs the card-name algebra that the concurrent
- * card/name stream owns (HTML entity decoding, singularize inflection, full
- * contextual absolutization), the implementation here is a documented,
- * marked approximation and accepts an injectable override in ParseOptions.
+ * function). Name-key generation and relative-name absolutization delegate to
+ * the landed card/name stream (`src/card/name.ts`, DeckoName), which carries
+ * the full ActiveSupport inflections and the contextual layer; see the
+ * reconciliation section in docs/cql-port-notes.md.
  */
 
+import { DeckoName } from "../card/name.js";
+import { getNameEnvironment } from "../card/name/environment.js";
 import { CqlBadQuery } from "./ast.js";
 import { SAFE_SQL_RE } from "./constants.js";
 
@@ -41,88 +43,109 @@ export function escapeRegexpCharacters(term: string): string {
 export const NEEDS_ABSOLUTIZE_RE = /\b_/;
 
 /**
- * Cardname::Contextual#absolute — the relative-part forms card-1.110.0
- * supports. Ported fully for _self/_whole/_, _left, _right and _N; the
- * _user/_main/_L*R forms depend on session/params/global state that does not
- * exist in a pure parser, so they are left in place and reported via
- * `onWarning` (see docs/cql-port-notes.md, deferred list).
+ * cardname-0.20.0 lib/cardname/contextual.rb RELATIVE_REGEXP, made
+ * case-insensitive to mirror the per-part branches of
+ * `absolutize_contextual_parts` (/^_user$/i, /^_left$/i, ...). Used only to
+ * decide when a missing-context warning applies; the actual absolutization is
+ * DeckoName's.
+ */
+const CONTEXTUAL_FORM_RE = /\b_(?:left|right|whole|self|user|main|\d+|L*R?)\b/i;
+
+/** one part of a contextual name, matched like absolutize_contextual_parts */
+const CONTEXTUAL_PART_RE = /^_(left|right|whole|self|user|main|\d+|L*R?)$/i;
+
+function rubyBlank(value: string): boolean {
+  return /^\s*$/.test(value);
+}
+
+/**
+ * Normalization#normalize_string_value (card-1.110.0
+ * lib/card/query/card_query/normalization.rb:57): `val.to_name.absolute(context)`.
  *
- * Approximations vs cardname-0.20.0:
- * - HTML entity decoding (Cardname#decoded) is not applied.
- * - absolutize_extremes skips the "context already starts/ends with these
- *   parts" guard.
+ * Delegates to the landed name layer (`DeckoName.absolute`, port of cardname
+ * lib/cardname/contextual.rb#absolute), so all relative forms now resolve for
+ * real: _self/_whole/_, _left (context trunk), _right (context tag), _N
+ * ordinals, _L*R partmaps, _user (Card::Name.session) and _main
+ * (Card::Env.params[:main_name]) via the injectable NameEnvironment, plus the
+ * absolutize_extremes blank-extreme guard (contextual.rb#absolutize_extremes).
+ *
+ * Additive, non-fatal diagnostics (Ruby resolves silently): a warning is
+ * emitted via `onWarning` when a contextual part cannot resolve to anything
+ * meaningful in the current environment -
+ * - a context-dependent part (_self/_left/_right/_N/_L*R) with a blank
+ *   context (AbstractQuery#context defaults to "" at the root,
+ *   abstract_query.rb:73),
+ * - `_user` with no session name in the NameEnvironment (Ruby leaves the part
+ *   in place when `Card::Name.session` is nil),
+ * - `_main` with no main name in the NameEnvironment (Ruby resolves to ""
+ *   via `Card::Env.params[:main_name]`; a blank extreme part then falls back
+ *   to the context per absolutize_extremes — verified live).
  */
 export function absolutizeName(
   name: string,
   context: string,
   onWarning?: (message: string) => void,
 ): string {
-  const contextParts = context === "" ? [] : context.split("+");
-  const contextTrunk = contextParts.slice(0, -1).join("+");
-  const contextTag = contextParts.at(-1) ?? "";
+  const parsed = DeckoName.parse(name);
+  if (CONTEXTUAL_FORM_RE.test(name)) {
+    warnUnresolvedContextualParts(parsed, context, onWarning);
+  }
+  return parsed.absolute(context);
+}
 
-  const newParts = name.split("+").map((part) => {
-    const lower = part.toLowerCase();
-    if (lower === "_user") {
-      onWarning?.("CQL '_user' absolutization needs the session (deferred); left in place");
-      return part;
+function warnUnresolvedContextualParts(
+  parsed: DeckoName,
+  context: string,
+  onWarning?: (message: string) => void,
+): void {
+  const environment = getNameEnvironment();
+  for (const part of parsed.parts) {
+    if (!CONTEXTUAL_PART_RE.test(part)) continue;
+    if (/^_user$/i.test(part)) {
+      if (environment?.session === undefined) {
+        onWarning?.(
+          "CQL '_user' left in place: no session name in the name environment " +
+            "(Ruby: Card::Name.session, card-1.110.0 lib/card/name.rb#session)",
+        );
+      }
+    } else if (/^_main$/i.test(part)) {
+      if (environment?.mainName === undefined) {
+        onWarning?.(
+          "CQL '_main' has no main name in the name environment (Ruby: " +
+            "Card::Env.params[:main_name], cardname lib/cardname/contextual.rb#absolutize_contextual_parts); " +
+            "it resolves to '' and a blank extreme part falls back to the context",
+        );
+      }
+    } else if (rubyBlank(context)) {
+      onWarning?.(
+        `CQL part '${part}' absolutized against an empty context (no 'context' ` +
+          "in the statement or ParseOptions.context; Ruby AbstractQuery#context defaults to '')",
+      );
     }
-    if (lower === "_main") {
-      onWarning?.("CQL '_main' absolutization needs main-name params (deferred); left in place");
-      return part;
-    }
-    if (lower === "_self" || lower === "_whole" || part === "_") return context;
-    if (lower === "_left") return contextTrunk;
-    if (lower === "_right") return contextTag;
-    const ordinal = /^_(\d+)$/.exec(part);
-    if (ordinal) {
-      const pos = Math.min(Number(ordinal[1]), contextParts.length);
-      return contextParts[pos - 1] ?? "";
-    }
-    if (/^_(l*)(r?)$/i.test(part)) {
-      onWarning?.(`CQL part '${part}' partmap absolutization is deferred; left in place`);
-      return part;
-    }
-    return part;
-  });
-
-  if (newParts.length === 0) return "";
-  // absolutize_extremes: empty leading/trailing parts pull in the context
-  if (newParts[0] === "") newParts[0] = context;
-  if (newParts[newParts.length - 1] === "") newParts[newParts.length - 1] = context;
-  return newParts.map((p) => p.trim()).join("+");
+  }
 }
 
 /**
- * Cardname#key (simple_key + part_keys.join("+")).
+ * Cardname#key via the real name layer (this is what Ruby's CQL code calls:
+ * `v.to_name.key` — card-1.110.0 lib/card/query/value.rb#standard_sql:29,
+ * `match_term.to_name.key` — lib/card/query/value/match_value.rb#exact_name_match:25,
+ * `val.to_name.key` — lib/card/query/card_query/match_attributes.rb#complete:26;
+ * `String#to_name` is `Card::Name.new` per
+ * config/initializers/01_core_extensions/object.rb).
  *
- * MARKED APPROXIMATION: applies ActiveSupport-style underscore + downcase and
- * the OK4KEY_RE character filter (cardname.rb: OK4KEY_RE = '\p{Word}\*'), but
- * NOT the singularize inflection (cardname defaults uninflect: :singularize,
- * stabilize: false) and not HTML entity decoding. "Joe Admin" -> "joe_admin"
- * and "A+B" -> "a+b" match the oracle; plural words diverge ("Admins" ->
- * "admins" here, "admin" in Ruby) until the card/name stream's inflector is
- * injectable. ParseOptions.nameToKey overrides this.
+ * Delegates to `DeckoName.parse(name).key` (port of Cardname#key via
+ * variants.rb#stable_key + ActiveSupport inflections): downcase,
+ * space/separator -> underscore, HTML entity decoding, AND the
+ * singularize inflection ("Magnus" -> "magnu", "Admins" -> "admin",
+ * "Octopi" -> "octopus" — all live-oracle-verified against cardname 0.20.0).
+ * Mark strings resolve exactly as Ruby's `Card::Name.new` does: an
+ * unresolvable "~<id>" / ":<codename>" mark raises NameNotFoundError /
+ * CodenameNotFoundError from the name layer (lib/card/name.rb#bad_mark).
+ * `ParseOptions.nameToKey` still overrides this for callers that want a
+ * different key source.
  */
 export function defaultNameToKey(name: string): string {
-  return name
-    .split("+")
-    .map((part) => {
-      // ActiveSupport String#underscore + downcase
-      const underscored = part
-        .replace(/::/g, "/")
-        .replace(/([A-Z\d]+)([A-Z][a-z])/g, "$1_$2")
-        .replace(/([a-z\d])([A-Z])/g, "$1_$2")
-        .replace(/-/g, "_")
-        .toLowerCase();
-      // cardname simple_key: non-OK4KEY runs -> "_", split, drop empties, join
-      const cleaned = underscored.replace(/[^\p{L}\p{M}\p{N}\p{Pc}*]+/gu, "_");
-      return cleaned
-        .split(/_+/)
-        .filter((chunk) => chunk !== "")
-        .join("_");
-    })
-    .join("+");
+  return DeckoName.parse(name).key;
 }
 
 /** Query.safe_sql (query.rb): raises on characters outside the allowed set */
