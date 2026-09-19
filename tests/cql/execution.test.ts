@@ -448,6 +448,12 @@ describe("conjunctions and negation", () => {
   it("not excludes matching rows via LEFT JOIN + id is null", async () => {
     expect(await ids({ not: { type: "User" } })).toEqual(ALL_TYPE_1);
   });
+
+  it("any with a join condition renders the parenthesized LEFT JOIN group and runs", async () => {
+    // the generator's riskiest shape for SQLite: LEFT JOIN (card_actions cn1
+    // JOIN card_acts cx2 ... JOIN cards c3 ...) ON ...
+    expect(await ids({ any: [{ edited_by: "Sara Sample" }] })).toEqual([21, 22]);
+  });
 });
 
 describe("junction / plus conditions", () => {
@@ -575,6 +581,12 @@ describe("count semantics", () => {
     expect(
       await executeCount(driver, { type_id: 1 }, { alwaysOk: false, readRuleIds: [5] }),
     ).toBe(1);
+  });
+
+  it("group by runs and returns one row per group", async () => {
+    const result = await runRows({ type_id: [1, 2], return: "type_id", group: "c0.type_id" });
+    const values = result.rows.map((r) => r["type_id"]).sort((a, b) => Number(a) - Number(b));
+    expect(values).toEqual([1, 2]);
   });
 });
 

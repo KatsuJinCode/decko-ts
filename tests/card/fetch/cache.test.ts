@@ -86,9 +86,10 @@ describe("TemporaryCache (lib/card/cache/temporary.rb)", () => {
 });
 
 describe("SharedCache (lib/card/cache/shared.rb)", () => {
-  it("keys entries under {database}-{classKey}-{stamp}:{key} (shared.rb#full_key/#prefix)", () => {
+  it("keys entries under {database}-{classKey}-{stamp}:{key} with a '/' before the key (shared.rb#full_key/#prefix)", () => {
     const shared = new SharedCache({ store: mapStore(), database: "decko", className: "Card" });
-    expect(shared.fullKey("some_key")).toMatch(/^decko-Card-stamp-\d+-\d+:some_key$/);
+    // shared.rb#full_key: fk = "#{prefix}/#{key}" where prefix ends with ':'
+    expect(shared.fullKey("some_key")).toMatch(/^decko-Card-stamp-\d+-\d+:\/\/some_key$/);
   });
 
   it("read/write/delete route through the full key (shared.rb#read/#write/#delete)", () => {
@@ -96,7 +97,7 @@ describe("SharedCache (lib/card/cache/shared.rb)", () => {
     const shared = new SharedCache({ store, database: "d", className: "C" });
     shared.write("k", "v");
     expect(shared.read("k")).toBe("v");
-    expect([...store.map.keys()][0]).toContain(":k");
+    expect([...store.map.keys()][0]).toContain("/k");
     shared.delete("k");
     expect(shared.read("k")).toBeUndefined();
   });

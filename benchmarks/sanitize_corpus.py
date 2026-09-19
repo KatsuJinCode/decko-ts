@@ -182,13 +182,41 @@ def parse_dump(path):
 # --------------------------------------------------------------------------
 
 def build_name_sanitizer(cards):
-    """Sanitized names are a pure function of card id via the left/right
-    junction graph: simple card -> 'p<id>', junction -> left+'+'+right,
-    then padded with deterministic filler to the original byte length.
+    """Sanitized names preserve junction topology AND the exact name-length
+    histogram.
+
+    Simple named cards get a lowercase-letters token of EXACTLY the original
+    name's byte length, derived deterministically from the card id and made
+    globally unique by deterministic collision rehash (ids processed in
+    ascending order). Junction names compose their parts' tokens via the
+    left_id/right_id graph (part count and depth preserved); a junction name
+    is padded when the composition is shorter than the original and recorded
+    as an overflow when longer. A name-length deviation can therefore only
+    come from junctions, and the count is reported.
+
     Returns (san_name_of, by_id).
     """
     by_id = {c["id"]: c for c in cards}
     memo = {}
+    used_tokens = set()
+    fit_state = {}
+
+    def fitted_simple(cid):
+        """Exact-length unique token for a simple card."""
+        tok = fit_state.get(cid)
+        if tok is not None:
+            return tok
+        target = len(by_id[cid]["name"].encode("utf-8"))
+        tries = 0
+        while True:
+            rng = random.Random(SEED ^ (cid * 2654435761 % (2 ** 32)) ^ (tries * 40503))
+            tok = "".join(rng.choices(LOWER, k=target))
+            if tok not in used_tokens:
+                break
+            tries += 1
+        used_tokens.add(tok)
+        fit_state[cid] = tok
+        return tok
 
     def structural(cid, depth=0):
         tok = memo.get(cid)
@@ -196,30 +224,41 @@ def build_name_sanitizer(cards):
             return tok
         row = by_id.get(cid)
         if row is None or row["name"] is None:
+            # unnamed or missing rows only ever appear as junction parts
             tok = "p%d" % cid
         elif depth < 64 and "+" in row["name"] and row["left_id"] and row["right_id"]:
-            tok = "%s+%s" % (structural(row["left_id"], depth + 1),
-                             structural(row["right_id"], depth + 1))
+            left = structural(row["left_id"], depth + 1)
+            right = structural(row["right_id"], depth + 1)
+            base = "%s+%s" % (left, right)
+            target = len(row["name"].encode("utf-8"))
+            cur = len(base.encode("utf-8"))
+            if cur < target:
+                rng = random.Random(SEED ^ (cid * 2246822519 % (2 ** 32)))
+                base += "".join(rng.choices(LOWER, k=target - cur))
+            tok = base
         elif "+" in row["name"]:
-            # orphan junction (no left/right ids): preserve part count only
-            tok = "+".join("p%dx%d" % (cid, k)
-                           for k in range(row["name"].count("+") + 1))
+            # orphan junction (no left/right ids): preserve part count, fit
+            # each part with deterministic filler to the original parts' sizes
+            orig_parts = row["name"].split("+")
+            rng = random.Random(SEED ^ (cid * 2654435761 % (2 ** 32)))
+            tok = "+".join(
+                "".join(rng.choices(LOWER, k=max(1, len(p.encode("utf-8")))))
+                for p in orig_parts)
         else:
-            tok = "p%d" % cid
+            tok = fitted_simple(cid)
         memo[cid] = tok
         return tok
+
+    # deterministic assignment order: simple named cards, ascending id
+    for cid in sorted(c["id"] for c in cards
+                      if c["name"] is not None and "+" not in c["name"]):
+        fitted_simple(cid)
 
     def san_name_of(cid):
         row = by_id.get(cid)
         if row is None or row["name"] is None:
             return None
-        base = structural(cid)
-        target = len(row["name"].encode("utf-8"))
-        cur = len(base.encode("utf-8"))
-        if cur < target:
-            rng = random.Random(SEED ^ (cid * 2654435761 % (2 ** 32)))
-            return base + "".join(rng.choices(LOWER, k=target - cur))
-        return base
+        return structural(cid)
 
     return san_name_of, by_id
 

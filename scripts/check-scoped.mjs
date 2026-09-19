@@ -3,35 +3,47 @@
 //
 // Problem: five agents share one repo; a repo-wide `tsc --noEmit` run
 // mid-wave reads half-finished files from other streams and reports their
-// errors. This script runs the full check and POST-FILTERS the error list:
-// errors in files modified within the quiet window (default 30 s) are
-// suppressed as in-flight, everything else fails loudly. mtime is the
-// lease — no registration protocol. The coordinator's landing gate runs
-// this with --strict (leases ignored).
+// errors. This script runs the full check and POST-FILTERS the error list
+// (tsc is a whole-program checker — you cannot skip files, only suppress
+// their findings). Two suppression rules:
+//   1. mtime lease: errors in files modified within the quiet window
+//      (default 30 s) are in-flight — covers active edit bursts.
+//   2. ownership: paths under --running directories belong to known
+//      running streams — covers their long think-pauses between bursts.
+// The coordinator's landing gate runs --strict (nothing suppressed).
 //
 // Usage:
-//   node scripts/check-scoped.mjs              # tsc, leases honored
-//   node scripts/check-scoped.mjs --vitest     # vitest, leases honored
-//   node scripts/check-scoped.mjs --strict     # tsc, leases ignored
-//   node scripts/check-scoped.mjs --quiet-ms 60000
+//   node scripts/check-scoped.mjs                                  # tsc
+//   node scripts/check-scoped.mjs --vitest                         # vitest
+//   node scripts/check-scoped.mjs --strict                         # landing gate
+//   node scripts/check-scoped.mjs --quiet-ms 60000 --running src/card/fetch,tests/card/fetch
 
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync, execSync } from "node:child_process";
 import { statSync } from "node:fs";
 import path from "node:path";
 
 const args = process.argv.slice(2);
-const quietMs = Number(args.find((a) => a.startsWith("--quiet-ms"))?.split("=")[1] ?? args[args.indexOf("--quiet-ms") + 1] ?? 30000) || 30000;
+const argVal = (name, dflt) => {
+  const inline = args.find((a) => a.startsWith(`${name}=`));
+  if (inline) return inline.split("=")[1];
+  const i = args.indexOf(name);
+  return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
+};
+const quietMs = Number(argVal("--quiet-ms", 30000)) || 30000;
 const strict = args.includes("--strict");
 const runVitest = args.includes("--vitest");
+const runningDirs = String(argVal("--running", "")).split(",").map((s) => s.trim().replace(/\\/g, "/")).filter(Boolean);
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 
-const isLeased = (relFile) => {
-  if (strict) return false;
+const suppressReason = (relFile) => {
+  if (strict) return null;
+  if (runningDirs.some((d) => relFile === d || relFile.startsWith(`${d}/`))) return "running-stream dir";
   try {
-    return Date.now() - statSync(path.join(repoRoot, relFile)).mtimeMs < quietMs;
+    if (Date.now() - statSync(path.join(repoRoot, relFile)).mtimeMs < quietMs) return "fresh edit";
   } catch {
-    return false; // file gone by check time: report the error as-is
+    return null; // file gone by check time: report the error as-is
   }
+  return null;
 };
 
 const rel = (p) => path.relative(repoRoot, p).replace(/\\/g, "/");
@@ -45,10 +57,11 @@ if (!runVitest) {
   const active = [], suppressed = [];
   for (const line of lines) {
     const file = line.slice(0, line.indexOf("("));
-    (isLeased(rel(file)) ? suppressed : active).push(line);
+    const why = suppressReason(rel(file));
+    (why ? suppressed : active).push(why ? `${line}   [suppressed: ${why}]` : line);
   }
-  for (const line of active) console.error(line);
-  console.error(`[check-scoped] tsc: ${active.length} active error(s), ${suppressed.length} suppressed as in-flight (quiet window ${quietMs / 1000}s${strict ? ", STRICT" : ""})`);
+  for (const line of [...active, ...suppressed]) console.error(line);
+  console.error(`[check-scoped] tsc: ${active.length} active error(s), ${suppressed.length} suppressed (strict=${strict}, quiet=${quietMs / 1000}s, running=[${runningDirs.join(", ")}])`);
   if (active.length > 0) process.exit(1);
 }
 
@@ -62,9 +75,9 @@ if (runVitest) {
     out = String(e.stdout ?? "") + String(e.stderr ?? "");
   }
   const failedFiles = [...out.matchAll(/^\s*[❯×✖x]\s+(tests\/\S+?\.test\.ts)/gm)].map((m) => m[1]);
-  const active = failedFiles.filter((f) => !isLeased(f));
-  const suppressed = failedFiles.filter((f) => isLeased(f));
-  console.error(`[check-scoped] vitest: ${active.length} active failing file(s), ${suppressed.length} suppressed as in-flight`);
+  const active = failedFiles.filter((f) => !suppressReason(f));
+  const suppressed = failedFiles.filter((f) => suppressReason(f));
+  console.error(`[check-scoped] vitest: ${active.length} active failing file(s), ${suppressed.length} suppressed`);
   for (const f of active) console.error(`  ACTIVE FAIL: ${f}`);
   if (active.length > 0) {
     console.log(out);
@@ -72,3 +85,4 @@ if (runVitest) {
   }
 }
 console.error("[check-scoped] PASS");
+
