@@ -147,8 +147,8 @@ const CARDS: CardsRow[] = [
   // plus-card parts and junctions (compound rows carry name = key = NULL)
   card({
     id: 31,
-    name: "editor_notes",
-    key: "editor_notes",
+    name: "Editor Notes",
+    key: "editor_note",
     db_content: "notes",
     created_at: T("2026-01-10"),
     updated_at: T("2026-01-10"),
@@ -165,7 +165,7 @@ const CARDS: CardsRow[] = [
     id: 30,
     left_id: 20,
     right_id: 31,
-    db_content: "Home+editor_notes content",
+    db_content: "Home+Editor Notes content",
     created_at: T("2026-01-12"),
     updated_at: T("2026-01-12"),
   }),
@@ -245,10 +245,10 @@ async function loadCoreSchema(target: LocalSqliteDriver): Promise<void> {
 }
 
 async function insertCards(target: LocalSqliteDriver): Promise<void> {
-  const columns = Object.keys(CARDS[0] as Record<string, unknown>);
+  const columns = Object.keys(CARDS[0]) as (keyof CardsRow)[];
   const placeholders = columns.map(() => "?").join(", ");
   for (const row of CARDS) {
-    const values = columns.map((c) => (row as Record<string, unknown>)[c]);
+    const values = columns.map((c) => row[c]);
     await target.query(
       `INSERT INTO cards (${columns.join(", ")}) VALUES (${placeholders})`,
       values,
@@ -408,8 +408,9 @@ describe("match via the REGEXP UDF", () => {
 
   it("name match hits the name column; NULL names never match", async () => {
     // name contains 'a': Basic, Joe Admin, Sara Sample, About, Zebra,
-    // Alpha Page, Restricted, status; junction rows have NULL names.
-    expect(await ids({ name: ["~", "a"] })).toEqual([1, 10, 11, 21, 22, 24, 25, 33]);
+    // Alpha Page, status ("restricted"/"Editor Notes" have no letter 'a');
+    // junction rows have NULL names and never match.
+    expect(await ids({ name: ["~", "a"] })).toEqual([1, 10, 11, 21, 22, 24, 33]);
   });
 
   it("= prefix on name becomes an exact key comparison", async () => {
@@ -455,11 +456,13 @@ describe("junction / plus conditions", () => {
   });
 
   it("right_plus finds the left part of a junction by its right part", async () => {
-    expect(await ids({ right_plus: { name: "editor_notes" } })).toEqual([20]);
+    expect(await ids({ right_plus: { name: "Editor Notes" } })).toEqual([20]);
   });
 
-  it("left_plus finds the right part of a junction by its left part", async () => {
-    expect(await ids({ left_plus: { name: "editor_notes" } })).toEqual([31]);
+  it("left_plus finds right parts of junctions anchored at the given left part", async () => {
+    // left_plus: X -> "X+C exists": junctions Home+Editor Notes and
+    // Home+status make the right parts 31 and 33
+    expect(await ids({ left_plus: { name: "Home" } })).toEqual([31, 33]);
   });
 });
 
@@ -509,7 +512,9 @@ describe("sort / limit / offset", () => {
   // Basic, Joe Admin, Sara Sample, About, Zebra, Alpha Page, status
   // ("restricted" has no letter 'a').
   const NAME_MATCH_SET = [1, 10, 11, 21, 22, 24, 33];
-  const NAME_ASC_ORDER = [24, 21, 1, 10, 11, 33, 22];
+  // keys in binary order: about < alpha_page < basic < joe_admin
+  // < sara_sample < status < zebra
+  const NAME_ASC_ORDER = [21, 24, 1, 10, 11, 33, 22];
 
   it("sort by name asc orders by key", async () => {
     const result = await runRows({ name: ["~", "a"], sort: "name", sort_dir: "asc" });

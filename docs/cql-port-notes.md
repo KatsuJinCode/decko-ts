@@ -206,23 +206,85 @@ must be updated in the same commit:
 - `name: nil` (nil value on a name condition): Ruby 1.110 emits broken SQL
   (`c0.key is ()` — `Array.wrap(nil)` collapses the value list to empty);
   the port renders the sane `c0.key is NULL`. Oracle-verified divergence.
-- `defaultNameToKey` (normalize.ts): no singularize inflection
-  (cardname 0.20.0 defaults `uninflect: :singularize` — oracle:
-  `"Magnus" -> "magnu"`) and no HTML entity decoding. Inject
-  `ParseOptions.nameToKey` from the card/name stream when available.
-  ASCII names without plural/singular ambiguity match the oracle exactly.
-- `absolutizeName`: full support for `_self/_whole/_`, `_left`, `_right`,
-  `_N`; `_user/_main/_L*R` are left in place with a warning; the
-  `absolutize_extremes` context-prefixed guard is simplified.
 - `sort_as` CAST types mapped to SQLite INTEGER/REAL/TEXT (Ruby casts
   through MySQL native types like `signed`); unmapped tokens pass through
   `safe_sql` verbatim.
 - Whitespace canonicalization (single spaces) — the parameterized shape is
   the parity surface, not byte-level spacing.
 
+## Reconciliation with the card/name stream (closed 2026-09-19)
+
+The wave-1 deferrals "Name→key uses a no-inflection approximation" and
+"_main/_user/_L*R absolutization deferred with warnings" are closed by
+wiring `src/cql/normalize.ts` to the landed `src/card/name.ts` (DeckoName).
+`src/card/**` was NOT modified — the CQL side imports only.
+
+**Name → key** (`normalize.ts#defaultNameToKey`): now
+`DeckoName.parse(name).key`, which is exactly what Ruby's CQL code calls —
+`v.to_name.key` (card-1.110.0 lib/card/query/value.rb#standard_sql:29),
+`match_term.to_name.key` (lib/card/query/value/match_value.rb#exact_name_match:25),
+`val.to_name.key` (lib/card/query/card_query/match_attributes.rb#complete:26),
+where `String#to_name` is `Card::Name.new`
+(config/initializers/01_core_extensions/object.rb#cardname). Consequences,
+all live-oracle-verified against cardname 0.20.0:
+
+- the singularize inflection now applies ("Magnus" -> "magnu", "Admins" ->
+  "admin", "Octopi" -> "octopus"); ASCII names without plural/singular
+  ambiguity are byte-identical to the old approximation;
+- HTML entity decoding applies ("A &amp; B" -> "a_b");
+- mark strings ("~<id>", ":<codename>") now resolve exactly as Ruby's
+  `Card::Name.new` does (lib/card/name.rb#new/#bad_mark): an unresolvable
+  mark raises NameNotFoundError / CodenameNotFoundError from the name layer
+  where the old approximation silently key-ified the literal text;
+- `ParseOptions.nameToKey` (`src/cql/ast.ts`) remains the override.
+
+**Relative-name absolutization** (`normalize.ts#absolutizeName`): the body is
+now `DeckoName.parse(name).absolute(context)` — Ruby:
+`val.to_name.absolute(context)` (lib/card/query/card_query/normalization.rb:57).
+All contextual forms resolve for real via cardname lib/cardname/contextual.rb
+as ported in name.ts (`absolutizeContextualPart`/`ordinalPart`/`partmapPart`/
+`absolutizeExtremes`): _self/_whole/_, _left (context trunk), _right (context
+tag), _N ordinals, _L*R partmaps, _user (Card::Name.session), _main
+(Card::Env.params[:main_name]) — the last two through the injectable
+`NameEnvironment` (`src/card/name/environment.ts`), which is how the TS port
+holds the session/params globals Ruby reads at call time.
+
+Context flow is unchanged and matches Ruby: the statement's `context` key
+(AbstractQuery#initialize / init_instance_vars :context,
+lib/card/query/abstract_query.rb:33), inherited by subqueries via
+AbstractQuery#context (abstract_query.rb:73-78, superquery fallback, root
+default ""), with `ParseOptions.context` seeding the root. FoundBy sets
+`context: card.name` for its subqueries (found_by.rb:15; still deferred as a
+whole).
+
+**Warnings are additive, non-fatal diagnostics** (Ruby resolves silently):
+`normalize.ts#warnUnresolvedContextualParts` warns when a contextual part
+cannot resolve to anything meaningful in the current environment — a
+context-dependent part (_self/_left/_right/_N/_L*R) with a blank context,
+`_user` with no session name, `_main` with no main name. The old "deferred"
+warnings are gone.
+
+**Oracle notes for the _N/_L*R rows**: the unpatched cardname 0.20.0 gem
+crashes on `_N`/`_L*R` through `absolute` ($LAST_MATCH_INFO nil in the
+case/when dispatch — docs/name-port-notes.md upstream bug 1) and on `_main`
+when `Cardname.params` is left nil (contextual.rb:108; the app never hits
+this because `Card::Name.params` is overridden to `Card::Env.params`,
+card-1.110.0 lib/card/name.rb#params). The reconciliation tests therefore
+verify those rows against the gem's own private methods
+(`ordinal_part`/`partmap_part` probes) plus the live `_main`/extreme-fill
+behavior, with outputs cited in `tests/cql/reconciliation.test.ts`.
+
+Tests: `tests/cql/reconciliation.test.ts` (30) — key path (Magnus->magnu,
+plural cases, entities, marks-free whitespace, match/complete call sites,
+override), absolutization per relative form, context flow, and the
+warning-on-missing-context paths.
+
 ## Test inventory
 
 `tests/cql/operators.test.ts` (19), `tests/cql/parser.test.ts` (53),
 `tests/cql/sql-generation.test.ts` (60), `tests/cql/errors.test.ts` (12) —
 144 tests, table-driven, each SQL expectation citing its oracle capture or
-Ruby source site.
+Ruby source site. The name-stream reconciliation adds
+`tests/cql/reconciliation.test.ts` (30, see the reconciliation section
+above). `tests/cql/execution*.test.ts` belong to the execution stream and
+are tracked in its own notes.

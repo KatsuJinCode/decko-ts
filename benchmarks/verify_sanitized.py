@@ -80,7 +80,21 @@ def longest_tokens(text, k, min_len=8):
 
 
 def scan_leaks(text):
-    return {name: len(rx.findall(text)) for name, rx in LEAK_RES.items()}
+    """Run the leak patterns over one blob with cheap rejection prefilters.
+
+    Prefilters matter: sanitized filler is long continuous letter runs, and
+    the email pattern's leading [\\w.+-]+ backtracks through every position
+    of such runs (quadratic). An email requires '@'; the SSN/phone shapes
+    require a digit. The keyword alternation is linear and always runs.
+    """
+    out = {}
+    if "@" in text:
+        out["email"] = len(LEAK_RES["email"].findall(text))
+    if any(c.isdigit() for c in text):
+        out["ssn_shape"] = len(LEAK_RES["ssn_shape"].findall(text))
+        out["phone_shape"] = len(LEAK_RES["phone_shape"].findall(text))
+    out["keyword_list"] = len(LEAK_RES["keyword_list"].findall(text))
+    return out
 
 
 # --------------------------------------------------------------------------

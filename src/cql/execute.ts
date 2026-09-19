@@ -78,8 +78,10 @@ export async function executeQuery(
     return executeCountNode(driver, root, options);
   }
   const { sql, params } = generateSql(root, options);
-  const result = await driver.query<Record<string, unknown>>(sql, params);
-  return { sql, params, rows: result.rows as CardsRow[] };
+  // CardsRow straight from the driver generic (the pre-reconciliation
+  // `Record<string, unknown>` + cast failed tsc's overlap check)
+  const result = await driver.query<CardsRow>(sql, params);
+  return { sql, params, rows: result.rows };
 }
 
 /**

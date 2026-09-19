@@ -112,7 +112,7 @@ CREATE INDEX "card_actions_card_id_index"     ON "card_actions" ("card_id");
 
 -- ----------------------------------------------------------------------------
 -- [CORE] card_changes — per-field after-values for an action.
--- "field" holds a FieldID code (name=1, content=2, type_id=3, ...).
+-- "field" holds a FieldID code, 0-based per card change.rb:25 (name=0, type_id=1, db_content=2, trash=3, left_id=4, right_id=5). Corrected 2026-09-19 per history-port-notes.md; original comment was wrong.
 -- ----------------------------------------------------------------------------
 CREATE TABLE "card_changes" (
   "id"              INTEGER PRIMARY KEY AUTOINCREMENT,  -- int AUTO_INCREMENT

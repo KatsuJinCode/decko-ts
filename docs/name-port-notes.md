@@ -227,3 +227,40 @@ loading `core_ext.rb`. The Card::Name layer was verified by loading card-1.110.0
 - During development, 329 inflection-battery rows + 48 succ probes + 218 name
   checks were cross-checked against the live Ruby oracle; representative rows
   are embedded in the suite, the rest validated the port before it landed.
+
+## Reconciliation with the CQL stream (closed 2026-09-19)
+
+The seam recorded in docs/cql-port-notes.md ("`ParseOptions.nameToKey` is the
+injection point for the card/name stream"; "_main/_user/_L*R absolutization
+deferred") is closed on the CQL side; nothing in `src/card/**` changed.
+
+- `src/cql/normalize.ts#defaultNameToKey` now delegates to
+  `DeckoName.parse(name).key` — i.e. the CQL name-key path exercises this
+  stream's full inflection substrate (`src/card/name/inflect.ts`:
+  singularize/pluralize/underscore), entity decoding
+  (`src/card/name/entities.ts`) and mark resolution
+  (`DeckoName.parse`/`idFromString`), matching the Ruby call sites
+  (card-1.110.0 lib/card/query/value.rb#standard_sql,
+  value/match_value.rb#exact_name_match,
+  card_query/match_attributes.rb#complete — all `...to_name.key`, where
+  `to_name` is `Card::Name.new`).
+- `src/cql/normalize.ts#absolutizeName` now delegates to
+  `DeckoName#absolute` (contextual.rb port), so the contextual layer
+  (`absolutizeContextualPart`, `ordinalPart`, `partmapPart`,
+  `absolutizeExtremes`, and the `_user`/`_main` environment reads through
+  `src/card/name/environment.ts`) is exercised by CQL interpretation,
+  matching normalization.rb:57 (`val.to_name.absolute(context)`).
+- Re-verified live while reconciling (ruby -e, cardname 0.20.0): the
+  documented key semantics hold ("Magnus" -> "magnu", "Admins" -> "admin",
+  "Octopi" -> "octopus") and the contextual rows cited in
+  `tests/cql/reconciliation.test.ts` match `DeckoName.absolute` exactly, with
+  one provisioning caveat: the bare gem's `absolute` crashes on `_N`/`_L*R`
+  (upstream bug 1 above) and on `_main` when `Cardname.params` is nil
+  (contextual.rb:108) — the app never reaches either state because
+  `Card::Name.params` is overridden to `Card::Env.params`
+  (card-1.110.0 lib/card/name.rb#params), and the TS environment's
+  optional-chained `mainName` read mirrors that app-level contract.
+- No bug was found in the landed name code during reconciliation; the
+  documented quirks (string-length clamping in `ordinalPart`/`nthLeftName`,
+  `_user` staying relative without a session, `_main` resolving to "" and
+  then being rescued by the blank-extreme fill) reproduce Ruby exactly.
