@@ -506,8 +506,8 @@ export class FetchEngine {
       if (id !== undefined) return id;
       return (await this.quickFetch(cardish))?.id;
     }
-    if ("codename" in cardish) return this.codenames.id(cardish.codename);
-    return cardish.id;
+    if ("typeId" in cardish) return cardish.id;
+    return this.codenames.id((cardish as { codename: string }).codename);
   }
 
   /** Card.fetch_type_id (card_class.rb:92-94). */

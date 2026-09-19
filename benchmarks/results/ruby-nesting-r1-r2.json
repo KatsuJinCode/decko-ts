@@ -1,0 +1,2960 @@
+{
+  "bench_cards_deleted": 550,
+  "bench_cards_remaining_live": 0,
+  "benchmark": "ruby-nesting-r1-r2",
+  "cards_live_after_cleanup": 617,
+  "cards_live_before_seed": 617,
+  "cleanup_seconds": 466.6,
+  "commitments": [
+    "R1",
+    "R2"
+  ],
+  "config": {
+    "background_cards": 400,
+    "corpus_scale_note": "shape depth is the controlled variable; BENCH_BACKGROUND controls table-size realism. The sanitized corpus (47,235 live cards) is the R3 production-scale target; rerun with higher BENCH_BACKGROUND to test scale sensitivity.",
+    "nest_syntax": "{{name|open}} / {{name|content}}",
+    "prefix": "BenchR1",
+    "render_n": 15,
+    "warmup": 3
+  },
+  "date": "2026-09-19T23:12:45Z",
+  "engine": "ruby-decko-oracle",
+  "environment": {
+    "card_gem": "1.110.0",
+    "cpu": "Intel(R) Core(TM) i7-14700F",
+    "db_engine": "sqlite3",
+    "db_path": "db/development.sqlite3",
+    "db_size_bytes": 4751360,
+    "decko_gem": "0.20.0",
+    "host": "Jace2",
+    "live_cards_in_db_after_cleanup": 617,
+    "os": "x64-mingw-ucrt",
+    "rails": "7.2.3.2",
+    "ram_bytes": 34188599296,
+    "ruby": "3.3.12"
+  },
+  "seed_seconds": 19.1,
+  "shapes": [
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 18.331
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 19.484
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 19.502
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 15.904
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 14.414
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 14.331
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 16.258
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 16.267
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 13.776
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 18.003
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 14.845
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 19.591
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 15.922
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 21.336
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 15.905
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 4,
+        "queries_median": 4,
+        "queries_min": 4,
+        "wall_ms_max": 21.336,
+        "wall_ms_median": 16.258,
+        "wall_ms_min": 13.776
+      },
+      "depth": 1,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.445
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.283
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 7.906
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 7.724
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.914
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.502
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.297
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.921
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.765
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.316
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.665
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.273
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.288
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.566
+        },
+        {
+          "html_bytes": 3011,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 7.73
+        }
+      ],
+      "root": "BenchR1_chain_open_d01_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 10.914,
+        "wall_ms_median": 5.502,
+        "wall_ms_min": 4.273
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.932
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 9.021
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.806
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.643
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 6.928
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.833
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.258
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 6.157
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 9.209
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.554
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 7.21
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 6.571
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 6.482
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 10.268
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 3,
+          "query_count_all": 3,
+          "wall_ms": 11.269
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 3,
+        "queries_median": 3,
+        "queries_min": 3,
+        "wall_ms_max": 11.269,
+        "wall_ms_median": 7.643,
+        "wall_ms_min": 6.157
+      },
+      "depth": 1,
+      "nest_style": "content",
+      "renders": [
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.518
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.522
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.507
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.502
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.506
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.847
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.549
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.558
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.654
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.542
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.528
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.511
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.503
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.502
+        },
+        {
+          "html_bytes": 669,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.025
+        }
+      ],
+      "root": "BenchR1_chain_content_d01_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 1.025,
+        "wall_ms_median": 0.522,
+        "wall_ms_min": 0.502
+      },
+      "view": "content"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 27.514
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 26.33
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 21.794
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 21.204
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 28.494
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 26.153
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 27.117
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 33.482
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 21.411
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 24.372
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 27.35
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 32.148
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 35.897
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 32.193
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 31.058
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 5,
+        "queries_median": 5,
+        "queries_min": 5,
+        "wall_ms_max": 35.897,
+        "wall_ms_median": 27.35,
+        "wall_ms_min": 21.204
+      },
+      "depth": 2,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.384
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.67
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.853
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.115
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.199
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 15.398
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.461
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.704
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 12.644
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.807
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 15.46
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.085
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.833
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.89
+        },
+        {
+          "html_bytes": 5980,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.683
+        }
+      ],
+      "root": "BenchR1_chain_open_d02_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 15.46,
+        "wall_ms_median": 10.704,
+        "wall_ms_min": 8.67
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.997
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 171.212
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 9.272
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.948
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 9.743
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 9.707
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 9.513
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 10.92
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 9.414
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.436
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.626
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 10.737
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.401
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 8.833
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 4,
+          "query_count_all": 4,
+          "wall_ms": 10.764
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 4,
+        "queries_median": 4,
+        "queries_min": 4,
+        "wall_ms_max": 171.212,
+        "wall_ms_median": 9.414,
+        "wall_ms_min": 8.401
+      },
+      "depth": 2,
+      "nest_style": "content",
+      "renders": [
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.519
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.846
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.768
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.731
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.089
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.767
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.81
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.21
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.802
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.744
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.095
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.758
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.718
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.942
+        },
+        {
+          "html_bytes": 1308,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 0.772
+        }
+      ],
+      "root": "BenchR1_chain_content_d02_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 1.519,
+        "wall_ms_median": 0.802,
+        "wall_ms_min": 0.718
+      },
+      "view": "content"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 47.71
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 44.067
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 51.453
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 52.663
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 45.288
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 51.923
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 45.433
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 59.727
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 48.011
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 42.462
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 46.855
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 53.257
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 41.457
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 48.095
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 7,
+          "query_count_all": 7,
+          "wall_ms": 40.218
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 7,
+        "queries_median": 7,
+        "queries_min": 7,
+        "wall_ms_max": 59.727,
+        "wall_ms_median": 47.71,
+        "wall_ms_min": 40.218
+      },
+      "depth": 4,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 18.901
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 17.086
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 19.814
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 17.88
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 17.144
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 20.514
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 20.561
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 27.636
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 30.235
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 19.728
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 26.026
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 28.725
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 21.969
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 21.372
+        },
+        {
+          "html_bytes": 11918,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 20.471
+        }
+      ],
+      "root": "BenchR1_chain_open_d04_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 30.235,
+        "wall_ms_median": 20.514,
+        "wall_ms_min": 17.086
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 22.292
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 17.043
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 15.886
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 17.834
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 17.272
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 17.811
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 22.144
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 23.054
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 29.766
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 24.505
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 23.705
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 25.011
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 21.049
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 23.345
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 6,
+          "query_count_all": 6,
+          "wall_ms": 24.35
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 6,
+        "queries_median": 6,
+        "queries_min": 6,
+        "wall_ms_max": 29.766,
+        "wall_ms_median": 22.292,
+        "wall_ms_min": 15.886
+      },
+      "depth": 4,
+      "nest_style": "content",
+      "renders": [
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.682
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.678
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.772
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.624
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.565
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.819
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.466
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.396
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.346
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.521
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.446
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.372
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.331
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.406
+        },
+        {
+          "html_bytes": 2586,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 1.313
+        }
+      ],
+      "root": "BenchR1_chain_content_d04_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 2.772,
+        "wall_ms_median": 1.466,
+        "wall_ms_min": 1.313
+      },
+      "view": "content"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 98.497
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 106.781
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 90.965
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 100.407
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 103.59
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 84.945
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 74.717
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 77.304
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 68.886
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 73.284
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 75.039
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 84.684
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 82.212
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 88.837
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 11,
+          "query_count_all": 11,
+          "wall_ms": 93.961
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 11,
+        "queries_median": 11,
+        "queries_min": 11,
+        "wall_ms_max": 106.781,
+        "wall_ms_median": 84.945,
+        "wall_ms_min": 68.886
+      },
+      "depth": 8,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 65.838
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 48.249
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 38.349
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 37.954
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 40.021
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 38.822
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 39.225
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 42.242
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 47.702
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 42.393
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 40.728
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 46.26
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 50.188
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 39.074
+        },
+        {
+          "html_bytes": 23794,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 37.699
+        }
+      ],
+      "root": "BenchR1_chain_open_d08_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 65.838,
+        "wall_ms_median": 40.728,
+        "wall_ms_min": 37.699
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 23.936
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 34.742
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 36.207
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 37.698
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 31.366
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 26.701
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 26.673
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 30.314
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 24.876
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 31.919
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 31.381
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 26.37
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 32.686
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 31.796
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 10,
+          "query_count_all": 10,
+          "wall_ms": 36.959
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 10,
+        "queries_median": 10,
+        "queries_min": 10,
+        "wall_ms_max": 37.698,
+        "wall_ms_median": 31.381,
+        "wall_ms_min": 23.936
+      },
+      "depth": 8,
+      "nest_style": "content",
+      "renders": [
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.378
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.509
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.008
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 3.785
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.873
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.979
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.625
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.53
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.453
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.378
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.307
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.377
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.198
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.406
+        },
+        {
+          "html_bytes": 5142,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 2.344
+        }
+      ],
+      "root": "BenchR1_chain_content_d08_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 5.406,
+        "wall_ms_median": 4.307,
+        "wall_ms_min": 2.344
+      },
+      "view": "content"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 144.646
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 141.912
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 175.527
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 144.901
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 189.209
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 174.918
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 212.27
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 146.805
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 168.374
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 154.382
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 156.025
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 186.679
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 169.974
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 136.667
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 19,
+          "query_count_all": 19,
+          "wall_ms": 165.471
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 19,
+        "queries_median": 19,
+        "queries_min": 19,
+        "wall_ms_max": 212.27,
+        "wall_ms_median": 165.471,
+        "wall_ms_min": 136.667
+      },
+      "depth": 16,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 98.652
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 112.9
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 91.759
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 101.827
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 92.422
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 104.601
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 91.107
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 111.896
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 125.537
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 153.396
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 165.092
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 121.864
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 114.304
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 143.501
+        },
+        {
+          "html_bytes": 47546,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 130.212
+        }
+      ],
+      "root": "BenchR1_chain_open_d16_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 165.092,
+        "wall_ms_median": 112.9,
+        "wall_ms_min": 91.107
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 48.103
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 54.711
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 59.838
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 48.801
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 56.241
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 46.16
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 49.453
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 48.151
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 51.316
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 54.083
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 51.841
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 53.645
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 87.962
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 60.091
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 18,
+          "query_count_all": 18,
+          "wall_ms": 70.226
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 18,
+        "queries_median": 18,
+        "queries_min": 18,
+        "wall_ms_max": 87.962,
+        "wall_ms_median": 53.645,
+        "wall_ms_min": 46.16
+      },
+      "depth": 16,
+      "nest_style": "content",
+      "renders": [
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 7.825
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.1
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.628
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.509
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 5.146
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 6.368
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 4.783
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 6.262
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.562
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 7.145
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.241
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 6.53
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.129
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.063
+        },
+        {
+          "html_bytes": 10254,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 8.911
+        }
+      ],
+      "root": "BenchR1_chain_content_d16_n01",
+      "shape": "chain",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 11.1,
+        "wall_ms_median": 8.129,
+        "wall_ms_min": 4.783
+      },
+      "view": "content"
+    },
+    {
+      "cold_renders_partial": [
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 238.016
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 132.145
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 228.108
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 181.165
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 212.893
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 168.054
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 218.399
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 140.612
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 199.871
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 161.11
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 191.189
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 154.104
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 187.848
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 147.784
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 24,
+          "query_count_all": 24,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 177.641
+        }
+      ],
+      "depth": 32,
+      "nest_style": "open",
+      "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+      "root": "BenchR1_chain_open_d32_n01",
+      "shape": "chain",
+      "view": "open"
+    },
+    {
+      "cold_renders_partial": [
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 70.787
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 63.35
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 58.303
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 59.972
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 82.17
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 66.468
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 66.488
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 57.91
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 62.534
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 73.035
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 67.801
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 75.334
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 80.492
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 64.438
+        },
+        {
+          "html_bytes": 0,
+          "query_count": 23,
+          "query_count_all": 23,
+          "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+          "wall_ms": 55.404
+        }
+      ],
+      "depth": 32,
+      "nest_style": "content",
+      "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+      "root": "BenchR1_chain_content_d32_n01",
+      "shape": "chain",
+      "view": "content"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 25.12
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 28.35
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 26.026
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 33.302
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 34.165
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 34.244
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 21.781
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 23.071
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 25.847
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 27.502
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 29.512
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 27.75
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 22.4
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 26.778
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 5,
+          "query_count_all": 5,
+          "wall_ms": 25.589
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 5,
+        "queries_median": 5,
+        "queries_min": 5,
+        "wall_ms_max": 34.244,
+        "wall_ms_median": 26.778,
+        "wall_ms_min": 21.781
+      },
+      "fanout": 1,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.209
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 14.106
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 13.791
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 11.233
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 14.24
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.525
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 10.954
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 15.46
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 16.413
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 16.517
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 16.481
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.549
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 18.708
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 16.792
+        },
+        {
+          "html_bytes": 5744,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 9.974
+        }
+      ],
+      "root": "BenchR1_fan_f01_root",
+      "shape": "fan",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 18.708,
+        "wall_ms_median": 14.106,
+        "wall_ms_min": 9.209
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 67.37
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 60.86
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 44.69
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 51.949
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 56.231
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 55.076
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 48.746
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 73.987
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 49.594
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 66.234
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 66.486
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 69.446
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 61.797
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 55.417
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 8,
+          "query_count_all": 8,
+          "wall_ms": 63.002
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 8,
+        "queries_median": 8,
+        "queries_min": 8,
+        "wall_ms_max": 73.987,
+        "wall_ms_median": 60.86,
+        "wall_ms_min": 44.69
+      },
+      "fanout": 4,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 40.269
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 35.313
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 39.162
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 25.633
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 37.098
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 43.197
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 36.507
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 27.93
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 30.335
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 28.847
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 25.648
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 25.934
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 30.687
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 41.384
+        },
+        {
+          "html_bytes": 14882,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 36.444
+        }
+      ],
+      "root": "BenchR1_fan_f04_root",
+      "shape": "fan",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 43.197,
+        "wall_ms_median": 35.313,
+        "wall_ms_min": 25.633
+      },
+      "view": "open"
+    },
+    {
+      "cold_renders": [
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 205.822
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 162.932
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 171.16
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 171.104
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 168.904
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 159.252
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 196.112
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 239.174
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 268.591
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 273.721
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 280.38
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 257.962
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 279.101
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 266.539
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 20,
+          "query_count_all": 20,
+          "wall_ms": 275.877
+        }
+      ],
+      "cold_summary": {
+        "queries_max": 20,
+        "queries_median": 20,
+        "queries_min": 20,
+        "wall_ms_max": 280.38,
+        "wall_ms_median": 239.174,
+        "wall_ms_min": 159.252
+      },
+      "fanout": 16,
+      "nest_style": "open",
+      "renders": [
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 126.377
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 132.666
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 126.384
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 99.136
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 133.081
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 109.393
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 119.371
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 104.622
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 86.945
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 86.235
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 85.875
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 101.98
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 117.048
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 113.869
+        },
+        {
+          "html_bytes": 51434,
+          "query_count": 0,
+          "query_count_all": 0,
+          "wall_ms": 99.007
+        }
+      ],
+      "root": "BenchR1_fan_f16_root",
+      "shape": "fan",
+      "summary": {
+        "queries_max": 0,
+        "queries_median": 0,
+        "queries_min": 0,
+        "wall_ms_max": 133.081,
+        "wall_ms_median": 109.393,
+        "wall_ms_min": 85.875
+      },
+      "view": "open"
+    }
+  ]
+}

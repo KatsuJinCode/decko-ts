@@ -39,7 +39,8 @@ Entry points: `parseCql(statement, options)` -> `QueryNode`;
 `generateSql(root, { alwaysOk, readRuleIds })` -> `{ sql, params }`.
 Parse options: `vars`, `context`, `resolveCardId` (stands in for
 `Card::Lexicon.id` / `String#card_id`), `resolveCodename` (`Card::Codename.id`),
-`nameToKey` (inject the card/name stream's inflecting key), `onWarning`.
+`nameToKey` (override; the built-in default delegates to the card/name
+stream's `DeckoName.key` — see the reconciliation section below), `onWarning`.
 
 ## Supported-key inventory
 
@@ -190,8 +191,9 @@ must be updated in the same commit:
   keys changes join sidedness (`Join#inside_or?` reads mods at tie time).
   Fixture candidates: `{type: {...}, conj: "or"}` vs `{conj: "or", type: {...}}`.
 - **Name absolutization beyond the minimal forms** (`_main`, `_user`,
-  `_L*R` partmaps, entity decoding, singularize inflection) — fixture
-  against the cardname gem once the name stream lands.
+  `_L*R` partmaps, entity decoding, singularize inflection) — CLOSED by the
+  reconciliation with the name stream (below); regression-pinned in
+  `tests/cql/reconciliation.test.ts` with live-oracle citations.
 - **Deep nesting**: Ruby's `depth`-based leading whitespace and join
   parenthesization for 3+ level ties (`left_plus` inside `any` inside
   `not` ...) — worth captured fixtures before optimizing the renderer.

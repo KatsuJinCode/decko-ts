@@ -140,12 +140,20 @@ loading `core_ext.rb`. The Card::Name layer was verified by loading card-1.110.0
 ## Upstream bugs found while porting (and what the port does)
 
 1. **cardname 0.20.0 `contextual.rb#absolutize_contextual_parts` crashes on
-   `_N` and `_L*R?` names**: the `case/when` regex branches read
-   `$LAST_MATCH_INFO`, but Ruby's `case/when` does not set it (verified:
-   `case "_1" when /^_(\d+)$/i then $LAST_MATCH_INFO` => nil => NoMethodError).
-   The port resolves the captures from an explicit `match` and implements the
-   evident intent (`ordinal_part`, `partmap_part`), verified against a locally
-   patched copy plus direct private-method probes.
+   `_N` and `_L*R?` names — MECHANISM CORRECTED 2026-09-19 after deeper
+   verification (coordinator re-check)**: the `case/when` regex branches read
+   `$LAST_MATCH_INFO`, which is NOT a Ruby built-in — it is an alias defined
+   only by `require "english"`, which cardname/card/decko never require.
+   Under any standalone load the alias is an undefined global (nil), so the
+   branch raises NoMethodError; with `english` loaded the code works
+   correctly on Ruby 3.3.12 (empirically: `_1`.absolute → correct result,
+   and case/when DOES update match state). The original note attributed the
+   crash to a Ruby 3.3 case/when semantics change — that attribution was
+   wrong; match semantics are intact, the alias simply did not exist in the
+   probe's load. Full-app probe: a real decko app loads `english`
+   transitively, so supported production usage is NOT affected. The port
+   resolves the captures from an explicit `match` and implements the
+   evident intent (`ordinal_part`, `partmap_part`) — unaffected either way.
 2. **`variants.rb#fully_stripped` calls `Array#cardname`**, which does not
    exist in the cardname gem; it only works because card-1.110.0's
    `config/initializers/01_core_extensions/array.rb` defines it as

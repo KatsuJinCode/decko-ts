@@ -39,11 +39,13 @@ export class DbLexicon {
 
   /** lexicon.rb#name(id): registered name, or the empty name when unknown
    *  (Ruby `(name || "").to_name`; blankness is the unknown signal at every
-   *  consumer - retrieve_from_cache_by_id, id_from_string validation). */
+   *  consumer - retrieve_from_cache_by_id, id_from_string validation).
+   *  This port returns undefined instead of the empty name; see
+   *  docs/fetch-port-notes.md ("empty-name fallback"). */
   async name(id: number | undefined): Promise<DeckoName | undefined> {
     if (id === undefined || id === null) return undefined; // lexicon.rb#name guard
     const lex = await this.idToLex(id);
-    const name = lex === undefined ? undefined : this.lexToName(lex);
+    const name = lex === undefined ? undefined : await this.lexToName(lex);
     return name === undefined ? undefined : DeckoName.parse(name);
   }
 
@@ -86,7 +88,7 @@ export class DbLexicon {
   /** lexicon.rb#id_to_lex. NOTE: no trash filter here - the row is read by
    *  id whatever its trash state. */
   private async idToLex(id: number): Promise<Lex | undefined> {
-    const lex = await this.cacheFetch(String(id), async () => {
+    const lex = (await this.cacheFetch(String(id), async () => {
       const result = await this.driver.query<Pick<CardsRow, "name" | "left_id" | "right_id">>(
         "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
         [id],
@@ -100,7 +102,7 @@ export class DbLexicon {
       // tap { cache.write cache_key(lex), id }
       await this.cacheWrite(cacheKey(resolved), id);
       return resolved;
-    });
+    })) as Lex | undefined;
     return lex;
   }
 
@@ -130,21 +132,22 @@ export class DbLexicon {
 
   /** lexicon.rb#lex_to_id - trash: false filter (lex_query merge). */
   private async lexToId(lex: Lex): Promise<number | undefined> {
-    return this.cacheFetch(cacheKey(lex), async () => {
+    const found = (await this.cacheFetch(cacheKey(lex), async () => {
       const { sql, params } = lexQuery(lex);
       const result = await this.driver.query<{ id: number }>(
         `SELECT id FROM cards WHERE ${sql} AND trash = 0 LIMIT 1`,
         params,
       );
-      const found = result.rows[0]?.id;
+      const id = result.rows[0]?.id;
       // `cache.write id.to_s, lex if lex.is_a?(Array)` - compound lexes get
       // the reverse (id -> lex) entry so name(id) avoids a query; simple
       // lexes deliberately do not (lex might not be the canonical name).
-      if (found !== undefined && Array.isArray(lex)) {
-        await this.cacheWrite(String(found), lex);
+      if (id !== undefined && Array.isArray(lex)) {
+        await this.cacheWrite(String(id), lex);
       }
-      return found;
-    });
+      return id;
+    })) as number | undefined;
+    return found;
   }
 
   /** cache.fetch with async compute (cache.rb#fetch semantics: temp first,

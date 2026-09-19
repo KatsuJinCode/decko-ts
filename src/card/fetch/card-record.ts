@@ -35,7 +35,7 @@
 //   after-values). `current_action` is a transient runtime attribute, not
 //   storage (lib/card.rb:146, action_specific_attributes).
 
-import type { DeckoName } from "../name.js";
+import { DeckoName } from "../name.js";
 import type { SQLDateTime, CardsRow } from "../../server/schema.js";
 import type { DbLexicon } from "./lexicon.js";
 
@@ -128,7 +128,7 @@ export function idString(card: CardRecord): string | undefined {
  * data, db/schema.sqlite.sql comments) still carry.
  */
 export async function composeCardRecord(row: CardsRow, lexicon: DbLexicon): Promise<CardRecord> {
-  const trash = row.trash === 1 || row.trash === true;
+  const trash = row.trash === 1;
   let name: DeckoName | undefined;
   let key: string | undefined;
   if (row.left_id !== null && row.left_id !== undefined) {

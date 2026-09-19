@@ -125,8 +125,8 @@ export class SharedCache {
 
   /** shared.rb#annihilate: clear the underlying store entirely. */
   annihilate(): void {
-    if (typeof (this.store as { clear?: () => void }).clear === "function") {
-      (this.store as { clear: () => void }).clear();
+    if (typeof (this.store as unknown as { clear?: () => void }).clear === "function") {
+      (this.store as unknown as { clear: () => void }).clear();
     }
   }
 
