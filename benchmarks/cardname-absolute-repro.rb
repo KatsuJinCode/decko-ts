@@ -3,7 +3,8 @@
 require "active_support"
 require "active_support/core_ext"
 require "cardname"
-require "cardname/core_ext"
+# cardname's core_ext.rb sits at lib root and is never auto-required by the gem
+require "core_ext"
 
 context = Cardname["Test Context Main"]
 

@@ -58,6 +58,13 @@ export class DbLexicon {
     return lex === undefined ? undefined : this.lexToId(lex);
   }
 
+  /** Lexicon.lex_to_name([left_id, right_id]) - the compound-name
+   *  composition Card#name uses (lib/card/name/all.rb#name). */
+  async composeName(leftId: number, rightId: number | undefined | null): Promise<DeckoName | undefined> {
+    const name = await this.lexToName([leftId, rightId ?? undefined]);
+    return name === undefined ? undefined : DeckoName.parse(name);
+  }
+
   /** lexicon.rb#write_to_temp_cache - the after_write_to_temp_cache hook body. */
   writeTemp(id: number | undefined, name: DeckoName | undefined, lex: Lex | undefined): void {
     if (id !== undefined) this.cache.temp.write(String(id), name);
