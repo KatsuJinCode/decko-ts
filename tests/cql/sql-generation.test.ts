@@ -463,3 +463,27 @@ describe("found_by (deferred)", () => {
     expect(() => sql({ found_by: { id: 5 } })).toThrow(/found_by requires runtime query execution/);
   });
 });
+
+describe("oracle-pinned edge cases", () => {
+  it("id: [nil] renders NULL inside the list [oracle: c0.id in (NULL)]", () => {
+    expect(sql({ id: [null as unknown as number] }).sql).toContain("c0.id in (NULL)");
+  });
+
+  it("nil name renders IS NULL (divergence: Ruby 1.110 emits broken 'c0.key is ()')", () => {
+    // oracle: {name: nil} -> WHERE c0.key is () AND c0.trash is false
+    // (Array.wrap(nil) collapses to [] and sqlize emits "()" — invalid SQL).
+    // The port renders the sane NULL comparison; flagged in the notes.
+    expect(sql({ name: null as unknown as string }).sql).toContain("c0.key is NULL");
+  });
+
+  it("conj interpreted BEFORE a tie key flips the join to LEFT [oracle]", () => {
+    // oracle: {conj: "or", type: {codename: "type"}} -> LEFT JOIN cards c1 ...
+    expect(sql({ conj: "or", type: { codename: "type" } }).sql).toContain("LEFT JOIN cards c1");
+  });
+
+  it("conj interpreted AFTER a tie key keeps the inner join [oracle]", () => {
+    // oracle: {type: {codename: "type"}, conj: "or"} -> JOIN cards c1 ...
+    expect(sql({ type: { codename: "type" }, conj: "or" }).sql).toMatch(/JOIN cards c1(?!.*LEFT)/);
+    expect(sql({ type: { codename: "type" }, conj: "or" }).sql).not.toContain("LEFT JOIN");
+  });
+});

@@ -39,10 +39,11 @@ export type TrackedField = (typeof TRACKED_FIELDS)[number];
 
 /**
  * The raw, DB-shaped values a change row can carry for a tracked field:
- * strings as-is, integers (type_id, left_id, right_id), booleans (trash),
+ * strings as-is, integers (type_id, left_id, right_id), booleans (trash —
+ * ActiveRecord hands the engine `true`/`false` after casting tinyint(1)),
  * or NULL (unset compound-card halves, empty db_content, ...).
  */
-export type ChangeValue = string | number | SQLBoolean | null;
+export type ChangeValue = string | number | boolean | null;
 
 /** The tracked-field slice of a cards row, in raw attribute form — the shape
  *  Ruby reads with `self[field]` when storing change values
@@ -91,6 +92,26 @@ export function serializeChangeValue(value: ChangeValue): string | null {
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return value ? "t" : "f";
   return value;
+}
+
+/**
+ * Field-aware value preparation: the raw cards.trash column is tinyint(1),
+ * which ActiveRecord casts to true/false BEFORE the change value is
+ * serialized (ActiveModel::Type::Boolean#cast_value — 0 is in FALSE_VALUES,
+ * activemodel-7.2.3.2/lib/active_model/type/boolean.rb:15-45 — then
+ * Type::Text#serialize renders "t"/"f"). The port's CardFieldState carries
+ * the raw storage shape (0 | 1), so the trash cast happens here; every other
+ * tracked attribute needs no cast (type_id / left_id / right_id are integers,
+ * name / db_content are strings).
+ */
+export function changeValueForField(
+  field: TrackedField,
+  value: ChangeValue,
+): string | null {
+  if (field === "trash" && typeof value === "number") {
+    return serializeChangeValue(value !== 0);
+  }
+  return serializeChangeValue(value);
 }
 
 /**

@@ -3,6 +3,11 @@
 // rows SELECTed back and compared against expectations derived from the
 // Ruby truth. Each expectation cites the Ruby file:method it derives from;
 // the full trail lives in docs/history-port-notes.md.
+//
+// Request model: one ActWriter = one save request = one act (Ruby:
+// Director.run_act binds the act for the request, director/all.rb:114-119;
+// every card saved inside the request shares it). Tests therefore build a
+// NEW writer per save request, sharing one fake clock per fixture.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -24,14 +29,25 @@ const ACTOR_A = 7;
 const ACTOR_B = 9;
 const IP = "203.0.113.9";
 
-interface Storage {
+interface Fixture {
   storage: HistoryTestStorage;
-  writer: ActWriter;
+  clock: () => Date;
+  writer: ActWriter; // the first request's writer
+  /** A new save request: fresh act, same DB, shared clock. */
+  request(actorId?: number, ip?: string): ActWriter;
 }
 
-function freshStorage(clock = fakeClock()): Storage {
+function freshFixture(): Fixture {
   const storage = createHistoryTestStorage();
-  return { storage, writer: new ActWriter({ driver: storage.driver, actorId: ACTOR_A, ipAddress: IP, now: clock }) };
+  const clock = fakeClock();
+  return {
+    storage,
+    clock,
+    writer: new ActWriter({ driver: storage.driver, actorId: ACTOR_A, ipAddress: IP, now: clock }),
+    request(actorId = ACTOR_A, ip = IP) {
+      return new ActWriter({ driver: storage.driver, actorId, ipAddress: ip, now: clock });
+    },
+  };
 }
 
 function cardRow(s: HistoryTestStorage, id: number) {
@@ -70,7 +86,7 @@ async function createSimple(
 ): Promise<number> {
   const { cardId } = await w.createCard({
     name,
-    key: name.toLowerCase().replace(/\s+/g, "_"),
+    key: name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
     type_id: 1,
     db_content: content,
   });
@@ -81,8 +97,8 @@ async function createSimple(
 
 describe("createCard", () => {
   it("records act + create action and NO change rows (first_create?)", async () => {
-    const { storage, writer } = freshStorage();
-    const { cardId, actId, actionId } = await writer.createCard({
+    const f = freshFixture();
+    const { cardId, actId, actionId } = await f.writer.createCard({
       name: "Hello World",
       key: "hello_world",
       type_id: 1,
@@ -95,7 +111,7 @@ describe("createCard", () => {
     // never-written columns stay NULL (no writer exists for
     // current_revision_id in card-1.110.0 — lib/cardio/seed.rb:86 is the
     // only reference; read_rule_* / references_expired are other streams).
-    const card = cardRow(storage, cardId) as Record<string, unknown>;
+    const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card).toMatchObject({
       name: "Hello World",
       key: "hello_world",
@@ -115,7 +131,7 @@ describe("createCard", () => {
     // act row: actor passthrough (act.rb:131-134 assign_actor), acted_at =
     // create-timestamp (act.rb:64-68), ip from Env at Act.new
     // (director/class_methods.rb:27-29).
-    const allActs = acts(storage);
+    const allActs = acts(f.storage);
     expect(allActs).toHaveLength(1);
     expect(allActs[0]).toMatchObject({
       id: actId,
@@ -128,7 +144,7 @@ describe("createCard", () => {
     // action row: action_type 0 = :create (action.rb:42 TYPE_OPTIONS.index),
     // draft false, comment NULL (core never writes it — the only core-suite
     // writer is card-mod-carrierwave attachment.rb:23), super_action NULL.
-    const rows = actions(storage, cardId);
+    const rows = actions(f.storage, cardId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       id: actionId,
@@ -143,15 +159,15 @@ describe("createCard", () => {
     // (events.rb:31-32): a plain create leaves card_changes EMPTY. Seed
     // truth: mod/core/data/fixtures/real/card_changes.yml is `{}` while
     // card_actions.yml carries rows 1..N of action_type 0.
-    expect(changes(storage, actionId)).toEqual([]);
+    expect(changes(f.storage, actionId)).toEqual([]);
   });
 
   it("stores NULL name/key for compound cards (lib/card/name/all.rb:20-21, :64-66)", async () => {
-    const { storage, writer } = freshStorage();
-    const leftId = await createSimple(storage, writer, "Left Part");
-    const rightId = await createSimple(storage, writer, "Right Part");
+    const f = freshFixture();
+    const leftId = await createSimple(f.storage, f.writer, "Left Part");
+    const rightId = await createSimple(f.storage, f.writer, "Right Part");
 
-    const { cardId } = await writer.createCard({
+    const { cardId } = await f.writer.createCard({
       name: null,
       key: null,
       type_id: 1,
@@ -159,7 +175,7 @@ describe("createCard", () => {
       right_id: rightId,
       db_content: "",
     });
-    expect(cardRow(storage, cardId)).toMatchObject({
+    expect(cardRow(f.storage, cardId)).toMatchObject({
       name: null,
       key: null,
       left_id: leftId,
@@ -168,55 +184,60 @@ describe("createCard", () => {
 
     // and refuses the contradictory shape
     await expect(
-      writer.createCard({ name: "X", key: "x", type_id: 1, left_id: leftId }),
+      f.writer.createCard({ name: "X", key: "x", type_id: 1, left_id: leftId }),
     ).rejects.toThrow(/compound cards/i);
   });
 
   it("reuses one act for several cards (act.rb:8-11 docstring example)", async () => {
-    const { storage, writer } = freshStorage();
-    await writer.createCard({ name: "One", key: "one", type_id: 1 });
-    await writer.createCard({ name: "Two", key: "two", type_id: 1 });
-    await writer.createCard({ name: "Three", key: "three", type_id: 1 });
+    const f = freshFixture();
+    await f.writer.createCard({ name: "One", key: "one", type_id: 1 });
+    await f.writer.createCard({ name: "Two", key: "two", type_id: 1 });
+    await f.writer.createCard({ name: "Three", key: "three", type_id: 1 });
 
-    // one act, three create actions, act's primary card = first card
-    expect(acts(storage)).toHaveLength(1);
-    const actionRows = actions(storage);
+    // one act (one request), three create actions, act's primary card =
+    // the request's act card (the first card here)
+    expect(acts(f.storage)).toHaveLength(1);
+    const actionRows = actions(f.storage);
     expect(actionRows).toHaveLength(3);
-    const actId = acts(storage)[0]!.id;
+    const actId = acts(f.storage)[0]!.id;
     for (const row of actionRows) {
       expect(row.card_act_id).toBe(actId);
       expect(row.action_type).toBe(0);
     }
-    expect(acts(storage)[0]!.card_id).toBe(actionRows[0]!.card_id);
+    expect(acts(f.storage)[0]!.card_id).toBe(actionRows[0]!.card_id);
   });
 });
 
 describe("updateCard (db_content only)", () => {
   it("backfills the create action's changes from the pre-act state, then stores its own", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Hello World", "v1");
-    const createRow = actions(storage, cardId)[0]!;
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Hello World", "v1");
+    const createRow = actions(f.storage, cardId)[0]!;
 
-    const before = stateOf(storage, cardId);
-    const { actId, actionId } =
-      (await writer.updateCard({ cardId, before, after: { ...before, db_content: "v2" } }))!;
+    const before = stateOf(f.storage, cardId);
+    const result = (await f.request().updateCard({
+      cardId,
+      before,
+      after: { ...before, db_content: "v2" },
+    }))!;
+    const { actId, actionId } = result;
 
     // new act row for the second save (one act per save request)
-    expect(acts(storage)).toHaveLength(2);
-    expect(acts(storage)[1]!.id).toBe(actId);
-    expect(acts(storage)[1]!.card_id).toBe(cardId);
-    expect(acts(storage)[1]!.acted_at).toBe("2026-09-19 12:00:01.000"); // clock ticked
+    expect(acts(f.storage)).toHaveLength(2);
+    expect(acts(f.storage)[1]!.id).toBe(actId);
+    expect(acts(f.storage)[1]!.card_id).toBe(cardId);
+    expect(acts(f.storage)[1]!.acted_at).toBe("2026-09-19 12:00:01.000"); // clock ticked
 
     // cards row: content updated, updated_at bumped, updater_id set,
     // created_at untouched (Rails timestamps: created only on create)
-    const card = cardRow(storage, cardId) as Record<string, unknown>;
+    const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.db_content).toBe("v2");
     expect(card.updated_at).toBe("2026-09-19 12:00:01.000");
     expect(card.created_at).toBe("2026-09-19 12:00:00.000");
     expect(card.updater_id).toBe(ACTOR_A);
 
     // two actions now: create + update (action_type 1)
-    const rows = actions(storage, cardId);
+    const rows = actions(f.storage, cardId);
     expect(rows).toHaveLength(2);
     expect(rows[1]).toMatchObject({ id: actionId, action_type: 1, draft: 0 });
 
@@ -225,7 +246,7 @@ describe("updateCard (db_content only)", () => {
     // (store_card_changes_for_create_action, events.rb:95-100; values come
     // from attribute_before_act, lib/card/dirty.rb:23-33). Serialized per
     // AR Type::Text: type_id "1", trash "f", numbers as strings.
-    const createChanges = changes(storage, createRow.id as number);
+    const createChanges = changes(f.storage, createRow.id as number);
     expect(createChanges).toEqual([
       { card_action_id: createRow.id, field: 0, value: "Hello World" }, // name
       { card_action_id: createRow.id, field: 1, value: "1" }, // type_id
@@ -237,17 +258,17 @@ describe("updateCard (db_content only)", () => {
 
     // store_card_changes (events.rb:102-106): the update action carries only
     // the changed field with the NEW value
-    expect(changes(storage, actionId)).toEqual([
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 2, value: "v2" },
     ]);
 
     // ordering guarantee (events.rb:29-31 NOTE): the create action's change
     // ids sort BEFORE the first update's, because last_change_on orders by id
-    const maxCreateChangeId = storage.selectOne<{ m: number }>(
+    const maxCreateChangeId = f.storage.selectOne<{ m: number }>(
       "SELECT MAX(id) AS m FROM card_changes WHERE card_action_id = ?",
       [createRow.id as number],
     )!.m;
-    const minUpdateChangeId = storage.selectOne<{ m: number }>(
+    const minUpdateChangeId = f.storage.selectOne<{ m: number }>(
       "SELECT MIN(id) AS m FROM card_changes WHERE card_action_id = ?",
       [actionId],
     )!.m;
@@ -255,30 +276,34 @@ describe("updateCard (db_content only)", () => {
   });
 
   it("does not backfill again on later updates", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Hello World", "v1");
-    let before = stateOf(storage, cardId);
-    await writer.updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
-    before = stateOf(storage, cardId);
-    await writer.updateCard({ cardId, before, after: { ...before, db_content: "v3" } });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Hello World", "v1");
+    let before = stateOf(f.storage, cardId);
+    await f.request().updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
+    before = stateOf(f.storage, cardId);
+    await f.request().updateCard({ cardId, before, after: { ...before, db_content: "v3" } });
 
-    const rows = actions(storage, cardId);
+    const rows = actions(f.storage, cardId);
     expect(rows).toHaveLength(3); // create + 2 updates
-    expect(changes(storage, rows[0]!.id as number)).toHaveLength(6); // backfilled once
-    expect(changes(storage, rows[1]!.id as number)).toEqual([{ card_action_id: rows[1]!.id, field: 2, value: "v2" }]);
-    expect(changes(storage, rows[2]!.id as number)).toEqual([{ card_action_id: rows[2]!.id, field: 2, value: "v3" }]);
+    expect(changes(f.storage, rows[0]!.id as number)).toHaveLength(6); // backfilled once
+    expect(changes(f.storage, rows[1]!.id as number)).toEqual([
+      { card_action_id: rows[1]!.id, field: 2, value: "v2" },
+    ]);
+    expect(changes(f.storage, rows[2]!.id as number)).toEqual([
+      { card_action_id: rows[2]!.id, field: 2, value: "v3" },
+    ]);
   });
 
   it("returns null and writes nothing for a no-op save (events.rb:34-37)", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Hello World", "v1");
-    const before = stateOf(storage, cardId);
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Hello World", "v1");
+    const before = stateOf(f.storage, cardId);
 
-    const result = await writer.updateCard({ cardId, before, after: { ...before } });
+    const result = await f.request().updateCard({ cardId, before, after: { ...before } });
     expect(result).toBeNull();
-    expect(actions(storage, cardId)).toHaveLength(1);
-    expect(acts(storage)).toHaveLength(1);
-    expect((cardRow(storage, cardId) as Record<string, unknown>).updated_at).toBe(
+    expect(actions(f.storage, cardId)).toHaveLength(1);
+    expect(acts(f.storage)).toHaveLength(1);
+    expect((cardRow(f.storage, cardId) as Record<string, unknown>).updated_at).toBe(
       "2026-09-19 12:00:00.000",
     );
   });
@@ -286,43 +311,47 @@ describe("updateCard (db_content only)", () => {
 
 describe("updateCard (name change)", () => {
   it("records the name change and updates name + key on the cards row", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Old Name", "v1");
-    const before = stateOf(storage, cardId);
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Old Name", "v1");
+    const before = stateOf(f.storage, cardId);
 
-    const { actionId } = (await writer.updateCard({
+    const { actionId } = (await f.request().updateCard({
       cardId,
       before,
       after: { ...before, name: "New Name" },
       key: "new_name",
     }))!;
 
-    const card = cardRow(storage, cardId) as Record<string, unknown>;
+    const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.name).toBe("New Name");
     expect(card.key).toBe("new_name");
 
     // name is tracked (field 0); key is NOT a tracked field
     // (change.rb:25 TRACKED_FIELDS has no :key) — no key change row.
-    expect(changes(storage, actionId)).toEqual([
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 0, value: "New Name" },
     ]);
 
     // a name change without a key is refused (name= writes key=,
     // lib/card/name/all.rb:20-23)
     await expect(
-      writer.updateCard({ cardId, before: stateOf(storage, cardId), after: { ...stateOf(storage, cardId), name: "Other" } }),
+      f.request().updateCard({
+        cardId,
+        before: stateOf(f.storage, cardId),
+        after: { ...stateOf(f.storage, cardId), name: "Other" },
+      }),
     ).rejects.toThrow(/requires `key`/i);
   });
 });
 
 describe("compound cards", () => {
   it("records left_id/right_id changes; the raw name attribute stays NULL", async () => {
-    const { storage, writer } = freshStorage();
-    const leftId = await createSimple(storage, writer, "Left Part");
-    const rightId = await createSimple(storage, writer, "Right Part");
-    const newRightId = await createSimple(storage, writer, "New Right");
+    const f = freshFixture();
+    const leftId = await createSimple(f.storage, f.writer, "Left Part");
+    const rightId = await createSimple(f.storage, f.writer, "Right Part");
+    const newRightId = await createSimple(f.storage, f.writer, "New Right");
 
-    const { cardId } = await writer.createCard({
+    const { cardId } = await f.writer.createCard({
       name: null,
       key: null,
       type_id: 1,
@@ -330,22 +359,22 @@ describe("compound cards", () => {
       right_id: rightId,
     });
 
-    const before = stateOf(storage, cardId);
-    const { actionId } = (await writer.updateCard({
+    const before = stateOf(f.storage, cardId);
+    const { actionId } = (await f.request().updateCard({
       cardId,
       before,
       after: { ...before, right_id: newRightId },
     }))!;
 
     // raw name attribute did not change (NULL -> NULL), so no :name change
-    expect(changes(storage, actionId)).toEqual([
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 5, value: String(newRightId) },
     ]);
 
     // the create backfill (on the compound card's first update) stores the
     // raw attribute values: name NULL, side ids serialized as strings
-    const createRow = actions(storage, cardId)[0]!;
-    expect(changes(storage, createRow.id as number)).toEqual([
+    const createRow = actions(f.storage, cardId)[0]!;
+    expect(changes(f.storage, createRow.id as number)).toEqual([
       { card_action_id: createRow.id, field: 0, value: null },
       { card_action_id: createRow.id, field: 1, value: "1" },
       { card_action_id: createRow.id, field: 2, value: null },
@@ -358,71 +387,63 @@ describe("compound cards", () => {
 
 describe("trashCard (delete)", () => {
   it("records a :delete action with a single trash change", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Doomed", "v1");
-    const before = stateOf(storage, cardId);
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Doomed", "v1");
+    const before = stateOf(f.storage, cardId);
 
-    const { actionId } = (await writer.trashCard({ cardId, before }))!;
+    const { actionId } = (await f.request().trashCard({ cardId, before }))!;
 
     // delete = update save with trash: true (trash.rb:11-21 add_to_trash);
     // identify_action (director/all.rb:19-28) maps trash && trash_changed?
     // to :delete -> action_type 2
-    expect(actions(storage, cardId)).toHaveLength(2);
-    expect(actions(storage, cardId)[1]!.action_type).toBe(2);
+    expect(actions(f.storage, cardId)).toHaveLength(2);
+    expect(actions(f.storage, cardId)[1]!.action_type).toBe(2);
 
-    const card = cardRow(storage, cardId) as Record<string, unknown>;
+    const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.trash).toBe(1);
     expect(card.updated_at).toBe("2026-09-19 12:00:01.000");
 
     // the delete action's only changed field is trash (value serialized "t")
-    expect(changes(storage, actionId)).toEqual([
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 3, value: "t" },
     ]);
 
     // first_change? fires for delete too (history.rb:32-33 "# = update or
     // delete"): the create action got its backfill with the pre-trash state
-    const createRow = actions(storage, cardId)[0]!;
-    const createChanges = changes(storage, createRow.id as number);
+    const createRow = actions(f.storage, cardId)[0]!;
+    const createChanges = changes(f.storage, createRow.id as number);
     expect(createChanges.find((c) => c.field === 3)?.value).toBe("f");
     expect(createChanges).toHaveLength(6);
   });
 
   it("is a no-op for an already-trashed card (trash_changed? false)", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Doomed", "v1");
-    await writer.trashCard({ cardId, before: stateOf(storage, cardId) });
-    const rowsBefore = actions(storage, cardId).length;
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Doomed", "v1");
+    await f.request().trashCard({ cardId, before: stateOf(f.storage, cardId) });
+    const rowsBefore = actions(f.storage, cardId).length;
 
-    const result = await writer.trashCard({ cardId, before: stateOf(storage, cardId) });
+    const result = await f.request().trashCard({ cardId, before: stateOf(f.storage, cardId) });
     expect(result).toBeNull();
-    expect(actions(storage, cardId)).toHaveLength(rowsBefore);
+    expect(actions(f.storage, cardId)).toHaveLength(rowsBefore);
   });
 });
 
 describe("actor passthrough", () => {
   it("keeps creator_id, moves updater_id, and gives each save its own act", async () => {
-    const { storage, writerA } = freshStorage();
-    const cardId = await createSimple(storage, writerA, "Shared", "v1");
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Shared", "v1");
 
-    const storageB = storage; // same DB, second actor's writer
-    const writerB = new ActWriter({
-      driver: storageB.driver,
-      actorId: ACTOR_B,
-      ipAddress: "198.51.100.7",
-      now: fakeClock(),
-    });
-    const before = stateOf(storageB, cardId);
-    const { actId } = (await writerB.updateCard({
+    const { actId } = (await f.request(ACTOR_B, "198.51.100.7").updateCard({
       cardId,
-      before,
-      after: { ...before, db_content: "v2" },
+      before: stateOf(f.storage, cardId),
+      after: { ...stateOf(f.storage, cardId), db_content: "v2" },
     }))!;
 
-    const card = cardRow(storageB, cardId) as Record<string, unknown>;
+    const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.creator_id).toBe(ACTOR_A); // creator stamped once (set_stamper)
     expect(card.updater_id).toBe(ACTOR_B);
 
-    const allActs = acts(storageB);
+    const allActs = acts(f.storage);
     expect(allActs).toHaveLength(2);
     expect(allActs[1]).toMatchObject({ id: actId, actor_id: ACTOR_B, ip_address: "198.51.100.7" });
   });
@@ -430,39 +451,35 @@ describe("actor passthrough", () => {
 
 describe("act sharing and the act's primary card", () => {
   it("records several cards' actions under one act with card_id = act card", async () => {
-    const { storage, writer } = freshStorage();
-    const mainId = await createSimple(storage, writer, "Main");
-    const subId = await createSimple(storage, writer, "Sub");
+    const f = freshFixture();
+    const mainId = await createSimple(f.storage, f.writer, "Main");
+    const subId = await createSimple(f.storage, f.writer, "Sub");
 
-    // one submission updates three cards: main, sub, main again — all in ONE
-    // act (act.rb:8-11). The subcard action carries the supercard's action
-    // as super_action_id (events.rb:88-92).
-    const mainBefore = stateOf(storage, mainId);
-    const mainResult = (await writer.updateCard({
+    // one submission updates two cards: main (the act card) and its subcard —
+    // both in ONE act (act.rb:8-11). The subcard action carries the
+    // supercard's action as super_action_id (events.rb:88-92).
+    const request = f.request();
+    const mainResult = (await request.updateCard({
       cardId: mainId,
-      before: mainBefore,
-      after: { ...mainBefore, db_content: "main v2" },
+      before: stateOf(f.storage, mainId),
+      after: { ...stateOf(f.storage, mainId), db_content: "main v2" },
     }))!;
-    const subResult = (await writer.updateCard({
+    const subResult = (await request.updateCard({
       cardId: subId,
-      before: stateOf(storage, subId),
-      after: { ...stateOf(storage, subId), db_content: "sub v2" },
+      before: stateOf(f.storage, subId),
+      after: { ...stateOf(f.storage, subId), db_content: "sub v2" },
       superActionId: mainResult.actionId,
       isActCard: false,
     }))!;
 
-    expect(acts(storage)).toHaveLength(2); // create act + this update act
-    const updateAct = acts(storage)[1]!;
-    expect(updateAct.card_id).toBe(mainId); // act card = first (main) operation
+    expect(acts(f.storage)).toHaveLength(2); // create act + this update act
+    const updateAct = acts(f.storage)[1]!;
+    expect(updateAct.card_id).toBe(mainId); // act card = the request's first card
     expect(subResult.actId).toBe(updateAct.id);
-    expect(
-      storage.selectOne<{ id: number }>("SELECT id FROM card_actions WHERE id = ?", [
-        subResult.actionId,
-      ]),
-    ).toMatchObject({ id: subResult.actionId });
+    expect(subResult.actionId).not.toBe(mainResult.actionId);
     expect(
       (
-        storage.selectOne<{ super_action_id: number }>(
+        f.storage.selectOne<{ super_action_id: number }>(
           "SELECT super_action_id FROM card_actions WHERE id = ?",
           [subResult.actionId],
         )!
@@ -470,165 +487,155 @@ describe("act sharing and the act's primary card", () => {
     ).toBe(mainResult.actionId);
   });
 
-  it("writes the act's card_id even when the act card is created after its subcards", async () => {
+  it("creates one act for a subcard-first submission and points it at the act card", async () => {
     // Ruby: the act row inserts with card_id NULL and finalize_act points it
     // at the act card afterwards (Act.new has no card_id,
     // director/class_methods.rb:27-29; events.rb:48-50).
-    const { storage, writer } = freshStorage();
-    const sub = await writer.createCard({
+    const f = freshFixture();
+    await f.writer.createCard({
       name: "Sub First",
       key: "sub_first",
       type_id: 1,
       isActCard: false, // subcard-first orchestration: the act card comes later
     });
-    expect(acts(storage)[0]!.card_id).toBeNull(); // inserted NULL, like Ruby
-    const main = await writer.createCard({ name: "Main", key: "main", type_id: 1, isActCard: true });
-    expect(acts(storage)).toHaveLength(2);
-    // the act card's act points at the act card
-    expect(acts(storage)[1]!.card_id).toBe(main.cardId);
-    void sub;
+    expect(acts(f.storage)[0]!.card_id).toBeNull(); // inserted NULL, like Ruby
+    const main = await f.writer.createCard({ name: "Main", key: "main", type_id: 1, isActCard: true });
+
+    // same request -> same act, now pointed at the act card
+    expect(acts(f.storage)).toHaveLength(1);
+    expect(acts(f.storage)[0]!.card_id).toBe(main.cardId);
   });
 });
 
 describe("drafts", () => {
   it("records act + draft action + one change without touching the cards row", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Drafty", "published");
-    const contentBefore = (cardRow(storage, cardId) as Record<string, unknown>).db_content;
-    const actsBefore = acts(storage).length;
-    const actionsBefore = actions(storage, cardId).length;
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Drafty", "published");
+    const contentBefore = (cardRow(f.storage, cardId) as Record<string, unknown>).db_content;
+    const actsBefore = acts(f.storage).length;
+    const actionsBefore = actions(f.storage, cardId).length;
 
-    const { actId, actionId } = await writer.saveDraft({ cardId, content: "draft text" });
+    const { actId, actionId } = await f.request().saveDraft({ cardId, content: "draft text" });
 
     // fresh act (history.rb:88-94 acts.create), draft action (draft: true,
     // action_type :update, card_id set at build), one db_content change
-    const act = acts(storage).find((a) => a.id === actId)!;
+    const act = acts(f.storage).find((a) => a.id === actId)!;
     expect(act).toMatchObject({ card_id: cardId, actor_id: ACTOR_A });
-    const draftRow = actions(storage, cardId).find((a) => a.id === actionId)!;
+    const draftRow = actions(f.storage, cardId).find((a) => a.id === actionId)!;
     expect(draftRow).toMatchObject({ draft: 1, action_type: 1, super_action_id: null });
-    expect(changes(storage, actionId)).toEqual([
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 2, value: "draft text" },
     ]);
 
     // save_draft aborts the act before the row save (content.rb:12-15
     // `save_content_draft content; abort :success`) — db_content untouched
-    expect((cardRow(storage, cardId) as Record<string, unknown>).db_content).toBe(contentBefore);
-    expect(acts(storage).length).toBe(actsBefore + 1);
-    expect(actions(storage, cardId).length).toBe(actionsBefore + 1);
+    expect((cardRow(f.storage, cardId) as Record<string, unknown>).db_content).toBe(contentBefore);
+    expect(acts(f.storage).length).toBe(actsBefore + 1);
+    expect(actions(f.storage, cardId).length).toBe(actionsBefore + 1);
   });
 
   it("clears the same actor's earlier drafts when saving a new draft (clear_drafts)", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Drafty", "v1");
-    await writer.saveDraft({ cardId, content: "draft 1" });
-    await writer.saveDraft({ cardId, content: "draft 2" });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Drafty", "v1");
+    await f.request().saveDraft({ cardId, content: "draft 1" });
+    await f.request().saveDraft({ cardId, content: "draft 2" });
 
-    const drafts = actions(storage, cardId).filter((a) => a.draft === 1);
+    const drafts = actions(f.storage, cardId).filter((a) => a.draft === 1);
     expect(drafts).toHaveLength(1);
     // only the newest draft's change survives (super -> clear_drafts deletes
     // the old draft action AND its changes — action.rb:30-33 dependent)
-    expect(changes(storage, drafts[0]!.id as number)).toEqual([
+    expect(changes(f.storage, drafts[0]!.id as number)).toEqual([
       { card_action_id: drafts[0]!.id, field: 2, value: "draft 2" },
     ]);
   });
 
   it("a real save clears the actor's drafts but keeps other actors' drafts", async () => {
-    const { storage, writerA } = freshStorage();
-    const cardId = await createSimple(storage, writerA, "Drafty", "v1");
-    await writerA.saveDraft({ cardId, content: "a's draft" });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Drafty", "v1");
+    await f.request().saveDraft({ cardId, content: "a's draft" });
 
-    const writerB = new ActWriter({
-      driver: storage.driver,
-      actorId: ACTOR_B,
-      ipAddress: IP,
-      now: fakeClock(),
-    });
-    await writerB.saveDraft({ cardId, content: "b's draft" });
+    await f.request(ACTOR_B).saveDraft({ cardId, content: "b's draft" });
 
     // actor A saves for real: set_content clear_drafts removes A's draft
     // only (content/all.rb:33-35 drafts.created_by(Auth.current_id))
-    const before = stateOf(storage, cardId);
-    await writerA.updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
+    const before = stateOf(f.storage, cardId);
+    await f.request().updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
 
-    const drafts = actions(storage, cardId).filter((a) => a.draft === 1);
+    const drafts = actions(f.storage, cardId).filter((a) => a.draft === 1);
     expect(drafts).toHaveLength(1);
-    expect(changes(storage, drafts[0]!.id as number)[0]!.value).toBe("b's draft");
+    expect(changes(f.storage, drafts[0]!.id as number)[0]!.value).toBe("b's draft");
   });
 
   it("counts drafts in action_count, so another actor's draft suppresses the create backfill", async () => {
-    const { storage, writerA } = freshStorage();
-    const cardId = await createSimple(storage, writerA, "Drafty", "v1");
-    const writerB = new ActWriter({
-      driver: storage.driver,
-      actorId: ACTOR_B,
-      ipAddress: IP,
-      now: fakeClock(),
-    });
-    await writerB.saveDraft({ cardId, content: "b's draft" });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Drafty", "v1");
+    await f.request(ACTOR_B).saveDraft({ cardId, content: "b's draft" });
 
     // action_count (history.rb:42-44) has NO draft filter, so with the draft
     // still present the count is 3, not 2 — first_change? is false and the
     // create action gets no backfill (Ruby relies on the same count).
-    const before = stateOf(storage, cardId);
-    const { actionId } = (await writerA.updateCard({
+    const before = stateOf(f.storage, cardId);
+    const { actionId } = (await f.request().updateCard({
       cardId,
       before,
       after: { ...before, db_content: "v2" },
     }))!;
-    const createRow = actions(storage, cardId)[0]!;
-    expect(changes(storage, createRow.id as number)).toEqual([]);
-    expect(changes(storage, actionId)).toEqual([
+    const createRow = actions(f.storage, cardId)[0]!;
+    expect(changes(f.storage, createRow.id as number)).toEqual([]);
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 2, value: "v2" },
     ]);
   });
 
   it("same-actor drafts are cleared BEFORE the count, so the backfill still fires", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Drafty", "v1");
-    await writer.saveDraft({ cardId, content: "own draft" });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Drafty", "v1");
+    await f.request().saveDraft({ cardId, content: "own draft" });
 
     // Ruby order: clear_drafts runs in the :store stage, the action count in
     // :finalize — the actor's own draft is gone by then (content.rb:8).
-    const before = stateOf(storage, cardId);
-    const { actionId } = (await writer.updateCard({
+    const before = stateOf(f.storage, cardId);
+    const { actionId } = (await f.request().updateCard({
       cardId,
       before,
       after: { ...before, db_content: "v2" },
     }))!;
-    const createRow = actions(storage, cardId)[0]!;
-    expect(changes(storage, createRow.id as number)).toHaveLength(6);
-    expect(changes(storage, actionId)).toEqual([
+    const createRow = actions(f.storage, cardId)[0]!;
+    expect(changes(f.storage, createRow.id as number)).toHaveLength(6);
+    expect(changes(f.storage, actionId)).toEqual([
       { card_action_id: actionId, field: 2, value: "v2" },
     ]);
-    expect(actions(storage, cardId).filter((a) => a.draft === 1)).toHaveLength(0);
+    expect(actions(f.storage, cardId).filter((a) => a.draft === 1)).toHaveLength(0);
   });
 });
 
 describe("update_ancestor_timestamps", () => {
   it("bumps ancestor updated_at/updater_id (events.rb:1-7)", async () => {
-    const { storage, writer } = freshStorage();
-    const parentId = await createSimple(storage, writer, "Parent");
-    const childId = await createSimple(storage, writer, "Child");
+    const f = freshFixture();
+    const parentId = await createSimple(f.storage, f.writer, "Parent"); // tick 0
+    const childId = await createSimple(f.storage, f.writer, "Child"); // tick 1
 
-    // child updated first (its updated_at lands on tick 1)
-    const childBefore = stateOf(storage, childId);
-    await writer.updateCard({ cardId: childId, before: childBefore, after: { ...childBefore, db_content: "child v2" } });
-    const parentBeforeUpdate = cardRow(storage, parentId) as Record<string, unknown>;
-    expect(parentBeforeUpdate.updated_at).toBe("2026-09-19 12:00:00.000");
+    await f.request().updateCard({
+      cardId: childId, // tick 2
+      before: stateOf(f.storage, childId),
+      after: { ...stateOf(f.storage, childId), db_content: "child v2" },
+    });
+    expect((cardRow(f.storage, parentId) as Record<string, unknown>).updated_at).toBe(
+      "2026-09-19 12:00:00.000", // untouched by the child's save
+    );
 
-    // then the parent updates and declares the grandparent an ancestor
-    const grandparentId = await createSimple(storage, writer, "Grandparent");
-    const parentState = stateOf(storage, parentId);
-    await writer.updateCard({
-      cardId: parentId,
+    const grandparentId = await createSimple(f.storage, f.writer, "Grandparent"); // tick 3
+    const parentState = stateOf(f.storage, parentId);
+    await f.request().updateCard({
+      cardId: parentId, // tick 4
       before: parentState,
       after: { ...parentState, db_content: "parent v2" },
       ancestorCardIds: [grandparentId],
     });
 
-    const grandparent = cardRow(storage, grandparentId) as Record<string, unknown>;
+    const grandparent = cardRow(f.storage, grandparentId) as Record<string, unknown>;
     expect(grandparent.updater_id).toBe(ACTOR_A);
-    expect(grandparent.updated_at).toBe("2026-09-19 12:00:03.000");
+    expect(grandparent.updated_at).toBe("2026-09-19 12:00:04.000");
   });
 });
 
@@ -640,20 +647,20 @@ describe("legacy revision tables", () => {
   // current_revision_id from seed dumps. "Revisions" today are virtual —
   // reconstructed from changes (set/all/history/revision.rb).
   it("leaves card_revisions empty and current_revision_id NULL", async () => {
-    const { storage, writer } = freshStorage();
-    const cardId = await createSimple(storage, writer, "Rev", "v1");
-    let before = stateOf(storage, cardId);
-    await writer.updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
-    await writer.trashCard({ cardId, before: stateOf(storage, cardId) });
+    const f = freshFixture();
+    const cardId = await createSimple(f.storage, f.writer, "Rev", "v1");
+    let before = stateOf(f.storage, cardId);
+    await f.request().updateCard({ cardId, before, after: { ...before, db_content: "v2" } });
+    await f.request().trashCard({ cardId, before: stateOf(f.storage, cardId) });
 
-    expect(storage.selectAll("SELECT * FROM card_revisions")).toEqual([]);
-    expect((cardRow(storage, cardId) as Record<string, unknown>).current_revision_id).toBeNull();
+    expect(f.storage.selectAll("SELECT * FROM card_revisions")).toEqual([]);
+    expect((cardRow(f.storage, cardId) as Record<string, unknown>).current_revision_id).toBeNull();
   });
 });
 
 describe("storage contract", () => {
   it("refuses to update a missing cards row", async () => {
-    const { writer } = freshStorage();
+    const f = freshFixture();
     const ghost: CardFieldState = {
       name: "Ghost",
       type_id: 1,
@@ -663,7 +670,7 @@ describe("storage contract", () => {
       right_id: null,
     };
     await expect(
-      writer.updateCard({ cardId: 999999, before: ghost, after: { ...ghost, db_content: "x" } }),
+      f.request().updateCard({ cardId: 999999, before: ghost, after: { ...ghost, db_content: "x" } }),
     ).rejects.toThrow(/not updated/);
   });
 });

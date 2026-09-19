@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   TRACKED_FIELDS,
+  changeValueForField,
   diffTrackedFields,
   serializeChangeValue,
   trackedFieldByIndex,
@@ -63,6 +64,23 @@ describe("serializeChangeValue", () => {
     expect(serializeChangeValue("Hello World")).toBe("Hello World");
     expect(serializeChangeValue("")).toBe("");
     expect(serializeChangeValue(null)).toBeNull();
+  });
+});
+
+describe("changeValueForField", () => {
+  // cards.trash is tinyint(1); ActiveRecord casts it to true/false before the
+  // change value serializes (ActiveModel::Type::Boolean#cast_value — 0 is in
+  // FALSE_VALUES, boolean.rb:15-45 — then Type::Text#serialize -> "t"/"f").
+  it("casts the raw trash 0/1 to the boolean serialization t/f", () => {
+    expect(changeValueForField("trash", 0)).toBe("f");
+    expect(changeValueForField("trash", 1)).toBe("t");
+  });
+
+  it("leaves every other tracked field's raw value to plain serialization", () => {
+    expect(changeValueForField("name", "Hello")).toBe("Hello");
+    expect(changeValueForField("type_id", 3)).toBe("3");
+    expect(changeValueForField("db_content", null)).toBeNull();
+    expect(changeValueForField("left_id", 12)).toBe("12");
   });
 });
 

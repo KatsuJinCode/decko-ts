@@ -3,3 +3,6 @@ dist/
 *.log
 tools/oracle/decko-oracle-app/
 .tools-tmp/
+# benchmark corpus is derived from a production dump and rebuilt on demand
+# (benchmarks/sanitize_corpus.py); never committed
+benchmarks/corpus/

@@ -33,11 +33,14 @@ import type { CardsRow, SQLBoolean } from "../../server/schema.js";
 import { sqlDateTime } from "./act.js";
 import { actionTypeCode, identifyAction } from "./action.js";
 import {
+  changeValueForField,
   diffTrackedFields,
-  serializeChangeValue,
   trackedFieldIndex,
   type CardFieldState,
 } from "./change.js";
+
+/** Re-exported for callers that build snapshots next to the writer. */
+export type { CardFieldState };
 
 export interface ActWriterOptions {
   /** The storage seam. */
@@ -314,11 +317,26 @@ export class ActWriter {
     }
     // store_card_changes (events.rb:102-106): one change per changed field,
     // valued with the post-act state (self[field]). The rows reference the
-    // action inserted two statements earlier via inline last_insert_rowid()
-    // (the id read-back SELECT in between does not reset it), so the whole
-    // operation stays one atomic batch.
+    // action inserted earlier in this batch via a MAX(id) subquery scoped to
+    // the card: the statements in between (the create-action backfill) only
+    // touch card_changes, so the subquery still resolves to this save's
+    // action row inside the atomic batch — unlike last_insert_rowid(), which
+    // every INSERT resets.
     for (const field of changed) {
-      this.pushInsertChange(stmts, { kind: "inline" }, field, input.after[field]);
+      this.pushInsertChange(stmts, { kind: "newActionRow", cardId: input.cardId }, field, input.after[field]);
+    }
+    // integration stage, event :update_ancestor_timestamps (events.rb:1-7,
+    // `Card.where(id: ids).update_all(updater_id: Auth.current_id,
+    // updated_at: Time.now)`). Ruby's cache expiry for the ancestors is
+    // wave 3.
+    const ancestors = input.ancestorCardIds ?? [];
+    if (ancestors.length > 0) {
+      stmts.push({
+        sql: `UPDATE cards SET updated_at = ?, updater_id = ? WHERE id IN (${ancestors
+          .map(() => "?")
+          .join(", ")})`,
+        params: [ts, this.actorId, ...ancestors],
+      });
     }
 
     const { actId, actionId, results } = await this.runBatch(stmts, {
@@ -381,7 +399,7 @@ export class ActWriter {
       draft: 1,
       comment: null,
     });
-    this.pushInsertChange(stmts, { kind: "inline" }, "db_content", input.content);
+    this.pushInsertChange(stmts, { kind: "newActionRow", cardId: input.cardId }, "db_content", input.content);
     const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
     return { actId: this.requireActId(actId), actionId: requireId(actionId) };
   }
@@ -475,25 +493,27 @@ export class ActWriter {
   }
 
   /** One card_changes row. `actionId` either names a known action row (the
-   *  create-action backfill) or is "inline", meaning SQL last_insert_rowid()
-   *  supplies the card_action_id of the action inserted earlier in the same
-   *  batch (the id read-back SELECT in between does not reset it). */
+   *  create-action backfill) or is "newActionRow", meaning the change belongs
+   *  to the action row inserted earlier in the same batch — referenced with a
+   *  MAX(id) subquery scoped to the card, which stays correct even when other
+   *  INSERTs (the backfill rows) run in between. */
   private pushInsertChange(
     stmts: SQLStatement[],
-    actionId: { kind: "id"; id: number } | { kind: "inline" },
+    actionId: { kind: "id"; id: number } | { kind: "newActionRow"; cardId: number },
     field: keyof CardFieldState,
     value: string | number | SQLBoolean | null,
   ): void {
-    if (actionId.kind === "inline") {
+    if (actionId.kind === "newActionRow") {
       stmts.push({
-        sql: "INSERT INTO card_changes (card_action_id, field, value) VALUES (last_insert_rowid(), ?, ?)",
-        params: [trackedFieldIndex(field), serializeChangeValue(value)],
+        sql: `INSERT INTO card_changes (card_action_id, field, value)
+              VALUES ((SELECT MAX(id) FROM card_actions WHERE card_id = ?), ?, ?)`,
+        params: [actionId.cardId, trackedFieldIndex(field), changeValueForField(field, value)],
       });
       return;
     }
     stmts.push({
       sql: "INSERT INTO card_changes (card_action_id, field, value) VALUES (?, ?, ?)",
-      params: [actionId.id, trackedFieldIndex(field), serializeChangeValue(value)],
+      params: [actionId.id, trackedFieldIndex(field), changeValueForField(field, value)],
     });
   }
 

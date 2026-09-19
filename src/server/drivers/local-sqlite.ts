@@ -37,10 +37,21 @@ export interface BetterSqlite3Statement {
 /** The database members this driver uses; see BetterSqlite3Statement for
  *  why this exists. `transaction(fn)` returns a wrapped function; calling
  *  it runs fn inside BEGIN/COMMIT/ROLLBACK — an exception rolls back and
- *  rethrows (runtime-verified). */
+ *  rethrows (runtime-verified). `function(name[, options], fn)` is
+ *  better-sqlite3 Database#function (scalar SQL function registration),
+ *  added by the CQL execution stream: the REGEXP UDF for CQL match queries
+ *  needs the underlying handle, which the driver deliberately does not
+ *  expose (see docs/cql-execution-notes.md). Runtime-verified on
+ *  better-sqlite3 13.0.3 / SQLite 3.53.4, Windows, node 24. */
 export interface BetterSqlite3Database {
   prepare(sql: string): BetterSqlite3Statement;
   transaction<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => R;
+  function(
+    name: string,
+    options: { deterministic?: boolean; varargs?: boolean },
+    fn: (...args: unknown[]) => unknown,
+  ): unknown;
+  function(name: string, fn: (...args: unknown[]) => unknown): unknown;
   close(): void;
 }
 export interface LocalSqliteDriverOptions {
@@ -91,6 +102,22 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
     // rethrown. Statement results are collected in order.
     const runBatch = this.db.transaction(() => statements.map((s) => this.executeOne(s)));
     return runBatch();
+  }
+
+  /** Register a scalar SQL function on the underlying handle — the narrow,
+   *  additive extension the CQL execution stream needs for its REGEXP UDF
+   *  (registerSqliteRegexpFunction in src/cql/sqlite-regexp.ts; rationale
+   *  and edge-driver contrast in docs/cql-execution-notes.md). Nothing
+   *  about existing behavior changes; callers that never register a
+   *  function are unaffected. Must be called before the first statement
+   *  referencing the function is prepared. */
+  registerFunction(
+    name: string,
+    fn: (...args: unknown[]) => unknown,
+    options?: { deterministic?: boolean; varargs?: boolean },
+  ): void {
+    if (options) this.db.function(name, options, fn);
+    else this.db.function(name, fn);
   }
 
   /** Close the underlying database handle. Not part of SQLDatabaseDriver —

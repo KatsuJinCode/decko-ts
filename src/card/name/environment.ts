@@ -22,8 +22,12 @@
 export interface NameLexicon {
   /** Lexicon.name(id): registered name string, or undefined when the id is unknown. */
   name(id: number): string | undefined;
-  /** Lexicon.id(name): registered id, or undefined when the name is unknown. */
-  id(name: string): number | undefined;
+  /**
+   * Lexicon.id(name): registered id, or undefined when unknown. Receives the
+   * name's canonical KEY - Ruby resolves ids through `{ key: lex.to_name.key }`
+   * (lib/card/lexicon.rb#lex_query).
+   */
+  id(key: string): number | undefined;
 }
 
 /** Card::Codename (card-1.110.0 lib/card/codename.rb) subset used by the name layer. */

@@ -425,7 +425,9 @@ class CqlParser {
     values: Array<string | number | null>,
   ): Array<string | number | null> {
     if (field === "name" && op !== "~") {
-      return values.map((v) => (v === null || typeof v === "number" ? String(v ?? "") : this.nameToKey(v)));
+      return values.map((v) =>
+        v === null ? null : this.nameToKey(String(v)),
+      );
     }
     return values;
   }

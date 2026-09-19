@@ -777,16 +777,17 @@ export class DeckoName {
    */
   get standard(): DeckoName {
     if (this.isSimple) {
-      const id = getNameEnvironment()?.lexicon?.id(this.s);
+      // Lexicon indexes by name key (card-1.110.0 lib/card/lexicon.rb#lex_query)
+      const id = getNameEnvironment()?.lexicon?.id(this.key);
       const std = id === undefined ? undefined : getNameEnvironment()?.lexicon?.name(id);
       return rubyBlank(std) ? this : DeckoName.baseParse(std as string);
     }
     return DeckoName.compose(this.parts.map((part) => DeckoName.parse(part).standard));
   }
 
-  /** Card::Name#card_id (lib/card/name/name_variants.rb): lexicon id for the name. */
+  /** Card::Name#card_id (lib/card/name/name_variants.rb): lexicon id for the name key. */
   get cardId(): number | undefined {
-    return getNameEnvironment()?.lexicon?.id(this.s);
+    return getNameEnvironment()?.lexicon?.id(this.key);
   }
 
   /** Card::Name#codename: codename string of the card with this name, if any. */
