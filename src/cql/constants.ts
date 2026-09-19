@@ -86,7 +86,7 @@ export const OPERATORS: Record<string, string> = {
 };
 
 /** operators whose SQL uses an IN-style value list when given several values */
-export const LIST_OPS = new Set(["in", "not in"]);
+export const LIST_OPS = new Set(["in", "not in", "IN", "NOT IN"]);
 
 /**
  * query.rb Card::Query::CONJUNCTIONS. Note: `in` is listed here but a bare

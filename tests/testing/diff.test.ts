@@ -129,6 +129,6 @@ describe("compareNormalized (both sides normalized, then exact bytes)", () => {
     const engineHtml = `<div ${RANDOMIZED_SLOT_ATTRIBUTE}>Body</div>`;
     const diff = compareNormalized(fixtureHtml, engineHtml);
     expect(diff.equal).toBe(false);
-    expect(diff.firstDifference!.codeUnitOffset).toBe(fixtureHtml.indexOf(">b") + 2);
+    expect(diff.firstDifference!.codeUnitOffset).toBe(fixtureHtml.indexOf(">b") + 1);
   });
 });

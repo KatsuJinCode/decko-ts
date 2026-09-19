@@ -33,12 +33,11 @@ describe("invalid attributes [Interpretation#bad_attribute!]", () => {
 });
 
 describe("invalid operators [Value#canonicalize_operator]", () => {
-  it("unknown operators in value arrays raise", () => {
-    expect(() => parseCql({ name: ["bogusop", 5] })).toThrow(/Invalid operator: bogusop/);
-  });
-
   it("unknown first elements are treated as values, not operators [oracle]", () => {
-    // oracle: id: ["between", 1, 2] -> c0.id in ('between','1','2')
+    // oracle: id: ["between", 1, 2] -> c0.id in ('between','1','2').
+    // parse_array_value only shifts KNOWN operator keys, so the Ruby
+    // "Invalid operator" raise is unreachable from CQL input in 1.110; the
+    // canonicalize guard exists in the port for parity but is defensive.
     const ast = parseCql({ id: ["between", 1, 2] });
     expect(ast.conditions[0]).toMatchObject({
       kind: "value",
@@ -63,9 +62,11 @@ describe("invalid property values [Value#parse_simple_value]", () => {
 });
 
 describe("safe_sql [Query.safe_sql]", () => {
-  it("rejects disallowed characters in raw fragments", () => {
-    expect(() => parseCql({ group: "x; DROP" })).toThrow(/disallowed characters/);
-    expect(() => parseCql({ return: "a'b" })).toThrow(/disallowed characters/);
+  it("rejects disallowed characters in raw fragments at SQL generation", () => {
+    // Ruby applies safe_sql in SqlStatement#group / #standard_full_field /
+    // Order#order_field — i.e. during SQL generation, not interpretation
+    expect(() => generateSql(parseCql({ group: "x; DROP" }))).toThrow(/disallowed characters/);
+    expect(() => generateSql(parseCql({ return: "a'b" }))).toThrow(/disallowed characters/);
   });
 });
 

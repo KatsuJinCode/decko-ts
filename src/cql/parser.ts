@@ -410,8 +410,24 @@ class CqlParser {
       kind: "value",
       field: this.standardizeField(field),
       op: value.op,
-      values: value.values,
+      values: this.standardizeValues(field, value.op, value.values),
     });
+  }
+
+  /**
+   * Value#standard_sql: values of `name` conditions are mapped to key form
+   * ("Joe Admin" -> "joe_admin") for every non-match operator. (The match
+   * operator branches to MatchValue before this and keeps its own mapping.)
+   */
+  private standardizeValues(
+    field: string,
+    op: string,
+    values: Array<string | number | null>,
+  ): Array<string | number | null> {
+    if (field === "name" && op !== "~") {
+      return values.map((v) => (v === null || typeof v === "number" ? String(v ?? "") : this.nameToKey(v)));
+    }
+    return values;
   }
 
   /** Value#standardize_field */
@@ -692,13 +708,14 @@ class CqlParser {
     }
     const reftype = val["reftype"];
     const card = val["card"];
-    // ReferenceQuery#add_reftype_condition
+    // ReferenceQuery#add_reftype_condition — single reftype "=", several "IN"
+    // (uppercase, interpolated directly by Ruby)
     if (reftype !== undefined && reftype !== null && reftype !== "") {
       const letters = (Array.isArray(reftype) ? reftype : [reftype]).map(String);
       query.conditions.push({
         kind: "value",
         field: "ref_type",
-        op: letters.length === 1 ? "=" : "in",
+        op: letters.length === 1 ? "=" : "IN",
         values: letters,
       });
     }

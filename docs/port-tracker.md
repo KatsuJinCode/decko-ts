@@ -21,7 +21,7 @@ plans the next wave. Agents never git-commit and never run npm install
 | # | Stream | Owns | Status |
 |---|---|---|---|
 | 6 | Card history/write path | `src/card/history/**`, `tests/card/history/**`, `docs/history-port-notes.md` | running |
-| 7 | Oracle replay harness | `src/testing/**`, `tests/testing/**`, `docs/replay-harness.md` | running |
+| 7 | Oracle replay harness | `src/testing/**`, `tests/testing/**`, `docs/replay-harness.md` | LANDED: handler contract published (name-engine/cql-engine/render-engine register per-stream; PENDING never fails), slot-id normalization both sides (strict 20-hex), byte-diff with first-diff context, 61/61 own tests, `npm run replay`. Engine streams adopt the contract in their own test files. Deferrals: 11 card/rules-engine entries PENDING until wave 2+; smoke cql_search typed but not replayable (capture recorded no canonical query) |
 | 8 | Benchmark corpus + metrics | `benchmarks/**`, `docs/benchmark-corpus-report.md` | running — delivers the #1282 measurement promises: sanitized structure-preserving corpus from the 47k-card production dump (content-free, verified), Ruby queries-per-render depth curves (the N+1 proof), methodology mapping every published commitment to a measured artifact |
 
 ## Metrics program (#1282 commitments -> measurements)

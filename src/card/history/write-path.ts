@@ -105,6 +105,10 @@ export interface UpdateCardInput {
    *  updated_at: Time.now)`). The ancestor list comes from the reference
    *  graph (history_card_ids), which is a later wave; pass [] to skip. */
   ancestorCardIds?: number[];
+  /** Explicitly mark this save as the act's primary card's own action.
+   *  Defaults to "the first operation on the writer" (the common request
+   *  shape); see ActWriter docs. */
+  isActCard?: boolean;
 }
 
 export interface SavedAction {
@@ -137,6 +141,16 @@ const ALL_TRACKED_WRITE_ORDER: (keyof CardFieldState)[] = [
  * act is only `Card::Act.new`ed up front (director/class_methods.rb:27-29)
  * and INSERTs as part of the first action's save via belongs_to autosave
  * (activerecord-7.2.3.2/lib/active_record/autosave_association.rb:514-515).
+ *
+ * The act row is inserted with card_id NULL — Ruby's Act.new never sets one
+ * — and the act's primary card is written by the finalize_act port
+ * (`UPDATE card_acts SET card_id`), exactly the two-step Ruby performs
+ * (events.rb:48-50). Which operation is the act card's own: the constructor
+ * may pin `actCardId`; otherwise the FIRST operation claims act-card status
+ * (the common request shape: the request starts on its act card). A
+ * subcard-first orchestration (wave 3) must pass `isActCard: false` on the
+ * subcard operations and `isActCard: true` on the act card's operation, or
+ * construct the writer with `actCardId` once known.
  */
 export class ActWriter {
   private readonly driver: SQLDatabaseDriver;
@@ -190,7 +204,7 @@ export class ActWriter {
     );
 
     const stmts: SQLStatement[] = [];
-    const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts, cardId);
+    const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
     const actionIdSelect = this.pushInsertAction(stmts, {
       cardId,
       superActionId: input.superActionId ?? null,
@@ -214,7 +228,7 @@ export class ActWriter {
       );
     }
 
-    await this.finalizeActCard(cardId);
+    await this.finalizeActCard(cardId, this.isActCardOp(cardId, input.isActCard));
     return { cardId, actId: this.requireActId(actId), actionId: requireId(actionId) };
   }
 
@@ -256,11 +270,16 @@ export class ActWriter {
     // re-derivable, not authoritative, so no locking is attempted).
     const actionCountBefore = await this.actionCount(input.cardId);
     // first_change? (set/all/history.rb:32-36 — action_type != :create &&
-    // action_count == 2 && create_action.card_changes.empty?). The count
-    // INCLUDES the action about to be inserted (Ruby counts after
-    // `@current_action.update! card_id: id`), hence the +1.
+    // action_count == 2 && create_action.card_changes.empty?). Ruby counts
+    // AFTER the :store-stage clear_drafts (event :set_content,
+    // mod/core/set/all/content.rb:8) deleted this actor's drafts and after
+    // `@current_action.update! card_id: id` saved the new action row, so the
+    // port subtracts the drafts the batch is about to clear and adds the
+    // action it is about to insert.
+    const ownDrafts = await this.ownDraftCount(input.cardId);
+    const actionCountAtFinalize = actionCountBefore - ownDrafts + 1;
     let backfill: { createActionId: number } | null = null;
-    if (actionType !== "create" && actionCountBefore + 1 === 2) {
+    if (actionType !== "create" && actionCountAtFinalize === 2) {
       const createAction = await this.firstNonDraftAction(input.cardId);
       if (createAction !== undefined) {
         if ((await this.changeCount(createAction.id)) === 0) {
@@ -272,7 +291,7 @@ export class ActWriter {
     }
 
     const stmts: SQLStatement[] = [];
-    const actIdSelect = this.pushClearDraftsAndAct(stmts, input.cardId, ts, input.cardId);
+    const actIdSelect = this.pushClearDraftsAndAct(stmts, input.cardId, ts);
     const updateCardsIndex = this.pushUpdateCardsRow(stmts, input, changed, ts);
     const actionIdSelect = this.pushInsertAction(stmts, {
       cardId: input.cardId,
@@ -314,7 +333,7 @@ export class ActWriter {
         `updateCard: cards row ${input.cardId} not updated (rowsAffected=${updateResult.rowsAffected})`,
       );
     }
-    await this.finalizeActCard(input.cardId);
+    await this.finalizeActCard(input.cardId, this.isActCardOp(input.cardId, input.isActCard));
     return saved;
   }
 
@@ -387,19 +406,19 @@ export class ActWriter {
   // -----------------------------------------------------------------------
 
   /** :store stage clear_drafts (event :set_content) plus the lazy act INSERT
-   *  when this operation is the act's first persisted action. Returns the
-   *  batch index of the act-id read-back SELECT, or undefined when the act
-   *  row already exists. */
+   *  when this operation is the act's first persisted action. The act row is
+   *  inserted with card_id NULL (Ruby's Act.new sets only the ip; the
+   *  primary card is written by finalize_act). Returns the batch index of
+   *  the act-id read-back SELECT, or undefined when the act row already
+   *  exists. */
   private pushClearDraftsAndAct(
     stmts: SQLStatement[],
     draftsCardId: number,
     ts: string,
-    actCardId: number | null,
   ): number | undefined {
     this.pushClearOwnDrafts(stmts, draftsCardId);
     if (this.actId !== null) return undefined;
-    const index = this.pushInsertAct(stmts, actCardId, ts);
-    return index;
+    return this.pushInsertAct(stmts, null, ts);
   }
 
   /** act INSERT on the first persisted action of the act (belongs_to
@@ -542,16 +561,40 @@ export class ActWriter {
     return out;
   }
 
-  /** finalize_act (events.rb:48-50): the act row's card_id is the act card's
-   *  id. The first operation on the writer claims act-card status for its
-   *  card; later operations on OTHER cards (subcards) never re-point it. */
-  private async finalizeActCard(cardId: number): Promise<void> {
-    if (this.actCardId === undefined) this.actCardId = cardId;
-    if (this.actId === null || this.actCardId !== cardId) return;
-    await this.driver.query(
-      "UPDATE card_acts SET card_id = ? WHERE id = ? AND card_id IS NULL",
-      [cardId, this.actId],
-    );
+  /** Event :finalize_act (events.rb:48-50, `Card::Director.act.update!
+   *  card_id: id`): the act's primary card, written as its own UPDATE — the
+   *  row was inserted with card_id NULL. Only the act card's own operation
+   *  reaches here; subcard operations return early. */
+  private async finalizeActCard(cardId: number, isActCard: boolean): Promise<void> {
+    if (!isActCard || this.actId === null) return;
+    if (this.actCardId !== undefined && this.actCardId !== cardId) {
+      throw new Error(
+        `ActWriter: card ${cardId} claims act-card status already held by card ${this.actCardId}`,
+      );
+    }
+    this.actCardId = cardId;
+    await this.driver.query("UPDATE card_acts SET card_id = ? WHERE id = ?", [
+      cardId,
+      this.actId,
+    ]);
+  }
+
+  /** Resolve whether this operation is the act card's own action: an
+   *  explicit input wins; otherwise a pinned actCardId decides; otherwise
+   *  the first operation claims act-card status (documented default). */
+  private isActCardOp(cardId: number, explicit: boolean | undefined): boolean {
+    if (explicit !== undefined) {
+      if (explicit && this.actCardId !== undefined && this.actCardId !== cardId) {
+        throw new Error(
+          `ActWriter: card ${cardId} claims act-card status already held by card ${this.actCardId}`,
+        );
+      }
+      if (explicit) this.actCardId = cardId;
+      return explicit;
+    }
+    if (this.actCardId !== undefined) return this.actCardId === cardId;
+    this.actCardId = cardId;
+    return true;
   }
 
   private requireActId(readBack?: number): number {
@@ -581,6 +624,20 @@ export class ActWriter {
     const result = await this.driver.query<{ n: number }>(
       "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
       [cardId],
+    );
+    return Number(result.rows[0].n);
+  }
+
+  /** This writer's actor's draft-action count for one card — the rows the
+   *  :store-stage clear_drafts is about to delete (same predicate as
+   *  pushClearOwnDrafts, built from drafts.created_by,
+   *  lib/card/content/all.rb:33-35). */
+  private async ownDraftCount(cardId: number): Promise<number> {
+    const result = await this.driver.query<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM card_actions
+       WHERE card_actions.card_id = ? AND card_actions.draft = 1
+         AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`,
+      [cardId, this.actorId],
     );
     return Number(result.rows[0].n);
   }

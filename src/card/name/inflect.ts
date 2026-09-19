@@ -30,12 +30,13 @@ function rules(pairs: readonly (readonly [RegExp, string])[]): InflectionRule[] 
  */
 const SINGULAR_RULES: readonly InflectionRule[] = rules([
   // irregular-derived, reverse definition order (zombie, move, sex, child, man, person).
-  // Ruby's Inflections#irregular generates /(s0)srest$/i and /(p0)prest$/i (no ^
-  // anchor), each irregular contributing its two singular() calls in prepended order
-  [/(z)ombies$/i, "$1zombie"],
-  [/(z)ombie$/i, "$1zombie"],
-  [/(m)oves$/i, "$1move"],
-  [/(m)ove$/i, "$1move"],
+  // Ruby's Inflections#irregular generates /(s0)srest$/i -> '\1' + srest and
+  // /(p0)prest$/i -> '\1' + prest (no ^ anchor), each irregular contributing its
+  // two singular() calls in prepended order
+  [/(z)ombies$/i, "$1ombie"],
+  [/(z)ombie$/i, "$1ombie"],
+  [/(m)oves$/i, "$1ove"],
+  [/(m)ove$/i, "$1ove"],
   [/(s)exes$/i, "$1ex"],
   [/(s)ex$/i, "$1ex"],
   [/(c)hildren$/i, "$1hild"],
@@ -81,18 +82,18 @@ const SINGULAR_RULES: readonly InflectionRule[] = rules([
  */
 const PLURAL_RULES: readonly InflectionRule[] = rules([
   // irregular-derived, reverse definition order (same generation scheme as above)
-  [/(z)ombies$/i, "$1zombies"],
-  [/(z)ombie$/i, "$1zombies"],
-  [/(m)oves$/i, "$1moves"],
-  [/(m)ove$/i, "$1moves"],
-  [/(s)exes$/i, "$1sexes"],
-  [/(s)ex$/i, "$1sexes"],
-  [/(c)hildren$/i, "$1children"],
-  [/(c)hild$/i, "$1children"],
-  [/(m)en$/i, "$1men"],
-  [/(m)an$/i, "$1men"],
-  [/(p)eople$/i, "$1people"],
-  [/(p)erson$/i, "$1people"],
+  [/(z)ombies$/i, "$1ombies"],
+  [/(z)ombie$/i, "$1ombies"],
+  [/(m)oves$/i, "$1oves"],
+  [/(m)ove$/i, "$1oves"],
+  [/(s)exes$/i, "$1exes"],
+  [/(s)ex$/i, "$1exes"],
+  [/(c)hildren$/i, "$1hildren"],
+  [/(c)hild$/i, "$1hildren"],
+  [/(m)en$/i, "$1en"],
+  [/(m)an$/i, "$1en"],
+  [/(p)eople$/i, "$1eople"],
+  [/(p)erson$/i, "$1eople"],
   // default plural rules, reverse definition order
   [/(quiz)$/i, "$1zes"],
   [/^(oxen)$/i, "$1"],
@@ -162,15 +163,17 @@ export function pluralize(word: string): string {
 }
 
 /**
- * ActiveSupport::Inflector#underscore.
- * Returns the input unchanged unless it contains an ASCII capital or dash or
- * "::" (early-return guard), which is why e.g. "Ünïcödé" keeps its case.
+ * ActiveSupport::Inflector#underscore (activesupport 7.2.3.2
+ * lib/active_support/inflector/methods.rb). Returns the input unchanged unless
+ * it contains an ASCII capital or dash or "::" (early-return guard), which is
+ * why e.g. "Ünïcödé" keeps its case. Acronym handling is omitted: the default
+ * inflector defines no acronyms, so `acronyms_underscore_regex` never matches.
  */
 export function underscore(camelCasedWord: string): string {
   if (!/[A-Z-]|::/.test(camelCasedWord)) return camelCasedWord;
   const word = camelCasedWord.replace(/::/g, "/");
   return word
-    .replace(/([A-Z\d]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])|(?<=[a-z\d])(?=[A-Z])/g, "_")
     .replace(/-/g, "_")
     .toLowerCase();
 }
@@ -213,17 +216,19 @@ function isAsciiAlnum(c: string): boolean {
 /**
  * Ruby String#succ / String#next.
  *
- * Ported from the observed Ruby 3.3 behavior (verified against a 50-case
- * battery, see docs/name-port-notes.md). Carry walks right-to-left over ASCII
+ * Ported from observed Ruby 3.3 behavior (verified against a 50-case battery,
+ * see docs/name-port-notes.md). Carry walks right-to-left over ASCII
  * alphanumerics (9->0 carries, z->a carries, Z->A carries). Non-alphanumeric
- * characters between the carried position and the string head are transparent
- * EXCEPT when the carry is digit-flavored (the original last alphanumeric was
- * a digit) and the next alphanumeric to the left is a letter: then a "1" is
- * inserted immediately after the separator run and the carry stops
- * ("a 9" -> "a 10", "z.99" -> "z.100", "a -- 9" -> "a -- 10"). Letters never
- * insert ("z z" -> "aa a"). Overflow at the string head prepends the neighbor
- * character ("9" -> "10", "zz" -> "aaa", "zz9" -> "aaa0"). Strings without any
- * ASCII alphanumeric simply increment their last character ("+" -> ",").
+ * runs between the carried position and the string head are transparent EXCEPT
+ * when the carry is digit-flavored (the original last alphanumeric was a
+ * digit) and the next alphanumeric across the run is a letter (or there is
+ * none): then the neighbor character is inserted immediately after the run and
+ * the carry stops ("a 9" -> "a 10", "z.99" -> "z.100", "a -- 9" -> "a -- 10",
+ * "**9" -> "**10"). Letter-flavored carries cross separators freely
+ * ("z z" -> "aa a"). Overflow at the string head prepends the neighbor derived
+ * from the overflowing character's class ("9" -> "10", "zz" -> "aaa",
+ * "zz9" -> "aaa0"). Strings without any ASCII alphanumeric simply increment
+ * their last character ("+" -> ",").
  */
 export function rubySucc(str: string): string {
   if (str === "") return str;
@@ -231,8 +236,7 @@ export function rubySucc(str: string): string {
 
   let lastAlnum = -1;
   for (let i = chars.length - 1; i >= 0; i--) {
-    const c = chars[i] as string;
-    if (isAsciiAlnum(c)) {
+    if (isAsciiAlnum(chars[i] as string)) {
       lastAlnum = i;
       break;
     }
@@ -246,6 +250,7 @@ export function rubySucc(str: string): string {
 
   const lastChar = chars[lastAlnum] as string;
   const neighbor = isAsciiDigit(lastChar) ? "1" : isAsciiLower(lastChar) ? "a" : "A";
+  const neighborFor = (c: string): string => (isAsciiDigit(c) ? "1" : isAsciiLower(c) ? "a" : "A");
 
   let carry = true;
   let i = lastAlnum;
@@ -261,16 +266,13 @@ export function rubySucc(str: string): string {
       carry = c === "Z";
       chars[i] = carry ? "A" : String.fromCharCode(c.charCodeAt(0) + 1);
     } else {
-      // separator run while carrying: peek left through the run
+      // separator run while carrying: find the next alphanumeric to the left
       let j = i - 1;
       while (j >= 0 && !isAsciiAlnum(chars[j] as string)) j--;
-      if (j >= 0 && neighbor === "1" && !isAsciiDigit(chars[j] as string)) {
-        // digit-flavored carry hitting a letter segment: insert "1" after the run
-        chars.splice(i + 1, 0, "1");
-        return chars.join("");
-      }
-      if (j < 0) {
-        chars.unshift(neighbor);
+      if (j < 0 || (neighbor === "1" && !isAsciiDigit(chars[j] as string))) {
+        // digit-flavored carry hitting a letter segment (or string head):
+        // insert the neighbor right after the run and stop
+        chars.splice(i + 1, 0, neighbor);
         return chars.join("");
       }
       i = j;
@@ -278,7 +280,7 @@ export function rubySucc(str: string): string {
     }
     if (!carry) break;
     if (i === 0) {
-      chars.unshift(neighbor);
+      chars.unshift(neighborFor(chars[0] as string));
       return chars.join("");
     }
     i--;

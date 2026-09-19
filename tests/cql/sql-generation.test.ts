@@ -292,7 +292,7 @@ describe("conjunction groups", () => {
         "LEFT JOIN (card_actions cn1 JOIN card_acts cx2 ON cn1.card_act_id = cx2.id " +
         "JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false) ON c0.id = cn1.card_id " +
         "WHERE c3.id = ? AND c0.trash is false",
-      params: [-999],
+      params: [-2],
     });
   });
 });
@@ -311,7 +311,7 @@ describe("editor / act chains", () => {
         "JOIN card_acts cx2 ON cn1.card_act_id = cx2.id " +
         "JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false " +
         "WHERE c3.id = ? AND c0.trash is false",
-      params: [-999],
+      params: [-2],
     });
   });
 
@@ -420,7 +420,9 @@ describe("references", () => {
   });
 
   it("_none outfield renders is_present = 0 [ReferenceQuery#non_outfield]", () => {
-    expect(sql({ refer_to: "_none" }).sql).toContain("cr1.is_present = 0");
+    const none = sql({ refer_to: "_none" });
+    expect(none.sql).toContain("cr1.is_present = ?");
+    expect(none.params).toEqual(["L", "I", 0]);
   });
 });
 
@@ -449,9 +451,9 @@ describe("statement shorthand", () => {
 
   it("context flows through junction ties into name conditions", () => {
     // right_plus: {name: "_left"} in context "A+B": the part resolves to "A",
-    // ties c2 via c1.right_id, and c2.name matches the key form
-    const result = sql({ right_plus: { name: "_left" } }, { context: "A+B" });
-    expect(result.sql).toContain("c2.name = ?");
+    // ties c2 via c1.right_id, and c2's name condition matches the key form
+    const result = generateSql(parseCql({ right_plus: { name: "_left" } }, { context: "A+B" }));
+    expect(result.sql).toContain("c2.key = ?");
     expect(result.params).toContain("a");
   });
 });

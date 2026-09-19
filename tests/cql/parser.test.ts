@@ -29,10 +29,10 @@ describe("clause normalization (Normalization#clause_to_hash)", () => {
   });
 
   it("root context and vars are consumed before interpretation [AbstractQuery#init_instance_vars]", () => {
-    const ast = parseCql({ name: "$who", context: "A+B", bogus: 1, vars: { who: "Joe Admin" } });
+    const ast = parseCql({ name: "$who", context: "A+B", vars: { who: "Joe Admin" } });
     expect(ast.context).toBe("A+B");
     expect(ast.conditions[0]).toMatchObject({ kind: "value", values: ["joe_admin"] });
-    // vars/table_suffix/prepend/append/... never become conditions
+    // vars/context never become conditions
     expect(ast.conditions).toHaveLength(1);
   });
 
@@ -75,9 +75,11 @@ describe("table aliases (QueryHelper#table_alias)", () => {
   });
 
   it("subqueries take sequential aliases from a shared counter [oracle]", () => {
-    // oracle: editor_of: "Joe" -> cx1 / cn2 / c3
+    // oracle: editor_of: "Joe" -> cx1 / cn2 / c3 (nested, one shared seq)
     const ast = parseCql({ editor_of: "Joe" });
-    expect(ast.subqueries.map((s) => s.tableAlias)).toEqual(["cx1", "cn2", "c3"]);
+    expect(ast.subqueries.map((s) => s.tableAlias)).toEqual(["cx1"]);
+    expect(ast.subqueries[0].subqueries.map((s) => s.tableAlias)).toEqual(["cn2"]);
+    expect(ast.subqueries[0].subqueries[0].subqueries.map((s) => s.tableAlias)).toEqual(["c3"]);
   });
 
   it("direct subqueries share the superquery alias [oracle]", () => {
@@ -104,7 +106,7 @@ describe("basic attributes (Interpretation INTERPRET_METHOD[:basic])", () => {
       creator_id: 6,
       updater_id: 7,
     });
-    expect(ast.conditions).toHaveLength(13);
+    expect(ast.conditions).toHaveLength(12);
     expect(ast.conditions.map((c) => (c.kind === "value" ? c.field : ""))).toEqual([
       "id",
       "key",
@@ -138,15 +140,19 @@ describe("conjunctions (CardQuery::Conjunctions)", () => {
     expect(ast.subqueries[0].conditions).toHaveLength(2);
   });
 
-  it("multi-value relational lists shift a leading conjunction [Interpretation#relate_multi_value] [oracle]", () => {
+  it("multi-value relational lists shift a leading conjunction into a group [Interpretation#relate_multi_value] [oracle]", () => {
     // oracle: type: ["or", "A", "B"] -> (c0.type_id = '-999' OR c0.type_id = '-999')
+    // via a :direct subcondition group sharing the root alias
     const ast = parseCql({ type: ["or", "A", "B"] });
-    expect(ast.conditions).toHaveLength(2);
+    expect(ast.subqueries[0].conj).toBe("or");
+    expect(ast.subqueries[0].conditions).toHaveLength(2);
   });
 
   it("multi-value lists without a conjunction AND flat [Interpretation#relate_multi_value] [oracle]", () => {
+    // same conjunction as the container -> flat, no subcondition
     const ast = parseCql({ type: ["A", "B"] });
     expect(ast.conditions).toHaveLength(2);
+    expect(ast.subqueries).toHaveLength(0);
   });
 
   it("bare in: key is intercepted as a content operator [Interpretation#interpret_as_content?] [oracle]", () => {
@@ -224,25 +230,26 @@ describe("plus relational (RelationalAttributes#junction)", () => {
 
 describe("editor/act chains (RelationalAttributes + ActQuery/ActionQuery)", () => {
   it("edited_by chains action -> act -> card [oracle]", () => {
-    // oracle: edited_by: "Joe" -> cn1 / cx2 / c3
+    // oracle: edited_by: "Joe" -> cn1 / cx2 / c3 (nested subqueries)
     const ast = parseCql({ edited_by: "Joe" });
-    expect(ast.subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
-      ["action", "cn1"],
+    expect(ast.subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([["action", "cn1"]]);
+    expect(ast.subqueries[0].subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
       ["act", "cx2"],
+    ]);
+    expect(ast.subqueries[0].subqueries[0].subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
       ["card", "c3"],
     ]);
-    expect(ast.subqueries.map((s) => s.table)).toEqual([
-      "card_actions",
-      "card_acts",
-      "cards",
-    ]);
+    expect(ast.subqueries[0].table).toBe("card_actions");
+    expect(ast.subqueries[0].subqueries[0].table).toBe("card_acts");
   });
 
   it("editor_of chains act -> action -> card [oracle]", () => {
     const ast = parseCql({ editor_of: "Joe" });
-    expect(ast.subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
-      ["act", "cx1"],
+    expect(ast.subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([["act", "cx1"]]);
+    expect(ast.subqueries[0].subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
       ["action", "cn2"],
+    ]);
+    expect(ast.subqueries[0].subqueries[0].subqueries.map((s) => [s.kind, s.tableAlias])).toEqual([
       ["card", "c3"],
     ]);
   });
@@ -257,9 +264,11 @@ describe("editor/act chains (RelationalAttributes + ActQuery/ActionQuery)", () =
 
   it("updater_of adds action_type = 1 on the action subquery [oracle]", () => {
     const ast = parseCql({ updater_of: "Joe" });
-    expect(ast.subqueries[1].conditions.some((c) => c.kind === "raw" && c.sql.includes("action_type = 1"))).toBe(
-      true,
-    );
+    expect(
+      ast.subqueries[0].subqueries[0].conditions.some(
+        (c) => c.kind === "raw" && c.sql.includes("action_type = 1"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -277,7 +286,7 @@ describe("references (ReferenceAttributes#define_reference_method, ReferenceQuer
     expect(ast.subqueries[0].conditions[0]).toEqual({
       kind: "value",
       field: "ref_type",
-      op: "in",
+      op: "IN",
       values: ["L", "I"],
     });
     expect(ast.subqueries[0].conditions[1]).toMatchObject({ field: "referee_id", values: [-999] });
@@ -384,14 +393,12 @@ describe("match attributes (CardQuery::MatchAttributes)", () => {
 
   it("compound complete splits into left + right parts [MatchAttributes#complete_compound]", () => {
     const ast = parseCql({ complete: "A+B" });
-    // left: "A" (restrict left_id), right: {complete: "B"}
+    // left: "A" restricts left_id directly (unresolved -> -999);
+    // right: {complete: "B"} ties a card subquery with the LIKE condition
+    expect(ast.conditions[0]).toMatchObject({ kind: "value", field: "left_id", values: [-999] });
     expect(ast.subqueries).toHaveLength(1);
-    expect(ast.subqueries[0].conditions[0]).toMatchObject({ field: "left_id" });
-    expect(ast.subqueries[0].subqueries[0].conditions[0]).toEqual({
-      kind: "like",
-      field: "key",
-      value: "b",
-    });
+    expect(ast.subqueries[0].conditions[0]).toEqual({ kind: "like", field: "key", value: "b" });
+    expect(ast.subqueries[0].conditions[1]).toEqual({ kind: "raw", sql: "c1.key IS NOT NULL" });
   });
 });
 
@@ -449,7 +456,7 @@ describe("sorting (CardQuery::Sorting)", () => {
   });
 
   it("unknown sort items raise [Sorting#sort_by_item_join_field]", () => {
-    expect(() => parseCql({ sort: { middle: {} } })).toThrow(/#join\/middle/);
+    expect(() => parseCql({ sort: { item: "middle" } })).toThrow(/#join\/middle/);
   });
 
   it("sort hash on count queries is skipped [Sorting#sort -> full?]", () => {

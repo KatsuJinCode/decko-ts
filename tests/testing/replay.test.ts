@@ -20,6 +20,7 @@ import {
   UNKNOWN_VIEW_INPUT,
   canonicalJson,
   isCaptureErrorSentinel,
+  parseCapturedError,
   validateCqlBasicFixture,
   validateSmokeFixture,
   type SmokeFixture,
@@ -79,6 +80,13 @@ function fakeEngines(options: FakeEngines = {}): HandlerRegistry {
     if (options.cqlOverride) return options.cqlOverride(query);
     const result = cqlResultByQuery.get(canonicalJson(query));
     if (result === undefined) throw new Error(`fake cql-engine: unexpected query ${canonicalJson(query)}`);
+    // Mirror a real engine: the query either returns names or raises. A
+    // recorded sentinel replays as raisedError - wrapping the sentinel
+    // string as json output is NOT the same outcome (strict harness rule).
+    if (isCaptureErrorSentinel(result)) {
+      const { errorClass, message } = parseCapturedError(result);
+      return raisedError(errorClass, message);
+    }
     return jsonValue(result);
   });
   registry.register("render-engine", ({ cardName, view }) => {
@@ -210,22 +218,27 @@ describe("replay machinery over real smoke.json / cql-basic.json entries", () =>
       failed.diff!.actualBytes // self-consistent; real content asserted via message below
     );
     const message = formatReplayFailure(failed);
-    expect(message).toContain("CAPTURE_ERROR: RuntimeError: %{func} not implemented");
+    expect(message).toContain("handler raised RuntimeError: %{func} not implemented");
+    // the reconstructed sentinel bytes were diffed against the fixture's array
+    expect(failed.diff!.actualBytes).toBe(
+      "CAPTURE_ERROR: RuntimeError: %{func} not implemented".length
+    );
     expect(message).toContain("Oracle Junction+child_one");
   });
 
   it("notes the shape mismatch when the fixture expects a sentinel and the handler returns bytes", async () => {
-    const registry = fakeEngines({
-      mutateRender: (cardName, view, html) =>
-        view === UNKNOWN_VIEW_INPUT ? `<div>rendered ${cardName} anyway</div>` : html,
-    });
-    const entry = allEntries.find((e) => e.id === "smoke:rendered:Oracle Junction#unknown_view_sentinel")!;
+    const entry = allEntries.find(
+      (e) => e.id === "smoke:rendered:Oracle Junction#unknown_view_sentinel"
+    )!;
+    const registry = new HandlerRegistry();
+    registry.register("render-engine", () => renderBytes("<div>rendered anyway</div>"));
     const report = await replayEntries([entry], registry);
     const failed = report.entries[0]!;
     expect(report.summary.fail).toBe(1);
     expect(failed.detail).toBe(
       "fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output"
     );
+    expect(failed.diff!.equal).toBe(false);
   });
 
   it("enforces the exact name-engine contract: extra keys in the outcome fail", async () => {

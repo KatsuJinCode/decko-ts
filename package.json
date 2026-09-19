@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "replay": "vitest run oracle-replay tests/testing"
   },
   "devDependencies": {
     "@libsql/client": "^0.18.0",
