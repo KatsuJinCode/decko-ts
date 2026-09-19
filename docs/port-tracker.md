@@ -16,6 +16,23 @@ plans the next wave. Agents never git-commit and never run npm install
 | 4 | Schema + SQLite DDL | `db/**`, `src/server/schema.ts`, `docs/schema-notes.md` | LANDED: 12 core tables, DDL proven on better-sqlite3, 10/10 tests (coordinator-reviewed) |
 | 5 | CQL parser | `src/cql/**`, `tests/cql/**`, `docs/cql-port-notes.md` | running |
 
+## Wave 1.5 (launched 2026-09-19)
+
+| # | Stream | Owns | Status |
+|---|---|---|---|
+| 6 | Card history/write path | `src/card/history/**`, `tests/card/history/**`, `docs/history-port-notes.md` | running |
+| 7 | Oracle replay harness | `src/testing/**`, `tests/testing/**`, `docs/replay-harness.md` | running |
+| 8 | Benchmark corpus + metrics | `benchmarks/**`, `docs/benchmark-corpus-report.md` | running — delivers the #1282 measurement promises: sanitized structure-preserving corpus from the 47k-card production dump (content-free, verified), Ruby queries-per-render depth curves (the N+1 proof), methodology mapping every published commitment to a measured artifact |
+
+## Metrics program (#1282 commitments -> measurements)
+
+- Byte-for-byte parity -> oracle fixtures (LANDED) + replay harness (stream 7)
+- Response-time comparison on same decks -> stream 8, R2
+- Recursion proof -> stream 8, R1: queries-per-render vs depth, Ruby vs TS (the issue's claim is CONSTANT queries regardless of depth, so the query COUNT is the primary metric, wall-clock secondary)
+- Energy claim proxy -> stream 8, R4: CPU-ms per request, environment metadata mandatory per run
+- One-click Cloudflare deploy -> measurable when the engine first deploys (wave 3+)
+- CQL match parity -> needs a future MySQL oracle rung (SQLite oracle impossible; documented in oracle-harness.md)
+
 ## Wave 2+ backlog (planned when wave 1 lands)
 
 - Card fetch/cache layer over the driver (card, card_actions, card_changes,

@@ -24,9 +24,14 @@ export type ConditionNode =
   /** Value::MatchValue#match_sql: `alias.field REGEXP ?` (or exact name match) */
   | {
       kind: "match";
+      /** the CQL field the match was declared on ("name" or "content") */
+      cqlField: string;
+      /** physical column: name -> "name", content -> "db_content" */
       field: string;
-      /** match term after $var/underscore normalization (before regexp escaping) */
+      /** match term after $var/context normalization (before regexp escaping) */
       term: string;
+      /** key-form of the term (used by the "=" exact name match) */
+      termKey: string;
       /** parsed prefix: "~~" raw regexp, "=" exact, "" or "~" plain */
       prefix: string;
     }
@@ -38,12 +43,14 @@ export type ConditionNode =
    * from constant templates + table aliases, never from CQL input.
    */
   | { kind: "raw"; sql: string }
-  /** group of conditions joined by a conjunction (Conjunctions#conjoin, MatchAttributes#or_join) */
+  /** group of conditions joined by a conjunction (MatchAttributes#or_join) */
   | { kind: "group"; conj: "and" | "or"; conditions: ConditionNode[] }
-  /** Tie#tie_with_exist — reserved; no CQL key routes here in card 1.110 */
-  | { kind: "existsQuery"; negate: boolean; subquery: QueryNode }
-  /** Tie#tie_with_in — reserved; no CQL key routes here in card 1.110 */
-  | { kind: "inQuery"; field: string; negate: boolean; subquery: QueryNode };
+  /**
+   * FoundBy#found_by — home recorded, but generating SQL for it requires
+   * running a nested query and fetching Search cards at interpretation time
+   * (Query.run / Card.fetch). Deferred to wave 2; generateSql raises.
+   */
+  | { kind: "foundBy"; value: unknown };
 
 /** Card::Query::Join */
 export interface JoinNode {
@@ -58,13 +65,10 @@ export interface JoinNode {
   toField: string;
   /** subquery the join was created for (Join#to); its joins render as subjoins */
   to?: QueryNode;
-  /** extra conditions rendered in the ON clause after the field equality */
-  onConditions: ConditionNode[];
 }
 
 /** mods hash (AbstractQuery @mods), post-interpret_modifier */
 export interface Mods {
-  conj?: "and" | "or";
   return?: string;
   limit?: string;
   offset?: string;
@@ -76,8 +80,10 @@ export interface Mods {
   sortBy?: string[];
   sortAs?: string;
   sortDir?: string[];
-  /** deprecated `dir` (Sorting/Order: sort_dir wins over dir) */
+  /** deprecated `dir` (Order: sort_dir wins over dir) */
   dir?: string[];
+  /** Where#in_condition field; set by Tie#tie_with_in (no CQL key reaches it in 1.110) */
+  inField?: string;
 }
 
 /** query class / table the node selects from */
@@ -97,8 +103,11 @@ export interface QueryNode {
   tableAlias: string;
   fasten: Fasten;
   negate: boolean;
-  /** current conjunction for condition grouping (Conjunctions#current_conjunction) */
-  conj: "and" | "or";
+  /**
+   * effective current conjunction (Conjunctions#current_conjunction:
+   * mods[:conj] or "and"); mutated when the conj modifier key is interpreted
+   */
+  conj: string;
   /** CQL context for relative-name absolutization (AbstractQuery#context) */
   context: string;
   /** conditions interpreted directly on this query (AbstractQuery @conditions) */
@@ -132,6 +141,12 @@ export interface ParseOptions {
   resolveCardId?: (name: string) => number | undefined | null;
   /** codename -> id resolver standing in for Card::Codename.id (member key) */
   resolveCodename?: (codename: string) => number | undefined | null;
+  /**
+   * name -> key override standing in for Cardname#key (the card/name stream
+   * owns the full inflecting implementation; the built-in default is a
+   * documented approximation without singularize).
+   */
+  nameToKey?: (name: string) => string;
   /** called for deprecated keys (view/params/size) and other soft warnings */
   onWarning?: (message: string) => void;
 }

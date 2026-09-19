@@ -1,0 +1,362 @@
+/**
+ * CQL AST -> parameterized SQL for SQLite.
+ *
+ * Walks the QueryNode tree exactly the way card-1.110.0's SqlStatement
+ * (+ sql_statement/joins.rb, where.rb, order.rb) walks the Ruby query
+ * objects: SqlStatement#build (select/from/joins/where/group/order/limit),
+ * Joins#join_clause, Where#explicit_conditions/#implicit_conditions,
+ * Order#order_directives.
+ *
+ * Divergences from the Ruby SQL text (all documented in
+ * docs/cql-port-notes.md):
+ * - every user value becomes a `?` placeholder (Ruby inlines quoted
+ *   literals); params are ordered by first appearance in the SQL text
+ * - whitespace is canonical (single spaces; Ruby emits e.g. "LIMIT  10 ",
+ *   a doubled slot for the SQL comment, and "count( distinct ...)")
+ * - the permission condition is optional (Ruby always applies the current
+ *   user's read rules); pass { alwaysOk: false, readRuleIds } to reproduce it
+ * - `match` renders `field REGEXP ?`, the token card-1.110.0's ActiveRecord
+ *   patch (config/initializers/02_patches/active_record.rb) generates for
+ *   both MySQL and SQLite; SQLite has no built-in REGEXP — the FTS5 decision
+ *   is deferred (wave 2), see the notes
+ */
+
+import { ConditionNode, JoinNode, QueryNode } from "./ast.js";
+import { BASIC_FIELDS, DEFAULT_ORDER_DIRS, LIST_OPS, ORDER_MAP } from "./constants.js";
+import { escapeRegexpCharacters, safeSql } from "./normalize.js";
+
+export interface SqlOptions {
+  /**
+   * true (default) skips the read-rule permission condition, matching Ruby
+   * when Auth.always_ok? is true. false adds
+   * `<alias>.read_rule_id IN (...)` from `readRuleIds` (an empty list renders
+   * the Ruby sentinel `IN (1)`).
+   */
+  alwaysOk?: boolean;
+  readRuleIds?: number[];
+}
+
+export interface SqlResult {
+  sql: string;
+  params: unknown[];
+}
+
+export function generateSql(root: QueryNode, options: SqlOptions = {}): SqlResult {
+  const ctx: GenContext = { params: [], options };
+  const sql = renderQuery(root, ctx, true);
+  return { sql, params: ctx.params };
+}
+
+interface GenContext {
+  params: unknown[];
+  options: SqlOptions;
+}
+
+/** SqlStatement#build / #to_s */
+function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string {
+  const alias = query.tableAlias;
+  const full = isRoot && query.mods.return !== "count"; // CardQuery#full?
+
+  // Order#order_directives (full queries only; fields feed the select list)
+  const orderDirectives = full ? orderDirectivesOf(query) : [];
+
+  // SqlStatement#fields
+  const parts: string[] = [fullField(alias, query.mods.return)];
+  for (const directive of orderDirectives) parts.push(directive.field);
+
+  const selectSql = `SELECT${renderedJoins(query).length > 0 ? " DISTINCT" : ""} ${parts.join(", ")}`;
+  const fromSql = `FROM ${query.table} ${alias}`;
+  const joinsSql = renderJoins(query, ctx);
+  const whereSql = renderWhere(query, ctx);
+  const groupSql = full && query.mods.group ? `GROUP BY ${safeSql(query.mods.group)}` : "";
+  const orderSql =
+    orderDirectives.length > 0
+      ? `ORDER BY ${orderDirectives.map((d) => (d.dir ? `${d.field} ${d.dir}` : d.field)).join(", ")}`
+      : "";
+  // SqlStatement#limit_and_offset: LIMIT only when limit > 0; OFFSET only
+  // with LIMIT (Ruby quirk: offset without limit renders nothing)
+  let limitSql = "";
+  if (full) {
+    const limit = toInt(query.mods.limit);
+    if (limit > 0) {
+      limitSql = `LIMIT ${limit}`;
+      if (query.mods.offset !== undefined && query.mods.offset !== "") {
+        limitSql += ` OFFSET ${toInt(query.mods.offset)}`;
+      }
+    }
+  }
+
+  return [selectSql, fromSql, joinsSql, whereSql, groupSql, orderSql, limitSql]
+    .filter((chunk) => chunk !== "")
+    .join(" ");
+}
+
+function toInt(value: string | undefined): number {
+  if (value === undefined) return 0;
+  const n = parseInt(value, 10);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+/** SqlStatement#full_field */
+function fullField(alias: string, ret: string | undefined): string {
+  const field = ret === undefined || /^_\w+/.test(ret) ? "card" : ret;
+  switch (field) {
+    case "card":
+    case "raw":
+      return `${alias}.*`;
+    case "content":
+      return `${alias}.db_content`;
+    case "name":
+    case "key":
+      return `${alias}.name, ${alias}.left_id, ${alias}.right_id`;
+    case "count":
+      return `coalesce(count(distinct ${alias}.id),0) as count`;
+    default:
+      return (BASIC_FIELDS as readonly string[]).includes(field)
+        ? `${alias}.${field}`
+        : safeSql(field);
+  }
+}
+
+// ---- WHERE (SqlStatement::Where) ----
+
+function renderWhere(query: QueryNode, ctx: GenContext): string {
+  const explicit = explicitConditions(query, ctx);
+  const implicit = implicitConditions(query, ctx);
+  const chunks = [explicit, implicit].filter((chunk) => chunk !== "");
+  return chunks.length > 0 ? `WHERE ${chunks.join(" AND ")}` : "";
+}
+
+/** Where#explicit_conditions + #conditions_from + #format_conditions */
+function explicitConditions(query: QueryNode, ctx: GenContext): string {
+  const list: string[] = query.conditions.map((condition) => renderCondition(condition, query, ctx));
+  for (const sub of query.subqueries) {
+    if (sub.conditionsOnJoin) continue; // rendered in the owning join's ON
+    switch (sub.fasten) {
+      case "exist":
+        // Where#exist_condition
+        list.push(`${sub.negate ? "NOT " : ""}EXISTS (${renderQuery(sub, ctx, false)})`);
+        break;
+      case "in":
+        // Where#in_condition (field recorded by Tie#tie_with_in)
+        list.push(
+          `${sub.mods.inField ?? `${sub.tableAlias}.id`} ${sub.negate ? "NOT " : ""}IN (${renderQuery(sub, ctx, false)})`,
+        );
+        break;
+      default:
+        // :join and :direct subqueries render their conditions inline
+        list.push(explicitConditions(sub, ctx));
+    }
+  }
+  return formatConditionList(list, query.conj);
+}
+
+/** Where#format_conditions */
+function formatConditionList(list: string[], conj: string): string {
+  if (list.length === 0) return "";
+  if (list.length === 1) return list[0];
+  return `(${list.join(` ${conj.toUpperCase()} `)})`;
+}
+
+/** Where#implicit_conditions: trash + permissions, card queries only */
+function implicitConditions(query: QueryNode, ctx: GenContext): string {
+  if (query.kind !== "card") return "";
+  const chunks = [`${query.tableAlias}.trash is false`];
+  const { alwaysOk = true, readRuleIds } = ctx.options;
+  if (!alwaysOk) {
+    if (readRuleIds && readRuleIds.length > 0) {
+      chunks.push(`${query.tableAlias}.read_rule_id IN (${readRuleIds.map(() => "?").join(",")})`);
+      ctx.params.push(...readRuleIds);
+    } else {
+      // Where#permission_conditions: empty rule list -> sentinel "1"
+      chunks.push(`${query.tableAlias}.read_rule_id IN (1)`);
+    }
+  }
+  return chunks.join(" AND ");
+}
+
+/** renderCondition for each ConditionNode shape */
+function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenContext): string {
+  const alias = query.tableAlias;
+  switch (condition.kind) {
+    case "value": {
+      const fieldSql = `${alias}.${condition.field}`;
+      if (condition.values.length === 1 && !LIST_OPS.has(condition.op)) {
+        return `${fieldSql} ${condition.op} ${renderScalar(condition.values[0], ctx)}`;
+      }
+      // Value#sqlize_array: list ops always group ("in ('5')"); other ops
+      // collapse single values to scalars
+      return `${fieldSql} ${condition.op} (${condition.values
+        .map((v) => renderScalar(v, ctx))
+        .join(",")})`;
+    }
+    case "match": {
+      // MatchValue#match_sql: "=term" on name -> exact key comparison;
+      // otherwise REGEXP with the term (escaped unless "~~" prefix)
+      if (condition.prefix === "=" && condition.cqlField === "name") {
+        return `${alias}.key = ${placeholder(ctx, condition.termKey)}`;
+      }
+      const value =
+        condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
+      return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
+    }
+    case "like":
+      // MatchAttributes#complete: "#{alias}.key LIKE '#{key}%'"
+      return `${alias}.key LIKE ${placeholder(ctx, `${condition.value}%`)}`;
+    case "raw":
+      return condition.sql;
+    case "group":
+      // MatchAttributes#or_join — always parenthesized
+      return `(${condition.conditions
+        .map((c) => renderCondition(c, query, ctx))
+        .join(` ${condition.conj.toUpperCase()} `)})`;
+    case "foundBy":
+      throw new Error(
+        "found_by requires runtime query execution (Query.run / Card.fetch) — deferred to wave 2; see docs/cql-port-notes.md",
+      );
+  }
+}
+
+function renderScalar(value: string | number | null, ctx: GenContext): string {
+  if (value === null) return "NULL";
+  return placeholder(ctx, value);
+}
+
+function placeholder(ctx: GenContext, value: unknown): string {
+  ctx.params.push(value);
+  return "?";
+}
+
+// ---- JOINS (SqlStatement::Joins) ----
+
+/**
+ * Joins#joins_on_query: the query's own joins followed by the joins of its
+ * :direct subqueries (transitively — those share this query's table alias).
+ */
+function renderedJoins(query: QueryNode): JoinNode[] {
+  const joins = [...query.joins];
+  collectDirectSubqueryJoins(query, joins);
+  return joins;
+}
+
+function collectDirectSubqueryJoins(query: QueryNode, out: JoinNode[]): void {
+  for (const sub of query.subqueries) {
+    if (sub.fasten === "direct") {
+      out.push(...sub.joins);
+      collectDirectSubqueryJoins(sub, out);
+    }
+  }
+}
+
+/** Joins#joins / #join_clause / #subjoins */
+function renderJoins(query: QueryNode, ctx: GenContext): string {
+  const chunks: string[] = [];
+  for (const join of renderedJoins(query)) {
+    renderJoin(join, ctx, chunks);
+  }
+  return chunks.join(" ");
+}
+
+function renderJoin(join: JoinNode, ctx: GenContext, chunks: string[]): void {
+  const side = join.side ?? "";
+  const subjoins = join.to ? renderJoins(join.to, ctx) : "";
+  const onSql = onClause(join, ctx);
+
+  if (side === "LEFT" && subjoins !== "") {
+    // Joins#join_clause_parts: LEFT JOIN parenthesizes table + subjoins
+    chunks.push(`LEFT JOIN (${join.toTable} ${join.toAlias} ${subjoins}) ON ${onSql}`);
+  } else {
+    chunks.push(`${side ? `${side} ` : ""}JOIN ${join.toTable} ${join.toAlias} ON ${onSql}`);
+    if (subjoins !== "") chunks.push(subjoins);
+  }
+}
+
+/** Joins#on_clause + #on_card_conditions */
+function onClause(join: JoinNode, ctx: GenContext): string {
+  const conditions: string[] = [
+    `${join.fromAlias}.${join.fromField} = ${join.toAlias}.${join.toField}`,
+  ];
+  const to = join.to;
+  if (to) {
+    if (to.conditionsOnJoin) {
+      // on_card_conditions: explicit conditions render in ON when the join
+      // owns them (negate joins, sort joins)
+      const explicit = explicitConditions(to, ctx);
+      if (explicit !== "") conditions.push(explicit);
+    }
+    // implicit conditions (trash/permissions) always ride along on card joins
+    const implicit = implicitConditions(to, ctx);
+    if (implicit !== "") conditions.push(implicit);
+  }
+  return conditions.join(" AND ");
+}
+
+// ---- ORDER BY (SqlStatement::Order) ----
+
+interface OrderDirective {
+  field: string;
+  dir: string;
+}
+
+/** Order#order_directives / #order_field / #order_dir */
+function orderDirectivesOf(query: QueryNode): OrderDirective[] {
+  const sortMod = query.mods.sortBy ?? query.mods.sort;
+  if (!sortMod || sortMod.length === 0) return [];
+  return sortMod.map((token, index) => {
+    const field = orderField(query, token);
+    return { field, dir: orderDir(query, token, index) };
+  });
+}
+
+function orderField(query: QueryNode, token: string): string {
+  const mapped = ORDER_MAP[token];
+  const raw = mapped ? `${query.tableAlias}.${mapped}` : safeSql(token);
+  return applySortAs(query, raw);
+}
+
+/** Order#order_as — CAST(field AS type) when sort_as is present */
+function applySortAs(query: QueryNode, field: string): string {
+  const as = query.mods.sortAs;
+  if (!as) return field;
+  return `CAST(${field} AS ${sqliteCastType(safeSql(as))})`;
+}
+
+/**
+ * Order#order_dir. sort_dir wins over the deprecated dir; per-directive
+ * entries index into the arrays; without either, DEFAULT_ORDER_DIRS (keyed
+ * by the raw sort token) or "asc".
+ */
+function orderDir(query: QueryNode, token: string, index: number): string {
+  const dirs = query.mods.sortDir ?? query.mods.dir;
+  if (!dirs || dirs.length === 0) {
+    return DEFAULT_ORDER_DIRS[token] ?? "asc";
+  }
+  const dir = dirs[index];
+  return dir === undefined ? "" : safeSql(dir);
+}
+
+/**
+ * SqlStatement#cast_type approximation for SQLite. Ruby casts through the
+ * adapter's native types (MySQL "signed", "char", ...); SQLite understands
+ * INTEGER/REAL/TEXT. Unmapped values pass through safe_sql verbatim.
+ */
+function sqliteCastType(type: string): string {
+  switch (type.toLowerCase()) {
+    case "signed":
+    case "integer":
+    case "int":
+      return "INTEGER";
+    case "char":
+    case "string":
+    case "text":
+    case "binary":
+      return "TEXT";
+    case "decimal":
+    case "float":
+    case "real":
+    case "numeric":
+      return "REAL";
+    default:
+      return type;
+  }
+}
