@@ -20,6 +20,7 @@ const spotCount = Number(process.env.DECKO_MIGRATE_SPOT ?? "25");
 
 it.skipIf(reportPath === undefined || targetPath === undefined)(
   "migration engine verification (CLI-driven)",
+  { timeout: 600_000 },
   async () => {
     expect(existsSync(targetPath as string)).toBe(true);
     expect(existsSync(reportPath as string)).toBe(true);
@@ -48,5 +49,4 @@ it.skipIf(reportPath === undefined || targetPath === undefined)(
       driver.close();
     }
   },
-  { timeout: 600_000 },
 );

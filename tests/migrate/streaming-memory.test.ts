@@ -21,7 +21,7 @@ import {
 } from "../../tools/migrate/import.mjs";
 import { MysqldumpInsertParser } from "../../tools/migrate/parse-dump.mjs";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 const ROWS = 1_000_000;
@@ -29,7 +29,14 @@ const BATCH = 500;
 
 const dirs: string[] = [];
 afterAll(() => {
-  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  // best-effort cleanup; Windows may still hold a handle briefly
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // leftover %TEMP% dirs are acceptable
+    }
+  }
 });
 
 /** Write ROWS sessions tuples to fd, BATCH at a time (bounded memory). */

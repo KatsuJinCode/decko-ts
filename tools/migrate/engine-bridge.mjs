@@ -47,7 +47,7 @@ import { FetchEngine } from "../../src/card/fetch.ts";
 import { RenderEngine } from "../../src/card/render.ts";
 import { DeckoName } from "../../src/card/name.ts";
 
-const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** The real decko-ts name algebra (src/card/name.ts), for import.mjs's
  *  key-repair hook. */

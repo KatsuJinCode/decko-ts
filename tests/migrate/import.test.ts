@@ -32,7 +32,7 @@ import {
   referencesInsert,
 } from "./synthetic-dump.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 const dirs: string[] = [];
@@ -42,7 +42,14 @@ function makeDir(): string {
   return dir;
 }
 afterAll(() => {
-  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  // best-effort cleanup; Windows may still hold a handle briefly
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // leftover %TEMP% dirs are acceptable
+    }
+  }
 });
 
 function writeDump(dir: string, text: string): string {

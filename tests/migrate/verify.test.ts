@@ -20,12 +20,19 @@ import {
   actsInsert,
 } from "./synthetic-dump.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 const dirs: string[] = [];
 afterAll(() => {
-  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  // best-effort cleanup; Windows may still hold a handle briefly
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // leftover %TEMP% dirs are acceptable
+    }
+  }
 });
 
 async function buildVerifiedFixture(dir: string) {

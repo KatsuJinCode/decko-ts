@@ -29,7 +29,7 @@ import {
   referencesInsert,
 } from "./synthetic-dump.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 const dirs: string[] = [];
@@ -39,7 +39,20 @@ function makeDir(): string {
   return dir;
 }
 afterAll(() => {
-  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  // Close the shared driver first (Windows: the open handle would make
+  // temp-dir cleanup EPERM); leftover temp dirs are non-fatal either way.
+  try {
+    driver?.close();
+  } catch {
+    // already closed
+  }
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // best-effort cleanup of %TEMP%
+    }
+  }
 });
 
 function buildDeck(): string {
@@ -67,9 +80,9 @@ function buildDeck(): string {
       { id: 6, name: "*self" },
       {
         id: 7,
-        name: "Broken Junction+side",
+        name: null, // broken junction: NULL columns (2020 convention)...
         key: null,
-        leftId: 99999, // unresolvable side: fetch composes undefined
+        leftId: 99999, // ...and an unresolvable side id
         rightId: 4,
         dbContent: "orphan content",
       },
@@ -113,8 +126,9 @@ describe("dump -> import -> decko-ts engine", () => {
     expect(deep?.name?.s).toBe("Round Trip+deep_page");
     expect(deep?.leftId).toBe(2);
     expect(deep?.rightId).toBe(4);
-    // trashed card: lexicon.name(id) resolves (no trash filter on id reads)
-    const trashed = await fetcher.fetchById(8);
+    // trashed card: fetch returns it via lookInTrash; lexicon name(id)
+    // resolves without a trash filter (by-id reads ignore trash)
+    const trashed = await fetcher.fetchById(8, { lookInTrash: true });
     expect(trashed?.trash).toBe(true);
     expect(trashed?.name?.s).toBe("Trashed Draft");
     // broken junction: fetch composes name undefined (data-faithful)
@@ -136,17 +150,12 @@ describe("dump -> import -> decko-ts engine", () => {
   }, 60000);
 
   it("CQL queries the migrated data", async () => {
-    const result = await executeQuery(
-      driver,
-      { match: { name: "Round Trip" } },
-      {},
-    );
+    const result = await executeQuery(driver, { name: "Round Trip" }, {});
     if (!("rows" in result)) throw new Error("expected card rows");
-    const names = result.rows.map((r) => r.name ?? "");
-    expect(names.length).toBeGreaterThanOrEqual(1);
-    // junction rows surface with NULL name columns (post-2020 convention)
-    const simple = result.rows.find((r) => r.id === 2);
-    expect(simple?.name).toBe("Round Trip");
+    expect(result.rows.length).toBe(1);
+    const row = result.rows[0];
+    expect(row?.id).toBe(2);
+    expect(row?.name).toBe("Round Trip");
   }, 60000);
 
   it("engine bridge spot-renders and reports fixture absence honestly", async () => {

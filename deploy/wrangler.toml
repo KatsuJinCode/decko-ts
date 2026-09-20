@@ -29,7 +29,7 @@ compatibility_date = "2026-09-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "decko-ts-demo-db"
-database_id = "REPLACE_WITH_ID_FROM_WRANGLER_D1_CREATE"
+database_id = "ac0f6b00-757d-4b09-b131-997a9a3fb4d7"
 migrations_dir = "migrations"
 
 # No R2 binding, no KV, no queues, no secrets: this deploy is one Worker and

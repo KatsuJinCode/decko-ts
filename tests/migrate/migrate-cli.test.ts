@@ -19,11 +19,17 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { dumpFile, cardsInsert } from "./synthetic-dump.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 const dirs: string[] = [];
 afterAll(() => {
-  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // best-effort cleanup of %TEMP%
+    }
+  }
 });
 
 describe("migrate CLI", () => {

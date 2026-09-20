@@ -10,6 +10,8 @@
 // so tests can put quotes, backslashes, newlines, tabs, NUL and \Z into
 // synthetic content and round-trip them through the parser/importer.
 
+import { DeckoName } from "../../src/card/name.js";
+
 export const BS = String.fromCharCode(92);
 
 /** MySQL escape letter for a control character. */
@@ -68,12 +70,27 @@ export interface SyntheticCard {
 
 const T0 = "2020-01-02 03:04:05";
 
-/** One cards tuple, positional (the dump's column order = target DDL). */
+/** One cards tuple, positional (the dump's column order = target DDL).
+ *  Column conventions follow the Ruby write path (see
+ *  tests/card/fetch/fetch-test-storage.ts): simple cards carry name+key;
+ *  junction rows (leftId set) default to NULL name/key columns (the 2020
+ *  convention); an explicit `key: null` on a simple card models the
+ *  anomalous row the importer's repair step targets. */
 export function cardsTuple(c: SyntheticCard): string {
+  let keyCol = c.key ?? null;
+  let nameCol = c.name ?? null;
+  if (c.key === undefined) {
+    if (c.leftId !== undefined && c.leftId !== null) {
+      keyCol = null;
+      if (c.name === undefined) nameCol = null;
+    } else if (c.name !== null && c.name !== undefined) {
+      keyCol = DeckoName.parse(c.name).key;
+    }
+  }
   return sqlTuple(
     c.id,
-    c.name ?? null,
-    c.key ?? null,
+    nameCol,
+    keyCol,
     c.codename ?? null,
     c.leftId ?? null,
     c.rightId ?? null,
