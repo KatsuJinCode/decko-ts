@@ -49,13 +49,13 @@ afterAll(() => {
 describe("findRule", () => {
   it("returns undefined when no candidates exist", async () => {
     const s = storage!;
-    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "nonexistent_setting");
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "*nonexistent");
     expect(result).toBeUndefined();
   });
 
   it("finds *all+*read when the card has no type-specific rule", async () => {
     const s = storage!;
-    const result = await findRule(s.fetcher, nameAsPatternCardInput("Orphan"), "read");
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Orphan"), "*read");
     expect(result).toBeDefined();
     expect(result!.rule.id).toBe(3);
     expect(result!.rule.dbContent).toBe('{"view":"open","class":"custom-all"}');
@@ -64,7 +64,7 @@ describe("findRule", () => {
 
   it("returns all candidates for debugging", async () => {
     const s = storage!;
-    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "read");
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "*read");
     expect(result).toBeDefined();
     // Leaf has typeId=2 typeName=Basic. patternsForCard yields set names
     // including Basic+*type and *all. Candidates include both.
@@ -75,7 +75,7 @@ describe("findRule", () => {
 
   it("prefers the more-specific rule when both exist", async () => {
     const s = storage!;
-    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "read");
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "*read");
     expect(result).toBeDefined();
     // The Basic+*type+*read rule should win because *type is more specific
     // than *all in the registry precedence order.
@@ -89,7 +89,7 @@ describe("findRules (multiple settings)", () => {
     const s = storage!;
     // Seed a *write rule on *all (junction row).
     await seedCard(s, { id: 8, leftId: 1, rightId: 10, dbContent: '{"view":"content","wrap":"div"}' });
-    const results = await findRules(s.fetcher, nameAsPatternCardInput("Orphan"), ["read", "write"]);
+    const results = await findRules(s.fetcher, nameAsPatternCardInput("Orphan"), ["*read", "*write"]);
     expect(results.length).toBe(2);
     const settings = results.map((r) => r.rule.name?.s ?? "").sort();
     expect(settings).toEqual(["*all+*read", "*all+*write"]);
