@@ -53,8 +53,6 @@ function splitSqlStatements(ddl: string): string[] {
 // This is the SAME pipeline wrangler uses internally — the test exercises
 // the production-shape code, not a transpiled approximation.
 import { transformWithEsbuild } from "vite";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import workerTsSource from "../worker.ts?raw";
 
 async function compileWorker(): Promise<string> {
