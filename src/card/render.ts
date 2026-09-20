@@ -140,6 +140,7 @@ export class RenderEngine implements RenderEngineLike {
     this.renderCards.clear();
     this.idsByKey.clear();
     this.searchResults.clear();
+    this.ruleCache.clear();
     this.lastPrefetch = undefined;
   }
 
