@@ -336,7 +336,8 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               total: renderEntries.length,
               pass: renderEntries.filter((e) => e.status === "pass").length,
               structurePending: renderStructurePending.length,
-              realFail: renderReal.length,
+              nestGap: renderNestGap.length,
+              realFail: renderRealReal.length,
             },
           });
 

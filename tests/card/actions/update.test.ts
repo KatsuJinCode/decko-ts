@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
-import { CardActionError } from "../../../src/card/actions/index.js";
+import { CardActionError, type CardActionEngine } from "../../../src/card/actions/index.js";
 import {
   actionEngine,
   createActionsTestStorage,
