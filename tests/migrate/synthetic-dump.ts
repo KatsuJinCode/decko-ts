@@ -51,7 +51,10 @@ export function sqlTuple(...values: (string | number | null)[]): string {
 export interface SyntheticCard {
   id: number;
   name: string | null;
-  key: string | null;
+  /** undefined = default (key derived from name for simple cards, NULL
+   *  columns for junction rows); null = explicitly anomalous (models the
+   *  missing-key row the importer's repair step targets). */
+  key?: string | null;
   codename?: string | null;
   leftId?: number | null;
   rightId?: number | null;

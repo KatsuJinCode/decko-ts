@@ -14,20 +14,20 @@ import { it, expect } from "vitest";
 import { engineChecks } from "../../tools/migrate/engine-bridge.mjs";
 import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
 
-const reportPath = process.env.DECKO_MIGRATE_REPORT;
-const targetPath = process.env.DECKO_MIGRATE_TARGET;
+const reportPath: string | undefined = process.env.DECKO_MIGRATE_REPORT;
+const targetPath: string | undefined = process.env.DECKO_MIGRATE_TARGET;
 const spotCount = Number(process.env.DECKO_MIGRATE_SPOT ?? "25");
 
 it.skipIf(reportPath === undefined || targetPath === undefined)(
   "migration engine verification (CLI-driven)",
   { timeout: 600_000 },
   async () => {
-    expect(existsSync(targetPath as string)).toBe(true);
-    expect(existsSync(reportPath as string)).toBe(true);
+    const report = reportPath as string;
+    const target = targetPath as string;
+    expect(existsSync(target)).toBe(true);
+    expect(existsSync(report)).toBe(true);
 
-    const driver = new LocalSqliteToolDriver(targetPath as string, {
-      readonly: true,
-    });
+    const driver = new LocalSqliteToolDriver(target, { readonly: true });
     try {
       const engine = await engineChecks({
         driver,
@@ -35,16 +35,17 @@ it.skipIf(reportPath === undefined || targetPath === undefined)(
         seed: 0xdec000,
       });
       // Merge into the report the CLI wrote (it holds the engine key as
-      // "skipped" until this runs).
-      const report = JSON.parse(readFileSync(reportPath as string, "utf8"));
-      report.engine = { ...engine, status: "ok" };
+      // "skipped" until this runs) and leave the standalone engine JSON
+      // for the CLI's merge step.
+      const parsed = JSON.parse(readFileSync(report, "utf8"));
+      parsed.engine = { ...engine, status: "ok" };
       writeFileSync(
-        `${reportPath}.engine.json`,
+        `${report}.engine.json`,
         JSON.stringify({ ...engine, status: "ok" }, null, 2),
         "utf8",
       );
-      writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf8");
-      expect(report.engine.status).toBe("ok");
+      writeFileSync(report, JSON.stringify(parsed, null, 2), "utf8");
+      expect(parsed.engine.status).toBe("ok");
     } finally {
       driver.close();
     }

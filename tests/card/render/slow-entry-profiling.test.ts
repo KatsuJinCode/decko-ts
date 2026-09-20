@@ -19,7 +19,7 @@ import { RenderEngine, UnsupportedViewError } from "../../../src/card/render.js"
 import type { CardsRow } from "../../../src/server/schema.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(HERE, "..", "..");
+const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
 const SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 
@@ -146,6 +146,89 @@ function topStatements(timing: TimingDriver, n: number): string {
 }
 
 describe("profile: uniform slow corpus renders", () => {
+  it("probes SQLite recursive-CTE semantics (pair-join arms, cross-CTE reference)", { timeout: 60_000 }, async () => {
+    const sqlite = new LocalSqliteDriver({ path: ":memory:" });
+    try {
+      await sqlite.query(
+        `CREATE TABLE cards (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, key TEXT,` +
+        ` left_id INTEGER, right_id INTEGER, trash INTEGER NOT NULL DEFAULT 0,` +
+        ` type_id INTEGER NOT NULL DEFAULT 2, db_content TEXT)`,
+        [],
+      );
+      // a, b simple; J1 = a+b (junction row); c simple; J2 = J1+c
+      const ins = `INSERT INTO cards (id, name, key, left_id, right_id, trash) VALUES`;
+      await sqlite.query(`${ins} (1, 'a', 'a', NULL, NULL, 0), (2, 'b', 'b', NULL, NULL, 0)`, []);
+      await sqlite.query(`${ins} (3, NULL, NULL, 1, 2, 0), (4, 'c', 'c', NULL, NULL, 0)`, []);
+      await sqlite.query(`${ins} (5, NULL, NULL, 3, 4, 0)`, []);
+
+      // T1: one recursive CTE whose recursive part is a compound select, each
+      // arm referencing the recursive table once (pair-join composition).
+      let t1: unknown = "SKIPPED";
+      try {
+        const rows = await sqlite.query(
+          `WITH RECURSIVE resolved(id, ckey) AS (\n` +
+          `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
+          `  UNION\n` +
+          `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+          `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
+          `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+          `  UNION\n` +
+          `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+          `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
+          `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+          `)\nSELECT id, ckey FROM resolved ORDER BY id`,
+          [],
+        );
+        t1 = rows.rows;
+      } catch (e) {
+        t1 = `FAIL: ${(e as Error).message}`;
+      }
+      console.log("T1 compound-arm pair-join:", JSON.stringify(t1));
+
+      // T2: a second recursive CTE whose recursive step references the FIRST
+      // recursive CTE (frontier-style walk over a precomputed key map).
+      let t2: unknown = "SKIPPED";
+      try {
+        const rows = await sqlite.query(
+          `WITH RECURSIVE resolved(id, ckey) AS (\n` +
+          `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
+          `  UNION\n` +
+          `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+          `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
+          `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+          `),\n` +
+          `frontier(k) AS (\n` +
+          `  SELECT 'a'\n` +
+          `  UNION\n` +
+          `  SELECT DISTINCT '+' || rs.ckey FROM frontier f\n` +
+          `  JOIN resolved rs ON rs.ckey = f.k\n` +
+          `)\nSELECT k FROM frontier`,
+          [],
+        );
+        t2 = rows.rows;
+      } catch (e) {
+        t2 = `FAIL: ${(e as Error).message}`;
+      }
+      console.log("T2 cross-recursive-CTE reference:", JSON.stringify(t2));
+
+      // T3: row-value IN for junction side-pair lookups (batch shape).
+      let t3: unknown = "SKIPPED";
+      try {
+        const rows = await sqlite.query(
+          `SELECT id FROM cards WHERE (left_id, right_id) IN (VALUES (1, 2), (3, 4))`,
+          [],
+        );
+        t3 = rows.rows;
+      } catch (e) {
+        t3 = `FAIL: ${(e as Error).message}`;
+      }
+      console.log("T3 row-value IN:", JSON.stringify(t3));
+      expect(true).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it(
     "attributes per-entry time on shard 0 subset (SQL vs JS, prefetch re-runs, slowest statements)",
     { timeout: 900_000 },

@@ -42,7 +42,7 @@ afterAll(() => {
   // Close the shared driver first (Windows: the open handle would make
   // temp-dir cleanup EPERM); leftover temp dirs are non-fatal either way.
   try {
-    driver?.close();
+    sharedDriver?.close();
   } catch {
     // already closed
   }
@@ -54,6 +54,9 @@ afterAll(() => {
     }
   }
 });
+
+/** The imported deck's driver, shared by the round-trip tests below. */
+let sharedDriver: InstanceType<typeof LocalSqliteToolDriver> | undefined;
 
 function buildDeck(): string {
   return dumpFile([
@@ -96,13 +99,12 @@ function buildDeck(): string {
 }
 
 describe("dump -> import -> decko-ts engine", () => {
-  let driver: InstanceType<typeof LocalSqliteToolDriver>;
-
   it("imports the synthetic deck", async () => {
     const dir = makeDir();
     const dumpPath = join(dir, "deck.sql");
     writeFileSync(dumpPath, buildDeck(), "utf8");
-    driver = new LocalSqliteToolDriver(join(dir, "deck.sqlite"));
+    const driver = new LocalSqliteToolDriver(join(dir, "deck.sqlite"));
+    sharedDriver = driver;
     const stats = await importDump({
       dumpPath,
       driver,
@@ -114,7 +116,7 @@ describe("dump -> import -> decko-ts engine", () => {
   }, 60000);
 
   it("fetch composes simple and compound names per the fetch layer rules", async () => {
-    const fetcher = new FetchEngine(driver);
+    const fetcher = new FetchEngine(sharedDriver as InstanceType<typeof LocalSqliteToolDriver>);
     // simple card: name/key straight from columns
     const home = await fetcher.fetchByName("Round Trip Home");
     expect(home?.id).toBe(1);
@@ -138,7 +140,7 @@ describe("dump -> import -> decko-ts engine", () => {
   });
 
   it("render engine renders migrated cards", async () => {
-    const fetcher = new FetchEngine(driver);
+    const fetcher = new FetchEngine(sharedDriver as InstanceType<typeof LocalSqliteToolDriver>);
     const renderer = new RenderEngine(fetcher);
     const html = await renderer.render("Round Trip Home", "content");
     expect(html).toContain("welcome to the round trip");
@@ -150,7 +152,11 @@ describe("dump -> import -> decko-ts engine", () => {
   }, 60000);
 
   it("CQL queries the migrated data", async () => {
-    const result = await executeQuery(driver, { name: "Round Trip" }, {});
+    const result = await executeQuery(
+      sharedDriver as InstanceType<typeof LocalSqliteToolDriver>,
+      { name: "Round Trip" },
+      {},
+    );
     if (!("rows" in result)) throw new Error("expected card rows");
     expect(result.rows.length).toBe(1);
     const row = result.rows[0];
@@ -159,7 +165,11 @@ describe("dump -> import -> decko-ts engine", () => {
   }, 60000);
 
   it("engine bridge spot-renders and reports fixture absence honestly", async () => {
-    const checks = await engineChecks({ driver, spotCount: 5, seed: 7 });
+    const checks = await engineChecks({
+      driver: sharedDriver as InstanceType<typeof LocalSqliteToolDriver>,
+      spotCount: 5,
+      seed: 7,
+    });
     expect(checks.junctionEngine.sampled).toBeGreaterThan(0);
     expect(checks.junctionEngine.resolved).toBeGreaterThan(0);
     expect(checks.spotRender.sampled).toBeGreaterThan(0);

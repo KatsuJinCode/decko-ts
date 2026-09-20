@@ -42,7 +42,7 @@ export interface MigrationReport {
     }
   >;
   junction: { sampled: number; resolved: number; unresolvedIds: number[] };
-  engine: Record<string, unknown> & { status: string };
+  engine: { status: string; [key: string]: unknown };
   outOfScope: string[];
   allParity: boolean;
   warnings: string[];
@@ -63,7 +63,7 @@ export interface VerifyOptions {
     driver: LocalSqliteToolDriver;
     spotCount: number;
     seed: number;
-  }) => Promise<Record<string, unknown>>;
+  }) => Promise<unknown>;
   /** Random cards to spot-check (default 25). */
   spotCount?: number;
   /** RNG seed for reproducible sampling. */

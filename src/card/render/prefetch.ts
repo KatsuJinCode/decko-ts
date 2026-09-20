@@ -167,10 +167,10 @@ export async function prefetchInclusionClosure(
   // Compose + cache everything (idempotent with the fetch cache).
   const allRows = [...sideRows, ...walkedRows];
   if (!allRows.some((row) => row.id === root.id)) allRows.push(recordToRawRow(root));
-  await composeAndCache(allRows, ctx, stats);
+  const composed = await composeAndCache(allRows, ctx, stats);
 
   // --- mechanism 3: JS verification + per-level fallback --------------------
-  await verifyClosure([recordToRawRow(root), ...walkedRows], ctx, stats);
+  await verifyClosure([recordToRawRow(root), ...walkedRows], composed, ctx, stats);
   return stats;
 }
 
@@ -192,13 +192,14 @@ function recordToRawRow(record: CardRecord): RawRow {
  * row map so every compound name resolves within the batch), prime the
  * lexicon (Lexicon#write - lib/card/lexicon.rb#write) and write every record
  * into the fetch cache. Composing through the warmed lexicon costs zero
- * queries.
+ * queries. Returns the composed records so callers can index them by key
+ * (the junction-closure walk needs composed-key -> id).
  */
 async function composeAndCache(
   rows: RawRow[],
   ctx: PrefetchContext,
   stats: PrefetchStats,
-): Promise<void> {
+): Promise<CardRecord[]> {
   const byId = new Map<number, RawRow>();
   for (const row of rows) byId.set(row.id, row);
 
@@ -217,6 +218,7 @@ async function composeAndCache(
     pending = still;
   }
 
+  const composedRecords: CardRecord[] = [];
   for (const row of byId.values()) {
     const name = names.get(row.id);
     if (name === undefined) continue;
@@ -228,10 +230,14 @@ async function composeAndCache(
   }
 
   for (const row of byId.values()) {
+    const name = names.get(row.id);
+    if (name === undefined) continue;
     const record = await composeCardRecord(rowToCardsRow(row), ctx.lexicon);
     await ctx.cacheRecord(record);
+    composedRecords.push(record);
     stats.cards += 1;
   }
+  return composedRecords;
 }
 
 function tryComposeName(row: RawRow, names: Map<number, DeckoName>): DeckoName | undefined {
@@ -273,23 +279,38 @@ function rowToCardsRow(row: RawRow): CardsRow {
  * parser; any reference not already resolved is fetched here, in per-level
  * rounds (the prescribed one-batch-per-level shape).
  *
- * Junction handling: compound rows carry NULL key columns (2020 convention),
- * so a junction reference resolves through a SIDE-KEY join
- * (left.key + right.key -> junction row), one joint per round: a reference
- * like "a+b+c" first resolves its sides ("a+b" as a compound of "a"+"b",
- * then the junction row itself). Unknown names simply stop the rounds - the
- * render's nest fetch decides what an unknown nest means (wave 3).
+ * Junction handling (the 2020 NULL-key convention): a compound reference
+ * resolves through its SIDES, exactly the walk DbLexicon.nameToLex does -
+ * simple sides by key, compound sides recursively (each round resolves
+ * deeper sides first, then the junction row joins its sides' ids by the
+ * UNIQUE (left_id, right_id) pair). Depth-2 pairs keep the direct side-key
+ * join (one round); a depth-N chain takes O(N) rounds. Unknown names simply
+ * stop the rounds - the render's nest fetch decides what an unknown nest
+ * means (wave 3).
  */
 async function verifyClosure(
   scanRows: RawRow[],
+  composed: CardRecord[],
   ctx: PrefetchContext,
   stats: PrefetchStats,
 ): Promise<void> {
+  /** Composed keys with a cached record - "this name resolves". */
   const known = new Set<string>();
+  /** Composed key -> row id (junction side-id joins need the ids). */
+  const knownIds = new Map<string, number>();
+  const seedKeys = (records: CardRecord[]): void => {
+    for (const record of records) {
+      if (record.key !== undefined && record.key !== "" && !record.isNew) {
+        known.add(record.key);
+        if (record.id !== undefined) knownIds.set(record.key, record.id);
+      }
+    }
+  };
   for (const row of scanRows) {
-    if (row.key !== null) known.add(row.key);
+    if (row.key !== null) known.add(row.key); // simple rows: key is authoritative
   }
-  let frontier = scanRows;
+  seedKeys(composed);
+
   let pending = new Set<string>();
   const collect = (rows: RawRow[]): void => {
     for (const row of rows) {
@@ -303,27 +324,44 @@ async function verifyClosure(
       }
     }
   };
-  collect(frontier);
+  collect(scanRows);
 
   for (let round = 0; round < MAX_FALLBACK_ROUNDS && pending.size > 0; round++) {
     stats.fallbackRounds += 1;
     const simpleKeys: string[] = [];
-    const junctionPairs: { left: string; right: string }[] = [];
-    const matchedPairs = new Set<string>();
+    const sideKeyPairs: { left: string; right: string }[] = [];
+    const sideIdPairs: { leftId: number; rightId: number }[] = [];
     for (const nameStr of pending) {
       const name = DeckoName.parse(nameStr);
+      if (known.has(name.key)) continue; // an earlier round resolved it
       if (!name.isCompound) {
         simpleKeys.push(name.key);
-      } else {
-        const left = name.leftName;
-        const right = name.rightName;
-        if (left !== undefined && right !== undefined && !left.isCompound && !right.isCompound) {
-          junctionPairs.push({ left: left.key, right: right.key });
+        continue;
+      }
+      const left = name.leftName;
+      const right = name.rightName;
+      if (left === undefined || right === undefined) continue;
+      const leftKnown = known.has(left.key);
+      const rightKnown = known.has(right.key);
+      if (!left.isCompound && !right.isCompound) {
+        // depth-2 pair: direct side-key join, and fetch the sides themselves
+        // in the same round so the junction composes (composed-key resolution).
+        sideKeyPairs.push({ left: left.key, right: right.key });
+        if (!leftKnown) simpleKeys.push(left.key);
+        if (!rightKnown) simpleKeys.push(right.key);
+      } else if (leftKnown && rightKnown) {
+        // both sides' rows are cached: join the junction row by side ids
+        // (the UNIQUE index_cards_on_left_id_and_right_id pair).
+        const leftId = knownIds.get(left.key);
+        const rightId = knownIds.get(right.key);
+        if (leftId !== undefined && rightId !== undefined) {
+          sideIdPairs.push({ leftId, rightId });
         }
-        // deeper compounds: their sides resolve first (next round sees them
-        // as simple keys once fetched; then the junction join matches)
-        if (left !== undefined) pending.add(left.s);
-        if (right !== undefined) pending.add(right.s);
+      } else {
+        // a compound side is not yet resolved: resolve the sides first
+        // (they join this round as their own pending targets).
+        if (!leftKnown) pending.add(left.s);
+        if (!rightKnown) pending.add(right.s);
       }
     }
 
@@ -337,51 +375,38 @@ async function verifyClosure(
       stats.statements += 1;
       for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
     }
-    if (junctionPairs.length > 0) {
-      const leftKeys = junctionPairs.map((pair) => pair.left);
-      const rightKeys = junctionPairs.map((pair) => pair.right);
+    if (sideKeyPairs.length > 0) {
+      const leftKeys = sideKeyPairs.map((pair) => pair.left);
+      const rightKeys = sideKeyPairs.map((pair) => pair.right);
       const placeholdersL = leftKeys.map(() => "?").join(", ");
       const placeholdersR = rightKeys.map(() => "?").join(", ");
-      const result = await ctx.driver.query<Record<string, unknown>>(
-        `SELECT DISTINCT j.*, l."key" AS __left_key, r."key" AS __right_key FROM cards j\n` +
+      const result = await ctx.driver.query<CardsRow>(
+        `SELECT DISTINCT j.* FROM cards j\n` +
         `  JOIN cards l ON l.id = j.left_id AND l."key" IN (${placeholdersL})\n` +
         `  JOIN cards r ON r.id = j.right_id AND r."key" IN (${placeholdersR})\n` +
         ` WHERE j.trash = 0`,
         [...leftKeys, ...rightKeys],
       );
       stats.statements += 1;
-      for (const row of result.rows as Record<string, unknown>[]) {
-        fetched.push(toRawRow(row as unknown as CardsRow));
-        const leftKey = row["__left_key"];
-        const rightKey = row["__right_key"];
-        if (typeof leftKey === "string" && typeof rightKey === "string") {
-          matchedPairs.add(`${leftKey}|${rightKey}`);
-        }
-      }
+      for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
     }
-
-    // Which pending names did this round resolve?
-    const fetchedKeys = new Set<string>();
-    for (const row of fetched) {
-      if (row.key !== null) fetchedKeys.add(row.key);
-    }
-    const resolved = new Set<string>();
-    for (const nameStr of pending) {
-      const name = DeckoName.parse(nameStr);
-      if (!name.isCompound) {
-        if (fetchedKeys.has(name.key) || known.has(name.key)) resolved.add(nameStr);
-      } else if (name.leftName !== undefined && name.rightName !== undefined) {
-        if (matchedPairs.has(`${name.leftName.key}|${name.rightName.key}`)) resolved.add(nameStr);
-      }
+    if (sideIdPairs.length > 0) {
+      const tuple = sideIdPairs.map(() => `(j.left_id = ? AND j.right_id = ?)`).join(" OR ");
+      const params = sideIdPairs.flatMap((pair) => [pair.leftId, pair.rightId]);
+      const result = await ctx.driver.query<CardsRow>(
+        `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
+        params,
+      );
+      stats.statements += 1;
+      for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
     }
 
     if (fetched.length === 0) return; // unknown names: stop, render decides
-    for (const row of fetched) {
-      if (row.key !== null) known.add(row.key);
-    }
-    await composeAndCache(fetched, ctx, stats);
+    const newComposed = await composeAndCache(fetched, ctx, stats);
+    seedKeys(newComposed); // junction rows resolve through their composed keys
     collect(fetched); // their content references join the pending set
-    for (const nameStr of resolved) pending.delete(nameStr);
-    frontier = fetched;
+    for (const nameStr of [...pending]) {
+      if (known.has(DeckoName.parse(nameStr).key)) pending.delete(nameStr);
+    }
   }
 }
