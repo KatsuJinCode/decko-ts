@@ -100,7 +100,7 @@ describe("oracle replay: CQL engine", () => {
         }
         const tsNames = [...names].sort();
         const rubyNames = [...captured.result].sort();
-        results.push({ name, ruby: rubyNames, ts: tsNames, pass: tsNames.length === rubyNames.length && tsNames.every((n, i) => n === rubyNames[i]) });
+        results.push({ name, query: captured.query, ruby: rubyNames, ts: tsNames, pass: tsNames.length === rubyNames.length && tsNames.every((n, i) => n === rubyNames[i]), sql: stmt.sql });
       }
 
       const failures = results.filter((r) => !r.pass);
