@@ -120,7 +120,8 @@ const DEFAULT_TYPE_ID = 2;
 
 export interface SeedOptions {
   id?: number;
-  name: string;
+  /** Optional for junction rows (name lives in the joined side cards). */
+  name?: string;
   key?: string;
   codename?: string | null;
   leftId?: number;
@@ -139,9 +140,12 @@ export async function seedCard(
   storage: RenderTestStorage,
   opts: SeedOptions,
 ): Promise<void> {
-  const isCompound = opts.name.includes("+");
-  const nameColumn = isCompound ? null : opts.name;
-  const keyColumn = isCompound ? null : (opts.key ?? DeckoName.parse(opts.name).key);
+  const hasName = typeof opts.name === "string" && opts.name.length > 0;
+  const isCompound = hasName && opts.name!.includes("+");
+  const nameColumn = isCompound ? null : (opts.name ?? null);
+  const keyColumn = hasName && !isCompound
+    ? (opts.key ?? DeckoName.parse(opts.name!).key)
+    : null;
   await storage.counting.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
