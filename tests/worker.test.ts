@@ -31,7 +31,7 @@ test("worker module loads and exports a fetch handler", () => {
 // reaches the right branch.
 
 test("worker: /api/status with empty env returns a structured error (not a 500)", async () => {
-  const env = {} as unknown as { DB: D1Database };
+  const env = {} as unknown as { DB: D1DatabaseLike };
   const req = new Request("https://example.com/api/status");
   const res = await worker.fetch(req, env);
   // Either 500 (D1 binding missing — expected in this smoke) or 200 if a
@@ -41,7 +41,7 @@ test("worker: /api/status with empty env returns a structured error (not a 500)"
 });
 
 test("worker: hit /Unknown+Card with no DB returns a structured error envelope", async () => {
-  const env = {} as unknown as { DB: D1Database };
+  const env = {} as unknown as { DB: D1DatabaseLike };
   const req = new Request("https://example.com/Unknown+Card");
   const res = await worker.fetch(req, env);
   expect(res).toBeInstanceOf(Response);
