@@ -48,16 +48,17 @@ function splitSqlStatements(ddl: string): string[] {
   return statements.filter((s) => s !== "");
 }
 
-// Inline the worker as a miniflare script. vitest's transformer compiles
-// worker.ts → JS; we ask it for the JS string via the vite-node compiler
-// (the same path vitest uses internally).
-import { transform } from "esbuild";
+// Inline the worker as a miniflare script. Vite exports transformWithEsbuild
+// (workerd sees ES modules; we feed it JS stripped of TS type annotations).
+// This is the SAME pipeline wrangler uses internally — the test exercises
+// the production-shape code, not a transpiled approximation.
+import { transformWithEsbuild } from "vite";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import workerTsSource from "../worker.ts?raw";
 
 async function compileWorker(): Promise<string> {
-  const result = await transform(workerTsSource, {
+  const result = await transformWithEsbuild(workerTsSource, "worker.ts", {
     loader: "ts",
     format: "esm",
     target: "es2022",
