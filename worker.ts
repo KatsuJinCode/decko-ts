@@ -15,7 +15,7 @@
 // docs/driver-notes.md for the verified shapes (meta.last_row_id, batch
 // semantics, bigint-bind rejection).
 
-import { D1Adapter } from "./src/server/drivers/d1.js";
+import { CloudflareD1Adapter } from "./src/server/drivers/d1.js";
 import { FetchEngine } from "./src/card/fetch.js";
 import { RenderEngine } from "./src/card/render.js";
 
