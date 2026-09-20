@@ -1,17 +1,28 @@
-// engine-bridge.ts — the decko-ts engine side of migration verification.
+// engine-bridge.mjs — the decko-ts engine side of migration verification.
 //
 // The migration tools are plain .mjs (they must run under bare `node`);
 // the decko-ts engine is TypeScript. This bridge is the ONLY place the two
 // meet: it imports the real FetchEngine / RenderEngine / DeckoName from
-// src/ and exposes them to the tool pipeline as injectable hooks:
+// src/ and exposes them to the tool pipeline as injectable hooks.
 //
+// RUNTIME MATRIX (the reason for the explicit ".ts" specifiers below):
+//   - under vitest (tests, and the CLI's spawned verification): vite's
+//     resolver handles ".ts" specifiers and the .js→.ts rewrites inside
+//     src/ — everything loads.
+//   - under bare node (the CLI's inline try): loading src/card/render.ts
+//     succeeds (Node 24 type stripping) but render.ts's own "./format.js"
+//     specifier cannot resolve (node does not rewrite) — the dynamic
+//     import REJECTS, migrate.mjs catches it, and engine checks fall back
+//     to the vitest-runner spawn. By design; see docs/migration-tool-notes.md.
+//
+// Exports:
 //   - engineChecks({...})   — the verify.mjs `engineChecks` hook:
-//       1. JUNCTION RESOLUTION through the real Lexicon (composeName):
-//          sample compound cards and fetch them; a composed name proves
-//          the left_id/right_id graph survived the import.
+//       1. JUNCTION RESOLUTION through the real Lexicon: sample compound
+//          cards and fetch them; a composed name proves the
+//          left_id/right_id graph survived the import.
 //       2. SPOT-RENDER through the real RenderEngine: render N random
-//          cards (content + title views) and record sha256 + byte length
-//          of the HTML. Structural check: the `content` view's HTML must
+//          cards (content + title views); record sha256 + byte length of
+//          the HTML. Structural check: the `content` view's HTML must
 //          contain the card's db_content (holds for text-bearing cards;
 //          recorded as a boolean, not asserted, since non-text cardtypes
 //          legitimately render transformed content).
@@ -19,10 +30,10 @@
 //          named in fixtures/captured/smoke.json (the Ruby oracle's
 //          captured deck), byte-compare content and rendered views against
 //          the Ruby capture. For an arbitrary migrated deck the fixture
-//          cards are absent and this reports `cardsPresent: 0` honestly.
+//          cards are absent and this reports cardsPresent: 0, honestly.
 //
-//   - deriveKeyWithEngine(name) — DeckoName.parse(name).key, the real name
-//     algebra from src/card/name.ts, for the importer's simple-card
+//   - deriveKeyWithEngine(name) — DeckoName.parse(name).key, the real
+//     name algebra from src/card/name.ts, for the importer's simple-card
 //     missing-key repair. The tools never reimplement this algorithm.
 //
 // CONTENT RULE: everything returned here is ids, counts, hashes, and the
@@ -32,59 +43,22 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { FetchEngine } from "../../src/card/fetch.js";
-import { RenderEngine } from "../../src/card/render.js";
-import { DeckoName } from "../../src/card/name.js";
-import type { LocalSqliteToolDriver } from "./import.mjs";
+import { FetchEngine } from "../../src/card/fetch.ts";
+import { RenderEngine } from "../../src/card/render.ts";
+import { DeckoName } from "../../src/card/name.ts";
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 
 /** The real decko-ts name algebra (src/card/name.ts), for import.mjs's
  *  key-repair hook. */
-export function deriveKeyWithEngine(name: string): string {
+export function deriveKeyWithEngine(name) {
   return DeckoName.parse(name).key;
-}
-
-interface SpotResult {
-  id: number;
-  view: string;
-  sha256: string;
-  bytes: number;
-  contentContained?: boolean;
-}
-
-export interface EngineChecksResult {
-  junctionEngine: { sampled: number; resolved: number };
-  spotRender: {
-    sampled: number;
-    rendered: number;
-    renderErrors: number;
-    contentContainedHits: number;
-    results: SpotResult[];
-  };
-  fixtures: {
-    source: string;
-    cardsPresent: number;
-    contentParityHits: number;
-    contentParityChecked: number;
-    renderedCompared: number;
-    renderedMismatched: number;
-    matchedFixtureNames: string[];
-  };
 }
 
 /**
  * The verify.mjs engineChecks hook. Deterministic given (spotCount, seed).
  */
-export async function engineChecks({
-  driver,
-  spotCount,
-  seed,
-}: {
-  driver: LocalSqliteToolDriver;
-  spotCount: number;
-  seed: number;
-}): Promise<EngineChecksResult> {
+export async function engineChecks({ driver, spotCount, seed }) {
   const fetcher = new FetchEngine(driver);
   const renderer = new RenderEngine(fetcher);
   const rand = mulberry32(seed);
@@ -123,13 +97,13 @@ export async function engineChecks({
     rendered: 0,
     renderErrors: 0,
     contentContainedHits: 0,
-    results: [] as SpotResult[],
+    results: [],
   };
   {
-    // Prefer text-bearing simple cards (renderability), fall back to any
-    // live card. Sampling is a fixed stride over id order (deterministic).
+    // Prefer text-bearing simple cards (renderability). Deterministic
+    // stride sampling over id order.
     const rows = await driver.query(
-      `SELECT id, db_content FROM cards
+      `SELECT id FROM cards
        WHERE trash = 0 AND db_content IS NOT NULL AND db_content != ''
          AND left_id IS NULL
        ORDER BY id LIMIT ${spotCount * 50}`,
@@ -138,7 +112,11 @@ export async function engineChecks({
     const pool = rows.rows;
     const wanted = Math.min(spotCount, pool.length);
     const stride = Math.max(1, Math.floor(pool.length / Math.max(1, wanted)));
-    for (let i = Math.floor(rand() * stride); i < pool.length && spotRender.sampled < wanted; i += stride) {
+    for (
+      let i = Math.floor(rand() * stride);
+      i < pool.length && spotRender.sampled < wanted;
+      i += stride
+    ) {
       const row = pool[i];
       if (row === undefined) continue;
       const id = Number(row.id);
@@ -150,7 +128,7 @@ export async function engineChecks({
         try {
           const html = await renderer.render(record.name.s, view);
           spotRender.rendered += 1;
-          const spot: SpotResult = {
+          const spot = {
             id,
             view,
             sha256: createHash("sha256").update(html, "utf8").digest("hex"),
@@ -176,19 +154,15 @@ export async function engineChecks({
     contentParityChecked: 0,
     renderedCompared: 0,
     renderedMismatched: 0,
-    matchedFixtureNames: [] as string[],
+    matchedFixtureNames: [],
   };
   {
-    let captured: {
-      cards?: Record<string, { content?: string | null }>;
-      rendered?: Record<string, string>;
-    } = {};
+    let captured = {};
     try {
       captured = JSON.parse(
         readFileSync(`${REPO_ROOT}fixtures/captured/smoke.json`, "utf8"),
       );
     } catch {
-      // No capture available: report honestly and skip.
       fixtures.source = "fixtures/captured/smoke.json (absent)";
     }
     for (const [name, expected] of Object.entries(captured.cards ?? {})) {
@@ -230,7 +204,7 @@ export async function engineChecks({
 }
 
 /** Deterministic sampling RNG (same construction as verify.mjs). */
-function mulberry32(seed: number): () => number {
+function mulberry32(seed) {
   let a = seed >>> 0;
   return () => {
     a |= 0;

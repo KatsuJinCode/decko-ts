@@ -179,9 +179,12 @@ if (opts.verify) {
   // spawn the repo's vitest runner when --engine-verify was passed.
   let engineBridge;
   try {
-    engineBridge = await import("./engine-bridge.ts");
+    // Plain-JS module, but its src/ imports only resolve under vite/vitest;
+    // under bare node the dynamic import rejects and we fall back to the
+    // vitest-runner spawn (see docs/migration-tool-notes.md).
+    engineBridge = await import("./engine-bridge.mjs");
   } catch {
-    engineBridge = undefined; // bare node cannot import the TS engine
+    engineBridge = undefined; // bare node cannot load the TS engine
   }
 
   let engineChecks;

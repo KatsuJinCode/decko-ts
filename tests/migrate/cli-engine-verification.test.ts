@@ -11,7 +11,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { it, expect } from "vitest";
-import { engineChecks } from "../../tools/migrate/engine-bridge.ts";
+import { engineChecks } from "../../tools/migrate/engine-bridge.mjs";
 import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
 
 const reportPath = process.env.DECKO_MIGRATE_REPORT;
