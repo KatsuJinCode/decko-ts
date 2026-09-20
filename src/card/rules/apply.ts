@@ -111,14 +111,6 @@ export function applyViewOverride(baseHtml: string, override: ViewOverride | und
   }
 
   if (override.titleClass !== undefined) {
-    out = out.replace(
-      /(<span\b[^>]*\bclass=")(card-title)("[^>]*>)/,
-      `${_m1()}${override.titleClass}${_m3()}`,
-    );
-    // _m1 / _m3 placeholders; the real impl is below.
-    function _m1(): string { return "$1"; }
-    function _m3(): string { return "$3"; }
-    // The above is awkward; replace with a cleaner implementation:
     out = out
       .replace(/(<span\b[^>]*\bclass=")card-title(")/, `$1${override.titleClass}$2`);
   }
