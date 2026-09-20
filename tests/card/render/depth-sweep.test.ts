@@ -87,11 +87,14 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     const sts = rows.map((r) => r.statements);
     expect(new Set(rts).size).toBe(1);
     expect(new Set(sts).size).toBe(1);
-    // 2 round trips (root fetch by name + one driver.batch for the closure).
-    expect(rts[0]).toBe(2);
-    // 3 statements (1 root + 2 in the batch: walkedRows + typeAndSide).
-    expect(sts[0]).toBe(3);
-    // Warm cache: zero queries on the second render.
+    // 5 round trips: root fetch + closure batch + 3 rule-lookup candidates
+    // (the rule chain walk for *self+*open, *all+*open, etc.). The walk
+    // is per-(card, view) CACHED after first render; this constant reflects
+    // the COLD path. Warm renders below stay at 0.
+    expect(rts[0]).toBe(5);
+    // 6 statements (1 root + 2 batch members for the closure + 3 rule lookups).
+    expect(sts[0]).toBe(6);
+    // Warm cache: zero queries on the second render (the rule cache is hit).
     expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
 
     mkdirSync("benchmarks/results", { recursive: true });
