@@ -28,7 +28,7 @@ const SUPPORTED_VIEWS = new Set([
   "bar_right", "bar_bottom",
 ]);
 
-function parsePath(pathname) {
+function parsePath(pathname: string) {
   const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
   if (path === "") return { name: "Home", view: "open" };
   if (path === "api/status") return { kind: "api" };
