@@ -21,7 +21,7 @@ import { RenderEngine } from "./src/card/render.js";
 
 interface Env {
   /** D1 binding declared in wrangler.toml [[d1_databases]]. */
-  DB: D1Database;
+  DB: D1DatabaseLike;
 }
 
 interface Deck {
