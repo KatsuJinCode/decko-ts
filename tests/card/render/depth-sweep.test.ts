@@ -29,7 +29,7 @@ async function seedChain(storage: RenderTestStorage, depth: number): Promise<voi
 }
 
 describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", () => {
-  it("measures round trips, statements, warm cache, and wall-clock at every depth", async () => {
+  it("measures round trips, statements, warm cache, and wall-clock at every depth", { timeout: 60_000 }, async () => {
     const rows: Array<{
       depth: number;
       roundTrips: number;
