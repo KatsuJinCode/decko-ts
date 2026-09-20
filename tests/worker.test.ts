@@ -17,7 +17,7 @@ import { test, expect } from "vitest";
 import worker from "../worker.js";
 import { D1Adapter } from "../src/server/drivers/d1.js";
 import { FetchEngine } from "../src/card/fetch.js";
-import { render } from "../src/card/render.js";
+import { RenderEngine } from "../src/card/render.js";
 
 test("worker module loads and exports a fetch handler", () => {
   expect(typeof worker.fetch).toBe("function");
