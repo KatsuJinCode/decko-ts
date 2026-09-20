@@ -70,13 +70,13 @@ describe("oracle replay: CQL engine", () => {
       const directDriver = (storage.fetcher as unknown as { driver?: LocalSqliteDriver }).driver;
       if (directDriver === undefined) throw new Error("could not access underlying driver");
 
-      const results: Array<{ name: string; ruby: string[]; ts: string[]; pass: boolean }> = [];
+      const results: Array<{ name: string; query: unknown; ruby: string[]; ts: string[]; pass: boolean; sql?: string }> = [];
 
       for (const [name, captured] of Object.entries(fixture.queries)) {
         if (name === "match_sentinel") {
           // SQLite cannot run MySQL REGEXP without a UDF; this case is
           // documented as expected-pending in cql-port-notes.md.
-          results.push({ name, ruby: captured.result, ts: [], pass: true });
+          results.push({ name, query: captured.query, ruby: captured.result, ts: [], pass: true });
           continue;
         }
 
