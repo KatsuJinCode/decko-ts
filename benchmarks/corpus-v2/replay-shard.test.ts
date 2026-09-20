@@ -313,7 +313,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               first: formatReplayFailure(e),
             });
           }
-          for (const e of renderReal) {
+          for (const e of renderRealReal) {
             realFailures.push({
               shard: shardName,
               area: "render-engine",
