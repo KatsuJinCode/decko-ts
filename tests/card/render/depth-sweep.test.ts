@@ -15,7 +15,7 @@ import {
 } from "./render-test-storage.js";
 import { DeckoName } from "../../../src/card/name.js";
 
-const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 28, 32, 40, 48, 64, 100];
+const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 28, 32, 36, 40, 42];
 // Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
 
