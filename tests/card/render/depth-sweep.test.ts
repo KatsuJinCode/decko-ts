@@ -46,6 +46,10 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
       const storage = await createRenderTestStorage();
       try {
         await seedChain(storage, depth);
+        // The renderer caps at maxDepth=42 by default (src/card/render/format.ts:214).
+        // Past 42 the Format-object recursion throws "nest depth exceeded"; the SQL CTE
+        // walks arbitrarily deep but the render path does not render past 42.
+        if (depth > 42) throw new Error(`DEPTHS should not exceed renderer maxDepth=42`);
 
         // Cold render
         storage.counting.reset();
