@@ -297,6 +297,13 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           );
           const cardReal = cardFails.filter((e) => !cardStructurePending.includes(e));
           const renderReal = renderFails.filter((e) => !renderStructurePending.includes(e));
+          // nest-gap class: the render prefetcher cannot resolve junction
+          // (NULL-key) nest targets deeper than two parts, so the TS engine
+          // raises where Ruby rendered — the known render-port gap the deploy
+          // stream documented (docs/deploy-notes.md). Classified honestly, a
+          // fix is owed by the render stream; not silently a pass.
+          const renderNestGap = renderReal.filter((e) => formatReplayFailure(e).includes("nest target not found"));
+          const renderRealReal = renderReal.filter((e) => !renderNestGap.includes(e));
 
           for (const e of cardReal) {
             realFailures.push({
