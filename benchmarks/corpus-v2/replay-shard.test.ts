@@ -216,7 +216,10 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             return jsonValue(record);
           });
 
-          // render-engine: the renderer stream's registration shape.
+          // render-engine: the renderer stream's registration shape. ANY
+          // handler error becomes a raisedError OUTCOME (one failed entry,
+          // byte-diffed against the captured HTML) — never a crashed suite;
+          // the harness propagates handler exceptions by design.
           registry.register("render-engine", async ({ cardName, view }) => {
             try {
               const html = await storage.engine.render(cardName, view);
@@ -227,7 +230,8 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
                 // capture records the en.yml message verbatim.
                 return raisedError("Card::Error::UserError", error.message);
               }
-              throw error;
+              const err = error as Error;
+              return raisedError(err?.constructor?.name ?? "Error", err?.message ?? String(error));
             }
           });
 
