@@ -156,7 +156,6 @@ export default {
           name: record.name.s,
           key: record.name.key,
           type_id: record.typeId ?? null,
-          type_name: record.typeName ?? null,
           codename: record.codename ?? null,
           db_content_preview: (record.dbContent ?? "").slice(0, 200),
         });
