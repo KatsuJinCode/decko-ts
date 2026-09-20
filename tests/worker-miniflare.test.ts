@@ -48,22 +48,10 @@ function splitSqlStatements(ddl: string): string[] {
   return statements.filter((s) => s !== "");
 }
 
-// Inline the worker as a miniflare script. Vite exports transformWithEsbuild
-// (workerd sees ES modules; we feed it JS stripped of TS type annotations).
-// This is the SAME pipeline wrangler uses internally — the test exercises
-// the production-shape code, not a transpiled approximation.
-import { transformWithEsbuild } from "vite";
-import workerTsSource from "../worker.ts?raw";
-
-async function compileWorker(): Promise<string> {
-  const result = await transformWithEsbuild(workerTsSource, "worker.ts", {
-    loader: "ts",
-    format: "esm",
-    target: "es2022",
-    sourcemap: false,
-  });
-  return result.code;
-}
+// Inline the worker as a miniflare script. We pass worker.js (the JS-only
+// deploy artifact) directly — workerd accepts ES modules natively, no
+// transform step needed. wrangler accepts the same file for production.
+import workerJsSource from "../worker.js?raw";
 
 describe("worker entry — full E2E under miniflare (M2 smoke)", () => {
   let mf: Miniflare | undefined;
