@@ -91,3 +91,27 @@ Recovery plan:
 - After rate limit resets (~6 hours from now): relaunch the renderer (#1282 flagship) and the M1 corpus-v2 capture.
 - Set-patterns (#9) is already in the tree from the orphaned completion — needs a review stream to verify gates + land it on the milestone tracker.
 - Use `node scripts/check-scoped.mjs --running <other streams' dirs>` in every future prompt.
+
+## Reconciliation (2026-09-20)
+
+Walked the on-disk agent registry + the landed code. Actual current state:
+
+- **Renderer (#11):** **LANDED** — `src/card/render/` ships format.ts, views.ts, prefetch.ts, nest-syntax.ts, set-keys.ts, slot-html.ts. 18 own tests including the depth-sweep (1..32) that proves the #1282 constant-queries claim. Port-tracker just hadn't been updated.
+- **View/format parity (#13):** **LANDED** as part of the renderer — :open, :closed, :content, :title, :titled, :menu, :core, :card_list, :bar variants all in `views.ts` with HAML byte-shape parity.
+- **Set-patterns (#9):** **LANDED** + acknowledged in port infra. Full registry + instance + rule-name algebra. 11 own tests.
+- **M2 — one-click Cloudflare demo:** **SHIPPED.** `worker.js` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + Deploy-to-Cloudflare button in README. The deploy itself is one `wrangler deploy` away (gated on Julian's CF account scope, not on missing code).
+- **Test count:** 851/851 passing (was 839 before M2 work; +12 worker tests).
+
+### Remaining gap to "100% perfect migration"
+
+The remaining work is the rule-application engine and mod loading — the pieces that make the 33 installed card-mods run on top of the port. With these landed, any Ruby Decko deck becomes a drop-in TS deck.
+
+| Stream | Status | Notes |
+|---|---|---|
+| Rule evaluation engine | NOT STARTED | Render-side: when a card has rules, walk the set-module inheritance chain, fetch rule cards, apply view overrides. Currently the renderer returns the static HTML_VIEWS regardless of card type/set. |
+| Mod loading | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, etc.) are the port targets. |
+| Mod porting (33 mods) | NOT STARTED | Each mod is its own port. Priority by Brandon's stack: account, bootstrap, … |
+| Migration tool | NOT STARTED | Generalize the proven Culturesmith importer (Ruby dump → decko-ts) into a reusable one-shot path. |
+| Response-time harness (Ruby vs TS) | NOT STARTED | Deep-nesting fixtures, measure both runtimes end-to-end. |
+
+These are the streams M3 (published metrics) and M4 (one-click migration) depend on. The HTML render side and the data layer are both ready — what's missing is the metaprogramming layer that Ruby Decko's mod system gets for free from `module Card::Set::Pattern::Base` chains.
