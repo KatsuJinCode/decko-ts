@@ -284,6 +284,20 @@ export class MysqldumpInsertParser {
     }
   }
 
+  /** EOF inside a statement: drop the tail with a warning when tolerant,
+   *  throw otherwise. Returns true (parse loop continues cleanly). */
+  eofFail(msg) {
+    if (this.tolerantTruncated) {
+      this.warnings.push(`truncated: ${msg}`);
+      this.state = "scan";
+      this.table = "";
+      this.columns = undefined;
+      this.fields = undefined;
+      return true;
+    }
+    throw new Error(msg);
+  }
+
   // -------------------------------------------------------------------
   // buffer management
   // -------------------------------------------------------------------
@@ -441,7 +455,7 @@ export class MysqldumpInsertParser {
   scanTableName(atEof) {
     const close = this.buf.indexOf("`", this.pos);
     if (close === -1) {
-      if (atEof) throw new Error("dump ended inside INSERT table name");
+      if (atEof) return this.eofFail("dump ended inside INSERT table name");
       return false; // keep pos: the name continues in the next chunk
     }
     this.table = this.buf.slice(this.pos, close);
@@ -459,7 +473,7 @@ export class MysqldumpInsertParser {
     while (i < n && WS_RE.test(this.buf[i])) i += 1;
     if (i >= n) {
       this.pos = i;
-      if (atEof) throw new Error("dump ended before INSERT VALUES");
+      if (atEof) return this.eofFail("dump ended before INSERT VALUES");
       return false;
     }
     if (this.buf[i] === "(") {
@@ -480,7 +494,7 @@ export class MysqldumpInsertParser {
       tail.length < 6 &&
       ("VALUES".startsWith(tail) || "values".startsWith(tail))
     ) {
-      if (atEof) throw new Error("dump ended inside the VALUES keyword");
+      if (atEof) return this.eofFail("dump ended inside the VALUES keyword");
       this.pos = i;
       return false;
     }
@@ -500,7 +514,7 @@ export class MysqldumpInsertParser {
       while (i < n && SEP_RE.test(this.buf[i])) i += 1;
       if (i >= n) {
         this.pos = i;
-        if (atEof) throw new Error("dump ended inside column list");
+        if (atEof) return this.eofFail("dump ended inside column list");
         return false;
       }
       if (this.buf[i] === ")") {
@@ -511,7 +525,7 @@ export class MysqldumpInsertParser {
         const end = this.buf.indexOf("`", i + 1);
         if (end === -1) {
           this.pos = i;
-          if (atEof) throw new Error("dump ended inside column name");
+          if (atEof) return this.eofFail("dump ended inside column name");
           return false;
         }
         this.columns.push(this.buf.slice(i + 1, end));
@@ -533,7 +547,7 @@ export class MysqldumpInsertParser {
     while (i < n && SEP_RE.test(this.buf[i])) i += 1;
     if (i >= n) {
       this.pos = i;
-      if (atEof) throw new Error("dump ended before row tuple");
+      if (atEof) return this.eofFail("dump ended before row tuple");
       return false;
     }
     if (this.buf[i] === "(") {
@@ -564,7 +578,7 @@ export class MysqldumpInsertParser {
       if (i >= n) {
         this.pos = i;
         this.maybeCompact();
-        if (atEof) throw new Error(`dump ended mid-tuple in \`${this.table}\``);
+        if (atEof) return this.eofFail(`dump ended mid-tuple in \`${this.table}\``);
         return false;
       }
       const c = this.buf[i];
@@ -586,18 +600,29 @@ export class MysqldumpInsertParser {
           this.pos = i; // resume at the opening quote with more input
           this.maybeCompact();
           if (atEof && end === -1) {
-            throw new Error(`dump ended inside a string literal in \`${this.table}\``);
-          }
+              return this.eofFail(`dump ended inside a string literal in \`${this.table}\``);
+            }
           return false;
         }
         fields.push(decodeMysqlEscapes(this.buf.slice(contentStart, end)));
         i = end + 1;
         continue;
       }
-      // Bare token: NULL, number (with optional sign), hex, introducer...
+      // Bare token: NULL, number (with optional sign and exponent), hex,
+      // introducer...
       const tokStart = i;
       if (c === "-" || c === "+") i += 1; // numeric sign
       while (i < n && IDENT_RE.test(this.buf[i])) i += 1;
+      // scientific-notation sign (1.5e-3): part of the same token
+      while (
+        i < n &&
+        (this.buf[i] === "-" || this.buf[i] === "+") &&
+        i > tokStart &&
+        (this.buf[i - 1] === "e" || this.buf[i - 1] === "E")
+      ) {
+        i += 1;
+        while (i < n && IDENT_RE.test(this.buf[i])) i += 1;
+      }
       if (i === tokStart) {
         throw new Error(
           `unexpected character ${JSON.stringify(c)} in \`${this.table}\` row near byte ${this.stats.bytesRead - (n - i)}`,
@@ -608,8 +633,8 @@ export class MysqldumpInsertParser {
         this.pos = tokStart;
         this.maybeCompact();
         if (atEof) {
-          throw new Error(`dump ended inside a bare token in \`${this.table}\``);
-        }
+            return this.eofFail(`dump ended inside a bare token in \`${this.table}\``);
+          }
         return false;
       }
       const tok = this.buf.slice(tokStart, i);
@@ -619,8 +644,8 @@ export class MysqldumpInsertParser {
         if (litEnd === -1) {
           this.pos = tokStart;
           if (atEof) {
-            throw new Error(`dump ended inside a hex/bit literal in \`${this.table}\``);
-          }
+              return this.eofFail(`dump ended inside a hex/bit literal in \`${this.table}\``);
+            }
           return false;
         }
         fields.push(

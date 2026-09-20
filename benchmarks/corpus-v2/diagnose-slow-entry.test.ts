@@ -76,24 +76,31 @@ describe("diagnose: per-entry corpus replay timing", () => {
         for (const [view] of Object.entries(line.views)) {
           const t0 = performance.now();
           let err: string | undefined;
-          try {
-            await storage.engine.render(line.name, view);
-          } catch (e) {
-            err = e instanceof UnsupportedViewError ? "unsupported-view" : (e as Error).message.slice(0, 80);
-          }
+          // 3s deadline per entry: anything past this is effectively hung —
+          // log it and move on so the diagnostic finishes.
+          const winner = await Promise.race([
+            storage.engine.render(line.name, view).then(
+              () => "ok" as const,
+              (e) => "err:" + (e instanceof UnsupportedViewError ? "unsupported-view" : (e as Error).message.slice(0, 60))
+            ),
+            new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 3_000)),
+          ]);
+          if (winner === "timeout") err = "TIMEOUT>3s";
+          else if (winner !== "ok") err = winner.slice(0, 80);
           const ms = performance.now() - t0;
           timings.push({ id: `${line.id}:${view}`, ms, err });
           done += 1;
-          if (done % 500 === 0) {
-            const slowest = [...timings].sort((a, b) => b.ms - a.ms)[0];
-            console.log(`  ${done}/${viewCount} done; slowest so far: ${slowest.id} @ ${slowest.ms.toFixed(0)}ms`);
+          if (err?.startsWith("TIMEOUT")) {
+            console.log(`  TIMEOUT ${line.id} ${JSON.stringify(line.name)} :${view}`);
           }
-          if (ms > 5_000) {
-            console.log(`  SLOW ${line.id} ${line.name} :${view} -> ${ms.toFixed(0)}ms err=${err ?? "none"}`);
+          if (done % 500 === 0) {
+            console.log(`  ${done}/${viewCount} done`);
           }
         }
       }
+      const timeouts = timings.filter((t) => t.err?.startsWith("TIMEOUT"));
       const top = [...timings].sort((a, b) => b.ms - a.ms).slice(0, 15);
+      console.log(`TIMEOUTS: ${timeouts.length}`, JSON.stringify(timeouts.slice(0, 20), null, 1));
       console.log("TOP 15 SLOWEST:", JSON.stringify(top, null, 1));
       expect(timings.length).toBeGreaterThan(0);
     } finally {

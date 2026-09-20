@@ -12,18 +12,26 @@
 
 export const BS = String.fromCharCode(92);
 
-/** Escape a JS string into a mysqldump single-quoted literal body. */
+/** MySQL escape letter for a control character. */
+const CONTROL_ESCAPES: Record<string, string> = {
+  "\n": "n",
+  "\r": "r",
+  "\t": "t",
+  "\0": "0",
+  "\x1a": "Z",
+  "\b": "b",
+};
+
+/** Escape a JS string into a mysqldump single-quoted literal body.
+ *  One pass for control characters (a naive /\\b/ here would be a
+ *  zero-width word-boundary regex and corrupt every value — learned the
+ *  hard way; keep the single-callback form). */
 export function sqlEscape(s: string): string {
   return s
     .replace(new RegExp(BS + BS, "g"), BS + BS)
     .replace(/'/g, BS + "'")
     .replace(/"/g, BS + '"')
-    .replace(/\n/g, BS + "n")
-    .replace(/\r/g, BS + "r")
-    .replace(/\t/g, BS + "t")
-    .replace(/\0/g, BS + "0")
-    .replace(/\x1a/g, BS + "Z")
-    .replace(/\b/g, BS + "b");
+    .replace(/[\n\r\t\0\x1a\b]/g, (ch) => BS + (CONTROL_ESCAPES[ch] ?? ch));
 }
 
 /** Quote a value the way mysqldump would. */
