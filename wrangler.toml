@@ -15,7 +15,7 @@
 #   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
 
 name = "decko-ts"
-main = "worker.ts"
+main = "worker.js"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
