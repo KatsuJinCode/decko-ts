@@ -1,0 +1,17 @@
+19:40:19 shard=shard-000000.jsonl cards=1000 views=3242 seconds=19.3 total_elapsed=19.3
+19:40:35 shard=shard-000001.jsonl cards=1000 views=3268 seconds=16.6 total_elapsed=35.9
+19:40:51 shard=shard-000002.jsonl cards=1000 views=3368 seconds=16.0 total_elapsed=51.8
+19:41:39 shard=shard-000003.jsonl cards=1000 views=3718 seconds=47.7 total_elapsed=99.5
+19:42:57 shard=shard-000004.jsonl cards=1000 views=3984 seconds=77.7 total_elapsed=177.2
+19:43:47 shard=shard-000005.jsonl cards=1000 views=3874 seconds=50.1 total_elapsed=227.4
+19:44:04 shard=shard-000006.jsonl cards=1000 views=3698 seconds=17.2 total_elapsed=244.6
+19:44:19 shard=shard-000007.jsonl cards=1000 views=3736 seconds=15.5 total_elapsed=260.1
+19:44:34 shard=shard-000008.jsonl cards=1000 views=3616 seconds=15.0 total_elapsed=275.1
+19:44:52 shard=shard-000009.jsonl cards=1000 views=3884 seconds=17.4 total_elapsed=292.4
+19:45:06 shard=shard-000010.jsonl cards=1000 views=3846 seconds=14.1 total_elapsed=306.5
+19:45:21 shard=shard-000011.jsonl cards=1000 views=3590 seconds=15.4 total_elapsed=321.9
+19:45:37 shard=shard-000012.jsonl cards=1000 views=3772 seconds=15.2 total_elapsed=337.1
+19:46:01 shard=shard-000013.jsonl cards=1000 views=3780 seconds=24.6 total_elapsed=361.7
+19:46:15 shard=shard-000014.jsonl cards=1000 views=3840 seconds=13.4 total_elapsed=375.1
+19:46:28 shard=shard-000015.jsonl cards=1000 views=3908 seconds=13.9 total_elapsed=389.0
+19:46:45 shard=shard-000016.jsonl cards=1000 views=3796 seconds=16.3 total_elapsed=405.4

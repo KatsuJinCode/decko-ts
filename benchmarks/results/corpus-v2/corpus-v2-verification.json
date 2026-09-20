@@ -1,0 +1,355 @@
+{
+  "content_absence": {
+    "five_grams_original": 30970,
+    "five_grams_overlap": 0,
+    "name_substring_hit_lengths": [],
+    "names_absent_exact": 50,
+    "names_total": 50,
+    "token_checks": [
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 14
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 9
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 17
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 12
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 9
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 12
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 10
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 14
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 11
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 12
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 14
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 8
+      },
+      {
+        "absent": true,
+        "hits": 0,
+        "token_len": 8
+      }
+    ]
+  },
+  "digests": {
+    "cards_digest_match": true,
+    "cards_digest_recomputed": "0a1cf531a4068b09974d6203c39177c348d8bdf7930313fb303b06622ff76258",
+    "cards_digest_recorded": "0a1cf531a4068b09974d6203c39177c348d8bdf7930313fb303b06622ff76258",
+    "references_digest_match": true,
+    "references_digest_recomputed": "df6feb272f0ccae39597bf5468886cf81c5b03210f76441d62b886a6efd2ac2b",
+    "references_digest_recorded": "df6feb272f0ccae39597bf5468886cf81c5b03210f76441d62b886a6efd2ac2b"
+  },
+  "leak_scan_by_column": {
+    "codename": 1,
+    "content": 14,
+    "name": 268,
+    "referee_key": 1
+  },
+  "leak_scan_original_instrument": {
+    "hits": {
+      "email": 85,
+      "keyword_list": 39,
+      "phone_shape": 10,
+      "ssn_shape": 0
+    },
+    "texts_scanned": 217
+  },
+  "leak_scan_sanitized": {
+    "email": 0,
+    "keyword_list": 284,
+    "phone_shape": 0,
+    "ssn_shape": 0
+  },
+  "name_structure": {
+    "extract_names_match_rederived_walk": {
+      "equal": true,
+      "original": 9466,
+      "sanitized": "0 mismatched (2 truncated-at-cap accepted)"
+    },
+    "junction_composition_identity": {
+      "equal": true,
+      "original": 37766,
+      "sanitized": 0
+    },
+    "live_cards_named_walk_vs_corpus": {
+      "equal": true,
+      "original": 47232,
+      "sanitized": 47232
+    },
+    "live_sanitized_names_unique": {
+      "equal": true,
+      "original": 47232,
+      "sanitized": 0
+    },
+    "name_byte_length_exact_per_card": {
+      "equal": true,
+      "original": 47232,
+      "sanitized": 0
+    },
+    "read_rule_name_count": {
+      "equal": true,
+      "original": 654,
+      "sanitized": 654
+    },
+    "star_rule_parts_preserved_verbatim": {
+      "equal": true,
+      "original": 142,
+      "sanitized": 142
+    },
+    "unresolved_live_names": {
+      "equal": true,
+      "original": "3 (broken-ancestor junctions, ids [375, 377, 389]..)",
+      "sanitized": "3"
+    }
+  },
+  "sampling": {
+    "gram_cards_compared": 233,
+    "inline_content_rule": "id % 199 == 3",
+    "inline_contents": 238,
+    "name_sample": 50,
+    "snippet_sample": 13
+  },
+  "star_rule_vocabulary": [
+    "*Ace",
+    "*GiveTwentySidebar",
+    "*Golden_Bears_Aikido_at_UC_Berkeley_sidebar",
+    "*Opportunities",
+    "*PCTSsidebar",
+    "*ProseMirror",
+    "*TinyMCE",
+    "*account",
+    "*account links",
+    "*account settings",
+    "*admin",
+    "*admin info",
+    "*admin settings",
+    "*alerts",
+    "*all",
+    "*all plus",
+    "*always",
+    "*api key",
+    "*asset input",
+    "*asset output",
+    "*attach",
+    "*autoname",
+    "*bcc",
+    "*bootswatch",
+    "*cached content",
+    "*cached count",
+    "*captcha",
+    "*cc",
+    "*changed card",
+    "*children",
+    "*colors",
+    "*content option view",
+    "*content options",
+    "*contextual class",
+    "*count",
+    "*count 1",
+    "*create",
+    "*created",
+    "*creator",
+    "*creator 1",
+    "*credit",
+    "*credit_image",
+    "*css",
+    "*csv structure",
+    "*datepicker",
+    "*debug",
+    "*debugger",
+    "*default",
+    "*default html view",
+    "*delete",
+    "*disappear",
+    "*double click",
+    "*dropdown divider",
+    "*edited",
+    "*editors",
+    "*email",
+    "*enabled roles",
+    "*favicon",
+    "*follow",
+    "*follow defaults",
+    "*follow fields",
+    "*followers",
+    "*following",
+    "*footer",
+    "*from",
+    "*getting started",
+    "*getting started links",
+    "*google analytics key",
+    "*guide",
+    "*head",
+    "*header",
+    "*help",
+    "*home",
+    "*html message",
+    "*input type",
+    "*last edited",
+    "*layout",
+    "*linked to by",
+    "*links to",
+    "*logo",
+    "*main menu",
+    "*mates",
+    "*members",
+    "*message",
+    "*navbox",
+    "*nested by",
+    "*nests",
+    "*never",
+    "*new file",
+    "*new image",
+    "*noindex",
+    "*now",
+    "*on create",
+    "*on delete",
+    "*on update",
+    "*password",
+    "*read",
+    "*recaptcha settings",
+    "*recent",
+    "*recent settings",
+    "*referred to by",
+    "*refers to",
+    "*right",
+    "*roles",
+    "*rstar",
+    "*rule",
+    "*salt",
+    "*script",
+    "*search",
+    "*self",
+    "*self**create",
+    "*self**read",
+    "*sidebar",
+    "*signin",
+    "*solid cache",
+    "*star",
+    "*status",
+    "*structure",
+    "*style",
+    "*stylesheets",
+    "*subject",
+    "*table of contents",
+    "*tags",
+    "*test context",
+    "*text message",
+    "*thanks",
+    "*title",
+    "*to",
+    "*toolbar pinned",
+    "*trash",
+    "*type",
+    "*type cards",
+    "*type plus right",
+    "*update",
+    "*upload",
+    "*upload max",
+    "*variables",
+    "*version",
+    "*watching",
+    "*watermark",
+    "*when created",
+    "*when last edited"
+  ],
+  "structural": {
+    "card_rows_total": {
+      "equal": true,
+      "original": 49829,
+      "sanitized": 49829
+    },
+    "codename_distribution_equal": {
+      "equal": true,
+      "original": 276,
+      "sanitized": 276
+    },
+    "content_length_histogram_equal": {
+      "equal": false,
+      "original": 47234,
+      "sanitized": 47234
+    },
+    "junction_part_count_equal": {
+      "equal": true,
+      "original": "max 14",
+      "sanitized": "max 14"
+    },
+    "live_cards": {
+      "equal": true,
+      "original": 47235,
+      "sanitized": 47235
+    },
+    "name_length_histogram_equal": {
+      "equal": true,
+      "original": 47232,
+      "sanitized": 47232
+    },
+    "references_multiset_equal": {
+      "equal": true,
+      "original": "multiset",
+      "sanitized": "multiset"
+    },
+    "references_rows": {
+      "equal": true,
+      "original": 556526,
+      "sanitized": 556526
+    },
+    "row_topology_equal": {
+      "equal": true,
+      "original": 47235,
+      "sanitized": 0
+    },
+    "top20_inclusion_fanout_equal": {
+      "equal": true,
+      "original": 112,
+      "sanitized": 112
+    },
+    "type_distribution_equal": {
+      "equal": true,
+      "original": 47235,
+      "sanitized": 47235
+    }
+  }
+}

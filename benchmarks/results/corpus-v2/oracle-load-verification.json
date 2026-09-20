@@ -1,0 +1,287 @@
+{
+  "loaded": {
+    "cards": 49829,
+    "references": 556526
+  },
+  "connected_database": "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/corpus-v2.sqlite3",
+  "sample": [
+    {
+      "corpus_id": 15,
+      "expected_name": "tkmbewlur",
+      "record": {
+        "id": 15,
+        "name": "tkmbewlur",
+        "key": "tkmbewlur",
+        "type": "orvipveb",
+        "type_code": "basic",
+        "codename": "anonymous",
+        "content": "<p>oumpnjtmtgvscluprrmiyxkxbrgcsaaqodkpmizahkuwzsgorbpaqwyxzhoilvpfeufgybaipsglnbhvxsfilqxiypztvgrurzcisqlizgrcjwjivqtlqmbyrbeoz</p>",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"tkmbewlur\">tkmbewlur</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 1,
+      "expected_name": "tkxqkflwgtb",
+      "record": {
+        "id": 1,
+        "name": "tkxqkflwgtb",
+        "key": "tkxqkflwgtb",
+        "type": "orvipveb",
+        "type_code": "basic",
+        "codename": "decko_bot",
+        "content": "<p>zuoiozkzmuwkhahhzmzgzjgmcdwjluiwkbpmecuobykzltlsgtcrdfckjhdezarmelseybhkjajozgqizspmcdquqfswbthokdbfootbqvyzakylagpbujvuubtiaykeligzuxzb</p>",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"tkxqkflwgtb\">tkxqkflwgtb</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 28,
+      "expected_name": "*all+*default",
+      "record": {
+        "id": 28,
+        "name": "*all+*default",
+        "key": "*all+*default",
+        "type": "swtktey",
+        "type_code": "",
+        "codename": null,
+        "content": "",
+        "left": "*all",
+        "right": "*default"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*all+*default\">*all<span>+</span>*default</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 147,
+      "expected_name": "pfrgxnplvdqsh+wgkkudxfwig",
+      "record": {
+        "id": 147,
+        "name": "pfrgxnplvdqsh+wgkkudxfwig",
+        "key": "pfrgxnplvdqsh+wgkkudxfwig",
+        "type": "orvipveb",
+        "type_code": "basic",
+        "codename": null,
+        "content": "kjdfwxglamwwqvevifmquuhnlquchwewvbvsiiaemfejiphwwgeowjtlegppedrruipeauwlmndwdck\nnjlhnmtaeoyskzavgydagwehbqflylzqhhpzq",
+        "left": "pfrgxnplvdqsh",
+        "right": "wgkkudxfwig"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"pfrgxnplvdqsh+wgkkudxfwig\">pfrgxnplvdqsh<span>+</span>wgkkudxfwig</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 180,
+      "expected_name": "pnwfdiey+wgkkudxfwig",
+      "record": {
+        "id": 180,
+        "name": "pnwfdiey+wgkkudxfwig",
+        "key": "pnwfdiey+wgkkudxfwig",
+        "type": "orvipveb",
+        "type_code": "basic",
+        "codename": null,
+        "content": "<p>\nmlgpsodwicnxispuhsvdvitcvneeihgeleqhutpukvjrkieswytpcxzbyjhqdzlfryrkrjp\noqvaxxsplgfxiukragvdvuhzorlcncqyrtjejj\n</p>",
+        "left": "pnwfdiey",
+        "right": "wgkkudxfwig"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"pnwfdiey+wgkkudxfwig\">pnwfdiey<span>+</span>wgkkudxfwig</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 34,
+      "expected_name": "*children+*right+*structure",
+      "record": {
+        "id": 34,
+        "name": "*children+*right+*structure",
+        "key": "*child+*right+*structure",
+        "type": "qnzkqz",
+        "type_code": "search_type",
+        "codename": null,
+        "content": "pcnatpqdxdxyullz\ndzghlktjaheqbdm\ns",
+        "left": "*children+*right",
+        "right": "*structure"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*children+*right+*structure\">*children<span>+</span>*right<span>+</span>*structure</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 36,
+      "expected_name": "*mates+*right+*structure",
+      "record": {
+        "id": 36,
+        "name": "*mates+*right+*structure",
+        "key": "*mate+*right+*structure",
+        "type": "qnzkqz",
+        "type_code": "search_type",
+        "codename": null,
+        "content": "lyrybcsmhdpdofhc\nhnbkoeavbbmkmae\nd",
+        "left": "*mates+*right",
+        "right": "*structure"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*mates+*right+*structure\">*mates<span>+</span>*right<span>+</span>*structure</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 38,
+      "expected_name": "*nested by+*right+*structure",
+      "record": {
+        "id": 38,
+        "name": "*nested by+*right+*structure",
+        "key": "*nested_by+*right+*structure",
+        "type": "qnzkqz",
+        "type_code": "search_type",
+        "codename": null,
+        "content": "xzelipuxnqslxdeldku\nfxeusxgeodbyhry\nl",
+        "left": "*nested by+*right",
+        "right": "*structure"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*nested by+*right+*structure\">*nested by<span>+</span>*right<span>+</span>*structure</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 422,
+      "expected_name": "jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type plus right+*structure",
+      "record": {
+        "id": 422,
+        "name": "jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type plus right+*structure",
+        "key": "jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type_plu_right+*structure",
+        "type": "qnzkqz",
+        "type_code": "search_type",
+        "codename": null,
+        "content": "fxkehkpskvcjjfnfvy\newjgotnnhzwcirrvvakqksurlusejvdgcitpgjuhqdezioh\nm\n",
+        "left": "jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type plus right",
+        "right": "*structure"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type plus right+*structure\">jzuqht<span>+</span>qxqvhzwvkdqasbmubgttlpkc<span>+</span>*type plus right<span>+</span>*structure</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 625,
+      "expected_name": "litx+uyjgvsz+*right+*default",
+      "record": {
+        "id": 625,
+        "name": "litx+uyjgvsz+*right+*default",
+        "key": "litx+uyjgvsz+*right+*default",
+        "type": "xhor",
+        "type_code": "list",
+        "codename": null,
+        "content": "",
+        "left": "litx+uyjgvsz+*right",
+        "right": "*default"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"litx+uyjgvsz+*right+*default\">litx<span>+</span>uyjgvsz<span>+</span>*right<span>+</span>*default</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 33,
+      "expected_name": "*children",
+      "record": {
+        "id": 33,
+        "name": "*children",
+        "key": "*child",
+        "type": "swtktey",
+        "type_code": "",
+        "codename": "children",
+        "content": "",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*children\">*children</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 6568,
+      "expected_name": "*all+*read",
+      "record": {
+        "id": 6568,
+        "name": "*all+*read",
+        "key": "*all+*read",
+        "type": "xhor",
+        "type_code": "list",
+        "codename": null,
+        "content": "Role_A1",
+        "left": "*all",
+        "right": "*read"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*all+*read\">*all<span>+</span>*read</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 6569,
+      "expected_name": "*all plus+*read",
+      "record": {
+        "id": 6569,
+        "name": "*all plus+*read",
+        "key": "*all_plu+*read",
+        "type": "xhor",
+        "type_code": "list",
+        "codename": null,
+        "content": "Role_A1",
+        "left": "*all plus",
+        "right": "*read"
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"*all plus+*read\">*all plus<span>+</span>*read</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 53058,
+      "expected_name": "ldwkhvol",
+      "record": {
+        "id": 53058,
+        "name": "ldwkhvol",
+        "key": "ldwkhvol",
+        "type": "evog",
+        "type_code": "date",
+        "codename": null,
+        "content": "tvwotatvci",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"ldwkhvol\">ldwkhvol</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 53062,
+      "expected_name": "qgtytkbi",
+      "record": {
+        "id": 53062,
+        "name": "qgtytkbi",
+        "key": "qgtytkbi",
+        "type": "evog",
+        "type_code": "date",
+        "codename": null,
+        "content": "ghporitniv",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"qgtytkbi\">qgtytkbi</span>",
+      "fetch_ok": true
+    },
+    {
+      "corpus_id": 53066,
+      "expected_name": "nfqidfww",
+      "record": {
+        "id": 53066,
+        "name": "nfqidfww",
+        "key": "nfqidfww",
+        "type": "evog",
+        "type_code": "date",
+        "codename": null,
+        "content": "stirdepxsv",
+        "left": null,
+        "right": null
+      },
+      "render_title_head": "<span class=\"card-title\" title=\"nfqidfww\">nfqidfww</span>",
+      "fetch_ok": true
+    }
+  ],
+  "summary": {
+    "sample_size": 16,
+    "fetch_ok": 16,
+    "junctions_ok": 10,
+    "failures": 0
+  }
+}

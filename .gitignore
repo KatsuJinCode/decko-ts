@@ -6,4 +6,8 @@ tools/oracle/decko-oracle-app/
 # benchmark corpus is derived from a production dump and rebuilt on demand
 # (benchmarks/sanitize_corpus.py); never committed
 benchmarks/corpus/
+# corpus v2 sqlite + captured oracle shards: sanitized but large and
+# rebuildable (benchmarks/corpus-v2/build_corpus_v2.py, benchmarks/capture-corpus.rb)
+benchmarks/corpus-v2/bench-corpus-v2.sqlite3
+fixtures/corpus/
 __pycache__/

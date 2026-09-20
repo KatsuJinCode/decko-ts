@@ -46,7 +46,7 @@ DATA RULE: real Culturesmith content never leaves this workstation (not the VM, 
 
 | # | Stream | Owns | Status |
 |---|---|---|---|
-| 9 | Set-pattern registry | `src/card/set-patterns.ts`, `src/card/set-patterns/**`, `tests/card/set-patterns/**`, `docs/set-patterns-port-notes.md` | running — first piece of the rules engine; uses the new scoped check gate |
+| 9 | Set-pattern registry | `src/card/set-patterns.ts`, `src/card/set-patterns/**`, `tests/card/set-patterns/**`, `docs/set-patterns-port-notes.md` | LANDED 2026-09-19 (lead missed the notification): full registry ported in lookup-order precedence (not file order — Ruby register() front-inserts, so core patterns are REVERSE of file load order), live-oracle-verified. NOT YET ACKNOWLEDGED IN PORT INFRA: needs review/commit and rule-lookup stream to be launched |
 | 10 | Card fetch/cache layer | `src/card/fetch.ts`, `src/card/fetch/**`, `tests/card/fetch/**`, `docs/fetch-port-notes.md` | LANDED: 71 own tests, 684/684 repo-wide, tsc clean; KEY FINDING: all fetched attributes compose from the cards table ALONE (acts/actions/changes = history only); compound names via Lexicon (raw columns NULL post-2020); two-level cache (Temporary per-request + Shared stamp-prefixed), event-driven invalidation, no TTL; FIRST BYTE-EXACT PARITY: card-engine handler replays all 10 smoke card records byte-exact vs Ruby |
 
 ## Concurrency gate (2026-09-19)
