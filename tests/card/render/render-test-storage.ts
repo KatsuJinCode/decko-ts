@@ -127,6 +127,9 @@ export interface SeedOptions {
   leftId?: number;
   rightId?: number;
   typeId?: number;
+  /** The type name (string), separate from typeId. Used by the *type
+   *  pattern's `pattern_applies?` check. */
+  typeName?: string;
   dbContent?: string | null;
   trash?: boolean;
 }
