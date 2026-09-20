@@ -80,8 +80,8 @@ describe("oracle replay: CQL engine", () => {
           continue;
         }
 
-        const ast = parse(captured.query as Record<string, unknown>);
-        const stmt = sql(ast);
+        const ast = parseCql(captured.query as Record<string, unknown>);
+        const stmt = generateSql(ast);
         const rows = await directDriver.query<{ name: string | null; key: string | null; left_id: number | null; right_id: number | null }>(stmt.sql, stmt.params);
         // The deck stores compound names via left_id/right_id; reconstruct
         // the full name the way the Ruby engine would expose it.
