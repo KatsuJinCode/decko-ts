@@ -57,6 +57,12 @@ export class RenderEngine implements RenderEngineLike {
   /** Enriched render cards by key - the render path reads this map
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
+  /** Rule lookup cache: `<card_key>|<view>` -> the resolved ViewOverride
+   *  (or undefined if no rule applies). Filled during the first render of
+   *  a (card, view) pair; subsequent renders skip the rule walk entirely.
+   *  This is what keeps the #1282 constant-queries promise: a warm render
+   *  issues ZERO queries for rule application. Cleared on resetCaches(). */
+  private ruleCache = new Map<string, ReturnType<typeof resolveViewOverride> | undefined>();
   /** key -> id for prefetched cards - the SYNC resolver CQL's name-to-id
    *  conditions need (parse options take a sync callback; the async lexicon
    *  cannot serve it, so the prefetch primes this map instead). */
