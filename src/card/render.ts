@@ -26,6 +26,8 @@ import { DeckoName } from "./name.js";
 import { FetchEngine } from "./fetch.js";
 import { cardContent, type CardRecord } from "./fetch/card-record.js";
 import { executeQuery } from "../cql/execute.js";
+import { findRule } from "./rules/lookup.js";
+import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import type { CardsRow } from "../server/schema.js";
 import {
   RenderFormat,
