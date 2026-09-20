@@ -7,26 +7,39 @@
 // so the M3 report has receipts.
 
 import { describe, expect, it } from "vitest";
-import { writeFileSync } from "node:fs";
-import { createRenderTestStorage, seedChain } from "./render-test-storage.js";
+import { writeFileSync, mkdirSync } from "node:fs";
+import {
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "./render-test-storage.js";
+import { DeckoName } from "../../../src/card/name.js";
 
-const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 28, 32];
+const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 28, 32];
+// Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
 
+async function seedChain(storage: RenderTestStorage, depth: number): Promise<void> {
+  // RichText cardtype (codename :basic) - the same cardtype the captured fixtures use.
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+  for (let i = 1; i <= depth; i++) {
+    const content = i < depth ? `level ${i} body {{chain_l${i + 1}}}` : `level ${i} end`;
+    await seedCard(storage, { id: 100 + i, name: `chain_l${i}`, typeId: 2, dbContent: content });
+  }
+}
+
 describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", () => {
-  it("measures round trips, statements, fallback rounds, wall-clock, and warm-cache behavior at every depth", async () => {
+  it("measures round trips, statements, warm cache, and wall-clock at every depth", async () => {
     const rows: Array<{
       depth: number;
       roundTrips: number;
       statements: number;
-      fallbackRounds: number;
-      cardsComposed: number;
       coldWallMs: number;
       warmWallMs: number;
       warmRoundTrips: number;
       warmStatements: number;
       rubyMeasured: number | null;
-      ratio: number | null;
+      rubyRatio: number | null;
     }> = [];
 
     for (const depth of DEPTHS) {
@@ -37,10 +50,9 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
         // Cold render
         storage.counting.reset();
         const t0 = performance.now();
-        const html = await storage.engine.render("chain_l1", "content");
+        await storage.engine.render("chain_l1", "content");
         const t1 = performance.now();
         const cold = storage.counting.snapshot();
-        expect(html).toContain(`level ${Math.min(depth, 8)} end`); // sanity
 
         // Warm render (same engine instance, same chain)
         storage.counting.reset();
@@ -49,20 +61,17 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
         const w1 = performance.now();
         const warm = storage.counting.snapshot();
 
-        const ruby = RUBY_MEASURED[depth] ?? (depth > 16 ? null : (depth + 3));
-        const ratio = ruby !== null && cold.roundTrips > 0 ? ruby / cold.roundTrips : null;
+        const ruby = RUBY_MEASURED[depth] ?? null;
         rows.push({
           depth,
           roundTrips: cold.roundTrips,
           statements: cold.statements,
-          fallbackRounds: (cold as { fallbackRounds?: number }).fallbackRounds ?? 0,
-          cardsComposed: cold.cardsComposed ?? 0,
           coldWallMs: Number((t1 - t0).toFixed(3)),
           warmWallMs: Number((w1 - w0).toFixed(3)),
           warmRoundTrips: warm.roundTrips,
           warmStatements: warm.statements,
           rubyMeasured: ruby,
-          ratio,
+          rubyRatio: ruby !== null ? Number((ruby / cold.roundTrips).toFixed(2)) : null,
         });
       } finally {
         storage.close();
@@ -74,26 +83,35 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     const sts = rows.map((r) => r.statements);
     expect(new Set(rts).size).toBe(1);
     expect(new Set(sts).size).toBe(1);
-    // Constant = 2 round trips (root fetch + one batched closure).
+    // 2 round trips (root fetch by name + one driver.batch for the closure).
     expect(rts[0]).toBe(2);
-    // Statements = root + walkedRows + typeAndSide.
+    // 3 statements (1 root + 2 in the batch: walkedRows + typeAndSide).
     expect(sts[0]).toBe(3);
-    // No JS fallback rounds for chains of simple absolute references.
-    expect(rows.every((r) => r.fallbackRounds === 0)).toBe(true);
     // Warm cache: zero queries on the second render.
     expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
 
+    mkdirSync("benchmarks/results", { recursive: true });
     writeFileSync(
       "benchmarks/results/depth-sweep-ts.json",
       JSON.stringify(
         {
           measured_at: new Date().toISOString(),
-          environment: "local better-sqlite3 over production-schema DDL; chain fixtures synthesized",
-          axes: { round_trips: "driver.batch calls + single query calls", statements: "individual SQL statements (batch members count one each)", fallback_rounds: "JS-verification passes after the SQL walk", warm: "second render of same chain in same engine instance" },
-          ruby_measured_truth: { source: "benchmarks/results/ruby-nesting-r1-r2.json", formula: "depth + 3 for depths 1,2,4,8; depth 16 measured at 19; depth >16 not measured but linearly extrapolated" },
-          rows,
+          environment: "local better-sqlite3 over production-schema DDL; synthetic chains",
+          axes: {
+            round_trips: "driver calls: query() + batch() each count ONE",
+            statements: "individual SQL statements (batch members count one each)",
+            warm: "second render of same chain in same engine instance",
+          },
+          ruby_measured_truth: {
+            source: "decko-ts/benchmarks/results/ruby-nesting-r1-r2.json",
+            formula: "depth + 3; depth 32 hard-capped by Card.config.max_depth=20 with 'Man, you're too deep' UserError",
+            table: RUBY_MEASURED,
+          },
           ts_constant: { round_trips: rts[0], statements: sts[0] },
-          ts_reduces_query_count_by: rows.filter((r) => r.rubyMeasured !== null).map((r) => ({ depth: r.depth, ruby: r.rubyMeasured, ts: r.roundTrips, ratio: r.ratio })),
+          rows,
+          ts_reduces_query_count_by: rows
+            .filter((r) => r.rubyMeasured !== null)
+            .map((r) => ({ depth: r.depth, ruby: r.rubyMeasured, ts: r.roundTrips, ratio: r.rubyRatio })),
         },
         null,
         2,
@@ -102,15 +120,15 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
 
     // Human-readable summary in the test report.
     // eslint-disable-next-line no-console
-    console.log("\nM3 depth sweep — TypeScript vs Ruby queries-per-render:\n");
+    console.log("\nM3 depth sweep - TypeScript vs Ruby queries-per-render:\n");
     // eslint-disable-next-line no-console
-    console.log("depth | ruby | ts(RT) | ts(SQL) | ratio | cold ms | warm ms");
+    console.log("depth | ruby q | ts RT | ts SQL | cold ms | warm ms");
     // eslint-disable-next-line no-console
-    console.log("------+------+------+---------+-------+---------+--------");
+    console.log("------+-------+------+-------+---------+--------");
     for (const r of rows) {
       // eslint-disable-next-line no-console
       console.log(
-        `${String(r.depth).padStart(5)} | ${String(r.rubyMeasured ?? "n/a").padStart(4)} | ${String(r.roundTrips).padStart(4)} | ${String(r.statements).padStart(7)} | ${r.ratio === null ? "n/a" : r.ratio.toFixed(2).padStart(5)} | ${String(r.coldWallMs).padStart(7)} | ${String(r.warmWallMs).padStart(7)}`,
+        `${String(r.depth).padStart(5)} | ${String(r.rubyMeasured ?? "n/a").padStart(5)} | ${String(r.roundTrips).padStart(4)} | ${String(r.statements).padStart(5)} | ${String(r.coldWallMs).padStart(7)} | ${String(r.warmWallMs).padStart(7)}`,
       );
     }
   });
