@@ -81,3 +81,13 @@ in place of bare `npx tsc --noEmit`.
 1. `npx tsc --noEmit` clean. 2. `npx vitest run` green. 3. Behavior
 grounded in the Ruby source or captured fixtures, with the grounding cited
 in the stream's notes doc. 4. Coordinator-reviewed diff committed.
+
+
+## Operator alert (2026-09-19)
+
+THE PORT WAS BEING REPORTED ON STALE STATE. Three streams the lead cited as "in flight" had actually completed or failed 10-14 hours prior; completion notifications arrived in the transcript but the lead never reconciled them. Root cause: the lead reports streams by recent-notification in memory, not by walking the on-disk agent registry. Provider rate limit (weekly quota, resets 2026-09-20 ~11:20 UTC) killed the renderer and the M1 corpus capture 12-14 hours ago. The set-patterns registry is fully landed and was usable since then. Defect filed in KatsuJinCode/foreman #122 (lead reads transcript, not registry; no heartbeat; no silent-failure escalation).
+
+Recovery plan:
+- After rate limit resets (~6 hours from now): relaunch the renderer (#1282 flagship) and the M1 corpus-v2 capture.
+- Set-patterns (#9) is already in the tree from the orphaned completion — needs a review stream to verify gates + land it on the milestone tracker.
+- Use `node scripts/check-scoped.mjs --running <other streams' dirs>` in every future prompt.
