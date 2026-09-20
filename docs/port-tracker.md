@@ -33,6 +33,15 @@ plans the next wave. Agents never git-commit and never run npm install
 - One-click Cloudflare deploy -> measurable when the engine first deploys (wave 3+)
 - CQL match parity -> needs a future MySQL oracle rung (SQLite oracle impossible; documented in oracle-harness.md)
 
+## Milestones (2026-09-19, mapped to the #1282 promises)
+
+DATA RULE: real Culturesmith content never leaves this workstation (not the VM, not Cloudflare, nowhere); sanitized structure-preserving artifacts (proven content-free) may go anywhere.
+
+- **M1 — corpus-scale parity**: corpus v2 (Lexicon-reconstructed names/keys) loaded into a Ruby oracle deck; capture rendered views + CQL result sets for the FULL 47,235-card payload (resumable); replay through the TS engine via the harness — full-payload byte-parity is the claim, not smoke fixtures.
+- **M2 — one-click Cloudflare demo (THE core deliverable per Julian)**: wrangler config + D1 migrations + seed path on a PUBLIC repo with a working Deploy-to-Cloudflare button; demo-able to Ethan. Note: button requires a public repo — repo placement is Julian's call.
+- **M3 — published metrics (AMENDED per Julian 2026-09-19)**: final numbers = the LIVE culturesmith.com deployment (Ethan's VM, not ours) vs an ACTUAL Cloudflare deployment, per #1282. Local + juc-vm numbers are intermediate/engineering artifacts. Live-site measurement is read-only, rate-limited, normal-page-load traffic — heavy/borderline-abusive load testing happens locally only — and Ethan gets a heads-up via Julian before we measure his server.
+- **M4 — one-click MIGRATION (REFINED per Julian 2026-09-19)**: any Ruby-hosted deck can become a Cloudflare-hosted decko-ts in the same one-click flow — same data, new runtime underneath, no editorial transforms. The proven Culturesmith importer generalizes into this path; Brandon's public/private sorting is a SUPERSET use case layered on top (his adds review decisions; the base migration is data-faithful).
+
 ## Wave 2 (launched 2026-09-19)
 
 | # | Stream | Owns | Status |
