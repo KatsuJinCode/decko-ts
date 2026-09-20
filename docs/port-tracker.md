@@ -46,8 +46,17 @@ DATA RULE: real Culturesmith content never leaves this workstation (not the VM, 
 
 | # | Stream | Owns | Status |
 |---|---|---|---|
-| 9 | Set-pattern registry | `src/card/set-patterns.ts`, `src/card/set-patterns/**`, `tests/card/set-patterns/**`, `docs/set-patterns-port-notes.md` | LANDED 2026-09-19 (lead missed the notification): full registry ported in lookup-order precedence (not file order — Ruby register() front-inserts, so core patterns are REVERSE of file load order), live-oracle-verified. NOT YET ACKNOWLEDGED IN PORT INFRA: needs review/commit and rule-lookup stream to be launched |
+| 9 | Set-pattern registry | `src/card/set-patterns.ts`, `src/card/set-patterns/**`, `tests/card/set-patterns/**`, `docs/set-patterns-port-notes.md` | LANDED + ACKNOWLEDGED 2026-09-20: full registry ported in lookup-order precedence (not file order — Ruby register() front-inserts, so core patterns are REVERSE of file load order), live-oracle-verified. 11 own tests. Rule-name algebra in `rule-names.ts`. Sets up the rule-evaluation stream that follows. |
 | 10 | Card fetch/cache layer | `src/card/fetch.ts`, `src/card/fetch/**`, `tests/card/fetch/**`, `docs/fetch-port-notes.md` | LANDED: 71 own tests, 684/684 repo-wide, tsc clean; KEY FINDING: all fetched attributes compose from the cards table ALONE (acts/actions/changes = history only); compound names via Lexicon (raw columns NULL post-2020); two-level cache (Temporary per-request + Shared stamp-prefixed), event-driven invalidation, no TTL; FIRST BYTE-EXACT PARITY: card-engine handler replays all 10 smoke card records byte-exact vs Ruby |
+| 11 | Renderer with batched inclusion prefetch | `src/card/render.ts`, `src/card/render/**`, `tests/card/render/**`, `docs/render-port-notes.md` | LANDED 2026-09-20 (had been orphaned from rate-limit kill): format.ts + views.ts + prefetch.ts + nest-syntax.ts + set-keys.ts + slot-html.ts. 18 own tests including depth-sweep 1..32 that proves the #1282 constant-queries-per-render claim. Warm-cache re-render = zero queries. |
+
+## Wave 3 (planning — the rule-application + mod-loading layer)
+
+| # | Stream | Owns | Status | Why it matters |
+|---|---|---|---|---|
+| 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | NOT STARTED | The renderer currently returns static HTML_VIEWS regardless of card type/set. The rule stream walks the set-module inheritance chain, fetches rule cards by name, applies view overrides per card. Without this, only the html-format views apply — no per-type/per-set customizations. |
+| 13 | Mod loading | `src/card/mod-loader.ts`, `src/card/mod-loader/**`, `tests/card/mod-loader/**`, `docs/mod-loader-port-notes.md` | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, card-mod-format, etc.) are the port targets. The mod-loader's job is the registration mechanism; each mod is its own port. |
+| 14 | Migration tool | `tools/migrate/**`, `tests/tools/migrate/**`, `docs/migration-tool.md` | NOT STARTED | Generalize the proven Culturesmith importer (Ruby dump → decko-ts) into a reusable one-shot path. Same data, new runtime underneath, no editorial transforms. The base migration is data-faithful; Brandon's public/private sorting is a SUPERSET use case layered on top. |
 
 ## Concurrency gate (2026-09-19)
 
