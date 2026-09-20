@@ -72,10 +72,11 @@ describe("worker entry — full E2E under miniflare (M2 smoke)", () => {
   let db: D1Database | undefined;
 
   beforeAll(async () => {
+    const script = await compileWorker();
     mf = new Miniflare(
       convertV4MiniflareOptions({
         modules: true,
-        script: workerSource as unknown as string,
+        script,
         d1Databases: { DB: "decko-worker-m2-smoke" },
       }),
     );
