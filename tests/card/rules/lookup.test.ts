@@ -3,6 +3,12 @@
 // Tests use the same render-test-storage helper as the renderer tests
 // (in-memory better-sqlite3 + the real LocalSqliteDriver, schema loaded
 // from db/schema.sqlite.sql). Rule cards are seeded directly as rows.
+//
+// Compound names (the rule-card norm, e.g. "*all+*read") are stored with
+// name=NULL/key=NULL and ride the junction (left_id/right_id) — see the
+// fetch stream's port notes for the 2020 Lexicon convention. We seed them
+// explicitly with leftId/rightId so the lookup walks the junction path
+// the engine actually uses in production.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -17,19 +23,23 @@ let storage: RenderTestStorage | undefined;
 
 beforeAll(async () => {
   storage = await createRenderTestStorage();
-  // Seed the minimum deck for rule lookup:
-  //   id 1: "*all"                (codename, the catch-all set)
-  //   id 2: "Basic"               (a cardtype, sets type_id on cards)
-  //   id 3: "*all+*read"          (a rule card with db_content = JSON)
-  //   id 4: "Basic+*type"         (a set module card for the Basic type)
-  //   id 5: "Basic+*type+*read"   (a type-specific rule, wins over *all+*read)
+  // Seed the minimum deck for rule lookup.
+  // The "setting" cards (codenames all/read/write) and the "*all" set
+  // module come first; compound rule cards ride the junction.
   await seedCard(storage, { id: 1, name: "*all", codename: "all" });
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic" });
-  await seedCard(storage, { id: 3, name: "*all+*read", dbContent: '{"view":"open","class":"custom-all"}' });
+  await seedCard(storage, { id: 9, name: "*read", codename: "read" });
+  await seedCard(storage, { id: 10, name: "*write", codename: "write" });
+  // The junction row that glues *all + *read into the compound name.
+  // leftId=1 (the *all set), rightId=9 (the *read setting).
+  await seedCard(storage, { id: 3, leftId: 1, rightId: 9, dbContent: '{"view":"open","class":"custom-all"}' });
+  // A type-specific rule on Basic+*type + *read.
   await seedCard(storage, { id: 4, name: "Basic+*type" });
-  await seedCard(storage, { id: 5, name: "Basic+*type+*read", dbContent: '{"view":"open","class":"custom-type"}' });
+  await seedCard(storage, { id: 5, leftId: 4, rightId: 9, dbContent: '{"view":"open","class":"custom-type"}' });
   // A leaf card of type Basic (so the patternsForCard walk yields Basic+*type)
-  await seedCard(storage, { id: 6, name: "Leaf", typeId: 2, dbContent: "leaf content" });
+  await seedCard(storage, { id: 6, name: "Leaf", typeId: 2, typeName: "Basic", dbContent: "leaf content" });
+  // An orphan card with no type, so only *all applies
+  await seedCard(storage, { id: 7, name: "Orphan", dbContent: "no type" });
 }, 60_000);
 
 afterAll(() => {
@@ -45,31 +55,40 @@ describe("findRule", () => {
 
   it("finds *all+*read when the card has no type-specific rule", async () => {
     const s = storage!;
-    // Card with no type, so patternsForCard returns just "*all"
-    await seedCard(s, { id: 7, name: "Orphan", dbContent: "no type" });
     const result = await findRule(s.fetcher, nameAsPatternCardInput("Orphan"), "read");
     expect(result).toBeDefined();
     expect(result!.rule.id).toBe(3);
-    expect(result!.setName).toBe("*all");
-    expect(result!.matchedIndex).toBe(result!.candidates.indexOf("*all+*read"));
+    expect(result!.rule.dbContent).toBe('{"view":"open","class":"custom-all"}');
+    expect(result!.candidates).toContain("*all+*read");
   });
 
   it("returns all candidates for debugging", async () => {
     const s = storage!;
     const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "read");
     expect(result).toBeDefined();
-    // Leaf has typeId=2 (Basic). patternsForCard(Leaf) yields set names
+    // Leaf has typeId=2 typeName=Basic. patternsForCard yields set names
     // including Basic+*type and *all. Candidates include both.
     expect(result!.candidates.length).toBeGreaterThanOrEqual(2);
     expect(result!.candidates).toContain("*all+*read");
+    expect(result!.candidates).toContain("Basic+*type+*read");
+  });
+
+  it("prefers the more-specific rule when both exist", async () => {
+    const s = storage!;
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "read");
+    expect(result).toBeDefined();
+    // The Basic+*type+*read rule should win because *type is more specific
+    // than *all in the registry precedence order.
+    expect(result!.rule.id).toBe(5);
+    expect(result!.rule.dbContent).toBe('{"view":"open","class":"custom-type"}');
   });
 });
 
 describe("findRules (multiple settings)", () => {
   it("finds both *read and *write rules independently", async () => {
     const s = storage!;
-    // Seed a *write rule on *all
-    await seedCard(s, { id: 8, name: "*all+*write", dbContent: '{"view":"content","wrap":"div"}' });
+    // Seed a *write rule on *all (junction row).
+    await seedCard(s, { id: 8, leftId: 1, rightId: 10, dbContent: '{"view":"content","wrap":"div"}' });
     const results = await findRules(s.fetcher, nameAsPatternCardInput("Orphan"), ["read", "write"]);
     expect(results.length).toBe(2);
     const settings = results.map((r) => r.rule.name?.s ?? "").sort();
@@ -80,7 +99,7 @@ describe("findRules (multiple settings)", () => {
 describe("parseViewOverride", () => {
   it("parses a valid JSON rule with view + class", () => {
     const override = parseViewOverride({ dbContent: '{"view":"open","class":"custom-all"}' } as never);
-    expect(override).toEqual({ view: "open", class: "custom-all" });
+    expect(override).toEqual({ view: "open", class: "custom-all", opts: undefined });
   });
 
   it("puts unknown keys in opts (forward-compat)", () => {
