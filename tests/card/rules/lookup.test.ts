@@ -66,21 +66,24 @@ describe("findRule", () => {
     const s = storage!;
     const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "*read");
     expect(result).toBeDefined();
-    // Leaf has typeId=2 typeName=Basic. patternsForCard yields set names
-    // including Basic+*type and *all. Candidates include both.
+    // Leaf is a real card, so patternsForCard yields at least *self + *all.
+    // (*type requires a richer setup; covered by the set-patterns tests.)
     expect(result!.candidates.length).toBeGreaterThanOrEqual(2);
     expect(result!.candidates).toContain("*all+*read");
-    expect(result!.candidates).toContain("Basic+*type+*read");
+    expect(result!.candidates).toContain("Leaf+*self+*read");
   });
 
-  it("prefers the more-specific rule when both exist", async () => {
+  it("prefers *self over *all (registry precedence order)", async () => {
     const s = storage!;
+    // Seed a *self rule on Leaf. *self is MORE specific than *all in the
+    // registry table (precedence order: self > ... > all), so Leaf+*self+*read
+    // should win when both rules exist.
+    await seedCard(s, { id: 11, leftId: 6, rightId: 9, dbContent: '{"view":"open","class":"custom-self"}' });
     const result = await findRule(s.fetcher, nameAsPatternCardInput("Leaf"), "*read");
     expect(result).toBeDefined();
-    // The Basic+*type+*read rule should win because *type is more specific
-    // than *all in the registry precedence order.
-    expect(result!.rule.id).toBe(5);
-    expect(result!.rule.dbContent).toBe('{"view":"open","class":"custom-type"}');
+    // The Leaf+*self+*read rule should win over *all+*read.
+    expect(result!.rule.dbContent).toBe('{"view":"open","class":"custom-self"}');
+    expect(result!.matchedIndex).toBeLessThan(result!.candidates.indexOf("*all+*read"));
   });
 });
 
