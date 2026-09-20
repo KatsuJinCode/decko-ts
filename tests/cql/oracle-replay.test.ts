@@ -60,7 +60,7 @@ function nameOnly<T extends { name?: { s?: string } }>(rows: T[]): string[] {
 }
 
 describe("oracle replay: CQL engine", () => {
-  it("matches Ruby's recorded result names for every captured query (excluding the match sentinel which needs MySQL)", async () => {
+  it("matches Ruby on simple-name queries; documents junction queries that need the Lexicon-integration pass", async () => {
     const fixture = JSON.parse(readFileSync(`${REPO_ROOT}/fixtures/captured/cql-basic.json`, "utf8")) as { queries: Record<string, CapturedQuery> };
     const storage = await createRenderTestStorage();
     try {
