@@ -48,10 +48,23 @@ function splitSqlStatements(ddl: string): string[] {
   return statements.filter((s) => s !== "");
 }
 
-// Inline the worker as a miniflare script. We import worker.ts and grab its
-// default export via a tiny eval — keeps the test file honest about what
-// we're actually testing.
-import workerSource from "../worker.ts?raw";
+// Inline the worker as a miniflare script. vitest's transformer compiles
+// worker.ts → JS; we ask it for the JS string via the vite-node compiler
+// (the same path vitest uses internally).
+import { transform } from "esbuild";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import workerTsSource from "../worker.ts?raw";
+
+async function compileWorker(): Promise<string> {
+  const result = await transform(workerTsSource, {
+    loader: "ts",
+    format: "esm",
+    target: "es2022",
+    sourcemap: false,
+  });
+  return result.code;
+}
 
 describe("worker entry — full E2E under miniflare (M2 smoke)", () => {
   let mf: Miniflare | undefined;
