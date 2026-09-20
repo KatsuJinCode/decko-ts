@@ -33,13 +33,21 @@ const quietMs = Number(argVal("--quiet-ms", 30000)) || 30000;
 const strict = args.includes("--strict");
 const runVitest = args.includes("--vitest");
 const runningDirs = String(argVal("--running", "")).split(",").map((s) => s.trim().replace(/\\/g, "/")).filter(Boolean);
+// Ownership labels: "dir=stream-name" entries in --running attribute suppressed
+// errors to the stream that must fix them; active (unsuppressed) errors are the
+// CALLER's responsibility — the caller cannot report done while they stand.
+const runningOwners = runningDirs.map((entry) => {
+  const [dir, label] = entry.split("=");
+  return { dir, label: label ?? dir };
+});
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 
 const suppressReason = (relFile) => {
   if (strict) return null;
-  if (runningDirs.some((d) => relFile === d || relFile.startsWith(`${d}/`))) return "running-stream dir";
+  const owner = runningOwners.find((o) => relFile === o.dir || relFile.startsWith(`${o.dir}/`));
+  if (owner) return `in-flight: owned by '${owner.label}' (theirs to fix, not yours)`;
   try {
-    if (Date.now() - statSync(path.join(repoRoot, relFile)).mtimeMs < quietMs) return "fresh edit";
+    if (Date.now() - statSync(path.join(repoRoot, relFile)).mtimeMs < quietMs) return "in-flight: fresh edit (owner still iterating)";
   } catch {
     return null; // file gone by check time: report the error as-is
   }

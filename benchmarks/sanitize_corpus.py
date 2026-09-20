@@ -489,6 +489,11 @@ def sanitize_content(s, card_id, name_to_id, san_name_of, read_rule=False):
         else:
             out.append(split_text_filler(payload, budgets[ri], rng))
             ri += 1
+    if not run_idx and budget > 0:
+        # pure-markup content (third-party embeds etc.): attribute stripping
+        # freed bytes but no text run exists to absorb them -- append a
+        # trailing filler run so the total byte length stays exact.
+        out.append("".join(rng.choices(LOWER, k=budget)))
     result = "".join(out)
     actual = len(result.encode("utf-8"))
     return result, max(0, actual - target)

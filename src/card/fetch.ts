@@ -44,6 +44,7 @@ import {
   idString,
   type CardRecord,
 } from "./fetch/card-record.js";
+export type { CardRecord };
 import {
   normalizeMark,
   retrieveFromDb,

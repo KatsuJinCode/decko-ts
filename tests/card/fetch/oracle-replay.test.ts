@@ -17,10 +17,10 @@ import {
   jsonValue,
   replayEntries,
   collectReplayEntries,
-  loadFixtureFile,
   formatReplayFailure,
   DEFAULT_FIXTURE_PATHS,
 } from "../../../src/testing/replay.js";
+import { loadFixtureFile } from "../../../src/testing/fixture-schema.js";
 import { createFetchTestStorage, seedCard, type FetchTestStorage } from "./fetch-test-storage.js";
 import type { CapturedCardRecord } from "../../../src/testing/fixture-schema.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";

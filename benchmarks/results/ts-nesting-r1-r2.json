@@ -5,7 +5,7 @@
     "R2",
     "R4"
   ],
-  "date": "2026-09-19T22:55:16.786Z",
+  "date": "2026-09-19T23:43:07.935Z",
   "engine": "ts-decko-ts",
   "status": "PENDING",
   "environment": {
@@ -16,7 +16,7 @@
     "cpuCount": 28,
     "ramBytes": 34188599296,
     "corpusPath": "C:\\localProjects\\decko-ts\\benchmarks\\corpus\\bench-corpus.sqlite3",
-    "corpusSizeBytes": 207360000
+    "corpusSizeBytes": 207462400
   },
   "config": {
     "renderN": 15,

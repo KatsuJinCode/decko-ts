@@ -89,7 +89,7 @@ describe("SharedCache (lib/card/cache/shared.rb)", () => {
   it("keys entries under {database}-{classKey}-{stamp}:{key} with a '/' before the key (shared.rb#full_key/#prefix)", () => {
     const shared = new SharedCache({ store: mapStore(), database: "decko", className: "Card" });
     // shared.rb#full_key: fk = "#{prefix}/#{key}" where prefix ends with ':'
-    expect(shared.fullKey("some_key")).toMatch(/^decko-Card-stamp-\d+-\d+:\/\/some_key$/);
+    expect(shared.fullKey("some_key")).toMatch(new RegExp("^decko-Card-stamp-\\d+-\\d+:/some_key$"));
   });
 
   it("read/write/delete route through the full key (shared.rb#read/#write/#delete)", () => {
@@ -137,7 +137,7 @@ describe("SharedCache (lib/card/cache/shared.rb)", () => {
 describe("CardCache (lib/card/cache.rb)", () => {
   it("read falls through temp -> shared and populates temp (cache.rb#read)", () => {
     const store = mapStore();
-    const cache = new CardCache({ sharedStore: store.map, className: "Card" });
+    const cache = new CardCache({ sharedStore: store, className: "Card" });
     cache.shared!.write("k", "shared-value");
     expect(cache.temp.read("k")).toBeUndefined();
     expect(cache.read("k")).toBe("shared-value");
@@ -146,7 +146,7 @@ describe("CardCache (lib/card/cache.rb)", () => {
 
   it("write goes to BOTH shared and temp (cache.rb#write)", () => {
     const store = mapStore();
-    const cache = new CardCache({ sharedStore: store.map });
+    const cache = new CardCache({ sharedStore: store });
     cache.write("k", "v");
     expect(store.map.size).toBe(1);
     expect(cache.temp.read("k")).toBe("v");
@@ -154,7 +154,7 @@ describe("CardCache (lib/card/cache.rb)", () => {
 
   it("delete and reset touch both levels (cache.rb#delete/#reset)", () => {
     const store = mapStore();
-    const cache = new CardCache({ sharedStore: store.map });
+    const cache = new CardCache({ sharedStore: store });
     cache.write("k", "v");
     cache.delete("k");
     expect(cache.exist("k")).toBe(false);

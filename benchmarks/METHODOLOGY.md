@@ -104,7 +104,7 @@ RAILS_ENV=development bundle exec decko runner \
 # knobs: BENCH_RENDER_N BENCH_WARMUP BENCH_BACKGROUND BENCH_OUT BENCH_PREFIX
 
 # TS R1/R2 (wave 3: handlers plug in here)
-npx tsx benchmarks/run_ts_bench.ts   # currently emits PENDING artifacts
+node benchmarks/run_ts_bench.ts      # currently emits PENDING artifacts
 ```
 
 The Ruby harness seeds only `BenchR1*`-prefixed cards, never touches

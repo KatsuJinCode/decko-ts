@@ -71,7 +71,9 @@ export interface MarkOptions {
 }
 
 function isCodenameMark(arg: FlatArg): arg is CodenameMarkArg {
-  return typeof arg === "object" && arg !== null && "codename" in arg;
+  // DeckoName must be excluded BEFORE the `in` check: it carries a
+  // `codename` GETTER (name_variants.rb port) and `in` sees prototype members
+  return typeof arg === "object" && arg !== null && !(arg instanceof DeckoName) && "codename" in arg;
 }
 
 function isCardRecord(arg: FlatArg): arg is CardRecord {

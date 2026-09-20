@@ -4,11 +4,11 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  cacheKey,
   createFetchTestStorage,
   seedCard,
   type FetchTestStorage,
 } from "./fetch-test-storage.js";
+import { cacheKey } from "../../../src/card/fetch/lexicon.js";
 
 let storage: FetchTestStorage;
 
@@ -93,8 +93,14 @@ describe("DbLexicon caching (Card::Cache[Lexicon])", () => {
     expect(afterFirst).toBeGreaterThan(0);
     await storage.engine.lexicon.id("Cached Card"); // cached: zero queries
     expect(storage.counting.queries).toBe(afterFirst);
-    await storage.engine.lexicon.name(10); // id -> name also cached
-    expect(storage.counting.queries).toBe(afterFirst);
+    // simple lexes do NOT get a reverse (id -> name) entry (lexicon.rb:124
+    // "don't store name, because lex might not be the canonical name"), so
+    // name(10) queries once, and only once
+    await storage.engine.lexicon.name(10);
+    const afterName = storage.counting.queries;
+    expect(afterName).toBeGreaterThan(afterFirst);
+    await storage.engine.lexicon.name(10);
+    expect(storage.counting.queries).toBe(afterName);
   });
 
   it("cacheKey uses 'L-<key>' for simple lexes and 'L-<left>-<right>' for arrays (lexicon.rb#cache_key)", () => {
@@ -105,10 +111,15 @@ describe("DbLexicon caching (Card::Cache[Lexicon])", () => {
   it("writeTemp mirrors id->name and lex->id into the temp cache (lexicon.rb#write_to_temp_cache)", async () => {
     const lexicon = storage.engine.lexicon;
     lexicon.writeTemp(77, undefined, "mirrored_card");
-    expect(await storage.engine.lexicon.id("mirrored_card")).toBeUndefined(); // lex cache has no DB row
-    // the lex->id entry is in the temp cache; verify via cache read
-    expect(lexicon.cache.temp.read(cacheKey("mirrored_card"))).toBe(77);
+    // the lex->id entry serves id() straight from cache - exactly Ruby's
+    // "temp cache ahead of the database" semantics (cache.rb module doc);
+    // no db row exists, so nothing else is known
+    expect(await storage.engine.lexicon.id("mirrored_card")).toBe(77);
+    expect(storage.counting.queries).toBe(0); // served from temp, not the db
     expect(lexicon.cache.temp.read("77")).toBeUndefined(); // name was nil
+    // deleting the lex entry (as the write path does) restores the miss
+    lexicon.deleteFor(77, "mirrored_card");
+    expect(await storage.engine.lexicon.id("mirrored_card")).toBeUndefined();
   });
 
   it("compound id resolution caches the reverse id->lex entry (lex_to_id tap, lexicon.rb:125)", async () => {

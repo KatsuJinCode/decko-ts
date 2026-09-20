@@ -118,6 +118,10 @@ describe("hit / hit-cache / miss (fetch.rb#retrieve_or_new)", () => {
     expect(junction?.id).toBe(21);
     expect(junction?.leftId).toBe(10);
     expect(junction?.rightId).toBe(20);
+    // the composed (canonical) name joins the side cards' stored names -
+    // the right card is stored as "Search", so that is the canonical form;
+    // the KEY is built from the canonical name
+    expect(junction?.name?.s).toBe("Home Page+Search");
     expect(junction?.key).toBe("home_page+search");
   });
 
@@ -214,7 +218,8 @@ describe("row composition (the table -> attribute map)", () => {
   it("composes compound names via the lexicon, not the (NULL) column (name/all.rb:13)", async () => {
     await seedStandardDeck();
     const junction = await engine.fetchById(21);
-    expect(junction?.name?.s).toBe("Home Page+search");
+    // composed from the side cards' stored names: "Home Page" + "Search"
+    expect(junction?.name?.s).toBe("Home Page+Search");
     expect(junction?.key).toBe("home_page+search");
     const row = await storage.selectOne<{ name: string | null; key: string | null }>(
       "SELECT name, key FROM cards WHERE id = 21",
@@ -270,10 +275,10 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
     // (cache/card_class.rb:13-15) and write_to_cache(local_only) writes
     // temp only (cache/card_class.rb:28-30).
     const store = mapStore();
-    const first = await createFetchTestStorage({ sharedStore: store.map });
+    const first = await createFetchTestStorage({ sharedStore: store });
     try {
       await seedCard(first, { id: 10, name: "Home Page" });
-      const second = new FetchEngine(first.counting, { sharedStore: store.map });
+      const second = new FetchEngine(first.counting, { sharedStore: store });
 
       await first.engine.fetchByName("Home Page"); // writes temp1 AND shared
       first.counting.reset();
@@ -282,8 +287,10 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
       expect((await second.fetchByName("Home Page"))?.id).toBe(10);
       expect(first.counting.queries).toBe(0); // served from the shared cache
 
-      // local_only bypasses the shared level and goes to the db
-      expect((await second.fetchByName("Home Page", { localOnly: true }))?.id).toBe(10);
+      // local_only bypasses the shared level: a THIRD engine with an empty
+      // temp must go all the way to the db
+      const third = new FetchEngine(first.counting, { sharedStore: store });
+      expect((await third.fetchByName("Home Page", { localOnly: true }))?.id).toBe(10);
       expect(first.counting.queries).toBeGreaterThan(0);
     } finally {
       first.close();
@@ -292,7 +299,7 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
 
   it("local_only fetches write the temp cache only (write_to_cache local_only)", async () => {
     const store = mapStore();
-    const first = await createFetchTestStorage({ sharedStore: store.map });
+    const first = await createFetchTestStorage({ sharedStore: store });
     try {
       await seedCard(first, { id: 10, name: "Home Page" });
       const sharedKeys = () => [...store.map.keys()].filter((k) => k.endsWith("/home_page"));
