@@ -55,7 +55,7 @@ test("worker: hit /Unknown+Card with no DB returns a structured error envelope",
 test("engine: FetchEngine + RenderEngine wire cleanly through the worker surface", async () => {
   // Lightweight import-level wiring check: the modules the worker imports
   // resolve without throwing and expose the documented constructors.
-  expect(typeof D1Adapter).toBe("function");
+  expect(typeof CloudflareD1Adapter).toBe("function");
   expect(typeof FetchEngine).toBe("function");
   expect(typeof RenderEngine).toBe("function");
 });
