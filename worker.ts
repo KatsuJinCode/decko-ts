@@ -35,7 +35,7 @@ interface Deck {
 const decks = new Map<string, Promise<Deck>>();
 
 function bootDeck(env: Env): Promise<Deck> {
-  const driver = new D1Adapter(env.DB);
+  const driver = new CloudflareD1Adapter(env.DB);
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
   return Promise.resolve({ fetcher, render });
