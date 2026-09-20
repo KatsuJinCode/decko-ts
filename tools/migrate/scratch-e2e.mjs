@@ -44,7 +44,7 @@ const dump = [
 ].join("\n") + "\n";
 
 const dir = mkdtempSync(join(tmpdir(), "decko-migrate-"));
-const dumpPath = join(dir, "synthetic.sql");
+const dumpPath = "C:/localProjects/decko-ts/tools/migrate/scratch-dump.sql";
 const dbPath = join(dir, "out.sqlite");
 writeFileSync(dumpPath, dump, "utf8");
 

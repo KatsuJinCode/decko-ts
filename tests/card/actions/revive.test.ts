@@ -55,7 +55,7 @@ describe("createCard — revival from trash", () => {
     // has history): changed fields = trash (t->f) + db_content
     const changes = await f.storage.selectAll<{ field: number; value: string | null }>(
       "SELECT field, value FROM card_changes WHERE card_action_id = ? ORDER BY field",
-      [(actions[3] as { id: number }).id],
+      [(actions[2] as { id: number }).id],
     );
     expect(changes).toEqual([
       { field: 2, value: "reborn" },

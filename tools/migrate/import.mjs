@@ -51,8 +51,10 @@ export function splitSqlStatements(ddl) {
     }
     if (ch === "-" && ddl[i + 1] === "-") {
       while (i < ddl.length && ddl[i] !== "\n") i++;
-      current += " ";
-      continue;
+      // Keep the line break: parseTargetSchema parses columns per line,
+      // and joining lines would hide every column after the first.
+      current += " \n";
+      continue; // i sits on the "\n"; the loop's i++ moves past it
     }
     if (ch === ";") {
       statements.push(current.trim());
@@ -387,6 +389,9 @@ export async function importDump(opts) {
     stats.checksums[table].addRow(values, columns.indexOf("id"));
 
     const sql = makeInsert(table, columns);
+    if (process.env.DECKO_MIGRATE_DEBUG) {
+      console.error(`push ${table} cols=${columns.length} vals=${values.length} rowCols=${JSON.stringify(row.columns)} sql=${sql.slice(0, 60)}`);
+    }
     batch.push({ sql, params: values, __table: table, __idIdx: columns.indexOf("id") });
     if (batch.length >= batchSize) await flush();
   }
