@@ -127,16 +127,25 @@ live.each_slice(SHARD_SIZE).with_index do |slice, idx|
   view_count = 0
   File.open(tmp_path, "w") do |f|
     slice.each do |(cid, name, has_content)|
-      card = Card.fetch(name)
-      row = if card.nil?
-              { "id" => cid, "name" => name,
-                "error" => capture_error(RuntimeError.new("Card.fetch returned nil")) }
-            else
-              views = render_views(card, has_content == 1)
-              view_count += views.size
-              { "id" => card.id, "name" => name,
-                "record" => card_attributes(card), "views" => views }
-            end
+      # Fetch is as fallible as render (e.g. a Search-type card whose content
+      # is not valid JSON raises Card::Error::BadQuery from
+      # card-mod-search's cql_search.rb during item resolution). A per-card
+      # error is RECORDED as data so one bad card cannot kill the run.
+      row =
+        begin
+          card = Card.fetch(name)
+          if card.nil?
+            { "id" => cid, "name" => name,
+              "error" => capture_error(RuntimeError.new("Card.fetch returned nil")) }
+          else
+            views = render_views(card, has_content == 1)
+            view_count += views.size
+            { "id" => card.id, "name" => name,
+              "record" => card_attributes(card), "views" => views }
+          end
+        rescue StandardError => e
+          { "id" => cid, "name" => name, "error" => capture_error(e) }
+        end
       f.write(JSON.generate(deep_sort(row)) + "\n")
     end
   end

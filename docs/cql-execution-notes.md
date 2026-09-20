@@ -2,9 +2,121 @@
 
 The execution side of the CQL port: prove that the wave-1 generator's SQL
 (docs/cql-port-notes.md) RUNS against a real database and returns correct
-rows. Files: `src/cql/execute.ts` (entry points), `src/cql/sqlite-regexp.ts`
-(the REGEXP UDF), `tests/cql/execution.test.ts` (49 end-to-end tests over a
-seeded in-memory better-sqlite3 database built from `db/schema.sqlite.sql`).
+rows. Files: `src/cql/execute.ts` (entry points + the Lexicon resolution
+seam), `src/cql/sqlite-regexp.ts` (the REGEXP UDF),
+`tests/cql/execution.test.ts` (49 end-to-end tests over a seeded in-memory
+better-sqlite3 database built from `db/schema.sqlite.sql`),
+`tests/cql/oracle-replay.test.ts` (the captured CQL battery replayed
+strictly — see "Oracle replay 11/11" below).
+
+**Status 2026-09-20 (name-resolution stream): the captured oracle battery
+`fixtures/captured/cql-basic.json` replays 11/11 strict** (was 3/11 with 7
+PEND + 1 capture-error sentinel). The gap was name→id resolution: post-2020
+compound cards carry NULL `cards.name`/`cards.key`, so CQL name values
+(`left:`/`right:`/`type:`/`created_by:` restricts, compound `+` names) must
+resolve through the Lexicon's junction walk, not a column read.
+
+## Name→id resolution: the Lexicon seam (landed 2026-09-20)
+
+CQL carries NAME strings everywhere ids are meant (`type: "Search"`,
+`left: "Oracle Junction"`, `plus: "child_one"`, `created_by: "Decko Bot"`).
+Ruby resolves them during interpretation through `Card::Lexicon.id` /
+`Tie#id_from_val` — and since the 2020 Lexicon migration a compound card's
+name lives NOWHERE in a single column: it is `left_id`/`right_id` walked
+recursively (`lexicon.rb#name_to_lex`/`#lex_to_id`). Reading `cards.name`
+would send every compound resolution to the -999 sentinel, which is exactly
+why 7 of the 11 captured queries returned 0 rows.
+
+**The shared walk lives fetch-side, in one place:**
+`src/card/fetch/lexicon.ts` — `DbLexicon.id(name)` (async, the retrieval
+path) and `DbLexicon.peekId(name)` (sync mirror added by this stream).
+`peekId` walks the SAME `name_to_lex`/`lex_to_id` path line-for-line but
+reads only cache-warm entries (temp, then shared — `cache.rb#read`), so
+fetch and CQL cannot drift: there is no second implementation of the walk
+anywhere, and `tests/cql/name-resolution.test.ts` pins `peekId(name) ===
+await id(name)` for every name shape CQL can carry (simple, compound,
+3-part junction, key string, unknown, blank, relative fragment).
+
+**The seam:** `executeQuery`/`executeCount` options accept
+`parseOptionsWithLexicon(lexicon, base?)` (`src/cql/execute.ts`), which
+wires `ParseOptions.resolveCardId` to `lexicon.peekId`. The async/sync
+boundary is honest and documented on both sides: the driver is async, the
+parse-time resolver is sync (Ruby's Lexicon is cache-first synchronous too
+— the db fallback is the only difference), so callers WARM first (`await
+lexicon.name(id)` over the deck's ids, or `FetchEngine.warmLexicon`) and
+parse afterwards. A cold or unknown name returns `undefined` — never a
+wrong id — and the parser falls back to Ruby's sentinels (-999 in
+`Tie#id_from_val`, -2 in `clause_to_hash`), so an unresolvable name matches
+nothing exactly as in Ruby. Relative fragments (`+part`, `_left`) stay
+unresolved (lexicon.rb:24), and result names recompose through the same
+walk in reverse (`DbLexicon.name(id)` — the `Card#name` composition).
+
+Fetch-side diff: exactly one additive method pair on `DbLexicon`
+(`peekId` + private `peekLex`); no behavior of the fetch layer changed,
+`tests/card/fetch` untouched and green.
+
+## Oracle replay 11/11 (fixtures/captured/cql-basic.json)
+
+`tests/cql/oracle-replay.test.ts` replays every captured query through the
+real execution path (`executeQuery`: parseCql → generateSql →
+LocalSqliteDriver) and byte-compares each name result SET against Ruby's
+recording (sorted on both sides; the captured files' row order is not a
+contract the generator pins — ORDER BY shapes are pinned in the
+sql-generation suite). Mechanics per query family:
+
+- **Exact name/content** (`exact_name`, `no_results`, `content_exact`) —
+  passed before this stream: `name` key-ifies through `nameToKey`, `content`
+  maps to `db_content`; no id resolution involved.
+- **Restrict resolution** (`left_children`, `right_child`, `plus_condition`,
+  `type_dir_desc`, `type_limit`, `not_cardtypes`, `created_by_bot`) — need
+  `resolveCardId` through the Lexicon seam above.
+- **Result-name composition** — result rows come back with NULL name
+  columns for compound cards; the replay recomposes via `DbLexicon.name`,
+  the same walk `Card#name` uses (including 3-part junctions like
+  `*to+*right+*content options`, which a naive left+right single-level
+  join cannot name).
+
+### The seeded capture deck (tests/cql/cql-test-storage.ts)
+
+The capture ran against a fresh 618-card decko app. The replay seeds the
+query-relevant model of that deck with its REAL capture-deck ids (read
+from `tools/oracle/decko-oracle-app` read-only; standard decko seed
+content, no Culturesmith data). Two properties are load-bearing and
+documented in the seed file:
+
+1. **NULL-key sort windows.** `sort: "name"` orders by the `key` column;
+   SQLite sorts NULL keys first ASC / last DESC with rowid tie-breaks. The
+   captured limit windows are reproduced exactly: `created_by_bot` (limit
+   5) = the five lowest-id real compounds (10, 11, 14, 19, 29 — every
+   later real compound sorts behind the window, so omitting it cannot
+   change the set); `not_cardtypes`/`type_limit` = Search compounds
+   157, 160, 163 (ASC, NULLs first, id order); `type_dir_desc` = 614 >
+   278 > 100 (DESC, NULLs last). Runtime-verified against the oracle
+   app's own SQLite engine with the same ORDER BY shapes before writing
+   the seed.
+2. **The Search-type set is modeled completely** (all 13 real Search-type
+   cards), so the type-filtered windows see the full real set.
+
+`not_cardtypes`'s `not: {type: "Cardtype"}` also resolves "Cardtype"
+through the seam (real id 3) and negates via the generator's LEFT JOIN +
+`id is null` shape.
+
+### match_sentinel: the one entry without an oracle result set
+
+The fixture records `result: "CAPTURE_ERROR: RuntimeError: %{func} not
+implemented"` for `{match: "Oracle"}` — the CAPTURE failed, not the query:
+Ruby's CQL `match` is MySQL/PG-only (no SQLite REGEXP; the oracle app is
+SQLite — docs/oracle-harness.md), so Ruby never produced a result set to
+compare against. Byte-comparison is therefore impossible BY CAPTURE, and
+the replay does not fake one. It (a) pins the error sentinel so a future
+re-capture that records a real result set fails loudly and upgrades the
+comparison to a true byte-parity, and (b) RUNS the query through the engine
+with the REGEXP UDF and asserts the set the generator+UDF semantics imply
+for the seed: name `REGEXP /oracle/i` over non-NULL names (605, 606, 611,
+614, 615 — compound rows never match the name side, the UDF's NULL
+propagation) OR `db_content` matches (605, 611, 614). That is the honest
+ceiling until a MySQL oracle rung lands; the entry executes, is asserted,
+and its provenance is labeled in the test.
 
 ## Execution contract
 
@@ -61,7 +173,11 @@ registered on the connection. The failure is loud, not silent — pinned by a
 test that runs a match query against a driver WITHOUT the UDF.
 
 **Local/test path (implemented):** `registerSqliteRegexpFunction(driver)`
-(`src/cql/sqlite-regexp.ts`) registers a deterministic UDF. Semantics:
+(`src/cql/sqlite-regexp.ts`) registers a deterministic UDF. The execution
+suite registers it at bootstrap (`beforeAll`), and the oracle replay
+registers it on its replay connection (`cql-test-storage.ts#
+createCqlTestStorage`) — the registration contract is "once per driver
+instance, before the first prepare of a match statement". Semantics:
 
 - case-insensitive by default, matching MySQL REGEXP (ICU in 8.x, Henry
   Spencer in 5.x; both ASCII case-fold by default; decko keys are downcased
@@ -149,10 +265,13 @@ changes CQL results; the execution suite is the integration pin.
 
 ## Deferred (honest gaps)
 
-1. **Name reconstruction** — `return: "name"` returns the raw
-   `{name, left_id, right_id}` rows; compound cards carry NULL there and
-   Ruby rebuilds "left+right" recursively. Needs the card/name algebra +
-   recursive fetch; deferred to the fetch/engine wave.
+1. **Name reconstruction as an executeQuery concern** — `executeQuery`
+   still returns raw `{name, left_id, right_id}` rows; the replay composes
+   result names through `DbLexicon.name(id)` (the shared walk, see "Name→id
+   resolution" above), which is the consumer-side shape Ruby's
+   `Run#alter_result` implies. Folding composition INTO the execution
+   entry (so returned rows carry composed names by default) waits on the
+   result-shaping/engine wave that also owns `prepend`/`append`.
 2. **`found_by`** — requires running nested queries / Search-card fetches
    at interpretation time; the execution entry exists but the engine loop
    (Query.run semantics) does not.
@@ -163,4 +282,10 @@ changes CQL results; the execution suite is the integration pin.
    must precede the first prepare of a match statement. `executeQuery` does
    NOT auto-register (it accepts the `SQLDatabaseDriver` interface, which
    has no registration concept); callers bootstrap with
-   `registerSqliteRegexpFunction` exactly once per driver instance.
+   `registerSqliteRegexpFunction` exactly once per driver instance (the
+   execution suite and the oracle replay both do).
+6. **Sync resolution warmth** — `parseOptionsWithLexicon` resolves
+   synchronously over warmed Lexicon entries only; the engine wave that
+   integrates CQL with live card instances should own the warm cycle (or
+   an async resolver redesign) so statement interpretation cannot silently
+   hit cold entries in production paths.

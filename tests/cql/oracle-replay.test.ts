@@ -1,146 +1,115 @@
 // CQL oracle parity: replays the 11 captured query entries in
-// fixtures/captured/cql-basic.json against a seeded SQLite deck using
-// the SAME cards Ruby captured against, comparing returned names to
-// Ruby's recorded result names. The replay harness's cql-engine handler
-// shape requires canonical-query JSON; here we use the queries
-// directly via executeQuery to match what the capture recorded.
+// fixtures/captured/cql-basic.json through the REAL execution path —
+// executeQuery (parseCql -> generateSql -> LocalSqliteDriver) — against a
+// seeded reconstruction of the oracle capture deck
+// (cql-test-storage.ts#seedOracleCaptureDeck), and byte-compares each name
+// result set against Ruby's recording. 11/11 strict.
+//
+// Name->id resolution rides the fetch layer's Lexicon walk: the parse-time
+// resolveCardId (parseOptionsWithLexicon) answers through DbLexicon.peekId
+// over cache-warmed entries, and result names recompose through
+// DbLexicon.name — the same walk both times, shared with the fetch stream.
+//
+// match_sentinel is the one entry WITHOUT an oracle result set: the capture
+// itself failed ("CAPTURE_ERROR: RuntimeError: %{func} not implemented" —
+// Ruby's CQL match is MySQL/PG-only; SQLite has no REGEXP,
+// docs/oracle-harness.md). Byte-comparison is impossible BY CAPTURE, so the
+// replay pins the error sentinel (a re-capture that records a real result
+// set fails loudly here and upgrades the comparison), then RUNS the query
+// through the engine with the REGEXP UDF (src/cql/sqlite-regexp.ts) and
+// asserts the set the generator+UDF semantics imply for this seed.
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
-import { parseCql } from "../../src/cql/parser.js";
-import { generateSql } from "../../src/cql/sql.js";
-import { DeckoName } from "../../src/card/name.js";
-import { seedCard, type RenderTestStorage } from "../card/render/render-test-storage.js";
-import { createRenderTestStorage } from "../card/render/render-test-storage.js";
+import { executeQuery, parseOptionsWithLexicon } from "../../src/cql/execute.js";
+import type { DbLexicon } from "../../src/card/fetch/lexicon.js";
+import type { CardsRow } from "../../src/server/schema.js";
+import {
+  createCqlTestStorage,
+  seedOracleCaptureDeck,
+  type CqlTestStorage,
+} from "./cql-test-storage.js";
 
 interface CapturedQuery {
   query: Record<string, unknown>;
-  result: string[];
+  result: string[] | string;
 }
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const DDL = readFileSync(`${REPO_ROOT}/db/schema.sqlite.sql`, "utf8");
 
-/** Same seeding as the render oracle replay (cards 605-617, plus cardtype
- *  cards) so the CQL queries operate on identical data. */
-async function seedCapturedDeck(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
-  await seedCard(storage, { id: 6, name: "Set", codename: "set", typeId: 2 });
-  await seedCard(storage, { id: 7, name: "List", codename: "list", typeId: 2 });
-  await seedCard(storage, { id: 701, name: "child_one", typeId: 2 });
-  await seedCard(storage, { id: 702, name: "child_two", typeId: 2 });
-  await seedCard(storage, { id: 703, name: "rich_child", typeId: 2 });
-  await seedCard(storage, { id: 704, name: "*self", typeId: 6 });
-  await seedCard(storage, { id: 705, name: "*read", typeId: 2 });
-  await seedCard(storage, { id: 605, name: "Oracle Basics", typeId: 2, dbContent: "A plain basic card for oracle capture." });
-  await seedCard(storage, { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card." });
-  await seedCard(storage, { id: 608, name: "Oracle Junction+child_one", leftId: 606, rightId: 701, typeId: 2, dbContent: "first child" });
-  await seedCard(storage, { id: 610, name: "Oracle Junction+child_two", leftId: 606, rightId: 702, typeId: 2, dbContent: "second child" });
-  await seedCard(storage, {
-    id: 611,
-    name: "Oracle Rich",
-    typeId: 2,
-    dbContent: "<p>Rich text with an inclusion: {{Oracle Rich+rich_child}}</p>",
-  });
-  await seedCard(storage, { id: 613, name: "Oracle Rich+rich_child", leftId: 611, rightId: 703, typeId: 2, dbContent: "the nested child body" });
-  await seedCard(storage, { id: 614, name: "Oracle Search", typeId: 98, dbContent: '{"left":"Oracle Junction","sort":"name"}' });
-  await seedCard(storage, { id: 615, name: "Oracle Restricted", typeId: 2, dbContent: "Only administrators can read me." });
-  await seedCard(storage, { id: 616, name: "Oracle Restricted+*self", leftId: 615, rightId: 704, typeId: 6, dbContent: "" });
-  await seedCard(storage, { id: 617, name: "Oracle Restricted+*self+*read", leftId: 616, rightId: 705, typeId: 7, dbContent: "Administrator" });
+/** Result names recomposed through the fetch layer's Lexicon walk (the
+ *  compound rows come back with NULL name columns; Card#name is the
+ *  left+right Lexicon composition). Sorted: the comparison is name-SET
+ *  parity — the captured files' row order is not part of the contract the
+ *  generator pins (ORDER BY shapes are pinned in sql-generation tests). */
+async function resultNames(lexicon: DbLexicon, rows: CardsRow[]): Promise<string[]> {
+  const names: string[] = [];
+  for (const row of rows) {
+    const composed = await lexicon.name(row.id);
+    if (composed !== undefined && composed.s !== "") names.push(composed.s);
+  }
+  return names.sort();
 }
 
-/** Strip the `id` from a card record to compare name-keyed parity
- *  (Ruby fixture ids are the deck it saw, our ids are seeded from the
- *  same source, but name equality is the actual parity check). */
-function nameOnly<T extends { name?: { s?: string } }>(rows: T[]): string[] {
-  return rows.map((r) => r.name?.s ?? "").filter((n) => n.length > 0).sort();
+/** Warm the Lexicon so the sync resolveCardId seam can answer during
+ *  interpretation (peekId is warm-cache-only by contract). */
+async function warmDeckLexicon(storage: CqlTestStorage): Promise<void> {
+  const result = await storage.driver.query<{ id: number }>("SELECT id FROM cards", []);
+  await storage.fetcher.warmLexicon(result.rows.map((row) => row.id));
 }
 
-describe("oracle replay: CQL engine", () => {
-  it("matches Ruby on simple-name queries; documents junction queries that need the Lexicon-integration pass", async () => {
-    const fixture = JSON.parse(readFileSync(`${REPO_ROOT}/fixtures/captured/cql-basic.json`, "utf8")) as { queries: Record<string, CapturedQuery> };
-    const storage = await createRenderTestStorage();
+describe("oracle replay: CQL engine (11/11, strict)", () => {
+  it("byte-compares every captured query's result set against the Ruby oracle", async () => {
+    const fixture = JSON.parse(
+      readFileSync(`${REPO_ROOT}/fixtures/captured/cql-basic.json`, "utf8"),
+    ) as { queries: Record<string, CapturedQuery> };
+    const storage = await createCqlTestStorage();
     try {
-      await seedCapturedDeck(storage);
-      const driver = (storage.engine as unknown as { driver?: LocalSqliteDriver }).driver ?? null;
-      // Pull the driver out via the fetcher's underlying driver for direct SQL.
-      const directDriver = (storage.fetcher as unknown as { driver?: LocalSqliteDriver }).driver;
-      if (directDriver === undefined) throw new Error("could not access underlying driver");
+      await seedOracleCaptureDeck(storage);
+      await warmDeckLexicon(storage);
+      const parse = parseOptionsWithLexicon(storage.fetcher.lexicon);
 
-      const results: Array<{ name: string; query: unknown; ruby: string[]; ts: string[]; pass: boolean; sql?: string }> = [];
-
-      // Queries that pass byte-exact at the SQL layer using direct name/key
-      // matching. Junction + creator queries need name->id resolution
-      // through the Lexicon, which the CQL execution stream deferred to
-      // the rules-engine pass (documented in cql-port-notes.md and
-      // cql-execution-notes.md); they are run for the report but
-      // excluded from the strict parity assertion.
-      const JUNCTION_OR_CREATOR = new Set([
-        "created_by_bot",
-        "left_children",
-        "not_cardtypes",
-        "plus_condition",
-        "right_child",
-        "type_dir_desc",
-        "type_limit",
-      ]);
-
+      const failures: string[] = [];
       for (const [name, captured] of Object.entries(fixture.queries)) {
-        if (name === "match_sentinel") {
-          // SQLite cannot run MySQL REGEXP without a UDF; this case is
-          // documented as expected-pending in cql-port-notes.md.
-          results.push({ name, query: captured.query, ruby: captured.result, ts: [], pass: true });
+        if (!Array.isArray(captured.result)) {
+          // No oracle result set exists for this entry (capture adapter
+          // failed) — pin the sentinel so a re-capture upgrades to a real
+          // comparison instead of silently keeping the semantic fallback.
+          expect(`${name}: ${String(captured.result)}`).toContain("CAPTURE_ERROR");
+          const result = await executeQuery(storage.fetcher.driver, captured.query, { parse });
+          if ("count" in result) throw new Error(`${name}: unexpected count result`);
+          const tsNames = await resultNames(storage.fetcher.lexicon, result.rows);
+          // match "Oracle" = name REGEXP /oracle/i (simple cards: 605, 606,
+          // 611, 614, 615; compound rows carry NULL names and never match —
+          // UDF NULL propagation) OR db_content REGEXP /oracle/i (605, 611,
+          // 614). Derived from the generator+UDF semantics over this seed;
+          // the oracle recorded no result to compare against.
+          expect(`${name}: ${tsNames.join(", ")}`).toBe(
+            `${name}: ${[
+              "Oracle Basics",
+              "Oracle Junction",
+              "Oracle Rich",
+              "Oracle Restricted",
+              "Oracle Search",
+            ].sort().join(", ")}`,
+          );
           continue;
         }
 
-        const ast = parseCql(captured.query as Record<string, unknown>);
-        const stmt = generateSql(ast);
-        const rows = await directDriver.query<{ name: string | null; key: string | null; left_id: number | null; right_id: number | null }>(stmt.sql, stmt.params);
-        // The deck stores compound names via left_id/right_id; reconstruct
-        // the full name the way the Ruby engine would expose it.
-        const byId = new Map<number, { name: string }>();
-        for (const row of (await directDriver.query<{ id: number; name: string | null }>("SELECT id, name FROM cards", [])).rows) {
-          if (row.name !== null) byId.set(row.id, { name: row.name });
-        }
-        const names = new Set<string>();
-        for (const row of rows.rows) {
-          if (row.name !== null && row.name !== "") names.add(row.name);
-          else if (row.left_id !== null && row.right_id !== null) {
-            const left = byId.get(row.left_id)?.name;
-            const right = byId.get(row.right_id)?.name;
-            if (left !== undefined && right !== undefined) names.add(DeckoName.parse(`${left}+${right}`).s);
-          }
-        }
-        const tsNames = [...names].sort();
+        const result = await executeQuery(storage.fetcher.driver, captured.query, { parse });
+        if ("count" in result) throw new Error(`${name}: unexpected count result`);
+        const tsNames = await resultNames(storage.fetcher.lexicon, result.rows);
         const rubyNames = [...captured.result].sort();
-        results.push({ name, query: captured.query, ruby: rubyNames, ts: tsNames, pass: tsNames.length === rubyNames.length && tsNames.every((n, i) => n === rubyNames[i]), sql: stmt.sql });
+        const pass =
+          tsNames.length === rubyNames.length && tsNames.every((n, i) => n === rubyNames[i]);
+        if (!pass) {
+          failures.push(
+            `${name} MISMATCH: ruby=${JSON.stringify(rubyNames)} ts=${JSON.stringify(tsNames)} sql=${result.sql}`,
+          );
+        }
       }
-
-      const failures = results.filter((r) => !r.pass);
-      // eslint-disable-next-line no-console
-      console.log("\nCQL oracle parity (" + results.length + " entries):");
-      for (const r of results) {
-        // eslint-disable-next-line no-console
-        const status = JUNCTION_OR_CREATOR.has(r.name) ? "PEND" : r.pass ? "PASS" : "FAIL";
-        // eslint-disable-next-line no-console
-        console.log(status + " " + r.name.padEnd(22) + " | ruby=" + r.ruby.length + " ts=" + r.ts.length);
-      }
-      // Strict parity only on the queries that the engine can answer today.
-      const strictFailures = failures.filter((r) => !JUNCTION_OR_CREATOR.has(r.name));
-      expect(strictFailures).toEqual([]);
-      // The junction + creator queries must RUN and return some rows
-      // (zero is a deeper port bug; returning rows but wrong names is the
-      // known Lexicon gap). Document, don't fail.
-      const junctionZeroes = results.filter((r) => JUNCTION_OR_CREATOR.has(r.name) && r.ruby.length > 0 && r.ts.length === 0);
-      // eslint-disable-next-line no-console
-      console.log("\nJUNCTION/CREATOR queries that returned 0 TS rows (known gap: name->id Lexicon resolution deferred):");
-      for (const r of junctionZeroes) {
-        // eslint-disable-next-line no-console
-        console.log("  - " + r.name + " | ruby=" + r.ruby.length + " ts=" + r.ts.length);
-      }
+      expect(failures).toEqual([]);
     } finally {
       storage.close();
     }

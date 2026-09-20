@@ -60,6 +60,43 @@ export class DbLexicon {
     return lex === undefined ? undefined : this.lexToId(lex);
   }
 
+  /**
+   * Synchronous mirror of id() over CACHE-WARM entries only - the sync-read
+   * contract the name-environment adapters and the CQL name->id resolver
+   * (ParseOptions.resolveCardId via cql/execute.ts#parseOptionsWithLexicon)
+   * need. The driver is async while those consumers are sync; Ruby's
+   * Lexicon is cache-first synchronous too - the db fallback is the only
+   * difference, and this mirror deliberately has none.
+   *
+   * Walks the SAME name_to_lex/lex_to_id path id() walks, reading only what
+   * id()/name() already cached: name -> lex (the name for simple cards,
+   * [left_id, right_id] for compound, side ids resolved recursively through
+   * peekLex) -> id (the "L-..." reverse entry idToLex/lexToId write).
+   * Warm first (await lexicon.name(id)/id(name), e.g. FetchEngine#
+   * warmLexicon over the deck's ids); a cold or unresolvable entry returns
+   * undefined - an UNKNOWN name, never a wrong id.
+   */
+  peekId(nameish: string | DeckoName): number | undefined {
+    const name = typeof nameish === "string" ? DeckoName.parse(nameish) : nameish;
+    if (name.s === "") return undefined; // lexicon.rb:21 `return if name.blank?`
+    if (name.isRelativeFragment) return undefined; // lexicon.rb:24 relative_fragment?
+    const lex = this.peekLex(name);
+    if (lex === undefined) return undefined;
+    const id = this.cache.read(cacheKey(lex));
+    return typeof id === "number" ? id : undefined;
+  }
+
+  /** name_to_lex over warm entries only (mirrors nameToLex line for line;
+   *  keep the two in step). */
+  private peekLex(name: DeckoName): Lex | undefined {
+    if (name.isSimple) return name.s;
+    const leftId = this.peekId(name.leftName ?? DeckoName.parse(""));
+    if (leftId === undefined) return undefined;
+    const rightId = this.peekId(name.rightName ?? DeckoName.parse(""));
+    if (rightId === undefined) return undefined;
+    return [leftId, rightId];
+  }
+
   /** Lexicon.lex_to_name([left_id, right_id]) - the compound-name
    *  composition Card#name uses (lib/card/name/all.rb#name). */
   async composeName(leftId: number, rightId: number | undefined | null): Promise<DeckoName | undefined> {

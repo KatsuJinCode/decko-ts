@@ -24,6 +24,7 @@
 
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import type { CardsRow } from "../server/schema.js";
+import type { DbLexicon } from "../card/fetch/lexicon.js";
 import { parseCql } from "./parser.js";
 import type { ParseOptions, QueryNode } from "./ast.js";
 import { generateSql } from "./sql.js";
@@ -59,6 +60,28 @@ export interface CqlCountResult {
 }
 
 export type CqlQueryResult = CqlExecutionResult<CardsRow> | CqlCountResult;
+
+/**
+ * Parse options whose `resolveCardId` answers through the fetch layer's
+ * DbLexicon — the same name->lex->id walk Ruby's Card::Lexicon.id performs
+ * for every CQL name value (type/left/right/created_by restrict values,
+ * string clauses; compound "A+B" names resolve recursively through their
+ * side cards' ids, so the cards.name column never enters the path — that
+ * column is NULL for compound rows since the 2020 Lexicon migration).
+ *
+ * DbLexicon's read path (peekId) is synchronous over cache-warm entries
+ * only: warm first (await lexicon.name(id) over the deck's ids, or
+ * FetchEngine#warmLexicon), then parse. A cold or unknown name yields
+ * undefined and the parser falls back to Ruby's sentinels (-999 in
+ * Tie#id_from_val, -2 in clause_to_hash) — an unresolvable name matches
+ * nothing, exactly as in Ruby.
+ */
+export function parseOptionsWithLexicon(
+  lexicon: DbLexicon,
+  base: ParseOptions = {},
+): ParseOptions {
+  return { ...base, resolveCardId: (name: string) => lexicon.peekId(name) };
+}
 
 /**
  * Execute one CQL statement against a driver.
