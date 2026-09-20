@@ -12,7 +12,7 @@ describe("debug: findRule minimal", () => {
     await seedCard(s, { id: 3, leftId: 1, rightId: 2, dbContent: "rule content" });
     await seedCard(s, { id: 7, name: "Orphan", dbContent: "no type" });
 
-    const result = await findRule(s.fetcher, nameAsPatternCardInput("Orphan"), "read");
+    const result = await findRule(s.fetcher, nameAsPatternCardInput("Orphan"), "*read");
     console.log("candidates:", result?.candidates);
     console.log("matched:", result?.rule.name?.s);
     console.log("dbContent:", result?.rule.dbContent);
