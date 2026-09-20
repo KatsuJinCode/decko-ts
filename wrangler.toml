@@ -1,0 +1,39 @@
+# Cloudflare Workers deploy config for decko-ts.
+# Same engine code runs on Node (LocalSqliteDriver) and Workers (D1Adapter).
+#
+# First-time deploy recipe (~2 min):
+#   1. `npx wrangler login` (one-time, opens browser to your CF account)
+#   2. `npx wrangler d1 create decko-ts`  → paste the returned database_id below
+#   3. `npx wrangler d1 execute decko-ts --file db/schema.sqlite.sql --remote`
+#      → apply schema to production D1
+#   4. (optional) `npx wrangler d1 execute decko-ts --file db/seed.sql --remote`
+#      → seed a few demo cards so the deploy shows real content
+#   5. `npx wrangler deploy`
+#   6. curl https://decko-ts.<account>.workers.dev/
+#
+# For local dev / preview with miniflare:
+#   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
+
+name = "decko-ts"
+main = "worker.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[define]
+__DECKO_RUNTIME__ = "'workers'"
+
+# Update this after running `wrangler d1 create decko-ts` (step 2 above).
+# The placeholder fails loudly — Cloudflare rejects the deploy until replaced.
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-ts"
+database_id = "TBD_REPLACE_AFTER_WRANGLER_D1_CREATE"
+
+[vars]
+# LIBRARY_RUNTIME is expressed via [define]; nothing needed here yet.
+
+# Optional: bind a R2 bucket for asset hosting if/when the demo grows
+# attachments. The engine never reads from R2 directly — adapters only.
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "decko-ts-assets"
