@@ -99,7 +99,7 @@ interface ShardOutcome {
   lines: number;
   captureErrorLines: number;
   records: { total: number; pass: number; structurePending: number; realFail: number };
-  renders: { total: number; pass: number; structurePending: number; realFail: number };
+  renders: { total: number; pass: number; structurePending: number; nestGap: number; realFail: number };
 }
 
 describe("corpus v2 replay: full-payload oracle parity", () => {
