@@ -102,7 +102,20 @@ export class RenderEngine implements RenderEngineLike {
       throw new Error(`render card not prepared: ${name.s}`);
     }
     const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
-    return format.renderView(view, {});
+    const baseHtml = format.renderView(view, {});
+
+    // Rule-application hook: look up the rule card for this (card, view),
+    // resolve any JSON-encoded view override, and apply it to the produced
+    // HTML. Surgical transforms only (class append, title swap, tag swap,
+    // joint styling) — see src/card/rules/apply.ts. The render path stays
+    // functional without rule cards (the rule walk returns undefined and
+    // applyViewOverride is a no-op).
+    const rule = await findRule(this.fetcher, { name, id: rootCard.id, typeId: rootCard.record.typeId, typeName: rootCard.typeName }, `*${view}`);
+    if (rule !== undefined) {
+      const override = resolveViewOverride(view, [rule.rule]);
+      if (override !== undefined) return applyViewOverride(baseHtml, override);
+    }
+    return baseHtml;
   }
 
   /** Drop every derived cache (the fetch engine's caches + the render-side
