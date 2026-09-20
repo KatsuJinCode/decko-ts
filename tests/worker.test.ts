@@ -15,7 +15,7 @@
 
 import { test, expect } from "vitest";
 import worker from "../worker.js";
-import { D1Adapter } from "../src/server/drivers/d1.js";
+import { CloudflareD1Adapter } from "../src/server/drivers/d1.js";
 import { FetchEngine } from "../src/card/fetch.js";
 import { RenderEngine } from "../src/card/render.js";
 
