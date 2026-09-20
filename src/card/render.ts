@@ -112,17 +112,24 @@ export class RenderEngine implements RenderEngineLike {
     const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
     const baseHtml = format.renderView(view, {});
 
-    // Rule-application hook: look up the rule card for this (card, view),
-    // resolve any JSON-encoded view override, and apply it to the produced
-    // HTML. Surgical transforms only (class append, title swap, tag swap,
-    // joint styling) — see src/card/rules/apply.ts. The render path stays
-    // functional without rule cards (the rule walk returns undefined and
-    // applyViewOverride is a no-op).
-    const rule = await findRule(this.fetcher, { name, id: rootCard.id, typeId: rootCard.record.typeId, typeName: rootCard.typeName }, `*${view}`);
-    if (rule !== undefined) {
-      const override = resolveViewOverride(view, [rule.rule]);
-      if (override !== undefined) return applyViewOverride(baseHtml, override);
+    // Rule-application hook: cached lookup so warm re-renders cost zero
+    // queries. The cache key encodes the (card, view) pair so different
+    // views of the same card get independent override resolution.
+    const cacheKey = `${name.key}|${view}`;
+    let override = this.ruleCache.get(cacheKey);
+    if (override === undefined && !this.ruleCache.has(cacheKey)) {
+      // Miss: walk the rule chain. Cache both the hit AND the miss (the
+      // undefined in `override` could mean "no rule" — we distinguish via
+      // `has`, but the cache stores undefined for misses too).
+      const rule = await findRule(
+        this.fetcher,
+        { name, id: rootCard.id, typeId: rootCard.record.typeId, typeName: rootCard.typeName },
+        `*${view}`,
+      );
+      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
+      this.ruleCache.set(cacheKey, override);
     }
+    if (override !== undefined) return applyViewOverride(baseHtml, override);
     return baseHtml;
   }
 
