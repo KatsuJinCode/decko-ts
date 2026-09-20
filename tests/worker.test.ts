@@ -57,5 +57,5 @@ test("engine: FetchEngine + RenderEngine wire cleanly through the worker surface
   // resolve without throwing and expose the documented constructors.
   expect(typeof D1Adapter).toBe("function");
   expect(typeof FetchEngine).toBe("function");
-  expect(typeof render).toBe("object"); // module namespace
+  expect(typeof RenderEngine).toBe("function");
 });
