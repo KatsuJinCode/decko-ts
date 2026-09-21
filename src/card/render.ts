@@ -125,11 +125,11 @@ export class RenderEngine implements RenderEngineLike {
     // rule? predicate's type-id source) folds into the same batch.
     const permissionCold = this.readPermission === undefined;
     const ruleTypesCold = this.ruleTypeIds === undefined;
-    const permissionStatementCount = permissionCold ? readPermissionStatements().length : 0;
+    const permissionStatements = permissionCold ? readPermissionStatements() : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       const coldStatements = [
-        ...readPermissionStatements().slice(0, permissionStatementCount),
+        ...permissionStatements,
         ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
