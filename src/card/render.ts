@@ -265,6 +265,82 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   // -------------------------------------------------------------------------
+  // rule? predicate (lib/card/rule/all.rb:32-51) — the RULE set-key input
+  // -------------------------------------------------------------------------
+
+  /** Parse the folded codehash result (sliced past the permission
+   *  statements) into memoized codename ids. Runs once per engine, before
+   *  enrichment, so set-key derivation never queries. */
+  private parseRuleTypeIds(
+    folded: SQLQueryResult[] | undefined,
+    permissionStatementCount: number,
+  ): void {
+    const result = folded !== undefined ? folded[permissionStatementCount] : undefined;
+    if (result !== undefined) {
+      this.fetcher.codenames.foldCodehashResults(result);
+    } else {
+      // No folded batch to read (defensive: a warm-closure first render).
+      // One standalone load, still once per engine.
+      void this.fetcher.codenames.ensureLoaded();
+    }
+    this.ruleTypeIds = {
+      setting: this.fetcher.codenames.peekId("setting"),
+      set: this.fetcher.codenames.peekId("set"),
+      user: this.fetcher.codenames.peekId("user"),
+    };
+  }
+
+  /** Card#rule? — the 06_rule.rb pattern_applies? (standard_rule? ||
+   *  preference?, card-1.110.0 lib/card/rule/all.rb:32-51). Type
+   *  comparisons mirror Ruby's fetch_type_id exactly: resolve each name
+   *  part's card through storage and compare its type_id. Undefined when
+   *  the seed lacks the codename cards — the pattern cannot apply either
+   *  way (same degradation as a rule-less deck). */
+  private async computeIsRule(
+    name: DeckoName,
+    leftRecord: CardRecord | undefined,
+  ): Promise<boolean | undefined> {
+    const ids = this.ruleTypeIds;
+    if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
+      return undefined;
+    }
+    // name.right fetched type == SettingID gates BOTH shapes (all.rb:39,44)
+    const rightTypeId = await this.fetchTypeIdForPart(name.rightName);
+    if (rightTypeId === undefined || rightTypeId !== ids.setting) return false;
+    if (name.parts.length > 2) {
+      // preference? (all.rb:43-48): name[0..-3] fetched type == SetID, then
+      // valid_preferer? (all.rb:50-53): the [-2] part's type is User, or
+      // that part's codename is "all".
+      const trunkTypeId = await this.fetchTypeIdForPart(
+        DeckoName.parse(name.parts.slice(0, -2).join("+")),
+      );
+      if (trunkTypeId !== ids.set) return false;
+      const prefererPart = name.parts[name.parts.length - 2] ?? "";
+      const prefererTypeId = await this.fetchTypeIdForPart(DeckoName.parse(prefererPart));
+      if (ids.user !== undefined && prefererTypeId === ids.user) return true;
+      const prefererKey = DeckoName.parse(prefererPart).key;
+      const prefererRecord =
+        prefererKey !== "" ? ((await this.fetcher.fetchByName(prefererKey)) ?? undefined) : undefined;
+      return prefererRecord?.codename === "all";
+    }
+    // standard_rule? (all.rb:37-40): name.left fetched type == SetID. The
+    // left record is already in hand — enrichment fetched it for the
+    // *type plus right anchor.
+    return leftRecord !== undefined && leftRecord.typeId === ids.set;
+  }
+
+  /** Card.fetch_type_id(name-part): the part card's fetched type_id
+   *  (cache-first via the fetch ladder; undefined for unresolvable parts —
+   *  Ruby's fetch-returns-nil path). */
+  private async fetchTypeIdForPart(part: DeckoName | undefined): Promise<number | undefined> {
+    if (part === undefined) return undefined;
+    const key = part.key;
+    if (key === "") return undefined;
+    const record = (await this.fetcher.fetchByName(key)) ?? undefined;
+    return record?.typeId;
+  }
+
+  // -------------------------------------------------------------------------
   // prepare phase (all async work happens here, never during the render)
   // -------------------------------------------------------------------------
 
