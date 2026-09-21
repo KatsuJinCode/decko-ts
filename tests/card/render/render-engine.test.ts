@@ -257,12 +257,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // The walk is CACHED after first render — warm renders stay at 0.
     expect(roundTripsByDepth).toEqual({ 1: 5, 2: 5, 4: 5, 8: 5 });
     // Statements add the 3 read-permission statements + the codename
-    // codehash (the rule? predicate's type ids) — all folded into the
-    // closure batch by the render engine (same round trip).
-    expect(statementsByDepth).toEqual({ 1: 10, 2: 10, 4: 10, 8: 10 });
+    // codehash (rule? ids) + the structure-rule universe — all folded
+    // into the closure batch by the render engine (same round trip).
+    expect(statementsByDepth).toEqual({ 1: 11, 2: 11, 4: 11, 8: 11 });
     // depth 8 within the target budget on BOTH axes; Ruby needed 11 queries.
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(6);
-    expect(statementsByDepth[8]).toBeLessThanOrEqual(10);
+    expect(statementsByDepth[8]).toBeLessThanOrEqual(11);
     expect(statementsByDepth[8]).toBeLessThan(RUBY_MEASURED[8]);
   });
 
