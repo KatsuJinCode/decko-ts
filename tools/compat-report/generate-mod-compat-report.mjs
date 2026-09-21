@@ -532,10 +532,25 @@ function classify(inv, surface) {
       ? 0
       : htmlViewsCovered.length / htmlViewsDeclared.length;
 
+  // Mod-specific views: declared views that are NOT in the universal
+  // baseline (card-mod-format + deck core supply these for every card).
+  // A mod's contribution is its NON-universal views - that's what the
+  // porting work actually adds.
+  const specificViewsDeclared = htmlViewsDeclared.filter(
+    (v) => !UNIVERSAL_HTML_VIEWS.has(v),
+  );
+  const specificViewsCovered = specificViewsDeclared.filter((v) =>
+    surface.htmlViews.includes(v),
+  );
+  const specificViewsCoverage =
+    specificViewsDeclared.length === 0
+      ? 0
+      : specificViewsCovered.length / specificViewsDeclared.length;
+
   // Evidence line - one line per mod.
   let evidence = "";
   if (htmlViewsDeclared.length > 0) {
-    evidence = `${htmlViewsCovered.length}/${htmlViewsDeclared.length} html views present in HTML_VIEWS`;
+    evidence = `${htmlViewsCovered.length}/${htmlViewsDeclared.length} html views in HTML_VIEWS (${specificViewsCovered.length}/${specificViewsDeclared.length} mod-specific)`;
   } else {
     evidence = "no html view declarations in this mod";
   }
@@ -546,13 +561,15 @@ function classify(inv, surface) {
   const patternBackedModules = totalSetModules > 0 && patternsUsed.length > 0;
 
   // Status thresholds (see docs/mod-compat-notes.md for the rubric).
-  // ported:    substantial view + pattern coverage, plus signature-only
-  //            plumbing (e.g. bar_and_box has bar/open/closed/mini_bar
-  //            and bar.rb's prepare_bar / build_accordion_bar behavior is
-  //            byte-pinned in views.ts).
-  // partial:   some views/patterns exist; either custom render machinery
-  //            (forms, auth, uploads) or a sizable lib/ tree is unported.
-  // missing:   zero or near-zero coverage.
+  // ported:    ≥50% of MOD-SPECIFIC html views are in HTML_VIEWS AND ≥50%
+  //            of patterns the mod uses are implemented AND the mod has
+  //            pattern-backed set modules. The mod-specific check stops
+  //            a "view :core only" mod from looking ported just because
+  //            the universal :core view is implemented.
+  // partial:   some coverage (any html view present, or ≥50% pattern
+  //            coverage, or substantial lib/ + permissions), but not
+  //            enough for ported.
+  // missing:   zero coverage.
   let status = "missing";
   if (totalSetModules === 0 && inv.counts.libRbFiles === 0) {
     // Pure data/transform gem with no set/ and no lib/. Treat as
@@ -560,8 +577,8 @@ function classify(inv, surface) {
     status = "ignored";
     evidence = "data/transform-only gem (no set/ tree, no lib/ ruby)";
   } else if (
-    htmlViewsDeclared.length > 0 &&
-    viewsCoverage >= 0.5 &&
+    specificViewsDeclared.length > 0 &&
+    specificViewsCoverage >= 0.5 &&
     patternsCoverage >= 0.5 &&
     patternBackedModules
   ) {
@@ -580,10 +597,18 @@ function classify(inv, surface) {
   // One-line verdict + evidence.
   let verdict = "";
   if (status === "ported") {
-    verdict = `${htmlViewsCovered.length} html view(s) ported: ${htmlViewsCovered.slice(0, 6).join(", ")}${htmlViewsCovered.length > 6 ? ", ..." : ""}`;
+    verdict = `${specificViewsCovered.length} mod-specific view(s) ported: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
   } else if (status === "partial") {
-    const missing = htmlViewsDeclared.filter((v) => !surface.htmlViews.includes(v));
-    verdict = `views covered: ${htmlViewsCovered.slice(0, 4).join(", ") || "(none)"}; views missing: ${missing.slice(0, 6).join(", ") || "(no html views)"}${missing.length > 6 ? ", ..." : ""}`;
+    const specificMissing = specificViewsDeclared.filter(
+      (v) => !surface.htmlViews.includes(v),
+    );
+    const covered = specificViewsCovered.length > 0
+      ? specificViewsCovered.slice(0, 4).join(", ")
+      : "(no mod-specific views covered)";
+    const missing = specificMissing.length > 0
+      ? specificMissing.slice(0, 6).join(", ") + (specificMissing.length > 6 ? ", ..." : "")
+      : "(no mod-specific views)";
+    verdict = `mod-specific: covered=${covered}; missing=${missing}`;
   } else if (status === "missing") {
     verdict = `no html view registered in HTML_VIEWS; ${totalSetModules} set module(s) across ${patternsUsed.length} pattern(s)`;
   } else if (status === "ignored") {
