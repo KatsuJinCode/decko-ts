@@ -194,6 +194,7 @@ export class RenderEngine implements RenderEngineLike {
     this.ruleCache.clear();
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
+    this.ruleTypeIds = undefined;
     this.lastPrefetch = undefined;
   }
 
