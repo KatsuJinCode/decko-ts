@@ -194,7 +194,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("card create — duplicate name is rejected (validate_uniqueness_of_name)", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Pudding", "v1");
     // Same key collision
