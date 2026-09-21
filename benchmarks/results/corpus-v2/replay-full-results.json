@@ -5,172 +5,172 @@
     "captureErrorLines": 1,
     "records": {
       "total": 999,
-      "pass": 728,
-      "structurePending": 270,
+      "pass": 734,
+      "structurePending": 265,
       "permissionPending": 0,
-      "realFail": 1
+      "realFail": 0
     },
     "renders": {
       "total": 2426,
-      "pass": 1650,
-      "structurePending": 148,
-      "nestGap": 112,
+      "pass": 1772,
+      "structurePending": 106,
+      "nestGap": 0,
       "permissionPending": 816,
-      "realFail": 516
+      "realFail": 548
     },
     "real_failures": [
       {
         "shard": "shard-000000.jsonl",
-        "area": "card-engine",
-        "id": "corpus:274:record",
-        "first": "FAIL corpus:274:record (card-engine)\n  first difference at code-unit offset 12 (byte offset 12): expected \"\\\"\" but got \"n\"\n  expected excerpt: {\"codename\":\"all\",\"content\":\"fr\",\"key\":\"*all\",\"left\":null,\"n...\n  actual excerpt:   {\"codename\":null,\"content\":\"fr\",\"key\":\"*all\",\"left\":null,\"na...\n  sizes: expected 116 bytes, actual 115 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:53:render:closed",
-        "first": "FAIL corpus:53:render:closed (render-engine)\n  first difference at code-unit offset 79 (byte offset 79): expected \" \" but got \"-\"\n  expected excerpt: ... class=\"card-slot closed-view ALL TYPE-jlkv STAR SELF-Xtiny_mce\" data-card-id=\"53\" data-card-nam...\n  actual excerpt:   ... class=\"card-slot closed-view ALL TYPE-jlkv STAR-Xtiny_mce SELF-Xtiny_mce\" data-card-id=\"53\" dat...\n  sizes: expected 2496 bytes, actual 2091 bytes"
+        "first": "FAIL corpus:53:render:closed (render-engine)\n  first difference at code-unit offset 1091 (byte offset 1091): expected \" \" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"    Configure &lt;a target=&quot;_blank&quot; cl...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 2496 bytes, actual 2071 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:53:render:content",
-        "first": "FAIL corpus:53:render:content (render-engine)\n  first difference at code-unit offset 81 (byte offset 81): expected \" \" but got \"-\"\n  expected excerpt: ...class=\"card-slot content-view ALL TYPE-jlkv STAR SELF-Xtiny_mce d0-card-content\" data-card-id=\"5...\n  actual excerpt:   ...class=\"card-slot content-view ALL TYPE-jlkv STAR-Xtiny_mce SELF-Xtiny_mce d0-card-content\" data-...\n  sizes: expected 33827 bytes, actual 992 bytes"
+        "first": "FAIL corpus:53:render:content (render-engine)\n  first difference at code-unit offset 358 (byte offset 358): expected \"<\" but got \"g\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"CodeRay\">\n  <div class=\"code\"><pre><...\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">g\nkmrwgiqvppvncijbwjay\nkldfcohzqcqoykybtgcjstrmi...\n  sizes: expected 33827 bytes, actual 982 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:53:render:open",
-        "first": "FAIL corpus:53:render:open (render-engine)\n  first difference at code-unit offset 75 (byte offset 75): expected \" \" but got \"-\"\n  expected excerpt: ...w\" class=\"card-slot open-view ALL TYPE-jlkv STAR SELF-Xtiny_mce\" data-card-id=\"53\" data-card-nam...\n  actual excerpt:   ...w\" class=\"card-slot open-view ALL TYPE-jlkv STAR-Xtiny_mce SELF-Xtiny_mce\" data-card-id=\"53\" dat...\n  sizes: expected 36353 bytes, actual 3113 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:55:render:closed",
-        "first": "FAIL corpus:55:render:closed (render-engine)\n  first difference at code-unit offset 78 (byte offset 78): expected \" \" but got \"-\"\n  expected excerpt: ...lass=\"card-slot closed-view ALL TYPE-xnhrjk STAR SELF-Xtitle\" data-card-id=\"55\" data-card-name=\"...\n  actual excerpt:   ...lass=\"card-slot closed-view ALL TYPE-xnhrjk STAR-Xtitle SELF-Xtitle\" data-card-id=\"55\" data-card...\n  sizes: expected 2045 bytes, actual 2059 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:55:render:content",
-        "first": "FAIL corpus:55:render:content (render-engine)\n  first difference at code-unit offset 80 (byte offset 80): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot content-view ALL TYPE-xnhrjk STAR SELF-Xtitle d0-card-content\" data-card-id=\"55\" ...\n  actual excerpt:   ...ass=\"card-slot content-view ALL TYPE-xnhrjk STAR-Xtitle SELF-Xtitle d0-card-content\" data-card-i...\n  sizes: expected 367 bytes, actual 374 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:55:render:open",
-        "first": "FAIL corpus:55:render:open (render-engine)\n  first difference at code-unit offset 74 (byte offset 74): expected \" \" but got \"-\"\n  expected excerpt: ... class=\"card-slot open-view ALL TYPE-xnhrjk STAR SELF-Xtitle\" data-card-id=\"55\" data-card-name=\"...\n  actual excerpt:   ... class=\"card-slot open-view ALL TYPE-xnhrjk STAR-Xtitle SELF-Xtitle\" data-card-id=\"55\" data-card...\n  sizes: expected 2444 bytes, actual 2465 bytes"
+        "first": "FAIL corpus:53:render:open (render-engine)\n  first difference at code-unit offset 1078 (byte offset 1078): expected \" \" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"    Configure &lt;a target=&quot;_blank&quot; cl...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 36353 bytes, actual 3083 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:61:render:closed",
-        "first": "FAIL corpus:61:render:closed (render-engine)\n  first difference at code-unit offset 79 (byte offset 79): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR SELF-Xthank\" data-card-id=\"61\" data-card-name=\"...\n  actual excerpt:   ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR-Xthank SELF-Xthank\" data-card-id=\"61\" data-card...\n  sizes: expected 2236 bytes, actual 2074 bytes"
+        "first": "FAIL corpus:61:render:closed (render-engine)\n  first difference at code-unit offset 1079 (byte offset 1079): expected \"D\" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"Destination after card is created. &lt;a target=...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 2236 bytes, actual 2060 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:67:render:closed",
-        "first": "FAIL corpus:67:render:closed (render-engine)\n  first difference at code-unit offset 102 (byte offset 102): expected \" \" but got \"-\"\n  expected excerpt: ...-slot closed-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SE...\n  actual excerpt:   ...-slot closed-view ALL ALL_PLUS TYPE-xnhrjk RSTAR-kfnvyby-Xtype-Xthank RIGHT-Xthank TYPE_PLUS_RIG...\n  sizes: expected 3079 bytes, actual 2730 bytes"
+        "first": "FAIL corpus:67:render:closed (render-engine)\n  first difference at code-unit offset 104 (byte offset 104): expected \"U\" but got \"I\"\n  expected excerpt: ...lot closed-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF...\n  actual excerpt:   ...lot closed-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF-kfnv...\n  sizes: expected 3079 bytes, actual 2688 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:67:render:content",
-        "first": "FAIL corpus:67:render:content (render-engine)\n  first difference at code-unit offset 104 (byte offset 104): expected \" \" but got \"-\"\n  expected excerpt: ...slot content-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SE...\n  actual excerpt:   ...slot content-view ALL ALL_PLUS TYPE-xnhrjk RSTAR-kfnvyby-Xtype-Xthank RIGHT-Xthank TYPE_PLUS_RIG...\n  sizes: expected 482 bytes, actual 498 bytes"
+        "first": "FAIL corpus:67:render:content (render-engine)\n  first difference at code-unit offset 106 (byte offset 106): expected \"U\" but got \"I\"\n  expected excerpt: ...ot content-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF...\n  actual excerpt:   ...ot content-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF-kfnv...\n  sizes: expected 482 bytes, actual 477 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:67:render:open",
-        "first": "FAIL corpus:67:render:open (render-engine)\n  first difference at code-unit offset 98 (byte offset 98): expected \" \" but got \"-\"\n  expected excerpt: ...rd-slot open-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SE...\n  actual excerpt:   ...rd-slot open-view ALL ALL_PLUS TYPE-xnhrjk RSTAR-kfnvyby-Xtype-Xthank RIGHT-Xthank TYPE_PLUS_RIG...\n  sizes: expected 2986 bytes, actual 3245 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:77:render:closed",
-        "first": "FAIL corpus:77:render:closed (render-engine)\n  first difference at code-unit offset 78 (byte offset 78): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot closed-view ALL TYPE-hfvpssv STAR SELF-Xhome\" data-card-id=\"77\" data-card-name=\"*...\n  actual excerpt:   ...ass=\"card-slot closed-view ALL TYPE-hfvpssv STAR-Xhome SELF-Xhome\" data-card-id=\"77\" data-card-n...\n  sizes: expected 2039 bytes, actual 2051 bytes"
+        "first": "FAIL corpus:67:render:open (render-engine)\n  first difference at code-unit offset 100 (byte offset 100): expected \"U\" but got \"I\"\n  expected excerpt: ...-slot open-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RULE RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF...\n  actual excerpt:   ...-slot open-view ALL ALL_PLUS TYPE-xnhrjk RSTAR RIGHT-Xthank TYPE_PLUS_RIGHT-exi-Xthank SELF-kfnv...\n  sizes: expected 2986 bytes, actual 3182 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:77:render:content",
-        "first": "FAIL corpus:77:render:content (render-engine)\n  first difference at code-unit offset 80 (byte offset 80): expected \" \" but got \"-\"\n  expected excerpt: ...ss=\"card-slot content-view ALL TYPE-hfvpssv STAR SELF-Xhome d0-card-content\" data-card-id=\"77\" d...\n  actual excerpt:   ...ss=\"card-slot content-view ALL TYPE-hfvpssv STAR-Xhome SELF-Xhome d0-card-content\" data-card-id=...\n  sizes: expected 1240 bytes, actual 366 bytes"
+        "first": "FAIL corpus:77:render:content (render-engine)\n  first difference at code-unit offset 350 (byte offset 350): expected \"<\" but got \"y\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"card-list card-list-bar pointer-list...\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">yzzw</div>\n  sizes: expected 1240 bytes, actual 360 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:77:render:open",
-        "first": "FAIL corpus:77:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhome-open-view\" class=\"card-slot open-...\n  sizes: expected 67 bytes, actual 2450 bytes"
+        "first": "FAIL corpus:77:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhome-open-view\" class=\"card-slot open-...\n  sizes: expected 67 bytes, actual 2432 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:79:render:closed",
-        "first": "FAIL corpus:79:render:closed (render-engine)\n  first difference at code-unit offset 76 (byte offset 76): expected \" \" but got \"-\"\n  expected excerpt: ...class=\"card-slot closed-view ALL TYPE-qqddl STAR SELF-Xlogo\" data-card-id=\"79\" data-card-name=\"*...\n  actual excerpt:   ...class=\"card-slot closed-view ALL TYPE-qqddl STAR-Xlogo SELF-Xlogo\" data-card-id=\"79\" data-card-n...\n  sizes: expected 2547 bytes, actual 2038 bytes"
+        "first": "FAIL corpus:79:render:closed (render-engine)\n  first difference at code-unit offset 1060 (byte offset 1060): expected \"l\" but got \"a\"\n  expected excerpt: ...data-bs-trigger=\"hover focus\" data-bs-content=\"&lt;span class=&#39;d-none&#39;&gt;&lt;a rel=&quo...\n  actual excerpt:   ...data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-...\n  sizes: expected 2547 bytes, actual 2026 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:79:render:content",
-        "first": "FAIL corpus:79:render:content (render-engine)\n  first difference at code-unit offset 78 (byte offset 78): expected \" \" but got \"-\"\n  expected excerpt: ...lass=\"card-slot content-view ALL TYPE-qqddl STAR SELF-Xlogo d0-card-content\" data-card-id=\"79\" d...\n  actual excerpt:   ...lass=\"card-slot content-view ALL TYPE-qqddl STAR-Xlogo SELF-Xlogo d0-card-content\" data-card-id=...\n  sizes: expected 349 bytes, actual 378 bytes"
+        "first": "FAIL corpus:79:render:content (render-engine)\n  first difference at code-unit offset 343 (byte offset 343): expected \"<\" but got \"j\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"></div>\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">janmbtckiogaqbhlewfngdc</div>\n  sizes: expected 349 bytes, actual 372 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:79:render:open",
-        "first": "FAIL corpus:79:render:open (render-engine)\n  first difference at code-unit offset 72 (byte offset 72): expected \" \" but got \"-\"\n  expected excerpt: ...\" class=\"card-slot open-view ALL TYPE-qqddl STAR SELF-Xlogo\" data-card-id=\"79\" data-card-name=\"*...\n  actual excerpt:   ...\" class=\"card-slot open-view ALL TYPE-qqddl STAR-Xlogo SELF-Xlogo\" data-card-id=\"79\" data-card-n...\n  sizes: expected 2929 bytes, actual 2449 bytes"
+        "first": "FAIL corpus:79:render:open (render-engine)\n  first difference at code-unit offset 1047 (byte offset 1047): expected \"l\" but got \"a\"\n  expected excerpt: ...data-bs-trigger=\"hover focus\" data-bs-content=\"&lt;span class=&#39;d-none&#39;&gt;&lt;a rel=&quo...\n  actual excerpt:   ...data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-...\n  sizes: expected 2929 bytes, actual 2431 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:80:render:content",
+        "first": "FAIL corpus:80:render:content (render-engine)\n  first difference at code-unit offset 343 (byte offset 343): expected \"s\" but got \"/\"\n  expected excerpt: ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p><span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p></p>c\n<p></p>n\n<p><strong>veiceobzpcypqqwlrbdymlo...\n  sizes: expected 9834 bytes, actual 466 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:80:render:open",
+        "first": "FAIL corpus:80:render:open (render-engine)\n  first difference at code-unit offset 2365 (byte offset 2365): expected \"s\" but got \"/\"\n  expected excerpt: ...&quot;home_view&quot;:&quot;content&quot;}\"><p><span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   ...&quot;home_view&quot;:&quot;content&quot;}\"><p></p>c\n<p></p>n\n<p><strong>veiceobzpcypqqwlrbdymlo...\n  sizes: expected 11884 bytes, actual 2516 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:81:render:closed",
-        "first": "FAIL corpus:81:render:closed (render-engine)\n  first difference at code-unit offset 78 (byte offset 78): expected \" \" but got \"-\"\n  expected excerpt: ... class=\"card-slot closed-view ALL TYPE-gwtx STAR SELF-Xsidebar\" data-card-id=\"81\" data-card-name...\n  actual excerpt:   ... class=\"card-slot closed-view ALL TYPE-gwtx STAR-Xsidebar SELF-Xsidebar\" data-card-id=\"81\" data-...\n  sizes: expected 2377 bytes, actual 2081 bytes"
+        "first": "FAIL corpus:81:render:closed (render-engine)\n  first difference at code-unit offset 1083 (byte offset 1083): expected \" \" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"    Sidebar content of &lt;a class=&quot;wanted-...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 2377 bytes, actual 2063 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:81:render:content",
+        "first": "FAIL corpus:81:render:content (render-engine)\n  first difference at code-unit offset 362 (byte offset 362): expected \"d\" but got \"/\"\n  expected excerpt: ...uot;show&quot;:[&quot;content&quot;]}\"><div><p><div id=\"cghlxuez-titled-view\" class=\"card-slot t...\n  actual excerpt:   ...uot;show&quot;:[&quot;content&quot;]}\"><div><p></p></div>d\ny\n<div><div id=\"ufpsppepaapwoxlkwgn-c...\n  sizes: expected 9525 bytes, actual 2775 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:81:render:open",
+        "first": "FAIL corpus:81:render:open (render-engine)\n  first difference at code-unit offset 1070 (byte offset 1070): expected \" \" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"    Sidebar content of &lt;a class=&quot;wanted-...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 11932 bytes, actual 4868 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:82:render:closed",
-        "first": "FAIL corpus:82:render:closed (render-engine)\n  first difference at code-unit offset 78 (byte offset 78): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR SELF-Xhelp\" data-card-id=\"82\" data-card-name=\"*...\n  actual excerpt:   ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR-Xhelp SELF-Xhelp\" data-card-id=\"82\" data-card-n...\n  sizes: expected 2194 bytes, actual 2049 bytes"
+        "first": "FAIL corpus:82:render:closed (render-engine)\n  first difference at code-unit offset 1067 (byte offset 1067): expected \"l\" but got \"a\"\n  expected excerpt: ...data-bs-trigger=\"hover focus\" data-bs-content=\"&lt;a target=&quot;_blank&quot; class=&quot;exter...\n  actual excerpt:   ...data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-...\n  sizes: expected 2194 bytes, actual 2037 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:85:render:content",
+        "first": "FAIL corpus:85:render:content (render-engine)\n  first difference at code-unit offset 343 (byte offset 343): expected \"d\" but got \"/\"\n  expected excerpt: ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p><div id=\"cghlxuez-titled-view\" class=\"card-slot t...\n  actual excerpt:   ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p></p></div>\n  sizes: expected 9409 bytes, actual 352 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:85:render:open",
+        "first": "FAIL corpus:85:render:open (render-engine)\n  first difference at code-unit offset 2365 (byte offset 2365): expected \"d\" but got \"/\"\n  expected excerpt: ...&quot;home_view&quot;:&quot;content&quot;}\"><p><div id=\"cghlxuez-titled-view\" class=\"card-slot t...\n  actual excerpt:   ...&quot;home_view&quot;:&quot;content&quot;}\"><p></p></div>\n</div>\n</div>\n</div>\n</div>\n  sizes: expected 11459 bytes, actual 2402 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:86:render:closed",
-        "first": "FAIL corpus:86:render:closed (render-engine)\n  first difference at code-unit offset 88 (byte offset 88): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR SELF-Xcontent_option\" data-card-id=\"86\" data-ca...\n  actual excerpt:   ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR-Xcontent_option SELF-Xcontent_option\" data-card...\n  sizes: expected 2836 bytes, actual 2218 bytes"
+        "first": "FAIL corpus:86:render:closed (render-engine)\n  first difference at code-unit offset 1160 (byte offset 1160): expected \"V\" but got \"&\"\n  expected excerpt: ... data-bs-trigger=\"hover focus\" data-bs-content=\"Value options for &lt;a class=&quot;wanted-card&...\n  actual excerpt:   ... data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help...\n  sizes: expected 2836 bytes, actual 2186 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:87:render:closed",
-        "first": "FAIL corpus:87:render:closed (render-engine)\n  first difference at code-unit offset 113 (byte offset 113): expected \" \" but got \"-\"\n  expected excerpt: ...-slot closed-view ALL ALL_PLUS TYPE-qnzkqz RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefaul...\n  actual excerpt:   ...-slot closed-view ALL ALL_PLUS TYPE-qnzkqz RSTAR-Xcontent_option-Xright-Xdefault RIGHT-Xdefault ...\n  sizes: expected 3078 bytes, actual 2925 bytes"
+        "first": "FAIL corpus:87:render:closed (render-engine)\n  first difference at code-unit offset 115 (byte offset 115): expected \"U\" but got \"I\"\n  expected excerpt: ...lot closed-view ALL ALL_PLUS TYPE-qnzkqz RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault ...\n  actual excerpt:   ...lot closed-view ALL ALL_PLUS TYPE-qnzkqz RSTAR RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault SELF-...\n  sizes: expected 3078 bytes, actual 2861 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:88:render:closed",
-        "first": "FAIL corpus:88:render:closed (render-engine)\n  first difference at code-unit offset 107 (byte offset 107): expected \" \" but got \"-\"\n  expected excerpt: ...lot closed-view ALL ALL_PLUS TYPE-orvipveb RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefaul...\n  actual excerpt:   ...lot closed-view ALL ALL_PLUS TYPE-orvipveb RSTAR-pnwfdiey-Xtype-Xdefault RIGHT-Xdefault TYPE_PLU...\n  sizes: expected 3139 bytes, actual 2788 bytes"
+        "first": "FAIL corpus:88:render:closed (render-engine)\n  first difference at code-unit offset 109 (byte offset 109): expected \"U\" but got \"I\"\n  expected excerpt: ...t closed-view ALL ALL_PLUS TYPE-orvipveb RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault ...\n  actual excerpt:   ...t closed-view ALL ALL_PLUS TYPE-orvipveb RSTAR RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault SELF-...\n  sizes: expected 3139 bytes, actual 2740 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:89:render:closed",
-        "first": "FAIL corpus:89:render:closed (render-engine)\n  first difference at code-unit offset 90 (byte offset 90): expected \" \" but got \"-\"\n  expected excerpt: ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR SELF-Xtable_of_content\" data-card-id=\"89\" data-...\n  actual excerpt:   ...ass=\"card-slot closed-view ALL TYPE-bxyzzfy STAR-Xtable_of_content SELF-Xtable_of_content\" data-...\n  sizes: expected 2214 bytes, actual 2250 bytes"
+        "id": "corpus:88:render:content",
+        "first": "FAIL corpus:88:render:content (render-engine)\n  first difference at code-unit offset 111 (byte offset 111): expected \"U\" but got \"I\"\n  expected excerpt: ... content-view ALL ALL_PLUS TYPE-orvipveb RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault ...\n  actual excerpt:   ... content-view ALL ALL_PLUS TYPE-orvipveb RSTAR RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault SELF-...\n  sizes: expected 981 bytes, actual 596 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:91:render:closed",
-        "first": "FAIL corpus:91:render:closed (render-engine)\n  first difference at code-unit offset 115 (byte offset 115): expected \" \" but got \"-\"\n  expected excerpt: ...-slot closed-view ALL ALL_PLUS TYPE-ogcmbf RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefaul...\n  actual excerpt:   ...-slot closed-view ALL ALL_PLUS TYPE-ogcmbf RSTAR-Xtable_of_content-Xright-Xdefault RIGHT-Xdefaul...\n  sizes: expected 3095 bytes, actual 2959 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:91:render:content",
-        "first": "FAIL corpus:91:render:content (render-engine)\n  first difference at code-unit offset 117 (byte offset 117): expected \" \" but got \"-\"\n  expected excerpt: ...slot content-view ALL ALL_PLUS TYPE-ogcmbf RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefaul...\n  actual excerpt:   ...slot content-view ALL ALL_PLUS TYPE-ogcmbf RSTAR-Xtable_of_content-Xright-Xdefault RIGHT-Xdefaul...\n  sizes: expected 525 bytes, actual 554 bytes"
+        "id": "corpus:88:render:open",
+        "first": "FAIL corpus:88:render:open (render-engine)\n  first difference at code-unit offset 105 (byte offset 105): expected \"U\" but got \"I\"\n  expected excerpt: ...lot open-view ALL ALL_PLUS TYPE-orvipveb RSTAR RULE RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault ...\n  actual excerpt:   ...lot open-view ALL ALL_PLUS TYPE-orvipveb RSTAR RIGHT-Xdefault TYPE_PLUS_RIGHT-exi-Xdefault SELF-...\n  sizes: expected 3526 bytes, actual 3351 bytes"
       }
     ],
-    "real_failure_count": 517
+    "real_failure_count": 548
   },
   "shards": [
     {
@@ -179,18 +179,18 @@
       "captureErrorLines": 1,
       "records": {
         "total": 999,
-        "pass": 728,
-        "structurePending": 270,
+        "pass": 734,
+        "structurePending": 265,
         "permissionPending": 0,
-        "realFail": 1
+        "realFail": 0
       },
       "renders": {
         "total": 2426,
-        "pass": 1650,
-        "structurePending": 148,
-        "nestGap": 112,
+        "pass": 1772,
+        "structurePending": 106,
+        "nestGap": 0,
         "permissionPending": 816,
-        "realFail": 516
+        "realFail": 548
       }
     }
   ]

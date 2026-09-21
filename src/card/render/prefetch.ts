@@ -46,7 +46,7 @@
 // All fetching is read-only (SELECT); the write path is another stream.
 
 import { DeckoName } from "../name.js";
-import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
 import type { DbLexicon } from "../fetch/lexicon.js";
@@ -68,18 +68,40 @@ export interface PrefetchStats {
   fallbackRounds: number;
   /** cards composed into the fetch cache. */
   cards: number;
+  /** Results of `additionalStatements` (present only when they were
+   *  supplied and the closure batch actually ran). The permissions stream
+   *  folds its read-rule resolution in here so the cold render stays ONE
+   *  round trip (decko-commons/decko#1282 shape). */
+  additionalResults?: SQLQueryResult[];
 }
 
-/** The row shape the prefetch needs before composition. */
+/** The row shape the prefetch needs before composition. codename MUST ride
+ *  along: the composed record is written into the FETCH cache
+ *  (PrefetchContext.cacheRecord -> FetchEngine#writeToCache), and a
+ *  codename-less record there poisons later fetches - the fetched record is
+ *  the corpus oracle's `codename` field (card-1.110.0 lib/card/codename.rb
+ *  #codename reads the cards.codename column; card-record.ts#composeCardRecord
+ *  passes it through). Dropping it here is what produced the corpus:274
+ *  record real-fail (expected "codename":"all", got null for "*all" whose
+ *  walked-closure record had been cached without the column). */
 interface RawRow {
   id: number;
   name: string | null;
   key: string | null;
+  codename: string | null;
   leftId: number | null;
   rightId: number | null;
   typeId: number | null;
   dbContent: string | null;
   trash: number;
+  /** cards.read_rule_id / read_rule_class - the DATA side of the read rule
+   *  (card-mod-permissions set/all/permissions.rb:1-5 set_read_rule). The
+   *  read-permission stream reads them OFF THE COMPOSED RECORD at render
+   *  time; dropping them here would push every walked card into the
+   *  rule-lookup fallback and mis-deny/mis-allow against the stored state
+   *  Ruby actually rendered with. */
+  readRuleId: number | null;
+  readRuleClass: string | null;
 }
 
 function toRawRow(row: CardsRow): RawRow {
@@ -87,11 +109,14 @@ function toRawRow(row: CardsRow): RawRow {
     id: row.id,
     name: row.name ?? null,
     key: row.key ?? null,
+    codename: row.codename ?? null,
     leftId: row.left_id ?? null,
     rightId: row.right_id ?? null,
     typeId: row.type_id ?? null,
     dbContent: row.db_content ?? null,
     trash: row.trash ?? 0,
+    readRuleId: row.read_rule_id ?? null,
+    readRuleClass: row.read_rule_class ?? null,
   };
 }
 
@@ -193,6 +218,10 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
+  /** Independent statements carried in the SAME closure batch (their
+   *  results come back on stats.additionalResults). Must not depend on the
+   *  walk's output — they execute alongside it in one round trip. */
+  additionalStatements?: SQLStatement[];
 }
 
 /**
@@ -210,12 +239,15 @@ export async function prefetchInclusionClosure(
   const { driver } = ctx;
 
   // --- mechanism 1+2: the SQL walk, one batched round trip ------------------
+  const additional = ctx.additionalStatements ?? [];
   const batch = await driver.batch([
     walkStatement(root.key, SELECT_WALKED),
     walkStatement(root.key, SELECT_TYPE_AND_SIDE),
+    ...additional,
   ]);
   stats.batches += 1;
-  stats.statements += 2;
+  stats.statements += 2 + additional.length;
+  if (additional.length > 0) stats.additionalResults = batch.slice(2);
   const walkedRows = ((batch[0]?.rows ?? []) as CardsRow[]).map(toRawRow);
   const sideRows = ((batch[1]?.rows ?? []) as CardsRow[]).map(toRawRow);
 
@@ -234,11 +266,14 @@ function recordToRawRow(record: CardRecord): RawRow {
     id: record.id ?? -1,
     name: record.name?.s ?? null,
     key: record.key ?? null,
+    codename: record.codename ?? null,
     leftId: record.leftId ?? null,
     rightId: record.rightId ?? null,
     typeId: record.typeId ?? null,
     dbContent: record.dbContent ?? null,
     trash: record.trash ? 1 : 0,
+    readRuleId: record.readRuleId ?? null,
+    readRuleClass: record.readRuleClass ?? null,
   };
 }
 
@@ -331,12 +366,14 @@ async function sideName(
 
 function rowToCardsRow(row: RawRow): CardsRow {
   // Only the fields composeCardRecord reads matter here (dates/creators are
-  // not rendered); the NOT-NULL columns get inert values.
+  // not rendered); the NOT-NULL columns get inert values. codename is read
+  // (lib/card/codename.rb#codename) and read_rule_id/read_rule_class are
+  // read by the permission layer (RawRow note) - both ride along.
   return {
     id: row.id,
     name: row.name,
     key: row.key,
-    codename: null,
+    codename: row.codename,
     left_id: row.leftId,
     right_id: row.rightId,
     current_revision_id: null,
@@ -344,8 +381,8 @@ function rowToCardsRow(row: RawRow): CardsRow {
     updated_at: "",
     creator_id: 0,
     updater_id: 0,
-    read_rule_class: null,
-    read_rule_id: null,
+    read_rule_class: row.readRuleClass,
+    read_rule_id: row.readRuleId,
     references_expired: null,
     trash: row.trash === 1 ? 1 : 0,
     type_id: row.typeId ?? 0,

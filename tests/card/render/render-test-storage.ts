@@ -132,6 +132,14 @@ export interface SeedOptions {
   typeName?: string;
   dbContent?: string | null;
   trash?: boolean;
+  /** cards.read_rule_id — the DATA side of the read rule (Ruby derives it
+   *  on save via the set_read_rule store event, card-mod-permissions
+   *  set/all/permissions.rb:1-5; the read-permission stream reads it at
+   *  render time). Null/unset = the engine falls back to the live rule
+   *  walk. */
+  readRuleId?: number | null;
+  /** cards.read_rule_class (the set pattern tag, e.g. "*type"). */
+  readRuleClass?: string | null;
 }
 
 /** Direct INSERT (write path is another stream). Simple cards store
@@ -167,13 +175,31 @@ export async function seedCard(
       "2026-09-19 00:00:00.000",
       1,
       1,
-      null,
-      null,
+      opts.readRuleClass ?? null,
+      opts.readRuleId ?? null,
       null,
       opts.trash === true ? 1 : 0,
       opts.typeId ?? DEFAULT_TYPE_ID,
       opts.dbContent ?? null,
     ],
+  );
+}
+
+/** Seed one card_references row (the reference graph the read-rule cache
+ *  reads; the write path builds these in another stream). Mirrors the
+ *  columns the ReadRuleCache SQL selects (src/card/permissions/read-rules.ts,
+ *  lib/card/rule/read_rule_cache.rb). */
+export async function seedReference(
+  storage: RenderTestStorage,
+  refererId: number,
+  refereeId: number | null,
+  refereeKey: string | null,
+  refType = "L",
+): Promise<void> {
+  await storage.counting.query(
+    `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+     VALUES (?, ?, ?, ?, NULL)`,
+    [refererId, refereeKey, refereeId, refType],
   );
 }
 

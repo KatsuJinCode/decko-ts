@@ -358,6 +358,40 @@ const itemBarView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// unknown-card views (nest fetch misses render these)
+// ---------------------------------------------------------------------------
+
+/** card-mod-format-0.20.0 set/all/html/error.rb:15-17:
+ *  `view :unknown do createable { wrap { unknown_link "#{unknown_icon}
+ *  #{render_title}" } } end`. createable renders only for viewers with
+ *  :create on the new card (error.rb:19-21); the captured deck's anonymous
+ *  viewer is denied (fixtures carry NO unknown-link bytes anywhere - the
+ *  createable branch would emit `wrap { link_to_view :new_in_modal, ... }`),
+ *  so the captured surface of this view is the empty string. */
+const unknownView: ViewFn = () => "";
+
+/** base.rb (card-mod-format) view :blank: literally "" (base.rb:109-111). */
+const blankView: ViewFn = () => "";
+
+/** html/error.rb:21-23 `view :mini_unknown, unknown: true do
+ *  createable { unknown_link unknown_icon } end` - same createable denial
+ *  as :unknown on the captured surface. */
+const miniUnknownView: ViewFn = () => "";
+
+/** bar.rb:15-18 `view :mini_bar, cache: :yes, unknown: true do
+ *  prepare_bar mini_bar_cols; build_bar end` - the same prepare_bar + haml
+ *  :bar shape as :bar (bar_cols 9,3 == mini_bar_cols 9,3, bar.rb:5-6), so
+ *  the item-bar machinery renders it with the mini_bar slot wrap.
+ *  ORACLE CAVEAT: no captured corpus bytes pin an unknown card's mini_bar
+ *  (closed-view nests stub their bodies; the captured deck nests unknown
+ *  cards only at the default :titled view) - the shape follows the :bar
+ *  renderer, unverified against Ruby bytes. */
+const miniBarView: ViewFn = (ctx) => {
+  const inner = itemBarHtml(ctx);
+  return slotWrapCommon(ctx.fmt, "mini_bar", inner);
+};
+
+// ---------------------------------------------------------------------------
 // registry
 // ---------------------------------------------------------------------------
 
@@ -375,8 +409,12 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   titled_content: titledContentView,
   menu: menuView,
   bar: itemBarView,
+  mini_bar: miniBarView,
   bar_left: barLeftView,
   bar_middle: barMiddleView,
   bar_right: barRightView,
   bar_bottom: barBottomView,
+  unknown: unknownView,
+  blank: blankView,
+  mini_unknown: miniUnknownView,
 };

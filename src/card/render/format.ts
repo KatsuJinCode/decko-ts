@@ -15,7 +15,8 @@
 //   method_delegation.rb#render_args default :show)
 //
 // Deliberately in-scope: the machinery the four captured views exercise.
-// Deferred (docs/render-port-notes.md): permission denial views, view
+// Landed since: the read-permission denial (view/permission.rb altered_view
+// -> src/card/permissions/). Deferred (docs/render-port-notes.md): view
 // caching/stubs, edit views, mod-specific view overrides, compact nest mode.
 
 import { DeckoName } from "../name.js";
@@ -25,7 +26,9 @@ import {
   type NestOptions,
   type ParsedNest,
 } from "./nest-syntax.js";
+import { safeSetKeys } from "./set-keys.js";
 import { h } from "./slot-html.js";
+import { viewPerms, viewDenialView, quietDenial } from "../permissions/index.js";
 
 /** render.rb#view_method: unknown views raise Card::Error::UserError with
  *  card-mod-format set/all/error.rb#unsupported_view_error_message (en.yml:
@@ -55,6 +58,11 @@ export interface RenderCard {
   dbContent: string;
   /** pattern/all.rb#safe_set_keys (the slot class list). */
   setKeys: string;
+  /** mod/core/set/all/states.rb#unknown? - a nest-fetch miss produces a NEW
+   *  unknown card (format/nest/fetch.rb#new_card -> Card.fetch new:); its
+   *  views route through the unknown-view substitution (see
+   *  RenderFormat.viewForUnknown). Real (fetched) cards never set this. */
+  unknown?: boolean;
 }
 
 /** One view render's options object (the voo). Visibility is the ordered
@@ -239,21 +247,75 @@ export class RenderFormat {
    */
   renderView(view: string, opts: Record<string, unknown> = {}, optional: unknown = "show"): string {
     const normalized = normalizeView(view);
+    // view.rb#ok_view (view.rb:86 `altered_view || requested_view`): on an
+    // unknown card the view is substituted BEFORE dispatch (view/permission.rb
+    // #alter_unknown -> format/error.rb#view_for_unknown). The voo keeps the
+    // REQUESTED view (Ruby voo @raw_view); only the dispatched view changes.
+    const effective =
+      this.card.unknown === true ? this.viewForUnknown(normalized, opts) : normalized;
     const voo = new Voo(this.voo ?? undefined, normalized, { ...opts });
     const previous = this.voo;
     this.voo = voo;
     try {
       voo.processVisibility(optional);
-      this.runBeforeHook(normalized, voo);
-      const viewFn = this.engine.views[normalized];
+      // view/permission.rb #altered_view (:19-23): `alter_unknown || denial`
+      // — the unknown branch ran above; for KNOWN cards a failed read check
+      // (ok_to_read?, card-mod-permissions set/all/permissions.rb:139-146)
+      // replaces the view before any hook or body runs. The verdict is
+      // precomputed engine state (zero queries here); the markup contract —
+      // the quiet denial span REPLACES the whole view including the slot
+      // wrapper — lives in src/card/permissions/view-perms.ts. `denial:`
+      // configured views (menu -> :blank) render that view instead
+      // (format/error.rb:27-31 view_for_denial).
+      if (
+        this.card.unknown !== true &&
+        viewPerms(normalized) !== "none" &&
+        this.engine.isDenied(this.card)
+      ) {
+        const denialView = viewDenialView(normalized);
+        return denialView === "blank" ? "" : quietDenial();
+      }
+      this.runBeforeHook(effective, voo);
+      const viewFn = this.engine.views[effective];
       if (viewFn === undefined) {
         // render.rb#view_method + error.rb#unsupported_view_error_message
-        throw new UnsupportedViewError(normalized, this.card.name.s);
+        // (Ruby substitutes first, so an unsupported REQUESTED view on an
+        // unknown card reports the substituted view - same shape here)
+        throw new UnsupportedViewError(effective, this.card.name.s);
       }
       return viewFn({ fmt: this, voo });
     } finally {
       this.voo = previous;
     }
+  }
+
+  /**
+   * view/permission.rb#alter_unknown + format/error.rb#view_for_unknown for
+   * the nested (non-page) surface. Order per Ruby:
+   * 1. perms-:none views skip the check entirely (permission.rb#skip_check?)
+   * 2. views configured `unknown: true` render as requested
+   * 3. configured_view = the nest's `unknown:` option || the view's
+   *    `unknown:` config; view_for_unknown -> `setting_view || :unknown`
+   *    (the main+root page branch - page_view_for_unknown :not_found/:new -
+   *    is not ported: the capture never renders an unknown MAIN card).
+   */
+  private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
+    if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
+    const configured = UNKNOWN_VIEW_CONFIG[requested];
+    if (configured === true) return requested; // permission.rb:40 unknown_setting == "true"
+    if (this.isMain && this.voo === undefined) {
+      // format/error.rb#page_view_for_unknown (page branch) - not ported
+      throw new Error(
+        `unknown-card page render not ported (view_for_unknown main branch): ${this.card.name.s}`,
+      );
+    }
+    // permission.rb:42 configured_view = (unknown || unknown_setting)
+    const nestOpt = opts["unknown"];
+    const effective = nestOpt !== undefined ? nestOpt : configured;
+    if (effective === undefined || effective === false || effective === "false") {
+      return "unknown"; // format/error.rb:23 `setting_view || :unknown`
+    }
+    return String(effective);
   }
 
   /** set/format.rb before(:view) hooks - the captured surface has exactly
@@ -279,33 +341,93 @@ export class RenderFormat {
   nest(nest: ParsedNest): string {
     if (nest.comment !== undefined) return nest.comment; // content.rb#content_nest comment passthrough
     const targetName = this.resolveNestName(nest.name);
-    const target = this.engine.fetchRenderCard(targetName);
-    if (target === undefined) {
-      // unknown-card nests need the unknown: views (error.rb) - wave 3
-      throw new Error(`nest target not found: ${targetName} (referenced by ${this.card.name.s})`);
+    // Blank reference (`{{}}`): fetch.rb#retrieve_existing skips blank marks
+    // (`return unless mark.present?`) and fetch/results.rb#results then
+    // returns nil (`return if card.nil?`) - no card, not even an unknown
+    // one. The nil-card nest renders through the html denial path
+    // (card-mod-format set/all/html/error.rb#quiet_denial, task :read).
+    // Corpus oracle: shard-000000 entry 636 renders its `{{}}` inside body
+    // text as the bare denied span, byte-pinned in
+    // tests/card/render/unknown-nest-blank-reference.test.ts.
+    if (targetName.trim() === "") {
+      return quietDenial(); // html error.rb quiet_denial, task :read
     }
+    const target = this.engine.fetchRenderCard(targetName);
+    // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
+    // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
+    // `card if new_opts || card.known?`). Unknown cards need no queries (they
+    // do not exist); the view renders from the miss.
+    const card =
+      target ??
+      this.buildUnknownNestCard(targetName, this.engine);
     const view = normalizeView(nest.options.view ?? this.defaultNestView());
     const viewOpts: Record<string, unknown> = {
-      nest_name: target.name.s, // nest.rb#prepare_view_and_opts! nest_name ||= card.name
+      nest_name: card.name.s, // nest.rb#prepare_view_and_opts! nest_name ||= card.name
       nest_syntax: nest.syntax,
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),
     };
-    const sub = new RenderFormat(target, this.engine, { parent: this, maxDepth: this.maxDepth });
+    const sub = new RenderFormat(card, this.engine, { parent: this, maxDepth: this.maxDepth });
     if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${this.maxDepth}) at ${target.name.s}`);
+      throw new Error(`nest depth exceeded (${card.name.s})`);
     }
     return sub.renderView(view, viewOpts);
   }
 
+  /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
+   *  -> new_card_args): name = the resolved reference, supercard = the
+   *  context card (unmodeled - no write path reads it here), no id/type/
+   *  content. The engine records the miss so the closure stays warm without
+   *  re-prefetching (fetch.rb has no cache for unknown cards either). */
+  private buildUnknownNestCard(targetName: string, engine: RenderEngineLike): RenderCard {
+    const name = DeckoName.parse(targetName);
+    const record: CardRecord = {
+      id: undefined,
+      codename: undefined,
+      leftId: undefined,
+      rightId: undefined,
+      typeId: undefined,
+      dbContent: undefined,
+      trash: false,
+      creatorId: undefined,
+      updaterId: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+      currentRevisionId: undefined,
+      readRuleClass: undefined,
+      readRuleId: undefined,
+      referencesExpired: undefined,
+      name,
+      key: name.key,
+      isNew: true,
+      fromTrash: false,
+      uncacheable: false,
+    };
+    engine.reportUnknownCard?.(name.key);
+    return {
+      record,
+      name,
+      key: name.key,
+      typeName: undefined,
+      typeId: undefined,
+      id: undefined,
+      dbContent: "",
+      setKeys: safeSetKeys({ name, typeId: undefined, typeName: undefined, leftTypeName: undefined }),
+      unknown: true,
+    };
+  }
+
   /** nest.rb#prepare_view_and_opts! - nest_name/nest_syntax are added
-   *  separately above; the remaining shark options ride into the voo. */
+   *  separately above; the remaining shark options ride into the voo.
+   *  `unknown` rides too: view/permission.rb:42 reads the voo's :unknown
+   *  option (the nest's `unknown:` takes precedence over view configs). */
   private nestOptionEntries(options: NestOptions): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     if (options.title !== undefined) out["title"] = options.title;
     if (options.size !== undefined) out["size"] = options.size;
     if (options.show !== undefined) out["show"] = options.show;
     if (options.hide !== undefined) out["hide"] = options.hide;
+    if (options.extra["unknown"] !== undefined) out["unknown"] = options.extra["unknown"];
     return out;
   }
 
@@ -393,7 +515,83 @@ export interface RenderEngineLike {
   fetchRenderCard(name: string): RenderCard | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
+  /** Read-permission verdict for a prepared card (the ok_to_read? set
+   *  membership, card-mod-permissions set/all/permissions.rb:142-143,
+   *  precomputed in the engine's prepare phase — never a query here). */
+  isDenied(card: RenderCard): boolean;
+  /** Called when a nest resolves to an unknown card (fetch miss). Engines
+   *  that track it (RenderEngine may record the key in a negative closure
+   *  map) keep warm re-renders at zero queries; the render is byte-correct
+   *  without it - the card does not exist and nothing prefetches. Optional
+   *  so engines without the tracking hook still satisfy the interface. */
+  reportUnknownCard?(key: string): void;
 }
+
+// ---------------------------------------------------------------------------
+// unknown-card view routing (view/permission.rb + the html view configs)
+// ---------------------------------------------------------------------------
+
+/** The html format's `unknown:` view configs (view/permission.rb:39
+ *  `setting :unknown` -> AbstractFormat#view's `unknown:` option, stored as
+ *  `_view_<view>__unknown` setting methods). Values: `true` renders the
+ *  requested view as-is; a symbol names the substituted view.
+ *  card-mod-bar_and_box-0.20.0 set/all/bar.rb: bar.rb:15 (mini_bar),
+ *  bar.rb:26 (bar_left), bar.rb:35-36 (bar_menu/bar_body), bar.rb:9 (bar ->
+ *  mini_bar), bar.rb:20 (full_bar -> mini_bar), bar.rb:27-28 (bar_middle/
+ *  bar_right -> blank), bar.rb:38 (closed -> mini_bar);
+ *  card-mod-format-0.20.0 set/all/html/error.rb:21 (mini_unknown),
+ *  html/views.rb:24,29 (raw_one_line_content/one_line_content ->
+ *  mini_unknown), html/views.rb:67 (labeled -> labeled);
+ *  card-mod-format-0.20.0 set/all/base.rb:101 (labeled_content ->
+ *  mini_unknown), base.rb:105 (titled_content -> blank).
+ *  Settings persist across same-module view redefinition (the setting is a
+ *  define_method on the format module; ViewDefinition only redefines the
+ *  view method itself), and base-format configs inherit into html (html
+ *  does not redefine titled_content/labeled_content). */
+const UNKNOWN_VIEW_CONFIG: Record<string, string | true> = {
+  mini_bar: true,
+  mini_unknown: true,
+  bar_left: true,
+  bar_menu: true,
+  bar_body: true,
+  closed: "mini_bar",
+  bar: "mini_bar",
+  full_bar: "mini_bar",
+  bar_middle: "blank",
+  bar_right: "blank",
+  titled_content: "blank",
+  labeled: "labeled",
+  labeled_content: "mini_unknown",
+  one_line_content: "mini_unknown",
+  raw_one_line_content: "mini_unknown",
+};
+
+/** Views with `perms: :none` - permission.rb#skip_check? short-circuits
+ *  altered_view entirely, so unknown cards render them AS REQUESTED. From
+ *  card-mod-format-0.20.0 set/all/title.rb:2 (title - survives the :title
+ *  redefinition at :12: settings persist), :16, :20 (title_link,
+ *  title_no_link), set/all/base.rb:14,31,35,39 (name, url_link, link,
+ *  nav_link), base.rb:109 (blank), set/all/error.rb (denial, errors,
+ *  server_error, not_found, bad_address), set/all/html/header.rb:5,15
+ *  (header, header_title). Only the registry views among these matter for
+ *  dispatch; the rest are listed for the record. */
+const PERMS_NONE_VIEWS: ReadonlySet<string> = new Set([
+  "title",
+  "title_link",
+  "title_no_link",
+  "name",
+  "url_link",
+  "link",
+  "nav_link",
+  "header",
+  "header_title",
+  "blank",
+  "denial",
+  "errors",
+  "server_error",
+  "not_found",
+  "bad_address",
+]);
 
 function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
