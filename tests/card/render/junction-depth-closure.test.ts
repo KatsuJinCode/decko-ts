@@ -163,7 +163,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(9); // +3 folded read-permission statements
+      expect(snapshot.statements).toBe(10); // +3 folded read-permission statements + 1 folded codename codehash (rule? ids)
     } finally {
       storage.close();
     }
