@@ -98,6 +98,13 @@ export async function givenStandardDeck(world: GherkinWorld): Promise<void> {
   await seedStandardDeck(world.storage);
 }
 
+/** "Given the deck has Phrase and Pointer type cards" — for
+ *  pointer_inputs.feature scenarios that create Phrase cards and need
+ *  the Pointer codename to resolve. */
+export async function givenExtendedDeck(world: GherkinWorld): Promise<void> {
+  await seedExtendedDeck(world.storage);
+}
+
 // ---------------------------------------------------------------------------
 // When — actions
 // ---------------------------------------------------------------------------
