@@ -155,7 +155,7 @@ export class RenderEngine implements RenderEngineLike {
     const permissionCold = this.readPermission === undefined;
     const ruleTypesCold = this.ruleTypeIds === undefined;
     const structureCold = this.structureContents === undefined;
-    const permissionStatements = permissionCold ? readPermissionStatements() : [];
+    const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       const coldStatements = [
