@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { splitSqlStatements, seedCard } from "./render-test-storage.js";
+import { splitSqlStatements, seedCard } from "../../../tests/card/render/render-test-storage.js";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";

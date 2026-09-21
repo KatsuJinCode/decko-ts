@@ -8,11 +8,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { createRenderTestStorage, seedCard } from "../../tests/card/render/render-test-storage.js";
-import { UnsupportedViewError } from "../../src/card/render.js";
+import { createRenderTestStorage, seedCard } from "../../../tests/card/render/render-test-storage.js";
+import { UnsupportedViewError } from "../../../src/card/render.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(HERE, "..", "..");
+const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
 const SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 
