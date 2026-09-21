@@ -25,8 +25,9 @@ async function bootDeckWithAuth() {
   const storage = await createActionsTestStorage();
   await runAuthMigrations(storage.driver);
   const deck = await seedStandardDeck(storage);
-  // The account card the session will bind to.
-  const joe = await seedCard(storage, { id: 9, name: "Joe User" });
+  // The account card the session will bind to (id 90: ids up to the seed's
+  // auto-assigned junction row are taken by seedStandardDeck).
+  const joe = await seedCard(storage, { id: 90, name: "Joe User" });
   return { storage, deck, joe };
 }
 
