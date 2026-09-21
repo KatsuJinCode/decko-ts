@@ -11,6 +11,7 @@
 // card-1.110.0 lib/card/name.rb + lib/card/name/name_variants.rb.
 
 import { describe, it } from "vitest";
+import { DeckoName } from "../../../src/card/name.js";
 import {
   thenNameIsCompound,
   thenNameIsSimple,
