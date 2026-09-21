@@ -85,11 +85,13 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // The SQL `resolved` closure composed the junction keys, so the JS
       // fallback had nothing left to fetch.
       expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(0);
-      // The #1282 shape holds: one root fetch + one batch (2 statements)
-      // + 3 rule-lookup candidates - the same constant as simple chains.
+      // The #1282 shape holds: one root fetch + one batch (2 walk statements
+      // + 3 folded read-permission statements) + 3 rule-lookup candidates -
+      // the same constant as simple chains. The permission statements joined
+      // the closure batch (read-permission stream): round trips unchanged.
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(6);
+      expect(snapshot.statements).toBe(10); // +3 read-permission + 1 codename codehash (rule? ids), all folded
     } finally {
       storage.close();
     }
@@ -161,7 +163,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(6);
+      expect(snapshot.statements).toBe(9); // +3 folded read-permission statements
     } finally {
       storage.close();
     }
