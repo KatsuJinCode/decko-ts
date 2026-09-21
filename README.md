@@ -1,4 +1,14 @@
-# decko-ts
+# Decko Core
+
+Private workspace for the runtime-independent Decko project, with TypeScript
+and first-class Ruby support as the architectural direction. The repository
+slug remains `decko-ts` while active development continues.
+
+Read the [project contract and work board](docs/core/README.md) and
+[commit, push and publication gates](docs/core/governance.md). These govern
+future work and supersede conflicting TS-only direction in older notes.
+
+## TypeScript implementation history
 
 TypeScript port of the Decko card engine. Target: full compatibility with
 Ruby Decko (card 1.110.0 / decko 0.20.0) for ANY deck — any combination of

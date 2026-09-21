@@ -1,5 +1,12 @@
 # Upstream parity plan — decko-commons#1282 + Astra's four parities
 
+> Coordination update, 2026-09-21: [Decko Core](core/README.md) is the
+> governing project contract. The [private work board](core/work-board.md)
+> maps these streams to acceptance issues without changing active ownership.
+> [Publication gates](core/governance.md) apply to all delivery work below.
+> Public placement and deployments require Julian's exact-package approval.
+> PostgreSQL and shared Ruby/TS optimization are parallel work on that board.
+
 Work items for the fleet executing the full migration plan. Spec sources:
 decko-commons/decko issue 1282 (byte-parity acceptance, constant-queries
 promise, one-click deploy, seamless migration, provider adapters) and the

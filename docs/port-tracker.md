@@ -1,5 +1,11 @@
 # Port tracker
 
+> Historical implementation tracker. For current architectural direction,
+> four-category acceptance, first-class Ruby support, publication rules and
+> work-item mapping, use the [Decko Core project index](core/README.md).
+> Reconcile status claims below with current evidence; they do not establish
+> complete migration or runtime compatibility.
+
 Streams run in waves of parallel agents. Each wave: agents write code +
 tests in their OWN directories only, run `npx vitest run` and
 `npx tsc --noEmit`, and report. The coordinator reviews, commits, and
