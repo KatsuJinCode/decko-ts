@@ -309,7 +309,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           // denied span). The port's read-permission layer is a separate
           // stream; a mismatch whose EXPECTED capture is the denied span is
           // classified permission-pending, never a parity bug.
-          const isDeniedExpectation = (e: ReplayEntry): boolean => {
+          const isDeniedExpectation = (e: { id: string }): boolean => {
             const expected = entryById.get(e.id)?.expected;
             return typeof expected === "string" && expected.startsWith('<span class="denied"');
           };
