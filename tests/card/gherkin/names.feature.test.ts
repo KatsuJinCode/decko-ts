@@ -39,13 +39,18 @@ describe("Gherkin port: card name algebra (every feature file)", () => {
     thenNameIsCompound("color+*right+*default");
   });
 
-  it("structure.feature — 'Movie+*type+*structure' left is 'Movie'", () => {
+  it("structure.feature — 'Movie+*type+*structure' left-of-left is 'Movie'", () => {
     // The structure.feature Gherkin relies on DeckoName.leftName being
-    // the part before the first joint — the rule walk uses this to
-    // resolve the type card.
+    // navigable: for the triple-joint name, leftName is itself
+    // compound (Movie+*type); its leftName is "Movie" — the rule walk
+    // uses this to resolve the type card.
     const n = DeckoName.parse("Movie+*type+*structure");
-    if (n.leftName === undefined || n.leftName.s !== "Movie") {
-      throw new Error(`expected leftName 'Movie', got ${n.leftName?.s}`);
+    if (n.leftName === undefined || !n.leftName.isCompound) {
+      throw new Error(`expected compound leftName, got ${n.leftName?.s}`);
+    }
+    const inner = n.leftName.leftName;
+    if (inner === undefined || inner.s !== "Movie") {
+      throw new Error(`expected leftName.leftName 'Movie', got ${inner?.s}`);
     }
   });
 
