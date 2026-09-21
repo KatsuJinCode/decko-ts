@@ -395,12 +395,8 @@ export class RenderEngine implements RenderEngineLike {
   private async ensureReadPermission(folded?: SQLQueryResult[]): Promise<ReadPermissionState> {
     if (this.readPermission !== undefined) return this.readPermission;
     const results =
-      folded ?? (await this.fetcher.driver.batch(readPermissionStatements()));
-    this.readPermission = readPermissionStateFromResults(
-      results,
-      anonymousIdFromResults(results),
-      false, // signed_in: the corpus viewer is Anonymous (no roles to join)
-    );
+      folded ?? (await this.fetcher.driver.batch(readPermissionStatements(this.viewer)));
+    this.readPermission = readPermissionStateFromViewerResults(results, this.viewer);
     return this.readPermission;
   }
 
