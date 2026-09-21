@@ -25,6 +25,7 @@ import { DeckoName, type Nameish } from "../../../src/card/name.js";
 import type { GherkinTestStorage } from "./gherkin-storage.js";
 import {
   JOE_ACTOR as DEFAULT_ACTOR,
+  seedExtendedDeck,
   seedStandardDeck,
 } from "./gherkin-storage.js";
 import type { CardsRow } from "../../../src/server/schema.js";
