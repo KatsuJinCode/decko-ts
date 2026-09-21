@@ -104,8 +104,8 @@ export async function givenStandardDeck(world: GherkinWorld): Promise<void> {
 /** "When I create <type> card <name> with content '<content>'"
  *  Ruby: Card.create(name: ..., type: "<type>", content: "<content>") (Set
  *  signature). The type is the codename-ish form Decko uses — "Phrase",
- *  "RichText", "Pointer", "Cardtype" — mapped to the seed deck's type
- *  ids via TYPE_IDS. */
+ *  "RichText", "Pointer", "Cardtype" — and is mapped to the codename the
+ *  seed deck stores (basic, cardtype, phrase, pointer). */
 export async function whenCreateCard(
   world: GherkinWorld,
   typeName: string,
