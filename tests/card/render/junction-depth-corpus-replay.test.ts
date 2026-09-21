@@ -52,7 +52,7 @@ const PROOF_ENTRIES: Array<{ id: number; views: readonly string[] }> = [
 
 describe("corpus replay: depth-3+ junction inclusion chains render byte-identically", () => {
   it(
-    "replays the captured views of junction-chain entries from shard-000002",
+    "replays the captured views of junction-chain entries from shard-000014",
     { timeout: 300_000 },
     async () => {
       const lines: ShardLine[] = readFileSync(SHARD_PATH, "utf8")
