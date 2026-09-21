@@ -91,6 +91,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
   it("renders a depth-4 junction inclusion chain, covered by the SQL walk", async () => {
     const storage = await createRenderTestStorage();
     try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       for (const card of chainCards(4)) {
         await seedCard(storage, card);
       }
