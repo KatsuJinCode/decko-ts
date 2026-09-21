@@ -43,6 +43,15 @@ import {
 } from "./render/prefetch.js";
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames } from "./render/nest-syntax.js";
+import {
+  readPermissionStatements,
+  readPermissionStateFromResults,
+  anonymousIdFromResults,
+  canReadByStoredRule,
+  canReadByRuleLookup,
+  type ReadPermissionState,
+} from "./permissions/index.js";
+import type { SQLQueryResult } from "../server/driver.js";
 
 export { UnsupportedViewError };
 export type { RenderCard, PrefetchStats };
@@ -69,6 +78,15 @@ export class RenderEngine implements RenderEngineLike {
   private idsByKey = new Map<string, number>();
   /** Pre-executed search results by search card key. */
   private searchResults = new Map<string, RenderCard[]>();
+  /** Read-permission state for the engine's viewer (the Anonymous corpus
+   *  actor) — the port of Auth.as_card.read_rules_hash. Resolved lazily on
+   *  the first render, folded into the prefetch batch so a cold render
+   *  stays ONE round trip; undefined until then. Cleared on resetCaches(). */
+  private readPermission: ReadPermissionState | undefined;
+  /** card id -> denied verdict (the pure half of ok_to_read?). Computed in
+   *  the prepare phase so the synchronous render path never queries.
+   *  Cleared on resetCaches(). */
+  private deniedVerdicts = new Map<number, boolean>();
   private lastPrefetch: PrefetchStats | undefined;
 
   constructor(fetcher: FetchEngine) {
@@ -93,17 +111,27 @@ export class RenderEngine implements RenderEngineLike {
     }
     const name = record.name;
 
+    // Read-permission preparation (see src/card/permissions/). On a cold
+    // render the state resolution rides the prefetch batch (one round trip
+    // stays one round trip); on a warm closure it runs as its own batch —
+    // once per engine, never per warm render.
+    const permissionCold = this.readPermission === undefined;
+    let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
         cacheRecord: (cached) => this.cacheFetchedRecord(cached),
+        ...(permissionCold ? { additionalStatements: readPermissionStatements() } : {}),
       });
       this.lastPrefetch = stats;
+      foldedResults = stats.additionalResults;
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
     }
+    if (permissionCold) await this.ensureReadPermission(foldedResults);
     await this.prepareSearches(record);
+    await this.ensureVerdicts();
 
     const rootCard = this.renderCards.get(name.key);
     if (rootCard === undefined) {
@@ -111,6 +139,11 @@ export class RenderEngine implements RenderEngineLike {
     }
     const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
     const baseHtml = format.renderView(view, {});
+
+    // A denied render never reaches view dispatch (the denial span REPLACES
+    // the view in renderView), so view-override rules cannot apply to it —
+    // Ruby's denial happens before any view body runs.
+    if (this.isDenied(rootCard)) return baseHtml;
 
     // Rule-application hook: cached lookup so warm re-renders cost zero
     // queries. The cache key encodes the (card, view) pair so different
@@ -141,7 +174,54 @@ export class RenderEngine implements RenderEngineLike {
     this.idsByKey.clear();
     this.searchResults.clear();
     this.ruleCache.clear();
+    this.readPermission = undefined;
+    this.deniedVerdicts.clear();
     this.lastPrefetch = undefined;
+  }
+
+  // -------------------------------------------------------------------------
+  // read-permission resolution (prepare phase; never during the render)
+  // -------------------------------------------------------------------------
+
+  /** Complete the permission state from folded batch results, or run the
+   *  standalone batch (warm-closure first render). Once per engine. */
+  private async ensureReadPermission(folded?: SQLQueryResult[]): Promise<ReadPermissionState> {
+    if (this.readPermission !== undefined) return this.readPermission;
+    const results =
+      folded ?? (await this.fetcher.driver.batch(readPermissionStatements()));
+    this.readPermission = readPermissionStateFromResults(
+      results,
+      anonymousIdFromResults(results),
+      false, // signed_in: the corpus viewer is Anonymous (no roles to join)
+    );
+    return this.readPermission;
+  }
+
+  /**
+   * Verdicts for every card the render can touch — the sync render path
+   * reads only this map. Stored read_rule_id cards resolve purely
+   * (permissions.rb:142-143); cards without one fall back to the live rule
+   * walk (permission_rule_id, permissions.rb:55-61) — bounded by the
+   * hasReadRules gate, so rule-less seeds cost zero queries and stay
+   * allowed (the documented divergence).
+   */
+  private async ensureVerdicts(): Promise<void> {
+    const state = this.readPermission;
+    if (state === undefined) return;
+    for (const card of this.renderCards.values()) {
+      if (card.id === undefined || this.deniedVerdicts.has(card.id)) continue;
+      const stored = card.record.readRuleId;
+      if (stored !== undefined) {
+        this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
+        continue;
+      }
+      const byRule = await canReadByRuleLookup(
+        this.fetcher,
+        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+        state,
+      );
+      this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -153,6 +233,12 @@ export class RenderEngine implements RenderEngineLike {
   fetchRenderCard(name: string): RenderCard | undefined {
     const key = DeckoName.parse(name).key;
     return this.renderCards.get(key);
+  }
+
+  /** The read-permission verdict for a prepared card (ok_to_read?'s set
+   *  membership, precomputed in the prepare phase — never a query here). */
+  isDenied(card: RenderCard): boolean {
+    return card.id !== undefined && this.deniedVerdicts.get(card.id) === true;
   }
 
   /** Pre-executed results for a Search core (card_list view). */
