@@ -23,6 +23,7 @@ import {
   thenCardNotContains,
   thenCardNotExists,
   thenCardTrashed,
+  thenSee,
   type GherkinWorld,
   whenCreateCard,
   whenCreateSimpleCard,
