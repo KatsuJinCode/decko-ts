@@ -23,7 +23,12 @@ import { CardActionEngine } from "../../../src/card/actions/card-action-engine.j
 import { CardActionError, type Actor } from "../../../src/card/actions/index.js";
 import { DeckoName, type Nameish } from "../../../src/card/name.js";
 import type { GherkinTestStorage } from "./gherkin-storage.js";
-import { TYPE_IDS } from "./gherkin-storage.js";
+import {
+  JOE_ACTOR as DEFAULT_ACTOR,
+  seedCard,
+  seedStandardDeck,
+  TYPE_IDS,
+} from "./gherkin-storage.js";
 import type { CardsRow } from "../../../src/server/schema.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
 
