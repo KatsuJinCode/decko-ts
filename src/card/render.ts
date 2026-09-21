@@ -24,10 +24,16 @@
 
 import { DeckoName } from "./name.js";
 import { FetchEngine } from "./fetch.js";
-import { cardContent, type CardRecord } from "./fetch/card-record.js";
+import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeQuery } from "../cql/execute.js";
 import { findRule } from "./rules/lookup.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
+import {
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+  resolveStructuredContent,
+  templateReferenceNames,
+} from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
 import {
   RenderFormat,
@@ -43,6 +49,7 @@ import {
 } from "./render/prefetch.js";
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames } from "./render/nest-syntax.js";
+import type { PatternCardInput } from "./set-patterns/types.js";
 import {
   readPermissionStatements,
   readPermissionStateFromResults,
@@ -94,6 +101,22 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
+  /** *structure rule templates by rule-card composed key -> the rule card's
+   *  db_content (null = NULL content). The bulk universe rides the cold
+   *  render's closure batch (one statement, zero extra round trips — the
+   *  #1282 shape); structured content (content/all.rb:8-10:
+   *  structured_content || standard_content) is then pure memory. Undefined
+   *  until the first parse. Cleared on resetCaches(). */
+  private structureContents: Map<string, string | null> | undefined;
+  /** Render-card keys whose dbContent already went through the structured
+   *  pass (idempotence: the pass re-runs after search enrichment without
+   *  re-processing the closure). Cleared on resetCaches(). */
+  private structureProcessed = new Set<string>();
+  /** Absolute template reference keys that missed fetch (nest targets that
+   *  are not cards — e.g. the corpus's {{xxxx}} fixtures). Never re-fetched
+   *  on later renders, so warm renders stay zero-query. Cleared on
+   *  resetCaches(). */
+  private structureRefMisses = new Set<string>();
   private lastPrefetch: PrefetchStats | undefined;
 
   constructor(fetcher: FetchEngine) {
@@ -125,12 +148,17 @@ export class RenderEngine implements RenderEngineLike {
     // rule? predicate's type-id source) folds into the same batch.
     const permissionCold = this.readPermission === undefined;
     const ruleTypesCold = this.ruleTypeIds === undefined;
+    const structureCold = this.structureContents === undefined;
     const permissionStatements = permissionCold ? readPermissionStatements() : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       const coldStatements = [
         ...permissionStatements,
         ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
+        // The *structure rule universe (one statement; the structured-content
+        // resolution reads it as pure memory afterwards). Appended LAST: the
+        // permission state parser reads folded results by fixed index.
+        ...(structureCold ? [structureRuleUniverseStatement()] : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
@@ -144,11 +172,22 @@ export class RenderEngine implements RenderEngineLike {
       // computes set keys (the RULE pattern's applies?) synchronously from
       // them. Sliced past the permission statements the batch also carried.
       if (ruleTypesCold) this.parseRuleTypeIds(foldedResults, permissionStatements.length);
+      this.parseStructureContents(
+        foldedResults,
+        permissionStatements.length + (ruleTypesCold ? 1 : 0),
+      );
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
+    // Structured content pass #1: the prefetched closure (Ruby resolves the
+    // template at Card#content time — every view reads the substituted
+    // accessor; templating.rb#structure).
+    await this.applyStructureContent();
     await this.prepareSearches(record);
+    // Pass #2: cards enrichAndStore'd during search preparation (their
+    // records joined after pass #1). Idempotent — processed keys skip.
+    await this.applyStructureContent();
     await this.ensureVerdicts();
 
     const rootCard = this.renderCards.get(name.key);
@@ -195,7 +234,150 @@ export class RenderEngine implements RenderEngineLike {
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
     this.ruleTypeIds = undefined;
+    this.structureContents = undefined;
+    this.structureProcessed.clear();
+    this.structureRefMisses.clear();
     this.lastPrefetch = undefined;
+  }
+
+  // -------------------------------------------------------------------------
+  // structured content (content/all.rb:8-10 — the *structure rule template)
+  // -------------------------------------------------------------------------
+
+  /** Parse the folded universe statement result (sliced past the permission
+   *  + codename statements). Falls back to one standalone batch on the
+   *  defensive warm-closure-first-render path (once per engine). */
+  private async parseStructureContents(
+    folded: SQLQueryResult[] | undefined,
+    structureStatementIndex: number,
+  ): Promise<void> {
+    if (this.structureContents !== undefined) return;
+    let result = folded !== undefined ? folded[structureStatementIndex] : undefined;
+    if (result === undefined) {
+      // No folded batch to read (defensive: a warm-closure first render).
+      const batch = await this.fetcher.driver.batch([structureRuleUniverseStatement()]);
+      result = batch[0];
+    }
+    this.structureContents = structureUniverseFromResults(result);
+  }
+
+  /**
+   * Substitute structured content into every prepared render card that an
+   * applicable *structure rule governs (content/all.rb:8-10:
+   * structured_content || standard_content). Mutates RenderCard.dbContent in
+   * place — the single content accessor the views read (format.ts#renderRaw,
+   * the port of base.rb:75-77's structure_card&.content) — so no view code
+   * changes. Then completes the closure: absolute references inside
+   * templates are fetched + enriched (prepare phase; per-render caches make
+   * repeats free), so warm renders stay warm and zero-query.
+   *
+   * Idempotent and incremental: cards already processed skip via
+   * structureProcessed; names that already missed fetch skip via
+   * structureRefMisses (the corpus's {{xxxx}} targets are not cards — Ruby
+   * renders them as unknown-card views; we must not re-query them ever).
+   */
+  private async applyStructureContent(): Promise<void> {
+    const universe = this.structureContents;
+    if (universe === undefined) return;
+    for (let round = 0; round < 8; round++) {
+      const toFetch = new Map<string, string>(); // ref name -> key
+      for (const [key, card] of this.renderCards) {
+        if (this.structureProcessed.has(key)) continue;
+        this.structureProcessed.add(key);
+        const resolved = resolveStructuredContent(
+          await this.structurePatternInputFor(card),
+          universe,
+        );
+        if (resolved === undefined) continue;
+        if (resolved.templateContent !== card.dbContent) card.dbContent = resolved.templateContent;
+        for (const refName of templateReferenceNames(resolved.templateContent)) {
+          const refKey = DeckoName.parse(refName).key;
+          if (
+            refKey === "" ||
+            this.renderCards.has(refKey) ||
+            this.structureRefMisses.has(refKey) ||
+            toFetch.has(refKey)
+          ) {
+            continue;
+          }
+          toFetch.set(refKey, refName);
+        }
+      }
+      if (toFetch.size === 0) return;
+      // Simple refs: ONE batched IN-query per round (the prefetch fallback's
+      // verifyClosure shape — never one query per name). Compound refs ride
+      // the fetch ladder individually (corpus templates carry simple and
+      // relative refs; junction template refs are rare). Genuinely missing
+      // names land in structureRefMisses — unknown nest targets render as
+      // unknown-card views (Ruby parity) and are never re-queried.
+      const simpleKeys: string[] = [];
+      const compoundNames: string[] = [];
+      for (const [refKey, refName] of toFetch) {
+        if (DeckoName.parse(refName).isCompound) compoundNames.push(refName);
+        else simpleKeys.push(refKey);
+      }
+      let enrichedAny = false;
+      if (simpleKeys.length > 0) {
+        const placeholders = simpleKeys.map(() => "?").join(", ");
+        const result = await this.fetcher.driver.query<CardsRow>(
+          // COLLATE NOCASE matches the cards_key_index collation (see
+          // prefetch.ts's fallback rounds).
+          `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+          simpleKeys,
+        );
+        const rows = result.rows as CardsRow[];
+        for (const row of rows) {
+          const record = await composeCardRecord(row, this.fetcher.lexicon);
+          if (record.name === undefined) continue;
+          await this.cacheFetchedRecord(record);
+          enrichedAny = true;
+        }
+        const foundKeys = new Set(rows.map((row) => row.key));
+        for (const missKey of simpleKeys) {
+          if (!foundKeys.has(missKey)) this.structureRefMisses.add(missKey);
+        }
+      }
+      for (const refName of compoundNames) {
+        const fetched = await this.fetcher.fetchByName(refName);
+        const refKey = DeckoName.parse(refName).key;
+        if (fetched === undefined || fetched.name === undefined) {
+          this.structureRefMisses.add(refKey); // unknown nest target: render decides
+          continue;
+        }
+        await this.enrichAndStore(fetched);
+        enrichedAny = true;
+      }
+      if (!enrichedAny) return; // all misses recorded; nothing new to process
+    }
+  }
+
+  /** The pattern input for one card's structure-candidate walk — the SAME
+   *  fields enrichAndStore feeds safeSetKeys (leftTypeName for the *type
+   *  plus right anchor, isRule for the *rule pattern), so candidate
+   *  derivation is identical on both consumption sites. All fetches are
+   *  cache hits (the prefetch walked the sides). */
+  private async structurePatternInputFor(card: RenderCard): Promise<PatternCardInput> {
+    let leftTypeName: string | undefined;
+    let leftRecord: CardRecord | undefined;
+    if (card.name.isCompound) {
+      const leftKey = card.name.leftName?.key;
+      leftRecord =
+        leftKey !== undefined
+          ? ((await this.fetcher.fetchByName(leftKey)) ?? undefined)
+          : undefined;
+      if (leftRecord !== undefined) {
+        leftTypeName = (await this.enrichAndStore(leftRecord)).typeName;
+      }
+    }
+    const isRule = card.name.isCompound ? await this.computeIsRule(card.name, leftRecord) : false;
+    return {
+      name: card.name,
+      id: card.id,
+      typeId: card.typeId,
+      typeName: card.typeName,
+      ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+      ...(isRule !== undefined ? { isRule } : {}),
+    };
   }
 
   // -------------------------------------------------------------------------
