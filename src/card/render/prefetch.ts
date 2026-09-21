@@ -164,18 +164,24 @@ const SELECT_WALKED =
 
 /** Type cards (type names for data attributes + set keys) and side cards
  *  (lexicon composition of compound names + TYPE_PLUS_RIGHT left types) of
- *  everything the walk reached. */
+ *  everything the walk reached. The side expansion is RECURSIVE to
+ *  fixpoint (`reached` = walked rows ∪ transitive sides): a junction chain
+ *  needs its sides' sides so every Lexicon#write composes in-batch — a
+ *  one-level expansion leaves mid-chain junctions uncomposed and the
+ *  composition falls back to cold per-card lexicon queries at render time
+ *  (measured: 3 extra round trips per chain level). */
 const SELECT_TYPE_AND_SIDE =
+  `WITH RECURSIVE reached(id) AS (\n` +
+  `  SELECT rs.id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
+  `  UNION\n` +
+  `  SELECT s.id FROM reached r\n` +
+  `    JOIN cards j ON j.id = r.id AND j.trash = 0\n` +
+  `    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n` +
+  `)\n` +
   `SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (\n` +
-  `  SELECT j.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
-  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.type_id IS NOT NULL\n` +
-  `  UNION SELECT s.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
-  `        JOIN cards j ON j.id = rs.id AND j.trash = 0\n` +
-  `        JOIN cards s ON s.id IN (j.left_id, j.right_id) WHERE s.type_id IS NOT NULL\n` +
-  `  UNION SELECT j.left_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
-  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.left_id IS NOT NULL\n` +
-  `  UNION SELECT j.right_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
-  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.right_id IS NOT NULL\n` +
+  `  SELECT id FROM reached\n` +
+  `  UNION SELECT j.type_id FROM reached r JOIN cards j ON j.id = r.id\n` +
+  `    WHERE j.type_id IS NOT NULL\n` +
   `)`;
 
 export interface PrefetchContext {
