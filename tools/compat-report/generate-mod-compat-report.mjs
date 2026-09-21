@@ -439,19 +439,20 @@ function inventoryDeckoTs() {
 // ---------------------------------------------------------------------------
 
 // Legacy-labeled mods per upstream maintainer guidance (decko-commons#1282
-// thread). Determined by looking at mods whose lib/ directory is essentially
-// empty (carrierwave, delayed_job, defaults) AND whose README shows them as
-// configuration-only / "monkey-patch style" or that ship no set/ tree of
-// consequence. Conservative: only flags mods where evidence is unambiguous.
-// See docs/mod-compat-notes.md for the rationale and evidence trail.
+// thread). Determined conservatively: only mods with NO set/ tree (so porting
+// them is vacuous - no set modules / no views to port) AND a clearly
+// config-only or backend-only lib/ are flagged. Mods with non-trivial set/
+// trees are NOT in this set, even if their lib/ is a thin config wrapper,
+// because the set/ tree represents unported code that should show up as
+// missing/partial in the report. See docs/mod-compat-notes.md for the
+// evidence trail and the upstream-thread citations.
 const LEGACY_MODS = new Set([
-  // recaptcha: config-only glue (lib/card/mod/recaptcha.rb is just a config
-  // block), no set/ of substance - upstream mentions it as legacy.
-  "card-mod-recaptcha-0.20.0",
-  // delayed_job: backend-only (lib/card/mod/delayed_job.rb + integration
-  // test); no set/ at all - explicitly "legacy backend" in the thread.
+  // delayed_job: backend-only (lib/card/mod/delayed_job.rb + a single
+  // integration helper); no set/ at all - explicitly "legacy backend".
   "card-mod-delayed_job-0.20.0",
-  // defaults: pure data seeding (17 transform files), no set/, no lib/.
+  // defaults: pure data seeding (17 transform files), no set/, no lib/
+  // ruby beyond the mod entry point - data-only, porting it is a data
+  // load not a set/view port.
   "card-mod-defaults-0.20.0",
 ]);
 
