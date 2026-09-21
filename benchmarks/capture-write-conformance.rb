@@ -210,26 +210,32 @@ end
 # -----------------------------------------------------------------------
 # Pre-flight: clear any stragglers left from a previous run. The capture is
 # re-runnable against the same DB copy; the names below are the names the
-# battery creates. If any of them exist already, we treat this as a
-# re-run and remove them first so the captures stay byte-identical.
+# battery creates. If any of them exist already (including in trash from a
+# crashed previous run), we delete them so the captures stay byte-identical
+# and the row ids line up across re-runs of the SAME db copy. A fresh copy
+# has none of these and the loop is a no-op.
 # -----------------------------------------------------------------------
 def reset_scenario_cards!
+  # Names in DEPENDENCY order: children before parents so the junction
+  # parents (which the rename and read-rule scenarios rely on) are still
+  # there when their child cards reference them.
   names = %w[
-    WCC Simple
     WCC Simple+child
     WCC Junction+child
+    WCC Simple
     WCC Renamed
     WCC Retype
     WCC Trash
     WCC ReadRule
-    WCC Referer
+    WCC ReadRule+*self+*read
     WCC Referer+child
+    WCC Referer
   ]
   Card::Auth.as_bot do
     names.each do |n|
       existing = Card.fetch(n, look_in_trash: true)
       next if existing.nil? || existing.new_card?
-      existing.destroy!
+      existing.delete!
     end
   end
 end
