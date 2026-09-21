@@ -212,7 +212,9 @@ export async function prefetchInclusionClosure(
   const walkedRows = ((batch[0]?.rows ?? []) as CardsRow[]).map(toRawRow);
   const sideRows = ((batch[1]?.rows ?? []) as CardsRow[]).map(toRawRow);
   console.log(
-    "PROBE walked=",
+    "PROBE rootKey=",
+    JSON.stringify(root.key),
+    "walked=",
     JSON.stringify(walkedRows.map((r) => [r.id, r.name, r.leftId, r.rightId])),
     "sides=",
     JSON.stringify(sideRows.map((r) => [r.id, r.name, r.leftId, r.rightId])),
