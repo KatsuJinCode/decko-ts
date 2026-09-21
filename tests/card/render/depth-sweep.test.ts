@@ -92,10 +92,10 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // is per-(card, view) CACHED after first render; this constant reflects
     // the COLD path. Warm renders below stay at 0.
     expect(rts[0]).toBe(5);
-    // 10 statements: 1 root + 2 closure-batch walk statements + 3 folded
-    // read-permission statements + 1 folded codename codehash (the rule?
-    // predicate's type ids — render engine) + 3 rule lookups.
-    expect(sts[0]).toBe(10);
+    // 11 statements: 1 root + 2 closure-batch walk statements + 3 folded
+    // read-permission statements + 1 folded codename codehash (rule? ids)
+    // + 1 folded structure-rule universe + 3 rule lookups.
+    expect(sts[0]).toBe(11);
     // Warm cache: zero queries on the second render (the rule cache is hit).
     expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
 
