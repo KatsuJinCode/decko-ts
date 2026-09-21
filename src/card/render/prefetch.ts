@@ -291,14 +291,35 @@ async function composeAndCache(
   return composedRecords;
 }
 
-function tryComposeName(row: RawRow, names: Map<number, DeckoName>): DeckoName | undefined {
+async function tryComposeName(
+  row: RawRow,
+  names: Map<number, DeckoName>,
+  ctx: PrefetchContext,
+): Promise<DeckoName | undefined> {
   if (row.name !== null) return DeckoName.parse(row.name);
   if (row.leftId === null || row.rightId === null) return undefined;
-  const left = names.get(row.leftId);
-  if (left === undefined) return undefined;
-  const right = names.get(row.rightId);
-  if (right === undefined) return undefined;
+  const left = await sideName(row.leftId, names, ctx);
+  const right = await sideName(row.rightId, names, ctx);
+  if (left === undefined || right === undefined) return undefined;
   return DeckoName.parse(`${left.s}+${right.s}`);
+}
+
+/** This call's composition first, then the lexicon's cached name for a side
+ *  an earlier call already composed (warm-cache read; a genuinely unknown
+ *  side yields undefined and the junction stays uncomposed this pass). */
+async function sideName(
+  id: number,
+  names: Map<number, DeckoName>,
+  ctx: PrefetchContext,
+): Promise<DeckoName | undefined> {
+  const local = names.get(id);
+  if (local !== undefined) return local;
+  try {
+    const viaLexicon = await ctx.lexicon.name(id);
+    return viaLexicon !== undefined && viaLexicon.s !== "" ? viaLexicon : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function rowToCardsRow(row: RawRow): CardsRow {
