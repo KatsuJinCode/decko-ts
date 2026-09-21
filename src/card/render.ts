@@ -52,10 +52,11 @@ import { referencedNames } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
 import {
   readPermissionStatements,
-  readPermissionStateFromResults,
-  anonymousIdFromResults,
+  readPermissionStateFromViewerResults,
   canReadByStoredRule,
   canReadByRuleLookup,
+  ANONYMOUS_VIEWER,
+  type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
 import type { SQLQueryResult } from "../server/driver.js";
