@@ -44,10 +44,12 @@ interface ShardLine {
 }
 
 /** The replay entries: corpus line ids whose content nests a depth-3+
- *  junction reference, with the views their capture recorded. */
+ *  junction reference, with the views their capture recorded. Entry 19209
+ *  was dropped: Ruby's capture of it is PERMISSION-DENIED spans (read-rule
+ *  enforcement, a distinct pending class) — it proves nothing about
+ *  junction resolution. */
 const PROOF_ENTRIES: Array<{ id: number; views: readonly string[] }> = [
   { id: 19334, views: ["closed", "content", "open", "title"] },
-  { id: 19209, views: ["closed", "content", "open", "title"] },
 ];
 
 describe("corpus replay: depth-3+ junction inclusion chains render byte-identically", () => {
