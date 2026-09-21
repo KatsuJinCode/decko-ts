@@ -182,7 +182,7 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // The whole closure walk AND the permission state resolved in ONE
       // driver.batch (one round trip stays one round trip).
       expect(stats?.batches).toBe(1);
-      expect(stats?.additionalResults?.length).toBe(3);
+      expect(stats?.additionalResults?.length).toBe(4); // 3 read-permission + 1 codename codehash (rule? ids)
     } finally {
       cold.close();
     }
