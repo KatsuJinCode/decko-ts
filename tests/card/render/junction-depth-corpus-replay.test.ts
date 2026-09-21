@@ -88,13 +88,9 @@ describe("corpus replay: depth-3+ junction inclusion chains render byte-identica
           return out;
         };
         // fixpoint: shard ids, then sides of every junction pulled in
-        let frontierIds = [...ids];
         rows.push(...fetchRows(ids));
-        for (let round = 0; round < 40 && frontierIds.length > 0; round++) {
+        for (let round = 0; round < 40; round++) {
           const need: number[] = [];
-          for (const row of rows) {
-            if (seeded.has(-1)) break;
-          }
           for (const row of rows) {
             for (const side of [row.left_id, row.right_id]) {
               if (side !== null && !seeded.has(side)) need.push(side);
