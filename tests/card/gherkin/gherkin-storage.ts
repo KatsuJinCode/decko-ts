@@ -13,10 +13,10 @@ import { fileURLToPath } from "node:url";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import type { CardsRow } from "../../../src/server/schema.js";
+import { DeckoName } from "../../../src/card/name.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
-import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
-import { JOE as ACTIONS_JOE } from "../actions/actions-test-storage.js";
+import type { Actor } from "../../../src/card/actions/types.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the same splitter as the
  *  fetch and render storage streams — the DDL carries no ";" inside
@@ -57,9 +57,6 @@ export interface GherkinTestStorage {
   driver: SQLDatabaseDriver;
   fetcher: FetchEngine;
   renderer: RenderEngine;
-  /** A default actor (Joe User) for the CardActionEngine — tests that want
-   *  a different actor can build their own engine. */
-  defaultActor: typeof ACTIONS_JOE;
   selectAll<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
   selectOne<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | undefined>;
   count(table: string): Promise<number>;
@@ -81,7 +78,6 @@ export async function createGherkinTestStorage(): Promise<GherkinTestStorage> {
     driver,
     fetcher,
     renderer,
-    defaultActor: ACTIONS_JOE,
     selectAll: async <T>(sql: string, params: unknown[] = []) =>
       (await driver.query<T>(sql, params)).rows,
     selectOne: async <T>(sql: string, params: unknown[] = []) =>
@@ -102,25 +98,93 @@ export const TYPE_IDS = {
   cardtype: 3,
   phrase: 4,
   pointer: 5,
-  /** Seeded in the standard deck for the action layer; not used by name
-   *  algebra tests but kept here for symmetry. */
-  basic: 2,
 } as const;
 
-/** Convenience: read the cards row for a given name (simple names only —
- *  the Gherkin scenarios that touch compound cards do their own side-id
- *  assertions via selectOne). */
-export async function findCardByName(
+/** Default actor for the CardActionEngine — Joe User, the same fixture
+ *  the action layer tests use (actions-test-storage.ts:64). */
+export const JOE_ACTOR: Actor = { id: 9, name: "Joe User" };
+
+/** Direct INSERT seed (mirrors the fetch and action stream's helpers —
+ *  the write path is its own stream). Simple cards carry name + key;
+ *  compound cards carry NULL name/key with left_id/right_id. */
+export async function seedCard(
   storage: GherkinTestStorage,
-  name: string,
-): Promise<CardsRow | undefined> {
-  return storage.selectOne<CardsRow>("SELECT * FROM cards WHERE name = ?", [name]);
+  opts: {
+    id?: number;
+    name?: string | null;
+    key?: string | null;
+    codename?: string | null;
+    leftId?: number | null;
+    rightId?: number | null;
+    typeId?: number;
+    dbContent?: string | null;
+    trash?: boolean;
+  },
+): Promise<CardsRow> {
+  const compound = opts.leftId !== undefined && opts.leftId !== null;
+  const name = opts.name !== undefined && opts.name !== null ? DeckoName.parse(opts.name) : null;
+  const nameColumn = compound ? null : (opts.name ?? null);
+  const keyColumn = compound ? null : (opts.key ?? name?.key ?? null);
+  await storage.driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id, read_rule_class,
+        read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      opts.id ?? null,
+      nameColumn,
+      keyColumn,
+      opts.codename ?? null,
+      opts.leftId ?? null,
+      opts.rightId ?? null,
+      null,
+      "2026-09-19 00:00:00.000",
+      "2026-09-19 00:00:00.000",
+      1,
+      1,
+      null,
+      null,
+      null,
+      opts.trash === true ? 1 : 0,
+      opts.typeId ?? TYPE_IDS.richText,
+      opts.dbContent ?? null,
+    ],
+  );
+  const id =
+    opts.id !== undefined
+      ? opts.id
+      : (
+          await storage.selectOne<{ id: number }>(
+            "SELECT id FROM cards WHERE rowid = last_insert_rowid()",
+          )
+        )?.id;
+  const inserted = await storage.selectOne<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
+  if (inserted === undefined) throw new Error("seedCard: insert lost");
+  return inserted;
 }
 
-/** Convenience: read the cards row for an id. */
-export async function findCardById(
-  storage: GherkinTestStorage,
-  id: number,
-): Promise<CardsRow | undefined> {
-  return storage.selectOne<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
+/** Seed the synthetic standard deck (RichText, Cardtype, *all, *default,
+ *  *all+*default). Mirrors actions-test-storage.ts seedStandardDeck. */
+export async function seedStandardDeck(storage: GherkinTestStorage): Promise<void> {
+  await seedCard(storage, {
+    id: TYPE_IDS.richText,
+    name: "RichText",
+    codename: "basic",
+    typeId: TYPE_IDS.cardtype,
+  });
+  await seedCard(storage, {
+    id: TYPE_IDS.cardtype,
+    name: "Cardtype",
+    codename: "cardtype",
+    typeId: TYPE_IDS.cardtype,
+  });
+  await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: TYPE_IDS.cardtype });
+  await seedCard(storage, {
+    id: 8,
+    name: "*default",
+    codename: "default",
+    typeId: TYPE_IDS.cardtype,
+  });
+  await seedCard(storage, { leftId: 7, rightId: 8, typeId: TYPE_IDS.richText });
 }
