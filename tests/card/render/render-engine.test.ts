@@ -101,6 +101,105 @@ describe("set pattern keys (mod/core/set_pattern port)", () => {
       "ALL ALL_PLUS TYPE-rich_text RIGHT-rich_child TYPE_PLUS_RIGHT-rich_text-rich_child SELF-oracle_rich-rich_child",
     );
   });
+
+  // STAR/RSTAR/RULE are ANCHORLESS (card-1.110.0 lib/card/set/pattern/
+  // class_methods.rb:16 - anchorless = !respond_to?(:anchor_name); the star,
+  // rstar and rule set_pattern files define none). The captured oracle shape
+  // for "*all+*read": "ALL ALL_PLUS TYPE-list RSTAR RULE RIGHT-Xread
+  // TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread" (src/card/set-patterns/
+  // instance.ts). The pre-fix port emitted "STAR-Xtiny_mce"-style anchored
+  // fragments and omitted RULE - the corpus render real-fail class.
+  it("emits bare STAR for star-named cards (04_star.rb anchorless)", () => {
+    const keys = safeSetKeys({
+      name: DeckoName.parse("*tiny_mce"),
+      typeId: 259,
+      typeName: "exi",
+      leftTypeName: undefined,
+    });
+    expect(keys).toBe("ALL TYPE-exi STAR SELF-Xtiny_mce");
+  });
+
+  it("emits bare RSTAR for compound cards whose right is a star (05_rstar.rb)", () => {
+    const keys = safeSetKeys({
+      name: DeckoName.parse("*all+*read"),
+      typeId: 259,
+      typeName: "exi",
+      leftTypeName: "exi",
+    });
+    expect(keys).toBe(
+      "ALL ALL_PLUS TYPE-exi RSTAR RIGHT-Xread TYPE_PLUS_RIGHT-exi-Xread SELF-Xall-Xread",
+    );
+  });
+
+  it("inserts bare RULE between RSTAR and RIGHT when isRule is supplied (06_rule.rb)", () => {
+    const keys = safeSetKeys({
+      name: DeckoName.parse("*all+*read"),
+      typeId: 259,
+      typeName: "exi",
+      leftTypeName: "exi",
+      isRule: true,
+    });
+    expect(keys).toBe(
+      "ALL ALL_PLUS TYPE-exi RSTAR RULE RIGHT-Xread TYPE_PLUS_RIGHT-exi-Xread SELF-Xall-Xread",
+    );
+  });
+
+  it("omits RULE while the enrichment does not supply isRule (documented gap)", () => {
+    const keys = safeSetKeys({
+      name: DeckoName.parse("*all+*read"),
+      typeId: 259,
+      typeName: "exi",
+      leftTypeName: "exi",
+    });
+    expect(keys).not.toContain("RULE");
+  });
+
+  it("falls back to the RichText anchor for TYPE_PLUS_RIGHT when the left type is unknown", () => {
+    // Ruby: 08_type_plus_right.rb#anchor_name "#{left_type(card)}+#{tag}"
+    // where left_type = superleft&.type_name || quick_type(left_name), and
+    // quick_type fetches unknown names as NEW cards (default RichText -
+    // oracle: new "Zz Probe New+field" anchors "RichText+field").
+    const keys = safeSetKeys({
+      name: DeckoName.parse("Ghost Parent+field"),
+      typeId: 2,
+      typeName: "RichText",
+      leftTypeName: undefined,
+    });
+    expect(keys).toBe(
+      "ALL ALL_PLUS TYPE-rich_text RIGHT-field TYPE_PLUS_RIGHT-rich_text-field SELF-ghost_parent-field",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the slot class attribute end-to-end (the corpus render real-fail class:
+// expected `... STAR SELF-...`, TS emitted `STAR-<anchor> SELF-...`)
+// ---------------------------------------------------------------------------
+
+describe("slot set-key classes through the render engine", () => {
+  it("renders a star card's slot class with the bare STAR fragment", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      // synthetic Culturesmith-shaped cards (type card "exi" = the deck's
+      // renamed Set cardtype, codename "set"); the expected class list is
+      // the captured corpus:53 shape for a simple star card
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 259, name: "exi", codename: "set", typeId: 2 });
+      await seedCard(storage, {
+        id: 500,
+        name: "*tiny_mce",
+        typeId: 259,
+        dbContent: "",
+      });
+      const html = await storage.engine.render("*tiny_mce", "closed");
+      expect(html).toContain(
+        'class="card-slot closed-view ALL TYPE-exi STAR SELF-Xtiny_mce"',
+      );
+      expect(html).not.toContain("STAR-Xtiny_mce");
+    } finally {
+      storage.close();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -157,10 +256,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // candidates (the rule chain walk for *self+*open, *all+*open, etc.).
     // The walk is CACHED after first render — warm renders stay at 0.
     expect(roundTripsByDepth).toEqual({ 1: 5, 2: 5, 4: 5, 8: 5 });
-    expect(statementsByDepth).toEqual({ 1: 6, 2: 6, 4: 6, 8: 6 });
+    // Statements add the 3 read-permission statements the permission stream
+    // folds into the closure batch (same round trip, zero extra round trips).
+    expect(statementsByDepth).toEqual({ 1: 9, 2: 9, 4: 9, 8: 9 });
     // depth 8 within the target budget on BOTH axes; Ruby needed 11 queries.
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(6);
-    expect(statementsByDepth[8]).toBeLessThanOrEqual(6);
+    expect(statementsByDepth[8]).toBeLessThanOrEqual(9);
     expect(statementsByDepth[8]).toBeLessThan(RUBY_MEASURED[8]);
   });
 
@@ -237,12 +338,19 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     }
   });
 
-  it("rejects rendering a nest whose target does not exist (unknown-card views are wave 3)", async () => {
+  it("renders an absent nest target as Ruby's unknown view (empty: create denied)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 500, name: "lonely", typeId: 2, dbContent: "{{ghost}}" });
-      await expect(storage.engine.render("lonely", "content")).rejects.toThrow(/nest target not found: ghost/);
+      await seedCard(storage, { id: 500, name: "lonely", typeId: 2, dbContent: "<p>{{ghost}}</p>" });
+      // format/nest/fetch.rb#new_card: the miss fetches a NEW unknown card;
+      // the default :titled nest view substitutes :unknown
+      // (view/permission.rb#alter_unknown -> html error.rb view :unknown),
+      // whose createable branch is denied for the captured deck's anonymous
+      // viewer - the nest renders the empty string (corpus oracle: shard-0
+      // entry 640 expects `<p></p>` for exactly this shape).
+      const html = await storage.engine.render("lonely", "content");
+      expect(html).toContain("<p></p>");
     } finally {
       storage.close();
     }
