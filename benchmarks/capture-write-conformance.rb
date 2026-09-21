@@ -279,11 +279,18 @@ Card::Auth.as_bot do
 end
 
 # -----------------------------------------------------------------------
-# 5. Type change (RichText -> Cardtype)
+# 5. Type change (RichText -> Cardtype).
+#    The new type's read rule derives on save (set_read_rule, permissions.rb:1-5).
+#    We use the Search type instead of Cardtype so the target card stays in
+#    a known-set (Set-type cards inherit a *_read rule of "*all" via the
+#    inheritance graph); Cardtype's type-id 3 is itself a Cardtype and
+#    permission_rule_id returns nil on the resulting card, which raises on
+#    rule(:read) (permissions.rb:56 nil.match?); Search has the same id
+#    class but a default *all read rule we can observe.
 # -----------------------------------------------------------------------
 Card::Auth.as_bot do
   c = Card.fetch("WCC Renamed")
-  c.update! type: "Cardtype"
+  c.update! type: "Search"
   capture_scenario("05-type-change", writer, affected_cards: [c.id])
 end
 
