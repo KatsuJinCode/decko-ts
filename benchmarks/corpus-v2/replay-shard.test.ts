@@ -362,7 +362,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               pass: renderEntries.filter((e) => e.status === "pass").length,
               structurePending: renderStructurePending.length,
               nestGap: renderNestGap.length,
-              permissionPending: renderPermissionPending.length,
+              permissionPending: permissionSkipped + renderPermissionPending.length,
               realFail: renderRealReal.length,
             },
           });
