@@ -91,14 +91,14 @@ describe("engine-for-session: token -> actor -> attributed write", () => {
   it("expired token degrades to anonymous (auth/current.rb:58-63 shape)", async () => {
     const { storage, joe } = await bootDeckWithAuth();
     try {
-      const creator = new SessionStore({ driver: storage.driver });
+      // Created 10 days ago with the default TTL: genuinely expired in real
+      // time, so ANY conforming store (including the one inside the engine
+      // factory) must resolve it to null.
+      const pastClock = () => new Date(Date.now() - 10 * 24 * 3600 * 1000);
+      const creator = new SessionStore({ driver: storage.driver, now: pastClock });
       const { token } = await creator.createSession(joe.id);
-      // A resolver whose clock is past the session's expiry.
-      const later = new SessionStore({
-        driver: storage.driver,
-        now: () => new Date(Date.now() + 10 * 24 * 3600 * 1000),
-      });
-      expect(await later.resolveActorFromToken(token)).toBeNull();
+      expect(await new SessionStore({ driver: storage.driver }).resolveActorFromToken(token))
+        .toBeNull();
 
       const engine = await createCardActionEngineForSession(
         storage.engine,
