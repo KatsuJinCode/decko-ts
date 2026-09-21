@@ -464,6 +464,19 @@ function classify(inv, surface) {
       status: "ignored",
       verdict: "ignored (legacy-labeled per upstream maintainer guidance)",
       evidence: "no meaningful set/ tree; config-only or backend-only gem",
+      metrics: {
+        htmlViewsDeclared: 0,
+        htmlViewsCovered: 0,
+        htmlViewsMissing: 0,
+        htmlViewsMissingNames: [],
+        patternsUsed: [],
+        patternsImplemented: [],
+        patternsCoverage: 0,
+        viewsCoverage: 0,
+        setModules: inv.counts.setModules,
+        libRbFiles: inv.counts.libRbFiles,
+        hamlFiles: inv.counts.hamlFiles,
+      },
     };
   }
 
