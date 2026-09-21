@@ -16,14 +16,13 @@ import { afterEach, describe, it } from "vitest";
 import {
   closeWorld,
   freshWorld,
+  givenExtendedDeck,
   givenSignedInAs,
   givenStandardDeck,
-  thenNotSee,
   thenSee,
   type GherkinWorld,
   whenCreateCard,
   whenGoToCard,
-  whenGoToNew,
 } from "./gherkin-steps.js";
 
 describe("Gherkin port: basic views (home.feature + structure.feature + pointer_inputs.feature)", () => {
