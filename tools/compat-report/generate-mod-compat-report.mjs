@@ -538,24 +538,20 @@ function classify(inv, surface) {
       : htmlViewsCovered.length / htmlViewsDeclared.length;
 
   // Mod-specific views: declared views that are NOT in the universal
-  // baseline (card-mod-format + deck core supply these for every card).
-  // A mod's contribution is its NON-universal views - that's what the
-  // porting work actually adds.
+  // baseline (card-mod-format + deck core supply these for every card)
+  // AND are NOT aliases (view :foo, :bar adds zero new rendering - just
+  // a rename). A mod's contribution is its real new views - that's what
+  // the porting work actually adds.
+  const aliasFromSet = new Set(inv.aliasPairs.map((a) => a.from));
   const specificViewsDeclared = htmlViewsDeclared.filter(
-    (v) => !UNIVERSAL_HTML_VIEWS.has(v),
+    (v) => !UNIVERSAL_HTML_VIEWS.has(v) && !aliasFromSet.has(v),
   );
-  // Aliases (view :foo, :bar) count as covered when :bar is covered - the
-  // mod doesn't add new rendering, it just renames. Without this, a mod
-  // that ships `view :closed_bar, :closed` would count :closed_bar as
-  // missing even though :closed is implemented (and :closed_bar renders
-  // byte-identically to :closed).
-  const aliasCoverage = new Set(inv.aliasPairs.map((a) => a.to));
+  // Aliases count as covered when their target is covered (the mod's
+  // rename of an implemented view is also "implemented").
   const specificViewsCovered = specificViewsDeclared.filter((v) => {
     if (surface.htmlViews.includes(v)) return true;
-    if (aliasCoverage.has(v) && surface.htmlViews.includes(
-      // find the alias target name from inv.aliasPairs.
-      (inv.aliasPairs.find((a) => a.from === v) || {}).to,
-    )) return true;
+    const alias = inv.aliasPairs.find((a) => a.from === v);
+    if (alias && surface.htmlViews.includes(alias.to)) return true;
     return false;
   });
   const specificViewsCoverage =

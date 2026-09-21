@@ -91,7 +91,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // the closure batch (read-permission stream): round trips unchanged.
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(10); // +3 read-permission + 1 codename codehash (rule? ids), all folded
+      expect(snapshot.statements).toBe(11); // +3 read-permission + 1 codename codehash (rule? ids) + 1 structure-rule universe, all folded
     } finally {
       storage.close();
     }
