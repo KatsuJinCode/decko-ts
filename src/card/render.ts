@@ -121,18 +121,29 @@ export class RenderEngine implements RenderEngineLike {
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
     // stays one round trip); on a warm closure it runs as its own batch —
-    // once per engine, never per warm render.
+    // once per engine, never per warm render. The codename codehash (the
+    // rule? predicate's type-id source) folds into the same batch.
     const permissionCold = this.readPermission === undefined;
+    const ruleTypesCold = this.ruleTypeIds === undefined;
+    const permissionStatementCount = permissionCold ? readPermissionStatements().length : 0;
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
+      const coldStatements = [
+        ...readPermissionStatements().slice(0, permissionStatementCount),
+        ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
+      ];
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
         cacheRecord: (cached) => this.cacheFetchedRecord(cached),
-        ...(permissionCold ? { additionalStatements: readPermissionStatements() } : {}),
+        ...(coldStatements.length > 0 ? { additionalStatements: coldStatements } : {}),
       });
       this.lastPrefetch = stats;
       foldedResults = stats.additionalResults;
+      // The rule ids must be memoized BEFORE enrichment: enrichAndStore
+      // computes set keys (the RULE pattern's applies?) synchronously from
+      // them. Sliced past the permission statements the batch also carried.
+      if (ruleTypesCold) this.parseRuleTypeIds(foldedResults, permissionStatementCount);
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
     }
