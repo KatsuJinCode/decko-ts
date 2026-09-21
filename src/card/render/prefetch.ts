@@ -253,12 +253,15 @@ async function composeAndCache(
 
   // Bottom-up name composition over the row map (sides before junctions),
   // so each Lexicon#write carries the composed name like Ruby's would.
+  // Sides cached by an EARLIER call (previous fallback rounds) resolve
+  // through the lexicon - warm-cache reads, zero queries - so a junction
+  // fetched in round N composes against sides fetched in round N-1.
   const names = new Map<number, DeckoName>();
   let pending = [...byId.values()];
   for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
     const still: RawRow[] = [];
     for (const row of pending) {
-      const composed = tryComposeName(row, names);
+      const composed = await tryComposeName(row, names, ctx);
       if (composed !== undefined) names.set(row.id, composed);
       else still.push(row);
     }
