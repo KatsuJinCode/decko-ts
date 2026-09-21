@@ -147,7 +147,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
   it("keeps a depth-2 junction render at the constant query shape (no regression)", async () => {
     const storage = await createRenderTestStorage();
     try {
-      for (const card of chainCards(storage, 2)) {
+      for (const card of chainCards(2)) {
         await seedCard(storage, card);
       }
       await seedCard(storage, {
