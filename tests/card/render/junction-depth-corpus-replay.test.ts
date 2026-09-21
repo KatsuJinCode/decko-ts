@@ -4,17 +4,18 @@
 // classify as the "nest gap" - failures containing 'nest target not found')
 // and requires byte-identical HTML.
 //
-// Entry 3360 (shard-000002) is a depth-3 junction card
-// ("iimvszurewpkg+kvypbzbzhcjjwar+cfvoytpxlh") whose content nests the
-// depth-5 junction "iimvszurewpkg+...+xptdirwqgothvb". Before the fix the
-// prefetcher never resolved that target (NULL-key junction rows deeper than
-// two parts) and the render threw where Ruby rendered.
+// Entry 19334 (shard-000014, "almrctncpf+fsxqechglhqd") is a depth-3
+// junction card whose content nests the depth-3 junction
+// "almrctncpf+fsxqechglhqd+fmassslzrfd" — the exact class the prefetcher
+// used to throw `nest target not found` on (NULL-key junction rows deeper
+// than two parts) and Ruby rendered successfully (all four captured views
+// are real HTML, verified at capture time). Entry 19209 nests a different
+// depth-3 junction for a second independent proof.
 //
-// Seeding mirrors benchmarks/corpus-v2/replay-shard.test.ts: the shard's
-// card rows come from bench-corpus-v2.sqlite3 and are inserted with the real
-// decko convention (simple cards store name+key; junctions store NULL
-// name/key + side ids). Byte comparison goes through the replay harness
-// (slot-id normalization both sides, docs/replay-harness.md).
+// NOTE (why not entry 3360/shard-000002): Ruby's own capture of that card
+// recorded CAPTURE_ERROR views ("card not found") — Ruby failed there too,
+// so it proves nothing about junction RESOLUTION; it belongs to the
+// unknown-nest class (wave 3).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -34,7 +35,7 @@ import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
-const SHARD_PATH = path.join(REPO_ROOT, "fixtures", "corpus", "shard-000002.jsonl");
+const SHARD_PATH = path.join(REPO_ROOT, "fixtures", "corpus", "shard-000014.jsonl");
 
 interface ShardLine {
   id: number;
@@ -45,7 +46,8 @@ interface ShardLine {
 /** The replay entries: corpus line ids whose content nests a depth-3+
  *  junction reference, with the views their capture recorded. */
 const PROOF_ENTRIES: Array<{ id: number; views: readonly string[] }> = [
-  { id: 3360, views: ["closed", "content", "open", "title"] },
+  { id: 19334, views: ["closed", "content", "open", "title"] },
+  { id: 19209, views: ["closed", "content", "open", "title"] },
 ];
 
 describe("corpus replay: depth-3+ junction inclusion chains render byte-identically", () => {
