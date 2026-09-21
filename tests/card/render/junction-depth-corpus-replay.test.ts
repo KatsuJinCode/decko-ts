@@ -104,7 +104,6 @@ describe("corpus replay: depth-3+ junction inclusion chains render byte-identica
           for (const id of unique) seeded.add(id);
           const fetched = fetchRows(unique);
           rows.push(...fetched);
-          frontierIds = unique;
         }
         corpus.close();
         for (const row of rows) {
