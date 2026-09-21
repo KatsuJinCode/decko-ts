@@ -43,7 +43,6 @@ describe("Gherkin port: card name algebra (every feature file)", () => {
     // The structure.feature Gherkin relies on DeckoName.leftName being
     // the part before the first joint — the rule walk uses this to
     // resolve the type card.
-    const { DeckoName } = require("../../../src/card/name.js");
     const n = DeckoName.parse("Movie+*type+*structure");
     if (n.leftName === undefined || n.leftName.s !== "Movie") {
       throw new Error(`expected leftName 'Movie', got ${n.leftName?.s}`);
