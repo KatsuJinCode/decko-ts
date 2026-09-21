@@ -96,27 +96,7 @@ export async function givenSignedOut(world: GherkinWorld): Promise<void> {
  *  *all+*default). Mirrors actions-test-storage.ts seedStandardDeck; this
  *  step is the prerequisite almost every Gherkin scenario needs. */
 export async function givenStandardDeck(world: GherkinWorld): Promise<void> {
-  const { seedCard } = await import("../actions/actions-test-storage.js");
-  // RichText — codename basic, the basic type
-  await seedCard({
-    id: TYPE_IDS.richText,
-    name: "RichText",
-    codename: "basic",
-    typeId: TYPE_IDS.cardtype,
-  });
-  // Cardtype — codename cardtype
-  await seedCard({
-    id: TYPE_IDS.cardtype,
-    name: "Cardtype",
-    codename: "cardtype",
-    typeId: TYPE_IDS.cardtype,
-  });
-  // *all / *default / *all+*default — the rule machinery's setting cards.
-  // The action tests seed these with typeId CARDTYPE_ID (cards.yml
-  // cards_008/009/011), so we mirror that.
-  await seedCard({ id: 7, name: "*all", codename: "all", typeId: TYPE_IDS.cardtype });
-  await seedCard({ id: 8, name: "*default", codename: "default", typeId: TYPE_IDS.cardtype });
-  await seedCard({ leftId: 7, rightId: 8, typeId: TYPE_IDS.richText });
+  await seedStandardDeck(world.storage);
 }
 
 // ---------------------------------------------------------------------------
