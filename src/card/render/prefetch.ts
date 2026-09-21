@@ -11,25 +11,37 @@
 // 1. SQL-side closure walk (the accelerator): one recursive CTE follows
 //    {{...}} references through db_content in SQLite itself, so the whole
 //    tree - any depth - arrives in ONE statement. Spans cannot nest braces
-//    (Chunk::Nest full_re [^{}]*), so a numbers-table scan for '{{' +
-//    first '}}' reproduces the chunker's spans; the key transform is a
-//    best-effort lower/space-to-underscore (the JS parser is the semantic
-//    authority, see 3). Cycle-safe: UNION dedups keys.
-//    COVERAGE BOUNDARY: the walk matches references against cards.key -
-//    SIMPLE references only. Post-2020 junction rows store NULL name/key
-//    columns (composition runs through the lexicon side ids), so compound
-//    references cannot be matched in SQL without re-implementing name
-//    composition there; they ride the fallback below instead.
+//    (Chunk::Nest full_re [^{}]*), so an instr-chained span scan (find the
+//    next '{{', cut at the first '}}') reproduces the chunker's spans; the
+//    key transform is a best-effort lower/space-to-underscore (the JS parser
+//    is the semantic authority, see 3). Cycle-safe: UNION dedups whole rows.
+//    JUNCTION COVERAGE: post-2020 junction rows carry NULL name/key columns,
+//    so the walk resolves every frontier key through a `resolved` closure -
+//    a second recursive CTE that composes each junction row's key from its
+//    sides (left-resolved+right-simple, then right-resolved+left-simple -
+//    the DbLexicon nameToLex walk in SQL). Frontier keys match resolved.ckey
+//    whether they name simple cards or composed junctions, so junction
+//    references enter the SQL frontier too.
+//    (PERFORMANCE NOTE, 2026-09-20 profile: the previous numbers-table scan
+//    cost O(10k positions x frontier x cards) per walk - up to 173 s per
+//    render on the corpus, because `c."key" = f.key` could not use the
+//    NOCASE-collated cards_key_index under BINARY comparison and fell back
+//    to the near-unselective trash index. The span chain removes the
+//    numbers table entirely and key comparisons are annotated COLLATE
+//    NOCASE - lossless for decko's lowercase-ASCII keys, and it lets the
+//    planner seek cards_key_index.)
 // 2. One driver.batch round trip: [walk+rows, type+side cards]. On the edge
 //    drivers this is the design's whole point (D1 batch = one HTTP request);
 //    LocalSqliteDriver wraps it in one transaction.
 // 3. JS verification + per-level fallback: after composing the fetched rows,
 //    the REAL parser (nest-syntax.ts) re-derives every reference. Anything
-//    the CTE could not resolve (compound references, relative names, odd key
-//    characters, plural stems, content past the SQL scan cap) is fetched in
-//    per-level IN-query rounds - the prescribed "one batched round trip per
-//    level" shape - until closure. Correctness never depends on the SQL
-//    extraction.
+//    the CTE could not resolve (compound references past what `resolved`
+//    composed, relative names, odd key characters, plural stems, content
+//    past the SQL scan cap) is fetched in per-level IN-query rounds - the
+//    prescribed "one batched round trip per level" shape - until closure.
+//    Junction sides resolve recursively: a depth-N chain takes O(N) rounds,
+//    each joining junction rows by their UNIQUE (left_id, right_id) pair.
+//    Correctness never depends on the SQL extraction.
 //
 // All fetching is read-only (SELECT); the write path is another stream.
 
@@ -84,50 +96,86 @@ function toRawRow(row: CardsRow): RawRow {
 }
 
 /**
- * The recursive walk. `frontier` seeds with the root key; the recursive step
- * extracts every `{{...}}` span of every frontier card's content (via the
- * numbers table), cuts nest options at "|", best-effort transforms the name
- * to its key (lowercase + spaces to underscores - enough for the common
- * absolute reference), and adds it. UNION dedups, so cycles terminate.
+ * The recursive walk. `frontier(t, rest)` seeds with the root key; each
+ * frontier row is either an unresolved target (rest IS NULL) or a scan
+ * cursor (rest = content still to search). The recursive arms:
+ *   A. seed the scan of a matched target (via the `resolved` key closure, so
+ *      junction composed keys match too) - one substr, only nest-bearing
+ *      content;
+ *   B1. advance one '{{' span (slice the cursor);
+ *   B2. emit the span's best-effort key (cut at '|', trim, lower,
+ *       spaces->underscores) as a new unresolved target;
+ *   B3. mark the scan done (back to rest IS NULL - a row that already
+ *       exists, so UNION dedups it and recursion stops).
+ * Rows are pure functions of (key, scan position), so cycles terminate.
  */
 function walkStatement(rootKey: string, finalSelect: string): SQLStatement {
-  const rawSpan =
-    `substr(c.db_content, n.n + 2, instr(substr(c.db_content, n.n + 2), '}}') - 1)`;
+  const at = `instr(f.rest, '{{')`;
+  const restAfter = `substr(f.rest, ${at} + 2)`;
+  const closeAt = `instr(substr(f.rest, ${at} + 2), '}}')`;
+  const span = `substr(f.rest, ${at} + 2, ${closeAt} - 1)`;
   const cutOptions =
-    `CASE WHEN instr(${rawSpan}, '|') = 0 THEN ${rawSpan} ` +
-    `ELSE substr(${rawSpan}, 1, instr(${rawSpan}, '|') - 1) END`;
+    `CASE WHEN instr(${span}, '|') = 0 THEN ${span} ` +
+    `ELSE substr(${span}, 1, instr(${span}, '|') - 1) END`;
   const keyExpr = `lower(replace(trim(${cutOptions}), ' ', '_'))`;
   const sql =
     `WITH RECURSIVE\n` +
-    `nums(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM nums WHERE n < ${SQL_CONTENT_SCAN_CAP}),\n` +
-    `frontier(key) AS (\n` +
-    `  SELECT ?\n` +
+    // Composed-key closure over ALL rows (DbLexicon.nameToLex in SQL):
+    // simple cards by their key column, junction rows by their sides - one
+    // joint per pass, both orientations, UNION dedups (rows are pure
+    // functions of the row id, so cycles terminate).
+    `resolved(id, ckey) AS (\n` +
+    `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
     `  UNION\n` +
-    `  SELECT DISTINCT ${keyExpr}\n` +
+    `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+    `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
+    `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+    `  UNION\n` +
+    `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+    `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
+    `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+    `),\n` +
+    `frontier(t, rest) AS (\n` +
+    `  SELECT ?, NULL\n` +
+    `  UNION\n` +
+    `  SELECT f.t, substr(c.db_content, 1, ${SQL_CONTENT_SCAN_CAP})\n` +
     `  FROM frontier f\n` +
-    `  JOIN cards c ON c."key" = f.key AND c.trash = 0\n` +
-    `  JOIN nums n\n` +
-    `    ON n.n + 3 <= length(c.db_content)\n` +
-    `   AND substr(c.db_content, n.n, 2) = '{{'\n` +
-    `   AND instr(substr(c.db_content, n.n + 2), '}}') > 1\n` +
+    `  JOIN resolved rs ON rs.ckey = f.t\n` +
+    `  JOIN cards c ON c.id = rs.id AND c.trash = 0\n` +
+    `  WHERE f.rest IS NULL AND c.db_content LIKE '%{{%'\n` +
+    `  UNION\n` +
+    `  SELECT f.t, ${restAfter} FROM frontier f\n` +
+    `   WHERE f.rest IS NOT NULL AND ${at} > 0\n` +
+    `  UNION\n` +
+    `  SELECT DISTINCT ${keyExpr}, NULL FROM frontier f\n` +
+    `   WHERE f.rest IS NOT NULL AND ${at} > 0 AND ${closeAt} > 1\n` +
+    `  UNION\n` +
+    `  SELECT f.t, NULL FROM frontier f\n` +
+    `   WHERE f.rest IS NOT NULL AND ${at} = 0\n` +
     `)\n` +
     finalSelect;
   return { sql, params: [rootKey] };
 }
 
 const SELECT_WALKED =
-  `SELECT c.* FROM cards c JOIN frontier f ON c."key" = f."key" AND c.trash = 0`;
+  `SELECT DISTINCT c.* FROM resolved rs\n` +
+  `JOIN frontier f ON f.t = rs.ckey\n` +
+  `JOIN cards c ON c.id = rs.id`;
 
 /** Type cards (type names for data attributes + set keys) and side cards
  *  (lexicon composition of compound names + TYPE_PLUS_RIGHT left types) of
  *  everything the walk reached. */
 const SELECT_TYPE_AND_SIDE =
   `SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (\n` +
-  `  SELECT j.type_id FROM cards j JOIN frontier fj ON fj.key = j."key" AND j.trash = 0 WHERE j.type_id IS NOT NULL\n` +
-  `  UNION SELECT s.type_id FROM cards j JOIN frontier fj ON fj.key = j."key" AND j.trash = 0\n` +
+  `  SELECT j.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
+  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.type_id IS NOT NULL\n` +
+  `  UNION SELECT s.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
+  `        JOIN cards j ON j.id = rs.id AND j.trash = 0\n` +
   `        JOIN cards s ON s.id IN (j.left_id, j.right_id) WHERE s.type_id IS NOT NULL\n` +
-  `  UNION SELECT j.left_id FROM cards j JOIN frontier fj ON fj.key = j."key" AND j.trash = 0 WHERE j.left_id IS NOT NULL\n` +
-  `  UNION SELECT j.right_id FROM cards j JOIN frontier fj ON fj.key = j."key" AND j.trash = 0 WHERE j.right_id IS NOT NULL\n` +
+  `  UNION SELECT j.left_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
+  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.left_id IS NOT NULL\n` +
+  `  UNION SELECT j.right_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
+  `        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.right_id IS NOT NULL\n` +
   `)`;
 
 export interface PrefetchContext {
@@ -369,7 +417,10 @@ async function verifyClosure(
     if (simpleKeys.length > 0) {
       const placeholders = simpleKeys.map(() => "?").join(", ");
       const result = await ctx.driver.query<CardsRow>(
-        `SELECT * FROM cards WHERE "key" IN (${placeholders}) AND trash = 0`,
+        // COLLATE NOCASE matches the collation of cards_key_index (the
+        // column itself is BINARY); lossless for decko's lowercase keys -
+        // see the module perf note.
+        `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
         simpleKeys,
       );
       stats.statements += 1;
@@ -382,8 +433,8 @@ async function verifyClosure(
       const placeholdersR = rightKeys.map(() => "?").join(", ");
       const result = await ctx.driver.query<CardsRow>(
         `SELECT DISTINCT j.* FROM cards j\n` +
-        `  JOIN cards l ON l.id = j.left_id AND l."key" IN (${placeholdersL})\n` +
-        `  JOIN cards r ON r.id = j.right_id AND r."key" IN (${placeholdersR})\n` +
+        `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
+        `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
         ` WHERE j.trash = 0`,
         [...leftKeys, ...rightKeys],
       );

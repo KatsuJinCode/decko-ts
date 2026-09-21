@@ -1,0 +1,193 @@
+{
+  "aggregate": {
+    "shards": 1,
+    "lines": 1000,
+    "captureErrorLines": 1,
+    "records": {
+      "total": 999,
+      "pass": 733,
+      "structurePending": 266,
+      "realFail": 0
+    },
+    "renders": {
+      "total": 3242,
+      "pass": 1650,
+      "structurePending": 249,
+      "nestGap": 220,
+      "realFail": 1123
+    },
+    "real_failures": [
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:28:render:closed",
+        "first": "FAIL corpus:28:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xall-Xdefault-closed-view\" class=\"card-s...\n  sizes: expected 76 bytes, actual 2538 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:33:render:closed",
+        "first": "FAIL corpus:33:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xchild-closed-view\" class=\"card-slot clo...\n  sizes: expected 76 bytes, actual 2094 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:34:render:closed",
+        "first": "FAIL corpus:34:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xchild-Xright-Xstructure-closed-view\" cl...\n  sizes: expected 76 bytes, actual 2834 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:34:render:content",
+        "first": "FAIL corpus:34:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xchild-Xright-Xstructure-content-view\" c...\n  sizes: expected 76 bytes, actual 550 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:34:render:open",
+        "first": "FAIL corpus:34:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xchild-Xright-Xstructure-open-view\" clas...\n  sizes: expected 76 bytes, actual 3395 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:35:render:closed",
+        "first": "FAIL corpus:35:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xmate-closed-view\" class=\"card-slot clos...\n  sizes: expected 76 bytes, actual 2060 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:36:render:closed",
+        "first": "FAIL corpus:36:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xmate-Xright-Xstructure-closed-view\" cla...\n  sizes: expected 76 bytes, actual 2797 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:36:render:content",
+        "first": "FAIL corpus:36:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xmate-Xright-Xstructure-content-view\" cl...\n  sizes: expected 76 bytes, actual 541 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:36:render:open",
+        "first": "FAIL corpus:36:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xmate-Xright-Xstructure-open-view\" class...\n  sizes: expected 76 bytes, actual 3352 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:37:render:closed",
+        "first": "FAIL corpus:37:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnested_by-closed-view\" class=\"card-slot...\n  sizes: expected 76 bytes, actual 2131 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:38:render:closed",
+        "first": "FAIL corpus:38:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnested_by-Xright-Xstructure-closed-view...\n  sizes: expected 76 bytes, actual 2872 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:38:render:content",
+        "first": "FAIL corpus:38:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnested_by-Xright-Xstructure-content-vie...\n  sizes: expected 76 bytes, actual 567 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:38:render:open",
+        "first": "FAIL corpus:38:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnested_by-Xright-Xstructure-open-view\" ...\n  sizes: expected 76 bytes, actual 3449 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:39:render:closed",
+        "first": "FAIL corpus:39:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlinked_to_by-closed-view\" class=\"card-s...\n  sizes: expected 76 bytes, actual 2179 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:40:render:closed",
+        "first": "FAIL corpus:40:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlinked_to_by-Xright-Xstructure-closed-v...\n  sizes: expected 76 bytes, actual 2923 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:40:render:content",
+        "first": "FAIL corpus:40:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlinked_to_by-Xright-Xstructure-content-...\n  sizes: expected 76 bytes, actual 582 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:40:render:open",
+        "first": "FAIL corpus:40:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlinked_to_by-Xright-Xstructure-open-vie...\n  sizes: expected 76 bytes, actual 3512 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:41:render:closed",
+        "first": "FAIL corpus:41:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnest-closed-view\" class=\"card-slot clos...\n  sizes: expected 76 bytes, actual 2060 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:42:render:closed",
+        "first": "FAIL corpus:42:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnest-Xright-Xstructure-closed-view\" cla...\n  sizes: expected 76 bytes, actual 2797 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:42:render:content",
+        "first": "FAIL corpus:42:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnest-Xright-Xstructure-content-view\" cl...\n  sizes: expected 76 bytes, actual 548 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:42:render:open",
+        "first": "FAIL corpus:42:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xnest-Xright-Xstructure-open-view\" class...\n  sizes: expected 76 bytes, actual 3359 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:43:render:closed",
+        "first": "FAIL corpus:43:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlink_to-closed-view\" class=\"card-slot c...\n  sizes: expected 76 bytes, actual 2108 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:44:render:closed",
+        "first": "FAIL corpus:44:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlink_to-Xright-Xstructure-closed-view\" ...\n  sizes: expected 76 bytes, actual 2848 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:44:render:content",
+        "first": "FAIL corpus:44:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlink_to-Xright-Xstructure-content-view\"...\n  sizes: expected 76 bytes, actual 564 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:44:render:open",
+        "first": "FAIL corpus:44:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"Xlink_to-Xright-Xstructure-open-view\" cl...\n  sizes: expected 76 bytes, actual 3423 bytes"
+      }
+    ],
+    "real_failure_count": 1123
+  },
+  "shards": [
+    {
+      "shard": "shard-000000.jsonl",
+      "lines": 1000,
+      "captureErrorLines": 1,
+      "records": {
+        "total": 999,
+        "pass": 733,
+        "structurePending": 266,
+        "realFail": 0
+      },
+      "renders": {
+        "total": 3242,
+        "pass": 1650,
+        "structurePending": 249,
+        "nestGap": 220,
+        "realFail": 1123
+      }
+    }
+  ]
+}
