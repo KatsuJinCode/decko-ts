@@ -410,9 +410,10 @@ export class RenderEngine implements RenderEngineLike {
       typeName = typeRecord?.name?.s;
     }
     let leftTypeName: string | undefined;
+    let leftRecord: CardRecord | undefined;
     if (name.isCompound) {
       const leftKey = name.leftName?.key;
-      const leftRecord =
+      leftRecord =
         leftKey !== undefined
           ? (await this.fetcher.fetchByName(leftKey)) ?? undefined
           : undefined;
@@ -421,6 +422,7 @@ export class RenderEngine implements RenderEngineLike {
         leftTypeName = leftCard.typeName;
       }
     }
+    const isRule = name.isCompound ? await this.computeIsRule(name, leftRecord) : false;
     const card: RenderCard = {
       record,
       name,
@@ -429,7 +431,7 @@ export class RenderEngine implements RenderEngineLike {
       typeId,
       id: record.id,
       dbContent: cardContent(record),
-      setKeys: safeSetKeys({ name, typeId, typeName, leftTypeName }),
+      setKeys: safeSetKeys({ name, typeId, typeName, leftTypeName, isRule }),
     };
     this.renderCards.set(key, card);
     if (record.id !== undefined) this.idsByKey.set(key, record.id);
