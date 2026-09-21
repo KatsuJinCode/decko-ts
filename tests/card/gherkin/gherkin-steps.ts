@@ -55,9 +55,9 @@ export interface GherkinWorld {
 export async function freshWorld(opts: { actor?: Actor; now?: () => Date } = {}): Promise<GherkinWorld> {
   // Lazy import so the helpers don't create the storage when the file is
   // merely type-loaded.
-  const { createGherkinTestStorage, JOE } = await import("./gherkin-storage.js");
+  const { createGherkinTestStorage } = await import("./gherkin-storage.js");
   const storage = await createGherkinTestStorage();
-  const actor = opts.actor ?? JOE;
+  const actor = opts.actor ?? DEFAULT_ACTOR;
   const engine = new CardActionEngine(storage.fetcher, {
     actor,
     ipAddress: "127.0.0.1",
