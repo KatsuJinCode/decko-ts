@@ -65,26 +65,50 @@ describe("corpus replay: depth-3+ junction inclusion chains render byte-identica
       const registry = new HandlerRegistry();
       try {
         // Seed the shard exactly like the replay driver (cards + type cards
-        // that sit outside the shard).
+        // that sit outside the shard), PLUS the transitive side cards of
+        // every seeded junction: a compound card's name resolves through
+        // its sides (the Lexicon walk), and junction sides commonly sit in
+        // EARLIER shards — without them even the root card is "not found".
         const corpus = new Database(CORPUS_DB, { readonly: true });
         const ids = lines.map((l) => l.id);
+        const seeded = new Set<number>(ids);
         const rows: Array<{
           id: number; name: string | null; codename: string | null;
           left_id: number | null; right_id: number | null; trash: number;
           type_id: number; content: string | null;
         }> = [];
-        for (let i = 0; i < ids.length; i += 500) {
-          const chunk = ids.slice(i, i + 500);
-          rows.push(...(corpus.prepare(
-            `SELECT id, name, codename, left_id, right_id, trash, type_id, content FROM cards WHERE id IN (${chunk.map(() => "?").join(",")})`
-          ).all(...chunk) as typeof rows));
-        }
-        const typeIds = [...new Set(rows.map((r) => r.type_id))];
-        const missing = typeIds.filter((t) => !ids.includes(t));
-        if (missing.length > 0) {
-          rows.push(...(corpus.prepare(
-            `SELECT id, name, codename, left_id, right_id, trash, type_id, content FROM cards WHERE id IN (${missing.map(() => "?").join(",")})`
-          ).all(...missing) as typeof rows));
+        const fetchRows = (idList: number[]): typeof rows => {
+          const out: typeof rows = [];
+          for (let i = 0; i < idList.length; i += 500) {
+            const chunk = idList.slice(i, i + 500);
+            out.push(...(corpus.prepare(
+              `SELECT id, name, codename, left_id, right_id, trash, type_id, content FROM cards WHERE id IN (${chunk.map(() => "?").join(",")})`
+            ).all(...chunk) as typeof rows));
+          }
+          return out;
+        };
+        // fixpoint: shard ids, then sides of every junction pulled in
+        let frontierIds = [...ids];
+        rows.push(...fetchRows(ids));
+        for (let round = 0; round < 40 && frontierIds.length > 0; round++) {
+          const need: number[] = [];
+          for (const row of rows) {
+            if (seeded.has(-1)) break;
+          }
+          for (const row of rows) {
+            for (const side of [row.left_id, row.right_id]) {
+              if (side !== null && !seeded.has(side)) need.push(side);
+            }
+          }
+          const typeNeed = rows
+            .map((r) => r.type_id)
+            .filter((t): t is number => t !== null && !seeded.has(t));
+          const unique = [...new Set([...need, ...typeNeed])];
+          if (unique.length === 0) break;
+          for (const id of unique) seeded.add(id);
+          const fetched = fetchRows(unique);
+          rows.push(...fetched);
+          frontierIds = unique;
         }
         corpus.close();
         for (const row of rows) {
