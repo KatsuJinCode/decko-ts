@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   closeWorld,
   freshWorld,
+  givenExtendedDeck,
   givenSignedInAs,
   givenStandardDeck,
   thenCardContains,
@@ -22,7 +23,6 @@ import {
   thenCardNotContains,
   thenCardNotExists,
   thenCardTrashed,
-  thenSee,
   type GherkinWorld,
   whenCreateCard,
   whenCreateSimpleCard,
