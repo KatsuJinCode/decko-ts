@@ -81,6 +81,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // The #1282 shape holds: one root fetch + one batch (2 statements)
       // + 3 rule-lookup candidates - the same constant as simple chains.
       const snapshot = storage.counting.snapshot();
+      console.log("DEPTH2 STATEMENTS:", JSON.stringify(storage.counting.statements, null, 1));
       expect(snapshot.roundTrips).toBe(5);
       expect(snapshot.statements).toBe(6);
     } finally {
