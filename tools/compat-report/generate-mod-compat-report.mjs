@@ -49,6 +49,28 @@ const IMPLEMENTED_PATTERNS = [
   "all",
 ];
 
+// "Universal" views shipped by card-mod-format and the deck core - every
+// card renders through them. A mod that declares only these as its html
+// views contributes NO mod-specific rendering; using them as the sole
+// signal would over-report ported status (a mod that just calls
+// `view :core do ...end` would appear "ported" because :core is in
+// HTML_VIEWS, even though nothing mod-specific is implemented). See
+// docs/mod-compat-notes.md.
+const UNIVERSAL_HTML_VIEWS = new Set([
+  "core",
+  "content",
+  "title",
+  "titled",
+  "titled_content",
+  "menu",
+  "open",
+  "closed",
+  "blank",
+  "unknown",
+  "mini_unknown",
+  "no_search_results",
+]);
+
 // Patterns a card-mod can plausibly register an Abstract set module under.
 // (per card-1.110.0 lib/cardio/mod/loader/set_pattern_loader.rb + abstract/.)
 const ALLOWED_PATTERN_DIRS = [
