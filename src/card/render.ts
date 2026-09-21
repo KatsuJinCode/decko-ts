@@ -95,6 +95,11 @@ export class RenderEngine implements RenderEngineLike {
    *  the prepare phase so the synchronous render path never queries.
    *  Cleared on resetCaches(). */
   private deniedVerdicts = new Map<number, boolean>();
+  /** The viewer whose readable set the permission engine enforces —
+   *  Anonymous by default; a signed-in session's actor carries its role
+   *  parties (see ReadViewer in src/card/permissions/read-rules.ts). Set
+   *  before the first render, or together with resetCaches() after. */
+  viewer: ReadViewer = ANONYMOUS_VIEWER;
   /** Codename ids the rule? predicate compares against (SettingID/SetID/
    *  UserID, resolved from the codename codehash). Folded into the cold
    *  render's closure batch (zero extra round trips); undefined until
