@@ -626,6 +626,9 @@ function classify(inv, surface) {
       htmlViewsMissingNames: htmlViewsDeclared.filter(
         (v) => !surface.htmlViews.includes(v),
       ),
+      specificViewsDeclared: specificViewsDeclared.length,
+      specificViewsCovered: specificViewsCovered.length,
+      specificViewsCoverage: Math.round(specificViewsCoverage * 1000) / 10,
       patternsUsed,
       patternsImplemented: implementedUsed,
       patternsCoverage: Math.round(patternsCoverage * 1000) / 10,
