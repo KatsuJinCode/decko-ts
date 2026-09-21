@@ -138,7 +138,7 @@ export async function whenSetContent(
   content: string,
 ): Promise<void> {
   const card = await fetchByName(world, name);
-  if (card === undefined) {
+  if (card === undefined || card.id === undefined) {
     throw new CardActionError("not-found", `card ${name} not found`);
   }
   await world.engine.updateCard({ cardId: card.id, content });
@@ -148,7 +148,7 @@ export async function whenSetContent(
  *  conflict.feature shape. Records a no-op save. */
 export async function whenTouch(world: GherkinWorld, name: string): Promise<void> {
   const card = await fetchByName(world, name);
-  if (card === undefined) {
+  if (card === undefined || card.id === undefined) {
     throw new CardActionError("not-found", `card ${name} not found`);
   }
   await world.engine.updateCard({ cardId: card.id, content: card.dbContent ?? "" });
@@ -157,7 +157,7 @@ export async function whenTouch(world: GherkinWorld, name: string): Promise<void
 /** "When I delete <name>" — trash flip (trash.rb:11-21). */
 export async function whenDeleteCard(world: GherkinWorld, name: string): Promise<void> {
   const card = await fetchByName(world, name);
-  if (card === undefined) {
+  if (card === undefined || card.id === undefined) {
     throw new CardActionError("not-found", `card ${name} not found`);
   }
   await world.engine.deleteCard({ cardId: card.id });
