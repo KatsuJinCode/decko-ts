@@ -169,9 +169,10 @@ const SELECT_WALKED =
  *  needs its sides' sides so every Lexicon#write composes in-batch — a
  *  one-level expansion leaves mid-chain junctions uncomposed and the
  *  composition falls back to cold per-card lexicon queries at render time
- *  (measured: 3 extra round trips per chain level). */
+ *  (measured: 3 extra round trips per chain level). The leading comma
+ *  continues walkStatement's WITH list (resolved, frontier, reached). */
 const SELECT_TYPE_AND_SIDE =
-  `WITH RECURSIVE reached(id) AS (\n` +
+  `, reached(id) AS (\n` +
   `  SELECT rs.id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
   `  UNION\n` +
   `  SELECT s.id FROM reached r\n` +
