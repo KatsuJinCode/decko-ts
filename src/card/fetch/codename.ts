@@ -7,13 +7,19 @@
 // with every simple codenamed card (codename.rb#seed_caches).
 
 import { DeckoName } from "../name.js";
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { CardCache } from "./cache.js";
 import type { DbLexicon, Lex } from "./lexicon.js";
 
 /** codename.rb:150 - the cache key the codehash lives under. */
 export const CODENAMES_CACHE_KEY = "CODENAMES";
+
+/** codename.rb#process_codenames: query all codenamed cards, build both
+ *  maps, and seed the lexicon with each SIMPLE codenamed card
+ *  (#seed_caches: `return if card.left_id`). */
+const CODEHASH_SQL =
+  "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL";
 
 interface Codehash {
   c2i: Map<string, number>;
