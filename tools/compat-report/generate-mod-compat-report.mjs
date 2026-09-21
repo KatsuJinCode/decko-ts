@@ -683,12 +683,17 @@ function renderMd(report) {
   lines.push("");
   lines.push("## Per-mod report");
   lines.push("");
-  lines.push("| mod | status | html views | set modules | lib rb | verdict |");
-  lines.push("|-----|--------|-----------:|------------:|-------:|---------|");
+  lines.push("| mod | status | mod-specific views | set modules | lib rb | verdict |");
+  lines.push("|-----|--------|-------------------:|------------:|-------:|---------|");
   for (const m of report.mods) {
     const cls = m.classification;
+    const modSpec = `${cls.metrics.specificViewsCovered ?? 0}/${cls.metrics.specificViewsDeclared ?? 0}`;
+    const setModSummary = Object.entries(m.inv.setModulesByPattern || {})
+      .filter(([, n]) => n > 0)
+      .map(([p, n]) => `${p}=${n}`)
+      .join(", ");
     lines.push(
-      `| \`${m.gem}\` | ${cls.status} | ${cls.metrics.htmlViewsCovered}/${cls.metrics.htmlViewsDeclared} | ${cls.metrics.setModules} (${m.inv.setModulesByPattern ? Object.entries(m.inv.setModulesByPattern).filter(([, n]) => n > 0).map(([p, n]) => `${p}=${n}`).join(", ") : ""}) | ${cls.metrics.libRbFiles} | ${cls.verdict.replace(/\|/g, "\\|").slice(0, 200)} |`,
+      `| \`${m.gem}\` | ${cls.status} | ${modSpec} | ${cls.metrics.setModules} (${setModSummary}) | ${cls.metrics.libRbFiles} | ${cls.verdict.replace(/\|/g, "\\|").slice(0, 200)} |`,
     );
   }
   lines.push("");
