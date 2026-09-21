@@ -166,7 +166,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("card delete — soft-trash flip on a simple card (trash.rb:11-21)", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Doomed", "v1");
     await thenCardExists(world, "Doomed");
