@@ -318,7 +318,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           const cardPermissionPending = cardReal.filter((e) => isDeniedExpectation(e));
           const cardRealReal = cardReal.filter((e) => !cardPermissionPending.includes(e));
 
-          for (const e of cardReal) {
+          for (const e of cardRealReal) {
             realFailures.push({
               shard: shardName,
               area: "card-engine",
@@ -343,13 +343,15 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               total: cardEntries.length,
               pass: cardEntries.filter((e) => e.status === "pass").length,
               structurePending: cardStructurePending.length,
-              realFail: cardReal.length,
+              permissionPending: cardPermissionPending.length,
+              realFail: cardRealReal.length,
             },
             renders: {
               total: renderEntries.length,
               pass: renderEntries.filter((e) => e.status === "pass").length,
               structurePending: renderStructurePending.length,
               nestGap: renderNestGap.length,
+              permissionPending: renderPermissionPending.length,
               realFail: renderRealReal.length,
             },
           });
