@@ -87,6 +87,13 @@ export class RenderEngine implements RenderEngineLike {
    *  the prepare phase so the synchronous render path never queries.
    *  Cleared on resetCaches(). */
   private deniedVerdicts = new Map<number, boolean>();
+  /** Codename ids the rule? predicate compares against (SettingID/SetID/
+   *  UserID, resolved from the codename codehash). Folded into the cold
+   *  render's closure batch (zero extra round trips); undefined until
+   *  then. Cleared on resetCaches(). */
+  private ruleTypeIds:
+    | { setting: number | undefined; set: number | undefined; user: number | undefined }
+    | undefined;
   private lastPrefetch: PrefetchStats | undefined;
 
   constructor(fetcher: FetchEngine) {
