@@ -162,6 +162,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
+      console.log("DEPTH2 STATEMENTS:", JSON.stringify(storage.counting.statements, null, 1));
       expect(snapshot.roundTrips).toBe(5);
       expect(snapshot.statements).toBe(6);
     } finally {
