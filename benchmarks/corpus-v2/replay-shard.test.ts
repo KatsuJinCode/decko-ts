@@ -238,6 +238,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           // ---- build corpus entries ----------------------------------------
           const entries: ReplayEntry[] = [];
           let captureErrorLines = 0;
+          let permissionSkipped = 0;
           for (const line of lines) {
             if (line.error !== undefined && line.record === undefined && line.views === undefined) {
               captureErrorLines += 1;
@@ -256,6 +257,16 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             }
             if (line.views) {
               for (const [view, html] of Object.entries(line.views)) {
+                // Permission-pending views are counted from their EXPECTED
+                // bytes and never sent to the engine: Ruby denied the
+                // anonymous viewer (read-rule enforcement is a separate
+                // stream), so rendering the TS side would do the full
+                // inclusion work only to mismatch a 76-byte denied span.
+                // They are pending-by-dependency, not judged either way.
+                if (html.startsWith('<span class="denied"')) {
+                  permissionSkipped += 1;
+                  continue;
+                }
                 entries.push({
                   id: `corpus:${line.id}:render:${view}`,
                   area: "render-engine",
