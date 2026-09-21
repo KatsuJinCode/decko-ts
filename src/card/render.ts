@@ -143,7 +143,7 @@ export class RenderEngine implements RenderEngineLike {
       // The rule ids must be memoized BEFORE enrichment: enrichAndStore
       // computes set keys (the RULE pattern's applies?) synchronously from
       // them. Sliced past the permission statements the batch also carried.
-      if (ruleTypesCold) this.parseRuleTypeIds(foldedResults, permissionStatementCount);
+      if (ruleTypesCold) this.parseRuleTypeIds(foldedResults, permissionStatements.length);
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
     }
