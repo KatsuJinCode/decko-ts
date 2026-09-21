@@ -46,7 +46,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("conflict.feature / Two edits — background: I create Phrase card with content", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     // upstream: Given I am signed in as Joe Admin
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     // upstream: And I create Phrase card "Duck Soup" with content "Laurel and Hardy"
@@ -58,7 +58,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("conflict.feature / Two edits — Joe Admin edits Duck Soup with a new body", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Duck Soup", "Laurel and Hardy");
     // upstream: When I edit "Duck Soup" setting content to "Oliver Laurel"
@@ -76,7 +76,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
     // docs/actions-port-notes.md); what the engine proves is that both
     // acts persisted independently.
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Duck Soup", "Laurel and Hardy");
     // upstream: When I edit "Duck Soup" filling in "Stan Hardy"
@@ -90,7 +90,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("conflict.feature / Two edits with the same change — no-op second save", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Duck Soup", "Laurel and Hardy");
     // upstream: When I edit "Duck Soup" setting content to "Stan Laurel"
@@ -106,7 +106,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("conflict.feature / I edit without changing — touch is a no-op", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     await whenCreateCard(world, "Phrase", "Duck Soup", "Laurel and Hardy");
     // Touch — equivalent to opening the editor and saving unchanged.
@@ -121,7 +121,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
 
   it("structure.feature / I create Cardtype card (and a Rule card with template content)", async () => {
     world = await freshWorld();
-    await givenStandardDeck(world);
+    await givenExtendedDeck(world);
     await givenSignedInAs(world, { id: 1, name: "Joe Admin" });
     // upstream: And I create Cardtype card "Movie"
     await whenCreateCard(world, "Cardtype", "Movie", "");
