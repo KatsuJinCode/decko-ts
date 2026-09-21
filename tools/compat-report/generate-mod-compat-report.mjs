@@ -707,7 +707,8 @@ function renderMd(report) {
     lines.push(`- **verdict**: ${cls.verdict}`);
     lines.push(`- **evidence**: ${cls.evidence}`);
     lines.push(`- **set modules by pattern**: ${Object.entries(m.inv.setModulesByPattern).filter(([, n]) => n > 0).map(([p, n]) => `${p}=${n}`).join(", ") || "(none)"}`);
-    lines.push(`- **html views declared**: ${(m.inv.viewsByFormat.html ?? []).length ? m.inv.viewsByFormat.html.join(", ") : "(none)"}`);
+    lines.push(`- **mod-specific html views (covered/total)**: ${cls.metrics.specificViewsCovered}/${cls.metrics.specificViewsDeclared} (${(m.inv.viewsByFormat.html ?? []).filter((v) => !["core","content","title","titled","titled_content","menu","open","closed","blank","unknown","mini_unknown","no_search_results"].includes(v)).join(", ") || "(none)"})`);
+    lines.push(`- **all html views declared**: ${(m.inv.viewsByFormat.html ?? []).length ? m.inv.viewsByFormat.html.join(", ") : "(none)"}`);
     lines.push(`- **non-html views**: ${Object.entries(m.inv.viewsByFormat).filter(([fmt]) => fmt !== "html").flatMap(([fmt, vs]) => vs.map((v) => `${fmt}:${v}`)).join(", ") || "(none)"}`);
     lines.push(`- **view aliases**: ${m.inv.aliasPairs.length ? m.inv.aliasPairs.slice(0, 8).map((a) => `:${a.from} -> :${a.to}`).join(", ") + (m.inv.aliasPairs.length > 8 ? `, ...(${m.inv.aliasPairs.length - 8} more)` : "") : "(none)"}`);
     lines.push(`- **event hooks**: ${m.inv.eventHooks.length} (${m.inv.eventHooks.slice(0, 6).map((e) => `:${e.event}`).join(", ")}${m.inv.eventHooks.length > 6 ? ", ..." : ""})`);
