@@ -134,9 +134,11 @@ function stripRubyNoise(src) {
 }
 
 function grepAllViews(src) {
-  // captures the view name in `view :foo` and the alias target in
-  // `view :foo, :bar` (comma form).
-  const re = /^[ \t]*view[ \t]+:([A-Za-z0-9_?!]+)(?:[ \t]*,[ \t]*:([A-Za-z0-9_?!]+))?/gm;
+  // captures the view name in `view :foo` AND `view(:foo, ...) { ... }`
+  // (single-line parens form, common in card-mod-bar_and_box bar.rb:26-28),
+  // plus the alias target in `view :foo, :bar` (comma form) and the
+  // parenthesized alias form `view(:foo, :bar)`.
+  const re = /^[ \t]*view[ \t]*\(?[ \t]*:([A-Za-z0-9_?!]+)(?:[ \t]*,[ \t]*:([A-Za-z0-9_?!]+))?/gm;
   const views = [];
   let m;
   while ((m = re.exec(src)) !== null) {
