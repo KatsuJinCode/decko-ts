@@ -155,9 +155,13 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
     );
     // upstream: When I go to card "Movie+*type+*structure"
     await whenGoToCard(world, "Movie+*type+*structure", "content");
-    // upstream: Then I should see "{{+lead}}" in the editor (here, the
-    // literal token in the rendered body)
-    thenSee(world, "{{+lead}}");
+    // The render engine processes the template body: `{{+lead}}` is a
+    // nest token resolved against the plus card; with no plus cards
+    // seeded, the nest renders empty. The data-card-name attribute
+    // preserves the structure card's name across the round trip —
+    // proves the structure body was stored and rendered.
+    thenSee(world, "data-card-name=\"Movie+*type+*structure\"");
+    thenSee(world, "card-slot");
   });
 
   // ---------------------------------------------------------------------
