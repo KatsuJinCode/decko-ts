@@ -544,9 +544,20 @@ function classify(inv, surface) {
   const specificViewsDeclared = htmlViewsDeclared.filter(
     (v) => !UNIVERSAL_HTML_VIEWS.has(v),
   );
-  const specificViewsCovered = specificViewsDeclared.filter((v) =>
-    surface.htmlViews.includes(v),
-  );
+  // Aliases (view :foo, :bar) count as covered when :bar is covered - the
+  // mod doesn't add new rendering, it just renames. Without this, a mod
+  // that ships `view :closed_bar, :closed` would count :closed_bar as
+  // missing even though :closed is implemented (and :closed_bar renders
+  // byte-identically to :closed).
+  const aliasCoverage = new Set(inv.aliasPairs.map((a) => a.to));
+  const specificViewsCovered = specificViewsDeclared.filter((v) => {
+    if (surface.htmlViews.includes(v)) return true;
+    if (aliasCoverage.has(v) && surface.htmlViews.includes(
+      // find the alias target name from inv.aliasPairs.
+      (inv.aliasPairs.find((a) => a.from === v) || {}).to,
+    )) return true;
+    return false;
+  });
   const specificViewsCoverage =
     specificViewsDeclared.length === 0
       ? 0
