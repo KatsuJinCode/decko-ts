@@ -211,9 +211,14 @@ export async function prefetchInclusionClosure(
   stats.statements += 2;
   const walkedRows = ((batch[0]?.rows ?? []) as CardsRow[]).map(toRawRow);
   const sideRows = ((batch[1]?.rows ?? []) as CardsRow[]).map(toRawRow);
+  const tableDump = await driver.query<CardsRow>(
+    "SELECT id, name, key, left_id, right_id, trash, db_content FROM cards", [],
+  );
   console.log(
     "PROBE rootKey=",
     JSON.stringify(root.key),
+    "table=",
+    JSON.stringify(tableDump.rows),
     "walked=",
     JSON.stringify(walkedRows.map((r) => [r.id, r.name, r.leftId, r.rightId])),
     "sides=",
