@@ -146,10 +146,39 @@ in the driver log.
 
 ## Gates
 
-- `npx tsc --noEmit`: <field>
-- `npx vitest run tests/card/render`: <field> (includes oracle-replay 20/20
-  byte-exact and the depth-sweep constant-query pins)
-- full `npx vitest run`: <field>
+- `npx tsc --noEmit`: **exit 0, repo-wide** (2026-09-21, coordinator-run after stream recovery).
+- `npx vitest run tests/card/render`: **29/29 across 7 files** — includes
+  oracle-replay 20/20 byte-exact, the depth-sweep constant-query pins,
+  junction-depth-closure 4/4 (depth-2 at 5 RT/6 statements, depth-3 and
+  depth-4 covered by the pure SQL walk with fallbackRounds === 0, and the
+  deliberate plural-stem miss exercising the recursive side-id fallback),
+  and the corpus proof test: corpus entry 19334 (shard-000014, a depth-3
+  junction nesting a depth-3 junction) replays all four captured Ruby
+  views byte-identically.
+- Full `npx vitest run`: deferred until the parallel streams (set-keys
+  parity, unknown-nest, read-permission) land; the corpus replay numbers
+  above are their shared before-picture.
+- Corpus replay classification on shard 0 with this stream's fixes landed:
+  999 records → 728 pass / 270 structure-pending / 1 real; 2,426 judged
+  renders → 1,650 pass / 148 structure-pending / 112 nest-target /
+  816 permission-pending / 516 real (set-key class fragment mismatches,
+  the next stream's target).
+
+## Coordinator completions on top of this stream (2026-09-21)
+
+The stream's agent was killed by a system restart before its final
+measurement pass; the coordinator finished from its on-disk state:
+- `composeAndCache` cross-call composition: sides cached by an earlier
+  fallback round now resolve through the lexicon (warm reads), so a
+  junction fetched in round N composes instead of re-fetching forever.
+- The batch's side expansion is RECURSIVE to fixpoint (`reached` CTE):
+  a junction chain needs its sides' sides in-batch or mid-chain
+  junctions compose only through cold per-card lexicon queries
+  (measured: 3 extra round trips per chain level).
+- Test fixtures: junction chains use digit-suffixed part names because
+  DeckoName.key SINGULARIZES (measured: key("beta") = "betum"), and the
+  counting driver is reset before render so the pins measure the render,
+  not the seed INSERTs.
 
 ## Out of scope / honest notes
 
