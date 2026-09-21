@@ -86,6 +86,27 @@ export class DbCodenameRegistry {
     return id === undefined ? undefined : this.codehashValue?.i2c.get(id);
   }
 
+  /** The codehash load as a batch statement, for callers folding it into a
+   *  larger batch (the prefetch additionalStatements vehicle) so a cold
+   *  render pays no dedicated round trip for codename ids. Feed the
+   *  matching result back with foldCodehashResults. */
+  codehashStatement(): SQLStatement {
+    return { sql: CODEHASH_SQL, params: [] };
+  }
+
+  /** Install the codehash from a folded codehashStatement result (same
+   *  rows processCodenames would have loaded). After this, id() and the
+   *  sync peeks read the memo — no queries. No-op when already loaded
+   *  (a second fold would rebuild an identical hash). */
+  foldCodehashResults(result: SQLQueryResult): void {
+    if (this.codehashValue !== undefined) return;
+    const codehash = this.buildCodehash(
+      result.rows as Array<Pick<CardsRow, "id" | "codename" | "name" | "left_id" | "right_id">>,
+    );
+    this.cache.write(CODENAMES_CACHE_KEY, codehash);
+    this.codehashValue = codehash;
+  }
+
   /** codename.rb#codehash / #load_codehash: Card.cache.fetch("CODENAMES")
    *  { process_codenames }. The fetch value is the codehash; the in-memory
    *  memo avoids re-parsing Maps out of the cache on every call. */
@@ -102,16 +123,13 @@ export class DbCodenameRegistry {
     return fresh;
   }
 
-  /** codename.rb#process_codenames: query all codenamed cards, build both
-   *  maps, and seed the lexicon with each SIMPLE codenamed card
-   *  (#seed_caches: `return if card.left_id`). */
-  private async processCodenames(): Promise<Codehash> {
-    const result = await this.driver.query<Pick<CardsRow, "id" | "codename" | "name" | "left_id" | "right_id">>(
-      "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
-      [],
-    );
+  /** Shared codehash construction: both maps plus the simple-card lexicon
+   *  seeding (#seed_caches). */
+  private buildCodehash(
+    rows: Array<Pick<CardsRow, "id" | "codename" | "name" | "left_id" | "right_id">>,
+  ): Codehash {
     const codehash: Codehash = { c2i: new Map(), i2c: new Map() };
-    for (const row of result.rows) {
+    for (const row of rows) {
       if (row.codename === null || row.codename === undefined) continue;
       codehash.c2i.set(row.codename, row.id);
       codehash.i2c.set(row.id, row.codename);
@@ -124,5 +142,12 @@ export class DbCodenameRegistry {
       }
     }
     return codehash;
+  }
+
+  private async processCodenames(): Promise<Codehash> {
+    const result = await this.driver.query<
+      Pick<CardsRow, "id" | "codename" | "name" | "left_id" | "right_id">
+    >(CODEHASH_SQL, []);
+    return this.buildCodehash(result.rows);
   }
 }
