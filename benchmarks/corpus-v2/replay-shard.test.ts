@@ -371,6 +371,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             total: outcomes.reduce((a, o) => a + o.records.total, 0),
             pass: outcomes.reduce((a, o) => a + o.records.pass, 0),
             structurePending: outcomes.reduce((a, o) => a + o.records.structurePending, 0),
+            permissionPending: outcomes.reduce((a, o) => a + o.records.permissionPending, 0),
             realFail: outcomes.reduce((a, o) => a + o.records.realFail, 0),
           },
           renders: {
@@ -378,6 +379,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             pass: outcomes.reduce((a, o) => a + o.renders.pass, 0),
             structurePending: outcomes.reduce((a, o) => a + o.renders.structurePending, 0),
             nestGap: outcomes.reduce((a, o) => a + o.renders.nestGap, 0),
+            permissionPending: outcomes.reduce((a, o) => a + o.renders.permissionPending, 0),
             realFail: outcomes.reduce((a, o) => a + o.renders.realFail, 0),
           },
           real_failures: realFailures.slice(0, 25),
