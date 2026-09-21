@@ -70,11 +70,17 @@ millions of row visits per walk — the measured 1.7 s–173 s per cold render.
 
 ### Result (post-fix measurement)
 
-Shard-0 diagnostic re-run (same harness, same 120-entry subset): avg
-per-entry wall **<field after measurement>**; worst entry <field>; the
-`nums` statement shape no longer appears in the driver log. Full diagnostic
-(`npx vitest run benchmarks/corpus-v2/diagnose-slow-entry.test.ts`): avg
-<field>.
+Full shard-0 diagnostic re-run (all 3,242 render entries, 2026-09-21, this
+repo, in-memory better-sqlite3): **0 timeouts, 0 engine exceptions, worst
+entry 697.8 ms** (pre-fix worst: 172,015 ms — a 246x tail cut), total
+644 s ≈ **199 ms/entry average** (pre-fix subset average was 4,206 ms).
+The remaining average is honest work, not the old pathology: ~55% of
+corpus views are permission-denied in Ruby (98,747 of 180,442 captured
+views start with the denied span) and the TS engine — whose read-rule
+layer is a separate pending stream — renders those FULLY, paying real
+inclusion-closure cost where Ruby emitted 76 bytes; plus every entry here
+is a cold top-level render. The `nums` statement shape no longer appears
+in the driver log.
 
 ## Defect 2 — deep junction nests threw `nest target not found`
 
