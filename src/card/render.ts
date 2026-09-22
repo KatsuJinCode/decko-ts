@@ -43,6 +43,7 @@ import {
   type ViewFn,
 } from "./render/format.js";
 import { HTML_VIEWS } from "./render/views.js";
+import { badQuery, emptyQueryError } from "./render/errors.js";
 import {
   prefetchInclusionClosure,
   type PrefetchStats,
