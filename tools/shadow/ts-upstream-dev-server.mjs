@@ -208,8 +208,14 @@ async function bootEngine() {
   for (const statement of splitSqlStatements(ddl)) {
     await driver.query(statement, []);
   }
-  for (const row of CODENAME_SEED) await insertCard(driver, row);
-  for (const row of SMOKE_SEED) await insertCard(driver, row);
+  // Wrap insertCard so the seed's name column's KEY is computed by the
+  // engine itself (the engine's DeckoName.key applies the
+  // plural-stem-collapse rule; "Oracle Basics" -> "oracle_basic", not
+  // "oracle_basics"). Without this the engine's WHERE key = ? query
+  // misses the row.
+  const wrappedInsert = (row) => insertCard(driver, row, DeckoName);
+  for (const row of CODENAME_SEED) await wrappedInsert(row);
+  for (const row of SMOKE_SEED) await wrappedInsert(row);
 
   const fetcher = new fetchMod.FetchEngine(driver);
   const renderer = new renderMod.RenderEngine(fetcher);
