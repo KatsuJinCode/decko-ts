@@ -109,6 +109,25 @@ Card::Auth.as_bot do
   end
   sara = Card.fetch("Sara")
 
+  # Ensure Sara+account+*email is set even on re-runs (the card's
+  # `email` field is what the notify trigger reads — see comment above).
+  sara_account = Card.fetch("Sara+account", new: { type_id: Card::BasicID })
+  if sara_account.new_card?
+    sara_account = Card.create!("Sara+account", "+*email" => { content: "sara@example.com" })
+  elsif Card["Sara+account+*email"].nil? || Card["Sara+account+*email"].content.to_s.strip.empty?
+    sara_account.update! "+*email" => "sara@example.com"
+    seed_log["Sara+account+*email"] = "updated"
+  end
+
+  john = Card.fetch("John")
+  john_account = Card.fetch("John+account", new: { type_id: Card::BasicID })
+  if john_account.new_card?
+    john_account = Card.create!("John+account", "+*email" => { content: "john@example.com" })
+  elsif Card["John+account+*email"].nil? || Card["John+account+*email"].content.to_s.strip.empty?
+    john_account.update! "+*email" => "john@example.com"
+    seed_log["John+account+*email"] = "updated"
+  end
+
   # The actor (John). We need a non-bot, non-Sara actor because the
   # notify trigger skips when follower == act.actor
   # (card-mod-follow set/all/notify.rb:51). John has no follow rule, so
