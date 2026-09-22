@@ -68,6 +68,14 @@ import {
 } from "./name-validation.js";
 import { resolveTypeId } from "./type-resolution.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
+import {
+  defaultTransport,
+  expandActionResultToSavePathEvents,
+  makeNotifyContext,
+  runIntegrationHooks,
+  type NotifyTransport,
+  type SavePathIntegrationHook,
+} from "../notify/index.js";
 
 export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
