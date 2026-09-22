@@ -52,19 +52,19 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     // The render's pointer/list dispatch checks this directly; the
     // canonical Ruby check is `card.type_code == :pointer || :list`.
     expect(
-      isPointerOrListCard({ typeCode: "pointer" } as { typeCode?: string }),
+      isPointerOrListCard({ typeCode: "pointer" } as unknown as Parameters<typeof isPointerOrListCard>[0]),
     ).toBe(true);
     expect(
-      isPointerOrListCard({ typeCode: "list" } as { typeCode?: string }),
+      isPointerOrListCard({ typeCode: "list" } as unknown as Parameters<typeof isPointerOrListCard>[0]),
     ).toBe(true);
     expect(
-      isPointerOrListCard({ typeCode: "search_type" } as { typeCode?: string }),
+      isPointerOrListCard({ typeCode: "search_type" } as unknown as Parameters<typeof isPointerOrListCard>[0]),
     ).toBe(false);
     expect(
-      isPointerOrListCard({ typeCode: "cardtype" } as { typeCode?: string }),
+      isPointerOrListCard({ typeCode: "cardtype" } as unknown as Parameters<typeof isPointerOrListCard>[0]),
     ).toBe(false);
     expect(
-      isPointerOrListCard({} as { typeCode?: string }),
+      isPointerOrListCard({} as unknown as Parameters<typeof isPointerOrListCard>[0]),
     ).toBe(false);
   });
 
