@@ -81,6 +81,9 @@ const REPO_ROOT = path.resolve(HERE, "..", "..");
 const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
 const SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 const RESULTS_DIR = path.join(REPO_ROOT, "benchmarks", "results", "corpus-v2");
+// Parallel-split recipe: each slice process sets CORPUS_SLICE_TAG (e.g. "s1")
+// so concurrent runs write disjoint result files instead of clobbering.
+const RESULTS_TAG = process.env.CORPUS_SLICE_TAG ?? "";
 
 interface ShardLine {
   id: number;
