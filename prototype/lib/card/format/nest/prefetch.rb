@@ -176,20 +176,12 @@ class Card
         def write_card_cache_entry card_cache, row
           # Card::Cache[Card] is keyed by card.key
           # (card-1.110.0 lib/card/cache/card_class.rb:28-34 write_to_cache).
-          # The render path's Card.fetch retrieves by id, which goes
-          # through retrieve_from_cache_by_id (lib/card/cache/card_class.rb:17-22)
-          # -- which looks up by name first. So warming the name-keyed
-          # entries is what matters.
-          key = row["key"]
-          return unless key.present?
-          # Cache the name string (the cache write below is the temp cache;
-          # we don't materialize full Card objects here -- the per-card
-          # retrieve_from_db in the cache miss path will hydrate them on
-          # first read). Matches Card::Cache.write semantics (lib/card/cache.rb:55-60).
-          # NOTE: write(name_key, name_string) is the minimum entry needed
-          # for retrieve_from_cache_by_id to succeed -- the id->name lookup
-          # the cache does (cache_card_class.rb:18-19) only needs the name.
-          card_cache.temp.write key.to_s, row["name"].to_s if row["name"].present?
+          # write_to_cache uses cache.write(key, card) -- the cache VALUE
+          # must be the Card object, not just a name. The full Card
+          # materialization happens in hydrate_cache's bulk SELECT loop
+          # below; this method stays a no-op for the temp-only path (the
+          # Card write covers both keys via Card.write_to_cache).
+          nil
         end
 
         def write_lex_cache_entry lex_cache, row
