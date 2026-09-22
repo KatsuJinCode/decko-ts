@@ -12,6 +12,8 @@ Inspect the exact staged diff. Include only intended changes with known provenan
 
 ## Private push gate
 
+Private pushes to this verified-private repository are PRE-AUTHORIZED coordinator operations (Julian, 2026-09-21) — no per-turn approval needed — provided every check below passes. Public actions remain individually gated (see the publication gate below).
+
 Verify remote identity, private visibility, branch and the complete outgoing commit range. Push reviewed work only. Do not push unrelated unreviewed commits from a shared checkout. Use an isolated branch/worktree when needed. Verify the pushed commit on the remote. Record any legacy-hook bypass and the replacement checks; never silently bypass validation.
 
 ## Upstream preparation gate
