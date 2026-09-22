@@ -254,14 +254,20 @@ Card::Auth.as_bot do
     name: "follower notification email",
     type: "Email template",
     subcards: {
-      # The field cards' types must match the mod's assignments:
-      #   +subject       → :phrase       (card-mod-email set/right/subject.rb:3)
-      #   +text_message  → :plain_text   (card-mod-email set/right/text_message.rb:3)
-      # If we create them as :basic (Card.create!'s default), the email
-      # renderer's `fetch(field)` lookup returns nil because the field
-      # type lookup (set/right/<field>.rb) doesn't match.
-      "+subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
-      "+text_message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
+      # The field-card NAMES must match the mod's codenames:
+      #   *subject      (codename :subject)       card-mod-email data/real.yml:42-43
+      #   *text message (codename :text_message) card-mod-email data/real.yml:57-58
+      # The email renderer's `fetch(field)` (email_config.rb:37) takes
+      # the symbol, resolves it via Codename.id!, gets the id of the
+      # field-type card (e.g. *subject = id 1224), then constructs
+      # `<template>+<id>` which decodes to `<template>+*subject`. So a
+      # field card named `+subject` (no star) is NOT findable through
+      # the field symbol — only `+*subject` is. (Earlier capture runs
+      # created `+subject` and the body/subject came back empty because
+      # the renderer fetched a non-existent card and skipped the body
+      # branch.)
+      "+*subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
+      "+*text message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
       # M6 byte-parity note: the test scenario supplies the to override
       # via `fields[:to]` (card-mod-follow set/right/account.rb:17) —
       # the EmailTemplate's +*to is a fallback. We use a literal email
