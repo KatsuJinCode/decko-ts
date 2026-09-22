@@ -50,12 +50,13 @@ let stderr = "";
 proc.stderr.on("data", (d) => (stderr += d.toString()));
 await new Promise((r) => setTimeout(r, 200));
 
-const m = stderr.match(/listening on http:\/\/[^:]+:(\d+)/) || stderr.match(/listening on http:\/\/([^\s]+)/);
+const m = stderr.match(/listening on (http:\/\/\S+)/);
 if (!m) {
   console.error("No listening line:", stderr);
   process.exit(1);
 }
-const proxyPort = parseInt(m[1]);
+const proxyUrl = new URL(m[1]);
+const proxyPort = parseInt(proxyUrl.port);
 console.log("proxy port:", proxyPort);
 
 const http = await import("node:http");
