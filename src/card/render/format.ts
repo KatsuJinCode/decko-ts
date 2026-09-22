@@ -644,6 +644,12 @@ export interface RenderEngineLike {
    *  return an empty list (no rule rows — a degenerate Rules section
    *  still renders the h4 header + filter form, no accordion). */
   collectRules?(host: RenderCard): RenderCard[];
+  /** lib/card/rule/all.rb:32-51 — does the card satisfy rule? (its right
+   *  part is a setting, its left part is a set)? The before(:bar) hook
+   *  in format.ts reads this to add the _rule-item + _category-* classes
+   *  the bar view needs (bar_view.rb:10). Optional; engines without it
+   *  skip the rule class chain. */
+  cardIsRule?(card: RenderCard): boolean;
 }
 
 // ---------------------------------------------------------------------------
