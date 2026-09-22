@@ -217,12 +217,17 @@ describe("notify/follow-notify (first-mechanism port)", () => {
   });
 
   it("captures the full mail bytes end-to-end (the byte-parity headline)", async () => {
-    // This is the SINGLE-CASE BYTE PARITY claim. The expected output is
-    // hand-derived from Ruby's Card::Mailer.new_mail + email_config +
-    // active_notice substitution (the design notes in
-    // docs/notify-port-notes.md, "first-mechanism byte parity"). A
-    // failing diff here means the port's rendering diverged from what
-    // the ruby stack would produce for these inputs.
+    // M6 byte-parity headline. The expected output is taken from the
+    // captured fixture (fixtures/captured/follow-notification.json
+    // delivered[0]) — the REAL bytes a real Decko card-mod-follow /
+    // card-mod-email / card-mod-account deck produced for the same
+    // template + active_notice values. The earlier hand-derived
+    // expected bytes ("John changed John Following on always") were
+    // wrong: Ruby's `contextual_content` walks inclusions against the
+    // live card tree, and when the placeholder's key does not
+    // resolve to a real card the literal name is rendered with the
+    // braces stripped (card-mod-content set/all/contextual_content.rb
+    // + card-mod-email set/abstract/email_field.rb:22-26).
     const followers: FollowerRef[] = [
       { followerId: 11, followerName: "John", followerEmail: "john@example.com", followedSetName: "John Following", followOption: "always" },
     ];
@@ -238,8 +243,10 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     expect(mail).toBeDefined();
     expect(mail!.to).toBe("john@example.com");
     expect(mail!.from).toBe("deck@example.com");
-    expect(mail!.subject).toBe("John changed John Following on always");
-    expect(mail!.textBody).toBe("Hi! John changed John Following.");
+    expect(mail!.subject).toBe(
+      "follower changed followed_set on follow_option",
+    );
+    expect(mail!.textBody).toBe("Hi! follower changed followed_set.");
     expect(mail!.tags).toMatchObject({
       trigger: "follow_notification",
       follower: "John",
