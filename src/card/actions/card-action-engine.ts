@@ -28,10 +28,21 @@
 //
 // Deliberately NOT built here (later streams, per the port tracker):
 // full permission resolution (only the anonymous gate + canWrite seam),
-// reference maintenance (card_references + referer content rewrites),
 // rule-based default content and templates, the ancestor-timestamp id feed
 // (update_ancestor_timestamps), subcard staging beyond side creation /
 // trash-obstacle renames / child deletion cascades.
+// Read-rule columns ARE derived here (set-read-rule.ts — the port of
+// card-mod-permissions' set_read_rule store event, permissions.rb:1-5, plus
+// the update_read_rule / cascade_read_rule machinery): every save that
+// changes type or name fills cards.read_rule_id / read_rule_class, and a
+// saved rule card re-derives its set's members and every card pointing at
+// it. The ok? write/read CHECKS remain the canWrite seam + the read side.
+// Reference maintenance status: card_references population on
+// create/update (refresh_references_out) and cleanup on delete
+// (clear_references) ARE built here (refresh-references-out.ts). The
+// rename-side referer machinery — update_referer_content rewrites and
+// refresh_references_in's map_referees/unmap_referees backfill — is still
+// a later stream.
 
 import {
   ActWriter,
@@ -69,6 +80,12 @@ import {
 import { resolveTypeId } from "./type-resolution.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
+  cascadeAllFieldReadRules,
+  cascadeReadRuleAfterRuleSave,
+  deriveReadRuleRecord,
+  type ReadRuleWriteDeps,
+} from "../permissions/set-read-rule.js";
+import {
   defaultTransport,
   expandActionResultToSavePathEvents,
   makeNotifyContext,
@@ -76,6 +93,10 @@ import {
   type NotifyTransport,
   type SavePathIntegrationHook,
 } from "../notify/index.js";
+import {
+  clearReferencesOnDelete,
+  refreshReferencesOut,
+} from "./refresh-references-out.js";
 
 export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
@@ -233,6 +254,16 @@ export class CardActionEngine {
         before,
         after,
         key: name.isSimple ? name.key : null,
+        // set_read_rule store event (permissions.rb:1-5): a revival is a
+        // :create save, so the derivation runs (new_card? is true via
+        // @from_trash, trash.rb:61-62 — the *self pattern is skipped).
+        readRule: await deriveReadRuleRecord(this.readRuleDeps(), {
+          name: name.s,
+          typeId,
+          leftId: sides.leftId,
+          rightId: sides.rightId,
+          isNew: true,
+        }),
         superActionId: input.superActionId ?? null,
         isActCard: opts.isActCard,
       });
@@ -256,6 +287,22 @@ export class CardActionEngine {
         verb: "create",
         codenameChanged: input.codename != null,
       });
+      // INTEGRATION (card_references write path): refresh_references_out on
+      // the revival save's content change (reference_events.rb:2-4,
+      // `on: :save, changed: :content` — the revival is a :create save).
+      await this.maybeRefreshReferencesOut({
+        cardId: trashed.id,
+        name,
+        contentBefore: trashed.db_content,
+        contentAfter: input.content ?? null,
+      });
+      // FINALIZE: a revived RULE card still cascades (event
+      // :cascade_read_rule, set/right/read.rb:9-14 — the revival's name is
+      // changing).
+      const revivedRow = await this.fetchRowById(trashed.id);
+      if (revivedRow !== undefined) {
+        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), revivedRow, true);
+      }
       return {
         cardId: trashed.id,
         actionId: saved.actionId,
@@ -274,6 +321,16 @@ export class CardActionEngine {
       left_id: name.isSimple ? null : sides.leftId,
       right_id: name.isSimple ? null : sides.rightId,
       codename: input.codename ?? null,
+      // set_read_rule store event (permissions.rb:1-5): a create save always
+      // derives (the new row's name/type attributes are changes). New cards
+      // skip the *self pattern (pattern/all.rb:27-29), so `isNew: true`.
+      readRule: await deriveReadRuleRecord(this.readRuleDeps(), {
+        name: name.s,
+        typeId,
+        leftId: sides.leftId,
+        rightId: sides.rightId,
+        isNew: true,
+      }),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
     });
@@ -283,6 +340,22 @@ export class CardActionEngine {
       lexAfter: lex,
       verb: "create",
       codenameChanged: input.codename != null,
+    });
+    // FINALIZE: a created RULE card cascades (event :cascade_read_rule,
+    // set/right/read.rb:9-14 — a create's name is changing).
+    const createdRow = await this.fetchRowById(created.cardId);
+    if (createdRow !== undefined) {
+      await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), createdRow, true);
+    }
+    // INTEGRATION (card_references write path): refresh_references_out on
+    // create (reference_events.rb:2-4) — fires only when content was
+    // actually set (a nil db_content on a new row is "unchanged" in Ruby's
+    // `changed: :content`).
+    await this.maybeRefreshReferencesOut({
+      cardId: created.cardId,
+      name,
+      contentBefore: null,
+      contentAfter: input.content ?? null,
     });
     return {
       cardId: created.cardId,
@@ -444,11 +517,31 @@ export class CardActionEngine {
       }
     }
 
+    // set_read_rule store event (permissions.rb:1-5, changed: %i[type_id
+    // name]): the derivation runs only when the type or the name changed —
+    // a content-only save keeps its stored read-rule columns, exactly as in
+    // Ruby. The post-save name/sides feed the walk (real card: the *self
+    // pattern applies). Stored on the same row UPDATE below.
+    const typeChanged = after.type_id !== before.type_id;
+    const readRule =
+      nameChanged || typeChanged
+        ? await deriveReadRuleRecord(this.readRuleDeps(), {
+            name:
+              nameChanged && newName !== undefined
+                ? newName.s
+                : currentName?.s ?? before.name ?? "",
+            typeId: after.type_id,
+            leftId: after.left_id,
+            rightId: after.right_id,
+          })
+        : undefined;
+
     const saved = await writer.updateCard({
       cardId: row.id,
       before,
       after,
       key: nameChanged && newName !== undefined ? (newName.isSimple ? newName.key : null) : undefined,
+      readRule,
       superActionId: input.superActionId ?? null,
       isActCard: true,
     });
@@ -472,6 +565,31 @@ export class CardActionEngine {
       lexAfter: nameChanged ? lexAfter : undefined,
       verb: "update",
     });
+    // INTEGRATION (card_references write path): refresh_references_out on
+    // update (reference_events.rb:2-4) — `changed: :content` fires only
+    // when db_content actually changed in this save.
+    await this.maybeRefreshReferencesOut({
+      cardId: row.id,
+      name: nameAfter,
+      contentBefore: before.db_content,
+      contentAfter: after.db_content,
+    });
+    // STORE tail (event :set_field_read_rules, permissions.rb:7-9 — after
+    // :set_read_rule, on: :update, changed: :type_id): a type-changing save
+    // re-derives every field card.
+    if (typeChanged) {
+      await cascadeAllFieldReadRules(this.readRuleDeps(), row.id);
+    }
+    // FINALIZE (event :cascade_read_rule, set/right/read.rb:9-14): a saved
+    // RULE card whose name is changing re-derives its set's members and
+    // every card pointing at it. The gate reads the SAVED row (the sides may
+    // have been rewired by this rename).
+    if (nameChanged) {
+      const savedRow = await this.fetchRowById(row.id);
+      if (savedRow !== undefined) {
+        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true);
+      }
+    }
     if (nameChanged) await this.refreshDescendantCaches(row.id);
     return {
       cardId: row.id,
@@ -555,6 +673,18 @@ export class CardActionEngine {
       nameAfter: currentName,
       verb: "delete",
     });
+    // INTEGRATION (card_references write path): clear_references on delete
+    // (reference_events.rb:28-31) — the referer's rows go away and the
+    // deleted id is unmapped from other cards' rows (unmap_referees,
+    // reference.rb:31-33).
+    await clearReferencesOnDelete(this.fetch.driver, row.id);
+    // FINALIZE (event :cascade_read_rule, set/right/read.rb:9-14): a deleted
+    // RULE card's trash is changing, so its set's members and every card
+    // pointing at it re-derive (their applicable rule is gone). Read rules
+    // are PRESERVED on the deleted row itself — the clear_read_rule event is
+    // commented out upstream (permissions.rb:159-164, "we have to preserve
+    // read rules to make delete acts visible in recent changes").
+    await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), row, true);
     const result = {
       cardId: row.id,
       actionId: saved.actionId,
@@ -594,6 +724,10 @@ export class CardActionEngine {
             superActionId: parentActionId,
           });
           if (saved === null) continue; // unreachable: trash always flips
+          // INTEGRATION (card_references write path): each cascaded child
+          // is its own delete save in Ruby, so its clear_references fires
+          // too (reference_events.rb:28-31).
+          await clearReferencesOnDelete(this.fetch.driver, child.id);
           summaries.push({
             cardId: child.id,
             actionId: saved.actionId,
@@ -611,6 +745,13 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
   // internals
   // -----------------------------------------------------------------------
+
+  /** The set_read_rule machinery's storage seam (card-mod-permissions
+   *  set/all/permissions.rb:1-5 and set/right/read.rb) reads through the
+   *  same driver/Lexicon pair as the write path. */
+  private readRuleDeps(): ReadRuleWriteDeps {
+    return { driver: this.fetch.driver, fetch: this.fetch };
+  }
 
   /** The basic permission gate, sync half: anonymous actors are read-only
    *  (auth/current.rb:43-47 signed_in? = current_id != AnonymousID). */
@@ -802,6 +943,27 @@ export class CardActionEngine {
       return [state.left_id, state.right_id];
     }
     return state.name ?? undefined;
+  }
+
+  /** INTEGRATION seam for the card_references write path: the
+   *  refresh_references_out event body runs only under Ruby's `changed:
+   *  :content` condition (reference_events.rb:2-4) — a save whose
+   *  db_content is identical before/after skips it, exactly here. */
+  private async maybeRefreshReferencesOut(input: {
+    cardId: number;
+    name: DeckoName | undefined;
+    contentBefore: string | null | undefined;
+    contentAfter: string | null | undefined;
+  }): Promise<void> {
+    if (input.name === undefined) return;
+    if ((input.contentAfter ?? null) === (input.contentBefore ?? null)) return;
+    await refreshReferencesOut(
+      this.fetch.driver,
+      this.fetch.lexicon,
+      input.cardId,
+      input.name,
+      input.contentAfter ?? null,
+    );
   }
 
   /** Post-save cache maintenance: Card#expire after every save

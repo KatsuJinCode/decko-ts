@@ -119,12 +119,28 @@ async function freshStorage(): Promise<ReplayStorage> {
 // Seed the standard deck (RichText, Cardtype, *all, *default, *all+*default)
 // so the action engine can resolve type_ids and the Lexicon has the
 // codenames. Mirrors the seedStandardDeck from actions-test-storage.ts.
+//
+// The capture deck was a REAL bootstrapped oracle app, so scenario 07's
+// set_read_rule derivation (card-mod-permissions set/all/permissions.rb:1-5)
+// walks a rule graph the minimal seed lacks. Cards 12-19 reproduce the
+// bootstrapped read-rule substrate the capture had, citing the bootstrap
+// data (card-mod-permissions-0.20.0/data/real.yml:14-23):
+//   *all+*read -> "Anyone" (real.yml:16), *all plus+*read -> "_left"
+//   (real.yml:23 — junction cards read through their left unless ruled),
+//   plus the Set/Setting cardtypes, the *read setting, the *self pattern
+//   card and the *all plus set card those rules hang off.
 const RICH_TEXT_ID = 2;
 const CARDTYPE_ID = 3;
 const ALL_ID = 7;
 const DEFAULT_ID = 8;
 const ANYONE_ID = 10; // "*all+*read" rule points at this in the seed
 const ADMIN_ID = 184; // the Administrator role card id
+const SET_TYPE_ID = 12; // "Set" cardtype
+const SETTING_TYPE_ID = 13; // "Setting" cardtype
+const READ_ID = 14; // the "*read" setting card
+const ALL_PLUS_ID = 16; // the "*all plus" set card
+const ALL_READ_RULE_ID = 17; // "*all+*read"
+const LIST_TYPE_ID = 19; // the "List" cardtype
 
 async function seedStandardDeck(s: ReplayStorage): Promise<void> {
   const now = "2026-09-21 00:00:00.000";
@@ -136,10 +152,18 @@ async function seedStandardDeck(s: ReplayStorage): Promise<void> {
   }> = [
     { id: RICH_TEXT_ID, name: "RichText", key: "rich_text", codename: "basic", type_id: CARDTYPE_ID },
     { id: CARDTYPE_ID, name: "Cardtype", key: "cardtype", codename: "cardtype", type_id: CARDTYPE_ID },
-    { id: ALL_ID, name: "*all", key: "*all", codename: "all", type_id: CARDTYPE_ID },
+    // *all is a SET card in every real deck (the catch-all set) — its type
+    // feeds rule_class_name ("*all+*read".rule_class_name == "*all").
+    { id: ALL_ID, name: "*all", key: "*all", codename: "all", type_id: SET_TYPE_ID },
     { id: DEFAULT_ID, name: "*default", key: "*default", codename: "default", type_id: CARDTYPE_ID },
     { id: ANYONE_ID, name: "Anyone", key: "anyone", codename: "anyone", type_id: CARDTYPE_ID },
     { id: ADMIN_ID, name: "Administrator", key: "administrator", codename: "administrator", type_id: CARDTYPE_ID },
+    { id: SET_TYPE_ID, name: "Set", key: "set", codename: "set", type_id: CARDTYPE_ID },
+    { id: SETTING_TYPE_ID, name: "Setting", key: "setting", codename: "setting", type_id: CARDTYPE_ID },
+    { id: READ_ID, name: "*read", key: "*read", codename: "read", type_id: SETTING_TYPE_ID },
+    { id: 15, name: "*self", key: "*self", codename: "self", type_id: CARDTYPE_ID },
+    { id: ALL_PLUS_ID, name: "*all plus", key: "*all_plu", codename: "all_plus", type_id: SET_TYPE_ID },
+    { id: LIST_TYPE_ID, name: "List", key: "list", codename: "list", type_id: CARDTYPE_ID },
   ];
   for (const c of cards) {
     await s.driver.query(
@@ -152,13 +176,34 @@ async function seedStandardDeck(s: ReplayStorage): Promise<void> {
     );
   }
   // "*all+*default" rule card — the action engine's default_type_id uses this.
+  await insertRuleCard(s, {
+    id: 11, leftId: ALL_ID, rightId: DEFAULT_ID, content: null, typeId: RICH_TEXT_ID,
+  });
+  // The bootstrapped read rules (card-mod-permissions-0.20.0/data/real.yml).
+  await insertRuleCard(s, {
+    id: ALL_READ_RULE_ID, leftId: ALL_ID, rightId: READ_ID, content: "[[Anyone]]",
+    typeId: LIST_TYPE_ID,
+  });
+  await insertRuleCard(s, {
+    id: 18, leftId: ALL_PLUS_ID, rightId: READ_ID, content: "_left",
+    typeId: LIST_TYPE_ID,
+  });
+}
+
+/** Junction rule-card row: NULL name/key, side ids set (the 2020 convention
+ *  the seedStandardDeck *all+*default row already uses). */
+async function insertRuleCard(
+  s: ReplayStorage,
+  card: { id: number; leftId: number; rightId: number; content: string | null; typeId: number },
+): Promise<void> {
+  const now = "2026-09-21 00:00:00.000";
   await s.driver.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
         created_at, updated_at, creator_id, updater_id, read_rule_class,
         read_rule_id, references_expired, trash, type_id, db_content)
-     VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, 1, 1, '*all', ?, NULL, 0, ?, NULL)`,
-    [11, null, null, ALL_ID, DEFAULT_ID, now, now, ANYONE_ID, RICH_TEXT_ID],
+     VALUES (?, NULL, NULL, NULL, ?, ?, NULL, ?, ?, 1, 1, '*all', ?, NULL, 0, ?, ?)`,
+    [card.id, card.leftId, card.rightId, now, now, ANYONE_ID, card.typeId, card.content],
   );
 }
 
@@ -395,26 +440,75 @@ async function replay06(): Promise<number[]> {
   return [c.cardId];
 }
 
-// 07-read-rule-affected-save: create target + its +*self+*read rule,
-// then save target again to trigger set_read_rule derivation. The TS port
-// does NOT yet implement card-mod-permissions's set_read_rule event (a
-// later stream; documented in src/card/actions/card-action-engine.ts
-// header comment). We still drive the underlying actions engine so the
-// action / change row SHAPES match — the read_rule_id / read_rule_class
-// columns will differ from Ruby and that divergence is reported, not
-// papered over.
+// 07-read-rule-affected-save: create target + its +*self+*read rule, then
+// save target again to observe the set_read_rule columns (the port of
+// card-mod-permissions set/all/permissions.rb:1-5 + the finalize cascade,
+// set/right/read.rb:9-14).
+//
+// Replay deltas vs the Ruby capture (capture-write-conformance.rb:322-336):
+//   - The capture's rule create auto-staged the trunk "WCC ReadRule+*self"
+//     as a SET-type card — Ruby's bootstrap type rules type set cards
+//     during junction creation (a type-rule stream the engine has not
+//     ported). The replay creates that trunk first, Set-typed, so the
+//     cascade's rule? gate (lib/card/rule/all.rb:37-40) sees the same
+//     storage the capture produced.
+//   - The capture passed type: "List"; the replay does the same (the seed
+//     carries the List cardtype). Ruby stored db_content "Administrator"
+//     for the [[Administrator]] content (list-content processing); the port
+//     stores the raw content — same class of divergence as scenario 08's
+//     deferred card_references rows, outside the compared shape.
+//
+// The fixture's read-rule truth (07-read-rule-affected-save.jsonl):
+//   target 1176: read_rule_id 1178 (the rule card), class "*self"
+//   rule 1178:   read_rule_id 1178 (ITSELF), class "*all plus"
+// The mechanism that produces both: the rule card's own store-phase
+// derivation lands on "*all plus+*read" ("_left" -> read through the left),
+// then the finalize cascade re-derives the set member (target -> the new
+// rule, class "*self") and the "_left" field chain re-derives the set card
+// and the rule card itself (update_read_rule, permissions.rb:11-20 — bare
+// column writes, no timestamps, no history rows).
 async function replay07(): Promise<number[]> {
   const s = await freshStorage();
   await seedStandardDeck(s);
   const engine = makeEngine(s);
   const target = await engine.createCard({ name: "WCC ReadRule", content: "protected body" });
+  // The Set-typed set card the capture's junction create auto-staged.
+  await engine.createCard({ name: "WCC ReadRule+*self", typeName: "Set" });
   const rule = await engine.createCard({
     name: "WCC ReadRule+*self+*read",
+    typeName: "List",
     content: "[[Administrator]]",
   });
-  // Update target to force an :update save with content change.
+  // Update target to force an :update save with content change —
+  // set_read_rule does NOT re-run (only type/name changes trigger it), so
+  // the columns must SURVIVE the content save.
   await engine.updateCard({ cardId: target.cardId, content: "protected body v2" });
   await snapshotAndAssert(s, "07-read-rule-affected-save", [target.cardId, rule.cardId]);
+
+  // The read-rule columns vs the fixture (ids are DB-local; the rule's
+  // identity is compared structurally).
+  const targetRow = await s.selectOne<{
+    read_rule_id: number | null; read_rule_class: string | null;
+    created_at: string; updated_at: string;
+  }>("SELECT * FROM cards WHERE id = ?", [target.cardId]);
+  const ruleRow = await s.selectOne<{
+    read_rule_id: number | null; read_rule_class: string | null;
+    created_at: string; updated_at: string;
+  }>("SELECT * FROM cards WHERE id = ?", [rule.cardId]);
+  expect(targetRow?.read_rule_id, "target read_rule_id points at the rule card").toBe(rule.cardId);
+  expect(targetRow?.read_rule_class, "target read_rule_class").toBe("*self");
+  expect(ruleRow?.read_rule_id, "rule card reads through itself").toBe(rule.cardId);
+  expect(ruleRow?.read_rule_class, "rule card read_rule_class").toBe("*all plus");
+  // update_read_rule writes without timestamps (permissions.rb:190-195):
+  // the rule card's row must never have been touched after its INSERT.
+  expect(ruleRow?.updated_at, "cascade writes carry no timestamp bump").toBe(ruleRow?.created_at);
+  // The columns are not tracked fields: no change rows may exist for them.
+  const changeCount = await s.count(
+    "card_changes",
+    "WHERE card_action_id IN (SELECT id FROM card_actions WHERE card_id = ?)",
+    [rule.cardId],
+  );
+  expect(changeCount, "rule card history is create-only, 0 changes").toBe(0);
   s.close();
   return [target.cardId, rule.cardId];
 }

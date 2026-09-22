@@ -421,8 +421,11 @@ export async function canReadByRuleLookup(
  * (src/card/render/prefetch.ts walkStatement — simple cards by their key
  * column, junction rows by recursively composed side keys, UNION-deduped so
  * cycles terminate; lib/card/lexicon.rb DbLexicon#name_to_lex in SQL).
+ *
+ * Exported for the write-side derivation too (set-read-rule.ts resolves the
+ * same rule-name candidates against storage).
  */
-async function resolveRuleIdsByKeys(
+export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
   keys: string[],
 ): Promise<Map<string, number>> {

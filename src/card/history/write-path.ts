@@ -38,6 +38,7 @@ import {
   trackedFieldIndex,
   type CardFieldState,
 } from "./change.js";
+import type { ReadRuleRecord } from "../permissions/set-read-rule.js";
 
 /** Re-exported for callers that build snapshots next to the writer. */
 export type { CardFieldState };
@@ -76,6 +77,11 @@ export interface CreateCardInput {
   left_id?: number | null;
   right_id?: number | null;
   codename?: string | null;
+  /** The read-rule pair the set_read_rule store event derives
+   *  (card-mod-permissions set/all/permissions.rb:1-5): Ruby assigns the
+   *  attributes during the :store stage, so the INSERT carries them. The
+   *  engine computes them; this writer only places the values. */
+  readRule?: ReadRuleRecord;
   /** card_actions.super_action_id passthrough for subcard actions
    *  (events.rb:88-92: the supercard's current action). */
   superActionId?: number | null;
@@ -108,6 +114,12 @@ export interface UpdateCardInput {
    *  updated_at: Time.now)`). The ancestor list comes from the reference
    *  graph (history_card_ids), which is a later wave; pass [] to skip. */
   ancestorCardIds?: number[];
+  /** The read-rule pair the set_read_rule store event derived for this
+   *  save (fires when type or name changed — permissions.rb:1-5): Ruby
+   *  assigns the attributes before the row save, so the UPDATE carries
+   *  them alongside the tracked fields (they are NOT tracked fields — no
+   *  change rows). */
+  readRule?: ReadRuleRecord;
   /** Explicitly mark this save as the act's primary card's own action.
    *  Defaults to "the first operation on the writer" (the common request
    *  shape); see ActWriter docs. */
@@ -189,7 +201,7 @@ export class ActWriter {
          (name, key, codename, left_id, right_id, current_revision_id,
           created_at, updated_at, creator_id, updater_id,
           read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
       [
         input.name,
         input.key,
@@ -200,6 +212,8 @@ export class ActWriter {
         ts,
         this.actorId, // creator_id = updater_id = Auth.current_id (set_stamper)
         this.actorId,
+        input.readRule?.readRuleClass ?? null, // set_read_rule store event
+        input.readRule?.readRuleId ?? null, // (permissions.rb:1-5)
         trash,
         input.type_id,
         input.db_content ?? null,
@@ -553,6 +567,13 @@ export class ActWriter {
     if (changed.includes("name")) {
       sets.push("key = ?");
       params.push(input.key ?? null);
+    }
+    if (input.readRule !== undefined) {
+      // set_read_rule store event (permissions.rb:1-5): the pair rides the
+      // same row UPDATE (Ruby assigns the attributes pre-store). Not tracked
+      // fields — no change rows exist for them.
+      sets.push("read_rule_class = ?", "read_rule_id = ?");
+      params.push(input.readRule.readRuleClass, input.readRule.readRuleId);
     }
     sets.push("updated_at = ?", "updater_id = ?");
     params.push(ts, this.actorId);
