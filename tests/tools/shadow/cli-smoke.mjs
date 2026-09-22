@@ -50,13 +50,16 @@ let stderr = "";
 proc.stderr.on("data", (d) => (stderr += d.toString()));
 await new Promise((r) => setTimeout(r, 200));
 
-const m = stderr.match(/listening on (http:\/\/\S+)/);
+// Listening line is "listening on http://<addr>:<port>" where <addr> can be
+// a bare IPv6 any-address (e.g. http://:::63932). Extract just the port.
+const m = stderr.match(/listening on http:\/\/[^:]+(?:::{2,})?[^:]*:(\d+)/) ||
+  stderr.match(/listening on http:\/\/\S+?:(\d+)/) ||
+  stderr.match(/listening on [^\s]*?(\d+)\s*$/m);
 if (!m) {
-  console.error("No listening line:", stderr);
+  console.error("No listening line:", JSON.stringify(stderr));
   process.exit(1);
 }
-const proxyUrl = new URL(m[1]);
-const proxyPort = parseInt(proxyUrl.port);
+const proxyPort = parseInt(m[1]);
 console.log("proxy port:", proxyPort);
 
 const http = await import("node:http");
