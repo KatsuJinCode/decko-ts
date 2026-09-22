@@ -162,8 +162,65 @@ const coreView: ViewFn = (ctx) => {
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
+  if (isPointerOrListCard(fmt.card)) {
+    // Abstract::List#standard_pointer_core (card-mod-list
+    // set/abstract/01_list/html_views.rb:6-13): the pointer / list
+    // cardtype content renders as a card-list pointer-list wrapper
+    // with each item rendered as a mini_bar slot whose data-slot
+    // records view="bar". The byte shape is pinned by corpus:77 and
+    // every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
+    return renderPointerListCore(fmt);
+  }
   return fmt.processContent(fmt.renderRaw());
 };
+
+/** Render the pointer/list content view body: the card-list pointer-list
+ *  wrapper, with each item rendered as a mini_bar slot whose data-slot
+ *  records view="bar". Matches Ruby's standard_pointer_core +
+ *  standard_pointer_items + listing_list + nest_item (with view=:bar,
+ *  slot id = mini_bar-view for items rendered through this path).
+ *  See src/card/render/pointer-list.ts for the byte-shape contract. */
+function renderPointerListCore(fmt: RenderFormat): string {
+  const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
+  const inner = items
+    .map((name) => {
+      const item = fmt.engine.fetchRenderCard(name);
+      if (item === undefined) {
+        // An unresolved item name (no such card in the deck): Ruby's
+        // nest_item returns a Card with the unknown option (set/all/
+        // item.rb#fetch_item_card -> Card.fetch name, new: ...). The
+        // unknown-card slot wraps a denial span (or the unknown view).
+        // Corpus bytes always resolve all item names against the
+        // supplied deck; the path is here for completeness only.
+        return "";
+      }
+      // nest_item -> nest with view=:bar (default_item_view, html),
+      // nest_name=name, show=[:bar], hide=[:bar_middle], home_view=:bar.
+      // The slot id the captured bytes pin is name-mini_bar-view;
+      // itemBarView (the existing :bar viewF) sets slotViewOverride
+      // so the data-slot's view field reads "bar" — together the slot
+      // body's byte shape matches the corpus pin.
+      return fmt.nestRecord(item, "bar", {
+        nest_name: item.name.s,
+        show: ["bar"],
+        hide: ["bar_middle"],
+        home_view: "bar",
+      });
+    })
+    .filter((s) => s !== "")
+    .map((slotHtml) => pointerItemWrap(slotHtml))
+    .join("\n");
+  return `<div class="card-list card-list-bar pointer-list">${inner}</div>`;
+}
+
+/** card-mod-list set/abstract/01_list/html_views.rb:28-30 `wrap_item`:
+ *  `<div class="pointer-item item-bar">…</div>`. Ruby's html format
+ *  default_item_view is :bar (card-mod-format set/all/html.rb), so the
+ *  class reads `pointer-item item-bar` (captured bytes for every
+ *  pointer/list sibling). */
+function pointerItemWrap(inner: string): string {
+  return `<div class="pointer-item item-bar">${inner}</div>`;
+}
 
 const cardListView: ViewFn = (ctx) => {
   const { fmt } = ctx;
