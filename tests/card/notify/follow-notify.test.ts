@@ -54,6 +54,14 @@ const TEMPLATE = {
   subject: "{{follower}} changed {{followed_set}} on {{follow_option}}",
   textBody: "Hi! {{follower}} changed {{followed_set}}.",
 };
+// M6 note: the placeholder-name rendering matches Ruby's
+// `contextual_content` semantics (card-mod-content
+// set/all/contextual_content.rb:13-19 — walks inclusions; when the
+// key does not resolve to a real card, the literal name is rendered
+// with `{{` and `}}` stripped). The captured fixture proves it:
+// fixtures/captured/follow-notification.json delivered[0].subject
+// is "follower changed followed_set on follow_option" and
+// delivered[0].text_body is "Hi! follower changed followed_set."
 
 describe("notify/follow-notify (first-mechanism port)", () => {
   let transport: CaptureTransport;
