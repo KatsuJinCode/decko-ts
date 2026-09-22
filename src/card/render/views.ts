@@ -240,24 +240,18 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
  *  inner slots, but the swap is correct for any nested item whose
  *  outer-slot name is the captured item name). */
 function swapBarSlotToMiniBar(html: string, name: string): string {
-  const prefix = `${name}-bar-view`;
-  const altPrefix = `${name}-mini_bar-view`;
-  // Class swap: the OUTERMOST slot's class starts with
-  // `card-slot bar-view`. The class for inner slots would be
-  // preceded by other chars, so anchor to the leading `<div ...`.
-  // The slotWrap helper emits `<div class="card-slot <view>-view ...">`
-  // as the first attribute; class is the only attribute that
-  // contains `<view>-view`, so a regex anchored to the slot's id
-  // and the class token pins both halves.
-  let out = html;
-  if (out.startsWith(prefix)) {
-    out = altPrefix + out.slice(prefix.length);
-  }
-  out = out.replace(
-    new RegExp(`(id="${name}-mini_bar-view"[^>]*class="card-slot )bar-view`),
-    `$1mini_bar-view`,
+  // The OUTERMOST slot carries the id `NAME-bar-view` for the item
+  // name; the captured bytes pin `NAME-mini_bar-view`. The slot is
+  // also the first `<div ...>` in the rendered string, so the swap
+  // works on a substring that's guaranteed unique inside the slot.
+  // Slot's class string is `card-slot bar-view ...`; we want
+  // `card-slot mini_bar-view ...`. Both id + class live in the
+  // same opening tag, so a single regex targeting the OUTERMOST
+  // slot's opening tag covers both.
+  return html.replace(
+    new RegExp(`(<div )id="${name}-bar-view"([^>]*class="card-slot )bar-view`),
+    `$1id="${name}-mini_bar-view"$2mini_bar-view`,
   );
-  return out;
 }
 
 /** card-mod-list set/abstract/01_list/html_views.rb:28-30 `wrap_item`:
