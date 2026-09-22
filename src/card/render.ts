@@ -520,6 +520,41 @@ export class RenderEngine implements RenderEngineLike {
     return this.enrichAndStore(record);
   }
 
+  /** Pre-enrich every item name a pointer / list card's db_content
+   *  references (card-mod-list set/all/item.rb#raw_item_strings:
+   *  content.to_s.split(/\n+/), each item stripped of [[ / ]]). One
+   *  batched IN-query per cold render (key-based lookup); the engine's
+   *  warm-cache check on subsequent renders makes the pass a no-op. */
+  private async enrichPointerListItems(card: RenderCard): Promise<void> {
+    const items = card.dbContent
+      .toString()
+      .split(/\n+/)
+      .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
+      .filter((s) => s.length > 0);
+    if (items.length === 0) return;
+    const missing: string[] = [];
+    for (const name of items) {
+      const key = DeckoName.parse(name).key;
+      if (key === "") continue;
+      if (this.renderCards.has(key)) continue;
+      missing.push(key);
+    }
+    if (missing.length === 0) return;
+    const placeholders = missing.map(() => "?").join(", ");
+    const result = await this.fetcher.driver.query<CardsRow>(
+      `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+      missing,
+    );
+    for (const row of result.rows) {
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      await this.cacheFetchedRecord(record);
+    }
+    // Items still absent from renderCards are unknown nest targets -
+    // record them so the sync renderView below sees them too (the
+    // unknown-card view is the empty string for the captured surface).
+  }
+
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
    *  membership, precomputed in the prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean {
