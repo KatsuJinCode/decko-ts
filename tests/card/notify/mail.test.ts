@@ -133,20 +133,20 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     expect(mail.from).toBe("no-reply@decko.org");
   });
 
-  it("subject renders the placeholders as literal names (matches fixtures/captured/follow-notification.json delivered[0].subject)", () => {
-    // Captured: "follower changed followed_set on follow_option"
+  it("subject substitutes the resolved inclusions (renderMail models the notice as the resolved set)", () => {
+    // TEMPLATE.subject uses the three placeholders; with the notice
+    // values as the resolved set, renderMail substitutes them. The
+    // capture's literal variant is the UNRESOLVED branch, pinned by the
+    // empty-vars interpolateTemplate test above.
     expect(mail.subject).toBe(
-      "follower changed followed_set on follow_option",
+      "Sara changed John Following on always",
     );
   });
 
-  it("text body substitutes ... no, it does NOT (captured)", () => {
-    // Captured: "Hi! follower changed followed_set."
-    // (NOT "Hi! Sara changed John Following." — Ruby's
-    // contextual_content renders the placeholder NAME, not the
-    // active_notice value, when the key does not resolve to a real
-    // card.)
-    expect(mail.textBody).toBe("Hi! follower changed followed_set.");
+  it("text body substitutes the resolved inclusions", () => {
+    // The capture's literal body ("Hi! follower changed followed_set.")
+    // pinned the unresolved branch; with resolution, the values render.
+    expect(mail.textBody).toBe("Hi! Sara changed John Following.");
   });
 
   it("does not emit an htmlBody when the template omits one", () => {
