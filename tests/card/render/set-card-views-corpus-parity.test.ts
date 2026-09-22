@@ -207,7 +207,7 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
             /\((\d+) [a-z ]+ rules\)/.exec(ew) !== null &&
             /\((\d+) [a-z ]+ rules\)/.exec(aw) !== null;
           const missingHeadRule =
-            /<div id="[A-Za-z0-9X-]*head[^"]*"/.test(ew) &&
+            /<div id="[A-Za-z0-9X-]*head/.test(ew) &&
             /<span class="denied">/.test(aw);
           if (countPair || missingHeadRule) {
             drifts.push(
