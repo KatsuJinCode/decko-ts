@@ -54,6 +54,12 @@ export interface RenderCard {
   /** mod/core/set/all/type.rb#type_name. */
   typeName: string | undefined;
   typeId: number | undefined;
+  /** The TYPE card's codename (e.g. "pointer", "list", "cardtype") -
+   *  Ruby's `card.type_code` (mod/core/set/all/type.rb#type_code). The
+   *  render engine populates it from the codename registry during
+   *  enrichment (RenderEngine.enrichAndStore); the pointer/list core
+   *  view reads it to detect the Abstract::List surface. */
+  typeCode: string | undefined;
   id: number | undefined;
   dbContent: string;
   /** pattern/all.rb#safe_set_keys (the slot class list). */
