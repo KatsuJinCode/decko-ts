@@ -149,15 +149,21 @@ function walkStatement(rootKey: string, finalSelect: string): SQLStatement {
     // simple cards by their key column, junction rows by their sides - one
     // joint per pass, both orientations, UNION dedups (rows are pure
     // functions of the row id, so cycles terminate).
+    // The unary + on j.trash keeps the planner OFF cards_trash_index inside
+    // the recursive arms: without ANALYZE, SQLite costs an indexed
+    // trash = 0 at ~10 rows when the scan is ~40k, and it picks that index
+    // over the left_id/right_id seeks - measured 150 ms -> 6+ minutes per
+    // cold prepare on the 47k-row corpus deck (2026-09-21). Seek-driving
+    // terms (l.id/r.id) keep their index paths; + is a value no-op.
     `resolved(id, ckey) AS (\n` +
     `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
     `  UNION\n` +
     `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-    `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
+    `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
     `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
     `  UNION\n` +
     `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-    `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
+    `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
     `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
     `),\n` +
     `frontier(t, rest) AS (\n` +
