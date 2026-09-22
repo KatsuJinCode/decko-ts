@@ -146,19 +146,23 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
     { timeout: 86_400_000 },
     async () => {
       const shardPaths = requestedShards();
-      // Single-pass seed: the union of EVERY requested shard's ids, enriched
-      // with the full read-rule universe + *structure rule universe + the
-      // permission codename cards + card_references party grants + the
-      // transitive side/type closure (the proven structure-corpus-seeding
-      // recipe). One deck for the whole run: cross-shard nest targets
-      // resolve, and the read-permission + structured-content engines can
-      // JUDGE every captured view (the permission-pending skip is gone).
+      // Single-pass seed: the ENTIRE corpus deck (every live card row — not
+      // just the requested shards' ids), enriched with the full read-rule
+      // universe + *structure rule universe + the permission codename cards
+      // + card_references party grants + the transitive side/type closure
+      // (the proven structure-corpus-seeding recipe). One complete deck per
+      // process: cross-shard AND cross-slice nest targets resolve, and the
+      // read-permission + structured-content engines can JUDGE every
+      // captured view (the permission-pending skip is gone).
       const allLinesByShard = shardPaths.map((p) => ({ p, lines: loadShard(p) }));
-      const unionIds = new Set<number>();
-      for (const { lines } of allLinesByShard) {
-        for (const line of lines) unionIds.add(line.id);
+      {
+        const corpus = new Database(CORPUS_DB, { readonly: true });
+        const everyLiveId = (
+          corpus.prepare("SELECT id FROM cards WHERE trash = 0").all() as Array<{ id: number }>
+        ).map((r) => r.id);
+        corpus.close();
+        var storage = await createStructureSeededStorageFor(new Set(everyLiveId));
       }
-      const storage = await createStructureSeededStorageFor(unionIds);
       const registry = new HandlerRegistry();
       const outcomes: ShardOutcome[] = [];
       const realFailures: Array<{ shard: string; area: string; id: string; first: string }> = [];
