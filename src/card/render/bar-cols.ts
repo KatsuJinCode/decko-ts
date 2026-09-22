@@ -77,25 +77,54 @@ function cardIsRule(setKeys: string): boolean {
 }
 
 /**
+ * Read the bar column split for a card. Returns `[left, middle, right]`
+ * for a 3-col layout (the rule bar renders three columns: left, middle,
+ * right) or `[left, right]` for a 2-col layout.
+ *
+ * The `threeCols` flag distinguishes the rule's :bar view (which uses
+ * bar_cols 5, 4, 3 — three cols, bar_middle visible) from the item-bar
+ * :mini_bar (which uses mini_bar_cols 6, 6 — two cols, bar_middle
+ * hidden). Ruby's prepare_bar:
+ *   `voo.hide :bar_middle unless three_cols`
+ * gates the hide on the third column being present.
+ *
+ * Precedence (mirrors Ruby's set-module composition order):
+ *   1. rule-card content for the bar_cols setting, if one exists and
+ *      parses (caller-supplied via the optional `ruleContent` param —
+ *      the engine pre-fetches during the prepare phase so the sync
+ *      render path doesn't issue queries).
+ *   2. the *rule set module's default (5, 4, 3) when the card matches
+ *      the *rule pattern AND threeCols is true.
+ *   3. the *all set module's default (9, 4, 3) for 3-col, (9, 3) for
+ *      2-col.
+ */
+export function readBarCols(
+  card: RenderCard,
+  threeCols: boolean,
+  ruleContent?: string,
+): readonly [number, number, number] | readonly [number, number] {
+  const parsed = parseBarCols(ruleContent);
+  if (parsed !== undefined) {
+    return threeCols ? [parsed[0], 4, parsed[1]] : parsed;
+  }
+  if (threeCols) {
+    if (cardIsRule(card.setKeys)) return RULE_BAR_COLS;
+    return DEFAULT_BAR_COLS;
+  }
+  if (cardIsRule(card.setKeys)) return RULE_MINI_BAR_COLS;
+  return DEFAULT_MINI_BAR_COLS;
+}
+
+/**
  * Read the mini-bar column split for a card. The two-col form the :bar /
  * :mini_bar / :closed / :open paths render (the rule that hides
  * bar-middle in small viewports). Returns `[left, right]` col numbers.
- *
- * Precedence (mirrors Ruby's set-module composition order):
- *   1. rule-card content for the `mini_bar_cols` setting, if one exists
- *      and parses (caller-supplied via the optional `ruleContent` param —
- *      the engine pre-fetches during the prepare phase so the sync render
- *      path doesn't issue queries).
- *   2. the *rule set module's default (6, 6) when the card matches the
- *      *rule pattern.
- *   3. the *all set module's default (9, 3).
  */
 export function readMiniBarCols(
   card: RenderCard,
   ruleContent?: string,
 ): readonly [number, number] {
-  const parsed = parseBarCols(ruleContent);
-  if (parsed !== undefined) return parsed;
-  if (cardIsRule(card.setKeys)) return RULE_MINI_BAR_COLS;
+  const cols = readBarCols(card, false, ruleContent);
+  if (Array.isArray(cols) && cols.length === 2) return cols;
   return DEFAULT_MINI_BAR_COLS;
 }
