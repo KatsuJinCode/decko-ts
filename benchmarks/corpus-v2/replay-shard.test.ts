@@ -312,7 +312,6 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               total: cardEntries.length,
               pass: cardEntries.filter((e) => e.status === "pass").length,
               structurePending: cardStructurePending.length,
-              permissionPending: cardPermissionPending.length,
               realFail: cardRealReal.length,
             },
             renders: {
@@ -320,15 +319,9 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               pass: renderEntries.filter((e) => e.status === "pass").length,
               structurePending: renderStructurePending.length,
               nestGap: renderNestGap.length,
-              permissionPending: permissionSkipped + renderPermissionPending.length,
               realFail: renderRealReal.length,
             },
           });
-
-          // cache reset between shards: the next shard's seed INSERTs must be
-          // seen by the fetch engine (its Temporary cache would otherwise
-          // serve the previous shard's rows for reused ids/names).
-          storage.counting.reset();
         }
 
         // ---- aggregate + write results --------------------------------------
