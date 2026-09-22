@@ -33,7 +33,7 @@ describe("driver path bisection (seeded engine storage)", () => {
       console.log(`TRIVIAL_QUERY_MS ${Date.now() - t}`);
 
       const first = readShardLines()[0] as { name: string };
-      let t = Date.now();
+      t = Date.now();
       const watch = setInterval(() => {
         const stmts = storage!.counting.statements;
         const last = stmts[stmts.length - 1] ?? "(none)";
