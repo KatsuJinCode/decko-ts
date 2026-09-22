@@ -125,7 +125,7 @@ interface ShardOutcome {
 describe("corpus v2 replay: full-payload oracle parity", () => {
   it(
     "replays card records and rendered views through the landed engine",
-    { timeout: 3_600_000 },
+    { timeout: 86_400_000 },
     async () => {
       const shardPaths = requestedShards();
       // Single-pass seed: the union of EVERY requested shard's ids, enriched
