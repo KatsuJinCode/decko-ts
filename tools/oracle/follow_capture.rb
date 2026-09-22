@@ -96,7 +96,7 @@ Card::Auth.as_bot do
   all_set = Card.fetch("*all")
   raise "missing *all seed" unless all_set
 
-  follow_rule_name = Card::Name[*all_set.name, :self, "Sara", :follow]
+  follow_rule_name = Card::Name[*all_set.name, "Sara", :follow]
   rule = Card.fetch(follow_rule_name, new: {})
   if rule.new_card?
     Card.create! name: follow_rule_name, type: :list, content: "*always"
