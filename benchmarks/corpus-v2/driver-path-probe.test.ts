@@ -4,6 +4,7 @@
 // walk. Times each separately.
 import { describe, expect, it, afterAll } from "vitest";
 import Database from "better-sqlite3";
+import { appendFileSync, rmSync } from "node:fs";
 import {
   createStructureSeededStorageFor,
 } from "../../tests/card/render/structure-corpus-seeding.js";
