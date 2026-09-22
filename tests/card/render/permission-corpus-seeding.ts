@@ -89,9 +89,8 @@ export async function createCorpusSeededStorage(ids: Set<number>): Promise<Rende
     referee_key: string | null;
   }>;
 
-  // Seed ids: shard + codename cards + rule cards + their set cards, then
-  // the transitive side/type closure to fixpoint.
-  const ids = new Set<number>(lines.map((l) => l.id));
+  // Seed ids: caller's ids + codename cards + rule cards + their set cards,
+  // then the transitive side/type closure to fixpoint.
   for (const codename of PERMISSION_CODENAMES) {
     const row = corpus
       .prepare(`SELECT id FROM cards WHERE codename = ? AND trash = 0`)
