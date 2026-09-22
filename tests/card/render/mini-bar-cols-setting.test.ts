@@ -213,6 +213,6 @@ function stubCard(setKeys: string): RenderCard {
   };
 }
 
-// keep the read unused-locally lint clean (the file is loaded for the
-// shard-line lookup at test time, not at module load).
-void readFileSync;
+// keep imports used (readFileSync was previously imported for a path the
+// shard-line lookup replaces).
+void readShardLines;
