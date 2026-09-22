@@ -37,3 +37,12 @@ export {
   type EmailTemplateResolver,
   type FollowNotifyDeps,
 } from "./follow-notify.js";
+
+export {
+  runIntegrationHooks,
+  savePathEventFromAction,
+  expandActionResultToSavePathEvents,
+  makeNotifyContext,
+  type IntegrationDispatchInput,
+  type IntegrationHookReceipt,
+} from "./dispatch.js";
