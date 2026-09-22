@@ -129,35 +129,48 @@ describe("render integration: mini-bar cols setting", () => {
     expect(html).not.toContain("bar-right col-3");
   });
 
-  it("byte-parity vs captured corpus:67 :closed view", async () => {
-    const s = storage!;
+  it("byte-parity vs captured corpus:67 :closed view (structure-seeded)", async () => {
     // The captured entry from fixtures/corpus/shard-000000.jsonl, id 67.
     const line = readShardLines().find((l) => l.id === 67);
     expect(line, "shard carries corpus entry 67").toBeDefined();
     const expected = line!.views!["closed"];
     expect(expected, "corpus:67 has captured :closed bytes").toBeDefined();
 
-    const html = await s.engine.render("kfnvyby+*type+*thanks", "closed");
-    const actual = normalizeSlotIds(html);
-    const expectedNorm = normalizeSlotIds(expected);
+    // Re-seed from the structure-corpus universe: the same closure the
+    // structure-template stream walks. The corpus DB is the source of
+    // truth for the captured bytes' card shapes (types, left/right
+    // sides, xnhrjk, etc.); seeding from a synthetic subset would diverge
+    // on class-list tokens (TYPE-xnhrjk vs TYPE-setting) before the col-X
+    // check could ever run.
+    const seeded = await createStructureSeededStorage();
+    try {
+      // The help-rules resolver serves the *help rule popover content the
+      // captured :closed bytes carry (the menu view's data-bs-content);
+      // without it the menu anchor renders the bare &nbsp; placeholder and
+      // the byte diff lands inside the menu anchor, not on the bar cols.
+      const helpResolver = installHelpRules(seeded.engine, seeded.fetcher);
+      await helpResolver.prepare();
+      const html = await seeded.engine.render("kfnvyby+*type+*thanks", "closed");
+      const actual = normalizeSlotIds(html);
+      const expectedNorm = normalizeSlotIds(expected);
 
-    // The full byte diff: surface the first divergence with context so a
-    // failure is actionable, not just "false". (See diff.ts#firstDifference
-    // for the helper that emits the same shape as the corpus replay driver.)
-    if (actual !== expectedNorm) {
-      let at = -1;
-      for (let i = 0; i < Math.max(actual.length, expectedNorm.length); i++) {
-        if (actual[i] !== expectedNorm[i]) { at = i; break; }
+      if (actual !== expectedNorm) {
+        let at = -1;
+        for (let i = 0; i < Math.max(actual.length, expectedNorm.length); i++) {
+          if (actual[i] !== expectedNorm[i]) { at = i; break; }
+        }
+        const ctx = (s: string, i: number) =>
+          JSON.stringify(s.slice(Math.max(0, i - 40), i + 40));
+        throw new Error(
+          `corpus:67 :closed byte diff at ${at}\n` +
+          `  expected: ${ctx(expectedNorm, at)}\n` +
+          `  actual:   ${ctx(actual, at)}`,
+        );
       }
-      const ctx = (s: string, i: number) =>
-        JSON.stringify(s.slice(Math.max(0, i - 40), i + 40));
-      throw new Error(
-        `corpus:67 :closed byte diff at ${at}\n` +
-        `  expected: ${ctx(expectedNorm, at)}\n` +
-        `  actual:   ${ctx(actual, at)}`,
-      );
+      expect(actual).toBe(expectedNorm);
+    } finally {
+      seeded.close();
     }
-    expect(actual).toBe(expectedNorm);
   });
 });
 
