@@ -253,6 +253,15 @@ export class RenderEngine implements RenderEngineLike {
     if (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") {
       await this.enrichPointerListItems(rootCard);
     }
+    // Set cardtype cards: pre-load rule cards hanging off the set. The
+    // prefetch closure walk does NOT chase rule cards hanging off a set
+    // — they're reachable only through the rule's left side, which the
+    // set's random-content dbContent does not name. The Rules section
+    // core override (views.ts setRulesCoreHtml) reads the enriched
+    // cards synchronously from the render-card map.
+    if (rootCard.typeCode === "set") {
+      await this.preloadSetRules(rootCard);
+    }
     const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
     const baseHtml = format.renderView(view, {});
 
