@@ -256,7 +256,12 @@ Card::Auth.as_bot do
     subcards: {
       "+subject" => { content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
       "+text_message" => { content: "Hi! {{follower}} changed {{followed_set}}." },
-      "+*to" => { content: "{{_self|email_addresses;user: Sara}}" },
+      # M6 byte-parity note: the test scenario supplies the to override
+      # via `fields[:to]` (card-mod-follow set/right/account.rb:17) —
+      # the EmailTemplate's +*to is a fallback. We use a literal email
+      # so the :email_addresses renderer passes it through as-is
+      # (card-mod-email set/abstract/email_field.rb:28-30).
+      "+*to" => { content: "sara@example.com" },
     },
   )
 
