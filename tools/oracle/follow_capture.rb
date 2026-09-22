@@ -281,8 +281,15 @@ Card::Auth.as_bot do
   # so the proper access path is the module itself, NOT Card.
   Card::Set::All::Notify.force_notifications = true
   begin
-    # Auth as John so the act.actor is John (not bot).
-    Card::Auth.as(john.id) do
+    # Switch auth.current_id to John. `Card::Auth.as(john.id)` would
+    # only set @as_id, not @current_id (proxy.rb:14 — the @current_id
+    # branch only runs when it's nil, and as_bot has already set it
+    # to DeckoBotID). The notify trigger's notable_change? check is
+    # `Card::Auth.current_id != DeckoBotID` (card-mod-follow
+    # set/all/notify.rb:40), so a stale current_id=DeckoBotID makes
+    # it skip. `Card::Auth.with` (proxy.rb:48-58) sets current_id
+    # directly via the writer; that is the correct seam.
+    Card::Auth.with(john.id) do
       Card.fetch("Sara Test Card").update! content: "updated by test"
     end
   ensure
