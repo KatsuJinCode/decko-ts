@@ -4,6 +4,23 @@ The standing answer to "where is the port against byte-for-byte parity with
 the Ruby oracle (card-1.110.0 / decko-0.20.0), and what is left." Numbers
 cite their source; every claim names the command or file that produced it.
 
+## Capstone doctrine (Julian, 2026-09-22 morning)
+
+1. Once a suite or corpus surface is proven byte-identical, it is RECORDED
+   below and NOT re-run during development. Regression re-verification
+   happens ONCE, at the capstone. Proven suites' day-to-day protection is
+   the narrow named-path tests of whatever is being changed, not sweeps.
+2. The full 48-shard corpus replay is THE CAPSTONE: it runs once, at the
+   very end, when every fix is landed — as the final proof and the record
+   of everything byte-identical. It is not a development loop.
+3. The 4-slice run launched 2026-09-21 23:35 is the BASELINE INVENTORY
+   (pre-prepare-cache, pre-final-fixes): its results JSONs feed the final
+   reconciliation, and the capstone run replaces its numbers.
+4. Long runs happen in PARALLEL with all other work, never as a blocker.
+
+Capstone cost after the prepare-cache fix (below): ~200k renders × ~56 ms
+÷ 4 slices ≈ **under an hour**, down from ~8 h.
+
 ## The measure
 
 The corpus replay (`benchmarks/corpus-v2/replay-shard.test.ts`) replays the
@@ -15,7 +32,7 @@ M1 milestone wants: zero unexplained divergences at corpus scale.
 
 ## Measured so far
 
-Shard-000000 (1,000 lines; the smoke, post-planner-fix, commit 1bc526e):
+Shard-000000 (1,000 lines; the smoke, commit 1bc526e):
 
 | area | total | byte-exact | classified | real fail |
 | --- | --- | --- | --- | --- |
@@ -27,8 +44,34 @@ those entries are proven byte-exact by
 tests/card/render/structure-corpus-replay.test.ts (FULL sweep green, 465
 entries, ~17 s).
 
-The full 48-shard run (4-way split, launched 2026-09-21 23:35) lands the
-complete inventory: benchmarks/results/corpus-v2/replay-full-results{s1..s4}.json.
+## PROVEN byte-identical (recorded once; not re-run during development)
+
+| surface | proven | evidence | commit |
+| --- | --- | --- | --- |
+| name engine (algebra + keys) | 2026-09-19 | tests/card/name/** | pre-31f2048 |
+| fetch layer + key parity | 2026-09-20 | tests/card/fetch/**, corpus records 0 real fails | 31f2048 |
+| read-permission denial bytes | 2026-09-21 | permission-corpus-replay.test.ts | 31f2048 |
+| *structure templates (FULL 465 entries) | 2026-09-22 | structure-corpus-replay.test.ts FULL green | db2b30e/c58d64a |
+| help-popover corpus entries (13 byte-exact) | 2026-09-21 | help-popover-corpus-replay.test.ts | 31f2048 |
+| CodeRay json/css/html vs Ruby capture | 2026-09-22 | code-highlighting byte-identity (23 tests) | 1bc526e |
+| rule bar-cols + bar_right one-line | 2026-09-22 | mini-bar-cols + rule-bar-right pins | c58d64a |
+| set-card views (7 entries; 12 drifts classified) | 2026-09-22 | set-card-views-corpus-parity.test.ts | c58d64a |
+| BadQuery/DateError sentinels | 2026-09-22 | search-bad-query-error + date-error tests | 1bc526e |
+| Date cardtype valid path (strftime) | 2026-09-22 | date-cardtype-view.test.ts (16) | c58d64a |
+| write conformance (8 Ruby scenarios) | 2026-09-21 | write-path.test.ts | 31f2048 |
+| CQL MySQL-match battery (27/30 replay) | 2026-09-21 | S1 oracle rung, fixtures/captured/cql-mysql-match.json | 1bc526e |
+| migration parity + determinism (606k rows) | 2026-09-21 | T4 proveDeterminism run | 31f2048 |
+| follow-notification mail bytes (real capture) | 2026-09-22 | notify tests vs fixtures/captured/follow-notification.json | 1bc526e |
+
+## The wrong thing found and fixed (2026-09-22, Julian: "you're probably
+## doing something wrong")
+
+`LocalSqliteDriver` had NO prepared-statement cache: every render
+re-compiled every SQL text from scratch — the multi-KB recursive closure
+walk TWICE per render plus the folded statements. Fixed with a
+Map<sql-text, stmt> cache scoped to the driver handle (measured: steady-
+state render ~570 ms → **~56 ms**, 10x; probe in perf-probes-2026-09-21/).
+The capstone replay inherits this automatically.
 
 ## Failure classes found → their resolutions (all landed, all tested)
 
@@ -41,7 +84,7 @@ complete inventory: benchmarks/results/corpus-v2/replay-full-results{s1..s4}.jso
 | set-card html views | 7 pinned entries | Rules section accordions, open-view hide list, set menu popover, rule bar classes | set-card-views-corpus-parity.test.ts |
 | Date cardtype valid path | no oracle exists (all 4,021 corpus Date cards hold invalid content) | strftime core port, deterministic-seed tests | date-cardtype-view.test.ts (16) |
 
-Render directory: 133/133 green (npx vitest run tests/card/render/, 2026-09-22 04:43).
+Render directory: 133/133 green (npx vitest run tests/card/render/, 2026-09-22 04:43) — recorded once per the capstone doctrine; not re-run.
 
 ## The data-drift class (classified, never excused)
 
