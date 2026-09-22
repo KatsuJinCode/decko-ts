@@ -94,12 +94,9 @@ interface ReplayStorage {
 async function freshStorage(): Promise<ReplayStorage> {
   const driver = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(DDL_PATH, "utf8");
-  // splitSqlStatements isn't exported from here; split on ";\n" is sufficient
-  // for the hand-rolled CORE schema (no semicolons inside string literals).
-  for (const stmt of ddl.split(/;\s*\n/)) {
-    const sql = stmt.trim();
-    if (sql.length === 0) continue;
-    await driver.query(sql, []);
+  for (const statement of splitSqlStatements(ddl)) {
+    if (statement.length === 0) continue;
+    await driver.query(statement, []);
   }
   return {
     driver,
