@@ -1,6 +1,34 @@
 # Upstream parity plan — decko-commons#1282 + Astra's four parities
 
-## Fleet log — 2026-09-21 (all integrated in 31f2048)
+## Fleet log — 2026-09-21 evening (wave C + the replay flip)
+
+LANDED: MiniMax wave C — T5 shadow-compare router skeleton (proxy returns
+Ruby bytes untouched, deliberate-TS-diff JSONL log, allow/block/sample
+policy; 28/28; real-upstream wiring is the next stream), E1 notify
+inventory + first mechanism (follow-rule email on update, byte-stable
+hand-derived oracle; 33/33; save-path registration line documented in
+docs/notify-port-notes.md), T2 shared behavioral contract
+(docs/core/contract.md + contract-evidence.md: 36 proven / 6
+pinned-synthetic / 5 divergent-documented / 4 unported, Ruby file:line +
+TS test on every statement).
+
+THE REPLAY FLIP (coordinator): corpus replay driver re-seeded — the FULL
+deck (47,235 rows) + read-rule universe + *structure universe + stored
+read_rule columns seed ONCE; denied views are JUDGED (permissionPending
+skip/class retired); record handler applies structuredCardContent
+(Ruby Card#content). Blocked mid-flight by a SQLite planner trap: the
+recursive `resolved` closure's `j.trash = 0` terms lured the planner onto
+cards_trash_index (~10-row estimate, ~40k-row reality, re-paid every
+recursion step) — 150 ms → 6+ minutes per cold prepare; fixed with unary
+`+` (value no-op, planner guidance only); evidence trail in
+benchmarks/corpus-v2/perf-probes-2026-09-21/. Post-fix shard-000000
+smoke: 999 records (857 pass / 142 structure-pending / **0 real fail**),
+3,242 renders (2,831 pass / **410 real fail** in FOUR classes: CodeRay
+syntax highlighting, *mini bar-cols setting, pointer/list cardtype
+content views, missing search-JSON validation Ruby raises on) — ~40
+min/shard; full 48-shard run launched on the 4-way split.
+
+Fleet log — 2026-09-21 (all integrated in 31f2048)
 
 LANDED: R1 help-popover (13 corpus entries byte-exact; 26 rule-card count
 aggregates are capture-vs-DB drift, pinned at unit level), R2 structure
