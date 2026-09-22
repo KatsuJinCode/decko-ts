@@ -307,20 +307,14 @@ function radioHtml(id: string, label: string, checked: boolean): string {
 }
 
 /** The rules hanging off this set card (Card.search left: id, limit: 0).
- *  Port-side: the render-card map returns them in name-sorted order
- *  (Ruby's `Card.search sort_by: %w[content name]`); we read what the
- *  engine has cached. */
+ *  Port-side: read every rule whose left_id equals the set card's id
+ *  from the engine's render-card map (the prepare phase walked every
+ *  seeded card, so rule cards hanging off this set are present iff
+ *  seeded). */
 function collectSetRules(fmt: RenderFormat): RenderCard[] {
-  // Without the search engine executing here, fall back to fetching
-  // every rule whose left_id equals the card id from the engine's
-  // render-card map. The engine's enriched map holds every card the
-  // prepare phase walked; the rule cards hanging off this set card
-  // are present iff seeded.
   const rules: RenderCard[] = [];
-  for (const candidate of fmt.engine.renderCardsFor(fmt.card.id, "rules")) {
-    rules.push(candidate);
-  }
-  return rules;
+  if (fmt.engine.collectRules === undefined) return rules;
+  return fmt.engine.collectRules(fmt.card);
 }
 
 /** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape. */
