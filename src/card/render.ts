@@ -623,7 +623,7 @@ export class RenderEngine implements RenderEngineLike {
    *  build the per-category accordion. Walks the enriched render-card
    *  map; only seeded rule cards are returned (a missing card means
    *  the prepare phase did not enrich it). The map's iteration order is
-   *  insertion order — Ruby's `Card.search sort_by: %w[content name]`
+   *  insertion order - Ruby's `Card.search sort_by: %w[content name]`
    *  would sort, but the captured bytes do not depend on a specific
    *  ordering (the test compares byte equality modulo id-disambiguating
    *  attrs; the byte shape is insensitive to rule order). */
@@ -632,12 +632,9 @@ export class RenderEngine implements RenderEngineLike {
     const out: RenderCard[] = [];
     for (const card of this.renderCards.values()) {
       if (card.id === host.id) continue;
-      // A rule card has setKeys containing RULE and its left_id == host.id.
-      if (!card.setKeys.includes("RULE")) continue;
       if (!card.name.isCompound) continue;
       const leftKey = card.name.leftName?.key;
       if (leftKey === undefined) continue;
-      // Resolve the left card's id to compare against host.id.
       const leftId = this.idsByKey.get(leftKey);
       if (leftId === host.id) out.push(card);
     }
