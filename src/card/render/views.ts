@@ -460,7 +460,16 @@ const closedView: ViewFn = (ctx) => {
   return slotWrapCommon(ctx.fmt, "closed", inner);
 };
 
+/** card-mod-rules-0.20.0 set/type/set/html_views.rb:2-4:
+ *  `before :open do voo.hide :template_closer end` — set-type cards add
+ *  :template_closer to the data-slot hide list when rendered as :open.
+ *  Captured oracle bytes for corpus:273/294/300/302/315 (pin:
+ *  "set-card open-view hide list") carry
+ *  `data-slot="...&quot;hide&quot;:[&quot;template_closer&quot;,&quot;bar_middle&quot;]"`. */
 const openView: ViewFn = (ctx) => {
+  if (ctx.fmt.card.typeCode === "set") {
+    ctx.voo.hide("template_closer");
+  }
   const inner = accordionBarHtml(ctx, true);
   return slotWrapCommon(ctx.fmt, "open", inner);
 };
