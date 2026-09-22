@@ -313,7 +313,9 @@ export class CardActionEngine {
     const card = await composeCardRecord(row, this.fetch.lexicon);
     await this.assertCanWrite(card);
     const writer = this.newWriter();
-    return this.updateInWriter(writer, row, input);
+    const result = await this.updateInWriter(writer, row, input);
+    await this.dispatchSavePathIntegrations(result);
+    return result;
   }
 
   private async updateInWriter(
