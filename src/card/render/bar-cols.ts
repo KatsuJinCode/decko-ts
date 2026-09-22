@@ -77,54 +77,54 @@ function cardIsRule(setKeys: string): boolean {
 }
 
 /**
- * Read the bar column split for a card. Returns `[left, middle, right]`
- * for a 3-col layout (the rule bar renders three columns: left, middle,
- * right) or `[left, right]` for a 2-col layout.
+ * The full bar-column split for the bar view: defaults (2-col, used at
+ * mobile) and md-cols (3-col, used at md+). Ruby's prepare_bar:
+ *   `class_up_cols %w[bar-left bar-right], two_cols` -> bar-left col-X,
+ *     bar-right col-Y (no md context, applied at all sizes).
+ *   If three_cols: `class_up_cols %w[bar-left bar-middle bar-right],
+ *     three_cols, "md"` -> col-md-X/Y/Z (only at md+).
+ * Returns [default_left, default_right, md_left, md_middle, md_right].
+ * For 2-col (no three), middle defaults to 0 (hidden via d-none).
  *
- * The `threeCols` flag distinguishes the rule's :bar view (which uses
- * bar_cols 5, 4, 3 — three cols, bar_middle visible) from the item-bar
- * :mini_bar (which uses mini_bar_cols 6, 6 — two cols, bar_middle
- * hidden). Ruby's prepare_bar:
- *   `voo.hide :bar_middle unless three_cols`
- * gates the hide on the third column being present.
- *
- * Precedence (mirrors Ruby's set-module composition order):
+ * Precedence:
  *   1. rule-card content for the bar_cols setting, if one exists and
- *      parses (caller-supplied via the optional `ruleContent` param —
- *      the engine pre-fetches during the prepare phase so the sync
- *      render path doesn't issue queries).
+ *      parses.
  *   2. the *rule set module's default (5, 4, 3) when the card matches
- *      the *rule pattern AND threeCols is true.
- *   3. the *all set module's default (9, 4, 3) for 3-col, (9, 3) for
- *      2-col.
+ *      the *rule pattern.
+ *   3. the *all set module's default (9, 4, 3).
  */
-export function readBarCols(
-  card: RenderCard,
-  threeCols: boolean,
-  ruleContent?: string,
-): readonly [number, number, number] | readonly [number, number] {
+export type BarCols = readonly [
+  number, // default left col
+  number, // default right col
+  number, // md left col
+  number, // md middle col
+  number, // md right col
+];
+
+export function readBarCols(card: RenderCard, ruleContent?: string): BarCols {
   const parsed = parseBarCols(ruleContent);
   if (parsed !== undefined) {
-    return threeCols ? [parsed[0], 4, parsed[1]] : parsed;
+    return [parsed[0], parsed[1], parsed[0], 4, parsed[1]];
   }
-  if (threeCols) {
-    if (cardIsRule(card.setKeys)) return RULE_BAR_COLS;
-    return DEFAULT_BAR_COLS;
+  if (cardIsRule(card.setKeys)) {
+    // rule's :bar: two_cols = mini_bar_cols (6, 6); three_cols = bar_cols (5, 4, 3)
+    return [6, 6, 5, 4, 3];
   }
-  if (cardIsRule(card.setKeys)) return RULE_MINI_BAR_COLS;
-  return DEFAULT_MINI_BAR_COLS;
+  // *all default: bar_cols 9, 3; no three-col for the standard :bar view
+  // (closed/open render via build_accordion_bar which calls prepare_bar
+  // with only mini_bar_cols).
+  return [9, 3, 0, 0, 0];
 }
 
 /**
- * Read the mini-bar column split for a card. The two-col form the :bar /
+ * Read the mini-bar column split for a card. The two-col form the
  * :mini_bar / :closed / :open paths render (the rule that hides
- * bar-middle in small viewports). Returns `[left, right]` col numbers.
+ * bar-middle in small viewports). Returns `[default_left, default_right]`.
  */
 export function readMiniBarCols(
   card: RenderCard,
   ruleContent?: string,
 ): readonly [number, number] {
-  const cols = readBarCols(card, false, ruleContent);
-  if (Array.isArray(cols) && cols.length === 2) return cols;
-  return DEFAULT_MINI_BAR_COLS;
+  const cols = readBarCols(card, ruleContent);
+  return [cols[0], cols[1]];
 }
