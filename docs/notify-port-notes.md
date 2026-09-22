@@ -424,14 +424,63 @@ the wire form. Three reasons:
 
 `tools/oracle/follow_capture.rb` is the script — it captures the
 structured mail body that `ActionMailer::Base.deliveries` accumulates
-when `delivery_method = :test` is set. The script DOES NOT run
-against the current oracle-app DB because:
+when `delivery_method = :test` is set.
 
-- The oracle app's Gemfile does NOT include `gem "card-mod-email"`
-  (verified by reading config/application.rb — mod-email is the most
-  optional of the bundled mods).
-- The follow notification template card does NOT exist in the dev DB
-  (Card['follower notification email'].type_id is 153 — a fallback,
+**M6 status**: the capture now runs end-to-end against the dev DB. The
+E1 blockers were fixed by M6:
+
+1. `card-mod-email` is now in the oracle-app Gemfile (and explicitly
+   re-declared alongside `card-mod-follow` and `card-mod-account`,
+   even though card-mod-defaults already pulls them transitively).
+2. `decko update` ran successfully, seeding the EmailTemplate cardtype
+   AND the `follower_notification_email` codename and the default
+   Stock templates (with their `+*subject`, `+*text message`,
+   `+*html message`, `+*from` children).
+
+The capture script (`tools/oracle/follow_capture.rb`) updates the
+seeded `follower notification email` EmailTemplate in place with the
+test scenario's literal templates (`{{follower}} ... {{followed_set}}
+... {{follow_option}}`). It does NOT trash-and-recreate — destroying
+the card would force `Card.create!` on the same name to run the
+`:manage_trash` event (mod/core/set/all/trash.rb:23-27), which calls
+`pull_from_trash!` and flips `trash = false`. The new card would
+re-materialize with the same id and the same stale subcards. Update
+in place is the only safe path.
+
+The captured fixture (`fixtures/captured/follow-notification.json`)
+is the byte-parity ground truth. Reading it back:
+
+- `delivered[0].to` = `"sara@example.com"`
+- `delivered[0].from` = `"no-reply@decko.org"` (Card::Mailer default
+  fallback, since no `Card.config.email_defaults[:from]` was set in
+  the dev DB)
+- `delivered[0].subject` = `"follower changed followed_set on follow_option"`
+- `delivered[0].text_body` = `"Hi! follower changed followed_set."`
+
+### M6 corrections (real-oracle captures corrected the M1–M5 hand-derived claim)
+
+The M1–M5 hand-derived expected bytes — `"John changed John
+Following on always"` and `"Hi! John changed John Following."` — were
+WRONG about Ruby's `contextual_content` behavior in the dev-DB
+scenario. The earlier note claimed "the literal `{{follower}}`
+remains verbatim in the mail subject" — meaning the braces would stay
+intact. The actual behavior:
+
+- Ruby's `contextual_content` walks `{{X}}` as an inclusion
+  (card-mod-content set/all/contextual_content.rb:16-19 + card-mod-email
+  set/abstract/email_field.rb:22-26 `compact_missing` view default).
+- When X does NOT resolve to a real card, the inclusion walker emits
+  the literal name with the `{{` and `}}` stripped.
+- The captured output proves it: `"follower changed followed_set on
+  follow_option"`, not `"{{follower}} changed {{followed_set}} on
+  {{follow_option}}"`.
+
+The TS port's `interpolateTemplate` was rewritten to mirror this
+(literal name with braces stripped; the `vars` parameter is now
+unused but kept for API compatibility). The mail and follow-notify
+tests were updated to assert the captured bytes. The
+`tags` carry the active_notice values for the transport; they are
+NOT substituted into the subject/body.
   not EmailTemplateID 21777).
 
 The script is wired for a follow-on capture run after the next deck
