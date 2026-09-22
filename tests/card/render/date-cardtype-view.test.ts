@@ -262,7 +262,7 @@ describe("captured corpus — Date-type card byte surface", () => {
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry1135 = lines
       .map((l) => JSON.parse(l))
-      .find((e: id) => e.id === 1135) as
+      .find((e: { id: number }) => e.id === 1135) as
       | { id: number; name: string; record: { content: string; type_code: string }; views: Record<string, string> }
       | undefined;
     expect(entry1135).toBeDefined();
