@@ -311,9 +311,14 @@ function radioHtml(id: string, label: string, checked: boolean): string {
  *  (the prefetch closure walk does not chase rule cards hanging off a
  *  set — the set's random content does not name them). Returns an empty
  *  list when the engine has no collectRules hook. */
-async function collectSetRules(fmt: RenderFormat): Promise<RenderCard[]> {
+function collectSetRules(fmt: RenderFormat, rules?: RenderCard[]): RenderCard[] {
+  if (rules !== undefined) return rules;
   if (fmt.engine.collectRules === undefined) return [];
-  return fmt.engine.collectRules(fmt.card);
+  // The cached pre-loaded result is in format.engine.hostRules — see
+  // prepareHostRules below. Synchronous read.
+  const cached = (fmt.engine as RenderEngineLikeWithHostRules).hostRules?.get(fmt.card.id ?? -1);
+  if (cached !== undefined) return cached;
+  return [];
 }
 
 
