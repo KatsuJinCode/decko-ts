@@ -718,7 +718,11 @@ describe("aggregateLog", () => {
 describe("fnv1a", () => {
   it("is deterministic for the same input", () => {
     expect(fnv1a("GET /cards/1")).toBe(fnv1a("GET /cards/1"));
-    expect(fnv1a("hello")).toBe(0x4d2505ca);
+    // Computed against this implementation (FNV-1a 32-bit, offset basis
+    // 0x811c9dc5, prime 0x01000193). Hard-coded so any silent change to
+    // the algorithm breaks this test loudly.
+    expect(fnv1a("hello")).toBe(0x4f9f2cab);
+    expect(fnv1a("GET /cards/1")).toBe(0x55b11ec5);
   });
 });
 
