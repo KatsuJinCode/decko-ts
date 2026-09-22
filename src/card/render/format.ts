@@ -667,6 +667,12 @@ export interface RenderEngineLike {
    *  it skip the enrichment and the render shows the empty-list
    *  fallback. */
   prepareItemForRender?(name: string): Promise<RenderCard | undefined> | RenderCard | undefined;
+  /** The codename for the given type id (synchronous; reads the
+   *  codename codehash the engine pre-folds). The before(:bar) hook
+   *  uses this to detect Search-type cards (the codename registry is
+   *  Ruby's authoritative source for SearchTypeID). Optional;
+   *  engines without it fall back to a typeName check. */
+  peekCodenameById?(typeId: number): string | undefined;
   /** All rule cards whose left_id equals the host card's id (Card.search
    *  left: id, limit: 0, sorted by content+name). The set-card Rules
    *  section core override (views.ts setRulesCoreHtml) reads this to
