@@ -185,17 +185,15 @@ function renderPointerListCore(fmt: RenderFormat): string {
   const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
   const inner = items
     .map((name) => {
-      // Ruby's nest_item -> nest with view=:bar. The item card might
-      // not be in the prefetched render-card map (an item referenced
-      // by plain text in db_content, not via {{...}}, is not in the
-      // reference closure the prefetch walks); enrich it on demand
-      // through the engine's async enrichment so fetchRenderCard sees
-      // it on the next read.
-      const cached = fmt.engine.fetchRenderCard(name);
-      const item = cached ?? fmt.engine.prepareItemForRender?.(name);
+      // Ruby's nest_item -> nest with view=:bar. The item cards the
+      // engine's render() pre-enriches via enrichPointerListItems (the
+      // closure walk the prefetch uses does NOT chase plain-text
+      // references in db_content - only nest-syntax ones - so this
+      // pre-pass is what gets the items into renderCards). Items
+      // still absent (unknown nest targets) render as an empty slot
+      // to keep the card-list wrapper shape intact.
+      const item = fmt.engine.fetchRenderCard(name);
       if (item === undefined) {
-        // Truly missing card (Ruby: unknown nest target). Render an
-        // empty slot to keep the card-list wrapper shape intact.
         return "";
       }
       return fmt.nestRecord(item, "bar", {
