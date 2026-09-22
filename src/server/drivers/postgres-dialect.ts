@@ -315,11 +315,11 @@ function rewriteSubstr(sql: string): string {
 }
 
 function rewriteNocaseCollations(sql: string): string {
-  // Replace `<expr> COLLATE NOCASE <op> <rhs>` and the IN / NOT IN variants.
-  // The `<expr>` and each `<rhs>` are a single SQL token — quoted
-  // identifier, bare identifier, placeholder, or parenthesized group. The
-  // implementation walks the string, finds COLLATE NOCASE, and rewrites
-  // the surrounding comparison.
+  // Replace `<left> COLLATE NOCASE <op> <rhs>` and the IN / NOT IN variants.
+  // Each side is a single SQL token (column, placeholder, or parenthesized
+  // group); the rewrite is `LOWER(<left>) <op> LOWER(<rhs>)` (for IN: each
+  // list item wrapped in LOWER). The whole pattern is consumed in one
+  // pass — no in-place post-edit of `out`.
   let out = "";
   let i = 0;
   const n = sql.length;
@@ -330,22 +330,18 @@ function rewriteNocaseCollations(sql: string): string {
       out += remaining;
       break;
     }
-    out += remaining.slice(0, m.index);
-    // Walk back to find the start of the left-hand expression. The engine
-    // emits either `column COLLATE NOCASE = ?` or `? COLLATE NOCASE = col`
-    // — both have a single token on each side. Walk back from the
-    // COLLATE position to find the start of the left token (whitespace,
-    // comma, open paren, or operator ends a token).
-    const leftStart = findTokenStart(sql, i + m.index);
-    out += sql.slice(leftStart, i + m.index);
-    out += " COLLATE NOCASE ";
-    i = i + m.index + m[0].length;
-    // Skip whitespace
-    while (i < n && /\s/.test(sql[i])) {
-      out += sql[i];
-      i += 1;
-    }
-    // Look ahead for the operator + right-hand side
+    const matchStart = i + m.index; // absolute offset of 'C' in COLLATE
+    // Walk back to find the start of the left-hand token.
+    const leftStart = findTokenStart(sql, matchStart);
+    const leftEnd = matchStart; // left token ends right where COLLATE begins
+    const leftToken = sql.slice(leftStart, leftEnd);
+    // Emit everything before the left token untouched.
+    out += sql.slice(i, leftStart);
+    // Skip past "COLLATE NOCASE" in the source.
+    i = matchStart + m[0].length;
+    // Skip whitespace.
+    while (i < n && /\s/.test(sql[i])) i += 1;
+    // Look ahead for the operator.
     const opMatch = /^(=|<>|!=|<=|>=|<|>|LIKE|NOT\s+LIKE|IN|NOT\s+IN)\b/i.exec(sql.slice(i));
     if (opMatch === null) {
       throw new Error(
@@ -353,22 +349,14 @@ function rewriteNocaseCollations(sql: string): string {
       );
     }
     const op = opMatch[0].toUpperCase().replace(/\s+/g, " ");
-    out += op;
     i += opMatch[0].length;
-    // Skip whitespace
-    while (i < n && /\s/.test(sql[i])) {
-      out += sql[i];
-      i += 1;
-    }
-    // Right-hand side: token (single-token case), or parenthesized list
-    // (IN / NOT IN case). For the parenthesized list, we wrap every
-    // comma-separated item in LOWER(...) individually.
+    while (i < n && /\s/.test(sql[i])) i += 1;
+    // Emit LOWER(left) <op> ...
+    out += `LOWER(${leftToken}) ${op} `;
+    // Emit LOWER(rhs) — single-token or parenthesized list.
     if (sql[i] === "(") {
-      // Collect the parenthesized list verbatim, wrapping each item.
-      out += " (";
+      out += "(";
       i += 1;
-      // Walk to the matching close paren. Inside, split on top-level
-      // commas and wrap each piece in LOWER(...).
       let depth = 1;
       let piece = "";
       while (i < n && depth > 0) {
@@ -395,33 +383,11 @@ function rewriteNocaseCollations(sql: string): string {
       out += ")";
       i += 1; // skip the closing paren
     } else {
-      // Single right-hand token (column, placeholder, or literal).
       const rightEnd = findTokenEnd(sql, i);
       const rhs = sql.slice(i, rightEnd);
       out += `LOWER(${rhs})`;
       i = rightEnd;
     }
-    // Now the LEFT expression is still bare in `out`; rewrite it as LOWER.
-    // We do this by finding the left token we already emitted and wrapping
-    // it. Walk back over the already-emitted text.
-    // The pattern in `out` is now: `<prefix>LEFT COLLATE NOCASE OP RHS`.
-    // We want: `<prefix>LOWER(LEFT) OP RHS` — but only for the left
-    // expression. The right side is already LOWER'd above (single-token
-    // case wraps it; IN-list case wraps each list item).
-    // Replace the last occurrence of `<LEFT> COLLATE NOCASE` with
-    // `LOWER(<LEFT>)`.
-    const leftToken = sql.slice(leftStart, i + m.index).trim();
-    // Remove the trailing COLLATE NOCASE + operator + rhs we appended and
-    // re-emit with LOWER() on the left.
-    const marker = `${leftToken} COLLATE NOCASE`;
-    const idx = out.lastIndexOf(marker);
-    if (idx === -1) {
-      throw new Error("postgres-dialect: internal — left token marker not found (engine bug)");
-    }
-    const before = out.slice(0, idx);
-    // `after` starts at the operator we appended (preserved from above)
-    const after = out.slice(idx + marker.length);
-    out = before + `LOWER(${leftToken})` + after;
   }
   return out;
 }
