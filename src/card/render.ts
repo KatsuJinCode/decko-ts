@@ -707,12 +707,10 @@ export class RenderEngine implements RenderEngineLike {
       // render.ts#parseRuleTypeIds), so peekNameForId is synchronous and
       // zero-query here. For unknown typeIds (no codename), the lookup
       // returns undefined; the view code falls back to its default
-      // rendering (the non-pointer core path).
+      // rendering (the non-pointer core path). The peek is meaningful
+      // because the cold path preloads the codehash BEFORE the prefetch
+      // walk runs enrichAndStore (see render.ts top of render()).
       typeCode = this.fetcher.codenames.peekNameForId(typeId);
-      if (process.env.DEBUG_TYPECODE === "1") {
-        console.log(`[enrichAndStore] card=${name.s} typeId=${typeId} typeName=${typeName} typeCode=${typeCode}`);
-        console.log(`[enrichAndStore] codehash loaded?`, (this.fetcher.codenames as { codehashValue?: unknown }).codehashValue !== undefined);
-      }
     }
     let leftTypeName: string | undefined;
     let leftRecord: CardRecord | undefined;
