@@ -714,6 +714,15 @@ export class RenderEngine implements RenderEngineLike {
    * read synchronously by the card_list view). Items join the render-card
    * map, and item content participates in the walk (nested searches inside
    * results resolve too).
+   *
+   * Date-type cores (type_code "date") are validated in the same pass: the
+   * corpus capture (id=1135, 1138, 1211, 1218, 1222) shows Ruby raises
+   * `Date::Error: invalid date` on non-parseable content for :open and
+   * :content views. The port mirrors that raise at the prepare phase so
+   * the render surface sees the same exception class with the same message
+   * — the corpus-v2 replay handler reads `error.constructor.name` and the
+   * literal `Date::Error` name (render/errors.ts) matches the captured
+   * sentinel prefix byte-for-byte.
    */
   private async prepareSearches(root: CardRecord): Promise<void> {
     const visited = new Set<string>();
@@ -730,12 +739,21 @@ export class RenderEngine implements RenderEngineLike {
         const refCard = this.renderCards.get(refKey);
         if (refCard !== undefined && !visited.has(refKey)) queue.push(refCard.record);
       }
-      if (card.typeName !== SEARCH_TYPE_NAME) continue;
-      if (this.searchResults.has(key)) continue;
-      const items = await this.runSearch(card);
-      this.searchResults.set(key, items);
-      for (const item of items) {
-        if (!visited.has(item.key)) queue.push(item.record);
+      if (card.typeName === SEARCH_TYPE_NAME) {
+        if (this.searchResults.has(key)) continue;
+        const items = await this.runSearch(card);
+        this.searchResults.set(key, items);
+        for (const item of items) {
+          if (!visited.has(item.key)) queue.push(item.record);
+        }
+        continue;
+      }
+      if (card.typeName === "Date") {
+        // Ruby Date.parse raises Date::Error on invalid input; mirror at the
+        // prepare phase so :open / :content views surface the same raise.
+        if (!isValidDateContent(card.dbContent)) {
+          throw dateError();
+        }
       }
     }
   }
