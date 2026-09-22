@@ -69,26 +69,30 @@ async function freshWithHook(): Promise<{
   return { f, engine, transport };
 }
 
-/** The template triple, seeded as REAL rows (the child names M6's real
- *  capture proved: follower notification email+*subject / +*text message). */
+/** The template triple, seeded as REAL rows: the setting cards (*subject,
+ *  *text message, *html message) + the junction children under `follower
+ *  notification email` (junction rows carry NULL name + side ids — the
+ *  child names M6's real capture proved). */
 async function seedTemplateCards(f: StandardFixture): Promise<void> {
+  await seedCard(f.storage, { id: 556, name: "follower notification email", typeId: 2 });
+  await seedCard(f.storage, { id: 557, name: "*subject", typeId: 2 });
+  await seedCard(f.storage, { id: 558, name: "*text message", typeId: 2 });
+  await seedCard(f.storage, { id: 559, name: "*html message", typeId: 2 });
   await seedCard(f.storage, {
-    id: 556,
-    name: "follower notification email",
-    typeId: 2,
-  });
-  await seedCard(f.storage, {
-    id: 557,
-    name: "follower notification email+*subject",
+    id: 560,
+    leftId: 556,
+    rightId: 557,
     typeId: 2,
     dbContent: "{{followed_set}} on {{follow_option}}",
   });
   await seedCard(f.storage, {
-    id: 558,
-    name: "follower notification email+*text message",
+    id: 561,
+    leftId: 556,
+    rightId: 558,
     typeId: 2,
     dbContent: "Hi! {{follower}} — {{followed_set}} changed.",
   });
+  await seedCard(f.storage, { id: 562, leftId: 556, rightId: 559, typeId: 2, dbContent: "" });
 }
 
 describe("save-path notify wiring (CardActionEngine -> integration hooks)", () => {
