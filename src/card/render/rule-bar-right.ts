@@ -25,7 +25,7 @@
 // pinned case; a future stream seeding governed rule cards owes the split.
 
 import type { RenderCard } from "./format.js";
-import { h } from "./format.js";
+import { h } from "./slot-html.js";
 
 /** set/all/base.rb:97-99 — truncate(render_core), Rails defaults: 50 chars,
  *  omission "..." (only when longer). */
