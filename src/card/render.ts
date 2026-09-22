@@ -585,6 +585,49 @@ export class RenderEngine implements RenderEngineLike {
     // unknown-card view is the empty string for the captured surface).
   }
 
+  /** Pre-load every rule card whose left_id equals the set card's id,
+   *  plus the rule's right side (the setting card), so the set-card
+   *  Rules section's collectRules walk finds them in renderCards.
+   *  Single batched query; warm renders (closure warm) skip the pass. */
+  private async preloadSetRules(setCard: RenderCard): Promise<void> {
+    if (setCard.id === undefined) return;
+    // Skip if already warm (the walk above already populated the map).
+    let haveAny = false;
+    for (const card of this.renderCards.values()) {
+      if (!card.name.isCompound) continue;
+      const leftKey = card.name.leftName?.key;
+      if (leftKey === undefined) continue;
+      const leftId = this.idsByKey.get(leftKey);
+      if (leftId === setCard.id) {
+        haveAny = true;
+        break;
+      }
+    }
+    if (haveAny) return;
+    const result = await this.fetcher.driver.query<CardsRow>(
+      `SELECT * FROM cards WHERE left_id = ? AND trash = 0 ` +
+      `ORDER BY db_content, name`,
+      [setCard.id],
+    );
+    if (result.rows.length === 0) return;
+    // Side cards first: enrich the rule's right (the setting) so junctions
+    // compose from the map, mirroring prefetch.ts's sides-before-junctions.
+    const rightIds = new Set<number>();
+    for (const row of result.rows) {
+      if (row.right_id !== null && row.right_id !== undefined) rightIds.add(row.right_id);
+    }
+    for (const rid of rightIds) {
+      const existing = await this.fetcher.fetchById(rid);
+      if (existing === undefined || existing.name === undefined) continue;
+      await this.cacheFetchedRecord(existing);
+    }
+    for (const row of result.rows) {
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      await this.cacheFetchedRecord(record);
+    }
+  }
+
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
    *  membership, precomputed in the prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean {
