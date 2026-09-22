@@ -353,31 +353,80 @@ function renderRuleList(fmt: RenderFormat, rules: RenderCard[]): string {
   return `<ul class="nav flex-column">${items.join("\n")}</ul>`;
 }
 
+/** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
+ *  :45-54). Ruby's category_accordion iterates these in order; the captured
+ *  oracle pins every group with the set's rules, even those with zero
+ *  rules (the "0" count badge). */
+const SETTING_GROUPS: ReadonlyArray<string> = [
+  "templating",
+  "permission",
+  "webpage",
+  "editing",
+  "event",
+  "other",
+];
+
+/** Map from setting codename -> group key. Mirrors the setting_opts
+ *  group: declarations in the card-mod-* set/self/*.rb files (the only
+ *  source of group membership Ruby has at runtime):
+ *    - templating: autoname, default, structure
+ *    - permission: create, read, update, delete, captcha
+ *    - webpage:    head, layout, style, script
+ *    - editing:    help, input_type, guide, content_options, content_option_view
+ *    - event:      on_create, on_update, on_delete
+ *    - other:      thanks, follow_fields, follow
+ *  See /c/Ruby33-x64/.../card-mod-* set/self/*.rb for the source. */
+const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
+  // templating
+  ["autoname", "templating"], ["default", "templating"], ["structure", "templating"],
+  // permission
+  ["create", "permission"], ["read", "permission"], ["update", "permission"], ["delete", "permission"], ["captcha", "permission"],
+  // webpage
+  ["head", "webpage"], ["layout", "webpage"], ["style", "webpage"], ["script", "webpage"],
+  // editing
+  ["help", "editing"], ["input_type", "editing"], ["guide", "editing"],
+  ["content_options", "editing"], ["content_option_view", "editing"],
+  // event
+  ["on_create", "event"], ["on_update", "event"], ["on_delete", "event"],
+  // other
+  ["thanks", "other"], ["follow_fields", "other"], ["follow", "other"],
+]);
+
 /** Group the set's rules by setting category. Ruby's
- *  card-mod-rules set/type/setting.rb:28-31 + setting.rb#categories.
- *  For now, group ALL rules under their setting's group key (the
- *  oracle groups them by category like "templating", "permission",
- *  "webpage"); the setting-categories table is read through the
- *  render-card map's category attribute. */
+ *  card-mod-rules set/type/set/html_views/rule_lists.rb:49-59
+ *  category_accordion_item iterates Card::Setting.groups.keys in the
+ *  FIXED six-group order (templating/permission/webpage/editing/event/
+ *  other); for each group it collects the rules whose right-side setting
+ *  codename maps to that group, then yields the list to the accordion
+ *  item body builder. The captured oracle bytes pin every group header
+ *  regardless of whether the set has rules in it (the "0" count badge
+ *  is what Ruby's accordion_item emits). */
 function groupRulesByCategory(rules: RenderCard[]): Array<[string, RenderCard[]]> {
   const byGroup = new Map<string, RenderCard[]>();
+  for (const g of SETTING_GROUPS) byGroup.set(g, []);
   for (const rule of rules) {
-    const groupKey = inferSettingGroup(rule);
+    const codename = inferSettingCodename(rule);
+    const groupKey =
+      codename !== undefined ? SETTING_TO_GROUP.get(codename) ?? "other" : "other";
     const list = byGroup.get(groupKey);
-    if (list === undefined) byGroup.set(groupKey, [rule]);
-    else list.push(rule);
+    if (list !== undefined) list.push(rule);
   }
-  return [...byGroup.entries()];
+  const out: Array<[string, RenderCard[]]> = [];
+  for (const g of SETTING_GROUPS) {
+    const list = byGroup.get(g);
+    out.push([g, list ?? []]);
+  }
+  return out;
 }
 
-function inferSettingGroup(rule: RenderCard): string {
-  // The setting name (rule's right part, e.g. "*default") tags into a
-  // group ("common", "field", "all", "recent"). Without the
-  // setting-categories table we fall back to the bare tag-stripped
-  // name; the oracle's groups (templating/permission/webpage) come
-  // from the setting-categories.rb mod, not ported yet.
-  const rightName = rule.name.rightName?.s ?? "";
-  return rightName.replace(/\*/g, "");
+/** The right part's setting codename (without the leading "*"). The
+ *  card-mod-rules card.type_card setting card has codename = the bare
+ *  name (e.g., "default", "head", "structure"). */
+function inferSettingCodename(rule: RenderCard): string | undefined {
+  const rightKey = rule.name.rightName?.key;
+  if (rightKey === undefined) return undefined;
+  // Strip leading "*" if present (codename lookup uses bare name).
+  return rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
 }
 
 /** Render the pointer/list content view body: the card-list pointer-list
