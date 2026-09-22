@@ -217,7 +217,7 @@ function renderPointerListCore(fmt: RenderFormat): string {
         // buildUnknownNestCard when the target is missing and
         // renders via the unknown-card view routing (format/error
         // .rb#view_for_unknown / view/permission.rb#alter_unknown).
-        slotHtml = fmt.nest({ name, syntax: "", options: {} });
+        slotHtml = fmt.nest({ name, syntax: "", options: { extra: {} } });
       }
       return pointerItemWrap(slotHtml);
     })
