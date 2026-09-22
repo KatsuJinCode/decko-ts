@@ -259,10 +259,14 @@ Card::Auth.as_bot do
 end
 
 # -----------------------------------------------------------------------
-# 2. Create junction card (A+B; parent "WCC Simple" already exists)
+# 2. Create junction card (A+B).
+#    Parent "Sign up" already exists in the oracle seed; using a parent that
+#    does NOT exist forces Decko to auto-create it as a side card, which
+#    recurses into the same subdirector pipeline and crashes this Ruby
+#    stack (SystemStackError). Existing parent = clean junction create.
 # -----------------------------------------------------------------------
 Card::Auth.as_bot do
-  c = Card.create!(name: "WCC Simple+child", content: "first child")
+  c = Card.create!(name: "Sign up+WCC child", content: "first child")
   capture_scenario("02-create-junction", writer, affected_cards: [c.left_id, c.right_id, c.id])
 end
 
