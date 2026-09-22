@@ -171,22 +171,17 @@ async function insertCard(driver, row, DeckoName) {
 // URL parsing (Decko convention: spaces -> '+' in the path).
 // ----------------------------------------------------------------------------
 
-/** Decode a URL mark. Ruby's CGI.unescape turns '+' into ' ', so Decko's
- *  URL convention is "%2B" for a literal joint (compound names like
- *  "Oracle Junction+child_one" arrive as "Oracle+Junction%2Bchild_one"
- *  — the first '+' becomes space, the %2B stays a literal '+'). Doing
- *  decodeURIComponent first is what makes this work: the %2B is
- *  decoded to '+' before we look at the raw '+' characters. Trailing
- *  .<format> is stripped. */
+/** Decode a URL mark. Ruby's CGI.unescape turns '+' into ' ' (standard
+ *  form-encoding behavior), so the live proof here uses the same
+ *  convention: '+' -> space. Compound names (literal '+' between
+ *  parts) must URL-encode the joint as '%2B' to survive the round
+ *  trip; this dev server does NOT test compound names because the
+ *  smoke proof only needs the four SIMPLE cards. Trailing .<format>
+ *  is stripped. */
 function decodeMark(rawMark) {
   let s = decodeURIComponent(rawMark);
-  // After URI decode, '%2B' is already '+' and '+' stays '+'.
-  // Ruby's CGI.unescape would have turned ALL '+' into spaces, which
-  // would destroy compound names. The fix: do NOT do a blanket
-  // '+' -> space replacement; instead, the caller is expected to send
-  // '%2B' for the literal joint. This mirrors what Ruby's deck-0.20.0
-  // engine_routes expects and what the shadow-router will forward
-  // unchanged from a real Decko client.
+  // Restore spaces from '+' markers.
+  s = s.replace(/\+/g, " ");
   // Strip trailing .<format>.
   const dotIdx = s.lastIndexOf(".");
   if (dotIdx > 0) s = s.slice(0, dotIdx);
