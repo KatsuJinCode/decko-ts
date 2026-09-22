@@ -514,10 +514,20 @@ export class RenderEngine implements RenderEngineLike {
     if (cached !== undefined) return cached;
     const record = await this.fetcher.fetchByName(name);
     if (record === undefined || record.name === undefined) {
-      this.reportUnknownCard?.(name);
+      this.reportUnknownCard(name);
       return undefined;
     }
     return this.enrichAndStore(record);
+  }
+
+  /** Interface hook: track an unknown-card nest target. The render
+   *  engine doesn't currently use this for negative-caching, but the
+   *  signature is required by RenderEngineLike. */
+  reportUnknownCard(_key: string): void {
+    // No-op for now; the unknown-card view path is byte-correct
+    // without caching because each unknown-card render is its own
+    // self-contained buildUnknownNestCard call. The interface
+    // exists for future hooks (e.g. a negative closure map).
   }
 
   /** Pre-enrich every item name a pointer / list card's db_content
