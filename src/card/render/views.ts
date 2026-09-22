@@ -371,7 +371,7 @@ function renderSettingListItems(
     }
     return `<li class="nav-item">${quietDenial("read")}</li>`;
   });
-  return `<ul class="nav flex-column">${items.join("\n")}\n</ul>`;
+  return `<ul class="nav flex-column">${items.join("\n")}</ul>`;
 }
 
 function quietDenial(task: string): string {
