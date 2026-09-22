@@ -9,7 +9,8 @@
 // `*html message` children (card-mod-email data/real.yml:42-58 codenames).
 
 import type { FetchEngine } from "../fetch.js";
-import type { EmailTemplate, EmailTemplateResolver } from "./follow-notify.js";
+import type { EmailTemplate } from "./mail.js";
+import type { EmailTemplateResolver } from "./follow-notify.js";
 
 const TEMPLATE_CARD = "follower notification email";
 const SUBJECT_CHILD = `${TEMPLATE_CARD}+*subject`;
