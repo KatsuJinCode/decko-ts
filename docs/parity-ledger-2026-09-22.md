@@ -108,13 +108,13 @@ consequence, not a phase:
 
 | # | workstream | owner | state |
 | --- | --- | --- | --- |
-| W1 | set_read_rule save event (write path) | background agent (regular) | running |
-| W2 | card_references write-path population | background agent (regular) | running |
-| W3 | search-type core views (valid-JSON byte parity) | background agent (minimax) | running |
-| W4 | ERB/HAML content provenance (investigate; likely no-op with evidence) | background agent (minimax) | running |
-| W5 | notify save-path wiring (the documented registration line into the action engine) | coordinator, direct | queued |
-| W6 | baseline 4-slice inventory → reconcile every entry against the classes/PROVEN table | coordinator, on baseline landing | waiting |
-| W7 | CAPSTONE: single 48-shard run (~<1 h post-cache), aggregate = the recorded proof | coordinator, once W1-W6 land | gated |
+| W1 | set_read_rule save event (write path) | background agent (regular) | **DONE** 8343e72 — derivation + _left cascade + engine hooks; scenario 07 enforced; remainders listed in its report |
+| W2 | card_references write-path population | background agent (regular) | **DONE** — L/I/P semantics, delete+rebuild, compound resolution; 7/7 conformance; referee-side backfill deferred (documented) |
+| W3 | search-type core views (valid-JSON byte parity) | background agent (minimax) | **DONE** — port already byte-correct; +10-test pin; corpus has no valid-JSON search oracle |
+| W4 | ERB/HAML content provenance | background agent (minimax) | **DONE** — zero template-derived corpus content (evidence doc); no-op with proof |
+| W5 | notify save-path wiring | coordinator, direct | **DONE** 7a1ca6c — engine seams + deck template resolver + interpolation resolved/unresolved split |
+| W6 | baseline 4-slice inventory → reconcile every entry against the classes/PROVEN table | coordinator, on baseline landing | waiting on the baseline run |
+| W7 | CAPSTONE: single 48-shard run (~<1 h post-cache), aggregate = the recorded proof | coordinator, once W1-W6 land | gated on W6 |
 
 Capstone preconditions checklist (all must hold before W7 launches):
 every W1-W5 landed and reconciled; `npx tsc --noEmit` clean; each changed
