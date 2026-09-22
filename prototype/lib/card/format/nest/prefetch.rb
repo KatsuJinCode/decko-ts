@@ -73,8 +73,8 @@ class Card
           # render!; the cache is already warm from the top-level prefetch,
           # so subsequent prefetches are wasted DB round trips.
           # See the perf doc note for the why.
-          prefetch_depth += 1
-          if prefetch_depth > 1
+          Thread.current[:prefetch_render_depth] = prefetch_depth + 1
+          if Thread.current[:prefetch_render_depth] > 1
             return 0
           end
 
@@ -97,7 +97,7 @@ class Card
 
             stats[:rows]
           ensure
-            prefetch_depth -= 1
+            Thread.current[:prefetch_render_depth] = 0
           end
         end
 
