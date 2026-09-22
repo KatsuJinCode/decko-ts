@@ -392,11 +392,15 @@ function rewriteNocaseCollations(sql: string): string {
   return out;
 }
 
-/** Walk backward from `pos` to find the start of the SQL token at `pos`.
- *  Tokens are bounded by whitespace, commas, open parens, or the start of
- *  the string. */
+/** Walk backward from `pos` to find the start of the SQL token that ends
+ *  just before `pos`. Any leading whitespace between the token and `pos`
+ *  is skipped first (so `pos` pointing at `COLLATE` finds the token that
+ *  ends right before the whitespace before COLLATE). Tokens are bounded
+ *  by whitespace, commas, open parens, or the start of the string. */
 function findTokenStart(sql: string, pos: number): number {
   let i = pos - 1;
+  while (i >= 0 && /\s/.test(sql[i])) i -= 1;
+  // i is now at the last non-whitespace char of the token (or -1).
   while (i >= 0) {
     const ch = sql[i];
     if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "," || ch === "(") {
