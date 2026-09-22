@@ -29,7 +29,7 @@ import {
   type ShardLine,
 } from "./permission-corpus-seeding.js";
 import { installHelpRules } from "../../../src/card/render/help-popover.js";
-import { normalizeSlotIds } from "../../src/testing/diff.js";
+import { normalizeSlotIds } from "../../../src/testing/diff.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 
 const TARGET_IDS = [217, 268, 273, 294, 300, 302, 315] as const;
