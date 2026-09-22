@@ -20,7 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import {
-  createPermissionSeededStorage,
+  createCorpusSeededStorage,
   readShardLines,
   CORPUS_DB,
   type ShardLine,
