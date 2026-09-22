@@ -32,9 +32,16 @@ describe("driver path bisection (seeded engine storage)", () => {
       await storage.fetcher.driver.query("SELECT COUNT(*) AS n FROM cards", []);
       console.log(`TRIVIAL_QUERY_MS ${Date.now() - t}`);
 
-      const first = readShardLines()[0] as { name: string };
-      t = Date.now();
+      let t = Date.now();
+      const watch = setInterval(() => {
+        const stmts = storage!.counting.statements;
+        const last = stmts[stmts.length - 1] ?? "(none)";
+        console.log(
+          `WATCH ${((Date.now() - t) / 1000) | 0}s stmts=${stmts.length} last=${last.slice(0, 140)}`,
+        );
+      }, 10_000);
       const card = await storage.fetcher.fetchByName(first.name);
+      clearInterval(watch);
       console.log(`FETCH_BY_NAME_MS ${Date.now() - t} key=${card?.key ?? "none"}`);
       expect(card).toBeDefined();
 
