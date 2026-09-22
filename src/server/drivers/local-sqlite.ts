@@ -69,6 +69,16 @@ export type SqliteRow = Record<string, unknown>;
 
 export class LocalSqliteDriver implements SQLDatabaseDriver {
   private readonly db: BetterSqlite3Database;
+  /** Prepared-statement cache keyed by SQL text. The engine re-issues the
+   *  SAME statement texts every render (the closure walk, the folded
+   *  permission/structure statements, the fetch queries — the varying parts
+   *  ride as parameters); without this cache better-sqlite3 re-parses and
+   *  re-plans the multi-KB recursive walk twice per render. SQLite handles
+   *  schema-change invalidation of a live sqlite3_stmt itself, and the
+   *  cache's lifetime is this driver's handle, so there is no staleness
+   *  window. Measured 2026-09-22: the dominant per-render fixed cost on the
+   *  corpus deck. */
+  private readonly stmtCache = new Map<string, BetterSqlite3Statement>();
 
   constructor(options: LocalSqliteDriverOptions = {}) {
     this.db = new Database(options.path ?? ":memory:", {
@@ -76,8 +86,17 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
     }) as unknown as BetterSqlite3Database;
   }
 
+  private prepareCached(sql: string): BetterSqlite3Statement {
+    let stmt = this.stmtCache.get(sql);
+    if (stmt === undefined) {
+      stmt = this.db.prepare(sql);
+      this.stmtCache.set(sql, stmt);
+    }
+    return stmt;
+  }
+
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const stmt = this.db.prepare(sql);
+    const stmt = this.prepareCached(sql);
     if (stmt.reader) {
       // Reading statement: better-sqlite3's .all() gives object rows but no
       // change counters, so rowsAffected is reported as 0 and
