@@ -150,6 +150,30 @@ export class CardActionEngine {
     }
   }
 
+  /**
+   * The integration stage (phases.rb:33-39): after expire, before the
+   * caller sees the result, the act's events go to every registered
+   * save-path hook (follow notifications today). No hooks configured or
+   * an anonymous actor (Ruby: notifications carry the acting user;
+   * anonymous writes notify no one) -> dispatch nothing. Hook failures
+   * are logged inside runIntegrationHooks, never raised — mail must not
+   * break the save that triggered it.
+   */
+  private async dispatchSavePathIntegrations(result: ActionResult | null): Promise<void> {
+    if (result === null) return;
+    if (this.integrationHooks === undefined || this.integrationHooks.length === 0) return;
+    if (this.actor === null || this.actor.name === ANONYMOUS_ACTOR_NAME) return;
+    const actor = { id: this.actor.id, name: this.actor.name, email: null };
+    await runIntegrationHooks({
+      actId: result.actId,
+      actor,
+      silent: false,
+      events: expandActionResultToSavePathEvents(result, actor, false),
+      hooks: this.integrationHooks,
+      context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
+    });
+  }
+
   // -----------------------------------------------------------------------
   // Set — Card.create! (director/card_class.rb:5-9: `card = new opts;
   // card.save!`). Junction names auto-create their side cards as subcards
