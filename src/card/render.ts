@@ -740,13 +740,24 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /** card-mod-search set/abstract/cql_search.rb shape: the Search card's
-   *  content is a CQL statement; execute it through the CQL engine. */
+   *  content is a CQL statement; execute it through the CQL engine.
+   *  cql_search.rb:29-38 raises Card::Error::BadQuery on parse failures
+   *  (empty content, invalid JSON) — port parity means THROWING the same
+   *  class with the same message, not swallowing the failure into an
+   *  empty result list. The error class carries its Ruby class name
+   *  (render/errors.ts) so the corpus-v2 replay handler — read-only per
+   *  the stream contract — emits the exact CAPTURE_ERROR sentinel bytes
+   *  the capture recorded. */
   private async runSearch(card: RenderCard): Promise<RenderCard[]> {
+    const rawContent = card.dbContent;
+    if (rawContent === "") {
+      throw emptyQueryError();
+    }
     let statement: unknown;
     try {
-      statement = JSON.parse(card.dbContent);
+      statement = JSON.parse(rawContent);
     } catch {
-      return []; // search error views are wave 3 (search_error)
+      throw badQuery(rawContent);
     }
     if (statement === null || typeof statement !== "object" || Array.isArray(statement)) {
       return [];
