@@ -88,12 +88,19 @@ scenario = {
 
 Card::Auth.as_bot do
   # ----- Seed follow + email-template machinery ---------------------------
-  # The follower (Sara). The user must have +*email set so the
-  # follower_notification_email's `:to` override resolves.
+  # The follower (Sara). The follower_notification_email trigger calls
+  # `follower.account.send_change_notice`; that method returns
+  # `unless email.present?` (card-mod-follow set/right/account.rb:2).
+  # `email` here is the ACCOUNT card's `+*email` (card_accessor
+  # :email — card-mod-account set/right/account.rb:3 reads from
+  # `<card>+*email`). So the seed must set `Sara+account+*email`, NOT
+  # `Sara+*email` (the user-card email field is not what the trigger
+  # reads in the dev-DB scenario).
   sara = Card.fetch "Sara", new: { type_id: Card::UserID }
   if sara.new_card?
     Card.create! name: "Sara", type: "User", subcards: {
-      "+account" => { content: "" },
+      "+account" => { content: "",
+                      subcards: { "+*email" => { content: "sara@example.com" } } },
       "+*email"  => { content: "sara@example.com" },
     }
     seed_log["Sara"] = "created"
@@ -109,7 +116,8 @@ Card::Auth.as_bot do
   john = Card.fetch "John", new: { type_id: Card::UserID }
   if john.new_card?
     Card.create! name: "John", type: "User", subcards: {
-      "+account" => { content: "" },
+      "+account" => { content: "",
+                      subcards: { "+*email" => { content: "john@example.com" } } },
       "+*email"  => { content: "john@example.com" },
     }
     seed_log["John"] = "created"
