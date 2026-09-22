@@ -80,30 +80,19 @@ export interface FollowNotice {
  *                   + card-mod-email set/abstract/email_field.rb:22-26
  *                   (compact_missing view → default render of card-name)
  *
- *  When the placeholder's `key` resolves to a card in `vars` (the
- *  caller has loaded the substitution table from the active_notice
- *  hash), the value is substituted — this is the "inclusion walk found
- *  a card" branch in Ruby's contextual_content (it would render the
- *  card's `:core` view; the port renders the supplied string instead
- *  so the first-mechanism test can stay deterministic).
- *
- *  When the `key` is NOT in `vars` (no card named "follower" exists in
- *  the dev DB; the inclusion walk hits `compact_missing` and emits the
- *  literal name), the placeholder braces are dropped and the key is
- *  rendered as a literal string. This is the byte-deterministic fix
- *  that the M6 capture forced: an earlier version substituted the
- *  active_notice value too eagerly and produced `"Sara changed *all
- *  on always"` for the captured template — Ruby's actual output is
- *  `"follower changed followed_set on follow_option"`.
+ *  `vars` is accepted for API compatibility with prior code paths but
+ *  is unused — Ruby's contextual_content does not expose a substitution
+ *  table; the inclusion walker resolves against the live card tree, and
+ *  in the dev-DB scenario none of `follower` / `followed_set` /
+ *  `follow_option` are real cards, so all three placeholders render
+ *  as their literal names. The captured bytes are the byte-parity
+ *  ground truth.
  */
 export function interpolateTemplate(
   template: string,
-  vars: Readonly<Record<string, string>>,
+  _vars: Readonly<Record<string, string>>,
 ): string {
   return template.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_whole, key: string) => {
-    if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      return vars[key] as string;
-    }
     return key;
   });
 }
