@@ -68,10 +68,16 @@ class Card
         def prefetch_inclusion_closure root_card, _view
           return 0 unless root_card&.key
 
-          # Idempotency guard: skip the walk if this root_key was already
-          # prefetched in this process. Ruby's render! recurses once per
-          # nested subformat -- we want the prefetch to run exactly once
-          # per top-level render entry (matches the TS port's contract).
+          # Idempotency guard: Ruby's render! recurses once per nested
+          # subformat (Nesting#nest -> subformat.render -> render! -> ...).
+          # Without this guard, the prefetch would walk the full closure at
+          # every level -- 8 walks for a depth-8 chain. Two complementary
+          # checks:
+          #   1) Same-key repeat: set membership (cheap, no DB)
+          #   2) Cache-warm: the root card is already in Card::Cache[Card]
+          #      -- the closure's been seen in this process (a cold root
+          #      also passes this; the closure walk is the cost we pay).
+          # Check (1) first to keep the fast path truly zero-query.
           if prefetch_done_for_thread.include?(root_card.key)
             return 0
           end
