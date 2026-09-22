@@ -20,7 +20,7 @@
 //   GET /__health                     -> 200 OK (proxy self-test)
 //
 // CLI:
-//   node tools/shadow/ts-upstream-dev-server.mjs
+//   node --experimental-strip-types tools/shadow/ts-upstream-dev-server.mjs
 //     (listens on PORT env or 0 for ephemeral; logs the URL)
 
 import { createServer } from "node:http";
