@@ -123,8 +123,13 @@ describe("importFromSqlite — unknown tables", () => {
     const dir = makeDir();
     const srcPath = join(dir, "src.sqlite");
     const db = new Database(srcPath);
-    db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, content TEXT)`);
-    db.exec(`INSERT INTO cards (id, name, content) VALUES (1, 'only', 'only body')`);
+    // include created_at/updated_at because decko-ts target requires NOT NULL
+    db.exec(`CREATE TABLE cards (
+      id INTEGER PRIMARY KEY, name TEXT, content TEXT,
+      created_at TEXT, updated_at TEXT,
+      creator_id INTEGER, updater_id INTEGER, type_id INTEGER, trash INTEGER DEFAULT 0
+    )`);
+    db.exec(`INSERT INTO cards (id, name, content, created_at, updated_at, creator_id, updater_id, type_id) VALUES (1, 'only', 'only body', '2024-01-01', '2024-01-01', 1, 1, 3)`);
     db.exec(`CREATE TABLE site_widgets (id INTEGER PRIMARY KEY, foo TEXT)`);
     db.exec(`INSERT INTO site_widgets (id, foo) VALUES (1, 'a'),(2,'b'),(3,'c')`);
     db.close();
