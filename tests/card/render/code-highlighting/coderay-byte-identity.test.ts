@@ -16,12 +16,12 @@ import {
   langForTypeCode,
   wrapDiv,
   type HighlightLanguage,
-} from "../../../src/card/render/code-highlighting/index.js";
-import { scanJson } from "../../../src/card/render/code-highlighting/scanners/json.js";
-import { scanCss } from "../../../src/card/render/code-highlighting/scanners/css.js";
-import { scanHtml } from "../../../src/card/render/code-highlighting/scanners/html.js";
-import { coderayEscape } from "../../../src/card/render/code-highlighting/escape.js";
-import { ALPHA_STYLES } from "../../../src/card/render/code-highlighting/alpha-style.js";
+} from "../../../../src/card/render/code-highlighting/index.js";
+import { scanJson } from "../../../../src/card/render/code-highlighting/scanners/json.js";
+import { scanCss } from "../../../../src/card/render/code-highlighting/scanners/css.js";
+import { scanHtml } from "../../../../src/card/render/code-highlighting/scanners/html.js";
+import { coderayEscape } from "../../../../src/card/render/code-highlighting/escape.js";
+import { ALPHA_STYLES } from "../../../../src/card/render/code-highlighting/alpha-style.js";
 
 const FIXTURES = "C:/localProjects/decko-ts/fixtures/corpus";
 const CAPTURED = "C:/localProjects/decko-ts/fixtures/captured/coderay";
