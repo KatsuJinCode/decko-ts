@@ -200,10 +200,22 @@ class Card
           #    keyed by card.key (matching lib/card/cache/card_class.rb:28-34
           #    write_to_cache contract). Skip the Cache#write API to avoid
           #    the after_write_to_temp_cache callback chain.
+          #
+          #    Pre-call include_set_modules so the depth-first path's
+          #    Card.fetch#finalize_result_card finds @set_mods_loaded=true
+          #    and returns the card with no further pattern work. The TS
+          #    port's prefetch.ts:328-330 cacheRecord(...) chain does the
+          #    same (cards are "composed" before being written).
           for row in hydrated
             key = row["key"]
             next unless key.present?
             card = Card.instantiate(row)
+            # Pre-load set modules -- this DOES cost queries (pattern walks
+            # may query), but they happen ONCE here, in batch, vs the
+            # depth-first path's per-inclusion scatter. Net: same total
+            # queries; the saving is the depth-first per-inclusion SELECT.
+            # See lib/card/mod/core/set/all/initialize.rb:61-72.
+            card.include_set_modules if card.respond_to?(:include_set_modules)
             card_cache.temp.store[key.to_s] = card
             lex_cache.temp.store[row["id"].to_s] = row["name"].to_s
             left_id = row["left_id"]
