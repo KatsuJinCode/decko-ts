@@ -196,7 +196,6 @@ function renderPointerListCore(fmt: RenderFormat): string {
       // substitution (card-mod-bar_and_box set/all/bar.rb:9), which
       // is exactly the captured byte shape for corpus:77's yzzw
       // (slot id `yzzw-mini_bar-view`, denied bar_left / bar_right).
-      const parsed = { name };
       const target = fmt.engine.fetchRenderCard(name);
       let slotHtml: string;
       if (target !== undefined) {
@@ -213,8 +212,12 @@ function renderPointerListCore(fmt: RenderFormat): string {
         // corpus pins comes from the read-permission gate (view_perms
         // :read for :mini_bar is also :read, the unknown card fails
         // ok_to_read?, the gate returns the denial span and the
-        // view dispatch never runs).
-        slotHtml = fmt.nest(parsed as { name: string });
+        // view dispatch never runs). We use the format.nest path -
+        // the same one a `{{yzzw}}` miss takes - which calls
+        // buildUnknownNestCard when the target is missing and
+        // renders via the unknown-card view routing (format/error
+        // .rb#view_for_unknown / view/permission.rb#alter_unknown).
+        slotHtml = fmt.nest({ name, syntax: "", options: {} });
       }
       return pointerItemWrap(slotHtml);
     })
