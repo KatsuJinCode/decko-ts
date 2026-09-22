@@ -116,59 +116,6 @@ const FOREIGN_PENDING: Record<string, { reason: string; actualMarker: RegExp }> 
     reason: "*help rule popover content (menu view) — views-stream mechanism",
     actualMarker: /&amp;nbsp;/,
   },
-  // Set-card html views (card-mod-rules set/type/set/html_views.rb family):
-  // the Rules section, the open-view hide list (template_closer, ...), and
-  // the set menu popover. Marker-pinned per entry until the set-card-views
-  // stream lands; each marker matches the ACTUAL bytes the divergence
-  // produces, so any other regression on these entries still fails.
-  "corpus:217:render:closed": {
-    reason: "set-card menu popover content — set-card-views mechanism",
-    actualMarker: /data-bs-content=" &lt;div class=&quot;ms-auto/,
-  },
-  "corpus:268:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:273:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:294:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:300:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:302:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:315:render:content": {
-    reason: "set-card Rules section (content view) — set-card-views mechanism",
-    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
-  },
-  "corpus:315:render:open": {
-    reason: "set-card open-view hide list — set-card-views mechanism",
-    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
-  },
-  "corpus:273:render:open": {
-    reason: "set-card open-view hide list — set-card-views mechanism",
-    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
-  },
-  "corpus:294:render:open": {
-    reason: "set-card open-view hide list — set-card-views mechanism",
-    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
-  },
-  "corpus:300:render:open": {
-    reason: "set-card open-view hide list — set-card-views mechanism",
-    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
-  },
-  "corpus:302:render:open": {
-    reason: "set-card open-view hide list — set-card-views mechanism",
-    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
-  },
 };
 
 describe("corpus replay: *structure rule templates render byte-identically", () => {
