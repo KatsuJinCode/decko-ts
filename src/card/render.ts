@@ -683,11 +683,18 @@ export class RenderEngine implements RenderEngineLike {
     const name = record.name ?? DeckoName.parse("");
     const typeId = record.typeId;
     let typeName: string | undefined;
+    let typeCode: string | undefined;
     if (typeId !== undefined) {
       const typeRecord =
         (await this.fetcher.retrieveFromCacheById(typeId)) ??
         (await this.fetcher.fetchById(typeId));
       typeName = typeRecord?.name?.s;
+      // The codehash is folded into the cold render's prefetch batch (see
+      // render.ts#parseRuleTypeIds), so peekNameForId is synchronous and
+      // zero-query here. For unknown typeIds (no codename), the lookup
+      // returns undefined; the view code falls back to its default
+      // rendering (the non-pointer core path).
+      typeCode = this.fetcher.codenames.peekNameForId(typeId);
     }
     let leftTypeName: string | undefined;
     let leftRecord: CardRecord | undefined;
@@ -709,6 +716,7 @@ export class RenderEngine implements RenderEngineLike {
       key,
       typeName,
       typeId,
+      typeCode,
       id: record.id,
       dbContent: cardContent(record),
       setKeys: safeSetKeys({ name, typeId, typeName, leftTypeName, isRule }),
