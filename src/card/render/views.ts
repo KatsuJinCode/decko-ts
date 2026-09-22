@@ -317,6 +317,7 @@ function collectSetRules(fmt: RenderFormat): RenderCard[] {
   return fmt.engine.collectRules(fmt.card);
 }
 
+
 /** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape. */
 function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: RenderCard[]): string {
   const groups = groupRulesByCategory(rules);
