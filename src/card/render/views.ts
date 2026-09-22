@@ -460,17 +460,7 @@ function itemBarMenuHtml(url: string): string {
 
 const itemBarView: ViewFn = (ctx) => {
   const inner = itemBarHtml(ctx);
-  // Ruby's pointer/list content rendering nests items with view=:bar but
-  // wraps each in a slot whose id ends in `mini_bar-view` (the bar view
-  // body runs, @current_view is set to the view name via the bar view's
-  // own wrap, but the captured slot id the corpus pins for items rendered
-  // from inside a pointer/list content view is `name-mini_bar-view`).
-  // The slot id here uses "mini_bar"; the data-slot's `view` field
-  // stays "bar" (overridden via slotViewOverride so the captured byte
-  // shape matches - same pattern the rest of the surface uses for the
-  // "tiny divergence" between slot id and data-slot view).
-  ctx.voo.slotViewOverride = "bar";
-  return slotWrapCommon(ctx.fmt, "mini_bar", inner);
+  return slotWrapCommon(ctx.fmt, "bar", inner);
 };
 
 // ---------------------------------------------------------------------------
