@@ -232,6 +232,7 @@ function stubCard(setKeys: string): RenderCard {
     key: name.key,
     typeName: undefined,
     typeId: undefined,
+    typeCode: undefined,
     id: undefined,
     dbContent: "",
     setKeys,
