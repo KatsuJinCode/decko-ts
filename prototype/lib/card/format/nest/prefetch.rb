@@ -68,41 +68,39 @@ class Card
         def prefetch_inclusion_closure root_card, _view
           return 0 unless root_card&.key
 
-          # Depth guard: prefetch only at the top level (depth 0). Nested
-          # render! calls come from Nesting#nest -> subformat.render ->
-          # render!; the cache is already warm from the top-level prefetch,
-          # so subsequent prefetches are wasted DB round trips. The counter
-          # stacks across nested renders (the top render sees depth=1, its
-          # child render! sees depth=2, etc.) -- nested calls return early.
-          # See the perf doc note for the why.
-          Thread.current[:prefetch_render_depth] = prefetch_depth + 1
+          # Depth guard: prefetch only at the top level. Nested render!
+          # calls come from Nesting#nest -> subformat.render -> render!;
+          # the cache is already warm from the top-level prefetch, so
+          # subsequent prefetches are wasted DB round trips.
+          #
+          # The counter is incremented on entry and decremented on exit so
+          # it spans the entire nested render tree (matches the TS port's
+          # "run the prefetch once per top-level render" contract).
+          # render! is patched to manage the depth counter across its full
+          # lifetime; this method just checks it.
           STDOUT.puts "  [prefetch] enter depth=#{prefetch_depth} root=#{root_card.key}" if ENV["PREFETCH_DEBUG"]
-          if prefetch_depth > 1
-            STDOUT.puts "  [prefetch] SKIP (depth>#{1})" if ENV["PREFETCH_DEBUG"]
+          if prefetch_depth >= 1
+            STDOUT.puts "  [prefetch] SKIP (depth>=#{prefetch_depth})" if ENV["PREFETCH_DEBUG"]
             return 0
           end
 
-          begin
-            stats = { rows: 0, statements: 0, fallback_rounds: 0 }
+          stats = { rows: 0, statements: 0, fallback_rounds: 0 }
 
-            # --- 1) Ruby-side closure walk, one SELECT per level -----------
-            rows = walk_via_bulk_select(root_card.key, stats)
-            if ENV["PREFETCH_DEBUG"]
-              puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
-                   "#{stats[:statements]} statements"
-            end
-
-            # --- 2) hydrate Card::Cache[Card] + Card::Cache[Lexicon] -----
-            hydrate_cache rows, stats
-            if ENV["PREFETCH_DEBUG"]
-              puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
-                   "#{stats[:statements]} statements total"
-            end
-
-            stats[:rows]
-          ensure
-            Thread.current[:prefetch_render_depth] = prefetch_depth - 1
+          # --- 1) Ruby-side closure walk, one SELECT per level -----------
+          rows = walk_via_bulk_select(root_card.key, stats)
+          if ENV["PREFETCH_DEBUG"]
+            puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
+                 "#{stats[:statements]} statements"
           end
+
+          # --- 2) hydrate Card::Cache[Card] + Card::Cache[Lexicon] -----
+          hydrate_cache rows, stats
+          if ENV["PREFETCH_DEBUG"]
+            puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
+                 "#{stats[:statements]} statements total"
+          end
+
+          stats[:rows]
         end
 
         # --- helpers --------------------------------------------------------
