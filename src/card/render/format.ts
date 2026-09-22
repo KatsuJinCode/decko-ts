@@ -580,6 +580,17 @@ export interface RenderEngineLike {
    *  without it - the card does not exist and nothing prefetches. Optional
    *  so engines without the tracking hook still satisfy the interface. */
   reportUnknownCard?(key: string): void;
+  /** Enrich + memoize a card by name for an on-demand render path
+   *  (the pointer/list core view reads items by name from db_content;
+   *  the captured corpus bytes always resolve these to real cards, but
+   *  the items are not always reachable from the closure walk the
+   *  prefetch uses — an item referenced by plain text in db_content is
+   *  not in the reference closure). Returns the enriched RenderCard or
+   *  undefined for a fetch miss (the engine treats that like the
+   *  unknown-card path: an empty slot). Optional: engines without
+   *  it skip the enrichment and the render shows the empty-list
+   *  fallback. */
+  prepareItemForRender?(name: string): Promise<RenderCard | undefined> | RenderCard | undefined;
 }
 
 // ---------------------------------------------------------------------------
