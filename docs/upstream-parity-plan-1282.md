@@ -53,8 +53,12 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
   Remaining: per-mod ports, sequenced by the T6 report (1 ported /
   30 partial / 2 ignored); unknown-card mod-view hook is a documented
   3-line coordinator patch.
-- `[ ]` S5 non-read view perms (`perms: :update`, skip_perms) — IN FLIGHT
-  (REG pool, launched 2026-09-21).
+- `[~]` S5 non-read view perms — LANDED 2026-09-21 (REG): full task
+  resolution + skip_perms + denial substitutions (33 tests); corpus
+  census shows all 124,632 captured denials are `(read)`-labeled, so
+  non-read coverage is gem-cited + synthetic-pinned
+  (docs/view-perms-notes.md). Coordinator patch (ensureTaskVerdicts +
+  taskAllowed) queued for the next render.ts integration pass.
 - `[~]` S6 Gherkin features port — first slice LANDED 2026-09-21 (MM
   wave A): 13 upstream features inventoried, CRUD/names/views ported
   (31 tests green), per-feature blockers documented
