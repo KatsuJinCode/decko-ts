@@ -212,7 +212,7 @@ class Card
         # authority). Anything the CTE could not resolve is fetched in
         # per-level rounds (the prescribed one-batch-per-level shape).
         def collect_pending rows
-          pending = Set.new
+          pending = ::Set.new
           for row in rows
             content = row["db_content"]
             next unless content.present?
