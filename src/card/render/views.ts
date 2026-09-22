@@ -437,30 +437,22 @@ const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
   ["thanks", "other"], ["follow_fields", "other"], ["follow", "other"],
 ]);
 
-/** Group the set's rules by setting category. Ruby's
- *  card-mod-rules set/type/set/html_views/rule_lists.rb:49-59
- *  category_accordion_item iterates Card::Setting.groups.keys in the
- *  FIXED six-group order (templating/permission/webpage/editing/event/
- *  other); for each group it collects the rules whose right-side setting
- *  codename maps to that group, then yields the list to the accordion
- *  item body builder. */
-function groupRulesByCategory(rules: RenderCard[]): Array<[string, RenderCard[]]> {
-  const byGroup = new Map<string, RenderCard[]>();
-  for (const g of SETTING_GROUPS) byGroup.set(g, []);
-  for (const rule of rules) {
-    const codename = inferSettingCodename(rule);
-    const groupKey =
-      codename !== undefined ? SETTING_TO_GROUP.get(codename) ?? "other" : "other";
-    const list = byGroup.get(groupKey);
-    if (list !== undefined) list.push(rule);
-  }
-  const out: Array<[string, RenderCard[]]> = [];
-  for (const g of SETTING_GROUPS) {
-    const list = byGroup.get(g);
-    out.push([g, list ?? []]);
-  }
-  return out;
-}
+/** Group -> ordered list of settings in that group. The Ruby
+ *  category_accordion iterates settings within a group in their
+ *  registration position order (Card::Setting.groups[group] holds an
+ *  Array — register_setting inserts at the requested position with
+ *  set_position, group.rb:101-110). Captured oracle bytes pin this
+ *  per-group ordering (corpus:268 templating: autoname, default,
+ *  structure — the body interleaves denials and the rule at *default's
+ *  position). */
+const GROUP_TO_SETTINGS: Readonly<Record<string, ReadonlyArray<string>>> = {
+  templating: ["autoname", "default", "structure"],
+  permission: ["create", "read", "update", "delete", "captcha"],
+  webpage: ["head", "layout", "style", "script"],
+  editing: ["help", "input_type", "guide", "content_options", "content_option_view"],
+  event: ["on_create", "on_update", "on_delete"],
+  other: ["thanks", "follow_fields", "follow"],
+};
 
 /** The right part's setting codename (without the leading "*"). The
  *  card-mod-rules card.type_card setting card has codename = the bare
