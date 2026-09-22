@@ -174,6 +174,35 @@ const coreView: ViewFn = (ctx) => {
     // every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
     return renderPointerListCore(fmt);
   }
+  if (fmt.card.typeName === "Date") {
+    // card-mod-date-0.20.0 set/type/date.rb:6-8 `view :core do
+    //   ::Date.parse(card.content).strftime "%B %-d, %Y"
+    // end`. The captured corpus (shard-000000.jsonl) carries ZERO Date
+    // cards with valid content — every Date card the corpus sweep found
+    // (id=1135, 1138, 1211, 1218, 1222 and the 24 total in shard-000000,
+    // 4021 total across all shards) carries random non-date content; the
+    // prepare phase (render.ts:866-872) raises Date::Error for those
+    // BEFORE this view body runs (the corpus pins :open and :content as
+    // CAPTURE_ERROR). The port mirrors that raise in src/card/render/
+    // errors.ts#dateError, so the byte surface of the corpus is
+    // unchanged by this branch — this branch fires only for content the
+    // prepare phase accepted as a valid date (which the corpus does not
+    // exercise).
+    //
+    // The Date core override is the raw strftime result (no
+    // process_content wrap: there's no nest-syntax to scan in a
+    // formatted date string). Ruby strftime "%B %-d, %Y" maps to:
+    //   %B  -> month full name   ("January", "February", ...)
+    //   %-d -> day-of-month, no leading zero
+    //   %Y  -> 4-digit year
+    // JS Date.parse is stricter than Ruby's Date.parse but the ISO 8601
+    // and "Month Day, Year" formats both engines accept. For ISO 8601
+    // (YYYY-MM-DD) JS parses as midnight UTC, so the day-of-month is
+    // extracted via getUTCDate/getUTCFullYear (a local-timezone read
+    // would shift a midnight-UTC date one day back in any zone west of
+    // UTC).
+    return formatDateCore(fmt.card.dbContent);
+  }
   // The CodeRay cardtypes override :core with
   // `process_content CodeRay.scan(_render_raw, LANG).div` (card-mod-format
   // set/type/json.rb:30-32; layout_type/head/css/script analogs). The
@@ -185,6 +214,29 @@ const coreView: ViewFn = (ctx) => {
   }
   return fmt.processContent(fmt.renderRaw());
 };
+
+/** card-mod-date-0.20.0 set/type/date.rb:7
+ *  `::Date.parse(card.content).strftime "%B %-d, %Y"`.
+ *  Throws dateError() if the content is not a parseable date — the
+ *  prepare phase (render.ts:866-872) raises FIRST for Date-type cards
+ *  with invalid content, so this function only runs for content that
+ *  passed isValidDateContent. The defensive throw here mirrors the
+ *  Ruby shape (`Date::Error: invalid date`) in case the prepare
+ *  check is ever bypassed. */
+export function formatDateCore(content: string): string {
+  const date = new Date(content);
+  if (Number.isNaN(date.getTime())) {
+    throw dateError();
+  }
+  // %B = full month name (locale-independent via toLocaleString('en-US'))
+  const month = date.toLocaleString("en-US", { month: "long", timeZone: "UTC" });
+  // %-d = day-of-month, no leading zero (Ruby); JS getUTCDate returns
+  // an integer, so the value is unpadded already.
+  const day = date.getUTCDate();
+  // %Y = 4-digit year
+  const year = date.getUTCFullYear();
+  return `${month} ${day}, ${year}`;
+}
 
 /** Render the pointer/list content view body: the card-list pointer-list
  *  wrapper, with each item rendered as a mini_bar slot whose data-slot
