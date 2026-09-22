@@ -350,13 +350,59 @@ export class RenderFormat {
     return String(effective);
   }
 
-  /** set/format.rb before(:view) hooks - the captured surface has exactly
-   *  one: before(:content) { prepare_content_slot } (html/views.rb:6-8). */
+  /** set/format.rb before(:view) hooks - the captured surface has the
+   *  following class_up machinery:
+   *  - html/views.rb:6-8 before(:content) { prepare_content_slot }
+   *    (`class_up "card-slot", "d0-card-content"`)
+   *  - card-mod-rules set/rule/bar_view.rb:9-13 view :bar:
+   *    `class_up "card-slot", "_rule-item #{category_classes}"` -
+   *    fires for rule cards only (right side is a setting). */
   private runBeforeHook(view: string, voo: Voo): void {
     if (view === "content") {
       // html/views.rb#prepare_content_slot
       voo.classUp("card-slot", "d0-card-content");
+    } else if (view === "bar" && this.cardIsRule()) {
+      // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
+      const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
+      const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
+      voo.classUp("card-slot", classExtra);
     }
+  }
+
+  /** card.rule? predicate (lib/card/rule/all.rb:32-51): the card is a rule
+   *  when its right part is a setting (type=SettingID) and the left part
+   *  is a set (type=SetID), for the 3-part shape "SetTypeName+Setting+Setting". */
+  private cardIsRule(): boolean {
+    const card = this.card;
+    if (!card.name.isCompound) return false;
+    if (this.engine === undefined) return false;
+    return this.engine.cardIsRule?.(card) ?? false;
+  }
+
+  /** The right part's setting codename (e.g. "default", "head"). The
+   *  card-mod-rules setting card has codename = the bare name (no leading "*"). */
+  private rightPartCodenameForRule(): string | undefined {
+    const card = this.card;
+    if (!card.name.isCompound) return undefined;
+    const rightKey = card.name.rightName?.key;
+    if (rightKey === undefined) return undefined;
+    // The right key has leading "*"; the codename is the bare form.
+    const bare = rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
+    // Look up the right card via the fetcher's prepared map (cached).
+    const right = this.engine.fetchRenderCard(bare);
+    return right?.record.codename;
+  }
+
+  /** The fixed Card::Setting.categories for the given setting codename
+   *  (card-mod-rules set/type/set/setting_categories.rb:9-15). */
+  private ruleSetCategories(settingCodename: string | undefined): string[] {
+    if (settingCodename === undefined) return [];
+    const result = ["all"];
+    if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
+    if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
+    // "recent" requires the deck's recent_settings list — the corpus
+    // capture doesn't exercise it (no corpus card has a recent rule).
+    return result;
   }
 
   // -------------------------------------------------------------------------
