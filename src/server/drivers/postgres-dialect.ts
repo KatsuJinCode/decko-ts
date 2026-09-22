@@ -341,8 +341,83 @@ function rewriteNocaseCollations(sql: string): string {
     i = matchStart + m[0].length;
     // Skip whitespace.
     while (i < n && /\s/.test(sql[i])) i += 1;
-    // Look ahead for the operator.
-    const opMatch = /^(=|<>|!=|<=|>=|<|>|LIKE|NOT\s+LIKE|IN|NOT\s+IN)\b/i.exec(sql.slice(i));
+    // Look ahead for the operator. `\b` would not match between
+    // `=` and whitespace (both non-word), so the trailing boundary is
+    // a manual check on the next character.
+    const opRegex = /^(=|<>|!=|<=|>=|<|>|LIKE|NOT\s+LIKE|IN|NOT\s+IN)/i;
+    const opMatch = opRegex.exec(sql.slice(i));
+    if (opMatch !== null) {
+      const after = sql[i + opMatch[0].length];
+      // The operator must be followed by whitespace or end-of-string
+      // (otherwise we matched `<` or `>` inside an identifier).
+      if (after !== undefined && /\w/.test(after)) {
+        // try shorter matches by retrying — but the regex is greedy on
+        // alternatives so re-check. The simplest fix: invalidate the
+        // match if the next char is a word char.
+        // For `<` and `>`: the longest alternatives `<=`, `>=`, `<>` come
+        // first; if those didn't match and `<`/`>` matched but is
+        // followed by a word char, the operator isn't actually there.
+        if (opMatch[0] === "<" || opMatch[0] === ">") {
+          // Re-match without the bare `<` / `>` alternatives.
+          const opRegex2 = /^(=|<>|!=|<=|>=|LIKE|NOT\s+LIKE|IN|NOT\s+IN)/i;
+          const opMatch2 = opRegex2.exec(sql.slice(i));
+          if (opMatch2 === null) {
+            throw new Error(
+              "postgres-dialect: COLLATE NOCASE followed by `>` or `<` that is part of an identifier (engine bug)",
+            );
+          }
+          // Update the matched op
+          i -= opMatch[0].length;
+          const op = opMatch2[0].toUpperCase().replace(/\s+/g, " ");
+          i += opMatch2[0].length;
+          out += `LOWER(${leftToken}) ${op} `;
+          // continue past the operator handling below
+          while (i < n && /\s/.test(sql[i])) i += 1;
+          if (sql[i] === "(") {
+            // ... handle IN list
+            out += "(";
+            i += 1;
+            let depth = 1;
+            let piece = "";
+            while (i < n && depth > 0) {
+              const ch = sql[i];
+              if (ch === "(") {
+                depth += 1;
+                piece += ch;
+              } else if (ch === ")") {
+                depth -= 1;
+                if (depth === 0) break;
+                piece += ch;
+              } else if (ch === "," && depth === 1) {
+                out += `LOWER(${piece.trim()}), `;
+                piece = "";
+              } else {
+                piece += ch;
+              }
+              i += 1;
+            }
+            if (depth !== 0) {
+              throw new Error("postgres-dialect: unbalanced parens in IN list after COLLATE NOCASE");
+            }
+            out += `LOWER(${piece.trim()})`;
+            out += ")";
+            i += 1;
+            continue;
+          } else {
+            const rightEnd = findTokenEnd(sql, i);
+            const rhs = sql.slice(i, rightEnd);
+            out += `LOWER(${rhs})`;
+            i = rightEnd;
+            continue;
+          }
+        }
+      }
+    }
+    if (opMatch === null) {
+      throw new Error(
+        "postgres-dialect: COLLATE NOCASE must be followed by a comparison operator (engine bug)",
+      );
+    }
     if (opMatch === null) {
       throw new Error(
         "postgres-dialect: COLLATE NOCASE must be followed by a comparison operator (engine bug)",
