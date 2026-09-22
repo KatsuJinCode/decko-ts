@@ -263,11 +263,12 @@ export function formatDateCore(content: string): string {
 /** card-mod-rules-0.20.0 set/type/set/html_views.rb:6-11 view :core —
  *  the full Rules section body. Byte-pinned by corpus:268/273/294/300/
  *  302/315 against fixtures/corpus/shard-000000.jsonl. */
-function setRulesCoreHtmlSync(ctx: ViewContext, rules: RenderCard[]): string {
+function setRulesCoreHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
   const card = fmt.card;
   const url = fmt.urlKey();
   const settingsFilter = renderSettingsFilter(url);
+  const rules = collectSetRules(fmt);
   const accordion = renderCategoryAccordion(fmt, card, rules);
   return `<h4 class="mt-3">Rules</h4>\n${settingsFilter}\n${accordion}`;
 }
