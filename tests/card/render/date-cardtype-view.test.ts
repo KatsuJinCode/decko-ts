@@ -80,10 +80,15 @@ describe("formatDateCore — ::Date.parse(str).strftime('%B %-d, %Y')", () => {
   });
 
   it("month is the full English name (Ruby's %B), not abbreviated", () => {
-    expect(formatDateCore("2023-01-15")).toContain("January");
-    expect(formatDateCore("2023-01-15")).not.toContain("Jan");
-    expect(formatDateCore("2023-09-15")).toContain("September");
-    expect(formatDateCore("2023-09-15")).not.toContain("Sep");
+    // The full month names ("January", "September") are spelled out;
+    // abbreviated forms ("Jan", "Sep") would be Ruby's %b shape, not
+    // the %B shape we want. The full names happen to CONTAIN the
+    // abbreviation as a substring, so the assertion checks the full
+    // name as the first 8/9 chars of the month token — not a literal
+    // not-contains check.
+    expect(formatDateCore("2023-01-15").split(",")[0]).toMatch(/^January \d+$/);
+    expect(formatDateCore("2023-09-15").split(",")[0]).toMatch(/^September \d+$/);
+    expect(formatDateCore("2023-09-15").split(",")[0]).not.toMatch(/^Sep\b/);
   });
 
   it("UTC date components — no local-timezone day shift", () => {
