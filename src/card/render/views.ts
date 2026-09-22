@@ -289,9 +289,9 @@ function renderSettingsFilter(url: string): string {
     `<div class="my-4 mx-2 _setting-filter">` +
     `<label>Settings</label>\n` +
     radioHtml("all", "All", radioAllChecked) +
-    `\n` + radioHtml("common", "Common", radioCommonChecked) +
-    `\n` + radioHtml("field", "Field", radioFieldChecked) +
-    `\n` + radioHtml("recent", "Recent", radioRecentChecked) +
+    `\n\n` + radioHtml("common", "Common", radioCommonChecked) +
+    `\n\n` + radioHtml("field", "Field", radioFieldChecked) +
+    `\n\n` + radioHtml("recent", "Recent", radioRecentChecked) +
     `\n` +
     `</div></form>`
   );
