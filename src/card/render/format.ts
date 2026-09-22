@@ -431,6 +431,7 @@ export class RenderFormat {
       key: name.key,
       typeName: undefined,
       typeId: undefined,
+      typeCode: undefined,
       id: undefined,
       dbContent: "",
       setKeys: safeSetKeys({ name, typeId: undefined, typeName: undefined, leftTypeName: undefined }),
