@@ -143,12 +143,18 @@ Card::Auth.as_bot do
   # set/right/account.rb:17 hard-codes `Card[:follower_notification_email]`
   # so we cannot point the capture at a different card without
   # monkey-patching.
-  existing = Card["follower notification email"]
-  if existing && !existing.new_card?
+  existing = Card.fetch("follower notification email", new: {})
+  if !existing.new_card?
     seed_log["follower_notification_email.before"] =
       "trashing existing id=#{existing.id} subcards=" +
       Card.where(left_id: existing.id).map(&:name).join(",")
-    existing.destroy!
+    # Hard-trash the existing card + subcards by setting trash=true
+    # directly. destroy! runs the director's full event pipeline and
+    # raises on EmailTemplate cards because the finalize stage is
+    # skipped; update_attributes! with trash=true avoids that and
+    # leaves the card in the trash table (trash flag set, not deleted).
+    Card.where(left_id: existing.id).update_all(trash: true) # children
+    existing.update_columns(trash: true) # the email template card itself
     seed_log["follower_notification_email"] = "trashed-and-recreated"
   end
   Card.create!(
