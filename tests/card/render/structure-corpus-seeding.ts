@@ -84,7 +84,20 @@ export function structureTemplateContents(): Set<string> {
  * reads; returns the storage.
  */
 export async function createStructureSeededStorage(): Promise<RenderTestStorage> {
-  const storage = await createPermissionSeededStorage();
+  return createStructureSeededStorageFor(new Set(readShardLines().map((l) => l.id)));
+}
+
+/**
+ * The structure enrichment for an ARBITRARY id set — the corpus replay
+ * driver's entry point (the union of every shard's ids, so cross-shard nest
+ * targets resolve and the rule universes are complete for the whole corpus).
+ * Permission seeding on the caller's ids, then everything the
+ * structured-content mechanism reads on top.
+ */
+export async function createStructureSeededStorageFor(
+  ids: Set<number>,
+): Promise<RenderTestStorage> {
+  const storage = await createCorpusSeededStorage(ids);
   const corpus = new Database(CORPUS_DB, { readonly: true });
 
   const structureCardId = (
