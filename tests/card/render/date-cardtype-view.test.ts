@@ -271,19 +271,27 @@ describe("captured corpus — Date-type card byte surface", () => {
     expect(entry1135!.views.title.startsWith("CAPTURE_ERROR")).toBe(false);
 
     // The TS engine reproduces the same raise for the same seeded card.
+    // Note: the test seeds with a SIMPLE name ("broken_date_one") so the
+    // render pipeline reaches the prepare-phase Date validator; a compound
+    // name like the captured corpus entry ("evog+*right+*default") would
+    // require seeding the +evog and +*default side cards (junction rows
+    // the captured seed has, but the render-test-storage seedCard helper
+    // does not produce for free). The data shape under test is the
+    // engine's Date validator behavior on invalid content — the seed
+    // name shape does not affect that validator.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       await seedCard(storage, { id: 90, name: "Date", codename: "date", typeId: 2 });
       await seedCard(storage, {
         id: 1135,
-        name: "evog+*right+*default",
+        name: "broken_date_one",
         typeId: 90,
         dbContent: "brcvtwrvz",
       });
       let captured: unknown;
       try {
-        await storage.engine.render("evog+*right+*default", "content");
+        await storage.engine.render("broken_date_one", "content");
       } catch (err) {
         captured = err;
       }
