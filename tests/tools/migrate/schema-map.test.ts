@@ -163,7 +163,7 @@ describe("mapRowToTarget — the mysqldump case", () => {
 
 describe("getColumnMap", () => {
   it("returns the per-table column map for known tables", () => {
-    const cardsMap = getColumnMap("cards");
+    const cardsMap = getColumnMap("cards")!;
     expect(cardsMap["content"]).toBe("db_content");
     expect(cardsMap["db_content"]).toBe("db_content");
     expect(cardsMap["id"]).toBe("id");
