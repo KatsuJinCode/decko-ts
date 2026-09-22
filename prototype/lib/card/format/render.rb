@@ -3,6 +3,13 @@ class Card
     # View rendering methods.
     #
     module Render
+      # PROTOTYPE PATCH (KatsuJinCode/decko-ts #9 / docs/ruby-dividend-cte.md):
+      # mix in the inclusion-closure prefetcher so render! can call it on
+      # the format instance. See Card::Format::Nest::Prefetch for the
+      # implementation; the public entry is prefetch_inclusion_closure.
+      require_relative "nest/prefetch"
+      include Card::Format::Nest::Prefetch
+
       # view=open&layout=simple
       def render! view, view_options={}
         voo = View.new self, view, view_options, @voo
