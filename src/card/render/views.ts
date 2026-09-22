@@ -209,13 +209,15 @@ const linkView: ViewFn = ({ fmt, voo }) => {
 // :open / :closed (bar.rb) + accordion (bootstrap)
 // ---------------------------------------------------------------------------
 
-/** bar.rb#prepare_bar for the two-col case (bar_cols 9, 3): class_up the bar
+/** bar.rb#prepare_bar for the two-col case (bar_cols 9, 3 by default; the
+ *  *rule set module overrides to 6, 6 — see bar-cols.ts): class_up the bar
  *  set keys, bar-left/right cols, hide bar-middle. */
 function prepareBar(ctx: ViewContext): void {
   const { fmt, voo } = ctx;
+  const [leftCol, rightCol] = readMiniBarCols(fmt.card);
   voo.classUp("bar", fmt.card.setKeys); // class_up "bar", full_page_card.safe_set_keys
-  voo.classUp("bar-left", "col-9");
-  voo.classUp("bar-right", "col-3");
+  voo.classUp("bar-left", `col-${leftCol}`);
+  voo.classUp("bar-right", `col-${rightCol}`);
   voo.hide("bar_middle"); // prepare_bar without three_cols: voo.hide :bar_middle
 }
 
