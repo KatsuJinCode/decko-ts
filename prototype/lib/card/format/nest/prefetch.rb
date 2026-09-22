@@ -71,10 +71,12 @@ class Card
           # Depth guard: prefetch only at the top level (depth 0). Nested
           # render! calls come from Nesting#nest -> subformat.render ->
           # render!; the cache is already warm from the top-level prefetch,
-          # so subsequent prefetches are wasted DB round trips.
+          # so subsequent prefetches are wasted DB round trips. The counter
+          # stacks across nested renders (the top render sees depth=1, its
+          # child render! sees depth=2, etc.) -- nested calls return early.
           # See the perf doc note for the why.
           Thread.current[:prefetch_render_depth] = prefetch_depth + 1
-          if Thread.current[:prefetch_render_depth] > 1
+          if prefetch_depth > 1
             return 0
           end
 
@@ -97,7 +99,7 @@ class Card
 
             stats[:rows]
           ensure
-            Thread.current[:prefetch_render_depth] = 0
+            Thread.current[:prefetch_render_depth] = prefetch_depth - 1
           end
         end
 
