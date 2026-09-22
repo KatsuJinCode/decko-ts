@@ -100,61 +100,67 @@ CARDS_COLS = %w[
 ].freeze
 def card_rows(ids)
   return [] if ids.empty?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{CARDS_COLS.join(', ')} FROM cards WHERE id IN (#{ids.join(', ')})"
-  ).map { |r| CARDS_COLS.zip(r).to_h }
+  )
+  rows.map { |r| CARDS_COLS.zip(r.values).to_h }
 end
 
 # Acts / Actions / Changes: only the cols the diff cares about.
 ACTS_COLS = %w[id card_id actor_id acted_at ip_address].freeze
 def act_rows_for_card(card_ids)
   return [] if card_ids.empty?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{ACTS_COLS.join(', ')} FROM card_acts WHERE card_id IN (#{card_ids.join(', ')}) " \
     "ORDER BY id"
-  ).map { |r| ACTS_COLS.zip(r).to_h }
+  )
+  rows.map { |r| ACTS_COLS.zip(r.values).to_h }
 end
 
 def act_row(id)
-  row = ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{ACTS_COLS.join(', ')} FROM card_acts WHERE id = #{Integer(id)} LIMIT 1"
-  ).first
-  return nil if row.nil?
-  ACTS_COLS.zip(row).to_h
+  )
+  return nil if rows.empty?
+  ACTS_COLS.zip(rows.first.values).to_h
 end
 
 ACTIONS_COLS = %w[id card_id card_act_id super_action_id action_type draft comment].freeze
 def action_rows_for_card(card_ids)
   return [] if card_ids.empty?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{ACTIONS_COLS.join(', ')} FROM card_actions " \
     "WHERE card_id IN (#{card_ids.join(', ')}) ORDER BY id"
-  ).map { |r| ACTIONS_COLS.zip(r).to_h }
+  )
+  rows.map { |r| ACTIONS_COLS.zip(r.values).to_h }
 end
 
 def action_rows_for_act(act_id)
   return [] if act_id.nil?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{ACTIONS_COLS.join(', ')} FROM card_actions WHERE card_act_id = #{Integer(act_id)} ORDER BY id"
-  ).map { |r| ACTIONS_COLS.zip(r).to_h }
+  )
+  rows.map { |r| ACTIONS_COLS.zip(r.values).to_h }
 end
 
 CHANGES_COLS = %w[id card_action_id field value].freeze
 def changes_for_actions(action_ids)
   return [] if action_ids.empty?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{CHANGES_COLS.join(', ')} FROM card_changes " \
     "WHERE card_action_id IN (#{action_ids.join(', ')}) ORDER BY id"
-  ).map { |r| CHANGES_COLS.zip(r).to_h }
+  )
+  rows.map { |r| CHANGES_COLS.zip(r.values).to_h }
 end
 
 REFS_COLS = %w[id referer_id referee_id referee_key ref_type is_present].freeze
 def references_for_referer(card_id)
   return [] if card_id.nil?
-  ActiveRecord::Base.connection.execute(
+  rows = ActiveRecord::Base.connection.exec_query(
     "SELECT #{REFS_COLS.join(', ')} FROM card_references " \
     "WHERE referer_id = #{Integer(card_id)} ORDER BY id"
-  ).map { |r| REFS_COLS.zip(r).to_h }
+  )
+  rows.map { |r| REFS_COLS.zip(r.values).to_h }
 end
 
 # -----------------------------------------------------------------------
