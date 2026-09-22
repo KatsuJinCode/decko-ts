@@ -59,6 +59,16 @@ import {
   type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
+import {
+  allTaskVerdictsForCard,
+  viewRequiresTask,
+  viewTaskPermissionStatements,
+  viewTaskStateFromResults,
+  type ViewTaskState,
+  type WriteTask,
+} from "./permissions/view-task-rules.js";
+import type { CrudTask } from "./permissions/view-perms.js";
+import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import type { SQLQueryResult } from "../server/driver.js";
 
 export { UnsupportedViewError };
