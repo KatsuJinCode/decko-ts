@@ -399,7 +399,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
         };
         mkdirSync(RESULTS_DIR, { recursive: true });
         writeFileSync(
-          path.join(RESULTS_DIR, "replay-full-results.json"),
+          path.join(RESULTS_DIR, `replay-full-results${RESULTS_TAG}.json`),
           JSON.stringify({ aggregate: total, shards: outcomes }, null, 2) + "\n"
         );
         console.log(JSON.stringify(total, null, 2));
@@ -408,11 +408,11 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
         // mismatches are a status (documented dependency), never a pass.
         expect(
           total.records.realFail,
-          `real card-engine failures: ${total.records.realFail} (see ${RESULTS_DIR}/replay-full-results.json)`
+          `real card-engine failures: ${total.records.realFail} (see ${RESULTS_DIR}/replay-full-results${RESULTS_TAG}.json)`
         ).toBe(0);
         expect(
           total.renders.realFail,
-          `real render-engine failures: ${total.renders.realFail} (see ${RESULTS_DIR}/replay-full-results.json)`
+          `real render-engine failures: ${total.renders.realFail} (see ${RESULTS_DIR}/replay-full-results${RESULTS_TAG}.json)`
         ).toBe(0);
       } finally {
         storage.close();
