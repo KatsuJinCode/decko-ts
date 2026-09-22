@@ -43,17 +43,20 @@ function buildCorpusV2Source(dir: string): string {
     ref_type TEXT DEFAULT '', is_present INTEGER
   )`);
   db.exec(`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)`);
-  // populate a small deck
+  // populate a small deck — decko-ts target requires created_at + updated_at
+  // NOT NULL, so include them on every row.
+  const T0 = "2024-01-01 00:00:00";
   const cards = [
-    [1, "Alpha", "alpha", null, null, null, 1, 1, "*all", null, 0, 3, "<p>alpha body</p>"],
-    [2, "Beta", "beta", null, null, null, 1, 1, "*all", null, 0, 3, "beta body"],
-    [3, "Alpha+child", "alpha+child", null, 1, 2, 1, 1, "*all", null, 0, 3, "child body"],
-    [4, "Trashed", "trashed", null, null, null, 1, 1, "*all", null, 1, 3, "trashed body"],
+    [1, "Alpha", "alpha", null, null, null, 1, 1, "*all", null, 0, 3, "<p>alpha body</p>", T0, T0],
+    [2, "Beta", "beta", null, null, null, 1, 1, "*all", null, 0, 3, "beta body", T0, T0],
+    [3, "Alpha+child", "alpha+child", null, 1, 2, 1, 1, "*all", null, 0, 3, "child body", T0, T0],
+    [4, "Trashed", "trashed", null, null, null, 1, 1, "*all", null, 1, 3, "trashed body", T0, T0],
   ];
   const ci = db.prepare(
     `INSERT INTO cards (id, name, key, codename, left_id, right_id,
-      creator_id, updater_id, read_rule_class, read_rule_id, trash, type_id, content)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      creator_id, updater_id, read_rule_class, read_rule_id, trash, type_id,
+      content, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const r of cards) ci.run(...r);
   db.exec(
