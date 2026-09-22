@@ -605,8 +605,10 @@ const linkView: ViewFn = ({ fmt, voo }) => {
 function prepareBar(ctx: ViewContext): void {
   const { fmt, voo } = ctx;
   const isRule = fmt.engine.cardIsRule?.(fmt.card) ?? false;
-  if (isRule) {
-    // Rule's :bar view (bar_cols 5, 4, 3): three columns.
+  // The rule's :bar view is the ONLY view that uses three columns;
+  // :open/:closed/:mini_bar all hide bar_middle (2-col layout).
+  const isRuleBar = isRule && ctx.voo.requestedView === "bar";
+  if (isRuleBar) {
     const cols = readBarCols(fmt.card, true);
     voo.classUp("bar", fmt.card.setKeys);
     voo.classUp("bar-left", `col-${cols[0]}`);
