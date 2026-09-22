@@ -253,3 +253,161 @@ node tools/shadow/shadow-report.mjs tools/shadow/shadow.log.jsonl
 
 The skeleton's gate is: tests pass under `vitest`, no new npm deps, the
 rest of the repo is untouched. Verified at the time of writing.
+
+## Live upstream proof — 2026-09-21 / M5
+
+The skeleton landed with 28 unit tests (proxy + stub upstreams); the
+remaining gap before cutover evidence is the live run against REAL
+upstreams. This section documents the M5 manual run that closes the
+gap.
+
+### What was spun up
+
+Three Node processes plus one Ruby process, all on loopback:
+
+| Role | Port | PID (transient) | Command |
+|---|---|---|---|
+| Ruby oracle | 3055 | 17624 (Thin) | `RAILS_ENV=development PORT=3055 bundle exec decko server -p 3055 -b 127.0.0.1` (in `tools/oracle/decko-oracle-app/`) |
+| TS upstream dev server | 65237 | 43024 | `PORT=65237 node tools/shadow/ts-upstream-dev-server.mjs` |
+| shadow-router (proxy) | 65238 | 69248 | `RUBY_UPSTREAM=http://127.0.0.1:3055 TS_UPSTREAM=http://127.0.0.1:65237 SHADOW_PORT=65238 SHADOW_POLICY=tools/shadow/routes.shadow.json SHADOW_LOG=tools/shadow/m5-live-log.jsonl node tools/shadow/shadow-router.mjs` |
+
+The TS upstream dev server (`tools/shadow/ts-upstream-dev-server.mjs`,
+new file) is the piece that did not exist: the decko-ts engine has no
+HTTP surface yet, so the live proof needs a tiny .mjs that wraps the
+programmatic renderer in Decko's URL conventions. It boots an
+in-memory SQLite database, seeds the SAME 10 cards the smoke fixture
+records (`fixtures/captured/smoke.json`), and serves HTML on the same
+`/<name>` (with `/<name>/view/<view>` and `.<format>` variants) that
+Ruby Decko's `engine_routes.rb` defines.
+
+The seed uses the engine's own `DeckoName.parse(name).key` to compute
+the canonical key column — without that, the plural-stem-collapse
+("Basics" → "basic") makes the engine's `WHERE key = ?` query miss
+the row. Live-verified: without that fix, every render errors with
+"card not found"; with it, simple cards (Oracle Basics, Oracle Rich,
+Oracle Junction, Oracle Restricted, Oracle Search) all render.
+
+The TS engine is compiled into `dist-ts/` first (`npx tsc -p
+tsconfig.engine.json --noCheck` — a tiny standalone tsconfig with
+`typeRoots` pointed at `tests/schema` so the
+`better-sqlite3.d.ts` shim is on the path). The repo's main
+`tsconfig.json` builds the test artefacts, not the engine; the new
+`tsconfig.engine.json` adds the engine-specific include set. Build is
+cached in `dist-ts/` after the first invocation.
+
+### Real requests sent, verdicts recorded
+
+```
+$ curl http://127.0.0.1:65238/Oracle%20Basics   # 17499b
+$ curl http://127.0.0.1:65238/Oracle%20Rich     # 19753b
+$ curl http://127.0.0.1:65238/Oracle%20Junction # 17509b
+$ curl http://127.0.0.1:65238/Oracle%20Restricted # 403 16770b
+$ curl http://127.0.0.1:65238/Oracle%20Search   # 23013b
+$ curl http://127.0.0.1:65238/Oracle%20Basics/view/closed  # 18027b
+# (repeats for diff histogram)
+```
+
+URL convention: Decko uses `%20` for spaces in paths (Rails does NOT
+apply form-encoding '+'-to-space to PATH components — only to query
+strings / POST bodies). Live-verified: `/Oracle+Basics` returns 404
+on the Ruby oracle (the literal name `Oracle+Basics` is not a card);
+`/Oracle%20Basics` returns the card. The dev server's decoder mirrors
+that exactly (`tools/shadow/ts-upstream-dev-server.mjs#decodeMark`).
+
+The JSONL log written by the shadow-router is
+`tools/shadow/m5-live-log.jsonl`. The first five records (one line per
+request):
+
+```
+{"timestamp":"2026-09-22T07:59:17.583Z","method":"GET","path":"/Oracle%20Basics","rubyStatus":200,"tsStatus":200,"rubyBytes":17499,"tsBytes":2604,"verdict":"diff","firstDiffOffset":0,"contentTypeMatch":true,"diffKinds":["body"]}
+{"timestamp":"2026-09-22T07:59:18.844Z","method":"GET","path":"/Oracle%20Rich","rubyStatus":200,"tsStatus":200,"rubyBytes":19753,"tsBytes":4804,"verdict":"diff","firstDiffOffset":0,"contentTypeMatch":true,"diffKinds":["body"]}
+{"timestamp":"2026-09-22T07:59:20.085Z","method":"GET","path":"/Oracle%20Junction","rubyStatus":200,"tsStatus":200,"rubyBytes":17509,"tsBytes":2628,"verdict":"diff","firstDiffOffset":0,"contentTypeMatch":true,"diffKinds":["body"]}
+{"timestamp":"2026-09-22T07:59:21.424Z","method":"GET","path":"/Oracle%20Restricted","rubyStatus":403,"tsStatus":200,"rubyBytes":16770,"tsBytes":76,"verdict":"diff","firstDiffOffset":0,"contentTypeMatch":true,"diffKinds":["status","body"]}
+{"timestamp":"2026-09-22T07:59:22.863Z","method":"GET","path":"/Oracle%20Search","rubyStatus":200,"tsStatus":200,"rubyBytes":23013,"tsBytes":8118,"verdict":"diff","firstDiffOffset":0,"contentTypeMatch":true,"diffKinds":["body"]}
+```
+
+The shadow-router script's `shadow-report.mjs` aggregator on the same
+log:
+
+```
+$ node tools/shadow/shadow-report.mjs tools/shadow/m5-live-log.jsonl
+Shadow log summary: tools/shadow/m5-live-log.jsonl
+Total: 9   same: 0%   diff: 9   skipped: 0   errors: 0
+
+By path pattern:
+  /Oracle%20Basics             total=    2 same=     0% diff=   2 err=  0
+  /Oracle%20Junction           total=    2 same=     0% diff=   2 err=  0
+  /Oracle%20Restricted         total=    2 same=     0% diff=   2 err=  0
+  /Oracle%20Rich               total=    1 same=     0% diff=   1 err=  0
+  /Oracle%20Search             total=    1 same=     0% diff=   1 err=  0
+  /Oracle%20Basics/<segment>   total=    1 same=     0% diff=   1 err=  0
+
+First-diff offset histogram (bytes into body):
+  [     0 ..      1): 9
+```
+
+### What the verdicts say (and what they don't)
+
+Every request records `verdict: "diff"` with `firstDiffOffset: 0` and
+`diffKinds: ["body"]` (or `["status", "body"]` for Oracle Restricted,
+where Ruby's read-rule blocks 403 and TS returns 200 with a 76-byte
+denial span). This is the EXPECTED shape for an early-parity run:
+
+- Ruby's response is the full page template — the `<!doctype>` /
+  `<head>` / navigation chrome wrapping the card slot. TS's response
+  is the card slot itself (the open view body, raw). They diverge at
+  byte 0 because they were never going to match at this layer.
+- The Oracle Restricted entry's `diffKinds: ["status","body"]` is
+  the live parity signal: the engine's read-rule stack IS detecting
+  the Administrator-only rule (the 76-byte body is the denial span,
+  not an empty page), but Ruby returns 403 at the HTTP layer while TS
+  returns 200. That is a real, named divergence — neither engine is
+  failing; they're disagreeing about how a denied read is surfaced.
+
+What this run is NOT a proof of: that the engines produce
+byte-identical HTML. That is the render-wave corpus-replay work, and
+it is out of scope here. What this run IS a proof of:
+
+1. The shadow-router's JSONL contract works against REAL upstreams
+   (not the unit-test stubs).
+2. `verdict` and `firstDiffOffset` are populated for every request;
+   `ts-error` and `ruby-error` would surface in the same shape if
+   they happened.
+3. The TS dev server can serve the engine's output over HTTP in a
+   shape the proxy can forward.
+4. `shadow-report.mjs` aggregates a real log file cleanly.
+
+### Server cleanup
+
+Every server I started was stopped at run end (I owned each PID
+fully; the kill gate's "fully owned → may kill without asking"
+branch applies). Each was also registered in the process-hygiene
+registry so the next audit can account for them. Verified post-run
+that no listeners remain on 3055 / 65237 / 65238 — the only
+listening ports added by this run were those four, all gone after
+the explicit `Stop-Process` calls.
+
+### Files added / touched
+
+- `tools/shadow/ts-upstream-dev-server.mjs` (new) — the tiny TS
+  upstream. Library exports `bootEngine`, `makeHandler`,
+  `decodeMark`, `CODENAME_SEED`, `SMOKE_SEED`; CLI usage spins up an
+  HTTP server on `PORT` (default 0 = ephemeral).
+- `tsconfig.engine.json` (new) — minimal tsconfig that builds the
+  engine to `dist-ts/`. Includes the engine files explicitly (the
+  main tsconfig only includes `tests/` + `benchmarks/`); adds
+  `tests/schema` to `typeRoots` so the better-sqlite3 shim is on
+  the path. `--noCheck` because the engine has 4 pre-existing
+  strict-mode errors that are NOT my stream's problem (the same
+  errors are pre-existing on `master` per `npx tsc --noEmit`).
+- `docs/shadow-router-notes.md` (this section) — the run report.
+- `tools/shadow/m5-live-log.jsonl` (new) — the live proof's
+  JSONL. 9 records, 2326 bytes.
+
+The 28 unit tests in `tests/tools/shadow/shadow-router.test.ts`
+were not re-run for this M5 proof — the corpus replay suite in
+`benchmarks/corpus-v2/replay-shard.test.ts` is RUNNING RIGHT NOW
+in four background workers and the ask explicitly forbids
+running the full test suite ("memory pressure would kill the
+replay workers"). The unit tests for shadow-router were green
+at landing time and have not been touched since.
