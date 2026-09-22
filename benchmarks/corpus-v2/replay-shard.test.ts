@@ -51,7 +51,12 @@ import {
 import { UnsupportedViewError } from "../../src/card/render.js";
 import type { CapturedCardRecord } from "../../src/testing/fixture-schema.js";
 import type { CardRecordWithoutId } from "../../src/testing/fixture-schema.js";
-import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../../tests/card/render/render-test-storage.js";
+import { createStructureSeededStorageFor } from "../../tests/card/render/structure-corpus-seeding.js";
+import {
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+  structuredCardContent,
+} from "../../src/card/rules/structure.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
