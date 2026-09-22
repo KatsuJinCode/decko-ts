@@ -123,6 +123,9 @@ export class CardActionEngine {
   private readonly clock: () => Date;
   private readonly ipAddress: string | null;
   private readonly canWrite: CanWriteHook | undefined;
+  private readonly integrationHooks: SavePathIntegrationHook[] | undefined;
+  private readonly notifyTransport: NotifyTransport | undefined;
+  private readonly notifyLogger: ((line: string) => void) | undefined;
 
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
@@ -130,6 +133,9 @@ export class CardActionEngine {
     this.clock = options.now ?? (() => new Date());
     this.ipAddress = options.ipAddress ?? null;
     this.canWrite = options.canWrite;
+    this.integrationHooks = options.integrationHooks;
+    this.notifyTransport = options.notifyTransport;
+    this.notifyLogger = options.notifyLogger;
   }
 
   /** The shared entry: dispatches one request to its handler. */
