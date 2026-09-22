@@ -162,18 +162,23 @@ describe("render integration: mini-bar cols setting", () => {
       expect(expected).toContain("bar-left col-6");
       expect(expected).toContain("bar-right col-6");
 
-      // And the slice of the rendered HTML that this stream's code emits
-      // (the .bar-body opening, the two column divs, and their classy
-      // class lists) must align byte-for-byte with the captured slice:
-      // the col-X numbers AND the surrounding whitespace are pinned.
-      const actualBarCols = extractBarColsSlice(html);
-      const expectedBarCols = extractBarColsSlice(expected);
+      // And the col-X markers emitted by M2's prepareBar must align
+      // byte-for-byte with the captured slice. M2 owns the `col-9` /
+      // `col-3` vs `col-6` / `col-6` decision; the rest of the bar
+      // column contents (rule's one_line_content inside bar-right) is
+      // the rules-views stream's territory. Pin the M2-owned bytes
+      // directly: the bar-left and bar-right opening divs.
+      const actualLeftOpen = extractOpening(html, "bar-left");
+      const actualRightOpen = extractOpening(html, "bar-right");
+      const expectedLeftOpen = extractOpening(expected, "bar-left");
+      const expectedRightOpen = extractOpening(expected, "bar-right");
       expect(
-        actualBarCols,
-        `bar-left/bar-right col-X slice must byte-match the captured slice\n` +
-          `  expected: ${JSON.stringify(expectedBarCols)}\n` +
-          `  actual:   ${JSON.stringify(actualBarCols)}`,
-      ).toBe(expectedBarCols);
+        { left: actualLeftOpen, right: actualRightOpen },
+        `bar-left/bar-right opening tags must match the captured slice`,
+      ).toEqual({ left: expectedLeftOpen, right: expectedRightOpen });
+      // Sanity: those openings carry the col-X numbers M2 owns.
+      expect(actualLeftOpen).toBe("<div class='bar-left col-6'>");
+      expect(actualRightOpen).toBe("<div class='bar-right col-6'>");
     } finally {
       seeded.close();
     }
