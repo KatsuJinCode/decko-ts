@@ -73,11 +73,26 @@ interface ShardLine {
 }
 
 function requestedShards(): string[] {
+  // CORPUS_SHARD=shard-000000.jsonl  — one shard (smoke)
+  // CORPUS_SHARDS=shard-000003.jsonl,shard-000004.jsonl — an explicit list
+  //   (the parallel-split recipe: N background vitest processes, each with a
+  //   disjoint slice, each still seeding the union of ITS slice plus both
+  //   rule universes)
   const requested = process.env.CORPUS_SHARD;
   if (requested) {
     const p = path.join(SHARD_DIR, requested);
     if (!existsSync(p)) throw new Error(`CORPUS_SHARD not found: ${p}`);
     return [p];
+  }
+  const list = process.env.CORPUS_SHARDS;
+  if (list) {
+    const names = list.split(",").map((s) => s.trim()).filter((s) => s !== "");
+    if (names.length === 0) throw new Error("CORPUS_SHARDS set but empty");
+    const paths = names.map((s) => path.join(SHARD_DIR, s));
+    for (const p of paths) {
+      if (!existsSync(p)) throw new Error(`CORPUS_SHARDS entry not found: ${p}`);
+    }
+    return paths;
   }
   const shards = existsSync(SHARD_DIR) ? readdirShards(SHARD_DIR) : [];
   if (shards.length === 0) {
