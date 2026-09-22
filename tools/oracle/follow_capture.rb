@@ -254,8 +254,14 @@ Card::Auth.as_bot do
     name: "follower notification email",
     type: "Email template",
     subcards: {
-      "+subject" => { content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
-      "+text_message" => { content: "Hi! {{follower}} changed {{followed_set}}." },
+      # The field cards' types must match the mod's assignments:
+      #   +subject       → :phrase       (card-mod-email set/right/subject.rb:3)
+      #   +text_message  → :plain_text   (card-mod-email set/right/text_message.rb:3)
+      # If we create them as :basic (Card.create!'s default), the email
+      # renderer's `fetch(field)` lookup returns nil because the field
+      # type lookup (set/right/<field>.rb) doesn't match.
+      "+subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
+      "+text_message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
       # M6 byte-parity note: the test scenario supplies the to override
       # via `fields[:to]` (card-mod-follow set/right/account.rb:17) —
       # the EmailTemplate's +*to is a fallback. We use a literal email
