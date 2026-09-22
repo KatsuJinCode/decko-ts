@@ -293,8 +293,12 @@ export function scanHtml(input: string): string {
             i += closing.length;
           }
         } else {
-          // scan_until the closing tag (html.rb:234)
-          const untilRe = new RegExp(`(?=(?:\\n\\s*)?</${inTag}>)|\\z`);
+          // scan_until the closing tag (html.rb:234). The Ruby scanner
+          // uses \z (end-of-input) as the second alternative; JS regex
+          // doesn't honor `\z` reliably when alternated against a
+          // non-capturing group, so we explicitly match either the
+          // lookahead OR end-of-input by checking the result.
+          const untilRe = new RegExp(`(?=(?:\\n\\s*)?</${inTag}>)`);
           const until = untilRe.exec(rest);
           body = until !== null ? rest.slice(0, until.index) : rest;
           closing = "";
