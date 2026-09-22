@@ -533,6 +533,9 @@ export class RenderEngine implements RenderEngineLike {
     permissionStatementCount: number,
   ): void {
     const result = folded !== undefined ? folded[permissionStatementCount] : undefined;
+    if (process.env.DEBUG_TYPECODE === "1") {
+      console.log(`[parseRuleTypeIds] folded=${folded?.length} permCount=${permissionStatementCount} result=${result !== undefined ? "defined" : "undefined"}`);
+    }
     if (result !== undefined) {
       this.fetcher.codenames.foldCodehashResults(result);
     } else {
