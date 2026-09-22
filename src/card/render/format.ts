@@ -356,16 +356,25 @@ export class RenderFormat {
    *    (`class_up "card-slot", "d0-card-content"`)
    *  - card-mod-rules set/rule/bar_view.rb:9-13 view :bar:
    *    `class_up "card-slot", "_rule-item #{category_classes}"` -
-   *    fires for rule cards only (right side is a setting). */
+   *    fires for rule cards only (right side is a setting).
+   *  - card-mod-search set/abstract/search_views.rb:35-38 view :bar:
+   *    `voo.hide :one_line_content; super()` - hides one_line_content
+   *    for Search-type cards. */
   private runBeforeHook(view: string, voo: Voo): void {
     if (view === "content") {
       // html/views.rb#prepare_content_slot
       voo.classUp("card-slot", "d0-card-content");
-    } else if (view === "bar" && this.cardIsRule()) {
-      // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
-      const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
-      const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
-      voo.classUp("card-slot", classExtra);
+    } else if (view === "bar") {
+      if (this.cardIsRule()) {
+        // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
+        const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
+        const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
+        voo.classUp("card-slot", classExtra);
+      }
+      if (this.card.typeName === "Search") {
+        // search_views.rb:36 voo.hide :one_line_content
+        voo.hide("one_line_content");
+      }
     }
   }
 
