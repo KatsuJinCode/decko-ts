@@ -146,7 +146,7 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   }
 
   private executeOne(statement: SQLStatement): SQLQueryResult<SqliteRow> {
-    const stmt = this.db.prepare(statement.sql);
+    const stmt = this.prepareCached(statement.sql);
     if (stmt.reader) {
       return { rows: stmt.all(...statement.params), rowsAffected: 0 };
     }
