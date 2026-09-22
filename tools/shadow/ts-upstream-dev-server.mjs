@@ -178,18 +178,19 @@ function decodeMark(rawMark) {
 // ----------------------------------------------------------------------------
 
 async function bootEngine() {
-  // Dynamic import of the compiled engine modules — these are the same
-  // .js files the test suite imports (TypeScript compiles to JS, vitest
-  // resolves them transparently via its loader; here we use the same
-  // resolution path).
+  // Dynamic import of the engine's .ts source via Node 24's built-in
+  // type-stripping — invoked by --experimental-strip-types on the CLI.
+  // The renderer itself is in src/card/render.ts; it pulls fetch.ts +
+  // the SQLite driver transitively. Resolved by file URL so the import
+  // is stable on Windows (drive letters, backslashes).
   const drivers = await import(pathToFileURL(
-    join(REPO_ROOT, "src", "server", "drivers", "local-sqlite.js"),
+    join(REPO_ROOT, "src", "server", "drivers", "local-sqlite.ts"),
   ).href);
   const fetchMod = await import(pathToFileURL(
-    join(REPO_ROOT, "src", "card", "fetch.js"),
+    join(REPO_ROOT, "src", "card", "fetch.ts"),
   ).href);
   const renderMod = await import(pathToFileURL(
-    join(REPO_ROOT, "src", "card", "render.js"),
+    join(REPO_ROOT, "src", "card", "render.ts"),
   ).href);
 
   const driver = new drivers.LocalSqliteDriver({ path: ":memory:" });
