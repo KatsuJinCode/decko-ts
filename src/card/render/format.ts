@@ -136,9 +136,13 @@ export class Voo {
   /** view/options/voo_api.rb#slot_options: normalized options + visibility,
    *  restricted to slot keys (the JSON is emitted in slot_keys order by
    *  slot-html.ts#slotOptionsJson). `view: requested_view` wins - Ruby's
-   *  `.merge(view: requested_view)`. */
+   *  `.merge(view: requested_view)`. When `slotViewOverride` is set
+   *  (the pointer/list item path - slot id uses "mini_bar" but the
+   *  data-slot's view field reads "bar"), that override is emitted
+   *  instead of the requested view. */
   slotOptions(): Record<string, unknown> {
-    const out: Record<string, unknown> = { ...this.opts, view: this.requestedView };
+    const viewField = this.slotViewOverride ?? this.requestedView;
+    const out: Record<string, unknown> = { ...this.opts, view: viewField };
     const show: string[] = [];
     const hide: string[] = [];
     for (const [view, setting] of this.viz) {
