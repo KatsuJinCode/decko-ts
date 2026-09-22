@@ -1,0 +1,201 @@
+// notify/follow-notify.ts — the follow-rule email trigger.
+//
+// Ruby analogue:
+//   card-mod-follow set/all/notify.rb:8-11
+//     event :notify_followers_after_save, :integrate_with_delay,
+//            on: :save, priority: 20, when: :notable_change? do
+//       notify_followers
+//     end
+//   card-mod-follow set/all/notify.rb:13-25 (silence + notable_change?)
+//   card-mod-follow set/all/notify.rb:41-60 (notify_followers +
+//     notify_followers_of + notify_follower)
+//
+//   card-mod-follow set/right/account.rb:1-7  (send_change_notice)
+//   card-mod-follow set/right/account.rb:9-21 (notify_of_act)
+//
+// The TS port reproduces the shape: the trigger evaluates a "who follows
+// this card?" lookup, renders one MailMessage per follower with a
+// delivery-target email, and hands each message to the transport. The
+// lookup is a function the trigger accepts (FollowerResolver); the act
+// streams own the real lookup against the rule algebra — this file
+// carries no DB driver dependency.
+
+import {
+  interpolateTemplate,
+  renderMail,
+  type EmailTemplate,
+  type FollowNotice,
+} from "./mail.js";
+import type {
+  MailMessage,
+  NotifyActor,
+  NotifyContext,
+  SavePathEvent,
+  SavePathIntegrationHook,
+} from "./types.js";
+
+/** The minimum a follow rule returns from its lookup. Mirrors Ruby's
+ *  `each_direct_follower_id_with_reason` (card-mod-follow
+ *  set/all/follow/followed_by.rb:79-84): the follower's user-id, the
+ *  followed SET card's name, and the option name (always / created /
+ *  edited / never — with brackets stripped, notify.rb:69-70). */
+export interface FollowerRef {
+  readonly followerId: number;
+  readonly followerName: string;
+  /** Pre-resolved delivery target. The follow rule resolves to a user
+   *  card with `+email`; this string is that field's content (or the
+   *  decko default when none). The trigger skips the message if null —
+   *  Ruby's `return unless email.present?` (set/right/account.rb:2). */
+  readonly followerEmail: string | null;
+  readonly followedSetName: string;
+  readonly followOption: string;
+}
+
+/** Resolves the followers of one card. The act-stream owns this against
+ *  the rule algebra; for the first-mechanism test the harness supplies
+ *  an inline resolver so the trigger is deterministic. */
+export type FollowerResolver = (
+  cardId: number | null,
+  event: SavePathEvent,
+) => readonly FollowerRef[];
+
+/** Where the email template comes from. Ruby reads
+ *  `Card[:follower_notification_email]` + its `+subject` /
+ *  `+text_message` / `+html_message` children, all stamped as
+ *  `*content` views; the TS port treats the template as a triple of
+ *  literals (the resolver may rewrite those literals from the deck —
+ *  see docs/notify-port-notes.md, "first mechanism template"). */
+export type EmailTemplateResolver = () => EmailTemplate;
+
+/** Build the follow-notify integration hook. The returned SavePathIntegrationHook
+ *  is the registration the coordinator must attach to the action engine
+ *  via CardActionEngineOptions.integrationHooks (the exact registration
+ *  line lives in docs/notify-port-notes.md, "save-path registration
+ *  line"). */
+export interface FollowNotifyDeps {
+  /** The "who follows the saved card?" lookup. The act streams own this
+   *  against the rule algebra (card-mod-follow set/all/follow.rb —
+   *  direct/indirect follower walks). */
+  readonly followers: FollowerResolver;
+  /** The "what is the email template" lookup. The notify-stream owns
+   *  this against the EmailTemplate type card (card-mod-email
+   *  set/type/email_template.rb — the first mechanism uses a literal
+   *  triple of strings; production wiring loads it from a card). */
+  readonly template: EmailTemplateResolver;
+  /** Authenticated-actor resolver. Ruby does `Auth.as(left.id)` for each
+   *  follower (set/right/account.rb:15-21); the port mirrors that with a
+   *  per-fire actor swap. The dep returns the actor the template runs
+   *  as. */
+  readonly authAs: (followerId: number, followerName: string) => NotifyActor;
+  /** The deck's configured from address; the template's from field
+   *  wins when set (card-mod-email set/type/email_template.rb:80-88). */
+  readonly defaultFrom: string;
+}
+
+const STAGE: SavePathIntegrationHook["stage"] = "integrate_with_delay";
+
+/** Mirrors Ruby's `notable_change?` (card-mod-follow notify.rb:16-25):
+ *   !silent_change? && current_act_card? && auth != DeckoBot && followable?
+ * The first-mechanism port drops `followable?` (per-card-type opt-out) — a
+ * later stream adds it once the rule algebra is wired. */
+function isNotable(event: SavePathEvent): boolean {
+  if (event.silent === true) return false;
+  if (event.actor.name === "*Decko Bot") return false;
+  return true;
+}
+
+/** One-follower delivery. Mirrors card-mod-follow notify.rb:55-58 +
+ *  set/right/account.rb:1-21. The follow rule's `changes_visible?`
+ *  check (set/right/account.rb:9-11) is upstream — the trigger assumes
+ *  it has already been done (or the harness skipped it for tests). */
+async function notifyFollower(
+  ref: FollowerRef,
+  template: EmailTemplate,
+  actor: NotifyActor,
+  ctx: NotifyContext,
+): Promise<void> {
+  if (ref.followerEmail === null) return; // return unless email.present?
+  if (actor.email !== null && ref.followerEmail !== actor.email) {
+    // Template may carry the actor's identity (auth.as(left.id)) — let
+    // the auth swap resolve it. Production keeps the template's `to`
+    // unchanged.
+  }
+  const notice: FollowNotice = {
+    follower: ref.followerName,
+    followed_set: ref.followedSetName,
+    follow_option: ref.follow_option,
+  };
+  const msg = renderMail({ ...template, to: ref.followerEmail }, notice);
+  try {
+    await ctx.transport.sendMail(msg);
+    ctx.logger?.(`[notify] sent follow mail to ${ref.followerEmail} (${ref.followerName})`);
+  } catch (err) {
+    // Ruby's Net::SMTPError rescue (card-mod-email
+    // set/type/email_template.rb:6). Surface the error rather than
+    // silently dropping — the action engine already finished the save,
+    // so the failure is async-only.
+    ctx.logger?.(`[notify] FAIL to=${ref.followerEmail} subject=${JSON.stringify(msg.subject)} err=${(err as Error).message}`);
+  }
+}
+
+/** Build the hook. The hook fires once per SavePathEvent in the
+ *  just-completed act; for every follower of the affected card we
+ *  render and send one MailMessage.
+ *
+ *  The hook SKIPS the delete path (Ruby uses a separate event —
+ *  notify.rb:25-26 `event :notify_followers_after_delete, :integrate,
+ *  on: :delete`). A later release can wire it; this file is the SAVE
+ *  path only. */
+export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrationHook {
+  return {
+    stage: STAGE,
+    name: "follow_notification_after_save",
+    notable: isNotable,
+    async fire(event: SavePathEvent, ctx: NotifyContext): Promise<void> {
+      if (event.isDeletePath === true) return; // notify_after_delete is a separate hook
+      const cardId = event.card?.id ?? null;
+      const followers = deps.followers(cardId, event);
+      if (followers.length === 0) return;
+
+      const template = deps.template();
+      if (template.subject.length === 0 && template.textBody.length === 0 && (template.htmlBody?.length ?? 0) === 0) {
+        // Empty template — Ruby's `Card[:follower_notification_email]`
+        // defaults carry a stocked subject + body. A blank template
+        // here means the deck hasn't configured one yet; skip silently
+        // rather than send blank mail.
+        return;
+      }
+
+      // Per-follower Auth.as (card-mod-follow set/right/account.rb:15).
+      // Sequential is fine here: the transport is in-memory for tests
+      // and SMTP doesn't parallelize well anyway. A worker-queue version
+      // is the integrate_with_delay-delayed form (delayed_event.rb).
+      for (const ref of followers) {
+        const actor = deps.authAs(ref.followerId, ref.followerName);
+        await notifyFollower(ref, template, actor, ctx);
+      }
+    },
+  };
+}
+
+/** Test sugar: a `FollowerResolver` that returns a fixed array. */
+export function fixedFollowerResolver(
+  followers: readonly FollowerRef[],
+): FollowerResolver {
+  return () => followers;
+}
+
+/** Test sugar: a `EmailTemplateResolver` that returns a fixed triple. */
+export function fixedTemplateResolver(
+  template: EmailTemplate,
+): EmailTemplateResolver {
+  return () => template;
+}
+
+/** Test sugar: a `NotifyActor` resolver that returns the literal. */
+export function fixedAuthAs(actor: NotifyActor): (id: number, name: string) => NotifyActor {
+  return () => actor;
+}
+
+export { interpolateTemplate };
+export type { MailMessage };
