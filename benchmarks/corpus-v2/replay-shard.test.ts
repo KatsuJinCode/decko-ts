@@ -10,25 +10,23 @@
 //     capture records them only inside the card record / rendered views.
 //
 // Failure classification (the honest part of corpus-scale parity):
-//   - structure-pending: Ruby's Card#content is structured_content ||
-//     standard_content (card-1.110 content/all.rb) — a card under an
-//     applicable *structure rule returns the RULE TEMPLATE, not db_content.
-//     The port's rules/set-patterns layer is landed, but the replay seed
-//     loads ONLY cards rows (no rule resolution context is captured), so a
-//     mismatch whose expected content equals some *structure rule card's
-//     stored content is classified structure-pending, never a parity bug.
+//   - structure-pending: kept ONLY for the documented *default-template
+//     remainder — a genuine mismatch whose expected content equals some
+//     *structure rule card's stored content is classified
+//     structure-pending, never a parity bug. Everything else the engine
+//     resolves itself (structured content, read-rule denial) and a fail
+//     there is REAL.
 //   - capture-error lines ({"error": ...}): recorded by capture-corpus.rb
 //     when Ruby itself could not process the card (e.g. invalid-JSON search
 //     content); they carry no expectations and are counted, not replayed.
 //
-// Seeding mirrors benchmarks/load-oracle-corpus.rb: the shard's card rows
-// come from bench-corpus-v2.sqlite3 and are inserted with the REAL decko
-// convention -- simple cards store name + engine-computed key; compound
-// cards store NULL name/key and resolve through left_id/right_id. The key
-// column is computed by the TS engine's own ported algorithm
-// (DeckoName.parse(name).key, including singularize), so the replay also
-// exercises key-algorithm parity: the captured record.key was computed by
-// RUBY (load-oracle-corpus.rb) via cardname's String#key.
+// Seeding mirrors benchmarks/load-oracle-corpus.rb's row convention: simple
+// cards store name + engine-computed key; compound cards store NULL name/key
+// and resolve through left_id/right_id. The key column is computed by the TS
+// engine's own ported algorithm (DeckoName.parse(name).key, including
+// singularize), so the replay also exercises key-algorithm parity: the
+// captured record.key was computed by RUBY (load-oracle-corpus.rb) via
+// cardname's String#key.
 //
 // Run:
 //   npx vitest run benchmarks/corpus-v2/replay-shard.test.ts           # all shards
