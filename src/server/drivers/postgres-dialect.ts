@@ -334,7 +334,7 @@ function rewriteNocaseCollations(sql: string): string {
     // Walk back to find the start of the left-hand token.
     const leftStart = findTokenStart(sql, matchStart);
     const leftEnd = matchStart; // left token ends right where COLLATE begins
-    const leftToken = sql.slice(leftStart, leftEnd);
+    const leftToken = sql.slice(leftStart, leftEnd).trim();
     // Emit everything before the left token untouched.
     out += sql.slice(i, leftStart);
     // Skip past "COLLATE NOCASE" in the source.
