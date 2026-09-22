@@ -386,11 +386,17 @@ export class RenderFormat {
     if (!card.name.isCompound) return undefined;
     const rightKey = card.name.rightName?.key;
     if (rightKey === undefined) return undefined;
-    // The right key has leading "*"; the codename is the bare form.
+    // The right key may include leading "*" (canonical key of "*default"
+    // is "*default" in this port); the codename is the bare form (no "*").
     const bare = rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
     // Look up the right card via the fetcher's prepared map (cached).
-    const right = this.engine.fetchRenderCard(bare);
-    return right?.record.codename;
+    // Try the bare key first; fall back to the original rightKey for
+    // setting cards whose canonical key preserves the leading "*".
+    const right =
+      this.engine.fetchRenderCard(bare) ??
+      this.engine.fetchRenderCard(rightKey);
+    if (right === undefined) return undefined;
+    return right.record.codename ?? bare;
   }
 
   /** The fixed Card::Setting.categories for the given setting codename
