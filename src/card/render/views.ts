@@ -306,19 +306,13 @@ function radioHtml(id: string, label: string, checked: boolean): string {
 }
 
 /** The rules hanging off this set card (Card.search left: id, limit: 0).
- *  Port-side: delegates to engine.collectRules which issues a single
- *  batched query when the render-card map has no rules for the host
- *  (the prefetch closure walk does not chase rule cards hanging off a
- *  set — the set's random content does not name them). Returns an empty
- *  list when the engine has no collectRules hook. */
-function collectSetRules(fmt: RenderFormat, rules?: RenderCard[]): RenderCard[] {
-  if (rules !== undefined) return rules;
+ *  Port-side: read every rule whose left_id equals the set card's id
+ *  from the engine's render-card map (the prepare phase walked every
+ *  seeded card, so rule cards hanging off this set are present iff
+ *  seeded). */
+function collectSetRules(fmt: RenderFormat): RenderCard[] {
   if (fmt.engine.collectRules === undefined) return [];
-  // The cached pre-loaded result is in format.engine.hostRules — see
-  // prepareHostRules below. Synchronous read.
-  const cached = (fmt.engine as RenderEngineLikeWithHostRules).hostRules?.get(fmt.card.id ?? -1);
-  if (cached !== undefined) return cached;
-  return [];
+  return fmt.engine.collectRules(fmt.card);
 }
 
 
