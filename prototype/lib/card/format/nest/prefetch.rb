@@ -132,57 +132,59 @@ class Card
         # src/card/render/prefetch.ts:288-334 (card-by-card CacheRecord).
         #
         # The temp cache is a plain Hash (card-1.110.0
-        # lib/card/cache/temporary.rb). Writes are idempotent (@store[k]=v).
-        # We use read on the temp to skip already-warmed ids (no DB hop).
+        # lib/card/cache/temporary.rb). We write directly to .store to
+        # bypass Cache#write's after_write_to_temp_cache callback chain
+        # (which would call card.write_lexicon and other expensive paths).
+        # The keys/values are exactly what the per-inclusion
+        # Card::Cache::CardClass writes would have produced.
         def hydrate_cache rows, stats
           conn = ActiveRecord::Base.connection
           card_cache = Card.cache
           lex_cache  = Card::Lexicon.cache
           return if rows.empty?
 
-          # All id->name and (key)->Card lookups the render path will do are
-          # served from the temp cache after this loop. No additional SELECT.
-          for row in rows
-            write_card_cache_entry card_cache, row
-            write_lex_cache_entry lex_cache, row
-            stats[:rows] += 1
-          end
-          # The Card cache needs the full Card object for retrieve_by_key
-          # (card-1.110.0 lib/card/cache/card_class.rb:24-26 reads card.key
-          # on the cached object -- the cache value IS Card, not name). Bulk
-          # hydrate full Card objects so the per-inclusion Card.fetch
-          # succeeds with zero DB queries.
-          ids = rows.map { |r| r["id"] }.compact
+          # 1) Build Card objects from the CTE rows in ONE bulk SELECT (the
+          #    CTE already returned id/key/name/left_id/right_id; we still
+          #    need the full card for retrieve_by_key to return a usable
+          #    object). One SELECT for the entire closure (vs N in the
+          #    depth-first path).
+          ids = rows.map { |r| r["id"] }.compact.uniq
+          return if ids.empty?
           placeholders = (["?"] * ids.size).join(",")
           hydrated = conn.exec_query(
             "SELECT * FROM cards WHERE id IN (#{placeholders}) AND trash = 0",
             "Prefetch::hydrate_cache::hydrate_cards", ids,
           ).to_a
           stats[:statements] += 1
+
+          # 2) Write each hydrated Card into Card::Cache[Card].temp.store
+          #    keyed by card.key (matching lib/card/cache/card_class.rb:28-34
+          #    write_to_cache contract). Skip the Cache#write API to avoid
+          #    the after_write_to_temp_cache callback chain.
           for row in hydrated
             key = row["key"]
             next unless key.present?
             card = Card.instantiate(row)
-            card.read_rule_id = row["read_rule_id"]
-            card.read_rule_class = row["read_rule_class"]
-            card.send(:read_rule_id=, row["read_rule_id"]) if row["read_rule_id"]
-            # write_to_cache (lib/card/cache/card_class.rb:28-34) writes
-            # card.key -> card into Card::Cache[Card] (the temp+shared
-            # cache). The depth-first path's retrieve_from_cache_by_key
-            # then returns this card on the next Card.fetch.
-            Card.send(:write_to_cache, card)
+            card_cache.temp.store[key.to_s] = card
+            lex_cache.temp.store[row["id"].to_s] = row["name"].to_s
+            left_id = row["left_id"]
+            right_id = row["right_id"]
+            if left_id && right_id
+              lex_cache.temp.store["L-#{left_id}-#{right_id}"] = row["id"]
+            else
+              # Simple card: lex cache_key is "L-<name.key>" where name.key
+              # is the underscored/singularized form.
+              name = row["name"].to_s
+              key_simple = name.downcase.gsub(/[^a-z0-9]+/, "_").singularize
+              lex_cache.temp.store["L-#{key_simple}"] = row["id"]
+            end
             stats[:rows] += 1
           end
         end
 
-        def write_card_cache_entry card_cache, row
-          # Card::Cache[Card] is keyed by card.key
-          # (card-1.110.0 lib/card/cache/card_class.rb:28-34 write_to_cache).
-          # write_to_cache uses cache.write(key, card) -- the cache VALUE
-          # must be the Card object, not just a name. The full Card
-          # materialization happens in hydrate_cache's bulk SELECT loop
-          # below; this method stays a no-op for the temp-only path (the
-          # Card write covers both keys via Card.write_to_cache).
+        def write_card_cache_entry _card_cache, _row
+          # Kept for call compatibility with hydrate_cache; the actual write
+          # is the bulk-SELECT path above (Card::Cache[Card].temp.store[]=).
           nil
         end
 
