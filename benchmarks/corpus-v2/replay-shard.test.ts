@@ -280,20 +280,12 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           // stream documented (docs/deploy-notes.md). Classified honestly, a
           // fix is owed by the render stream; not silently a pass.
           const renderNestGap = renderReal.filter((e) => formatReplayFailure(e).includes("nest target not found"));
-          const renderAfterNest = renderReal.filter((e) => !renderNestGap.includes(e));
-          // permission-pending class: Ruby denied the anonymous viewer
-          // (read-rule enforcement — card read_rule_class/read_rule_id →
-          // denied span). The port's read-permission layer is a separate
-          // stream; a mismatch whose EXPECTED capture is the denied span is
-          // classified permission-pending, never a parity bug.
-          const isDeniedExpectation = (e: { id: string }): boolean => {
-            const expected = entryById.get(e.id)?.expected;
-            return typeof expected === "string" && expected.startsWith('<span class="denied"');
-          };
-          const renderPermissionPending = renderAfterNest.filter((e) => isDeniedExpectation(e));
-          const renderRealReal = renderAfterNest.filter((e) => !renderPermissionPending.includes(e));
-          const cardPermissionPending = cardReal.filter((e) => isDeniedExpectation(e));
-          const cardRealReal = cardReal.filter((e) => !cardPermissionPending.includes(e));
+          // The former permission-pending class is GONE: with the read-rule
+          // universe seeded the engine judges every denied expectation, and a
+          // mismatch there is a real permission-layer failure (counted in
+          // realFail, never excused).
+          const cardRealReal = cardReal;
+          const renderRealReal = renderReal.filter((e) => !renderNestGap.includes(e));
 
           for (const e of cardRealReal) {
             realFailures.push({
