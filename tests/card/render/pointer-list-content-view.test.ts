@@ -99,13 +99,16 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       storage = await createStructureSeededStorageFor(baseIds);
       // Seed yzzw itself (NOT in the captured shard - only id=77's
       // content references it; the closure walk doesn't fetch a card
-      // whose name appears only as plain text). The captured bytes pin
-      // yzzw's slot with type_id=22281 + type_name="swtktey"; we
-      // assign yzzw an arbitrary id well above the shard's max (slot
-      // id is name-based, not id-based, so the id never appears in
-      // the rendered bytes).
+      // whose name appears only as plain text). The captured bytes
+      // pin yzzw's slot WITHOUT a data-card-id attribute (Ruby renders
+      // id-less cards with the data-card-id slot-data field omitted);
+      // we leave id undefined here so the attribute is suppressed.
+      // The denied spans the captured bytes pin come from the
+      // read-rule verdict (yzzw's read_rule_id points at *all+*read,
+      // rule id=6568 — "Role_A1" party — and the Anonymous viewer
+      // is not a Role_A1 member, so ok_to_read? returns false).
       await seedCard(storage, {
-        id: 9000,
+        id: undefined,
         name: "yzzw",
         typeId: 22281,
         readRuleId: 6568,
