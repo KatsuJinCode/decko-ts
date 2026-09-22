@@ -76,7 +76,9 @@ class Card
           # child render! sees depth=2, etc.) -- nested calls return early.
           # See the perf doc note for the why.
           Thread.current[:prefetch_render_depth] = prefetch_depth + 1
+          STDOUT.puts "  [prefetch] enter depth=#{prefetch_depth} root=#{root_card.key}" if ENV["PREFETCH_DEBUG"]
           if prefetch_depth > 1
+            STDOUT.puts "  [prefetch] SKIP (depth>#{1})" if ENV["PREFETCH_DEBUG"]
             return 0
           end
 
