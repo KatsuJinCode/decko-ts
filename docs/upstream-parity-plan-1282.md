@@ -53,12 +53,19 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 
 ## Persistence parity
 
-- `[~]` P1 write-path conformance — Ruby captures row states for a write
-  battery (create/update/rename/delete/type-change, read-rule-affected
-  saves exercising set_read_rule derivation, references expiry); TS
-  actions engine replays and byte-compares. Owner: MM pool. Owns
-  `benchmarks/capture-write-conformance.rb` + `tests/card/conformance/`.
+- `[~]` P1 write-path conformance — LANDED 2026-09-21 (MM wave A): 8
+  Ruby scenarios captured (`fixtures/write-conformance/`), TS replay
+  10/10 structural byte-parity on scenarios 01–06; two real defects
+  found and routed below. Owns `benchmarks/capture-write-conformance.rb`
+  + `tests/card/conformance/`.
 - `[ ]` P2 history edges: drafts surface, nested supercard action trees.
+- `[ ]` P3 `set_read_rule` on save — TS write path never derives
+  read_rule_id/read_rule_class (Ruby: card-mod-permissions
+  set/all/permissions.rb:1-5); found by P1 scenario 07 (7 change rows
+  vs Ruby's 9). Owner: permissions window (after S5).
+- `[ ]` P4 `card_references` write population — schema exists, no write
+  path populates it (Ruby writes 'I'/'P' rows on name touches; found by
+  P1 scenario 08). New stream.
 
 ## Side-effect parity
 
