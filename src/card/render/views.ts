@@ -270,7 +270,7 @@ function setRulesCoreHtml(ctx: ViewContext): string {
   const settingsFilter = renderSettingsFilter(url);
   const rules = collectSetRules(fmt);
   const accordion = renderCategoryAccordion(fmt, card, rules);
-  return `<h4 class="mt-3">Rules</h4>\n${settingsFilter}${accordion}`;
+  return `<h4 class="mt-3">Rules</h4>\n${settingsFilter}\n${accordion}`;
 }
 
 /** setting_filter.rb:9-18 setting_filter + form_tag. The form_tag emits
