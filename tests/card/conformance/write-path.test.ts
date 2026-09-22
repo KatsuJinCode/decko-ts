@@ -215,11 +215,11 @@ function normalizeChangeRow(r: Record<string, unknown>): Record<string, unknown>
   for (const [k, v] of Object.entries(r)) {
     if (k === "id") continue; // DB-local
     if (k === "card_action_id") continue; // DB-local
-    // Fields 4 (left_id) and 5 (right_id) hold DB-local integer ids whose
-    // values are the same shape across runs (integers in this card set),
-    // but the specific ids differ by run. Collapse them to "<int>" so the
-    // shape comparison passes.
-    if (k === "value" && (r.field === 4 || r.field === 5)) {
+    // Fields 1 (type_id), 4 (left_id), 5 (right_id) hold DB-local
+    // integer ids whose values are the same shape across runs (integers
+    // in this card set), but the specific ids differ by run. Collapse
+    // them to "<int>" so the shape comparison passes.
+    if (k === "value" && (r.field === 1 || r.field === 4 || r.field === 5)) {
       copy[k] = v === null ? null : "<int>";
       continue;
     }
