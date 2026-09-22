@@ -271,11 +271,14 @@ Card::Auth.as_bot do
 end
 
 # -----------------------------------------------------------------------
-# 3. Update content (second revision)
+# 3. Update content (second revision) on a junction card — also exercises
+#    first_change? + create-action backfill (events.rb:31-32,
+#    history.rb:38-40) because the junction card's create action has no
+#    change rows yet and the first update populates them.
 # -----------------------------------------------------------------------
 Card::Auth.as_bot do
-  c = Card.fetch("WCC Simple")
-  c.update! content: "v2"
+  c = Card.fetch("Sign up+WCC child")
+  c.update! content: "second revision"
   capture_scenario("03-update-content", writer, affected_cards: [c.id])
 end
 
