@@ -115,24 +115,25 @@ Card::Auth.as_bot do
   # The `+*email` field has a uniqueness validator
   # (card-mod-account set/right/email.rb:16-27 `validate_unique_email`)
   # that rejects any two `+*email` cards with the same content. The
-  # canonical user email lives on `Sara+*account+*email`; `Sara+*email`
-  # is duplicate and must be removed (or never created).
+  # canonical user email lives on `Sara+*account+*email`; the early
+  # scripted seed left `Sara+*email` instead, which we trash-flag here.
   sara_account_email_card = Card["Sara+*account+*email"]
   if sara_account_email_card.nil?
-    # Delete the duplicate `Sara+*email` if it exists (uniqueness-blocked)
+    # Trash any duplicate `Sara+*email` row directly (destroy!/delete!
+    # run events that may raise for compound types; trash=true is a
+    # column update that bypasses the director pipeline).
     dup = Card["Sara+*email"]
     if dup && !dup.new_card?
-      dup.delete!
-      seed_log["Sara+*email"] = "removed (dup)"
+      Card.where(id: dup.id).update_all(trash: true)
+      seed_log["Sara+*email"] = "trashed (dup)"
     end
     Card.create! name: "Sara+*account+*email", content: "sara@example.com"
     seed_log["Sara+*account+*email"] = "created"
   elsif sara_account_email_card.content.to_s.strip.empty?
-    # Remove the duplicate first then update.
     dup = Card["Sara+*email"]
     if dup && !dup.new_card?
-      dup.delete!
-      seed_log["Sara+*email"] = "removed (dup)"
+      Card.where(id: dup.id).update_all(trash: true)
+      seed_log["Sara+*email"] = "trashed (dup)"
     end
     sara_account_email_card.update! content: "sara@example.com"
     seed_log["Sara+*account+*email"] = "updated"
@@ -144,16 +145,16 @@ Card::Auth.as_bot do
   if john_account_email_card.nil?
     dup = Card["John+*email"]
     if dup && !dup.new_card?
-      dup.delete!
-      seed_log["John+*email"] = "removed (dup)"
+      Card.where(id: dup.id).update_all(trash: true)
+      seed_log["John+*email"] = "trashed (dup)"
     end
     Card.create! name: "John+*account+*email", content: "john@example.com"
     seed_log["John+*account+*email"] = "created"
   elsif john_account_email_card.content.to_s.strip.empty?
     dup = Card["John+*email"]
     if dup && !dup.new_card?
-      dup.delete!
-      seed_log["John+*email"] = "removed (dup)"
+      Card.where(id: dup.id).update_all(trash: true)
+      seed_log["John+*email"] = "trashed (dup)"
     end
     john_account_email_card.update! content: "john@example.com"
     seed_log["John+*account+*email"] = "updated"
