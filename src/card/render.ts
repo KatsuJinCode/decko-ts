@@ -727,6 +727,12 @@ export class RenderEngine implements RenderEngineLike {
     return out;
   }
 
+  /** Synchronous codename lookup (the codename registry is pre-folded
+   *  by the cold render's prefetch batch — zero queries). */
+  peekCodenameById(typeId: number): string | undefined {
+    return this.fetcher.codenames.peekNameForId(typeId);
+  }
+
   // -------------------------------------------------------------------------
   // rule? predicate (lib/card/rule/all.rb:32-51) — the RULE set-key input
   // -------------------------------------------------------------------------
