@@ -108,21 +108,34 @@ Card::Auth.as_bot do
   # The EmailTemplate carrying the notification template. The trio of
   # child cards (+subject, +text_message, +html_message) carry the
   # literal templates — chosen for byte-determinism with the TS port.
-  notify = Card.fetch("follower notification email", new: { type_id: Card::EmailTemplateID })
-  if notify.new_card?
-    Card.create!(
-      name: "follower notification email",
-      type: "Email template",
-      subcards: {
-        "+subject" => { content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
-        "+text_message" => { content: "Hi! {{follower}} changed {{followed_set}}." },
-        "+*to" => { content: "{{_self|email_addresses;user: Sara}}" },
-      },
-    )
-    seed_log["follower_notification_email"] = "created"
-  else
-    seed_log["follower_notification_email"] = "present"
+  #
+  # M6: card-mod-email seeds the type plus the codename `follower_notification_email`
+  # during `decko update`. The stock seed template uses complex inclusions
+  # (e.g. `{{_user|name}} {{_|last_action_verb}} "{{_|name}}"`) that the
+  # TS port's narrow `interpolateTemplate` is NOT designed to mirror. The
+  # capture needs the simple-substitution triple to assert parity, so we
+  # trash the existing card first (dev DB is throwaway) and recreate it
+  # with the test templates. The trigger in card-mod-follow
+  # set/right/account.rb:17 hard-codes `Card[:follower_notification_email]`
+  # so we cannot point the capture at a different card without
+  # monkey-patching.
+  existing = Card["follower notification email"]
+  if existing && !existing.new_card?
+    seed_log["follower_notification_email.before"] =
+      "trashing existing id=#{existing.id} subcards=" +
+      Card.where(left_id: existing.id).map(&:name).join(",")
+    existing.destroy!
+    seed_log["follower_notification_email"] = "trashed-and-recreated"
   end
+  Card.create!(
+    name: "follower notification email",
+    type: "Email template",
+    subcards: {
+      "+subject" => { content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
+      "+text_message" => { content: "Hi! {{follower}} changed {{followed_set}}." },
+      "+*to" => { content: "{{_self|email_addresses;user: Sara}}" },
+    },
+  )
 
   # A card Sara created and Sara will edit — the act's primary card.
   sara_card = Card.fetch("Sara Test Card", new: { type_id: Card::BasicID })
@@ -136,11 +149,13 @@ Card::Auth.as_bot do
 
   # ----- Trigger a save that the follow rule observes ----------------------
   # Force notifications (the runner has no controller).
-  Card.force_notifications = true
+  # mattr_accessor :force_notifications lives on Card::Set::All::Notify,
+  # so the proper access path is the module itself, NOT Card.
+  Card::Set::All::Notify.force_notifications = true
   begin
     Card.fetch("Sara Test Card").update! content: "updated by test"
   ensure
-    Card.force_notifications = false
+    Card::Set::All::Notify.force_notifications = false
   end
 end
 
