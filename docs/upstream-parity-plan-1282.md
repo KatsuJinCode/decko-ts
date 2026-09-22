@@ -47,9 +47,13 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 - `[ ]` S1 CQL `match` — needs a MySQL oracle rung (impossible on SQLite;
   docs/oracle-harness.md), then driver UDF/FTS5 decision.
 - `[ ]` S3 mod loader + 33 card-mods (tracker stream 13, NOT STARTED).
-- `[ ]` S5 non-read view perms (`perms: :update`, skip_perms).
-- `[ ]` S6 Gherkin features port as the second behavior layer (#1282
-  acceptance section). Owner: MM pool, first slice.
+- `[ ]` S5 non-read view perms (`perms: :update`, skip_perms) — IN FLIGHT
+  (REG pool, launched 2026-09-21).
+- `[~]` S6 Gherkin features port — first slice LANDED 2026-09-21 (MM
+  wave A): 13 upstream features inventoried, CRUD/names/views ported
+  (31 tests green), per-feature blockers documented
+  (docs/gherkin-port-notes.md). Remaining 10 features queued behind
+  email/follow/CQL/history modules.
 
 ## Persistence parity
 
