@@ -135,6 +135,14 @@ const FOREIGN_PENDING: Record<string, { reason: string; actualMarker: RegExp }> 
     reason: "set-card Rules section (content view) — set-card-views mechanism",
     actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
   },
+  "corpus:315:render:content": {
+    reason: "set-card Rules section (content view) — set-card-views mechanism",
+    actualMarker: /^(?!.*Rules<\/h4>)[\s\S]*$/,
+  },
+  "corpus:315:render:open": {
+    reason: "set-card open-view hide list — set-card-views mechanism",
+    actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
+  },
   "corpus:273:render:open": {
     reason: "set-card open-view hide list — set-card-views mechanism",
     actualMarker: /&quot;hide&quot;:\[&quot;bar_middle&quot;\]/,
