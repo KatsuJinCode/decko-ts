@@ -18,13 +18,14 @@
 // resolver here is the fixed sugar (deck-resolvers.ts header).
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
-import { FetchEngine } from "../../../src/card/fetch.js";
+import {
+  actionEngine,
+  createActionsTestStorage,
+  seedStandardDeck,
+  type StandardFixture,
+} from "./actions-test-storage.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
-import { splitSqlStatements, seedCard } from "../render/render-test-storage.js";
-import type { RenderTestStorage } from "../render/render-test-storage.js";
+import { seedCard } from "./actions-test-storage.js";
 import {
   buildFollowNotifyHook,
   fixedAuthAs,
@@ -33,59 +34,56 @@ import {
   deckEmailTemplateResolver,
   type SavePathIntegrationHook,
 } from "../../../src/card/notify/index.js";
-import type { Actor } from "../../../src/card/actions/types.js";
 
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const ACTOR: Actor = { id: 7, name: "John" };
-
-async function makeHarness(
-  extra: Partial<Parameters<typeof CardActionEngine.prototype.applyAction>> = {},
-): Promise<{
+async function freshWithHook(): Promise<{
+  f: StandardFixture;
   engine: CardActionEngine;
-  fetch: FetchEngine;
   transport: CaptureTransport;
-  storage: RenderTestStorage;
-  close: () => void;
 }> {
-  const driver = new LocalSqliteDriver({ path: ":memory:" });
-  for (const statement of splitSqlStatements(
-    readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8"),
-  )) {
-    await driver.query(statement, []);
-  }
-  const fetch = new FetchEngine(driver);
+  const f = await (async () => {
+    const storage = await createActionsTestStorage();
+    const fixture = await seedStandardDeck(storage);
+    return fixture;
+  })();
   const transport = new CaptureTransport();
-  const engine = new CardActionEngine(fetch, {
-    actor: ACTOR,
-    ...extra,
-  } as never);
-  const storage = { counting: { query: (s: string, p: unknown[]) => driver.query(s, p) } } as never;
-  void storage;
-  return {
-    engine,
-    fetch,
-    transport,
-    storage: { counting: { query: (s: string, p: unknown[]) => driver.query(s, p) } } as RenderTestStorage,
-    close: () => driver.close(),
-  };
+  const hooks: SavePathIntegrationHook[] = [
+    buildFollowNotifyHook({
+      followers: fixedFollowerResolver([
+        {
+          followerId: 12,
+          followerName: "Sara",
+          followerEmail: "sara@example.com",
+          followedSetName: "Watched Card+*followed",
+          followOption: "always",
+        },
+      ]),
+      template: deckEmailTemplateResolver(f.storage.engine),
+      authAs: fixedAuthAs({ id: 12, name: "Sara", email: "sara@example.com" }),
+    }),
+  ];
+  const engine = new CardActionEngine(f.storage.engine, {
+    actor: { id: 7, name: "John" },
+    integrationHooks: hooks,
+    notifyTransport: transport,
+  });
+  return { f, engine, transport };
 }
 
-/** The template triple, seeded as REAL cards through the storage helper
- *  (the children are the names M6's capture proved:
- *  follower notification email+*subject / +*text message). */
-async function seedTemplateCards(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, {
+/** The template triple, seeded as REAL rows (the child names M6's real
+ *  capture proved: follower notification email+*subject / +*text message). */
+async function seedTemplateCards(f: StandardFixture): Promise<void> {
+  await seedCard(f.storage, {
     id: 556,
     name: "follower notification email",
     typeId: 2,
   });
-  await seedCard(storage, {
+  await seedCard(f.storage, {
     id: 557,
     name: "follower notification email+*subject",
     typeId: 2,
     dbContent: "{{followed_set}} on {{follow_option}}",
   });
-  await seedCard(storage, {
+  await seedCard(f.storage, {
     id: 558,
     name: "follower notification email+*text message",
     typeId: 2,
@@ -93,35 +91,26 @@ async function seedTemplateCards(storage: RenderTestStorage): Promise<void> {
   });
 }
 
-function followHook(fetch: FetchEngine): SavePathIntegrationHook {
-  return buildFollowNotifyHook({
-    followers: fixedFollowerResolver([
-      {
-        followerId: 9,
-        followerName: "Sara",
-        followerEmail: "sara@example.com",
-        followedSetName: "Watched Card+*followed",
-        followOption: "always",
-      },
-    ]),
-    template: deckEmailTemplateResolver(fetch),
-    authAs: fixedAuthAs({ id: 9, name: "Sara", email: "sara@example.com" }),
-  });
-}
-
 describe("save-path notify wiring (CardActionEngine -> integration hooks)", () => {
   it("dispatches nothing when no integrationHooks are configured", async () => {
-    const { engine, transport, close } = await makeHarness();
-    await engine.createCard({ name: "Plain Card", content: "x" });
+    const f = await (async () => {
+      const storage = await createActionsTestStorage();
+      return seedStandardDeck(storage);
+    })();
+    const transport = new CaptureTransport();
+    const engine = new CardActionEngine(f.storage.engine, {
+      actor: { id: 7, name: "John" },
+      notifyTransport: transport,
+    });
+    const created = await engine.createCard({ name: "Plain Card", content: "x" });
+    await engine.updateCard({ cardId: created.cardId, content: "y" });
     expect(transport.captured()).toEqual([]);
-    close();
+    f.storage.close();
   });
 
   it("fires the follow hook with the deck-resolved template on update", async () => {
-    const { engine, fetch, transport, storage, close } = await makeHarness({
-      integrationHooks: [followHook(fetch)],
-    } as never);
-    await seedTemplateCards(storage);
+    const { f, engine, transport } = await freshWithHook();
+    await seedTemplateCards(f);
     const created = await engine.createCard({ name: "Watched Card", content: "first" });
     transport.drain(); // the create's own act is not the target here
     await engine.updateCard({ cardId: created.cardId, content: "second" });
@@ -130,24 +119,21 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
     expect(mails[0]?.to).toBe("sara@example.com");
     expect(mails[0]?.subject).toBe("Watched Card+*followed on always");
     expect(mails[0]?.textBody).toBe("Hi! Sara — Watched Card+*followed changed.");
-    close();
+    f.storage.close();
   });
 
   it("dispatches nothing for an anonymous actor even with hooks configured", async () => {
-    const driver = new LocalSqliteDriver({ path: ":memory:" });
-    for (const statement of splitSqlStatements(
-      readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8"),
-    )) {
-      await driver.query(statement, []);
-    }
-    const fetch = new FetchEngine(driver);
+    const f = await (async () => {
+      const storage = await createActionsTestStorage();
+      return seedStandardDeck(storage);
+    })();
     const transport = new CaptureTransport();
-    const engine = new CardActionEngine(fetch, {
+    const engine = new CardActionEngine(f.storage.engine, {
       actor: null,
       integrationHooks: [
         buildFollowNotifyHook({
           followers: fixedFollowerResolver([]),
-          template: deckEmailTemplateResolver(fetch),
+          template: deckEmailTemplateResolver(f.storage.engine),
           authAs: fixedAuthAs({ id: 1, name: "x" }),
         }),
       ],
@@ -155,6 +141,6 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
     });
     await expect(engine.createCard({ name: "Nope" })).rejects.toThrow();
     expect(transport.captured()).toEqual([]);
-    driver.close();
+    f.storage.close();
   });
 });
