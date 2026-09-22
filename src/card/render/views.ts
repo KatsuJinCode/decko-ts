@@ -173,6 +173,15 @@ const coreView: ViewFn = (ctx) => {
     // every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
     return renderPointerListCore(fmt);
   }
+  // The CodeRay cardtypes override :core with
+  // `process_content CodeRay.scan(_render_raw, LANG).div` (card-mod-format
+  // set/type/json.rb:30-32; layout_type/head/css/script analogs). The
+  // typeCode dispatch below is that per-cardtype core override, expressed
+  // once; unknown codenames fall through to the standard core.
+  const codeLang = langForTypeCode(fmt.card.typeCode);
+  if (codeLang !== undefined) {
+    return fmt.processContent(highlight(fmt.renderRaw(), codeLang));
+  }
   return fmt.processContent(fmt.renderRaw());
 };
 
