@@ -369,13 +369,26 @@ async function replay05(): Promise<number[]> {
   return [c.cardId];
 }
 
-// 06-delete: trash flip on a card.
+// 06-delete: trash flip on a card. The fixture's card_actions count
+// reflects the cumulative history up to and including this scenario's
+// delete (the prior scenarios' rename and type-change actions are on
+// the same card and persist into the snapshot).
 async function replay06(): Promise<number[]> {
   const s = await freshStorage();
   await seedStandardDeck(s);
+  // Seed Search cardtype so the type-change step resolves.
+  await s.driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id, read_rule_class,
+        read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, 'Search', 'search', 'search', NULL, NULL, NULL, ?, ?, 1, 1, '*all', ?, NULL, 0, ?, NULL)`,
+    [SEARCH_TYPE_ID, "2026-09-21 00:00:00.000", "2026-09-21 00:00:00.000", ANYONE_ID, CARDTYPE_ID],
+  );
   const engine = makeEngine(s);
   const c = await engine.createCard({ name: "WCC Simple", content: "v1" });
   await engine.updateCard({ cardId: c.cardId, name: "WCC Renamed" });
+  await engine.updateCard({ cardId: c.cardId, typeId: SEARCH_TYPE_ID });
   await engine.deleteCard({ cardId: c.cardId });
   await snapshotAndAssert(s, "06-delete", [c.cardId]);
   s.close();
