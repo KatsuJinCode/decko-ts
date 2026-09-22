@@ -49,12 +49,22 @@ interface ProofEntry {
   views: Record<string, string>;
 }
 
+/** Set-card entries whose view coverage moved to
+ *  tests/card/render/set-card-views-corpus-parity.test.ts (wave E): that
+ *  suite renders the same oracle views with region-scoped classifiers for
+ *  the capture-vs-dump data drift this deck carries (absent *head rule
+ *  rows, set-member count skew). Skipping them here avoids duplicating the
+ *  classification with a weaker whole-buffer marker; the coverage is
+ *  cross-referenced, not dropped. */
+const OWNED_BY_SET_CARD_VIEWS = new Set([217, 268, 273, 294, 300, 302, 315]);
+
 function proofEntries(): ProofEntry[] {
   const templates = structureTemplateContents();
   const lines: ShardLine[] = readShardLines();
   const entries: ProofEntry[] = [];
   for (const line of lines) {
     if (line.record === undefined) continue;
+    if (OWNED_BY_SET_CARD_VIEWS.has(line.id)) continue;
     // The classification predicate: Ruby's captured content IS a template.
     if (!templates.has(line.record.content)) continue;
     const views: Record<string, string> = {};
