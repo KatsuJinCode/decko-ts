@@ -93,6 +93,17 @@ export interface CardActionEngineOptions {
    *  The full ok? rule machinery (card-mod-permissions) is a later
    *  stream. */
   canWrite?: CanWriteHook;
+  /** The save-path integration seam (card-mod-follow notify.rb — the
+   *  integration stage runs AFTER expire, phases.rb:33-39). When empty or
+   *  omitted, saves dispatch nothing and the engine behaves exactly as
+   *  before. Failures inside hooks are logged, never raised
+   *  (email_template.rb:6's rescue Net::SMTPError shape). */
+  integrationHooks?: SavePathIntegrationHook[];
+  /** The transport the integration hooks send through (default: the
+   *  notify module's NoopTransport default). */
+  notifyTransport?: NotifyTransport;
+  /** Log sink for integration dispatch lines. */
+  notifyLogger?: (line: string) => void;
 }
 
 /** Side-card resolution result for one compound name. */
