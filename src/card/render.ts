@@ -588,7 +588,11 @@ export class RenderEngine implements RenderEngineLike {
   /** Pre-load every rule card whose left_id equals the set card's id,
    *  plus the rule's right side (the setting card), so the set-card
    *  Rules section's collectRules walk finds them in renderCards.
-   *  Single batched query; warm renders (closure warm) skip the pass. */
+   *  Single batched query; warm renders (closure warm) skip the pass.
+   *  The right side cards must also include the *all setting cards
+   *  themselves (autoname, default, structure, ...) so the before(:bar)
+   *  hook can resolve the right part's codename for the _category-*
+   *  class chain. */
   private async preloadSetRules(setCard: RenderCard): Promise<void> {
     if (setCard.id === undefined) return;
     // Skip if already warm (the walk above already populated the map).
@@ -621,6 +625,36 @@ export class RenderEngine implements RenderEngineLike {
       if (existing === undefined || existing.name === undefined) continue;
       await this.cacheFetchedRecord(existing);
     }
+    for (const row of result.rows) {
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      await this.cacheFetchedRecord(record);
+    }
+    // Load the *all 23 settings cards (autoname, default, structure, create,
+    // read, ...) so the before(:bar) hook can resolve each rule's right
+    // part to its codename. Without these the _category-* class chain
+    // is empty (bar_view.rb:10 + editor.rb:54-58).
+    await this.preloadAllSettingCards();
+  }
+
+  /** Load every setting card into renderCards so the rule :bar's
+   *  category_classes helper (bar_view.rb:10 + editor.rb:54-58) can
+   *  resolve the right-side codename. The settings are the standard
+   *  Card::Setting.groups keys' codenames. */
+  private async preloadAllSettingCards(): Promise<void> {
+    const allCodenames = [
+      "autoname", "default", "structure",
+      "create", "read", "update", "delete", "captcha",
+      "head", "layout", "style", "script",
+      "help", "input_type", "guide", "content_options", "content_option_view",
+      "on_create", "on_update", "on_delete",
+      "thanks", "follow_fields", "follow",
+    ];
+    const placeholders = allCodenames.map(() => "?").join(",");
+    const result = await this.fetcher.driver.query<CardsRow>(
+      `SELECT * FROM cards WHERE codename IN (${placeholders}) AND trash = 0`,
+      allCodenames,
+    );
     for (const row of result.rows) {
       const record = await composeCardRecord(row, this.fetcher.lexicon);
       if (record.name === undefined) continue;
