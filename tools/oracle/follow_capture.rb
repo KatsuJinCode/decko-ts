@@ -222,7 +222,7 @@ Card::Auth.as_bot do
   end
 
   # The EmailTemplate carrying the notification template. The trio of
-  # child cards (+subject, +text_message, +*to) carry the literal
+  # child cards (+*subject, +*text message, +*to) carry the literal
   # templates — chosen for byte-determinism with the TS port.
   #
   # M6: card-mod-email seeds the type plus the codename
@@ -230,67 +230,62 @@ Card::Auth.as_bot do
   # template uses complex inclusions (e.g. `{{_user|name}}
   # {{_|last_action_verb}} "{{_|name}}"`) that the TS port's narrow
   # `interpolateTemplate` is NOT designed to mirror. The capture needs
-  # the simple-substitution triple to assert parity, so we trash the
-  # existing card first (dev DB is throwaway) and recreate it with the
-  # test templates. The trigger in card-mod-follow
-  # set/right/account.rb:17 hard-codes `Card[:follower_notification_email]`
-  # so we cannot point the capture at a different card without
-  # monkey-patching.
+  # the simple-substitution triple to assert parity.
+  #
+  # We UPDATE the seeded email_template in-place rather than trashing
+  # and re-creating it. Trashing does not free the name: Card.create!
+  # on a trashed row runs the `:manage_trash` event (mod/core/set/all/
+  # trash.rb:23-27), which calls `pull_from_trash!` and flips
+  # `trash = false` — so the seeded card re-materializes with the same
+  # id, the same codename, and the same stale subcards. The only safe
+  # path is to overwrite the subcards with the test templates and
+  # keep the codename where it is.
   existing = Card.fetch("follower notification email", new: {})
   if !existing.new_card?
     seed_log["follower_notification_email.before"] =
-      "trashing existing id=#{existing.id} subcards=" +
+      "id=#{existing.id} subcards=" +
       Card.where(left_id: existing.id).map(&:name).join(",")
-    # Hard-trash the existing card + subcards by setting trash=true
-    # directly. destroy! runs the director's full event pipeline and
-    # raises on EmailTemplate cards because the finalize stage is
-    # skipped; update_attributes! with trash=true avoids that and
-    # leaves the card in the trash table (trash flag set, not deleted).
-    Card.where(left_id: existing.id).update_all(trash: true) # children
-    existing.update_columns(trash: true) # the email template card itself
-    seed_log["follower_notification_email"] = "trashed-and-recreated"
+    # Trash any stale subcards from a previous capture run that have
+    # the old (no-star) names so they don't linger and confuse
+    # subsequent renders.
+    Card.where(left_id: existing.id, name: ["follower notification email+subject", "follower notification email+text_message"]).update_all(trash: true)
+    # Update the test subject/text_message fields in place. Use
+    # subcards: { ... } to create them if missing; Card's create-or-update
+    # semantics handle both cases.
+    existing.update!(
+      subcards: {
+        # The field-card NAMES must match the mod's codenames:
+        #   *subject      (codename :subject)       card-mod-email data/real.yml:42-43
+        #   *text message (codename :text_message) card-mod-email data/real.yml:57-58
+        # The email renderer's `fetch(field)` (email_config.rb:37) takes
+        # the symbol, resolves it via Codename.id!, gets the id of the
+        # field-type card (e.g. *subject = id 1224), then constructs
+        # `<template>+<id>` which decodes to `<template>+*subject`. So a
+        # field card named `+subject` (no star) is NOT findable through
+        # the field symbol — only `+*subject` is.
+        "+*subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
+        "+*text message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
+        # M6 byte-parity note: the test scenario supplies the to override
+        # via `fields[:to]` (card-mod-follow set/right/account.rb:17) —
+        # the EmailTemplate's +*to is a fallback. We use a literal email
+        # so the :email_addresses renderer passes it through as-is
+        # (card-mod-email set/abstract/email_field.rb:28-30).
+        "+*to" => { content: "sara@example.com" },
+      },
+    )
+    seed_log["follower_notification_email"] = "updated-in-place"
+  else
+    Card.create!(
+      name: "follower notification email",
+      type: "Email template",
+      subcards: {
+        "+*subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
+        "+*text message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
+        "+*to" => { content: "sara@example.com" },
+      },
+    ).update! codename: "follower_notification_email"
+    seed_log["follower_notification_email"] = "created-with-codename"
   end
-  Card.create!(
-    name: "follower notification email",
-    type: "Email template",
-    subcards: {
-      # The field-card NAMES must match the mod's codenames:
-      #   *subject      (codename :subject)       card-mod-email data/real.yml:42-43
-      #   *text message (codename :text_message) card-mod-email data/real.yml:57-58
-      # The email renderer's `fetch(field)` (email_config.rb:37) takes
-      # the symbol, resolves it via Codename.id!, gets the id of the
-      # field-type card (e.g. *subject = id 1224), then constructs
-      # `<template>+<id>` which decodes to `<template>+*subject`. So a
-      # field card named `+subject` (no star) is NOT findable through
-      # the field symbol — only `+*subject` is. (Earlier capture runs
-      # created `+subject` and the body/subject came back empty because
-      # the renderer fetched a non-existent card and skipped the body
-      # branch.)
-      "+*subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
-      "+*text message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
-      # M6 byte-parity note: the test scenario supplies the to override
-      # via `fields[:to]` (card-mod-follow set/right/account.rb:17) —
-      # the EmailTemplate's +*to is a fallback. We use a literal email
-      # so the :email_addresses renderer passes it through as-is
-      # (card-mod-email set/abstract/email_field.rb:28-30).
-      "+*to" => { content: "sara@example.com" },
-    },
-  )
-
-  # Re-attach the `follower_notification_email` codename. The trigger
-  # hardcodes `Card[:follower_notification_email]`
-  # (card-mod-follow set/right/account.rb:17); the codename is the
-  # actual lookup key (lib/card/codename.rb:161 raises
-  # Card::Error::CodenameNotFound when no card has it). The seed card
-  # `card-mod-follow/data/real.yml:67` declares the codename; trashing
-  # the seed row via `trash=true` left the codename column on the
-  # OLD (trashed) card, so subsequent Card[:follower_notification_email]
-  # lookups returned the trashed card with its old subcards. We clear
-  # the codename on the trashed row first, then set it on the new one.
-  if existing && !existing.new_card?
-    existing.update_columns(codename: nil)
-  end
-  Card["follower notification email"].update! codename: "follower_notification_email"
 
   # A card John will edit (Sara is NOT the actor).
   sara_card = Card.fetch("Sara Test Card", new: { type_id: Card::BasicID })
