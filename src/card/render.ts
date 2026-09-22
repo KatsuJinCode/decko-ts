@@ -484,6 +484,22 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
+  /** Populate the typeCode field on every prepared render card. The
+   *  sync peek (peekNameForId) needs the codehash loaded; the
+   *  prefetch walk runs enrichAndStore BEFORE parseRuleTypeIds, so
+   *  cards enriched during the walk have typeCode === undefined on
+   *  a cold render. Patch them here, now that the codehash is in
+   *  memory. Idempotent: a second call after a warm closure is a
+   *  no-op (peekNameForId is sync, no query). */
+  private populateTypeCodes(): void {
+    const codenames = this.fetcher.codenames;
+    for (const card of this.renderCards.values()) {
+      if (card.typeCode !== undefined) continue;
+      if (card.typeId === undefined) continue;
+      card.typeCode = codenames.peekNameForId(card.typeId);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // RenderEngineLike - the synchronous render-path surface
   // -------------------------------------------------------------------------
