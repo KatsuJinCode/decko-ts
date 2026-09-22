@@ -126,12 +126,19 @@ const SMOKE_SEED = [
 ];
 
 /** Insert one cards row. NULL name/key columns for junction rows
- *  (the 2020 convention the schema records). */
-async function insertCard(driver, row) {
+ *  (the 2020 convention the schema records). `DeckoName` is the engine's
+ *  class — passed in because the seed's name->key mapping must use the
+ *  engine's own canonical key (plural-stem collapse + underscore
+ *  handling) or fetch queries will miss the row. */
+async function insertCard(driver, row, DeckoName) {
   const isCompound = row.leftId !== undefined && row.rightId !== undefined;
   const nameColumn = isCompound ? null : (row.name ?? null);
-  const keyColumn = isCompound ? null :
-    (row.name ? row.name.toLowerCase().replace(/\s+/g, "_") : null);
+  let keyColumn = null;
+  if (!isCompound && row.name) {
+    keyColumn = DeckoName !== undefined
+      ? DeckoName.parse(row.name).key
+      : row.name.toLowerCase().replace(/\s+/g, "_");
+  }
   await driver.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
