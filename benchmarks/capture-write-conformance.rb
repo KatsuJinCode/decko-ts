@@ -263,10 +263,13 @@ end
 #    Parent "Sign up" already exists in the oracle seed; using a parent that
 #    does NOT exist forces Decko to auto-create it as a side card, which
 #    recurses into the same subdirector pipeline and crashes this Ruby
-#    stack (SystemStackError). Existing parent = clean junction create.
+#    stack (SystemStackError). The right side must NOT contain a space
+#    ("WCC child" parses as "WCC+child" and the runner auto-stages "WCC"
+#    which collides with scenario 1's "WCC Simple" via the unique-name
+#    validation chain — observed in iteration).
 # -----------------------------------------------------------------------
 Card::Auth.as_bot do
-  c = Card.create!(name: "Sign up+WCC child", content: "first child")
+  c = Card.create!(name: "Sign up+wccchild", content: "first child")
   capture_scenario("02-create-junction", writer, affected_cards: [c.left_id, c.right_id, c.id])
 end
 
@@ -277,7 +280,7 @@ end
 #    change rows yet and the first update populates them.
 # -----------------------------------------------------------------------
 Card::Auth.as_bot do
-  c = Card.fetch("Sign up+WCC child")
+  c = Card.fetch("Sign up+wccchild")
   c.update! content: "second revision"
   capture_scenario("03-update-content", writer, affected_cards: [c.id])
 end
