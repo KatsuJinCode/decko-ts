@@ -349,25 +349,33 @@ This is the output Ruby's `Card::Mailer.new_mail` would emit for the
 inputs above, traced step-by-step:
 
 1. **subject** resolves to
-   `"John changed John Following on always"`.
+   `"follower changed followed_set on follow_option"`.
    - `Card::Mailer.new_mail("...")` builds a Mail with the raw args.
    - The `subject` value goes through `format(:email_text).show
      @active_email_context` (set/type/email_template.rb:9-19 ->
-     `contextual_content` line 23-30). When the template contains a
-     literal `{{follower}}` and `follower` is NOT a card name
-     (it's a string from the active_notice hash), contextual_content
-     treats it as a literal name and walks inclusions only on names
-     that resolve to a real card. `follower` does NOT resolve to a
-     card, so the substitution NEVER happens — the literal
-     `{{follower}}` remains verbatim in the mail subject.
+     `contextual_content` line 23-30, plus card-mod-content
+     set/all/contextual_content.rb:13-19 `render! :core, options`).
+   - `contextual_content` walks `{{X}}` as an inclusion. When X does
+     NOT resolve to a real card (in the dev DB scenario, none of
+     `follower` / `followed_set` / `follow_option` are cards), the
+     inclusion walker falls through to the default render of the
+     missing card — the literal NAME of the placeholder, with the
+     `{{` and `}}` stripped. The captured fixture
+     (`fixtures/captured/follow-notification.json` delivered[0].subject)
+     proves this: `"follower changed followed_set on follow_option"`.
 
-   The TS port inverts that decision (substitutes literally) so the
-   test can compare deterministic bytes. The design is documented in
-   `mail.ts:35-49` and explicitly tested in `tests/card/notify/mail.test.ts:42-72`
-   ("leaves unknown placeholders untouched (matches Ruby's
-   contextual_content)").
+   Earlier M1–M5 hand-derived notes claimed the literal `{{follower}}`
+   remained "verbatim" in the subject. That was wrong: the braces are
+   dropped and only the NAME is rendered. The M6 real-oracle capture
+   corrected this — see "M6 corrections" at the bottom of this section.
+   The TS port's `interpolateTemplate` now mirrors the verbatim
+   behavior: placeholders render as literal names with the braces
+   stripped, regardless of whether the active_notice hash carries a
+   value for them. Design and tests updated together (see
+   `src/card/notify/mail.ts:70-103` and
+   `tests/card/notify/mail.test.ts:71-87`).
 
-2. **text body** resolves to `"Hi! John changed John Following."`
+2. **text body** resolves to `"Hi! follower changed followed_set."`
    by the same rule.
 
 3. **from** stays `"deck@example.com"` (no `From` rewrite —
