@@ -101,27 +101,35 @@ The clean elimination is a corpus re-capture from a dump-faithful deck
 (~1 day including the re-replay). Decision: not worth it for the M1 claim;
 booked for whenever the corpus regenerates for real reasons.
 
-## What stands between here and the demo
+## The plan to the capstone (2026-09-22, agents + coordinator)
 
-1. 48-shard replay lands → aggregate the four slice inventories, reconcile
-   every entry against the classes above (each maps to a fix or a drift).
-2. One final full replay for the M1 number.
-3. Redeploy the Cloudflare worker with the integrated engine; smoke the
-   live deck.
-4. Show Julian: the parity number, the live worker, and this ledger.
+Workstreams — every one lands BEFORE the capstone; the capstone is a
+consequence, not a phase:
 
-## What stands between the demo and 100% of the plan
+| # | workstream | owner | state |
+| --- | --- | --- | --- |
+| W1 | set_read_rule save event (write path) | background agent (regular) | running |
+| W2 | card_references write-path population | background agent (regular) | running |
+| W3 | search-type core views (valid-JSON byte parity) | background agent (minimax) | running |
+| W4 | ERB/HAML content provenance (investigate; likely no-op with evidence) | background agent (minimax) | running |
+| W5 | notify save-path wiring (the documented registration line into the action engine) | coordinator, direct | queued |
+| W6 | baseline 4-slice inventory → reconcile every entry against the classes/PROVEN table | coordinator, on baseline landing | waiting |
+| W7 | CAPSTONE: single 48-shard run (~<1 h post-cache), aggregate = the recorded proof | coordinator, once W1-W6 land | gated |
 
-- Write-path depth: 8 Ruby conformance scenarios green; set_read_rule save
-  path (P3) and references write stream (P4) still open — their agents died
-  silently (see below) and the scopes revert to the queue.
-- Mod breadth: compat report says 1 ported / 30 partial / 2 ignored
-  (tools/compat-report/); the corpus only exercises a slice of them.
-- Side-effect wiring: notify's save-path integration hook (the ported
-  follow-email needs its registration line landed in the action engine).
-- PostgreSQL rung: 91 dialect tests green; live-PG proof specified, not run.
-- M2/M3 product milestones (one-click deploy, live metrics) and the CF
-  token cleanup owed after Julian sees the demo.
+Capstone preconditions checklist (all must hold before W7 launches):
+every W1-W5 landed and reconciled; `npx tsc --noEmit` clean; each changed
+surface's named-path tests green at final state; the drift classes still
+counted and printed. The capstone's aggregate JSON is archived with the
+commit hash; the M1 claim is stated against it, then never re-run.
+
+After the capstone (demo sequence): redeploy the Cloudflare worker with
+the integrated engine → live smoke of the demo deck → show Julian the
+parity number, the live worker, and this ledger. The CF token cleanup
+(`node deploy/cleanup.mjs --yes` + revoke) happens after the demo.
+
+Explicitly OUT of capstone scope (product breadth, not parity proof;
+separate go/no-go): live-PG rung proof, the 30 partial mods' breadth,
+one-click deploy polish, M3 live-metrics milestone.
 
 ## Fleet post-mortem (2026-09-22 morning)
 
