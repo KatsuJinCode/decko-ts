@@ -476,6 +476,36 @@ export class RenderEngine implements RenderEngineLike {
     return card.id !== undefined && this.deniedVerdicts.get(card.id) === true;
   }
 
+  /** ok_to_<task>? for the non-read view tasks (docs/view-perms-notes.md). */
+  taskAllowed(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined {
+    if (this.readPermission?.alwaysOk) return true;
+    return this.taskVerdicts.get(card.key)?.[task];
+  }
+
+  /** Prepares the non-read task verdicts when the requested view needs
+   *  them: one batch for the who_can universe, then one candidate
+   *  resolution per prepared card (memoized — warm renders stay at zero
+   *  queries). Read/none-only renders skip entirely. */
+  private async ensureTaskVerdicts(view: string): Promise<void> {
+    if (this.readPermission === undefined) return;
+    if (!viewRequiresTask(view)) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    for (const card of this.renderCards.values()) {
+      if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
+      this.taskVerdicts.set(
+        card.key,
+        await allTaskVerdictsForCard(
+          this.fetcher,
+          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+          this.taskState,
+        ),
+      );
+    }
+  }
+
   /** Pre-executed results for a Search core (card_list view). */
   executeSearch(fmt: RenderFormat): RenderCard[] {
     return this.searchResults.get(fmt.card.key) ?? [];
