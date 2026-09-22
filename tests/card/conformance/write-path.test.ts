@@ -31,6 +31,7 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { actionTypeCode } from "../../../src/card/history/action.js";
 import type { Actor } from "../../../src/card/actions/types.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const FIXTURE_DIR = `${REPO_ROOT}fixtures/write-conformance`;
