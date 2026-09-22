@@ -175,6 +175,14 @@ const coreView: ViewFn = (ctx) => {
     // every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
     return renderPointerListCore(fmt);
   }
+  if (fmt.card.typeCode === "set") {
+    // card-mod-rules-0.20.0 set/type/set/html_views.rb:6-11 view :core:
+    //   [content_tag(:h4, t("rules_header"), class: "mt-3"),
+    //    filtered_rule_list(:accordion_bar_list)]
+    // The Rules section is the set card's content view body (the
+    // content view delegates to core, set/type/set.rb + html/views.rb).
+    return setRulesCoreHtml(ctx);
+  }
   if (fmt.card.typeName === "Date") {
     // card-mod-date-0.20.0 set/type/date.rb:6-8 `view :core do
     //   ::Date.parse(card.content).strftime "%B %-d, %Y"
