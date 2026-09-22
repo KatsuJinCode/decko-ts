@@ -31,6 +31,7 @@ class CardErrorBadQuery extends Error {
   readonly query: string;
   constructor(query: string, message: string = `Invalid JSON search query: ${query}`) {
     super(message);
+    this.name = "Card::Error::BadQuery";
     this.query = query;
   }
 }
