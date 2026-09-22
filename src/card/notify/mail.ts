@@ -58,11 +58,13 @@ export interface EmailTemplate {
  *  set/right/account.rb:16-21. Three keys: follower (user name as string),
  *  followed_set (followed set's name as string), and follow_option
  *  ("always" / "created" / "edited" / "never", with brackets stripped —
- *  notify.rb:69-70). */
+ *  notify.rb:69-70). The TS port uses camelCase keys for the in-memory
+ *  notice; the substitution vars fold both spellings together so the
+ *  email template may use either form. */
 export interface FollowNotice {
   readonly follower: string;
-  readonly followed_set: string;
-  readonly follow_option: string;
+  readonly followedSet: string;
+  readonly followOption: string;
 }
 
 /** Single-pass substitution of `{{key}}` placeholders. The pattern is
