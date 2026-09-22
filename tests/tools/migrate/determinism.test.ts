@@ -17,10 +17,10 @@ function makeSourceDb(): string {
   const dir = mkdtempSync(join(tmpdir(), "decko-det-src-"));
   const path = join(dir, "src.sqlite");
   const db = new Database(path);
-  db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, content TEXT, type_id INTEGER, trash INTEGER, left_id INTEGER, right_id INTEGER)`);
+  db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, content TEXT, type_id INTEGER, trash INTEGER, left_id INTEGER, right_id INTEGER, creator_id INTEGER, updater_id INTEGER, created_at TEXT, updated_at TEXT)`);
   for (let i = 1; i <= 50; i++) {
     db.exec(
-      `INSERT INTO cards (id, name, key, content, type_id, trash, left_id, right_id) VALUES (${i}, 'n${i}', 'k${i}', 'body${i}', 3, 0, NULL, NULL)`,
+      `INSERT INTO cards (id, name, key, content, type_id, trash, left_id, right_id, creator_id, updater_id, created_at, updated_at) VALUES (${i}, 'n${i}', 'k${i}', 'body${i}', 3, 0, NULL, NULL, 1, 1, '2024-01-01', '2024-01-01')`,
     );
   }
   db.exec(`CREATE TABLE card_references (id INTEGER PRIMARY KEY, referer_id INTEGER, referee_id INTEGER, ref_type TEXT)`);
