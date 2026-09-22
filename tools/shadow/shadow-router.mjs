@@ -361,7 +361,9 @@ export function createProxyServer({ rubyUrl, tsUrl, policy, logPath }) {
           (d) => d.kind !== "content-type",
         );
         if (!cmp.same) {
-          entry.diffKinds = [...new Set(cmp.diffs.map((d) => d.kind))];
+          const kinds = cmp.diffs.map((d) => d.kind);
+          if (!cmp.bodyEqual) kinds.push("body");
+          entry.diffKinds = [...new Set(kinds)];
         }
       }
       appendLogEntry(logPath, entry);
