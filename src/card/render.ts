@@ -695,6 +695,10 @@ export class RenderEngine implements RenderEngineLike {
       // returns undefined; the view code falls back to its default
       // rendering (the non-pointer core path).
       typeCode = this.fetcher.codenames.peekNameForId(typeId);
+      if (process.env.DEBUG_TYPECODE === "1") {
+        console.log(`[enrichAndStore] card=${name.s} typeId=${typeId} typeName=${typeName} typeCode=${typeCode}`);
+        console.log(`[enrichAndStore] codehash loaded?`, (this.fetcher.codenames as { codehashValue?: unknown }).codehashValue !== undefined);
+      }
     }
     let leftTypeName: string | undefined;
     let leftRecord: CardRecord | undefined;
