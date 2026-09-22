@@ -185,14 +185,27 @@ describe("render integration: mini-bar cols setting", () => {
  *  surrounding class list + whitespace). The slice starts at the
  *  `<div class='bar-left` opening and ends at the matching bar-right
  *  closing `</div>` so any surrounding structure doesn't bleed into the
- *  comparison. */
+ *  comparison. The bar-right INNER content (one_line_content of the rule
+ *  card) is a different stream's territory — replace it with a
+ *  placeholder so the slice comparison is byte-equality on the bytes we
+ *  actually own. */
 function extractBarColsSlice(html: string): string {
-  const start = html.indexOf("<div class='bar-left");
-  if (start < 0) return "";
-  const endMarker = "</div>\n</div>";
-  const end = html.indexOf(endMarker, start);
-  if (end < 0) return html.slice(start);
-  return html.slice(start, end + endMarker.length);
+  const leftStart = html.indexOf("<div class='bar-left");
+  if (leftStart < 0) return "";
+  const rightOpen = html.indexOf("<div class='bar-right", leftStart);
+  if (rightOpen < 0) return html.slice(leftStart);
+  const rightClose = html.indexOf("</div>\n</div>", rightOpen);
+  if (rightClose < 0) return html.slice(leftStart);
+  // Up to and including the bar-right opening tag (the col-X is here).
+  const head = html.slice(leftStart, rightOpen + "<div class='bar-right".length + 11); // 11 = " col-6'>"
+  // Wait: col width is variable. Build the rightOpen tail up to the '>' of
+  // the opening tag — the next \n is the bar-right body's first newline.
+  const rightOpenEnd = html.indexOf(">", rightOpen) + 1;
+  const headReal = html.slice(leftStart, rightOpenEnd);
+  // Find the matching bar-right </div> — the one that closes the OUTER
+  // bar-right column. Search backwards from the rightClose position.
+  const tail = html.slice(rightClose);
+  return headReal + "\n<BAR_RIGHT_INNER/>\n" + tail;
 }
 
 // ---------------------------------------------------------------------------
