@@ -26,7 +26,7 @@ require "set"
 PREFIX     = ENV.fetch("PREFETCH_PREFIX", "PrefR1")
 DEPTH      = ENV.fetch("PREFETCH_DEPTH", "8").to_i
 RENDER_N   = ENV.fetch("PREFETCH_RENDER_N", "5").to_i
-PROTOTYPE_ROOT = File.expand_path("..", __dir__)
+PROTOTYPE_ROOT = __dir__   # the directory holding this script
 REPO_ROOT      = File.expand_path("..", PROTOTYPE_ROOT)
 ORACLE_DB     = File.join(REPO_ROOT, "tools", "oracle", "decko-oracle-app",
                          "db", "development.sqlite3")
