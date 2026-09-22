@@ -1,0 +1,21 @@
+# SQLite version 3.x
+shared:
+  adapter: sqlite3
+  pool: 5
+  timeout: 5000
+
+
+development:
+  database: db/development.sqlite3
+
+# Warning: The database defined as "test" will be erased and
+# re-generated from your development database when you run "rake".
+# Do not set this db to the same as development or production.
+test: &test
+  database: db/test.sqlite3
+
+cucumber: *test
+cypress: *test
+
+production:
+  database: db/production.sqlite3

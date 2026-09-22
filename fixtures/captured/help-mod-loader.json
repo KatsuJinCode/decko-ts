@@ -1,0 +1,311 @@
+{
+  "grouped_codes": [
+    [
+      "all"
+    ],
+    [
+      "abstract"
+    ],
+    [
+      "all_plus",
+      "type",
+      "star",
+      "rstar",
+      "rule",
+      "right",
+      "type_plus_right",
+      "self"
+    ]
+  ],
+  "mods": [
+    {
+      "group": "gem-card",
+      "index": 0,
+      "name": "core"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 1,
+      "name": "collection"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 2,
+      "name": "content"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 3,
+      "name": "format"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 4,
+      "name": "list"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 5,
+      "name": "markdown"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 6,
+      "name": "permissions"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 7,
+      "name": "help"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 8,
+      "name": "search"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 9,
+      "name": "rules"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 10,
+      "name": "edit"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 11,
+      "name": "email"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 12,
+      "name": "integrate"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 13,
+      "name": "account"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 14,
+      "name": "history"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 15,
+      "name": "carrierwave"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 16,
+      "name": "virtual"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 17,
+      "name": "assets"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 18,
+      "name": "script"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 19,
+      "name": "ace_editor"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 20,
+      "name": "api_key"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 21,
+      "name": "style"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 22,
+      "name": "bar_and_box"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 23,
+      "name": "bootstrap"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 24,
+      "name": "comment"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 25,
+      "name": "date"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 26,
+      "name": "delayed_job"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 27,
+      "name": "follow"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 28,
+      "name": "session"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 29,
+      "name": "tabs"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 30,
+      "name": "layout"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 31,
+      "name": "recaptcha"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 32,
+      "name": "tinymce_editor"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 33,
+      "name": "defaults"
+    }
+  ],
+  "pattern_codes": [
+    "self",
+    "type_plus_right",
+    "right",
+    "rule",
+    "rstar",
+    "star",
+    "type",
+    "all_plus",
+    "all"
+  ],
+  "registered_views": {
+    "all_help_html_view_help": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-help-0.20.0/set/all/help.rb",
+        7
+      ]
+    },
+    "all_help_html_view_help_text": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-help-0.20.0/set/all/help.rb",
+        14
+      ]
+    },
+    "all_help_html_view_lead": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-help-0.20.0/set/all/help.rb",
+        27
+      ]
+    },
+    "cache_config_help": true,
+    "right_help_html_view_popover": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-help-0.20.0/set/right/help.rb",
+        4
+      ]
+    },
+    "unknown_config_help": true,
+    "unknown_config_help_text": true,
+    "unknown_config_lead": false,
+    "wrap_config_help": true
+  },
+  "rendered": {
+    "Oracle Bare Probe#content": "<div id=\"oracle_bare_probe-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_bare_probe d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Bare Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Bare_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}\">bare probe body</div>",
+    "Oracle Bare Probe#help": "<div id=\"oracle_bare_probe-help-view\" class=\"card-slot help-view ALL TYPE-rich_text SELF-oracle_bare_probe\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Bare Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Bare_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;help&quot;]}\"></div>",
+    "Oracle Bare Probe#help_text": "",
+    "Oracle Bare Probe#lead": "<div id=\"oracle_bare_probe-lead-view\" class=\"card-slot lead-view ALL TYPE-rich_text SELF-oracle_bare_probe lead\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Bare Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Bare_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;lead&quot;,&quot;show&quot;:[&quot;lead&quot;]}\">bare probe body</div>",
+    "Oracle Help Probe#content": "<div id=\"oracle_help_probe-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_help_probe d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Help Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Help_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}\">probe card body</div>",
+    "Oracle Help Probe#help": "<div id=\"oracle_help_probe-help-view\" class=\"card-slot help-view ALL TYPE-rich_text SELF-oracle_help_probe\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Help Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Help_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;help&quot;]}\"><div class=\"help-text\"><span class='d-none'><a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Help_Probe+*self+*help/rule_edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a></span>Moderator-approved help text for the probe card.</div></div>",
+    "Oracle Help Probe#help_text": "<span class='d-none'><a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Help_Probe+*self+*help/rule_edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a></span>Moderator-approved help text for the probe card.",
+    "Oracle Help Probe#lead": "<div id=\"oracle_help_probe-lead-view\" class=\"card-slot lead-view ALL TYPE-rich_text SELF-oracle_help_probe lead\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Help Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Help_Probe\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;lead&quot;,&quot;show&quot;:[&quot;lead&quot;]}\">probe card body</div>"
+  },
+  "setting_groups": {
+    "editing": [
+      "help",
+      null,
+      "input_type",
+      "guide",
+      null,
+      "content_options",
+      "content_option_view"
+    ],
+    "event": [
+      "on_create",
+      "on_update",
+      "on_delete"
+    ],
+    "other": [
+      null,
+      null,
+      "thanks",
+      null,
+      "follow_fields",
+      null,
+      "follow"
+    ],
+    "permission": [
+      "create",
+      "read",
+      "update",
+      "delete",
+      "captcha"
+    ],
+    "templating": [
+      null,
+      "structure",
+      "default",
+      null,
+      "autoname"
+    ],
+    "webpage": [
+      "head",
+      null,
+      "layout",
+      "style",
+      "script"
+    ]
+  },
+  "setting_opts_guide": {
+    "codename": "guide",
+    "group": "editing",
+    "rule_type_editable": true,
+    "short_help_text": "appears in the full editor view to guide users"
+  },
+  "setting_opts_help": {
+    "codename": "help",
+    "group": "editing",
+    "raw_help_text": "[[http://decko.org/custom_help_text|Help text]] people will see when editing.",
+    "right_set_raw_help_text": "[[http://decko.org/custom_help_text|Help text]] people will see when editing.",
+    "rule_type_editable": true,
+    "short_help_text": "help text people will see when editing"
+  },
+  "setting_preferences": [
+    "follow"
+  ]
+}
