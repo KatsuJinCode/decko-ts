@@ -232,6 +232,7 @@ const coreView: ViewFn = (ctx) => {
  *  passed isValidDateContent. The defensive throw here mirrors the
  *  Ruby shape (`Date::Error: invalid date`) in case the prepare
  *  check is ever bypassed. */
+export function formatDateCore(content: string): string {
   const date = new Date(content);
   if (Number.isNaN(date.getTime())) {
     throw dateError();
