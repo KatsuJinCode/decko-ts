@@ -59,6 +59,7 @@ async function freshWithHook(): Promise<{
       ]),
       template: deckEmailTemplateResolver(f.storage.engine),
       authAs: fixedAuthAs({ id: 12, name: "Sara", email: "sara@example.com" }),
+        defaultFrom: "no-reply@decko.org",
     }),
   ];
   const engine = new CardActionEngine(f.storage.engine, {
@@ -138,7 +139,8 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
         buildFollowNotifyHook({
           followers: fixedFollowerResolver([]),
           template: deckEmailTemplateResolver(f.storage.engine),
-          authAs: fixedAuthAs({ id: 1, name: "x" }),
+          authAs: fixedAuthAs({ id: 1, name: "x", email: null }),
+          defaultFrom: "no-reply@decko.org",
         }),
       ],
       notifyTransport: transport,

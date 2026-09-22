@@ -46,3 +46,7 @@ export {
   type IntegrationDispatchInput,
   type IntegrationHookReceipt,
 } from "./dispatch.js";
+
+export {
+  deckEmailTemplateResolver,
+} from "./deck-resolvers.js";
