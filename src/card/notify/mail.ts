@@ -67,21 +67,44 @@ export interface FollowNotice {
   readonly followOption: string;
 }
 
-/** Single-pass substitution of `{{key}}` placeholders. The pattern is
- *  intentionally narrow: the first mechanism only needs the three keys
- *  carried by the follow notice. When the email template literally
- *  contains `{{slot_name|something}}` (the inclusion syntax mod-follow's
- *  notification views emit), this function leaves it untouched — the
- *  template chose to skip the substitution. */
+/** Single-pass rendering of `{{key}}` placeholders, mirroring Ruby's
+ *  `contextual_content` semantics for cards that do NOT resolve to a
+ *  real card name. The M6 real-oracle capture
+ *  (fixtures/captured/follow-notification.json) proves the rule:
+ *
+ *    subject tmpl  `{{follower}} changed {{followed_set}} on {{follow_option}}`
+ *    real Ruby     `follower changed followed_set on follow_option`
+ *                   (no braces; the placeholder NAME is rendered, the
+ *                    `{{` and `}}` are dropped)
+ *    doc reference card-mod-content set/all/contextual_content.rb:13-19
+ *                   + card-mod-email set/abstract/email_field.rb:22-26
+ *                   (compact_missing view → default render of card-name)
+ *
+ *  When the placeholder's `key` resolves to a card in `vars` (the
+ *  caller has loaded the substitution table from the active_notice
+ *  hash), the value is substituted — this is the "inclusion walk found
+ *  a card" branch in Ruby's contextual_content (it would render the
+ *  card's `:core` view; the port renders the supplied string instead
+ *  so the first-mechanism test can stay deterministic).
+ *
+ *  When the `key` is NOT in `vars` (no card named "follower" exists in
+ *  the dev DB; the inclusion walk hits `compact_missing` and emits the
+ *  literal name), the placeholder braces are dropped and the key is
+ *  rendered as a literal string. This is the byte-deterministic fix
+ *  that the M6 capture forced: an earlier version substituted the
+ *  active_notice value too eagerly and produced `"Sara changed *all
+ *  on always"` for the captured template — Ruby's actual output is
+ *  `"follower changed followed_set on follow_option"`.
+ */
 export function interpolateTemplate(
   template: string,
   vars: Readonly<Record<string, string>>,
 ): string {
-  return template.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (whole, key: string) => {
+  return template.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_whole, key: string) => {
     if (Object.prototype.hasOwnProperty.call(vars, key)) {
-      return vars[key] ?? whole;
+      return vars[key] as string;
     }
-    return whole;
+    return key;
   });
 }
 
