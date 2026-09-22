@@ -237,6 +237,14 @@ def reset_scenario_cards!
     WCC ReadRule+*self+*read
     WCC Referer+child
     WCC Referer
+    ZCC Simple
+    ZCC Renamed
+    ZCC Retype
+    ZCC Trash
+    ZCC ReadRule
+    ZCC ReadRule+*self+*read
+    ZCC Referer+child
+    ZCC Referer
   ]
   Card::Auth.as_bot do
     names.each do |n|
