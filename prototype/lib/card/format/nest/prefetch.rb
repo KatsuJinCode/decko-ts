@@ -44,15 +44,26 @@ class Card
 
           # --- 1) the SQL closure walk, one statement ------------------------
           rows = walk_closure_rows(root_card.key, stats)
+          if ENV["PREFETCH_DEBUG"]
+            puts "  [prefetch] walk_closure_rows: #{rows.size} rows, " \
+                 "#{stats[:statements]} statements"
+          end
+
+          # --- 2) hydrate Card::Cache[Card] + Card::Cache[Lexicon] ---------
           hydrate_cache rows, stats
+          if ENV["PREFETCH_DEBUG"]
+            puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
+                 "#{stats[:statements]} statements total"
+          end
           return stats[:rows] if rows.empty?
 
-          # --- 2) JS-level verification (cheap, no recursion on small sets) -
-          # In Ruby the parser is Card::Chunk (card-1.110.0
-          # lib/card/chunk.rb). We re-derive every reference from each row's
-          # db_content and fetch anything the CTE missed in per-level rounds.
+          # --- 3) JS-level verification (cheap, no recursion on small sets) -
           pending = collect_pending rows
           fallback_warm_cache root_card.key, pending, stats
+          if ENV["PREFETCH_DEBUG"]
+            puts "  [prefetch] fallback_warm_cache: #{stats[:fallback_rounds]} " \
+                 "rounds, #{stats[:statements]} statements grand total"
+          end
 
           stats[:rows]
         end
