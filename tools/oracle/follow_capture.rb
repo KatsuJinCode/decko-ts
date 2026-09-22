@@ -312,7 +312,7 @@ Card::Auth.as_bot do
     # it skip. `Card::Auth.with` (proxy.rb:48-58) sets current_id
     # directly via the writer; that is the correct seam.
     Card::Auth.with(john.id) do
-      Card.fetch("Sara Test Card").update! content: "updated by test"
+      Card.fetch("Sara Test Card").update! content: "updated by test at #{Time.now.to_i}"
     end
   ensure
     Card::Set::All::Notify.force_notifications = false
