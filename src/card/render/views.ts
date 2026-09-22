@@ -39,6 +39,7 @@ import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "./format.js";
 import { isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
 import { readMiniBarCols } from "./bar-cols.js";
+import { ruleBarRightHtml } from "./rule-bar-right.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
