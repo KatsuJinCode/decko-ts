@@ -184,46 +184,80 @@ const coreView: ViewFn = (ctx) => {
 function renderPointerListCore(fmt: RenderFormat): string {
   const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
   const inner = items
-    .map((name) => {
-      // Ruby's nest_item -> nest with view=:bar. The engine pre-
-      // enriches items the closure walk missed (see render.ts
-      // #enrichPointerListItems); items the pre-enrich pass could not
-      // resolve (no row in cards for that name) render as unknown-
-      // card slots via format.ts#nest (the same path a `{{yzzw}}`
-      // miss takes — Ruby's Card.fetch with new: ... creates the
-      // placeholder; the engine's buildUnknownNestCard mirrors it).
-      // Unknown cards route through the bar view's `unknown: :mini_bar`
-      // substitution (card-mod-bar_and_box set/all/bar.rb:9), which
-      // is exactly the captured byte shape for corpus:77's yzzw
-      // (slot id `yzzw-mini_bar-view`, denied bar_left / bar_right).
-      const target = fmt.engine.fetchRenderCard(name);
-      let slotHtml: string;
-      if (target !== undefined) {
-        slotHtml = fmt.nestRecord(target, "bar", {
-          nest_name: target.name.s,
-          show: ["bar"],
-          hide: ["bar_middle"],
-          home_view: "bar",
-        });
-      } else {
-        // Unknown-card nest: the captured bytes still render a slot
-        // (card-mod-bar_and_box set/all/bar.rb:9 substitutes :bar ->
-        // :mini_bar for unknown cards). The denial path the captured
-        // corpus pins comes from the read-permission gate (view_perms
-        // :read for :mini_bar is also :read, the unknown card fails
-        // ok_to_read?, the gate returns the denial span and the
-        // view dispatch never runs). We use the format.nest path -
-        // the same one a `{{yzzw}}` miss takes - which calls
-        // buildUnknownNestCard when the target is missing and
-        // renders via the unknown-card view routing (format/error
-        // .rb#view_for_unknown / view/permission.rb#alter_unknown).
-        slotHtml = fmt.nest({ name, syntax: "", options: { extra: {} }, comment: undefined });
-      }
-      return pointerItemWrap(slotHtml);
-    })
+    .map((name) => pointerItemWrap(renderPointerListItem(fmt, name)))
     .filter((s) => s !== "")
     .join("\n");
   return `<div class="card-list card-list-bar pointer-list">${inner}</div>`;
+}
+
+/** Render one pointer/list item's slot. The captured corpus bytes pin
+ *  the slot id as `${name}-mini_bar-view` (NOT `${name}-bar-view`) —
+ *  a divergence from the standard itemBarView path. Rather than
+ *  forcing the global itemBarView to diverge (which would change the
+ *  search card_list byte shape too), this function builds the slot
+ *  via the engine's standard view dispatch (same path nestRecord
+ *  uses), then post-processes the slot id + class to swap
+ *  `bar-view` → `mini_bar-view` for the OUTERMOST slot only. The
+ *  data-slot's view field stays "bar" (the engine already recorded
+ *  it via voo's requestedView). */
+function renderPointerListItem(fmt: RenderFormat, name: string): string {
+  const target = fmt.engine.fetchRenderCard(name);
+  let slotHtml: string;
+  if (target !== undefined) {
+    slotHtml = fmt.nestRecord(target, "bar", {
+      nest_name: target.name.s,
+      show: ["bar"],
+      hide: ["bar_middle"],
+      home_view: "bar",
+    });
+  } else {
+    // Unknown-card nest: Ruby's Card.fetch returns an unknown card
+    // with new: ...; the engine's buildUnknownNestCard mirrors it.
+    // The captured bytes still render a slot (card-mod-bar_and_box
+    // set/all/bar.rb:9 substitutes :bar -> :mini_bar for unknown
+    // cards). The denial path the captured corpus pins comes from
+    // the read-permission gate (view_perms :read for :mini_bar is
+    // also :read, the unknown card fails ok_to_read?, the gate
+    // returns the denial span and the view dispatch never runs).
+    slotHtml = fmt.nest({ name, syntax: "", options: { extra: {} }, comment: undefined });
+  }
+  // The standard nestRecord path produces a slot whose id ends in
+  // `bar-view` and whose class includes `bar-view`; the captured
+  // bytes pin `mini_bar-view` / `mini_bar-view` here. Post-process
+  // only the OUTERMOST slot's id and class string (the data-slot's
+  // view field is correct as-is at "bar").
+  return swapBarSlotToMiniBar(slotHtml, name);
+}
+
+/** Swap the OUTERMOST slot id + class suffix from `bar-view` to
+ *  `mini_bar-view` for the slot wrapping the named item. The
+ *  data-slot's view field stays "bar" (the engine already recorded
+ *  it via voo's requestedView); the post-process only changes the
+ *  slot id and class string. The string-level swap is targeted at
+ *  the OUTERMOST slot only — the first `<div id="NAME-bar-view"`
+ *  prefix that nestRecord / nest produced. Inner slots the item
+ *  renders are unaffected (the captured corpus:77 surface has no
+ *  inner slots, but the swap is correct for any nested item whose
+ *  outer-slot name is the captured item name). */
+function swapBarSlotToMiniBar(html: string, name: string): string {
+  const prefix = `${name}-bar-view`;
+  const altPrefix = `${name}-mini_bar-view`;
+  // Class swap: the OUTERMOST slot's class starts with
+  // `card-slot bar-view`. The class for inner slots would be
+  // preceded by other chars, so anchor to the leading `<div ...`.
+  // The slotWrap helper emits `<div class="card-slot <view>-view ...">`
+  // as the first attribute; class is the only attribute that
+  // contains `<view>-view`, so a regex anchored to the slot's id
+  // and the class token pins both halves.
+  let out = html;
+  if (out.startsWith(prefix)) {
+    out = altPrefix + out.slice(prefix.length);
+  }
+  out = out.replace(
+    new RegExp(`(id="${name}-mini_bar-view"[^>]*class="card-slot )bar-view`),
+    `$1mini_bar-view`,
+  );
+  return out;
 }
 
 /** card-mod-list set/abstract/01_list/html_views.rb:28-30 `wrap_item`:
