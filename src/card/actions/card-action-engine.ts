@@ -186,7 +186,9 @@ export class CardActionEngine {
     this.assertWritable();
     await this.assertCanWrite(placeholder);
     const writer = this.newWriter();
-    return this.createInWriter(writer, input, { isActCard: true });
+    const result = await this.createInWriter(writer, input, { isActCard: true });
+    await this.dispatchSavePathIntegrations(result);
+    return result;
   }
 
   /** The create implementation, bound to an existing writer so side
