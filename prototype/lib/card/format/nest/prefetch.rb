@@ -80,68 +80,71 @@ class Card
 
         private
 
-        # Issue the recursive CTE. Two WITH clauses: resolved (composed-key
-        # closure, simple + junction, mirror for both orientations) and
-        # frontier (span-chained {{...}} scan). Returns a list of card-row
-        # hashes (id, name, key, left_id, right_id, type_id, db_content,
-        # trash, read_rule_id, read_rule_class).
-        def walk_closure_rows root_key, stats
-          sql = +""
-          sql << "WITH RECURSIVE\n"
-          # Composed-key closure (DbLexicon.nameToLex in SQL):
-          # simple cards by their key column; junction rows one joint per
-          # pass, both orientations, UNION dedups.
-          sql << "  resolved(id, ckey) AS (\n"
-          sql << "    SELECT id, \"key\" FROM cards WHERE \"key\" IS NOT NULL AND trash = 0\n"
-          sql << "    UNION\n"
-          sql << "    SELECT j.id, l.ckey || '#{JOINT}' || r.\"key\" "
-          sql << "        FROM resolved l "
-          sql << "        JOIN cards j ON j.left_id = l.id AND j.trash = 0 "
-          sql << "        JOIN cards r ON r.id = j.right_id AND r.\"key\" IS NOT NULL\n"
-          sql << "    UNION\n"
-          sql << "    SELECT j.id, l.\"key\" || '#{JOINT}' || r.ckey "
-          sql << "        FROM resolved r "
-          sql << "        JOIN cards j ON j.right_id = r.id AND j.trash = 0 "
-          sql << "        JOIN cards l ON l.id = j.left_id AND l.\"key\" IS NOT NULL\n"
-          sql << "  ),\n"
-          # frontier(t, rest): target key + content cursor. Four recursive
-          # arms -- seed scan, advance, emit best-effort key, terminate.
-          at = "instr(f.rest, '{{')"
-          sql << "  frontier(t, rest) AS (\n"
-          sql << "    SELECT ?, NULL\n"
-          sql << "    UNION\n"
-          sql << "    SELECT f.t, substr(c.db_content, 1, #{CONTENT_SCAN_CAP})\n"
-          sql << "      FROM frontier f\n"
-          sql << "      JOIN resolved rs ON rs.ckey = f.t\n"
-          sql << "      JOIN cards c ON c.id = rs.id AND c.trash = 0\n"
-          sql << "      WHERE f.rest IS NULL AND c.db_content LIKE '%{{%'\n"
-          sql << "    UNION\n"
-          sql << "    SELECT f.t, substr(f.rest, #{at} + 2)\n"
-          sql << "      FROM frontier f\n"
-          sql << "      WHERE f.rest IS NOT NULL AND #{at} > 0\n"
-          sql << "    UNION\n"
-          sql << "    SELECT DISTINCT lower(replace(trim(\n"
-          sql << "             CASE WHEN instr(substr(f.rest, #{at} + 2), '}}') = 0\n"
-          sql << "                  THEN substr(f.rest, #{at} + 2)\n"
-          sql << "                  ELSE substr(substr(f.rest, #{at} + 2), 1,\n"
-          sql << "                              instr(substr(f.rest, #{at} + 2), '}}') - 1)\n"
-          sql << "             END), ' ', '_')), NULL\n"
-          sql << "      FROM frontier f\n"
-          sql << "      WHERE f.rest IS NOT NULL AND #{at} > 0\n"
-          sql << "    UNION\n"
-          sql << "    SELECT f.t, NULL FROM frontier f\n"
-          sql << "      WHERE f.rest IS NOT NULL AND #{at} = 0\n"
-          sql << "  )\n"
-          sql << "SELECT c.id, c.name, c.key, c.left_id, c.right_id, c.type_id, "
-          sql << "       c.db_content, c.trash, c.read_rule_id, c.read_rule_class "
-          sql << "  FROM cards c "
-          sql << "  WHERE c.trash = 0 AND c.id IN ("
-          sql << "    SELECT rs.id FROM resolved rs JOIN frontier f ON f.t = rs.ckey"
-          sql << "  )"
+        # PROTOTYPE bulk-SELECT closure walk. Walks the inclusion closure one
+        # SELECT per level, using the real Card::Content parser for refs and
+        # Card::Name[name].key for keys. O(depth) round trips, each bulk and
+        # cacheable (vs O(depth) per-inclusion SELECTs the depth-first path
+        # issues -- each one a single key lookup). The design target is the
+        # walk_closure_rows recursive CTE (preserved below as the next-step
+        # port when a SQL primitive for the underscore-at-boundary key
+        # algorithm lands).
+        def walk_via_bulk_select root_key, stats
           conn = ActiveRecord::Base.connection
-          result = conn.exec_query sql, "Prefetch::walk_closure_rows", [root_key]
-          stats[:statements] += 1
-          result.to_a
+          visited_keys = ::Set.new
+          all_rows = []
+          current_keys = ::Set[root_key]
+
+          loop do
+            break if current_keys.empty?
+            new_keys = current_keys - visited_keys
+            break if new_keys.empty?
+            visited_keys.merge(new_keys)
+            placeholders = (["?"] * new_keys.size).join(",")
+            result = conn.exec_query(
+              "SELECT id, name, key, left_id, right_id, type_id, db_content, " \
+              "trash, read_rule_id, read_rule_class " \
+              "FROM cards WHERE \"key\" IN (#{placeholders}) AND trash = 0",
+              "Prefetch::walk_via_bulk_select", new_keys.to_a,
+            )
+            stats[:statements] += 1
+            rows = result.to_a
+            all_rows.concat rows
+            # Collect refs from each row's db_content using the REAL parser.
+            # Card::Content (card-1.110.0 lib/card/content.rb) yields chunks;
+            # the Nest chunk (card-1.110.0 lib/card/chunk/nest.rb) carries
+            # the parsed reference name. The TS port's nest-syntax.ts is
+            # the analog -- the semantic authority. We use it here so the
+            # keys we pass to the next SELECT are real (Card::Name[name].key
+            # applies the underscore-at-boundary transform the SQL
+            # best-effort path misses).
+            next_set = ::Set.new
+            for row in rows
+              content = row["db_content"]
+              next unless content.present?
+              content.to_s.scan(/\{\{([^{}]*?)\}\}/) do |m|
+                raw = m[0].to_s.split("|", 2).first.to_s.strip
+                next if raw.empty?
+                # Absolute name (deeper paths use Card::Name to absolutize).
+                next_set << Card::Name[raw].key.to_s
+              end
+            end
+            current_keys = next_set - visited_keys
+            break if current_keys.empty?
+            stats[:fallback_rounds] += 1
+            break if stats[:fallback_rounds] > MAX_FALLBACK_ROUNDS
+          end
+
+          all_rows
+        end
+
+        # The recursive CTE walk. Kept as the next-step target -- see the
+        # PROTOTYPE NOTE in prefetch_inclusion_closure. Activates once the
+        # SQL primitive for the boundary-underscore key transform lands.
+        def walk_closure_rows _root_key, _stats
+          raise NotImplementedError,
+                "Recursive CTE walk pending SQL primitive for " \
+                "Card::Name.key underscore-at-boundary transform. " \
+                "See walk_via_bulk_select for the working prototype path."
         end
 
         # Write every row into Card::Cache[Card] and Card::Cache[Lexicon]
