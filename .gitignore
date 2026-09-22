@@ -11,3 +11,6 @@ benchmarks/corpus/
 benchmarks/corpus-v2/bench-corpus-v2.sqlite3
 fixtures/corpus/
 __pycache__/
+# migration tool scratch outputs (generalized importer writes here for
+# determinism checks; rebuilt on demand; never committed)
+tools/migrate/scratch-out/
