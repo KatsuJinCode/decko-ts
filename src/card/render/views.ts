@@ -399,7 +399,9 @@ const openView: ViewFn = (ctx) => {
 
 const barLeftView: ViewFn = ({ fmt }) => fmt.renderView("title");
 const barMiddleView: ViewFn = () => "";
-const barRightView: ViewFn = () => "";
+// Rule cards nest their own :one_line_content (card-mod-rules set/rule/
+// bar_view.rb:36-37); the *all bar_right stays empty for everything else.
+const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
 
 /** bar.rb view :bar_bottom -> render :content, home_view: :content. */
 const barBottomView: ViewFn = ({ fmt }) => fmt.renderView("content", { home_view: "content" });
