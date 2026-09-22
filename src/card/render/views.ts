@@ -336,7 +336,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
     body += `<div class='accordion-body d0-card-body'>\n`;
-    body += renderSettingListItems(fmt, groupName, ruleByCodename);
+    body += `${renderSettingListItems(fmt, groupName, ruleByCodename)}\n`;
     body += `</div>\n`;
     body += `</div>\n`;
     body += `</div>\n\n`;
