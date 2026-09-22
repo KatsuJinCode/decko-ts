@@ -151,9 +151,10 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       // Seed bifaarykabanhm (NOT in the captured shard). The captured
       // bytes pin the slot id `bifaarykabanhm-mini_bar-view` (name-
       // based, so the row id is arbitrary) with type_id=22281 +
-      // type_name="swtktey".
+      // type_name="swtktey". Like yzzw, no data-card-id on the
+      // captured slot — id-less rendering.
       await seedCard(storage, {
-        id: 9001,
+        id: undefined,
         name: "bifaarykabanhm",
         typeId: 22281,
         readRuleId: 6568,
