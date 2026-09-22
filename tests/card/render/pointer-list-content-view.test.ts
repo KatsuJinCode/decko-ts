@@ -101,12 +101,11 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       // content references it; the closure walk doesn't fetch a card
       // whose name appears only as plain text). The captured bytes pin
       // yzzw's slot with type_id=22281 + type_name="swtktey"; we
-      // assign yzzw an arbitrary id (slot id is name-based, not id-
-      // based) and point its type_id at the type card the closure
-      // walk above will have already seeded from the live corpus row
-      // for id=22281.
+      // assign yzzw an arbitrary id well above the shard's max (slot
+      // id is name-based, not id-based, so the id never appears in
+      // the rendered bytes).
       await seedCard(storage, {
-        id: 999,
+        id: 9000,
         name: "yzzw",
         typeId: 22281,
         readRuleId: 6568,
