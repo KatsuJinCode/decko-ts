@@ -275,30 +275,29 @@ async function replay01(): Promise<number[]> {
   return ids;
 }
 
-// 02-create-junction: parent "Sign up" doesn't exist in the TS seed, so the
-// action engine's ensureSides will auto-create it. We seed "Sign up" first.
+// 02-create-junction: parent "Sign up" exists in the Ruby capture's oracle
+// seed but not in our synthetic TS deck; create it first. The junction
+// itself auto-stages "wccchild" as a side card (createInWriter ->
+// ensureSides), so the affected cards are [signUp, wccchild, junction].
 async function replay02(): Promise<number[]> {
   const s = await freshStorage();
   await seedStandardDeck(s);
-  // Seed "Sign up" — the junction parent. Use the action engine so it
-  // gets a full act/action history like any other create.
   const engine = makeEngine(s);
   const signUp = await engine.createCard({ name: "Sign up", content: "" });
   const child = await engine.createCard({
     name: "Sign up+wccchild",
     content: "first child",
   });
-  await snapshotAndAssert(s, "02-create-junction", [
-    signUp.cardId,
-    child.cardId,
-    child.cardId, // left/right ids are populated below by snapshotAndAssert
-  ]);
-  const card = await s.selectOne<{ left_id: number | null; right_id: number | null }>(
-    "SELECT left_id, right_id FROM cards WHERE id = ?",
-    [child.cardId],
-  );
+  // Look up the side card ids the engine auto-created.
+  const junction = await s.selectOne<{
+    left_id: number | null;
+    right_id: number | null;
+  }>("SELECT left_id, right_id FROM cards WHERE id = ?", [child.cardId]);
+  const leftId = junction?.left_id ?? -1;
+  const rightId = junction?.right_id ?? -1;
+  await snapshotAndAssert(s, "02-create-junction", [signUp.cardId, leftId, rightId]);
   s.close();
-  return [signUp.cardId, child.cardId, card?.left_id ?? -1];
+  return [signUp.cardId, leftId, rightId];
 }
 
 // 03-update-content: a junction card's first update exercises
