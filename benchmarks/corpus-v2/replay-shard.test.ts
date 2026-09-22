@@ -208,13 +208,22 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               ? undefined
               : ((await engine.codenames.nameForId(card.typeId)) ?? "");
           const isSimple = card.name === undefined || card.name.isSimple;
+          // Ruby's captured record.content is Card#content (content/all.rb):
+          // structured_content || standard_content. Apply the ported
+          // resolution with the run's structure universe — the same one the
+          // render engine folds.
+          const content = structuredCardContent(
+            { name: card.name ?? "", id: card.id, typeId: card.typeId, isNew: card.isNew },
+            card.dbContent,
+            structureUniverse,
+          );
           const record: Omit<CapturedCardRecord, "id"> = {
             name: card.name?.s ?? "",
             key: card.key ?? "",
             type: typeCard?.name?.s ?? "",
             type_code: typeCode ?? "",
             codename: card.codename ?? null,
-            content: structuredCardContent(card, card.dbContent, structureUniverse),
+            content,
             left: isSimple ? null : (card.name?.leftName?.s ?? null),
             right: isSimple ? null : (card.name?.rightName?.s ?? null),
           };
