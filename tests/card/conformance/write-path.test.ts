@@ -429,17 +429,27 @@ async function replay08(): Promise<number[]> {
   const s = await freshStorage();
   await seedStandardDeck(s);
   const engine = makeEngine(s);
-  const referee = await engine.createCard({
-    name: "WCC Referer+child",
-    content: "child body",
-  });
+  // The Ruby fixture's card set has WCC Referer as the simple parent
+  // (name='WCC Referer', left/right NULL) and "WCC Referer+child" as the
+  // junction child (name NULL, left/right set). Match that shape: create
+  // the parent first, then the junction.
   const referer = await engine.createCard({
     name: "WCC Referer",
     content: "see {{WCC Referer+child}}",
   });
-  await snapshotAndAssert(s, "08-touch-name-reference", [referee.cardId, referer.cardId]);
+  const refereeJunction = await engine.createCard({
+    name: "WCC Referer+child",
+    content: "child body",
+  });
+  const junction = await s.selectOne<{
+    left_id: number | null;
+    right_id: number | null;
+  }>("SELECT left_id, right_id FROM cards WHERE id = ?", [refereeJunction.cardId]);
+  const leftId = junction?.left_id ?? -1;
+  const rightId = junction?.right_id ?? -1;
+  await snapshotAndAssert(s, "08-touch-name-reference", [referer.cardId, leftId, rightId]);
   s.close();
-  return [referee.cardId, referer.cardId];
+  return [referer.cardId, leftId, rightId];
 }
 
 // -----------------------------------------------------------------------
