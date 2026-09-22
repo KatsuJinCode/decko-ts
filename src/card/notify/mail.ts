@@ -121,8 +121,8 @@ export function renderMail(
     tags: {
       trigger: "follow_notification",
       follower: notice.follower,
-      followed_set: notice.followed_set,
-      follow_option: notice.follow_option,
+      followed_set: notice.followedSet,
+      follow_option: notice.followOption,
     },
   };
 }
