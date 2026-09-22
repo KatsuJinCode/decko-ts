@@ -319,10 +319,14 @@ function collectSetRules(fmt: RenderFormat): RenderCard[] {
 
 /** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape. */
 function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: RenderCard[]): string {
-  const groups = groupRulesByCategory(rules);
+  const ruleByCodename = new Map<string, RenderCard>();
+  for (const rule of rules) {
+    const codename = inferSettingCodename(rule);
+    if (codename !== undefined) ruleByCodename.set(codename, rule);
+  }
   const safeKey = card.name.safeKey;
   let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
-  for (const [groupName, groupRules] of groups) {
+  for (const groupName of SETTING_GROUPS) {
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     body += `<div class='accordion-item _setting-group'>\n`;
     body += `<h2 class='accordion-header nodblclick w-100'>\n`;
@@ -332,7 +336,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
     body += `<div class='accordion-body d0-card-body'>\n`;
-    body += renderRuleList(fmt, groupRules);
+    body += renderSettingListItems(fmt, groupName, ruleByCodename);
     body += `</div>\n`;
     body += `</div>\n`;
     body += `</div>\n\n`;
@@ -341,16 +345,37 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
   return body;
 }
 
-function renderRuleList(fmt: RenderFormat, rules: RenderCard[]): string {
-  const items = rules.map((rule) => {
-    const slotHtml = fmt.nestRecord(rule, "bar", {
-      nest_name: rule.name.s,
-      show: ["bar"],
-      home_view: "bar",
-    });
-    return `<li class="nav-item">${slotHtml}</li>`;
+/** For one group's settings (in the group's static order), render an
+ *  <li> per setting: a nested rule bar if the rule exists and is
+ *  readable, otherwise the quiet denial span (card-mod-format set/all/
+ *  html/error.rb:185-189 quiet_denial). Mirrors Ruby's
+ *  setting_list_item (rule_lists.rb:96-101): show_view? defaults to
+ *  :show, so every setting in the group produces an li; the read-
+ *  permission gate then substitutes the denial bytes when the rule
+ *  card itself is not readable. */
+function renderSettingListItems(
+  fmt: RenderFormat,
+  groupName: string,
+  ruleByCodename: Map<string, RenderCard>,
+): string {
+  const settings = GROUP_TO_SETTINGS[groupName];
+  const items = settings.map((settingCodename) => {
+    const rule = ruleByCodename.get(settingCodename);
+    if (rule !== undefined && !fmt.engine.isDenied(rule)) {
+      const slotHtml = fmt.nestRecord(rule, "bar", {
+        nest_name: rule.name.s,
+        show: ["bar"],
+        home_view: "bar",
+      });
+      return `<li class="nav-item">${slotHtml}</li>`;
+    }
+    return `<li class="nav-item">${quietDenial("read")}</li>`;
   });
   return `<ul class="nav flex-column">${items.join("\n")}</ul>`;
+}
+
+function quietDenial(task: string): string {
+  return `<span class="denied"><!-- Sorry, you don't have permission (${task}) --></span>`;
 }
 
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
