@@ -410,7 +410,7 @@ async function replay07(): Promise<number[]> {
   const target = await engine.createCard({ name: "WCC ReadRule", content: "protected body" });
   const rule = await engine.createCard({
     name: "WCC ReadRule+*self+*read",
-    type: "List",
+    typeCode: "List",
     content: "[[Administrator]]",
   });
   // Update target to force an :update save with content change.
