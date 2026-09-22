@@ -97,20 +97,14 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       const baseIds = new Set(readShardLines().map((l) => l.id));
       for (const id of EXTRA_IDS) baseIds.add(id);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed yzzw's type card (id=22281, name "swtktey" — the captured
-      // bytes pin data-card-type-id=22281 + data-card-type-name=swtktey
-      // for the inner slot). The closure walk above fetches id=22281
-      // because yzzw's type_id points there; we just need the row.
-      await seedCard(storage, {
-        id: 22281,
-        name: "swtktey",
-        typeId: 5, // cardtype
-      });
-      // Seed yzzw itself (NOT in the captured shard). The captured
-      // bytes pin yzzw's slot with type_id=22281 + type_name="swtktey".
-      // We assign yzzw an arbitrary id; the slot id the captured bytes
-      // pin is `${name}-mini_bar-view`, not `${id}-...`, so the id
-      // doesn't appear in the rendered bytes.
+      // Seed yzzw itself (NOT in the captured shard - only id=77's
+      // content references it; the closure walk doesn't fetch a card
+      // whose name appears only as plain text). The captured bytes pin
+      // yzzw's slot with type_id=22281 + type_name="swtktey"; we
+      // assign yzzw an arbitrary id (slot id is name-based, not id-
+      // based) and point its type_id at the type card the closure
+      // walk above will have already seeded from the live corpus row
+      // for id=22281.
       await seedCard(storage, {
         id: 999,
         name: "yzzw",
@@ -152,17 +146,10 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       const baseIds = new Set(readShardLines().map((l) => l.id));
       for (const id of EXTRA_IDS) baseIds.add(id);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed bifaarykabanhm's type card (same type as yzzw: id=22281,
-      // name "swtktey" — the captured bytes pin type_id=22281 +
-      // type_name="swtktey" for the corpus:275 inner slot).
-      await seedCard(storage, {
-        id: 22281,
-        name: "swtktey",
-        typeId: 5,
-      });
-      // Seed bifaarykabanhm itself (NOT in the captured shard). The
-      // captured bytes pin the slot id `bifaarykabanhm-mini_bar-view`
-      // (not id-based), so the row id is arbitrary.
+      // Seed bifaarykabanhm (NOT in the captured shard). The captured
+      // bytes pin the slot id `bifaarykabanhm-mini_bar-view` (name-
+      // based, so the row id is arbitrary) with type_id=22281 +
+      // type_name="swtktey".
       await seedCard(storage, {
         id: 1000,
         name: "bifaarykabanhm",
