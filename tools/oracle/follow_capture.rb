@@ -109,20 +109,54 @@ Card::Auth.as_bot do
   end
   sara = Card.fetch("Sara")
 
-  # Ensure Sara+account+*email is set even on re-runs (the card's
-  # `email` field is what the notify trigger reads — see comment above).
-  sara_account_email = Card["Sara+account+*email"]
-  if sara_account_email.nil? || sara_account_email.content.to_s.strip.empty?
-    Card.create! name: "Sara+account+*email", content: "sara@example.com"
-    seed_log["Sara+account+*email"] = "ensured"
+  # The notify trigger reads `follower.account.email`. In the dev DB,
+  # `Sara.account` is `Sara+*account` (auto-created by the card_accessor).
+  # Its `email` reads `Sara+*account+*email` (also via card_accessor).
+  # The `+*email` field has a uniqueness validator
+  # (card-mod-account set/right/email.rb:16-27 `validate_unique_email`)
+  # that rejects any two `+*email` cards with the same content. The
+  # canonical user email lives on `Sara+*account+*email`; `Sara+*email`
+  # is duplicate and must be removed (or never created).
+  sara_account_email_card = Card["Sara+*account+*email"]
+  if sara_account_email_card.nil?
+    # Delete the duplicate `Sara+*email` if it exists (uniqueness-blocked)
+    dup = Card["Sara+*email"]
+    if dup && !dup.new_card?
+      dup.delete!
+      seed_log["Sara+*email"] = "removed (dup)"
+    end
+    Card.create! name: "Sara+*account+*email", content: "sara@example.com"
+    seed_log["Sara+*account+*email"] = "created"
+  elsif sara_account_email_card.content.to_s.strip.empty?
+    # Remove the duplicate first then update.
+    dup = Card["Sara+*email"]
+    if dup && !dup.new_card?
+      dup.delete!
+      seed_log["Sara+*email"] = "removed (dup)"
+    end
+    sara_account_email_card.update! content: "sara@example.com"
+    seed_log["Sara+*account+*email"] = "updated"
   end
 
   john = Card.fetch("John")
 
-  john_account_email = Card["John+account+*email"]
-  if john_account_email.nil? || john_account_email.content.to_s.strip.empty?
-    Card.create! name: "John+account+*email", content: "john@example.com"
-    seed_log["John+account+*email"] = "ensured"
+  john_account_email_card = Card["John+*account+*email"]
+  if john_account_email_card.nil?
+    dup = Card["John+*email"]
+    if dup && !dup.new_card?
+      dup.delete!
+      seed_log["John+*email"] = "removed (dup)"
+    end
+    Card.create! name: "John+*account+*email", content: "john@example.com"
+    seed_log["John+*account+*email"] = "created"
+  elsif john_account_email_card.content.to_s.strip.empty?
+    dup = Card["John+*email"]
+    if dup && !dup.new_card?
+      dup.delete!
+      seed_log["John+*email"] = "removed (dup)"
+    end
+    john_account_email_card.update! content: "john@example.com"
+    seed_log["John+*account+*email"] = "updated"
   end
 
   # The actor (John). We need a non-bot, non-Sara actor because the
