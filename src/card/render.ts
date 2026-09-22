@@ -725,11 +725,6 @@ export class RenderEngine implements RenderEngineLike {
    *  part's card through storage and compare its type_id. Undefined when
    *  the seed lacks the codename cards — the pattern cannot apply either
    *  way (same degradation as a rule-less deck).
-   *
-   *  ORDER PARITY (corpus:253): Ruby evaluates `standard_rule? ||
-   *  preference?` (all.rb:33) — standard_rule? runs FIRST for EVERY name
-   *  shape (all.rb:37-40: name.right type == SettingID && name.left type
-   *  == SetID, where name.left of a 3-part name is its first two parts).
    *  preference? (all.rb:42-48) only adds the user-part rules for >2-part
    *  names; routing 3-part names straight into it (the previous shape)
    *  dropped the RULE set key for names like "SET+*right+SETTING" that
