@@ -218,6 +218,11 @@ export class RenderEngine implements RenderEngineLike {
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
     await this.ensureVerdicts();
+    await this.ensureTaskVerdicts(view);
+    if (this.helpResolver === undefined) {
+      this.helpResolver = installHelpRules(this, this.fetcher);
+      await this.helpResolver.prepare();
+    }
 
     const rootCard = this.renderCards.get(name.key);
     if (rootCard === undefined) {
