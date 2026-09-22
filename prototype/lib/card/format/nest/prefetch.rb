@@ -1,3 +1,5 @@
+require "set"
+
 class Card
   class Format
     class Nest
