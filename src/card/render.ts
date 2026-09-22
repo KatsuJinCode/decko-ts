@@ -72,6 +72,7 @@ import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import type { SQLQueryResult } from "../server/driver.js";
 
 export { UnsupportedViewError };
+export { BadQueryError, badQuery, emptyQueryError, BAD_QUERY_CLASS_NAME } from "./render/errors.js";
 export type { RenderCard, PrefetchStats };
 export { HTML_VIEWS };
 
