@@ -271,6 +271,10 @@ export class RenderEngine implements RenderEngineLike {
     this.structureContents = undefined;
     this.structureProcessed.clear();
     this.structureRefMisses.clear();
+    this.taskState = undefined;
+    this.taskVerdicts.clear();
+    this.helpRules = undefined;
+    this.helpResolver = undefined;
     this.lastPrefetch = undefined;
   }
 
