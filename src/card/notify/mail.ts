@@ -86,14 +86,17 @@ export interface FollowNotice {
  *  in the dev-DB scenario none of `follower` / `followed_set` /
  *  `follow_option` are real cards, so all three placeholders render
  *  as their literal names. The captured bytes are the byte-parity
- *  ground truth.
+ *  ground truth for the UNRESOLVABLE case; a resolvable placeholder
+ *  renders what it points at (Ruby's walk against the live card tree)
+ *  — the vars map is the resolved set (wiring test 2026-09-22).
  */
 export function interpolateTemplate(
   template: string,
-  _vars: Readonly<Record<string, string>>,
+  vars: Readonly<Record<string, string>>,
 ): string {
   return template.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_whole, key: string) => {
-    return key;
+    const value = vars[key];
+    return value !== undefined ? value : key;
   });
 }
 
