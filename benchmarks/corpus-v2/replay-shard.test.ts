@@ -394,7 +394,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             nestGap: outcomes.reduce((a, o) => a + o.renders.nestGap, 0),
             realFail: outcomes.reduce((a, o) => a + o.renders.realFail, 0),
           },
-          real_failures: realFailures.slice(0, 25),
+          real_failures: realFailures.slice(0, 2000),
           real_failure_count: realFailures.length,
         };
         mkdirSync(RESULTS_DIR, { recursive: true });
