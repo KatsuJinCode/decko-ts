@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": false,
+    "noUncheckedIndexedAccess": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist-ts",
+    "rootDir": "src",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types", "tests/schema"]
+  },
+  "include": [
+    "src/card/fetch.ts",
+    "src/card/render.ts",
+    "src/server/drivers/local-sqlite.ts",
+    "src/server/driver.ts",
+    "src/server/schema.ts"
+  ]
+}
