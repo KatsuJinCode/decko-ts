@@ -193,12 +193,12 @@ describe("postgres-dialect: COLLATE NOCASE", () => {
 describe("postgres-dialect: PRAGMA comments out", () => {
   it("comments out a PRAGMA line in DDL", () => {
     const r = toPostgresSql("PRAGMA foreign_keys = OFF;\nCREATE TABLE cards (id INT);");
-    expect(r.sql).toBe("-- PRAGMA foreign_keys = OFF\nCREATE TABLE cards (id INT);");
+    expect(r.sql).toBe("-- PRAGMA foreign_keys = OFF;\nCREATE TABLE cards (id INT);");
   });
 
   it("comments out a PRAGMA on the first line of a file", () => {
     const r = toPostgresSql("PRAGMA foreign_keys = OFF;");
-    expect(r.sql).toBe("-- PRAGMA foreign_keys = OFF");
+    expect(r.sql).toBe("-- PRAGMA foreign_keys = OFF;");
   });
 
   it("does not touch CREATE INDEX etc.", () => {
