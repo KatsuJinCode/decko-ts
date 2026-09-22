@@ -249,6 +249,15 @@ export class RenderEngine implements RenderEngineLike {
     if (rootCard === undefined) {
       throw new Error(`render card not prepared: ${name.s}`);
     }
+    // Pointer / List cardtypes: pre-enrich every item the content
+    // references (the prefetch closure walk does NOT chase plain-text
+    // references — only nest-syntax ones — so the items are absent
+    // from renderCards when the sync core view tries to fetch them).
+    // One batched pass per render; the second-pass walk the corpus
+    // replay driver uses (cached) makes repeat renders free.
+    if (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") {
+      await this.enrichPointerListItems(rootCard);
+    }
     const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
     const baseHtml = format.renderView(view, {});
 
