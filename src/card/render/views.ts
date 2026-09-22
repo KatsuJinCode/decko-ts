@@ -38,7 +38,7 @@ import { DeckoName } from "../name.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "./format.js";
 import { isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
-import { readMiniBarCols } from "./bar-cols.js";
+import { readMiniBarCols, readBarCols } from "./bar-cols.js";
 import { ruleBarRightHtml } from "./rule-bar-right.js";
 import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
