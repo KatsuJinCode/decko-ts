@@ -227,6 +227,12 @@ export class RenderEngine implements RenderEngineLike {
     // Pass #2: cards enrichAndStore'd during search preparation (their
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
+    // Type-code pass: enrichAndStore runs inside the prefetch walk
+    // BEFORE parseRuleTypeIds folds the codehash, so the sync peek
+    // for typeCode (`card.type_code` lookup the pointer/list core
+    // view reads) returns undefined on cold renders. Patch every
+    // prepared card here, now that the codehash is loaded.
+    this.populateTypeCodes();
     await this.ensureVerdicts();
     await this.ensureTaskVerdicts(view);
     if (this.helpResolver === undefined) {
