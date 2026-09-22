@@ -185,22 +185,19 @@ function renderPointerListCore(fmt: RenderFormat): string {
   const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
   const inner = items
     .map((name) => {
-      const item = fmt.engine.fetchRenderCard(name);
+      // Ruby's nest_item -> nest with view=:bar. The item card might
+      // not be in the prefetched render-card map (an item referenced
+      // by plain text in db_content, not via {{...}}, is not in the
+      // reference closure the prefetch walks); enrich it on demand
+      // through the engine's async enrichment so fetchRenderCard sees
+      // it on the next read.
+      const cached = fmt.engine.fetchRenderCard(name);
+      const item = cached ?? fmt.engine.prepareItemForRender?.(name);
       if (item === undefined) {
-        // An unresolved item name (no such card in the deck): Ruby's
-        // nest_item returns a Card with the unknown option (set/all/
-        // item.rb#fetch_item_card -> Card.fetch name, new: ...). The
-        // unknown-card slot wraps a denial span (or the unknown view).
-        // Corpus bytes always resolve all item names against the
-        // supplied deck; the path is here for completeness only.
+        // Truly missing card (Ruby: unknown nest target). Render an
+        // empty slot to keep the card-list wrapper shape intact.
         return "";
       }
-      // nest_item -> nest with view=:bar (default_item_view, html),
-      // nest_name=name, show=[:bar], hide=[:bar_middle], home_view=:bar.
-      // The slot id the captured bytes pin is name-mini_bar-view;
-      // itemBarView (the existing :bar viewF) sets slotViewOverride
-      // so the data-slot's view field reads "bar" — together the slot
-      // body's byte shape matches the corpus pin.
       return fmt.nestRecord(item, "bar", {
         nest_name: item.name.s,
         show: ["bar"],
