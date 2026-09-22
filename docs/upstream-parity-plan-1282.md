@@ -46,7 +46,13 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
   REG pool. Owns `src/card/permissions/**` + session glue.
 - `[ ]` S1 CQL `match` — needs a MySQL oracle rung (impossible on SQLite;
   docs/oracle-harness.md), then driver UDF/FTS5 decision.
-- `[ ]` S3 mod loader + 33 card-mods (tracker stream 13, NOT STARTED).
+- `[~]` S3 mod loader + 33 card-mods — mechanism LANDED 2026-09-21
+  (REG): load order (Bundler closure), SetPattern front-insert, view
+  override/config semantics; card-mod-help proven end-to-end vs a live
+  sha-stable Ruby capture (28 tests; docs/mod-loader-port-notes.md).
+  Remaining: per-mod ports, sequenced by the T6 report (1 ported /
+  30 partial / 2 ignored); unknown-card mod-view hook is a documented
+  3-line coordinator patch.
 - `[ ]` S5 non-read view perms (`perms: :update`, skip_perms) — IN FLIGHT
   (REG pool, launched 2026-09-21).
 - `[~]` S6 Gherkin features port — first slice LANDED 2026-09-21 (MM
