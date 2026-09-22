@@ -5,11 +5,13 @@
 import type { Server } from "node:http";
 
 /** The policy file shape after loadPolicy validation; allowlist/blocklist
- *  entries are compiled to RegExps at load time (anchored globs). */
+ *  entries are compiled to RegExps at load time (anchored globs). Both
+ *  arrays are present on every loaded policy (empty when unused by the
+ *  mode), matching loadPolicy's normalization. */
 export interface ShadowPolicy {
   mode: "shadow-everything" | "shadow-allowlist" | "shadow-blocklist";
-  allowlist?: RegExp[];
-  blocklist?: RegExp[];
+  allowlist: RegExp[];
+  blocklist: RegExp[];
   /** 0..100; percent-bucket sampling (monotonic subset across rates). */
   sampleRate: number;
 }
