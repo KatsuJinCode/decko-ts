@@ -133,6 +133,19 @@ export class RenderEngine implements RenderEngineLike {
    *  on later renders, so warm renders stay zero-query. Cleared on
    *  resetCaches(). */
   private structureRefMisses = new Set<string>();
+  /** ok_to_<task>? state for the non-read view tasks — loaded once per
+   *  engine, on the first render whose ROOT view demands a non-read task
+   *  (docs/view-perms-notes.md). Cleared on resetCaches(). */
+  private taskState: ViewTaskState | undefined;
+  /** card key -> allowed verdicts per write task (the ensureVerdicts
+   *  model; undefined entries mean unverifiable). Cleared on resetCaches(). */
+  private taskVerdicts = new Map<string, Record<WriteTask, boolean | undefined>>();
+  /** The help-rule resolver (menu popover content) — attached once per
+   *  engine by installHelpRules; its deck-wide batch runs once in the
+   *  prepare phase. format.ts reads engine.helpRules. Cleared on
+   *  resetCaches(). */
+  helpRules?: HelpRulesApi;
+  private helpResolver: ReturnType<typeof installHelpRules> | undefined;
   private lastPrefetch: PrefetchStats | undefined;
 
   constructor(fetcher: FetchEngine) {
