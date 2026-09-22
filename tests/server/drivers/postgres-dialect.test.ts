@@ -108,16 +108,17 @@ describe("postgres-dialect: SQLite function rewrites", () => {
     // The exact SQL fragment from src/card/render/prefetch.ts:
     //   const at = `instr(f.rest, '{{')`;
     //   const restAfter = `substr(f.rest, ${at} + 2)`;
-    //   ...
+    //   const closeAt = `instr(substr(f.rest, ${at} + 2), '}}')`;
+    //   const span = `substr(f.rest, ${at} + 2, ${closeAt} - 1)`;
     const at = `instr(f.rest, '{{')`;
-    const restAfter = `substr(f.rest, ${at} + 2)`;
     const closeAt = `instr(substr(f.rest, ${at} + 2), '}}')`;
     const span = `substr(f.rest, ${at} + 2, ${closeAt} - 1)`;
     const sql = `SELECT ${span} FROM frontier f`;
     const r = toPostgresSql(sql);
+    // Three-arg SUBSTR maps to PG's SUBSTRING(... FROM ... FOR ...) form.
     expect(r.sql).toBe(
-      "SELECT SUBSTRING(f.rest FROM STRPOS(f.rest, '{{') + 2, " +
-        "STRPOS(SUBSTRING(f.rest FROM STRPOS(f.rest, '{{') + 2), '}}') - 1) FROM frontier f",
+      "SELECT SUBSTRING(f.rest FROM STRPOS(f.rest, '{{') + 2 " +
+        "FOR STRPOS(SUBSTRING(f.rest FROM STRPOS(f.rest, '{{') + 2), '}}') - 1) FROM frontier f",
     );
   });
 
