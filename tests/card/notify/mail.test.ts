@@ -189,9 +189,9 @@ describe("mailToString (one-line envelope for snapshots/tests)", () => {
     expect(text).toContain("From: no-reply@decko.org");
     expect(text).toContain("To: sara@example.com");
     expect(text).toContain(
-      "Subject: follower changed followed_set on follow_option",
+      "Subject: Sara changed John Following on always",
     );
-    expect(text).toContain("\nHi! follower changed followed_set.");
+    expect(text).toContain("\nHi! Sara changed John Following.");
     expect(text.indexOf("From:")).toBeLessThan(text.indexOf("To:"));
     expect(text.indexOf("To:")).toBeLessThan(text.indexOf("Subject:"));
   });
