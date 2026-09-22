@@ -10,16 +10,16 @@
 //
 // Three mechanisms the test pins:
 //   1. Set-card content view: 6 type=exi (SetType) cards (268, 273, 294,
-//      300, 302, 315) render the Rules section — <h4 class="mt-3">Rules
-//      </h4> + filter form + accordion list — per card-mod-rules-0.20.0
+//      300, 302, 315) render the Rules section - <h4 class="mt-3">Rules
+//      </h4> + filter form + accordion list - per card-mod-rules-0.20.0
 //      set/type/set/html_views.rb:6-11 view :core.
 //   2. Set-card open view: the same 6 cards (273, 294, 300, 302, 315) add
-//      :template_closer to the data-slot hide list — html_views.rb:2-4
+//      :template_closer to the data-slot hide list - html_views.rb:2-4
 //      `before :open do voo.hide :template_closer end`.
 //   3. Rule-card menu popover: corpus:217's closed view carries the set
 //      menu variant (card-mod-rules-0.20.0 set/rule/board_rules_editor.rb
 //      :17-27 help_text override: d-none edit_link span + rule-based help
-//      + "(N default rules)" setting link) — see help-popover.ts.
+//      + "(N default rules)" setting link) - see help-popover.ts.
 
 import { describe, it, expect, afterAll } from "vitest";
 import Database from "better-sqlite3";
@@ -75,7 +75,6 @@ function proofEntries(): ProofEntry[] {
  *  *self settings, which need their own universe. */
 async function createSetCardSeededStorage(): Promise<RenderTestStorage> {
   const ids = new Set<number>(TARGET_IDS);
-  // Bring in the rule cards hanging off each set card + their help-rule cards.
   const corpus = new Database(
     "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3",
     { readonly: true },
@@ -90,29 +89,34 @@ async function createSetCardSeededStorage(): Promise<RenderTestStorage> {
     if (setTypeId === undefined || settingTypeId === undefined) {
       throw new Error("corpus deck missing set/setting codename cards");
     }
-    // All rule cards whose left_id is one of our 6 set cards.
-    const setIds = [268, 273, 294, 300, 302, 315];
-    for (const setId of setIds) {
-      const rules = corpus
+    // All rule cards whose left_id is one of our 6 set cards. Also walk
+    // the closure (left_id, right_id, type_id) to fixpoint so the engine's
+    // set-key computation has the type cards it reads (e.g. *input type
+    // for rule 242 *input type+*right+*default - the left part of the
+    // set card is *input type whose type_id=SettingID; the set's left
+    // record is needed for the rule?'s set-card type-id comparison).
+    const queue: number[] = [...TARGET_IDS];
+    const visited = new Set<number>(TARGET_IDS);
+    while (queue.length > 0) {
+      const id = queue.shift() as number;
+      const rows = corpus
         .prepare(
-          `SELECT id, left_id, right_id, type_id, content FROM cards WHERE left_id=? AND trash=0`,
+          `SELECT id, left_id, right_id, type_id FROM cards WHERE (id=? OR left_id=?) AND trash=0`,
         )
-        .all(setId) as Array<{ id: number; left_id: number; right_id: number; type_id: number; content: string | null }>;
-      for (const r of rules) {
-        ids.add(r.id);
-        if (r.left_id !== null) ids.add(r.left_id);
-        if (r.right_id !== null) ids.add(r.right_id);
+        .all(id, id) as Array<{ id: number; left_id: number | null; right_id: number | null; type_id: number }>;
+      for (const r of rows) {
+        for (const side of [r.id, r.left_id, r.right_id, r.type_id]) {
+          if (side !== null && !visited.has(side)) {
+            visited.add(side);
+            ids.add(side);
+            queue.push(side);
+          }
+        }
       }
     }
-    // Help-rule cards for the set card's *type prefix: every rule card
-    // whose left_id is a set card whose left is one of our 6 set cards'
-    // *type/right prefix (e.g. qqddl+*type for 217).
-    // Find the *type variant of each set card by walking right=*type
-    // searches: for the rule card 217 (qqddl+*right+*default), the
-    // help-rule is qqddl+*type+*help. The pattern rule_card(:help)
-    // walks every set card pattern of the host card looking for
-    // <set>+*help. So we seed every *help rule whose left card's *type
-    // set card matches one of our 6 sets.
+    // Help-rule cards (rule cards with right_id == help codename, whose
+    // left card has type_id == set). Same closure walk needed for the
+    // help-rule's set card and its type.
     const helpRules = corpus
       .prepare(
         `SELECT r.id, r.left_id, r.right_id, r.type_id FROM cards r
@@ -122,16 +126,31 @@ async function createSetCardSeededStorage(): Promise<RenderTestStorage> {
            AND settings.codename = 'help' AND r.trash = 0
            AND sets.trash = 0 AND settings.trash = 0`,
       )
-      .all(setTypeId, settingTypeId) as Array<{ id: number; left_id: number; right_id: number; type_id: number }>;
+      .all(setTypeId, settingTypeId) as Array<{ id: number; left_id: number | null; right_id: number | null; type_id: number }>;
     for (const r of helpRules) {
       ids.add(r.id);
-      if (r.left_id !== null) ids.add(r.left_id);
-      // The set card for the help rule (e.g. qqddl+*type) and its
-      // sides are loaded by the closure walk below.
+      const queue2: number[] = [r.left_id, r.right_id, r.type_id].filter((x): x is number => x !== null);
+      const visited2 = new Set<number>(queue2);
+      while (queue2.length > 0) {
+        const id = queue2.shift() as number;
+        const rows = corpus
+          .prepare(
+            `SELECT id, left_id, right_id, type_id FROM cards WHERE (id=? OR left_id=?) AND trash=0`,
+          )
+          .all(id, id) as Array<{ id: number; left_id: number | null; right_id: number | null; type_id: number }>;
+        for (const row of rows) {
+          for (const side of [row.id, row.left_id, row.right_id, row.type_id]) {
+            if (side !== null && !visited2.has(side)) {
+              visited2.add(side);
+              ids.add(side);
+              queue2.push(side);
+            }
+          }
+        }
+      }
     }
-    // Codenames the engine needs (already in createCorpusSeededStorage's
-    // call site; add explicitly for safety).
-    for (const cn of ["anyone", "anyone_signed_in", "anonymous", "read", "set", "setting", "help"]) {
+    // Codenames the engine needs.
+    for (const cn of ["anyone", "anyone_signed_in", "anonymous", "read", "set", "setting", "help", "input_type"]) {
       const row = corpus
         .prepare(`SELECT id FROM cards WHERE codename=? AND trash=0`)
         .get(cn) as { id: number } | undefined;
