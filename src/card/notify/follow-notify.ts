@@ -122,8 +122,8 @@ async function notifyFollower(
   }
   const notice: FollowNotice = {
     follower: ref.followerName,
-    followed_set: ref.followedSetName,
-    follow_option: ref.follow_option,
+    followedSet: ref.followedSetName,
+    followOption: ref.followOption,
   };
   const msg = renderMail({ ...template, to: ref.followerEmail }, notice);
   try {
