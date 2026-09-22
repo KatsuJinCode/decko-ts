@@ -181,7 +181,7 @@ const coreView: ViewFn = (ctx) => {
     //    filtered_rule_list(:accordion_bar_list)]
     // The Rules section is the set card's content view body (the
     // content view delegates to core, set/type/set.rb + html/views.rb).
-    return Promise.resolve(setRulesCoreHtml(ctx));
+    return setRulesCoreHtml(ctx);
   }
   if (fmt.card.typeName === "Date") {
     // card-mod-date-0.20.0 set/type/date.rb:6-8 `view :core do
