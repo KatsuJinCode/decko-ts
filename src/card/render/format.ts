@@ -400,12 +400,15 @@ export class RenderFormat {
   }
 
   /** The fixed Card::Setting.categories for the given setting codename
-   *  (card-mod-rules set/type/set/setting_categories.rb:9-15). */
+   *  (card-mod-rules set/type/set/setting_categories.rb:9-15). The
+   *  category order (all, field, common) is the byte order the captured
+   *  oracle pins — `card.rule_set.categories(setting).map { ... }` in
+   *  Ruby returns them in declaration order. */
   private ruleSetCategories(settingCodename: string | undefined): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
-    if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
     if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
+    if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
     // "recent" requires the deck's recent_settings list — the corpus
     // capture doesn't exercise it (no corpus card has a recent rule).
     return result;
