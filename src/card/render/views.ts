@@ -185,26 +185,40 @@ function renderPointerListCore(fmt: RenderFormat): string {
   const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
   const inner = items
     .map((name) => {
-      // Ruby's nest_item -> nest with view=:bar. The item cards the
-      // engine's render() pre-enriches via enrichPointerListItems (the
-      // closure walk the prefetch uses does NOT chase plain-text
-      // references in db_content - only nest-syntax ones - so this
-      // pre-pass is what gets the items into renderCards). Items
-      // still absent (unknown nest targets) render as an empty slot
-      // to keep the card-list wrapper shape intact.
-      const item = fmt.engine.fetchRenderCard(name);
-      if (item === undefined) {
-        return "";
+      // Ruby's nest_item -> nest with view=:bar. The engine pre-
+      // enriches items the closure walk missed (see render.ts
+      // #enrichPointerListItems); items the pre-enrich pass could not
+      // resolve (no row in cards for that name) render as unknown-
+      // card slots via format.ts#nest (the same path a `{{yzzw}}`
+      // miss takes — Ruby's Card.fetch with new: ... creates the
+      // placeholder; the engine's buildUnknownNestCard mirrors it).
+      // Unknown cards route through the bar view's `unknown: :mini_bar`
+      // substitution (card-mod-bar_and_box set/all/bar.rb:9), which
+      // is exactly the captured byte shape for corpus:77's yzzw
+      // (slot id `yzzw-mini_bar-view`, denied bar_left / bar_right).
+      const parsed = { name };
+      const target = fmt.engine.fetchRenderCard(name);
+      let slotHtml: string;
+      if (target !== undefined) {
+        slotHtml = fmt.nestRecord(target, "bar", {
+          nest_name: target.name.s,
+          show: ["bar"],
+          hide: ["bar_middle"],
+          home_view: "bar",
+        });
+      } else {
+        // Unknown-card nest: the captured bytes still render a slot
+        // (card-mod-bar_and_box set/all/bar.rb:9 substitutes :bar ->
+        // :mini_bar for unknown cards). The denial path the captured
+        // corpus pins comes from the read-permission gate (view_perms
+        // :read for :mini_bar is also :read, the unknown card fails
+        // ok_to_read?, the gate returns the denial span and the
+        // view dispatch never runs).
+        slotHtml = fmt.nest(parsed as { name: string });
       }
-      return fmt.nestRecord(item, "bar", {
-        nest_name: item.name.s,
-        show: ["bar"],
-        hide: ["bar_middle"],
-        home_view: "bar",
-      });
+      return pointerItemWrap(slotHtml);
     })
     .filter((s) => s !== "")
-    .map((slotHtml) => pointerItemWrap(slotHtml))
     .join("\n");
   return `<div class="card-list card-list-bar pointer-list">${inner}</div>`;
 }
