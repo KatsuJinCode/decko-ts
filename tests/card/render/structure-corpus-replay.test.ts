@@ -128,6 +128,7 @@ describe("corpus replay: *structure rule templates render byte-identically", () 
       await helpResolver.prepare();
       const failures: Array<{ id: string; first: string }> = [];
       const foreignPending: string[] = [];
+      const countDrifts: string[] = [];
       let checked = 0;
       for (const entry of entries) {
         for (const [view, expected] of Object.entries(entry.views)) {
