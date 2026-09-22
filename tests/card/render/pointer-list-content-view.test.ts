@@ -150,7 +150,7 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       // based, so the row id is arbitrary) with type_id=22281 +
       // type_name="swtktey".
       await seedCard(storage, {
-        id: 1000,
+        id: 9001,
         name: "bifaarykabanhm",
         typeId: 22281,
         readRuleId: 6568,
