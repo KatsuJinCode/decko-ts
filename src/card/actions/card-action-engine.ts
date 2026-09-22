@@ -555,14 +555,16 @@ export class CardActionEngine {
       nameAfter: currentName,
       verb: "delete",
     });
-    return {
+    const result = {
       cardId: row.id,
       actionId: saved.actionId,
       actId: saved.actId,
-      verb: "delete",
+      verb: "delete" as const,
       name: currentName,
       subactions,
     };
+    await this.dispatchSavePathIntegrations(result);
+    return result;
   }
 
   /** Breadth-first trash cascade: every live card whose left_id or right_id
