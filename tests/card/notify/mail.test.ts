@@ -58,10 +58,11 @@ const TEMPLATE: EmailTemplate = {
   textBody: "Hi! {{follower}} changed {{followed_set}}.",
 };
 
-// Notice values are recorded in tags for the transport; they are NOT
-// substituted into the rendered subject/body — Ruby's
-// `contextual_content` walks inclusions against the live card tree,
-// not against the active_notice hash. The TS port mirrors that.
+// The notice values model Ruby's contextual_content RESOLUTION OUTCOME:
+// Ruby walks each inclusion against the live card tree — a resolvable
+// placeholder renders what it points at, an unresolvable one renders the
+// literal name with braces stripped (the captured fixture pins the
+// unresolvable branch: fixtures/captured/follow-notification.json).
 const NOTICE: FollowNotice = {
   follower: "Sara",
   followedSet: "John Following",
@@ -69,13 +70,7 @@ const NOTICE: FollowNotice = {
 };
 
 describe("interpolateTemplate (real-oracle semantics)", () => {
-  it("renders placeholders as literal names — no substitution (matches Ruby's contextual_content for missing-card inclusions)", () => {
-    // Even when the keys are in `vars`, the TS port mirrors Ruby's
-    // `contextual_content` "treats it as a literal name" branch
-    // (card-mod-content set/all/contextual_content.rb:13-19 +
-    // card-mod-email set/abstract/email_field.rb:22-26). The dev-DB
-    // capture proves the rule: the placeholders become the literal
-    // names, NOT the active_notice values.
+  it("substitutes placeholders the caller resolved (the vars map is the resolved set)", () => {
     expect(
       interpolateTemplate(
         "{{follower}} :: {{followed_set}} :: {{follow_option}}",
@@ -85,15 +80,15 @@ describe("interpolateTemplate (real-oracle semantics)", () => {
           follow_option: "always",
         },
       ),
-    ).toBe("follower :: followed_set :: follow_option");
+    ).toBe("Sara :: John Following :: always");
   });
 
-  it("drops the {{ }} braces and renders the placeholder name verbatim (matches the captured fixture)", () => {
+  it("drops the {{ }} braces and renders the placeholder name verbatim when the key is NOT resolved (matches the captured fixture)", () => {
     // The captured subject was "follower changed followed_set on
     // follow_option" (fixtures/captured/follow-notification.json
-    // delivered[0].subject). The placeholder NAME is rendered, the
-    // braces are stripped, the literal text between placeholders is
-    // preserved.
+    // delivered[0].subject): in the capture deck those inclusions did not
+    // resolve to cards, so Ruby emitted the literal names, braces
+    // stripped, literal text preserved.
     expect(
       interpolateTemplate(
         "{{follower}} changed {{followed_set}} on {{follow_option}}",
