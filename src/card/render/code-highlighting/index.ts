@@ -68,12 +68,14 @@ export const CODERAY_CARDTYPE_CODENAMES: ReadonlySet<string> = new Set([
 ]);
 
 /** Map a cardtype codename to its scanner language. Returns undefined when
- *  the codename doesn't trigger CodeRay. */
+ *  the codename doesn't trigger CodeRay, or when the language has no
+ *  captured oracle fixture (the :js scanner the script mod uses is in
+ *  this category today - java_script/coffee_script cards aren't in the
+ *  corpus). */
 export function langForTypeCode(typeCode: string | undefined): HighlightLanguage | undefined {
   if (typeCode === undefined) return undefined;
   if (typeCode === "json") return "json";
   if (typeCode === "css" || typeCode === "scss") return "css";
   if (typeCode === "layout_type" || typeCode === "head") return "html";
-  if (typeCode === "java_script" || typeCode === "coffee_script") return undefined; // :js is registered but the corpus has no captures; skip for parity with the corpus surface
   return undefined;
 }
