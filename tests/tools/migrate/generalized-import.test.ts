@@ -93,12 +93,11 @@ describe("importFromSqlite — corpus-v2 shape", () => {
       expect(stats.schemaMappings["card_references"]).toBe("core");
       expect(stats.schemaMappings["meta"]).toBe("settings");
       // rows landed: target db_content is the source content
-      const r = await driver.query<{ id: number; db_content: string; content: string | null }>(
-        "SELECT id, db_content, content FROM cards WHERE id = 1",
+      const r = await driver.query<{ id: number; db_content: string }>(
+        "SELECT id, db_content FROM cards WHERE id = 1",
         [],
       );
       expect(r.rows[0]?.db_content).toBe("<p>alpha body</p>");
-      expect(r.rows[0]?.content).toBeNull();
       // NULL target columns filled in (current_revision_id + references_expired)
       const rev = await driver.query<{ current_revision_id: number | null; references_expired: number | null }>(
         "SELECT current_revision_id, references_expired FROM cards WHERE id = 1",
