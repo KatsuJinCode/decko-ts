@@ -83,6 +83,13 @@ export class Voo {
   readonly viz = new Map<string, "show" | "hide">();
   /** view/classy.rb class_list (public scope): key -> extra classes. */
   readonly classUps = new Map<string, string>();
+  /** Optional override for the data-slot's view field. When set,
+   *  slotOptions emits this value as `view` instead of the requested
+   *  view. Used by the pointer/list item rendering: the slot id uses
+   *  "mini_bar" but the data-slot's view field reads "bar" (matching
+   *  the captured corpus bytes for corpus:77 + every pointer/list
+   *  sibling). Undefined = data-slot's view equals requestedView. */
+  slotViewOverride: string | undefined;
 
   constructor(parent: Voo | undefined, requestedView: string, opts: Record<string, unknown>) {
     this.parent = parent;
