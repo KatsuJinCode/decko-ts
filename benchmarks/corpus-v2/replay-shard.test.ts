@@ -108,7 +108,19 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
     { timeout: 3_600_000 },
     async () => {
       const shardPaths = requestedShards();
-      const storage = await createRenderTestStorage();
+      // Single-pass seed: the union of EVERY requested shard's ids, enriched
+      // with the full read-rule universe + *structure rule universe + the
+      // permission codename cards + card_references party grants + the
+      // transitive side/type closure (the proven structure-corpus-seeding
+      // recipe). One deck for the whole run: cross-shard nest targets
+      // resolve, and the read-permission + structured-content engines can
+      // JUDGE every captured view (the permission-pending skip is gone).
+      const allLinesByShard = shardPaths.map((p) => ({ p, lines: loadShard(p) }));
+      const unionIds = new Set<number>();
+      for (const { lines } of allLinesByShard) {
+        for (const line of lines) unionIds.add(line.id);
+      }
+      const storage = await createStructureSeededStorageFor(unionIds);
       const registry = new HandlerRegistry();
       const outcomes: ShardOutcome[] = [];
       const realFailures: Array<{ shard: string; area: string; id: string; first: string }> = [];
@@ -127,113 +139,71 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
         corpus.close();
       }
 
+      // The structure universe the card-engine record handler needs: Ruby's
+      // captured Card#content is structured_content || standard_content
+      // (content/all.rb:8-10), so the record handler applies the ported
+      // structuredCardContent with the same universe the render engine folds
+      // (one batch against the seeded deck, once per run).
+      const universeBatch = await storage.fetcher.driver.batch([
+        structureRuleUniverseStatement(),
+      ]);
+      const structureUniverse = structureUniverseFromResults(universeBatch[0]);
+
       try {
-        for (const shardPath of shardPaths) {
-          const lines = loadShard(shardPath);
-          const shardName = path.basename(shardPath);
-
-          // ---- seed the deck exactly like load-oracle-corpus.rb ------------
-          const corpus = new Database(CORPUS_DB, { readonly: true });
-          const ids = lines.map((l) => l.id);
-          const rows: Array<{
-            id: number;
-            name: string | null;
-            codename: string | null;
-            left_id: number | null;
-            right_id: number | null;
-            trash: number;
-            type_id: number;
-            content: string | null;
-          }> = [];
-          const chunkSize = 500;
-          for (let i = 0; i < ids.length; i += chunkSize) {
-            const chunk = ids.slice(i, i + chunkSize);
-            rows.push(
-              ...(corpus
-                .prepare(
-                  `SELECT id, name, codename, left_id, right_id, trash, type_id, content
-                   FROM cards WHERE id IN (${chunk.map(() => "?").join(",")})`
-                )
-                .all(...chunk) as typeof rows)
-            );
-          }
-          // type cards may sit outside the shard: seed every referenced type card
-          const typeIds = [...new Set(rows.map((r) => r.type_id))];
-          const missingTypeIds = typeIds.filter((t) => !ids.includes(t));
-          if (missingTypeIds.length > 0) {
-            const typeRows = corpus
-              .prepare(
-                `SELECT id, name, codename, left_id, right_id, trash, type_id, content
-                 FROM cards WHERE id IN (${missingTypeIds.map(() => "?").join(",")})`
-              )
-              .all(...missingTypeIds) as typeof rows;
-            rows.push(...typeRows);
-          }
-          corpus.close();
-
-          for (const row of rows) {
-            await seedCard(storage, {
-              id: row.id,
-              name: row.name ?? undefined,
-              codename: row.codename,
-              leftId: row.left_id ?? undefined,
-              rightId: row.right_id ?? undefined,
-              trash: row.trash === 1,
-              typeId: row.type_id,
-              dbContent: row.content,
-            });
-          }
-
-          // ---- handlers ------------------------------------------------------
-          // card-engine: same shape as the fetch stream's own registration.
-          registry.register("card-engine", async ({ name }) => {
-            const card = await storage.fetcher.fetchByName(name);
-            if (card === undefined) {
-              return {
-                kind: "error" as const,
-                errorClass: "RuntimeError",
-                message: `card not in seeded deck: ${name}`,
-              };
-            }
-            const engine = storage.fetcher;
-            const typeCard =
-              card.typeId === undefined ? undefined : await engine.fetchById(card.typeId);
-            const typeCode =
-              card.typeId === undefined
-                ? undefined
-                : ((await engine.codenames.nameForId(card.typeId)) ?? "");
-            const isSimple = card.name === undefined || card.name.isSimple;
-            const record: Omit<CapturedCardRecord, "id"> = {
-              name: card.name?.s ?? "",
-              key: card.key ?? "",
-              type: typeCard?.name?.s ?? "",
-              type_code: typeCode ?? "",
-              codename: card.codename ?? null,
-              content: card.dbContent ?? "",
-              left: isSimple ? null : (card.name?.leftName?.s ?? null),
-              right: isSimple ? null : (card.name?.rightName?.s ?? null),
+        // Handlers are registered ONCE for the whole run (the seed is the
+        // union deck; nothing changes between shards).
+        // card-engine: same shape as the fetch stream's own registration.
+        registry.register("card-engine", async ({ name }) => {
+          const card = await storage.fetcher.fetchByName(name);
+          if (card === undefined) {
+            return {
+              kind: "error" as const,
+              errorClass: "RuntimeError",
+              message: `card not in seeded deck: ${name}`,
             };
-            return jsonValue(record);
-          });
+          }
+          const engine = storage.fetcher;
+          const typeCard =
+            card.typeId === undefined ? undefined : await engine.fetchById(card.typeId);
+          const typeCode =
+            card.typeId === undefined
+              ? undefined
+              : ((await engine.codenames.nameForId(card.typeId)) ?? "");
+          const isSimple = card.name === undefined || card.name.isSimple;
+          const record: Omit<CapturedCardRecord, "id"> = {
+            name: card.name?.s ?? "",
+            key: card.key ?? "",
+            type: typeCard?.name?.s ?? "",
+            type_code: typeCode ?? "",
+            codename: card.codename ?? null,
+            content: structuredCardContent(card, card.dbContent, structureUniverse),
+            left: isSimple ? null : (card.name?.leftName?.s ?? null),
+            right: isSimple ? null : (card.name?.rightName?.s ?? null),
+          };
+          return jsonValue(record);
+        });
 
-          // render-engine: the renderer stream's registration shape. ANY
-          // handler error becomes a raisedError OUTCOME (one failed entry,
-          // byte-diffed against the captured HTML) — never a crashed suite;
-          // the harness propagates handler exceptions by design.
-          registry.register("render-engine", async ({ cardName, view }) => {
-            try {
-              const html = await storage.engine.render(cardName, view);
-              return renderBytes(html);
-            } catch (error) {
-              if (error instanceof UnsupportedViewError) {
-                // render.rb#view_method raises Card::Error::UserError; the
-                // capture records the en.yml message verbatim.
-                return raisedError("Card::Error::UserError", error.message);
-              }
-              const err = error as Error;
-              return raisedError(err?.constructor?.name ?? "Error", err?.message ?? String(error));
+        // render-engine: the renderer stream's registration shape. ANY
+        // handler error becomes a raisedError OUTCOME (one failed entry,
+        // byte-diffed against the captured HTML) — never a crashed suite;
+        // the harness propagates handler exceptions by design.
+        registry.register("render-engine", async ({ cardName, view }) => {
+          try {
+            const html = await storage.engine.render(cardName, view);
+            return renderBytes(html);
+          } catch (error) {
+            if (error instanceof UnsupportedViewError) {
+              // render.rb#view_method raises Card::Error::UserError; the
+              // capture records the en.yml message verbatim.
+              return raisedError("Card::Error::UserError", error.message);
             }
-          });
+            const err = error as Error;
+            return raisedError(err?.constructor?.name ?? "Error", err?.message ?? String(error));
+          }
+        });
+
+        for (const { p: shardPath, lines } of allLinesByShard) {
+          const shardName = path.basename(shardPath);
 
           // ---- build corpus entries ----------------------------------------
           const entries: ReplayEntry[] = [];
