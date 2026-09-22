@@ -260,7 +260,7 @@ function rewriteSubstr(sql: string): string {
   const n = sql.length;
   while (i < n) {
     const remaining = sql.slice(i);
-    const m = /\bSUBSTR\s*\(/.exec(remaining); // case-insensitive — matches the other rewrites
+    const m = /\bSUBSTR\s*\(/i.exec(remaining); // case-insensitive — matches the other rewrites
     if (m === null || m.index === undefined) {
       out += remaining;
       break;
