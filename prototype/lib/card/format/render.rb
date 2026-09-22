@@ -12,27 +12,23 @@ class Card
 
       # view=open&layout=simple
       def render! view, view_options={}
-        voo = View.new self, view, view_options, @voo
-        with_voo voo do
-          voo.process do |final_view|
-            # PROTOTYPE PATCH (KatsuJinCode/decko-ts #9 / docs/ruby-dividend-cte.md):
-            # Walk the inclusion closure ONCE before the renderer starts and
-            # warm Card::Cache[Card] + Card::Cache[Lexicon] for every card the
-            # render of @card will touch through {{...}}. The render then runs
-            # as a sequence of warm-cache hits (the per-inclusion Card.fetch
-            # calls in Card::Format::Nest::Fetch#fetch_card hit the temp cache
-            # instead of issuing a SELECT).
-            #
-            # The patch lives in Card::Format::Nest::Prefetch (prototype/lib/
-            # card/format/nest/prefetch.rb). Invoked here as an instance method
-            # on @card's format (mixins travel through Card::Format).
-            #
-            # The recursion guard is unchanged: Card.config.max_depth still
-            # caps depth via the depth-first Nest#initialize path
-            # (card-1.110.0 lib/card/format/nesting.rb:65-67).
-            prefetch_inclusion_closure @card, final_view if @card
-            wrap_and_render final_view
+        # PROTOTYPE PATCH: depth counter spans the entire nested render
+        # tree. The top render sees depth=0 (runs prefetch); nested renders
+        # see depth>=1 (prefetch is a no-op, cache is already warm).
+        # The counter is incremented BEFORE voo.process so nested renders
+        # fired inside wrap_and_render see depth>=1.
+        Thread.current[:prefetch_render_depth] =
+          (Thread.current[:prefetch_render_depth] || 0) + 1
+        begin
+          voo = View.new self, view, view_options, @voo
+          with_voo voo do
+            voo.process do |final_view|
+              prefetch_inclusion_closure @card, final_view if @card
+              wrap_and_render final_view
+            end
           end
+        ensure
+          Thread.current[:prefetch_render_depth] = prefetch_depth - 1
         end
       end
 
