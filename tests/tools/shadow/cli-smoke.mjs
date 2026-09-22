@@ -50,7 +50,7 @@ let stderr = "";
 proc.stderr.on("data", (d) => (stderr += d.toString()));
 await new Promise((r) => setTimeout(r, 200));
 
-const m = stderr.match(/listening on http:\/\/[^:]+:(\d+)/);
+const m = stderr.match(/listening on http:\/\/[^:]+:(\d+)/) || stderr.match(/listening on http:\/\/([^\s]+)/);
 if (!m) {
   console.error("No listening line:", stderr);
   process.exit(1);
