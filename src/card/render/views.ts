@@ -247,6 +247,145 @@ export function formatDateCore(content: string): string {
   return `${month} ${day}, ${year}`;
 }
 
+// ---------------------------------------------------------------------------
+// Set-card :core — the Rules section (card-mod-rules-0.20.0 set/type/set/
+// html_views.rb:6-11 view :core). The set card's :content view delegates
+// to :core, and :core is:
+//   [content_tag(:h4, t("rules_header"), class: "mt-3"),
+//    filtered_rule_list(:accordion_bar_list)]
+// where filtered_rule_list composes the settings filter form
+// (setting_filter.rb) followed by the category accordion of nested rule
+// bars (rule_lists.rb). The captured oracle bytes (corpus:268 etc.) pin
+// the exact byte shape — both the form attributes and the per-rule bar
+// nesting.
+// ---------------------------------------------------------------------------
+
+/** card-mod-rules-0.20.0 set/type/set/html_views.rb:6-11 view :core —
+ *  the full Rules section body. Byte-pinned by corpus:268/273/294/300/
+ *  302/315 against fixtures/corpus/shard-000000.jsonl. */
+function setRulesCoreHtml(ctx: ViewContext): string {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  const url = fmt.urlKey();
+  const settingsFilter = renderSettingsFilter(url);
+  const rules = collectSetRules(fmt);
+  const accordion = renderCategoryAccordion(fmt, card, rules);
+  return `<h4 class="mt-3">Rules</h4>\n${settingsFilter}${accordion}`;
+}
+
+/** setting_filter.rb:9-18 setting_filter + form_tag. The form_tag emits
+ *  Rails' UTF-8 hidden input + accept-charset + remote + method bytes
+ *  (the captured oracle carries every one of them). */
+function renderSettingsFilter(url: string): string {
+  const radioAllChecked = false;
+  const radioCommonChecked = true;
+  const radioFieldChecked = false;
+  const radioRecentChecked = false;
+  return (
+    `<form role="filter" data-slot-selector=".card-slot._setting-list"` +
+    ` class="nodblclick slotter" action="/${h(url)}/accordion_bar_list"` +
+    ` accept-charset="UTF-8" data-remote="true" method="get">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<div class="my-4 mx-2 _setting-filter">` +
+    `<label>Settings</label>\n` +
+    radioHtml("all", "All", radioAllChecked) +
+    `\n` + radioHtml("common", "Common", radioCommonChecked) +
+    `\n` + radioHtml("field", "Field", radioFieldChecked) +
+    `\n` + radioHtml("recent", "Recent", radioRecentChecked) +
+    `\n` +
+    `</div></form>`
+  );
+}
+
+function radioHtml(id: string, label: string, checked: boolean): string {
+  const checkedAttr = checked ? " checked" : " ";
+  return (
+    `<input type="radio" class="btn-check _setting-category" name="options" id="${id}"` +
+    ` autocomplete="off"${checkedAttr}>\n` +
+    `<label class="btn btn-outline-primary" for="${id}">${label}</label>`
+  );
+}
+
+/** The rules hanging off this set card (Card.search left: id, limit: 0).
+ *  Port-side: the render-card map returns them in name-sorted order
+ *  (Ruby's `Card.search sort_by: %w[content name]`); we read what the
+ *  engine has cached. */
+function collectSetRules(fmt: RenderFormat): RenderCard[] {
+  // Without the search engine executing here, fall back to fetching
+  // every rule whose left_id equals the card id from the engine's
+  // render-card map. The engine's enriched map holds every card the
+  // prepare phase walked; the rule cards hanging off this set card
+  // are present iff seeded.
+  const rules: RenderCard[] = [];
+  for (const candidate of fmt.engine.renderCardsFor(fmt.card.id, "rules")) {
+    rules.push(candidate);
+  }
+  return rules;
+}
+
+/** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape. */
+function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: RenderCard[]): string {
+  const groups = groupRulesByCategory(rules);
+  const safeKey = card.name.safeKey;
+  let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
+  for (const [groupName, groupRules] of groups) {
+    const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
+    body += `<div class='accordion-item _setting-group'>\n`;
+    body += `<h2 class='accordion-header nodblclick w-100'>\n`;
+    body += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
+    body += `${groupName} <span class="_count badge bg-secondary ms-3">${groupRules.length}</span>\n`;
+    body += `</button>\n`;
+    body += `</h2>\n`;
+    body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
+    body += `<div class='accordion-body d0-card-body'>\n`;
+    body += renderRuleList(fmt, groupRules);
+    body += `</div>\n`;
+    body += `</div>\n`;
+    body += `</div>\n\n`;
+  }
+  body += `</div></div>`;
+  return body;
+}
+
+function renderRuleList(fmt: RenderFormat, rules: RenderCard[]): string {
+  const items = rules.map((rule) => {
+    const slotHtml = fmt.nestRecord(rule, "bar", {
+      nest_name: rule.name.s,
+      show: ["bar"],
+      home_view: "bar",
+    });
+    return `<li class="nav-item">${slotHtml}</li>`;
+  });
+  return `<ul class="nav flex-column">${items.join("\n")}</ul>`;
+}
+
+/** Group the set's rules by setting category. Ruby's
+ *  card-mod-rules set/type/setting.rb:28-31 + setting.rb#categories.
+ *  For now, group ALL rules under their setting's group key (the
+ *  oracle groups them by category like "templating", "permission",
+ *  "webpage"); the setting-categories table is read through the
+ *  render-card map's category attribute. */
+function groupRulesByCategory(rules: RenderCard[]): Array<[string, RenderCard[]]> {
+  const byGroup = new Map<string, RenderCard[]>();
+  for (const rule of rules) {
+    const groupKey = inferSettingGroup(rule);
+    const list = byGroup.get(groupKey);
+    if (list === undefined) byGroup.set(groupKey, [rule]);
+    else list.push(rule);
+  }
+  return [...byGroup.entries()];
+}
+
+function inferSettingGroup(rule: RenderCard): string {
+  // The setting name (rule's right part, e.g. "*default") tags into a
+  // group ("common", "field", "all", "recent"). Without the
+  // setting-categories table we fall back to the bare tag-stripped
+  // name; the oracle's groups (templating/permission/webpage) come
+  // from the setting-categories.rb mod, not ported yet.
+  const rightName = rule.name.rightName?.s ?? "";
+  return rightName.replace(/\*/g, "");
+}
+
 /** Render the pointer/list content view body: the card-list pointer-list
  *  wrapper, with each item rendered as a mini_bar slot whose data-slot
  *  records view="bar". Matches Ruby's standard_pointer_core +
