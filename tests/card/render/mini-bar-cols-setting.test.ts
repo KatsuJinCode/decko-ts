@@ -185,32 +185,18 @@ describe("render integration: mini-bar cols setting", () => {
   });
 });
 
-/** Extract the slice of HTML around the .bar-left / .bar-right column
- *  markers — the bytes the M2 stream owns (the col-X numbers and the
- *  surrounding class list + whitespace). The slice starts at the
- *  `<div class='bar-left` opening and ends at the matching bar-right
- *  closing `</div>` so any surrounding structure doesn't bleed into the
- *  comparison. The bar-right INNER content (one_line_content of the rule
- *  card) is a different stream's territory — replace it with a
- *  placeholder so the slice comparison is byte-equality on the bytes we
- *  actually own. */
-function extractBarColsSlice(html: string): string {
-  const leftStart = html.indexOf("<div class='bar-left");
-  if (leftStart < 0) return "";
-  const rightOpen = html.indexOf("<div class='bar-right", leftStart);
-  if (rightOpen < 0) return html.slice(leftStart);
-  const rightClose = html.indexOf("</div>\n</div>", rightOpen);
-  if (rightClose < 0) return html.slice(leftStart);
-  // Up to and including the bar-right opening tag (the col-X is here).
-  const head = html.slice(leftStart, rightOpen + "<div class='bar-right".length + 11); // 11 = " col-6'>"
-  // Wait: col width is variable. Build the rightOpen tail up to the '>' of
-  // the opening tag — the next \n is the bar-right body's first newline.
-  const rightOpenEnd = html.indexOf(">", rightOpen) + 1;
-  const headReal = html.slice(leftStart, rightOpenEnd);
-  // Find the matching bar-right </div> — the one that closes the OUTER
-  // bar-right column. Search backwards from the rightClose position.
-  const tail = html.slice(rightClose);
-  return headReal + "\n<BAR_RIGHT_INNER/>\n" + tail;
+/** Extract the opening `<div class='NAME COL'>...` tag for one of the
+ *  bar columns — the bytes M2 owns (the col-X class is decided here).
+ *  The inner content of the column is NOT this stream's territory
+ *  (bar_right's nested rule one_line_content is the rules-views stream);
+ *  only the opening tag is. */
+function extractOpening(html: string, name: string): string {
+  const marker = `<div class='${name}`;
+  const start = html.indexOf(marker);
+  if (start < 0) return "";
+  const end = html.indexOf(">", start);
+  if (end < 0) return html.slice(start);
+  return html.slice(start, end + 1);
 }
 
 // ---------------------------------------------------------------------------
