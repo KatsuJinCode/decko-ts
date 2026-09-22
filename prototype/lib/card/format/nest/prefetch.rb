@@ -34,15 +34,15 @@ class Card
         # Safety bound for the per-level fallback rounds.
         MAX_FALLBACK_ROUNDS = 25
 
-        # Thread-local set of root_keys already prefetched in this process.
-        # Ruby's render path recurses through Card::Format#render! per
-        # nested subformat (Nesting#nest -> subformat.render -> render! ->
-        # prefetch -> ...). Without this, the prototype's prefetch would
-        # walk the full closure at every level -- 8 walks for a depth-8
-        # chain. The TS port's prefetchInclusionClosure runs ONCE per
-        # top-level render; this set gives us the same shape.
-        def prefetch_done_for_thread
-          Thread.current[:prefetch_done_keys] ||= ::Set.new
+        # Thread-local depth counter for the prefetch. Ruby's render path
+        # recurses through Card::Format#render! per nested subformat
+        # (Nesting#nest -> subformat.render -> render! -> prefetch -> ...).
+        # Without this guard, the prototype's prefetch would walk the full
+        # closure at every level -- 8 walks for a depth-8 chain. The TS
+        # port's prefetchInclusionClosure runs ONCE per top-level render;
+        # this counter gives us the same shape: prefetch only at depth 0.
+        def prefetch_depth
+          Thread.current[:prefetch_render_depth] ||= 0
         end
 
         # Public entry. Idempotent (warm-cache writes are no-ops when the
