@@ -53,6 +53,7 @@ function card(id: number, name: string, content: string): RenderCard {
     key: deckoName.key,
     typeName: undefined,
     typeId: undefined,
+    typeCode: undefined,
     id,
     dbContent: content,
     setKeys: "",
