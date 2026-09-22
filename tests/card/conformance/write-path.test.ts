@@ -322,7 +322,7 @@ async function replay03(signUpChildId: number): Promise<number[]> {
   });
   // Re-fetch and update.
   const fetched = await s.engine.fetchById(child.cardId);
-  await fetched?.engine;
+  void fetched;
   // Use the action engine directly with the cardId.
   await engine.updateCard({ cardId: child.cardId, content: "second revision" });
   await snapshotAndAssert(s, "03-update-content", [child.cardId]);
