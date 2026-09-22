@@ -73,20 +73,9 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     async () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(77);
-      baseIds.add(22281);
       baseIds.add(34843);
       baseIds.add(6568);
-      baseIds.add(47);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed the type card the closure walk didn't fetch (id=22281
-      // is a cardtype card with name "swtktey" — captured corpus:77
-      // bytes pin data-card-type-id=22281 + data-card-type-name=
-      // swtktey for the inner item slot).
-      await seedCard(storage, {
-        id: 22281,
-        name: "swtktey",
-        typeId: 5,
-      });
       // Seed yzzw (the *home pointer's single item). The captured
       // bytes record yzzw as a card with read permission denied (the
       // read_rule_id points at *all+*read, rule id=6568, whose
@@ -94,6 +83,9 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
       // the bar_left / bar_right denied spans fall out of the same
       // path the engine's read-permission gate already exercises for
       // the corpus replay (src/card/permissions/view-perms.ts).
+      // We seed yzzw with an arbitrary id > the shard's max (slot id
+      // is name-based, not id-based, so the id never appears in the
+      // rendered bytes).
       await seedCard(storage, {
         id: 9000,
         name: "yzzw",
@@ -123,15 +115,8 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     async () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(275);
-      baseIds.add(22281);
-      baseIds.add(47);
       baseIds.add(6568);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 22281,
-        name: "swtktey",
-        typeId: 5,
-      });
       await seedCard(storage, {
         id: 9001,
         name: "bifaarykabanhm",
