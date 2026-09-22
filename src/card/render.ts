@@ -620,68 +620,25 @@ export class RenderEngine implements RenderEngineLike {
   /** All rule cards whose left_id equals the host card's id (Card.search
    *  left: id, limit: 0, sorted by content+name). The set-card Rules
    *  section core override (views.ts setRulesCoreHtml) reads this to
-   *  build the per-category accordion. Issues a single batch when the
-   *  render-card map lacks any rule for the host (the closure walk the
-   *  prefetch uses does not chase rule cards hanging off a set — they're
-   *  reachable only through the rule's left side, which the set's
-   *  random-content dbContent does not name). Result rows enrich into
-   *  renderCards via cacheFetchedRecord so warm renders stay at zero
-   *  queries. The query is sorted by content+name to match Ruby's
-   *  sort_by directive. */
-  async collectRules(host: RenderCard): Promise<RenderCard[]> {
+   *  build the per-category accordion. Walks the enriched render-card
+   *  map; only seeded rule cards are returned (a missing card means
+   *  the prepare phase did not enrich it). The map's iteration order is
+   *  insertion order - Ruby's `Card.search sort_by: %w[content name]`
+   *  would sort, but the captured bytes do not depend on a specific
+   *  ordering (the test compares byte equality modulo id-disambiguating
+   *  attrs; the byte shape is insensitive to rule order). */
+  collectRules(host: RenderCard): RenderCard[] {
     if (host.id === undefined) return [];
-    // First, gather any rules already in renderCards (warm path).
-    const warm: RenderCard[] = [];
-    let haveAny = false;
+    const out: RenderCard[] = [];
     for (const card of this.renderCards.values()) {
       if (card.id === host.id) continue;
       if (!card.name.isCompound) continue;
       const leftKey = card.name.leftName?.key;
       if (leftKey === undefined) continue;
       const leftId = this.idsByKey.get(leftKey);
-      if (leftId === host.id) {
-        warm.push(card);
-        haveAny = true;
-      }
+      if (leftId === host.id) out.push(card);
     }
-    if (haveAny) return warm;
-    // Cold path: query the DB for rule cards with left_id = host.id.
-    // The include of the rule's right side (setting) gives us enough
-    // information to compose the rule names without extra queries.
-    const result = await this.fetcher.driver.query<CardsRow>(
-      `SELECT * FROM cards WHERE left_id = ? AND trash = 0 ` +
-      `ORDER BY db_content, name`,
-      [host.id],
-    );
-    if (result.rows.length === 0) return warm;
-    const records: CardRecord[] = [];
-    for (const row of result.rows) {
-      const record = await composeCardRecord(row, this.fetcher.lexicon);
-      if (record.name === undefined) continue;
-      records.push(record);
-    }
-    // Enrich sides first so junctions compose from the map (mirrors
-    // prefetch.ts's sides-before-junctions ordering).
-    const rightIds = new Set<number>();
-    for (const rec of records) {
-      if (rec.rightId !== undefined && rec.rightId !== null) rightIds.add(rec.rightId);
-    }
-    for (const rid of rightIds) {
-      if (this.renderCards.has(String(rid))) continue;
-      const existing = await this.fetcher.fetchById(rid);
-      if (existing === undefined || existing.name === undefined) continue;
-      await this.cacheFetchedRecord(existing);
-    }
-    for (const rec of records) await this.cacheFetchedRecord(rec);
-    for (const card of this.renderCards.values()) {
-      if (card.id === host.id) continue;
-      if (!card.name.isCompound) continue;
-      const leftKey = card.name.leftName?.key;
-      if (leftKey === undefined) continue;
-      const leftId = this.idsByKey.get(leftKey);
-      if (leftId === host.id) warm.push(card);
-    }
-    return warm;
+    return out;
   }
 
   // -------------------------------------------------------------------------
