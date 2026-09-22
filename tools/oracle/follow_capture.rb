@@ -58,9 +58,20 @@ OUT_PATH = File.join(OUT_DIR, "follow-notification.json")
 FileUtils.mkdir_p OUT_DIR
 
 # ActionMailer.test delivery is the canonical "capture without sending"
-# approach. The Mail objects stay in ActionMailer::Base.deliveries.
+# approach. The Mail objects stay in ActionMailer::Base.deliveries
+# (which delegates to Mail::TestMailer.deliveries — mail-2.9.1
+# lib/mail/network/delivery_methods/test_mailer.rb:12-14 +
+# actionmailer-7.2.3.2 lib/action_mailer/delivery_methods.rb:43).
+#
+# NOTE: Card::Mailer is a subclass of ActionMailer::Base but `class_attribute
+# :delivery_method` (lib/action_mailer/delivery_methods.rb:19) gives each
+# subclass its OWN value, not the parent's. Setting only
+# `ActionMailer::Base.delivery_method` does NOT change Card::Mailer's
+# method. We set it on both.
 ActionMailer::Base.delivery_method = :test
 ActionMailer::Base.perform_deliveries = true
+Card::Mailer.delivery_method = :test
+Card::Mailer.perform_deliveries = true
 
 # Disable the notify.rb silence gate — controller is nil in runner; the
 # orchestrator's `silence_notifications?` predicate defaults to true
