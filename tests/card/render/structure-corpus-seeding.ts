@@ -110,17 +110,17 @@ export async function createStructureSeededStorageFor(
   const ruleRows = corpus
     .prepare(`SELECT ${CORPUS_ROW_COLUMNS} FROM cards WHERE right_id = ? AND trash = 0`)
     .all(structureCardId) as CorpusRow[];
-  const ids = new Set<number>();
+  const enrichIds = new Set<number>();
   for (const rule of ruleRows) {
-    ids.add(rule.id);
-    if (rule.left_id !== null) ids.add(rule.left_id);
+    enrichIds.add(rule.id);
+    if (rule.left_id !== null) enrichIds.add(rule.left_id);
   }
   // Rule-predicate codename cards.
   for (const codename of RULE_PREDICATE_CODENAMES) {
     const row = corpus
       .prepare(`SELECT id FROM cards WHERE codename = ? AND trash = 0`)
       .get(codename) as { id: number } | undefined;
-    if (row !== undefined) ids.add(row.id);
+    if (row !== undefined) enrichIds.add(row.id);
   }
 
   const rows = new Map<number, CorpusRow>();
@@ -135,12 +135,12 @@ export async function createStructureSeededStorageFor(
       for (const row of fetched) {
         if (!rows.has(row.id)) {
           rows.set(row.id, row);
-          ids.add(row.id);
+          enrichIds.add(row.id);
         }
       }
     }
   };
-  fetchRows([...ids]);
+  fetchRows([...enrichIds]);
 
   // Transitive side/type closure to fixpoint (the permission seeding's walk).
   const closeClosure = (): void => {
