@@ -1,5 +1,34 @@
 # Upstream parity plan — decko-commons#1282 + Astra's four parities
 
+## Fleet log — 2026-09-21 (all integrated in 31f2048)
+
+LANDED: R1 help-popover (13 corpus entries byte-exact; 26 rule-card count
+aggregates are capture-vs-DB drift, pinned at unit level), R2 structure
+rule templates (structured_content mechanism; sampled byte-exact; full
+sweep blocked on a prefetch-CTE perf cost on synthetic rule-dense seeds),
+S3 mod loader (card-mod-help proven vs live sha-stable capture; load
+order = Bundler closure), S5 view-perm task contract (corpus census:
+all 124,632 captured denials are `(read)`; non-read coverage is
+gem-cited + synthetic), S2 actor parties (113 corpus members swept),
+S1 MySQL oracle rung (COMPLETE: portable MariaDB rung, 30-entry match
+battery byte-stable, TS replay 27/30, decision = upgrade the SQLite
+REGEXP UDF with throw-on-untranslated; concurrent-race incident on the
+shared SQLite oracle deck documented in docs/oracle-harness.md).
+MiniMax wave A: T6 compat report (1 ported / 30 partial / 2 ignored),
+S6 gherkin first slice (31 tests), P1 write conformance (8 Ruby
+scenarios; found P3/P4). Wave B: T4 generalized migration (606k rows,
+parity + determinism proven on sanitized corpus; 6 gaps to one-click),
+T8 PG dialect (91 tests; live-PG rung specified, not proven),
+R9 Ruby CTE dividend (honest partial: overlay + CTE + hydration work;
+0% reduction until a <10-line reset_patterns guard lands — the
+contribution-series-2 opener).
+
+Coordinator fixes during integration: isRule import wiring + render.ts
+eager/lazy seams (helpResolver once-per-engine), strict-less-than pin
+moved to the round-trip axis (statements fold, round trips are the
+#1282 metric), T4 declaration files, P1 test type fixes (runtime
+behavior unchanged).
+
 > Coordination update, 2026-09-21: [Decko Core](core/README.md) is the
 > governing project contract. The [private work board](core/work-board.md)
 > maps these streams to acceptance issues without changing active ownership.
