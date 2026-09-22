@@ -203,22 +203,6 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
       `${failures.length} of ${checked} set-card-views views differ:\n` +
         failures.slice(0, 10).map((f) => `${f.id}: ${f.first}`).join("\n"),
     ).toEqual([]);
-    if (failures.length > 0) {
-      const ids = ["corpus:294", "corpus:315"];
-      for (const id of ids) {
-        const f = failures.find((x) => x.id.startsWith(id));
-        if (f !== undefined) {
-          console.log(`DEBUG ${f.id}: ${f.first}`);
-        }
-      }
-      // Print full content view for debugging
-      const debugEntry = entries.find((e) => e.id === 315);
-      if (debugEntry !== undefined) {
-        const actual = await storage.engine.render(debugEntry.name, "content");
-        console.log("=== ACTUAL 315 content ===");
-        console.log(actual.slice(2000, 3500));
-      }
-    }
     console.log(
       `set-card-views corpus parity: ${entries.length} entries, ${checked} views, all byte-identical`,
     );
