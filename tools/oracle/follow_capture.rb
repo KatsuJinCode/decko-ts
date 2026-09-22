@@ -265,6 +265,17 @@ Card::Auth.as_bot do
     },
   )
 
+  # Re-attach the `follower_notification_email` codename. The trigger
+  # hardcodes `Card[:follower_notification_email]`
+  # (card-mod-follow set/right/account.rb:17); the codename is the
+  # actual lookup key (lib/card/codename.rb:161 raises
+  # Card::Error::CodenameNotFound when no card has it). The seed card
+  # `card-mod-follow/data/real.yml:67` declares the codename; trashing
+  # the seed row via `trash=true` left the codename column unset on
+  # the new card, so the integration phase was raising and skipping
+  # deliveries silently.
+  Card["follower notification email"].update! codename: "follower_notification_email"
+
   # A card John will edit (Sara is NOT the actor).
   sara_card = Card.fetch("Sara Test Card", new: { type_id: Card::BasicID })
   if sara_card.new_card?
