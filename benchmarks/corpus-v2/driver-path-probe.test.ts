@@ -32,6 +32,7 @@ describe("driver path bisection (seeded engine storage)", () => {
       await storage.fetcher.driver.query("SELECT COUNT(*) AS n FROM cards", []);
       console.log(`TRIVIAL_QUERY_MS ${Date.now() - t}`);
 
+      const first = readShardLines()[0] as { name: string };
       let t = Date.now();
       const watch = setInterval(() => {
         const stmts = storage!.counting.statements;
