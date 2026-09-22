@@ -201,14 +201,17 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
           //      four *head rules total (none on these sets), so the Rules
           //      section nests an absent card and the anonymous viewer gets
           //      the quiet denial span where the oracle pins the bar.
-          const ew = expectedNorm.slice(Math.max(0, at - 40), at + 60);
-          const aw = actualNorm.slice(Math.max(0, at - 40), at + 60);
+          const ew = expectedNorm.slice(Math.max(0, at - 40), at + 100);
+          const aw = actualNorm.slice(Math.max(0, at - 40), at + 100);
           const countPair =
             /\((\d+) [a-z ]+ rules\)/.exec(ew) !== null &&
             /\((\d+) [a-z ]+ rules\)/.exec(aw) !== null;
+          // The Rules section nests each setting's rule card inside a
+          // nav-item; an absent rule row renders the denial span where the
+          // capture deck's row rendered the rule-bar slot div.
           const missingHeadRule =
-            /<div id="[A-Za-z0-9X-]*head/.test(ew) &&
-            /<span class="denied">/.test(aw);
+            /<li class="nav-item"><div id="/.test(ew) &&
+            /<li class="nav-item"><span class="denied">/.test(aw);
           if (countPair || missingHeadRule) {
             drifts.push(
               `corpus:${entry.id}:render:${view} (${
