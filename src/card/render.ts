@@ -480,7 +480,16 @@ export class RenderEngine implements RenderEngineLike {
    *  comparisons mirror Ruby's fetch_type_id exactly: resolve each name
    *  part's card through storage and compare its type_id. Undefined when
    *  the seed lacks the codename cards — the pattern cannot apply either
-   *  way (same degradation as a rule-less deck). */
+   *  way (same degradation as a rule-less deck).
+   *
+   *  ORDER PARITY (corpus:253): Ruby evaluates `standard_rule? ||
+   *  preference?` (all.rb:33) — standard_rule? runs FIRST for EVERY name
+   *  shape (all.rb:37-40: name.right type == SettingID && name.left type
+   *  == SetID, where name.left of a 3-part name is its first two parts).
+   *  preference? (all.rb:42-48) only adds the user-part rules for >2-part
+   *  names; routing 3-part names straight into it (the previous shape)
+   *  dropped the RULE set key for names like "SET+*right+SETTING" that
+   *  Ruby classifies via standard_rule?. */
   private async computeIsRule(
     name: DeckoName,
     leftRecord: CardRecord | undefined,
@@ -492,8 +501,18 @@ export class RenderEngine implements RenderEngineLike {
     // name.right fetched type == SettingID gates BOTH shapes (all.rb:39,44)
     const rightTypeId = await this.fetchTypeIdForPart(name.rightName);
     if (rightTypeId === undefined || rightTypeId !== ids.setting) return false;
+    // standard_rule? (all.rb:37-40): name.left fetched type == SetID — for
+    // any part count (name.left of "A+B+C" is "A+B"). Two-part names have
+    // the left record in hand (enrichment fetched it for the *type plus
+    // right anchor); deeper names fetch it cache-first.
     if (name.parts.length > 2) {
-      // preference? (all.rb:43-48): name[0..-3] fetched type == SetID, then
+      const standardLeftTypeId = await this.fetchTypeIdForPart(name.leftName);
+      if (standardLeftTypeId === ids.set) return true;
+    } else if (leftRecord !== undefined && leftRecord.typeId === ids.set) {
+      return true;
+    }
+    if (name.parts.length > 2) {
+      // preference? (all.rb:42-48): name[0..-3] fetched type == SetID, then
       // valid_preferer? (all.rb:50-53): the [-2] part's type is User, or
       // that part's codename is "all".
       const trunkTypeId = await this.fetchTypeIdForPart(
@@ -508,10 +527,7 @@ export class RenderEngine implements RenderEngineLike {
         prefererKey !== "" ? ((await this.fetcher.fetchByName(prefererKey)) ?? undefined) : undefined;
       return prefererRecord?.codename === "all";
     }
-    // standard_rule? (all.rb:37-40): name.left fetched type == SetID. The
-    // left record is already in hand — enrichment fetched it for the
-    // *type plus right anchor.
-    return leftRecord !== undefined && leftRecord.typeId === ids.set;
+    return false;
   }
 
   /** Card.fetch_type_id(name-part): the part card's fetched type_id
@@ -533,6 +549,12 @@ export class RenderEngine implements RenderEngineLike {
    * The closure is warm when every reference reachable from `record` is
    * already in the render-card map. A synchronous parse + map walk - no
    * queries (this is what makes warm re-renders free).
+   *
+   * Template references recorded in structureRefMisses are skipped: they
+   * name cards that do not exist (the corpus's {{xxxx}} nest targets), so
+   * waiting for them would keep structured cards permanently cold — Ruby
+   * renders those nests as unknown-card views, and so does the port's nest
+   * path.
    */
   private closureWarm(record: CardRecord): boolean {
     if (record.key === undefined || record.key === "") return false;
@@ -546,6 +568,7 @@ export class RenderEngine implements RenderEngineLike {
       const card = this.renderCards.get(key);
       if (card === undefined) return false;
       for (const ref of this.cardReferenceKeys(card)) {
+        if (this.structureRefMisses.has(ref)) continue;
         if (!this.renderCards.has(ref)) return false;
         if (!seen.has(ref)) queue.push(ref);
       }
