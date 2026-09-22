@@ -117,18 +117,31 @@ Card::Auth.as_bot do
   # that rejects any two `+*email` cards with the same content. The
   # canonical user email lives on `Sara+*account+*email`; the early
   # scripted seed left `Sara+*email` instead, which we trash-flag here.
+  # We use Card.create! with subcards on the parent so the
+  # `+*email` is set within the same transaction as `Sara+*account`
+  # (the parent has `require_field :email` — card-mod-account
+  # set/right/account.rb:8 — and would otherwise reject the save
+  # before its child exists).
   sara_account_email_card = Card["Sara+*account+*email"]
   if sara_account_email_card.nil?
-    # Trash any duplicate `Sara+*email` row directly (destroy!/delete!
-    # run events that may raise for compound types; trash=true is a
-    # column update that bypasses the director pipeline).
     dup = Card["Sara+*email"]
     if dup && !dup.new_card?
       Card.where(id: dup.id).update_all(trash: true)
       seed_log["Sara+*email"] = "trashed (dup)"
     end
-    Card.create! name: "Sara+*account+*email", content: "sara@example.com"
-    seed_log["Sara+*account+*email"] = "created"
+    # If the intermediate Sara+*account exists, fill it in-place.
+    sara_account = Card["Sara+*account"]
+    if sara_account.nil? || sara_account.new_card?
+      sara_account = Card.create!(
+        name: "Sara+*account",
+        subcards: { "+*email" => { content: "sara@example.com" } },
+      )
+      seed_log["Sara+*account"] = "created-with-email"
+    else
+      sara_account.update! "+*email" => "sara@example.com"
+      seed_log["Sara+*account"] = "updated-with-email"
+    end
+    seed_log["Sara+*account+*email"] = "ensured"
   elsif sara_account_email_card.content.to_s.strip.empty?
     dup = Card["Sara+*email"]
     if dup && !dup.new_card?
@@ -148,8 +161,18 @@ Card::Auth.as_bot do
       Card.where(id: dup.id).update_all(trash: true)
       seed_log["John+*email"] = "trashed (dup)"
     end
-    Card.create! name: "John+*account+*email", content: "john@example.com"
-    seed_log["John+*account+*email"] = "created"
+    john_account = Card["John+*account"]
+    if john_account.nil? || john_account.new_card?
+      john_account = Card.create!(
+        name: "John+*account",
+        subcards: { "+*email" => { content: "john@example.com" } },
+      )
+      seed_log["John+*account"] = "created-with-email"
+    else
+      john_account.update! "+*email" => "john@example.com"
+      seed_log["John+*account"] = "updated-with-email"
+    end
+    seed_log["John+*account+*email"] = "ensured"
   elsif john_account_email_card.content.to_s.strip.empty?
     dup = Card["John+*email"]
     if dup && !dup.new_card?
