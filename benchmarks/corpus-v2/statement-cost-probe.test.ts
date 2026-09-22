@@ -34,7 +34,8 @@ describe("cold render statement costs (seeded full deck)", () => {
       console.log(`FIRST_RENDER_MS ${Date.now() - t1}`);
 
       const t2 = Date.now();
-      await storage.engine.render(readShardLines()[1] as { name: string }, "closed");
+      const second = readShardLines()[1] as { name: string };
+      await storage.engine.render(second.name, "closed");
       console.log(`SECOND_RENDER_MS ${Date.now() - t2}`);
 
       // Re-run each DISTINCT recorded statement once, ranked by wall time.
