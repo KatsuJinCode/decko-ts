@@ -128,42 +128,48 @@ class Card
         # path hit the temp cache instead of issuing a DB query.
         # Mirrors the TS composeAndCache contract at
         # src/card/render/prefetch.ts:288-334 (card-by-card CacheRecord).
+        #
+        # The temp cache is a plain Hash (card-1.110.0
+        # lib/card/cache/temporary.rb). Writes are idempotent (@store[k]=v).
+        # We use read on the temp to skip already-warmed ids (no DB hop).
         def hydrate_cache rows, stats
           conn = ActiveRecord::Base.connection
           card_cache = Card.cache
           lex_cache  = Card::Lexicon.cache
-          ids = rows.map { |r| r["id"] }
-          return if ids.empty?
+          return if rows.empty?
 
-          # Bulk load names+lex by id (the cheap path: the temp cache only
-          # holds id->name and lex_key->id, not full Card objects).
-          existing_temp_names = card_cache.temp.read_multi(ids.map(&:to_s))
-          # Bulk fetch any missing names from cards (one query, no per-id
-          # SELECT -- the temp cache would absorb them on second render).
-          missing_ids = ids.reject { |i| existing_temp_names[i.to_s].present? }
-          unless missing_ids.empty?
-            placeholders = (["?"] * missing_ids.size).join(",")
-            names_result = conn.exec_query(
-              "SELECT id, name, key, left_id, right_id FROM cards " \
-              "WHERE id IN (#{placeholders}) AND trash = 0",
-              "Prefetch::hydrate_cache",
-              missing_ids,
-            )
-            stats[:statements] += 1
-            for row in names_result.to_a
-              write_card_cache_entry card_cache, row
-              write_lex_cache_entry lex_cache, row
-              stats[:rows] += 1
-            end
-          end
-          # Anything already cached is still counted for telemetry.
+          # All id->name and (key)->Card lookups the render path will do are
+          # served from the temp cache after this loop. No additional SELECT.
           for row in rows
-            id = row["id"]
-            next unless id
-            # Re-write the lex entry from this row's (left_id, right_id)
-            # when the row is a junction; harmless for simple cards
-            # (write_lex_cache_entry short-circuits when both ids are nil).
+            write_card_cache_entry card_cache, row
             write_lex_cache_entry lex_cache, row
+            stats[:rows] += 1
+          end
+          # The Card cache needs the full Card object for retrieve_by_key
+          # (card-1.110.0 lib/card/cache/card_class.rb:24-26 reads card.key
+          # on the cached object -- the cache value IS Card, not name). Bulk
+          # hydrate full Card objects so the per-inclusion Card.fetch
+          # succeeds with zero DB queries.
+          ids = rows.map { |r| r["id"] }.compact
+          placeholders = (["?"] * ids.size).join(",")
+          hydrated = conn.exec_query(
+            "SELECT * FROM cards WHERE id IN (#{placeholders}) AND trash = 0",
+            "Prefetch::hydrate_cache::hydrate_cards", ids,
+          ).to_a
+          stats[:statements] += 1
+          for row in hydrated
+            key = row["key"]
+            next unless key.present?
+            card = Card.instantiate(row)
+            card.read_rule_id = row["read_rule_id"]
+            card.read_rule_class = row["read_rule_class"]
+            card.send(:read_rule_id=, row["read_rule_id"]) if row["read_rule_id"]
+            # write_to_cache (lib/card/cache/card_class.rb:28-34) writes
+            # card.key -> card into Card::Cache[Card] (the temp+shared
+            # cache). The depth-first path's retrieve_from_cache_by_key
+            # then returns this card on the next Card.fetch.
+            Card.send(:write_to_cache, card)
+            stats[:rows] += 1
           end
         end
 
