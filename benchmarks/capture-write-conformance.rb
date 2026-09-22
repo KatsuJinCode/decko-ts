@@ -226,6 +226,7 @@ def reset_scenario_cards!
   # parents (which the rename and read-rule scenarios rely on) are still
   # there when their child cards reference them.
   names = %w[
+    Sign up+wccchild
     WCC Simple+child
     WCC Junction+child
     WCC Simple
