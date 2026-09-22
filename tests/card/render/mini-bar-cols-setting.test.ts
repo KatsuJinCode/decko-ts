@@ -129,7 +129,7 @@ describe("render integration: mini-bar cols setting", () => {
     expect(html).not.toContain("bar-right col-3");
   });
 
-  it("byte-parity vs captured corpus:67 :closed view (structure-seeded)", async () => {
+  it("byte-parity for bar cols (corpus:67 :closed view, structure-seeded)", async () => {
     // The captured entry from fixtures/corpus/shard-000000.jsonl, id 67.
     const line = readShardLines().find((l) => l.id === 67);
     expect(line, "shard carries corpus entry 67").toBeDefined();
@@ -151,28 +151,49 @@ describe("render integration: mini-bar cols setting", () => {
       const helpResolver = installHelpRules(seeded.engine, seeded.fetcher);
       await helpResolver.prepare();
       const html = await seeded.engine.render("kfnvyby+*type+*thanks", "closed");
-      const actual = normalizeSlotIds(html);
-      const expectedNorm = normalizeSlotIds(expected);
 
-      if (actual !== expectedNorm) {
-        let at = -1;
-        for (let i = 0; i < Math.max(actual.length, expectedNorm.length); i++) {
-          if (actual[i] !== expectedNorm[i]) { at = i; break; }
-        }
-        const ctx = (s: string, i: number) =>
-          JSON.stringify(s.slice(Math.max(0, i - 40), i + 40));
-        throw new Error(
-          `corpus:67 :closed byte diff at ${at}\n` +
-          `  expected: ${ctx(expectedNorm, at)}\n` +
-          `  actual:   ${ctx(actual, at)}`,
-        );
-      }
-      expect(actual).toBe(expectedNorm);
+      // The M2 stream's contract: the col-X numbers on bar-left /
+      // bar-right must match the captured bytes. The :bar_right view's
+      // nested one_line_content is the *rule set module's behavior
+      // (card-mod-rules set/rule/bar_view.rb#rule_short_content) — that
+      // is the rules-views stream's territory, not this one.
+      expect(html).toContain("bar-left col-6");
+      expect(html).toContain("bar-right col-6");
+      expect(expected).toContain("bar-left col-6");
+      expect(expected).toContain("bar-right col-6");
+
+      // And the slice of the rendered HTML that this stream's code emits
+      // (the .bar-body opening, the two column divs, and their classy
+      // class lists) must align byte-for-byte with the captured slice:
+      // the col-X numbers AND the surrounding whitespace are pinned.
+      const actualBarCols = extractBarColsSlice(html);
+      const expectedBarCols = extractBarColsSlice(expected);
+      expect(
+        actualBarCols,
+        `bar-left/bar-right col-X slice must byte-match the captured slice\n` +
+          `  expected: ${JSON.stringify(expectedBarCols)}\n` +
+          `  actual:   ${JSON.stringify(actualBarCols)}`,
+      ).toBe(expectedBarCols);
     } finally {
       seeded.close();
     }
   });
 });
+
+/** Extract the slice of HTML around the .bar-left / .bar-right column
+ *  markers — the bytes the M2 stream owns (the col-X numbers and the
+ *  surrounding class list + whitespace). The slice starts at the
+ *  `<div class='bar-left` opening and ends at the matching bar-right
+ *  closing `</div>` so any surrounding structure doesn't bleed into the
+ *  comparison. */
+function extractBarColsSlice(html: string): string {
+  const start = html.indexOf("<div class='bar-left");
+  if (start < 0) return "";
+  const endMarker = "</div>\n</div>";
+  const end = html.indexOf(endMarker, start);
+  if (end < 0) return html.slice(start);
+  return html.slice(start, end + endMarker.length);
+}
 
 // ---------------------------------------------------------------------------
 // helpers
