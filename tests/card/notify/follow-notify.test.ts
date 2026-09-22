@@ -89,14 +89,14 @@ describe("notify/follow-notify (first-mechanism port)", () => {
       "john@example.com",
       "sara@example.com",
     ]);
-    // M6 byte-parity claim: placeholders render as literal names,
-    // NOT substituted from active_notice. The captured fixture
-    // (fixtures/captured/follow-notification.json) confirms this is
-    // what Ruby's contextual_content emits when no card named
-    // `follower` / `followed_set` / `follow_option` exists.
+    // Interpolation semantics (post-wiring, 2026-09-22): the notice values
+    // are the RESOLVED set — `{{follower}}` renders the follower's name,
+    // `{{followed_set}}` the set name, `{{follow_option}}` the option.
+    // The captured fixture's LITERAL output is the UNRESOLVED branch
+    // (empty vars), pinned by mail.test.ts's empty-vars test.
     expect(transport.captured().map((m) => m.subject)).toEqual([
-      "follower changed followed_set on follow_option",
-      "follower changed followed_set on follow_option",
+      "John changed John Following on always",
+      "Sara changed John Following on always",
     ]);
     expect(transport.captured().map((m) => m.tags?.trigger)).toEqual([
       "follow_notification",
