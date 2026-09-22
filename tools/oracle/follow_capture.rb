@@ -77,7 +77,8 @@ scenario = {
 
 Card::Auth.as_bot do
   # ----- Seed follow + email-template machinery ---------------------------
-  # The follower's account. We need a User with +account +email.
+  # The follower (Sara). The user must have +*email set so the
+  # follower_notification_email's `:to` override resolves.
   sara = Card.fetch "Sara", new: { type_id: Card::UserID }
   if sara.new_card?
     Card.create! name: "Sara", type: "User", subcards: {
@@ -88,11 +89,33 @@ Card::Auth.as_bot do
   else
     seed_log["Sara"] = "present"
   end
-  # Refresh (the create flow may have changed sara.id).
   sara = Card.fetch("Sara")
 
-  # The followed SET. Sara follows "*all", meaning Sara follows every
-  # card. The follow rule "*all+*self+ Sara +follow" carries "*always".
+  # The actor (John). We need a non-bot, non-Sara actor because the
+  # notify trigger skips when follower == act.actor
+  # (card-mod-follow set/all/notify.rb:51). John has no follow rule, so
+  # the act.actor is "other" and the trigger fires.
+  john = Card.fetch "John", new: { type_id: Card::UserID }
+  if john.new_card?
+    Card.create! name: "John", type: "User", subcards: {
+      "+account" => { content: "" },
+      "+*email"  => { content: "john@example.com" },
+    }
+    seed_log["John"] = "created"
+  else
+    seed_log["John"] = "present"
+  end
+  john = Card.fetch("John")
+
+  # The followed SET. Sara follows "*all" (every card). The follow rule
+  # naming convention (card-mod-follow data/test/rules.yml:97-103) is
+  # "*all + <user> + *follow"; the set_card `*all` is already a Set, so
+  # the preference-cache SQL can resolve the user_ids
+  # (Card::Rule.all_user_ids_with_rule_for — lib/card/rule.rb:47-51).
+  # The earlier "*all+*self+<user>+*follow" naming (with *self) requires
+  # the intermediate *self+junction card to also be a Set, which is not
+  # what Card.create! produces by default — the alternative naming avoids
+  # that whole class.
   all_set = Card.fetch("*all")
   raise "missing *all seed" unless all_set
 
@@ -106,16 +129,17 @@ Card::Auth.as_bot do
   end
 
   # The EmailTemplate carrying the notification template. The trio of
-  # child cards (+subject, +text_message, +html_message) carry the
-  # literal templates — chosen for byte-determinism with the TS port.
+  # child cards (+subject, +text_message, +*to) carry the literal
+  # templates — chosen for byte-determinism with the TS port.
   #
-  # M6: card-mod-email seeds the type plus the codename `follower_notification_email`
-  # during `decko update`. The stock seed template uses complex inclusions
-  # (e.g. `{{_user|name}} {{_|last_action_verb}} "{{_|name}}"`) that the
-  # TS port's narrow `interpolateTemplate` is NOT designed to mirror. The
-  # capture needs the simple-substitution triple to assert parity, so we
-  # trash the existing card first (dev DB is throwaway) and recreate it
-  # with the test templates. The trigger in card-mod-follow
+  # M6: card-mod-email seeds the type plus the codename
+  # `follower_notification_email` during `decko update`. The stock seed
+  # template uses complex inclusions (e.g. `{{_user|name}}
+  # {{_|last_action_verb}} "{{_|name}}"`) that the TS port's narrow
+  # `interpolateTemplate` is NOT designed to mirror. The capture needs
+  # the simple-substitution triple to assert parity, so we trash the
+  # existing card first (dev DB is throwaway) and recreate it with the
+  # test templates. The trigger in card-mod-follow
   # set/right/account.rb:17 hard-codes `Card[:follower_notification_email]`
   # so we cannot point the capture at a different card without
   # monkey-patching.
@@ -137,11 +161,11 @@ Card::Auth.as_bot do
     },
   )
 
-  # A card Sara created and Sara will edit — the act's primary card.
+  # A card John will edit (Sara is NOT the actor).
   sara_card = Card.fetch("Sara Test Card", new: { type_id: Card::BasicID })
   if sara_card.new_card?
     Card.create! name: "Sara Test Card", type: "Basic", content: "original",
-                  creator_id: sara.id, updater_id: sara.id
+                  creator_id: john.id, updater_id: john.id
     seed_log["Sara Test Card"] = "created"
   else
     seed_log["Sara Test Card"] = "present"
@@ -153,7 +177,10 @@ Card::Auth.as_bot do
   # so the proper access path is the module itself, NOT Card.
   Card::Set::All::Notify.force_notifications = true
   begin
-    Card.fetch("Sara Test Card").update! content: "updated by test"
+    # Auth as John so the act.actor is John (not bot).
+    Card::Auth.as(john.id) do
+      Card.fetch("Sara Test Card").update! content: "updated by test"
+    end
   ensure
     Card::Set::All::Notify.force_notifications = false
   end
