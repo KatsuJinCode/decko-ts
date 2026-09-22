@@ -170,7 +170,7 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
       NOTICE,
     );
     expect(mailWithHtml.htmlBody).toBe(
-      "<p>Hi! follower changed followed_set.</p>",
+      "<p>Hi! Sara changed John Following.</p>",
     );
   });
 
