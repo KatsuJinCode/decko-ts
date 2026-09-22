@@ -4,7 +4,7 @@
   "name": "orvipveb",
   "type": "cardtype",
   "view": "closed",
-  "ms": 12162,
+  "ms": 110,
   "status": "pass",
   "expectedLen": 2071
  },
@@ -13,7 +13,7 @@
   "name": "orvipveb",
   "type": "cardtype",
   "view": "content",
-  "ms": 11824,
+  "ms": 80,
   "status": "DIFF@365 exp=\"uot;:[&quot;content&quot;]}\\\"><p></p>\\n<p></p>\\n<p></p>\\n</div>\" got=\"uot;:[&quot;content&quot;]}\\\"><p></p>\\n<p>ypblnp</p>\\n<p>nqmrqyqunlxeldwgsavac</p>\\n\"",
   "expectedLen": 384
  },
@@ -22,7 +22,7 @@
   "name": "orvipveb",
   "type": "cardtype",
   "view": "open",
-  "ms": 10395,
+  "ms": 79,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 91
  },
@@ -31,7 +31,7 @@
   "name": "orvipveb",
   "type": "cardtype",
   "view": "title",
-  "ms": 10421,
+  "ms": 78,
   "status": "pass",
   "expectedLen": 57
  },
@@ -40,7 +40,7 @@
   "name": "*children+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 9930,
+  "ms": 44,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -76,7 +76,7 @@
   "name": "*mates+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 9554,
+  "ms": 49,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -112,7 +112,7 @@
   "name": "*nested by+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 9308,
+  "ms": 46,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -148,7 +148,7 @@
   "name": "*linked to by+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 9316,
+  "ms": 41,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -184,7 +184,7 @@
   "name": "*nests+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 10432,
+  "ms": 39,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -220,7 +220,7 @@
   "name": "*links to+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 11003,
+  "ms": 40,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -229,7 +229,7 @@
   "name": "*links to+*right+*structure",
   "type": "search_type",
   "view": "content",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -256,7 +256,7 @@
   "name": "*type cards+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 9842,
+  "ms": 49,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -292,7 +292,7 @@
   "name": "*home",
   "type": "pointer",
   "view": "closed",
-  "ms": 10230,
+  "ms": 39,
   "status": "pass",
   "expectedLen": 2039
  },
@@ -301,8 +301,8 @@
   "name": "*home",
   "type": "pointer",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@350 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">yzzw</div>\"",
+  "ms": 1,
+  "status": "DIFF@436 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"yzzw-mini_bar-view\\\" class=\\\"card-\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1240
  },
  {
@@ -319,7 +319,7 @@
   "name": "*home",
   "type": "pointer",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 51
  },
@@ -328,8 +328,8 @@
   "name": "*content options+*right+*default",
   "type": "search_type",
   "view": "closed",
-  "ms": 9376,
-  "status": "DIFF@943 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"*con\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"*con\"",
+  "ms": 41,
+  "status": "DIFF@1622 exp=\"d&quot; href=&quot;/*default&quot;&gt; (49 default rules)&lt;/a&gt;&lt;/div&gt;\\\"\" got=\"d&quot; href=&quot;/*default&quot;&gt; (51 default rules)&lt;/a&gt;&lt;/div&gt;\\\"\"",
   "expectedLen": 3078
  },
  {
@@ -346,7 +346,7 @@
   "name": "*editors+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8780,
+  "ms": 46,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -382,7 +382,7 @@
   "name": "*edited+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8743,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -418,7 +418,7 @@
   "name": "wrjuvyhaoiwnvvnblfl",
   "type": "search_type",
   "view": "closed",
-  "ms": 8354,
+  "ms": 31,
   "status": "pass",
   "expectedLen": 2218
  },
@@ -427,7 +427,7 @@
   "name": "wrjuvyhaoiwnvvnblfl",
   "type": "search_type",
   "view": "content",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 91
  },
@@ -436,7 +436,7 @@
   "name": "wrjuvyhaoiwnvvnblfl",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 91
  },
@@ -454,7 +454,7 @@
   "name": "brzcgussg+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8776,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -490,7 +490,7 @@
   "name": "lvpmhsf+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8731,
+  "ms": 36,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -526,7 +526,7 @@
   "name": "beupklqht+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8586,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -562,7 +562,7 @@
   "name": "*watching+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8679,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -598,7 +598,7 @@
   "name": "*input type+*right",
   "type": "set",
   "view": "closed",
-  "ms": 8231,
+  "ms": 39,
   "status": "pass",
   "expectedLen": 2564
  },
@@ -634,7 +634,7 @@
   "name": "*all",
   "type": "set",
   "view": "closed",
-  "ms": 8389,
+  "ms": 30,
   "status": "pass",
   "expectedLen": 2004
  },
@@ -652,7 +652,7 @@
   "name": "*all",
   "type": "set",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 91
  },
@@ -670,8 +670,8 @@
   "name": "*all+*layout",
   "type": "list",
   "view": "closed",
-  "ms": 8064,
-  "status": "DIFF@818 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"*all\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"*all\"",
+  "ms": 34,
+  "status": "DIFF@1573 exp=\"d&quot; href=&quot;/*layout&quot;&gt; (18 layout rules)&lt;/a&gt;&lt;/div&gt;\\\" d\" got=\"d&quot; href=&quot;/*layout&quot;&gt; (1 layout rules)&lt;/a&gt;&lt;/div&gt;\\\" da\"",
   "expectedLen": 2837
  },
  {
@@ -680,7 +680,7 @@
   "type": "list",
   "view": "content",
   "ms": 1,
-  "status": "DIFF@427 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">bifaarykabanhm</div>\"",
+  "status": "DIFF@513 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"bifaarykabanhm-mini_bar-view\\\" cl\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1377
  },
  {
@@ -697,7 +697,7 @@
   "name": "*all+*layout",
   "type": "list",
   "view": "title",
-  "ms": 2,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 78
  },
@@ -706,7 +706,7 @@
   "name": "*help+*right",
   "type": "set",
   "view": "closed",
-  "ms": 8309,
+  "ms": 37,
   "status": "pass",
   "expectedLen": 2474
  },
@@ -742,8 +742,8 @@
   "name": "*layout+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8035,
-  "status": "DIFF@966 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"*lay\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"*lay\"",
+  "ms": 37,
+  "status": "DIFF@2305 exp=\"href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/\" got=\"href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/\"",
   "expectedLen": 3763
  },
  {
@@ -761,7 +761,7 @@
   "type": "search_type",
   "view": "open",
   "ms": 0,
-  "status": "DIFF@948 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"*lay\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"*lay\"",
+  "status": "DIFF@2292 exp=\"href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/\" got=\"href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/\"",
   "expectedLen": 3664
  },
  {
@@ -769,7 +769,7 @@
   "name": "*layout+*right+*content options",
   "type": "search_type",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 129
  },
@@ -778,7 +778,7 @@
   "name": "cixvol+jzuqht",
   "type": "list",
   "view": "closed",
-  "ms": 8280,
+  "ms": 37,
   "status": "pass",
   "expectedLen": 2483
  },
@@ -788,7 +788,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@423 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">yqwnywnhs\\nxfyzqlzvswxtid</div>\"",
+  "status": "DIFF@509 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"yqwnywnh-mini_bar-view\\\" class=\\\"c\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2230
  },
  {
@@ -797,7 +797,7 @@
   "type": "list",
   "view": "open",
   "ms": 0,
-  "status": "DIFF@2903 exp=\"t;home_view&quot;:&quot;content&quot;}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"t;home_view&quot;:&quot;content&quot;}\\\">yqwnywnhs\\nxfyzqlzvswxtid</div>\\n</div>\\n</\"",
+  "status": "DIFF@2989 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"yqwnywnh-mini_bar-view\\\" class=\\\"c\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 4738
  },
  {
@@ -805,7 +805,7 @@
   "name": "cixvol+jzuqht",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 80
  },
@@ -814,7 +814,7 @@
   "name": "tjfuurclqwgyeb+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8768,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -832,7 +832,7 @@
   "name": "tjfuurclqwgyeb+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -850,7 +850,7 @@
   "name": "wifkdijffbgu+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8366,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -886,7 +886,7 @@
   "name": "jzuqht+qxqvhzwvkdqasbmubgttlpkc+*type plus right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8446,
+  "ms": 42,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -922,7 +922,7 @@
   "name": "sekxqojbbg+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8504,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2655
  },
@@ -932,7 +932,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@474 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">hyjifqgbtnzhx</div>\"",
+  "status": "DIFF@560 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"hyjifqgbtnzhx-mini_bar-view\\\" cla\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1418
  },
  {
@@ -940,7 +940,7 @@
   "name": "sekxqojbbg+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -949,7 +949,7 @@
   "name": "sekxqojbbg+wifkdijffbgu",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 100
  },
@@ -958,7 +958,7 @@
   "name": "sekxqojbbg+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 8351,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2693
  },
@@ -967,8 +967,8 @@
   "name": "sekxqojbbg+tjfuurclqwgyeb",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@486 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">eogrnfqjfgzkichutrrhx</div>\"",
+  "ms": 1,
+  "status": "DIFF@572 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"eogrnfqjfgzkichutrrhx-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1478
  },
  {
@@ -976,7 +976,7 @@
   "name": "sekxqojbbg+tjfuurclqwgyeb",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -994,7 +994,7 @@
   "name": "nstp+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8015,
+  "ms": 34,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1021,7 +1021,7 @@
   "name": "nstp+*right+*content options",
   "type": "search_type",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 123
  },
@@ -1030,7 +1030,7 @@
   "name": "zuncjryjjbfhga",
   "type": "search_type",
   "view": "closed",
-  "ms": 8075,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2148
  },
@@ -1048,7 +1048,7 @@
   "name": "zuncjryjjbfhga",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 121
  },
@@ -1066,7 +1066,7 @@
   "name": "bhtwusynxhzbmiraaqwc+*right+*structure",
   "type": "search_type",
   "view": "closed",
-  "ms": 8280,
+  "ms": 33,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1102,7 +1102,7 @@
   "name": "ppqhuslzzya",
   "type": "html",
   "view": "closed",
-  "ms": 8598,
+  "ms": 158,
   "status": "pass",
   "expectedLen": 2096
  },
@@ -1111,7 +1111,7 @@
   "name": "ppqhuslzzya",
   "type": "html",
   "view": "content",
-  "ms": 8284,
+  "ms": 176,
   "status": "WRONG-RAISE Error: nest depth exceeded (*head)",
   "expectedLen": 91
  },
@@ -1120,7 +1120,7 @@
   "name": "ppqhuslzzya",
   "type": "html",
   "view": "open",
-  "ms": 8178,
+  "ms": 189,
   "status": "WRONG-RAISE Error: nest depth exceeded (*head)",
   "expectedLen": 67
  },
@@ -1129,7 +1129,7 @@
   "name": "ppqhuslzzya",
   "type": "html",
   "view": "title",
-  "ms": 8239,
+  "ms": 162,
   "status": "pass",
   "expectedLen": 63
  },
@@ -1138,7 +1138,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8177,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2649
  },
@@ -1148,7 +1148,7 @@
   "type": "list",
   "view": "content",
   "ms": 1,
-  "status": "DIFF@464 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">sehtatmax\\nzfnwkrprk\\nmotrfewuhni\\naseotbvm\"",
+  "status": "DIFF@550 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"sehtatmax-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 5878
  },
  {
@@ -1156,7 +1156,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+nstp",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 104
  },
@@ -1165,7 +1165,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+nstp",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 104
  },
@@ -1174,7 +1174,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8290,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2801
  },
@@ -1184,7 +1184,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@512 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">bqfhwfirzkveklmlgvteqaq</div>\"",
+  "status": "DIFF@598 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"bqfhwfirzkveklmlgvteqaq-mini_bar\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1516
  },
  {
@@ -1201,7 +1201,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+wifkdijffbgu",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 120
  },
@@ -1210,7 +1210,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 8683,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2839
  },
@@ -1220,7 +1220,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@524 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">uzwtnaqytojjioqhqnsob</div>\"",
+  "status": "DIFF@610 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"uzwtnaqytojjioqhqnsob-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1516
  },
  {
@@ -1228,7 +1228,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+tjfuurclqwgyeb",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -1237,7 +1237,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+tjfuurclqwgyeb",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 124
  },
@@ -1246,7 +1246,7 @@
   "name": "vzcwkoigmkdsdkcqjam+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8148,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2790
  },
@@ -1255,8 +1255,8 @@
   "name": "vzcwkoigmkdsdkcqjam+wifkdijffbgu",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@510 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">lssefmobzyaujgedweeud</div>\"",
+  "ms": 1,
+  "status": "DIFF@596 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"lssefmobzyaujgedweeud-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1502
  },
  {
@@ -1282,7 +1282,7 @@
   "name": "sbczeziljbjgpke+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8479,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1318,7 +1318,7 @@
   "name": "opngsbuhrmpnb+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8650,
+  "ms": 40,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1354,7 +1354,7 @@
   "name": "nnhuutsvkqqf+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8627,
+  "ms": 33,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1372,7 +1372,7 @@
   "name": "nnhuutsvkqqf+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1390,7 +1390,7 @@
   "name": "ltfrqwekckgrnmvmnkxx+opngsbuhrmpnb",
   "type": "list",
   "view": "closed",
-  "ms": 8746,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2820
  },
@@ -1400,7 +1400,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@518 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">nvynscbo</div>\"",
+  "status": "DIFF@604 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"nvynscbo-mini_bar-view\\\" class=\\\"c\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1432
  },
  {
@@ -1426,7 +1426,7 @@
   "name": "yjuidgcornbhmdruhw+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9255,
+  "ms": 42,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1462,7 +1462,7 @@
   "name": "njgemctodk+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9081,
+  "ms": 33,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1498,7 +1498,7 @@
   "name": "pldczygqfwqano+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9984,
+  "ms": 34,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1534,7 +1534,7 @@
   "name": "nhksfxbnaliat+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 11219,
+  "ms": 39,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1570,7 +1570,7 @@
   "name": "tajnukpbwyxrslh+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 10995,
+  "ms": 36,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1588,7 +1588,7 @@
   "name": "tajnukpbwyxrslh+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1606,7 +1606,7 @@
   "name": "jsupgghsiwxem+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8799,
+  "ms": 33,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1642,7 +1642,7 @@
   "name": "qppqlqshfeusnujf+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8752,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1678,7 +1678,7 @@
   "name": "hzbqorqurbvzrjawux+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8663,
+  "ms": 35,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1714,7 +1714,7 @@
   "name": "iehdealaqihpccvobd+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8824,
+  "ms": 34,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1750,7 +1750,7 @@
   "name": "lyntnabwcpifuoikp+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8689,
+  "ms": 35,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1786,7 +1786,7 @@
   "name": "mtfzqbjnnrslmkeoisdg+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8686,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1804,7 +1804,7 @@
   "name": "mtfzqbjnnrslmkeoisdg+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1822,7 +1822,7 @@
   "name": "pdngqstrofykakzaado+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8863,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1858,7 +1858,7 @@
   "name": "dqgsocsjcplhpfoijocc+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8827,
+  "ms": 39,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1894,7 +1894,7 @@
   "name": "juoviugibgysnmgx+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9192,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1930,8 +1930,8 @@
   "name": "skpist+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9235,
-  "status": "DIFF@960 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"skpi\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"skpi\"",
+  "ms": 40,
+  "status": "DIFF@2295 exp=\"href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/\" got=\"href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/\"",
   "expectedLen": 3747
  },
  {
@@ -1948,8 +1948,8 @@
   "name": "skpist+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
-  "status": "DIFF@942 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"skpi\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"skpi\"",
+  "ms": 0,
+  "status": "DIFF@2282 exp=\"href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/\" got=\"href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/\"",
   "expectedLen": 3648
  },
  {
@@ -1966,7 +1966,7 @@
   "name": "yklfbat+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8976,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -1975,7 +1975,7 @@
   "name": "yklfbat+*right+*content options",
   "type": "search_type",
   "view": "content",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -2002,7 +2002,7 @@
   "name": "xarihadzyickvsathzisv+skpist",
   "type": "list",
   "view": "closed",
-  "ms": 9218,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2704
  },
@@ -2011,8 +2011,8 @@
   "name": "xarihadzyickvsathzisv+skpist",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@481 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ghqhfdmunzcauhv\\nnvyhfvkoxjem\\nqyagleefokz\"",
+  "ms": 1,
+  "status": "DIFF@567 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ghqhfdmunzcauhv-mini_bar-view\\\" c\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 6837
  },
  {
@@ -2020,7 +2020,7 @@
   "name": "xarihadzyickvsathzisv+skpist",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2038,7 +2038,7 @@
   "name": "xarihadzyickvsathzisv+yklfbat",
   "type": "list",
   "view": "closed",
-  "ms": 8858,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2723
  },
@@ -2048,7 +2048,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@487 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">cntxnovpg</div>\"",
+  "status": "DIFF@573 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"cntxnovpg-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1407
  },
  {
@@ -2056,7 +2056,7 @@
   "name": "xarihadzyickvsathzisv+yklfbat",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2065,7 +2065,7 @@
   "name": "xarihadzyickvsathzisv+yklfbat",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 112
  },
@@ -2074,7 +2074,7 @@
   "name": "echtsgiagn+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9086,
+  "ms": 38,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -2110,7 +2110,7 @@
   "name": "fclpcdiwwzfqwn+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8642,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2715
  },
@@ -2120,7 +2120,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@490 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">dpwmlshszfupziwiedm</div>\"",
+  "status": "DIFF@576 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"dpwmlshszfupziwiedm-mini_bar-vie\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1470
  },
  {
@@ -2128,7 +2128,7 @@
   "name": "fclpcdiwwzfqwn+nnhuutsvkqqf",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -2146,7 +2146,7 @@
   "name": "fclpcdiwwzfqwn+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8997,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2715
  },
@@ -2156,7 +2156,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@490 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">luvvbtqvisqxyhucxrzzx\\niujwilsxaapbz</div\"",
+  "status": "DIFF@576 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"luvvbtqvisqxyhucxrzzx-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2364
  },
  {
@@ -2164,7 +2164,7 @@
   "name": "fclpcdiwwzfqwn+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2182,7 +2182,7 @@
   "name": "litx+uyjgvsz+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 9197,
+  "ms": 40,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -2200,7 +2200,7 @@
   "name": "litx+uyjgvsz+*right+*content options",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -2218,7 +2218,7 @@
   "name": "tgpqpf+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8889,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2445
  },
@@ -2227,8 +2227,8 @@
   "name": "tgpqpf+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@411 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">rgeac</div>\"",
+  "ms": 1,
+  "status": "DIFF@497 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"rgeac-mini_bar-view\\\" class=\\\"card\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1307
  },
  {
@@ -2254,7 +2254,7 @@
   "name": "tgpqpf+uiqxodma+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8776,
+  "ms": 41,
   "status": "pass",
   "expectedLen": 2659
  },
@@ -2263,8 +2263,8 @@
   "name": "tgpqpf+uiqxodma+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@447 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">vujfz\\ngkwvpq\\nhxhksqzu\\nescwnrkqo\\nzdlknjai\"",
+  "ms": 1,
+  "status": "DIFF@533 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"vujfz-mini_bar-view\\\" class=\\\"card\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 5693
  },
  {
@@ -2281,7 +2281,7 @@
   "name": "tgpqpf+uiqxodma+nstp",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 107
  },
@@ -2290,7 +2290,7 @@
   "name": "xauufdhwcitammnqhpldzdwkwt+jskzuvlr",
   "type": "list",
   "view": "closed",
-  "ms": 8689,
+  "ms": 37,
   "status": "pass",
   "expectedLen": 2821
  },
@@ -2299,8 +2299,8 @@
   "name": "xauufdhwcitammnqhpldzdwkwt+jskzuvlr",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@515 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ajiixxuikiqpxeouovdcyojazitzpb</div>\"",
+  "ms": 1,
+  "status": "DIFF@601 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ajiixxuikiqpxeouovdcyojazitzpb-m\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1561
  },
  {
@@ -2326,7 +2326,7 @@
   "name": "pohxmwqryfj+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8623,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2535
  },
@@ -2335,8 +2335,8 @@
   "name": "pohxmwqryfj+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@435 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">xzlybkuxszojgaahdfyx\\nggbgvymfrvymkjqtqjg\"",
+  "ms": 1,
+  "status": "DIFF@521 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"xzlybkuxszojgaahdfyx-mini_bar-vi\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3275
  },
  {
@@ -2344,7 +2344,7 @@
   "name": "pohxmwqryfj+trqze",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -2362,7 +2362,7 @@
   "name": "pohxmwqryfj+skpist",
   "type": "list",
   "view": "closed",
-  "ms": 8352,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2554
  },
@@ -2372,7 +2372,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@441 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">qrjtcdhiipiznapzgwjda\\npzenhpjywuqwlvlcpm\"",
+  "status": "DIFF@527 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"qrjtcdhiipiznapzgwjda-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 4163
  },
  {
@@ -2389,7 +2389,7 @@
   "name": "pohxmwqryfj+skpist",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 90
  },
@@ -2398,7 +2398,7 @@
   "name": "kbdupmdzranbwyw+sbczeziljbjgpke",
   "type": "list",
   "view": "closed",
-  "ms": 8761,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2787
  },
@@ -2407,8 +2407,8 @@
   "name": "kbdupmdzranbwyw+sbczeziljbjgpke",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@512 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">lgeahidpvuvjwoauifp</div>\"",
+  "ms": 1,
+  "status": "DIFF@598 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"lgeahidpvuvjwoauifp-mini_bar-vie\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1492
  },
  {
@@ -2416,7 +2416,7 @@
   "name": "kbdupmdzranbwyw+sbczeziljbjgpke",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -2425,7 +2425,7 @@
   "name": "kbdupmdzranbwyw+sbczeziljbjgpke",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 116
  },
@@ -2434,7 +2434,7 @@
   "name": "kbdupmdzranbwyw+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 9129,
+  "ms": 38,
   "status": "pass",
   "expectedLen": 2768
  },
@@ -2443,8 +2443,8 @@
   "name": "kbdupmdzranbwyw+tjfuurclqwgyeb",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@506 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">xjgeirt\\nxmjhgjwykrgfm\\nicncunhopccprvh\\nws\"",
+  "ms": 1,
+  "status": "DIFF@592 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"xjgeirt-mini_bar-view\\\" class=\\\"ca\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 6802
  },
  {
@@ -2452,7 +2452,7 @@
   "name": "kbdupmdzranbwyw+tjfuurclqwgyeb",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 2,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2461,7 +2461,7 @@
   "name": "kbdupmdzranbwyw+tjfuurclqwgyeb",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 2,
   "status": "pass",
   "expectedLen": 114
  },
@@ -2470,7 +2470,7 @@
   "name": "kbdupmdzranbwyw+echtsgiagn",
   "type": "list",
   "view": "closed",
-  "ms": 9090,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2692
  },
@@ -2479,8 +2479,8 @@
   "name": "kbdupmdzranbwyw+echtsgiagn",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@482 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">etwucbmwkjkngd\\nljluibukjva</div>\"",
+  "ms": 1,
+  "status": "DIFF@568 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"etwucbmwkjkngd-mini_bar-view\\\" cl\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2302
  },
  {
@@ -2506,7 +2506,7 @@
   "name": "vzcwkoigmkdsdkcqjam+echtsgiagn",
   "type": "list",
   "view": "closed",
-  "ms": 8492,
+  "ms": 38,
   "status": "pass",
   "expectedLen": 2752
  },
@@ -2515,8 +2515,8 @@
   "name": "vzcwkoigmkdsdkcqjam+echtsgiagn",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@498 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">dwwymwskk\\nrbxavhyiirxcvl\\nuhtoiedtjwb</di\"",
+  "ms": 1,
+  "status": "DIFF@584 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"dwwymwskk-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3176
  },
  {
@@ -2542,7 +2542,7 @@
   "name": "gqnf+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 8627,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2603
  },
@@ -2551,8 +2551,8 @@
   "name": "gqnf+tjfuurclqwgyeb",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@462 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">zpinandlrbkgsedjpokdk\\njxhmojkzm</div>\"",
+  "ms": 1,
+  "status": "DIFF@548 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"zpinandlrbkgsedjpokdk-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2312
  },
  {
@@ -2569,7 +2569,7 @@
   "name": "gqnf+tjfuurclqwgyeb",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 92
  },
@@ -2578,7 +2578,7 @@
   "name": "zarninvqo+echtsgiagn",
   "type": "list",
   "view": "closed",
-  "ms": 8573,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2610
  },
@@ -2587,8 +2587,8 @@
   "name": "zarninvqo+echtsgiagn",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@462 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">xfzkcquqx</div>\"",
+  "ms": 1,
+  "status": "DIFF@548 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"xfzkcquqx-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1382
  },
  {
@@ -2605,7 +2605,7 @@
   "name": "zarninvqo+echtsgiagn",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 94
  },
@@ -2614,7 +2614,7 @@
   "name": "zarninvqo+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8712,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2648
  },
@@ -2623,8 +2623,8 @@
   "name": "zarninvqo+wifkdijffbgu",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@474 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ibnnsfbbcufbv\\nolyshtmhrrhke\\njsvqqwtrfvnf\"",
+  "ms": 2,
+  "status": "DIFF@560 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ibnnsfbbcufbv-mini_bar-view\\\" cla\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3230
  },
  {
@@ -2632,7 +2632,7 @@
   "name": "zarninvqo+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2641,7 +2641,7 @@
   "name": "zarninvqo+wifkdijffbgu",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 98
  },
@@ -2650,7 +2650,7 @@
   "name": "luxlcqbthdly+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8504,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2685
  },
@@ -2660,7 +2660,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@482 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">czhzzzuib</div>\"",
+  "status": "DIFF@568 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"czhzzzuib-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1402
  },
  {
@@ -2668,7 +2668,7 @@
   "name": "luxlcqbthdly+nnhuutsvkqqf",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -2686,7 +2686,7 @@
   "name": "luxlcqbthdly+sbczeziljbjgpke",
   "type": "list",
   "view": "closed",
-  "ms": 10247,
+  "ms": 39,
   "status": "pass",
   "expectedLen": 2742
  },
@@ -2696,7 +2696,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@500 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">cvfg</div>\"",
+  "status": "DIFF@586 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"cvfg-mini_bar-view\\\" class=\\\"card-\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1390
  },
  {
@@ -2704,7 +2704,7 @@
   "name": "luxlcqbthdly+sbczeziljbjgpke",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -2722,7 +2722,7 @@
   "name": "klorlndtcuzzebtv+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8753,
+  "ms": 43,
   "status": "pass",
   "expectedLen": 2612
  },
@@ -2731,8 +2731,8 @@
   "name": "klorlndtcuzzebtv+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@456 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ureuumecncqdvfnyafcrpnur\\nervjmnbgqdituaq\"",
+  "ms": 1,
+  "status": "DIFF@542 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ureuumecncqdvfnyafcrpnur-mini_ba\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2432
  },
  {
@@ -2749,7 +2749,7 @@
   "name": "klorlndtcuzzebtv+trqze",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 98
  },
@@ -2758,7 +2758,7 @@
   "name": "klorlndtcuzzebtv+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8598,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2745
  },
@@ -2767,8 +2767,8 @@
   "name": "klorlndtcuzzebtv+nnhuutsvkqqf",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@498 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">juikrxqohotivibtvus\\nzjsjiwcsxcawsdfhcab\\n\"",
+  "ms": 1,
+  "status": "DIFF@584 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"juikrxqohotivibtvu-mini_bar-view\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3301
  },
  {
@@ -2776,7 +2776,7 @@
   "name": "klorlndtcuzzebtv+nnhuutsvkqqf",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -2785,7 +2785,7 @@
   "name": "klorlndtcuzzebtv+nnhuutsvkqqf",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 112
  },
@@ -2794,7 +2794,7 @@
   "name": "luxlcqbthdly+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8692,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2685
  },
@@ -2803,8 +2803,8 @@
   "name": "luxlcqbthdly+wifkdijffbgu",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@482 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">theweryfp\\nowrkgipcbxdegboxdhmfp\\njjyzfnvq\"",
+  "ms": 1,
+  "status": "DIFF@568 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"theweryfp-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3184
  },
  {
@@ -2812,7 +2812,7 @@
   "name": "luxlcqbthdly+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -2830,7 +2830,7 @@
   "name": "luxlcqbthdly+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 8604,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2723
  },
@@ -2840,7 +2840,7 @@
   "type": "list",
   "view": "content",
   "ms": 1,
-  "status": "DIFF@494 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">lpmlamjk</div>\"",
+  "status": "DIFF@580 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"lpmlamjk-mini_bar-view\\\" class=\\\"c\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1408
  },
  {
@@ -2857,7 +2857,7 @@
   "name": "luxlcqbthdly+tjfuurclqwgyeb",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 108
  },
@@ -2866,7 +2866,7 @@
   "name": "pvjnvilvqgjnozcdorn+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8643,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2657
  },
@@ -2875,8 +2875,8 @@
   "name": "pvjnvilvqgjnozcdorn+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@468 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">fxcjeebktwirepojlprxnlgxixl\\ntxpkanmapiqb\"",
+  "ms": 1,
+  "status": "DIFF@554 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"fxcjeebktwirepojlprxnlgxixl-mini\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 20510
  },
  {
@@ -2884,7 +2884,7 @@
   "name": "pvjnvilvqgjnozcdorn+trqze",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 2,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -2902,7 +2902,7 @@
   "name": "luxlcqbthdly+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 9368,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2552
  },
@@ -2912,7 +2912,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@440 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">soekdcdcpznwzanbrtuwxftwtfwismqdogirrzro\"",
+  "status": "DIFF@526 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"soekdcdcpznwzanbrtuwxftwtfwismqd\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1636
  },
  {
@@ -2920,7 +2920,7 @@
   "name": "luxlcqbthdly+trqze",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -2938,7 +2938,7 @@
   "name": "xarihadzyickvsathzisv+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8778,
+  "ms": 40,
   "status": "pass",
   "expectedLen": 2818
  },
@@ -2948,7 +2948,7 @@
   "type": "list",
   "view": "content",
   "ms": 1,
-  "status": "DIFF@517 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">scdaslfcx</div>\"",
+  "status": "DIFF@603 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"scdaslfcx-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1437
  },
  {
@@ -2974,7 +2974,7 @@
   "name": "xarihadzyickvsathzisv+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8292,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2685
  },
@@ -2983,8 +2983,8 @@
   "name": "xarihadzyickvsathzisv+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@475 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">vtfznxudivmmtmavljbirk\\ntcvztqyy\\nedcsomva\"",
+  "ms": 2,
+  "status": "DIFF@561 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"vtfznxudivmmtmavljbirk-mini_bar-\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 6903
  },
  {
@@ -3010,7 +3010,7 @@
   "name": "rdckdgmbifut+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8764,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2685
  },
@@ -3020,7 +3020,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@482 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">eqsptanaxezuhxem</div>\"",
+  "status": "DIFF@568 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"eqsptanaxezuhxem-mini_bar-view\\\" \" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1444
  },
  {
@@ -3037,7 +3037,7 @@
   "name": "rdckdgmbifut+nnhuutsvkqqf",
   "type": "list",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 104
  },
@@ -3046,7 +3046,7 @@
   "name": "rdckdgmbifut+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8333,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2552
  },
@@ -3055,8 +3055,8 @@
   "name": "rdckdgmbifut+trqze",
   "type": "list",
   "view": "content",
-  "ms": 1,
-  "status": "DIFF@440 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">vesmyggirnqtghoqonmex\\nrhnwgnrhcbfeadgguh\"",
+  "ms": 0,
+  "status": "DIFF@526 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"vesmyggirnqtghoqonmex-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2458
  },
  {
@@ -3073,7 +3073,7 @@
   "name": "rdckdgmbifut+trqze",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 90
  },
@@ -3082,7 +3082,7 @@
   "name": "bctnycubfauuwcwfx+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 7677,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2627
  },
@@ -3091,8 +3091,8 @@
   "name": "bctnycubfauuwcwfx+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@460 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">mpkiccjiigmoqerpqhzqrtggec\\nphlwekuopjgei\"",
+  "ms": 1,
+  "status": "DIFF@546 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"mpkiccjiigmoqerpqhzqrtggec-mini_\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3462
  },
  {
@@ -3100,7 +3100,7 @@
   "name": "bctnycubfauuwcwfx+trqze",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -3109,7 +3109,7 @@
   "name": "bctnycubfauuwcwfx+trqze",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 100
  },
@@ -3118,7 +3118,7 @@
   "name": "bctnycubfauuwcwfx+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8069,
+  "ms": 38,
   "status": "pass",
   "expectedLen": 2760
  },
@@ -3128,7 +3128,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@502 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">nahbyzqyfhenmgjbqxdeq</div>\"",
+  "status": "DIFF@588 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"nahbyzqyfhenmgjbqxdeq-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1494
  },
  {
@@ -3154,7 +3154,7 @@
   "name": "bctnycubfauuwcwfx+tjfuurclqwgyeb",
   "type": "list",
   "view": "closed",
-  "ms": 8096,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2798
  },
@@ -3163,8 +3163,8 @@
   "name": "bctnycubfauuwcwfx+tjfuurclqwgyeb",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@514 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">eyocmwpaluegqq</div>\"",
+  "ms": 1,
+  "status": "DIFF@600 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"eyocmwpaluegqq-mini_bar-view\\\" cl\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1464
  },
  {
@@ -3172,7 +3172,7 @@
   "name": "bctnycubfauuwcwfx+tjfuurclqwgyeb",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -3190,7 +3190,7 @@
   "name": "zbxggwfbwlmurtwz",
   "type": "search_type",
   "view": "closed",
-  "ms": 8554,
+  "ms": 31,
   "status": "pass",
   "expectedLen": 2176
  },
@@ -3199,7 +3199,7 @@
   "name": "zbxggwfbwlmurtwz",
   "type": "search_type",
   "view": "content",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 130
  },
@@ -3208,7 +3208,7 @@
   "name": "zbxggwfbwlmurtwz",
   "type": "search_type",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 130
  },
@@ -3226,7 +3226,7 @@
   "name": "udxrgkjqv+uxfciyvohk",
   "type": "basic",
   "view": "closed",
-  "ms": 8252,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2623
  },
@@ -3253,7 +3253,7 @@
   "name": "udxrgkjqv+uxfciyvohk",
   "type": "basic",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 94
  },
@@ -3262,7 +3262,7 @@
   "name": "enndqtdlhqxp+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8292,
+  "ms": 36,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -3298,7 +3298,7 @@
   "name": "vgotntsohjt+enndqtdlhqxp",
   "type": "list",
   "view": "closed",
-  "ms": 7933,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2662
  },
@@ -3308,7 +3308,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@474 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">osbocanrzdgwibhy</div>\"",
+  "status": "DIFF@560 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"osbocanrzdgwibhy-mini_bar-view\\\" \" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1436
  },
  {
@@ -3316,7 +3316,7 @@
   "name": "vgotntsohjt+enndqtdlhqxp",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 81
  },
@@ -3325,7 +3325,7 @@
   "name": "vgotntsohjt+enndqtdlhqxp",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 102
  },
@@ -3334,7 +3334,7 @@
   "name": "gbgbbkateqz+jsupgghsiwxem",
   "type": "list",
   "view": "closed",
-  "ms": 8492,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2689
  },
@@ -3344,7 +3344,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@484 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">wpcoaeuimasta</div>\"",
+  "status": "DIFF@570 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"wpcoaeuimastum-mini_bar-view\\\" cl\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1429
  },
  {
@@ -3352,7 +3352,7 @@
   "name": "gbgbbkateqz+jsupgghsiwxem",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 83
  },
@@ -3370,7 +3370,7 @@
   "name": "vmowqknyaddnwlewkdmndnexflbl+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8483,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 3049
  },
@@ -3379,8 +3379,8 @@
   "name": "vmowqknyaddnwlewkdmndnexflbl+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@551 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">mellqr\\nkulytoyg\\njezvtmob</div>\"",
+  "ms": 1,
+  "status": "DIFF@637 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"mellqr-mini_bar-view\\\" class=\\\"car\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3157
  },
  {
@@ -3406,7 +3406,7 @@
   "name": "gynusbfca+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8194,
+  "ms": 38,
   "status": "pass",
   "expectedLen": 2764
  },
@@ -3415,8 +3415,8 @@
   "name": "gynusbfca+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@475 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ogtstll</div>\"",
+  "ms": 1,
+  "status": "DIFF@561 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ogtstll-mini_bar-view\\\" class=\\\"ca\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1383
  },
  {
@@ -3442,7 +3442,7 @@
   "name": "pvjnvilvqgjnozcdorn+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8273,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2791
  },
@@ -3452,7 +3452,7 @@
   "type": "list",
   "view": "content",
   "ms": 1,
-  "status": "DIFF@511 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">rhvtmuyclevvlrwaihzx\\nvkzmbirdskkwzra\\nbey\"",
+  "status": "DIFF@597 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"rhvtmuyclevvlrwaihzx-mini_bar-vi\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 6099
  },
  {
@@ -3460,7 +3460,7 @@
   "name": "pvjnvilvqgjnozcdorn+nnhuutsvkqqf",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -3469,7 +3469,7 @@
   "name": "pvjnvilvqgjnozcdorn+nnhuutsvkqqf",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 118
  },
@@ -3478,7 +3478,7 @@
   "name": "idaepggrdepxoeziecjkgvsltka+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8302,
+  "ms": 37,
   "status": "pass",
   "expectedLen": 3035
  },
@@ -3487,8 +3487,8 @@
   "name": "idaepggrdepxoeziecjkgvsltka+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@548 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">rtmoiin\\nwzxaeyfttlwnuxafzb</div>\"",
+  "ms": 1,
+  "status": "DIFF@634 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"rtmoiin-mini_bar-view\\\" class=\\\"ca\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 2368
  },
  {
@@ -3496,7 +3496,7 @@
   "name": "idaepggrdepxoeziecjkgvsltka+ytyovdhppytn+nstp",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 104
  },
@@ -3514,7 +3514,7 @@
   "name": "steddrnph+nnhuutsvkqqf",
   "type": "list",
   "view": "closed",
-  "ms": 8193,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2641
  },
@@ -3524,7 +3524,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@471 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">zkhcjbbqflwtxmcnl</div>\"",
+  "status": "DIFF@557 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"zkhcjbbqflwtxmcnl-mini_bar-view\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1439
  },
  {
@@ -3532,7 +3532,7 @@
   "name": "steddrnph+nnhuutsvkqqf",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 84
  },
@@ -3550,7 +3550,7 @@
   "name": "steddrnph+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 9072,
+  "ms": 32,
   "status": "pass",
   "expectedLen": 2508
  },
@@ -3560,7 +3560,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@429 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">qzufnmfevkhpeoouv</div>\"",
+  "status": "DIFF@515 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"qzufnmfevkhpeoouv-mini_bar-view\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1397
  },
  {
@@ -3568,7 +3568,7 @@
   "name": "steddrnph+trqze",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -3577,7 +3577,7 @@
   "name": "steddrnph+trqze",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 84
  },
@@ -3586,7 +3586,7 @@
   "name": "xibcvogomqdbbticqfg+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8862,
+  "ms": 37,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -3622,7 +3622,7 @@
   "name": "steddrnph+xibcvogomqdbbticqfg",
   "type": "list",
   "view": "closed",
-  "ms": 8947,
+  "ms": 37,
   "status": "pass",
   "expectedLen": 2774
  },
@@ -3631,8 +3631,8 @@
   "name": "steddrnph+xibcvogomqdbbticqfg",
   "type": "list",
   "view": "content",
-  "ms": 1,
-  "status": "DIFF@513 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ckffizbanraakcjqna</div>\"",
+  "ms": 0,
+  "status": "DIFF@599 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ckffizbanraakcjqna-mini_bar-view\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1487
  },
  {
@@ -3658,7 +3658,7 @@
   "name": "grfllrkzjgfvmhjwec+jskzuvlr",
   "type": "list",
   "view": "closed",
-  "ms": 8180,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2702
  },
@@ -3668,7 +3668,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@484 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">oqsojnvomamqapaeyqcsavwejoizreqbunzkbilf\"",
+  "status": "DIFF@570 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"oqsojnvomamqapaeyqcsavwejoizreqb\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1620
  },
  {
@@ -3694,7 +3694,7 @@
   "name": "yhdtjceswuvkp+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8888,
+  "ms": 39,
   "status": "pass",
   "expectedLen": 2566
  },
@@ -3703,8 +3703,8 @@
   "name": "yhdtjceswuvkp+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@444 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">eqzooyvahjbbacojwxfwgynzeujutuyholtjzlbq\"",
+  "ms": 2,
+  "status": "DIFF@530 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"eqzooyvahjbbacojwxfwgynzeujutuyh\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 19976
  },
  {
@@ -3721,7 +3721,7 @@
   "name": "yhdtjceswuvkp+trqze",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 92
  },
@@ -3730,7 +3730,7 @@
   "name": "zrarplpjtukk+hpvmmhsmchhibyq",
   "type": "list",
   "view": "closed",
-  "ms": 8170,
+  "ms": 32,
   "status": "pass",
   "expectedLen": 2745
  },
@@ -3739,8 +3739,8 @@
   "name": "zrarplpjtukk+hpvmmhsmchhibyq",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@502 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">guryl</div>\"",
+  "ms": 1,
+  "status": "DIFF@588 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"guryl-mini_bar-view\\\" class=\\\"card\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1398
  },
  {
@@ -3766,7 +3766,7 @@
   "name": "xrmmq+*right+*content options",
   "type": "search_type",
   "view": "closed",
-  "ms": 8642,
+  "ms": 35,
   "status": "denied-expected",
   "expectedLen": 76
  },
@@ -3802,8 +3802,8 @@
   "name": "evog+*right+*default",
   "type": "date",
   "view": "closed",
-  "ms": 7861,
-  "status": "DIFF@871 exp=\"body row g-0'>\\n<div class='bar-left col-6'>\\n<span class=\\\"card-title\\\" title=\\\"evog\" got=\"body row g-0'>\\n<div class='bar-left col-9'>\\n<span class=\\\"card-title\\\" title=\\\"evog\"",
+  "ms": 38,
+  "status": "DIFF@1508 exp=\"d&quot; href=&quot;/*default&quot;&gt; (49 default rules)&lt;/a&gt;&lt;/div&gt;\\\"\" got=\"d&quot; href=&quot;/*default&quot;&gt; (51 default rules)&lt;/a&gt;&lt;/div&gt;\\\"\"",
   "expectedLen": 2888
  },
  {
@@ -3811,7 +3811,7 @@
   "name": "evog+*right+*default",
   "type": "date",
   "view": "content",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 40
  },
@@ -3820,7 +3820,7 @@
   "name": "evog+*right+*default",
   "type": "date",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 40
  },
@@ -3838,7 +3838,7 @@
   "name": "dpysuovuvrxuozoorrkodfao+xrmmq",
   "type": "list",
   "view": "closed",
-  "ms": 8101,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2727
  },
@@ -3848,7 +3848,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@486 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ckeawwuknqecfrkklfbnd</div>\"",
+  "status": "DIFF@572 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ckeawwuknqecfrkklfbnd-mini_bar-v\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1478
  },
  {
@@ -3874,7 +3874,7 @@
   "name": "dpysuovuvrxuozoorrkodfao+evog",
   "type": "date",
   "view": "closed",
-  "ms": 8649,
+  "ms": 40,
   "status": "pass",
   "expectedLen": 2708
  },
@@ -3901,7 +3901,7 @@
   "name": "dpysuovuvrxuozoorrkodfao+evog",
   "type": "date",
   "view": "title",
-  "ms": 1,
+  "ms": 0,
   "status": "pass",
   "expectedLen": 112
  },
@@ -3910,7 +3910,7 @@
   "name": "jygpmkykkmliyebvfovwkkpdepbbfwyfpprzd+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 7991,
+  "ms": 42,
   "status": "pass",
   "expectedLen": 3185
  },
@@ -3919,8 +3919,8 @@
   "name": "jygpmkykkmliyebvfovwkkpdepbbfwyfpprzd+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@588 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">awqvlowkikios\\nfmqkoyuw\\nzvenozbmbjt\\nncrvi\"",
+  "ms": 1,
+  "status": "DIFF@674 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"awqvlowkikio-mini_bar-view\\\" clas\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 4957
  },
  {
@@ -3937,7 +3937,7 @@
   "name": "jygpmkykkmliyebvfovwkkpdepbbfwyfpprzd+ytyovdhppytn+nstp",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 177
  },
@@ -3946,7 +3946,7 @@
   "name": "zbgqmtkyauactkwbzqejfxwdusv+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8112,
+  "ms": 38,
   "status": "pass",
   "expectedLen": 3035
  },
@@ -3955,8 +3955,8 @@
   "name": "zbgqmtkyauactkwbzqejfxwdusv+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@548 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">okhzwk\\nodwwjoto\\nbgpjt</div>\"",
+  "ms": 1,
+  "status": "DIFF@634 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"okhzwk-mini_bar-view\\\" class=\\\"car\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3136
  },
  {
@@ -3973,7 +3973,7 @@
   "name": "zbgqmtkyauactkwbzqejfxwdusv+ytyovdhppytn+nstp",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 157
  },
@@ -3982,7 +3982,7 @@
   "name": "ztlsoezdxypxhvazpzbxttukiz+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8407,
+  "ms": 32,
   "status": "pass",
   "expectedLen": 2896
  },
@@ -3991,8 +3991,8 @@
   "name": "ztlsoezdxypxhvazpzbxttukiz+wifkdijffbgu",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@539 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">xemwlgejdit</div>\"",
+  "ms": 1,
+  "status": "DIFF@625 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"xemwlgejdit-mini_bar-view\\\" class\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1471
  },
  {
@@ -4000,7 +4000,7 @@
   "name": "ztlsoezdxypxhvazpzbxttukiz+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -4018,7 +4018,7 @@
   "name": "ztlsoezdxypxhvazpzbxttukiz+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8174,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2763
  },
@@ -4027,8 +4027,8 @@
   "name": "ztlsoezdxypxhvazpzbxttukiz+trqze",
   "type": "list",
   "view": "content",
-  "ms": 1,
-  "status": "DIFF@497 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">veofwjpfbrmlynumrxeriweykbitaeicofnswatq\"",
+  "ms": 0,
+  "status": "DIFF@583 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"veofwjpfbrmlynumrxeriweykbitaeic\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1609
  },
  {
@@ -4054,7 +4054,7 @@
   "name": "fclpcdiwwzfqwn+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8924,
+  "ms": 35,
   "status": "pass",
   "expectedLen": 2583
  },
@@ -4063,8 +4063,8 @@
   "name": "fclpcdiwwzfqwn+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@449 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">gacefmoertjqhgahero\\ngwgtzoijkvskqytthyej\"",
+  "ms": 1,
+  "status": "DIFF@535 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"gacefmoertjqhgahero-mini_bar-vie\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3433
  },
  {
@@ -4090,7 +4090,7 @@
   "name": "nylnnxhfjjnlez+evog",
   "type": "date",
   "view": "closed",
-  "ms": 8546,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2566
  },
@@ -4126,7 +4126,7 @@
   "name": "bnwuestovpzbqmqfrwdzwberk+evog",
   "type": "date",
   "view": "closed",
-  "ms": 8162,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2731
  },
@@ -4144,7 +4144,7 @@
   "name": "bnwuestovpzbqmqfrwdzwberk+evog",
   "type": "date",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 40
  },
@@ -4162,7 +4162,7 @@
   "name": "roqcexctzjiopdqctmseavgau+evog",
   "type": "date",
   "view": "closed",
-  "ms": 9118,
+  "ms": 33,
   "status": "pass",
   "expectedLen": 2731
  },
@@ -4171,7 +4171,7 @@
   "name": "roqcexctzjiopdqctmseavgau+evog",
   "type": "date",
   "view": "content",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 40
  },
@@ -4198,7 +4198,7 @@
   "name": "nylnnxhfjjnlez+ytyovdhppytn+nstp",
   "type": "list",
   "view": "closed",
-  "ms": 8617,
+  "ms": 41,
   "status": "pass",
   "expectedLen": 2840
  },
@@ -4207,8 +4207,8 @@
   "name": "nylnnxhfjjnlez+ytyovdhppytn+nstp",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@496 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">xdqr\\nfatknrb\\nbzxauczqaezoci</div>\"",
+  "ms": 1,
+  "status": "DIFF@582 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"xdqr-mini_bar-view\\\" class=\\\"card-\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div>\\n<div class=\\\"pointer-item item-bar\\\"\"",
   "expectedLen": 3120
  },
  {
@@ -4234,7 +4234,7 @@
   "name": "dpmkjsrpbyutxxknhvwhnj+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8361,
+  "ms": 34,
   "status": "pass",
   "expectedLen": 2703
  },
@@ -4244,7 +4244,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@481 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">gokfnhmafowllblos</div>\"",
+  "status": "DIFF@567 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"gokfnhmafowllblo-mini_bar-view\\\" \" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1448
  },
  {
@@ -4261,7 +4261,7 @@
   "name": "dpmkjsrpbyutxxknhvwhnj+trqze",
   "type": "list",
   "view": "title",
-  "ms": 0,
+  "ms": 1,
   "status": "pass",
   "expectedLen": 110
  },
@@ -4270,7 +4270,7 @@
   "name": "dpmkjsrpbyutxxknhvwhnj+wifkdijffbgu",
   "type": "list",
   "view": "closed",
-  "ms": 8156,
+  "ms": 32,
   "status": "pass",
   "expectedLen": 2836
  },
@@ -4279,8 +4279,8 @@
   "name": "dpmkjsrpbyutxxknhvwhnj+wifkdijffbgu",
   "type": "list",
   "view": "content",
-  "ms": 1,
-  "status": "DIFF@523 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">ehfvhsslu</div>\"",
+  "ms": 0,
+  "status": "DIFF@609 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"ehfvhsslu-mini_bar-view\\\" class=\\\"\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1443
  },
  {
@@ -4288,7 +4288,7 @@
   "name": "dpmkjsrpbyutxxknhvwhnj+wifkdijffbgu",
   "type": "list",
   "view": "open",
-  "ms": 0,
+  "ms": 1,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 82
  },
@@ -4306,7 +4306,7 @@
   "name": "qrlmiwapecn+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8032,
+  "ms": 36,
   "status": "pass",
   "expectedLen": 2536
  },
@@ -4315,8 +4315,8 @@
   "name": "qrlmiwapecn+trqze",
   "type": "list",
   "view": "content",
-  "ms": 0,
-  "status": "DIFF@436 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">vvagmsrcrfjxzykiawbhoybxwkktlthes</div>\"",
+  "ms": 1,
+  "status": "DIFF@522 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"vvagmsrcrfjxzykiawbhoybxwkktlthe\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1499
  },
  {
@@ -4324,7 +4324,7 @@
   "name": "qrlmiwapecn+trqze",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },
@@ -4342,7 +4342,7 @@
   "name": "ttrdlgjfbagmsnlbvqwig+trqze",
   "type": "list",
   "view": "closed",
-  "ms": 8176,
+  "ms": 32,
   "status": "pass",
   "expectedLen": 2688
  },
@@ -4352,7 +4352,7 @@
   "type": "list",
   "view": "content",
   "ms": 0,
-  "status": "DIFF@477 exp=\"quot;show&quot;:[&quot;content&quot;]}\\\"><div class=\\\"card-list card-list-bar poin\" got=\"quot;show&quot;:[&quot;content&quot;]}\\\">gvpiwzuhllgtadppakculzovfvqmvpexd</div>\"",
+  "status": "DIFF@563 exp=\"st\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"gvpiwzuhllgtadppakculzovfvqmvpex\" got=\"st\\\"><div class=\\\"pointer-item item-bar\\\"></div></div></div>\"",
   "expectedLen": 1541
  },
  {
@@ -4360,7 +4360,7 @@
   "name": "ttrdlgjfbagmsnlbvqwig+trqze",
   "type": "list",
   "view": "open",
-  "ms": 1,
+  "ms": 0,
   "status": "OUTPUT-EXPECTED-RAISE",
   "expectedLen": 67
  },

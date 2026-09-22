@@ -10,8 +10,8 @@
 // the corpus content exercises (every byte of a non-JSON string is an
 // `:error` token, one byte per call).
 
-import { ALPHA_STYLES } from "./alpha-style.js";
-import { coderayEscape } from "./escape.js";
+import { ALPHA_STYLES } from "../alpha-style.js";
+import { coderayEscape } from "../escape.js";
 
 /** Look up the alpha-theme inline style for a token kind. Unrecognized
  *  kinds return undefined - the encoder emits a bare span (no `class`

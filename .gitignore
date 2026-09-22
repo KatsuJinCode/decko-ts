@@ -21,3 +21,7 @@ __pycache__/
 # migration tool scratch outputs (generalized importer writes here for
 # determinism checks; rebuilt on demand; never committed)
 tools/migrate/scratch-out/
+
+# wave D build/dev-server output (M5) + scratch
+dist-ts/
+tmp/

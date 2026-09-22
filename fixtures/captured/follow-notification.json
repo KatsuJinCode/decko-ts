@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-09-22T08:56:48Z",
+  "delivered": [
+    {
+      "to": "sara@example.com",
+      "from": "no-reply@decko.org",
+      "subject": "follower changed followed_set on follow_option",
+      "text_body": "Hi! follower changed followed_set.",
+      "html_body": null,
+      "delivery_method": "test",
+      "delivered_at": "Tue, 22 Sep 2026 01:56:49 -0700",
+      "message_id": "6ab242d1bfa4b_1029811f86256@Jace2.mail"
+    }
+  ],
+  "scenario": "follow_notification_email_for_update",
+  "seed_log": {
+    "John": "present",
+    "Sara": "present",
+    "Sara Test Card": "present",
+    "follow_rule": "present",
+    "follower_notification_email": "updated-in-place",
+    "follower_notification_email.before": "id=1237 subcards=follower notification email+subject,follower notification email+text_message,follower notification email+*to,follower notification email+*subject,follower notification email+*text message"
+  }
+}

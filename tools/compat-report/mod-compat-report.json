@@ -1,0 +1,3833 @@
+{
+  "generatedAt": "2026-09-21T23:45:30.253Z",
+  "gemDir": "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems",
+  "repo": "C:\\localProjects\\decko-ts",
+  "surface": {
+    "implementedPatterns": [
+      "all",
+      "all_plus",
+      "right",
+      "rstar",
+      "rule",
+      "self",
+      "star",
+      "type",
+      "type_plus_right"
+    ],
+    "htmlViews": [
+      "bar",
+      "bar_bottom",
+      "bar_left",
+      "bar_middle",
+      "bar_right",
+      "blank",
+      "card_list",
+      "closed",
+      "content",
+      "core",
+      "menu",
+      "mini_bar",
+      "mini_unknown",
+      "no_search_results",
+      "open",
+      "title",
+      "titled",
+      "titled_content",
+      "unknown"
+    ],
+    "hasRuleLookup": true,
+    "hasRuleApply": true,
+    "hasPerms": true
+  },
+  "legacy": [
+    "card-mod-delayed_job-0.20.0",
+    "card-mod-defaults-0.20.0"
+  ],
+  "mods": [
+    {
+      "gem": "card-mod-account-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=account_tab, closed_account, closure, configs, content_formgroups, edit, ...",
+        "evidence": "3/24 html views in HTML_VIEWS (0/19 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 24,
+          "htmlViewsCovered": 3,
+          "htmlViewsMissing": 21,
+          "htmlViewsMissingNames": [
+            "account_tab",
+            "closed_account",
+            "closure",
+            "configs",
+            "content_formgroups",
+            "edit",
+            "edit_buttons",
+            "link_with_checkbox",
+            "new",
+            "new_buttons",
+            "one_line_content",
+            "open_content",
+            "raw",
+            "reset_password_days",
+            "reset_password_success",
+            "reset_password_url",
+            "setup",
+            "token_days",
+            "token_expiry",
+            "verify_days",
+            "verify_url"
+          ],
+          "specificViewsDeclared": 19,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 12.5,
+          "setModules": 22,
+          "libRbFiles": 1,
+          "hamlFiles": 6
+        }
+      },
+      "inv": {
+        "gem": "card-mod-account-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-account-0.20.0",
+        "counts": {
+          "setRbFiles": 23,
+          "libRbFiles": 1,
+          "hamlFiles": 6,
+          "setModules": 22,
+          "viewsDeclared": 32,
+          "defs": 120,
+          "eventHooks": 30,
+          "beforeHooks": 0,
+          "includeSetRefs": 4,
+          "cardioConfigKeys": 2,
+          "viewAliases": 2
+        },
+        "setModulesByPattern": {
+          "abstract": 2,
+          "all": 2,
+          "right": 7,
+          "self": 4,
+          "type": 4,
+          "type_plus_right": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "account_tab",
+            "closed_account",
+            "closure",
+            "configs",
+            "content_formgroups",
+            "core",
+            "edit",
+            "edit_buttons",
+            "link_with_checkbox",
+            "new",
+            "new_buttons",
+            "one_line_content",
+            "open",
+            "open_content",
+            "raw",
+            "reset_password_days",
+            "reset_password_success",
+            "reset_password_url",
+            "setup",
+            "title",
+            "token_days",
+            "token_expiry",
+            "verify_days",
+            "verify_url"
+          ],
+          "email_html": [
+            "closure",
+            "core",
+            "reset_password_days",
+            "reset_password_url",
+            "token_days",
+            "token_expiry",
+            "verify_days",
+            "verify_url"
+          ]
+        },
+        "aliasPairs": [
+          {
+            "from": "verify_days",
+            "to": "token_days",
+            "file": "set/right/account/views.rb"
+          },
+          {
+            "from": "reset_password_days",
+            "to": "token_days",
+            "file": "set/right/account/views.rb"
+          }
+        ],
+        "eventHooks": [
+          {
+            "event": "validate_account_holder_name_change",
+            "file": "set/abstract/account_holder.rb"
+          },
+          {
+            "event": "generate_token",
+            "file": "set/all/account.rb"
+          },
+          {
+            "event": "set_stamper",
+            "file": "set/all/account.rb"
+          },
+          {
+            "event": "set_default_salt",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "set_default_status",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "reset_password",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "verify_and_activate",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "password_redirect",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "activate_account",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "delete_account",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "signout_upon_delete",
+            "file": "set/right/account/events.rb"
+          },
+          {
+            "event": "validate_email",
+            "file": "set/right/email.rb"
+          },
+          {
+            "event": "validate_unique_email",
+            "file": "set/right/email.rb"
+          },
+          {
+            "event": "downcase_email",
+            "file": "set/right/email.rb"
+          },
+          {
+            "event": "encrypt_password",
+            "file": "set/right/password.rb"
+          },
+          {
+            "event": "validate_password_length",
+            "file": "set/right/password.rb"
+          },
+          {
+            "event": "validate_password_chars",
+            "file": "set/right/password.rb"
+          },
+          {
+            "event": "validate_password_present",
+            "file": "set/right/password.rb"
+          },
+          {
+            "event": "signin",
+            "file": "set/self/signin.rb"
+          },
+          {
+            "event": "signin_success",
+            "file": "set/self/signin.rb"
+          },
+          {
+            "event": "signout",
+            "file": "set/self/signin.rb"
+          },
+          {
+            "event": "send_reset_password_token",
+            "file": "set/self/signin.rb"
+          },
+          {
+            "event": "auto_approve_with_verification",
+            "file": "set/type/signup.rb"
+          },
+          {
+            "event": "approve_with_verification",
+            "file": "set/type/signup.rb"
+          },
+          {
+            "event": "approve_without_verification",
+            "file": "set/type/signup.rb"
+          },
+          {
+            "event": "act_as_current_for_integrate_stage",
+            "file": "set/type/signup.rb"
+          },
+          {
+            "event": "check_setup",
+            "file": "set/type/user.rb"
+          },
+          {
+            "event": "setup_first_user",
+            "file": "set/type/user.rb"
+          },
+          {
+            "event": "signin_after_setup",
+            "file": "set/type/user.rb"
+          },
+          {
+            "event": "update_role_cache",
+            "file": "set/type_plus_right/role/members.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AccountField",
+          "AccountHolder",
+          "IdList",
+          "List"
+        ],
+        "cardioConfigKeys": [
+          "account_password_length",
+          "account_password_requirements"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-ace_editor-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "no html view declarations in this mod",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 2,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-ace_editor-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-ace_editor-0.20.0",
+        "counts": {
+          "setRbFiles": 2,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 2,
+          "viewsDeclared": 0,
+          "defs": 4,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 1,
+          "self": 1
+        },
+        "viewsByFormat": {
+          "html": []
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-api_key-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=api_key, buttons, current, generate_button, token, token_link",
+        "evidence": "1/7 html views in HTML_VIEWS (0/6 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 7,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 6,
+          "htmlViewsMissingNames": [
+            "api_key",
+            "buttons",
+            "current",
+            "generate_button",
+            "token",
+            "token_link"
+          ],
+          "specificViewsDeclared": 6,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "right"
+          ],
+          "patternsImplemented": [
+            "right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 14.3,
+          "setModules": 2,
+          "libRbFiles": 2,
+          "hamlFiles": 2
+        }
+      },
+      "inv": {
+        "gem": "card-mod-api_key-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-api_key-0.20.0",
+        "counts": {
+          "setRbFiles": 2,
+          "libRbFiles": 2,
+          "hamlFiles": 2,
+          "setModules": 2,
+          "viewsDeclared": 13,
+          "defs": 21,
+          "eventHooks": 2,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "right": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "api_key",
+            "buttons",
+            "core",
+            "current",
+            "generate_button",
+            "token",
+            "token_link"
+          ],
+          "json": [
+            "buttons",
+            "core",
+            "current",
+            "generate_button",
+            "token",
+            "token_link"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "generate_api_key",
+            "file": "set/right/api_key.rb"
+          },
+          {
+            "event": "validate_api_key",
+            "file": "set/right/api_key.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AccountField"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-assets-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=javascript_include_tag, stylesheet_include_tag",
+        "evidence": "1/3 html views in HTML_VIEWS (0/2 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 3,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 2,
+          "htmlViewsMissingNames": [
+            "javascript_include_tag",
+            "stylesheet_include_tag"
+          ],
+          "specificViewsDeclared": 2,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 33.3,
+          "setModules": 12,
+          "libRbFiles": 1,
+          "hamlFiles": 1
+        }
+      },
+      "inv": {
+        "gem": "card-mod-assets-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-assets-0.20.0",
+        "counts": {
+          "setRbFiles": 12,
+          "libRbFiles": 1,
+          "hamlFiles": 1,
+          "setModules": 12,
+          "viewsDeclared": 3,
+          "defs": 95,
+          "eventHooks": 5,
+          "beforeHooks": 0,
+          "includeSetRefs": 8,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 8,
+          "right": 3,
+          "type": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "core",
+            "javascript_include_tag",
+            "stylesheet_include_tag"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "asset_input_changed",
+            "file": "set/abstract/asset_inputter.rb"
+          },
+          {
+            "event": "asset_input_changed_on_delete",
+            "file": "set/abstract/asset_inputter.rb"
+          },
+          {
+            "event": "update_asset_output_file",
+            "file": "set/abstract/asset_outputter.rb"
+          },
+          {
+            "event": "validate_asset_inputs",
+            "file": "set/abstract/asset_outputter.rb"
+          },
+          {
+            "event": "remove_codename",
+            "file": "set/right/asset_output.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "CodeFile",
+          "Items",
+          "List",
+          "Lock",
+          "ManifestGroup",
+          "ReadOnly",
+          "Sources",
+          "VirtualCache"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-bar_and_box-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "ported",
+        "verdict": "6 mod-specific view(s) ported: bar, bar_bottom, bar_left, bar_middle, bar_right, mini_bar",
+        "evidence": "8/17 html views in HTML_VIEWS (6/11 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 17,
+          "htmlViewsCovered": 8,
+          "htmlViewsMissing": 9,
+          "htmlViewsMissingNames": [
+            "accordion_bar",
+            "bar_body",
+            "bar_menu",
+            "boxed",
+            "boxed_link",
+            "closed_bar",
+            "expanded_bar",
+            "full_bar",
+            "open_bar"
+          ],
+          "specificViewsDeclared": 11,
+          "specificViewsCovered": 6,
+          "specificViewsCoverage": 54.5,
+          "patternsUsed": [
+            "all",
+            "all",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 47.1,
+          "setModules": 4,
+          "libRbFiles": 0,
+          "hamlFiles": 5
+        }
+      },
+      "inv": {
+        "gem": "card-mod-bar_and_box-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-bar_and_box-0.20.0",
+        "counts": {
+          "setRbFiles": 4,
+          "libRbFiles": 0,
+          "hamlFiles": 5,
+          "setModules": 4,
+          "viewsDeclared": 17,
+          "defs": 16,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 4
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 2,
+          "type": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "accordion_bar",
+            "bar",
+            "bar_body",
+            "bar_bottom",
+            "bar_left",
+            "bar_menu",
+            "bar_middle",
+            "bar_right",
+            "boxed",
+            "boxed_link",
+            "closed",
+            "closed_bar",
+            "expanded_bar",
+            "full_bar",
+            "mini_bar",
+            "open",
+            "open_bar"
+          ]
+        },
+        "aliasPairs": [
+          {
+            "from": "closed_bar",
+            "to": "closed",
+            "file": "set\\all\\bar.rb"
+          },
+          {
+            "from": "accordion_bar",
+            "to": "closed",
+            "file": "set\\all\\bar.rb"
+          },
+          {
+            "from": "open_bar",
+            "to": "open",
+            "file": "set\\all\\bar.rb"
+          },
+          {
+            "from": "expanded_bar",
+            "to": "open",
+            "file": "set\\all\\bar.rb"
+          }
+        ],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-bootstrap-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar_bottom, bar_left, bar_middle, bar_right; missing=carousel, customize_button, icons, input, one_line_content, progress_bar",
+        "evidence": "5/11 html views in HTML_VIEWS (4/10 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 11,
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 6,
+          "htmlViewsMissingNames": [
+            "carousel",
+            "customize_button",
+            "icons",
+            "input",
+            "one_line_content",
+            "progress_bar"
+          ],
+          "specificViewsDeclared": 10,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 40,
+          "patternsUsed": [
+            "all",
+            "all",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 45.5,
+          "setModules": 11,
+          "libRbFiles": 16,
+          "hamlFiles": 11
+        }
+      },
+      "inv": {
+        "gem": "card-mod-bootstrap-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-bootstrap-0.20.0",
+        "counts": {
+          "setRbFiles": 24,
+          "libRbFiles": 16,
+          "hamlFiles": 11,
+          "setModules": 11,
+          "viewsDeclared": 11,
+          "defs": 176,
+          "eventHooks": 6,
+          "beforeHooks": 0,
+          "includeSetRefs": 6,
+          "cardioConfigKeys": 1,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 4,
+          "all": 2,
+          "self": 2,
+          "type": 2,
+          "type_plus_right": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "bar_bottom",
+            "bar_left",
+            "bar_middle",
+            "bar_right",
+            "carousel",
+            "core",
+            "customize_button",
+            "icons",
+            "input",
+            "one_line_content",
+            "progress_bar"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "update_skin_asset_input",
+            "file": "set/abstract/skin_field.rb"
+          },
+          {
+            "event": "initialize_because_of_type_change",
+            "file": "set/type/bootswatch_skin/events.rb"
+          },
+          {
+            "event": "copy_theme",
+            "file": "set/type/bootswatch_skin/events.rb"
+          },
+          {
+            "event": "validate_theme_template",
+            "file": "set/type/bootswatch_skin/events.rb"
+          },
+          {
+            "event": "use_as_current_skin",
+            "file": "set/type/bootswatch_skin.rb"
+          },
+          {
+            "event": "translate_variables_to_scss",
+            "file": "set/type_plus_right/bootswatch_skin/colors.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AssetInputter",
+          "BootstrapCodeFile",
+          "Media",
+          "Scss",
+          "SkinBox",
+          "SkinField"
+        ],
+        "cardioConfigKeys": [
+          "icon_libraries"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-carrierwave-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=content_changes, full_width, input, link_tag, preview_editor, source",
+        "evidence": "2/8 html views in HTML_VIEWS (0/6 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 8,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 6,
+          "htmlViewsMissingNames": [
+            "content_changes",
+            "full_width",
+            "input",
+            "link_tag",
+            "preview_editor",
+            "source"
+          ],
+          "specificViewsDeclared": 6,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 25,
+          "setModules": 11,
+          "libRbFiles": 7,
+          "hamlFiles": 3
+        }
+      },
+      "inv": {
+        "gem": "card-mod-carrierwave-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-carrierwave-0.20.0",
+        "counts": {
+          "setRbFiles": 17,
+          "libRbFiles": 7,
+          "hamlFiles": 3,
+          "setModules": 11,
+          "viewsDeclared": 33,
+          "defs": 162,
+          "eventHooks": 24,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 4,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 2,
+          "all": 1,
+          "self": 5,
+          "type": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "content",
+            "content_changes",
+            "core",
+            "full_width",
+            "input",
+            "link_tag",
+            "preview_editor",
+            "source"
+          ],
+          "json": [
+            "content",
+            "core",
+            "image_complete",
+            "inline",
+            "input",
+            "one_line_content",
+            "preview_editor",
+            "source"
+          ],
+          "file": [
+            "content",
+            "core",
+            "inline",
+            "input",
+            "one_line_content",
+            "preview_editor",
+            "source"
+          ],
+          "email_html": [
+            "content",
+            "core",
+            "inline",
+            "one_line_content",
+            "source"
+          ],
+          "css": [
+            "content",
+            "core",
+            "inline",
+            "one_line_content",
+            "source"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "prepare_attachment",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "assign_attachment_on_create",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "assign_attachment_on_update",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "delete_cached_upload_file_on_create",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "clear_draft_files",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "delete_cached_upload_file_on_update",
+            "file": "set/abstract/attachment/00_upload_cache.rb"
+          },
+          {
+            "event": "update_storage",
+            "file": "set/abstract/attachment/01_storage_type.rb"
+          },
+          {
+            "event": "validate_storage_type",
+            "file": "set/abstract/attachment/01_storage_type.rb"
+          },
+          {
+            "event": "change_bucket_if_read_only",
+            "file": "set/abstract/attachment/cloud.rb"
+          },
+          {
+            "event": "uncode_attachment_storage",
+            "file": "set/abstract/attachment/coded.rb"
+          },
+          {
+            "event": "validate_coded_storage_type",
+            "file": "set/abstract/attachment/coded.rb"
+          },
+          {
+            "event": "update_public_link_on_create",
+            "file": "set/abstract/attachment/local.rb"
+          },
+          {
+            "event": "remove_public_link_on_delete",
+            "file": "set/abstract/attachment/local.rb"
+          },
+          {
+            "event": "update_public_link",
+            "file": "set/abstract/attachment/local.rb"
+          },
+          {
+            "event": "select_file_revision",
+            "file": "set/abstract/attachment.rb"
+          },
+          {
+            "event": "correct_identifier",
+            "file": "set/abstract/attachment.rb"
+          },
+          {
+            "event": "save_original_filename",
+            "file": "set/abstract/attachment.rb"
+          },
+          {
+            "event": "validate_file_exist",
+            "file": "set/abstract/attachment.rb"
+          },
+          {
+            "event": "write_identifier",
+            "file": "set/abstract/attachment.rb"
+          },
+          {
+            "event": "store_",
+            "file": "lib/carrier_wave/card_mount.rb"
+          },
+          {
+            "event": "remove_",
+            "file": "lib/carrier_wave/card_mount.rb"
+          },
+          {
+            "event": "mark_remove_",
+            "file": "lib/carrier_wave/card_mount.rb"
+          },
+          {
+            "event": "reset_previous_changes_for_",
+            "file": "lib/carrier_wave/card_mount.rb"
+          },
+          {
+            "event": "remove_previously_stored_",
+            "file": "lib/carrier_wave/card_mount.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": [
+          "file_buckets",
+          "file_default_bucket",
+          "file_storage",
+          "files_web_path"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-collection-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=count, paging, paging_urls",
+        "evidence": "0/3 html views in HTML_VIEWS (0/3 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 3,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 3,
+          "htmlViewsMissingNames": [
+            "count",
+            "paging",
+            "paging_urls"
+          ],
+          "specificViewsDeclared": 3,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 6,
+          "libRbFiles": 1,
+          "hamlFiles": 1
+        }
+      },
+      "inv": {
+        "gem": "card-mod-collection-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-collection-0.20.0",
+        "counts": {
+          "setRbFiles": 6,
+          "libRbFiles": 1,
+          "hamlFiles": 1,
+          "setModules": 6,
+          "viewsDeclared": 7,
+          "defs": 96,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 3,
+          "all": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "count",
+            "paging",
+            "paging_urls"
+          ],
+          "json": [
+            "paging",
+            "paging_urls"
+          ],
+          "jsonld": [
+            "paging",
+            "paging_urls"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-comment-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "no html view declarations in this mod",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 3,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-comment-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-comment-0.20.0",
+        "counts": {
+          "setRbFiles": 3,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 3,
+          "viewsDeclared": 0,
+          "defs": 10,
+          "eventHooks": 1,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 1,
+          "right": 2
+        },
+        "viewsByFormat": {},
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "add_comment",
+            "file": "set/all/comment.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "Permission"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-content-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar_middle; missing=file_size, input, one_line_content",
+        "evidence": "2/5 html views in HTML_VIEWS (1/4 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 5,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 3,
+          "htmlViewsMissingNames": [
+            "file_size",
+            "input",
+            "one_line_content"
+          ],
+          "specificViewsDeclared": 4,
+          "specificViewsCovered": 1,
+          "specificViewsCoverage": 25,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 40,
+          "setModules": 14,
+          "libRbFiles": 7,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-content-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-content-0.20.0",
+        "counts": {
+          "setRbFiles": 14,
+          "libRbFiles": 7,
+          "hamlFiles": 0,
+          "setModules": 14,
+          "viewsDeclared": 6,
+          "defs": 107,
+          "eventHooks": 3,
+          "beforeHooks": 0,
+          "includeSetRefs": 3,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 7,
+          "all": 3,
+          "right": 2,
+          "self": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "bar_middle",
+            "core",
+            "file_size",
+            "input",
+            "one_line_content"
+          ],
+          "rss": [
+            "one_line_content"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "update_structurees_references",
+            "file": "set/right/structure.rb"
+          },
+          {
+            "event": "reset_cache_to_use_new_structure",
+            "file": "set/right/structure.rb"
+          },
+          {
+            "event": "update_structurees_type",
+            "file": "set/right/structure.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "CodeContent",
+          "Sources",
+          "TemplatedNests"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-date-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 1,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 100,
+          "setModules": 5,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-date-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-date-0.20.0",
+        "counts": {
+          "setRbFiles": 5,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 5,
+          "viewsDeclared": 1,
+          "defs": 4,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 1,
+          "right": 2,
+          "self": 1,
+          "type": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "core"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-defaults-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "ignored",
+        "verdict": "ignored (legacy-labeled per upstream maintainer guidance)",
+        "evidence": "no meaningful set/ tree; config-only or backend-only gem",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [],
+          "patternsImplemented": [],
+          "patternsCoverage": 0,
+          "viewsCoverage": 0,
+          "setModules": 0,
+          "libRbFiles": 1,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-defaults-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-defaults-0.20.0",
+        "counts": {
+          "setRbFiles": 0,
+          "libRbFiles": 1,
+          "hamlFiles": 0,
+          "setModules": 0,
+          "viewsDeclared": 0,
+          "defs": 0,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {},
+        "viewsByFormat": {},
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-delayed_job-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "ignored",
+        "verdict": "ignored (legacy-labeled per upstream maintainer guidance)",
+        "evidence": "no meaningful set/ tree; config-only or backend-only gem",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [],
+          "patternsImplemented": [],
+          "patternsCoverage": 0,
+          "viewsCoverage": 0,
+          "setModules": 0,
+          "libRbFiles": 2,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-delayed_job-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-delayed_job-0.20.0",
+        "counts": {
+          "setRbFiles": 0,
+          "libRbFiles": 2,
+          "hamlFiles": 0,
+          "setModules": 0,
+          "viewsDeclared": 0,
+          "defs": 1,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 1,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {},
+        "viewsByFormat": {},
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": [
+          "delaying"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-edit-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...",
+        "evidence": "0/42 html views in HTML_VIEWS (0/41 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 42,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 42,
+          "htmlViewsMissingNames": [
+            "board",
+            "board_type_formgroup",
+            "cardboard",
+            "conflict_tracker",
+            "content_formgroup",
+            "content_formgroups",
+            "edit",
+            "edit_buttons",
+            "edit_form",
+            "edit_in_form",
+            "edit_inline",
+            "edit_inline_buttons",
+            "edit_name",
+            "edit_name_row",
+            "edit_nests",
+            "edit_row",
+            "edit_rules",
+            "edit_structure",
+            "edit_type",
+            "edit_type_form",
+            "edit_type_row",
+            "engage_tab",
+            "follow_section",
+            "guide_tab",
+            "history_tab",
+            "input",
+            "just_deleted",
+            "name_form",
+            "name_formgroup",
+            "new",
+            "new_buttons",
+            "new_fields",
+            "new_in_modal",
+            "new_in_modal_buttons",
+            "new_type_formgroup",
+            "overlay_guide",
+            "read_form",
+            "read_formgroup",
+            "related_tab",
+            "rules_tab",
+            "simple_new",
+            "type_formgroup"
+          ],
+          "specificViewsDeclared": 41,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 21,
+          "libRbFiles": 0,
+          "hamlFiles": 5
+        }
+      },
+      "inv": {
+        "gem": "card-mod-edit-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-edit-0.20.0",
+        "counts": {
+          "setRbFiles": 25,
+          "libRbFiles": 0,
+          "hamlFiles": 5,
+          "setModules": 21,
+          "viewsDeclared": 42,
+          "defs": 168,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 1
+        },
+        "setModulesByPattern": {
+          "all": 15,
+          "right": 2,
+          "self": 1,
+          "type": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "board",
+            "board_type_formgroup",
+            "cardboard",
+            "conflict_tracker",
+            "content_formgroup",
+            "content_formgroups",
+            "edit",
+            "edit_buttons",
+            "edit_form",
+            "edit_in_form",
+            "edit_inline",
+            "edit_inline_buttons",
+            "edit_name",
+            "edit_name_row",
+            "edit_nests",
+            "edit_row",
+            "edit_rules",
+            "edit_structure",
+            "edit_type",
+            "edit_type_form",
+            "edit_type_row",
+            "engage_tab",
+            "follow_section",
+            "guide_tab",
+            "history_tab",
+            "input",
+            "just_deleted",
+            "name_form",
+            "name_formgroup",
+            "new",
+            "new_buttons",
+            "new_fields",
+            "new_in_modal",
+            "new_in_modal_buttons",
+            "new_type_formgroup",
+            "overlay_guide",
+            "read_form",
+            "read_formgroup",
+            "related_tab",
+            "rules_tab",
+            "simple_new",
+            "type_formgroup"
+          ]
+        },
+        "aliasPairs": [
+          {
+            "from": "cardboard",
+            "to": "board",
+            "file": "set\\all\\editing.rb"
+          }
+        ],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-email-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=compact_missing, email_page",
+        "evidence": "3/5 html views in HTML_VIEWS (0/2 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 5,
+          "htmlViewsCovered": 3,
+          "htmlViewsMissing": 2,
+          "htmlViewsMissingNames": [
+            "compact_missing",
+            "email_page"
+          ],
+          "specificViewsDeclared": 2,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 60,
+          "setModules": 13,
+          "libRbFiles": 2,
+          "hamlFiles": 1
+        }
+      },
+      "inv": {
+        "gem": "card-mod-email-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-email-0.20.0",
+        "counts": {
+          "setRbFiles": 14,
+          "libRbFiles": 2,
+          "hamlFiles": 1,
+          "setModules": 13,
+          "viewsDeclared": 12,
+          "defs": 31,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 2,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 2,
+          "all": 2,
+          "right": 7,
+          "type": 2
+        },
+        "viewsByFormat": {
+          "email_text": [
+            "compact_missing",
+            "last_action",
+            "unknown"
+          ],
+          "html": [
+            "compact_missing",
+            "content",
+            "core",
+            "email_page",
+            "unknown"
+          ],
+          "email_html": [
+            "compact_missing",
+            "core",
+            "email_page",
+            "unknown"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "EmailField",
+          "TestContext"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-follow-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...",
+        "evidence": "1/13 html views in HTML_VIEWS (0/12 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 13,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 12,
+          "htmlViewsMissingNames": [
+            "confirm_update_all",
+            "edit",
+            "edit_buttons",
+            "errors",
+            "follow_button",
+            "follow_item",
+            "follow_status",
+            "follow_tab",
+            "ignore_tab",
+            "one_line_content",
+            "rule_editor",
+            "status"
+          ],
+          "specificViewsDeclared": 12,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 7.7,
+          "setModules": 25,
+          "libRbFiles": 2,
+          "hamlFiles": 2
+        }
+      },
+      "inv": {
+        "gem": "card-mod-follow-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-follow-0.20.0",
+        "counts": {
+          "setRbFiles": 32,
+          "libRbFiles": 2,
+          "hamlFiles": 2,
+          "setModules": 25,
+          "viewsDeclared": 15,
+          "defs": 156,
+          "eventHooks": 10,
+          "beforeHooks": 0,
+          "includeSetRefs": 2,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 4,
+          "right": 8,
+          "self": 7,
+          "type": 4,
+          "type_plus_right": 1
+        },
+        "viewsByFormat": {
+          "json": [
+            "follow_button",
+            "follow_status"
+          ],
+          "html": [
+            "confirm_update_all",
+            "core",
+            "edit",
+            "edit_buttons",
+            "errors",
+            "follow_button",
+            "follow_item",
+            "follow_status",
+            "follow_tab",
+            "ignore_tab",
+            "one_line_content",
+            "rule_editor",
+            "status"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "cache_expired_for_type_change",
+            "file": "set/all/follow/follower_ids.rb"
+          },
+          {
+            "event": "expire_preferences_cache",
+            "file": "set/all/follow/follower_ids.rb"
+          },
+          {
+            "event": "silence_notifications",
+            "file": "set/all/notify.rb"
+          },
+          {
+            "event": "notify_followers_after_save",
+            "file": "set/all/notify.rb"
+          },
+          {
+            "event": "stash_followers",
+            "file": "set/all/notify.rb"
+          },
+          {
+            "event": "notify_followers_after_delete",
+            "file": "set/all/notify.rb"
+          },
+          {
+            "event": "cache_expired_for_new_preference",
+            "file": "set/right/follow.rb"
+          },
+          {
+            "event": "follow_fields_changed",
+            "file": "set/right/follow_fields.rb"
+          },
+          {
+            "event": "update_follow_rules",
+            "file": "set/self/follow_defaults.rb"
+          },
+          {
+            "event": "cache_expired_for_new_set",
+            "file": "set/type/set.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "FollowOption",
+          "List"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-format-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar_right; missing=add_button, add_link, add_url, admin, board_link, compact_missing, ...",
+        "evidence": "8/57 html views in HTML_VIEWS (1/46 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 57,
+          "htmlViewsCovered": 8,
+          "htmlViewsMissing": 49,
+          "htmlViewsMissingNames": [
+            "add_button",
+            "add_link",
+            "add_url",
+            "admin",
+            "board_link",
+            "closed_content",
+            "compact_missing",
+            "configure_button",
+            "configure_link",
+            "conflict",
+            "content_panel",
+            "content_with_title",
+            "debug_server_error",
+            "demo",
+            "denial",
+            "edit_button",
+            "edit_link",
+            "errors",
+            "favicon_tag",
+            "flash",
+            "full_page_link",
+            "head",
+            "header",
+            "header_title",
+            "help_link",
+            "hidden_content_field",
+            "input",
+            "label",
+            "labeled",
+            "labeled_editor",
+            "menu_block",
+            "meta_tags",
+            "not_found",
+            "one_line_content",
+            "page_title",
+            "page_title_tag",
+            "raw_one_line_content",
+            "rss_links",
+            "server_error",
+            "short_content",
+            "smart_label",
+            "stylesheet_tags",
+            "title_link",
+            "title_no_link",
+            "type",
+            "type_info",
+            "universal_edit_button",
+            "url_link",
+            "view_list"
+          ],
+          "specificViewsDeclared": 46,
+          "specificViewsCovered": 1,
+          "specificViewsCoverage": 2.2,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 14,
+          "setModules": 33,
+          "libRbFiles": 16,
+          "hamlFiles": 6
+        }
+      },
+      "inv": {
+        "gem": "card-mod-format-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-format-0.20.0",
+        "counts": {
+          "setRbFiles": 40,
+          "libRbFiles": 16,
+          "hamlFiles": 6,
+          "setModules": 33,
+          "viewsDeclared": 116,
+          "defs": 234,
+          "eventHooks": 2,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 2,
+          "viewAliases": 11
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 20,
+          "right": 1,
+          "self": 1,
+          "type": 10
+        },
+        "viewsByFormat": {
+          "jsonld": [
+            "bad_address",
+            "compact_missing",
+            "denial",
+            "errors",
+            "format_unsupported",
+            "items",
+            "not_found",
+            "server_error",
+            "test",
+            "unknown"
+          ],
+          "html": [
+            "add_button",
+            "add_link",
+            "add_url",
+            "admin",
+            "bar_right",
+            "board_link",
+            "closed_content",
+            "compact_missing",
+            "configure_button",
+            "configure_link",
+            "conflict",
+            "content",
+            "content_panel",
+            "content_with_title",
+            "core",
+            "debug_server_error",
+            "demo",
+            "denial",
+            "edit_button",
+            "edit_link",
+            "errors",
+            "favicon_tag",
+            "flash",
+            "full_page_link",
+            "head",
+            "header",
+            "header_title",
+            "help_link",
+            "hidden_content_field",
+            "input",
+            "label",
+            "labeled",
+            "labeled_editor",
+            "menu",
+            "menu_block",
+            "meta_tags",
+            "mini_unknown",
+            "not_found",
+            "one_line_content",
+            "page_title",
+            "page_title_tag",
+            "raw_one_line_content",
+            "rss_links",
+            "server_error",
+            "short_content",
+            "smart_label",
+            "stylesheet_tags",
+            "title",
+            "title_link",
+            "title_no_link",
+            "titled",
+            "type",
+            "type_info",
+            "universal_edit_button",
+            "unknown",
+            "url_link",
+            "view_list"
+          ],
+          "css": [
+            "content",
+            "import",
+            "titled",
+            "unknown",
+            "url"
+          ],
+          "csv": [
+            "body",
+            "header",
+            "row",
+            "titled",
+            "unknown"
+          ],
+          "data": [
+            "ancestors",
+            "atom",
+            "cast",
+            "content",
+            "core",
+            "items",
+            "links",
+            "molecule",
+            "nucleus",
+            "pod"
+          ],
+          "json": [
+            "bad_address",
+            "compact_missing",
+            "denial",
+            "errors",
+            "format_unsupported",
+            "not_found",
+            "page",
+            "server_error",
+            "status",
+            "test",
+            "unknown"
+          ],
+          "file": [
+            "core",
+            "style"
+          ],
+          "js": [
+            "source"
+          ],
+          "email_html": [],
+          "rss": [
+            "closed",
+            "comment_box",
+            "content",
+            "feed",
+            "feed_body",
+            "feed_description",
+            "feed_item",
+            "feed_item_description",
+            "feed_title",
+            "menu",
+            "open",
+            "open_content"
+          ],
+          "text": [
+            "core",
+            "text_without_nests"
+          ],
+          "yaml": [
+            "core"
+          ]
+        },
+        "aliasPairs": [
+          {
+            "from": "open",
+            "to": "titled",
+            "file": "set\\all\\base.rb"
+          },
+          {
+            "from": "closed",
+            "to": "labeled",
+            "file": "set\\all\\base.rb"
+          },
+          {
+            "from": "closed_content",
+            "to": "one_line_content",
+            "file": "set\\all\\content.rb"
+          },
+          {
+            "from": "server_error",
+            "to": "errors",
+            "file": "set\\all\\error.rb"
+          },
+          {
+            "from": "denial",
+            "to": "errors",
+            "file": "set\\all\\error.rb"
+          },
+          {
+            "from": "not_found",
+            "to": "errors",
+            "file": "set\\all\\error.rb"
+          },
+          {
+            "from": "server_error",
+            "to": "errors",
+            "file": "set\\all\\error.rb"
+          },
+          {
+            "from": "open",
+            "to": "titled",
+            "file": "set\\all\\rss.rb"
+          },
+          {
+            "from": "content",
+            "to": "core",
+            "file": "set\\all\\rss.rb"
+          },
+          {
+            "from": "open_content",
+            "to": "core",
+            "file": "set\\all\\rss.rb"
+          },
+          {
+            "from": "closed",
+            "to": "link",
+            "file": "set\\all\\rss.rb"
+          }
+        ],
+        "eventHooks": [
+          {
+            "event": "validate_json",
+            "file": "set/type/json.rb"
+          },
+          {
+            "event": "validate_number",
+            "file": "set/type/number.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": [
+          "default_html_view",
+          "rss_enabled"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-help-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=guide, help, help_text, lead, popover",
+        "evidence": "0/5 html views in HTML_VIEWS (0/5 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 5,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 5,
+          "htmlViewsMissingNames": [
+            "guide",
+            "help",
+            "help_text",
+            "lead",
+            "popover"
+          ],
+          "specificViewsDeclared": 5,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 6,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-help-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-help-0.20.0",
+        "counts": {
+          "setRbFiles": 6,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 6,
+          "viewsDeclared": 5,
+          "defs": 12,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 2,
+          "right": 2,
+          "self": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "guide",
+            "help",
+            "help_text",
+            "lead",
+            "popover"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "TemplatedNests"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-history-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=act, act_legend, action_expanded, action_summary, board_act, change, ...",
+        "evidence": "0/12 html views in HTML_VIEWS (0/12 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 12,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 12,
+          "htmlViewsMissingNames": [
+            "act",
+            "act_legend",
+            "action_expanded",
+            "action_summary",
+            "board_act",
+            "change",
+            "creator_credit",
+            "draft_legend",
+            "history",
+            "last_action",
+            "last_action_verb",
+            "updated_by"
+          ],
+          "specificViewsDeclared": 12,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all"
+          ],
+          "patternsImplemented": [
+            "all"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 3,
+          "libRbFiles": 12,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-history-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-history-0.20.0",
+        "counts": {
+          "setRbFiles": 11,
+          "libRbFiles": 12,
+          "hamlFiles": 0,
+          "setModules": 3,
+          "viewsDeclared": 14,
+          "defs": 204,
+          "eventHooks": 6,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 1,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "act",
+            "act_legend",
+            "action_expanded",
+            "action_summary",
+            "board_act",
+            "change",
+            "creator_credit",
+            "draft_legend",
+            "history",
+            "last_action",
+            "last_action_verb",
+            "updated_by"
+          ],
+          "json": [
+            "actions",
+            "history"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "update_ancestor_timestamps",
+            "file": "set/all/history/events.rb"
+          },
+          {
+            "event": "assign_action",
+            "file": "set/all/history/events.rb"
+          },
+          {
+            "event": "detect_conflict",
+            "file": "set/all/history/events.rb"
+          },
+          {
+            "event": "finalize_action",
+            "file": "set/all/history/events.rb"
+          },
+          {
+            "event": "rollback_actions",
+            "file": "set/all/history/events.rb"
+          },
+          {
+            "event": "finalize_act",
+            "file": "set/all/history/events.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": [
+          "acts_per_page"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-integrate-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "no html view declarations in this mod",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 8,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-integrate-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-integrate-0.20.0",
+        "counts": {
+          "setRbFiles": 8,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 8,
+          "viewsDeclared": 0,
+          "defs": 2,
+          "eventHooks": 1,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 1,
+          "right": 3,
+          "self": 4
+        },
+        "viewsByFormat": {},
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "cache_delete_card_events",
+            "file": "set/all/observer.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-layout-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar_bottom; missing=close_modal_link, edit_inline, head_content, input, invite, modal, ...",
+        "evidence": "2/25 html views in HTML_VIEWS (1/24 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 25,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 23,
+          "htmlViewsMissingNames": [
+            "close_modal_link",
+            "edit_inline",
+            "head_content",
+            "input",
+            "invite",
+            "modal",
+            "modal_footer",
+            "modal_link",
+            "modal_menu",
+            "modal_title",
+            "my_card",
+            "nav_item",
+            "nav_link_in_dropdown",
+            "navbar_links",
+            "one_line_content",
+            "overlay_header",
+            "overlay_help_link",
+            "overlay_menu",
+            "overlay_title",
+            "pop_out_modal_link",
+            "sign_in",
+            "sign_out",
+            "sign_up"
+          ],
+          "specificViewsDeclared": 24,
+          "specificViewsCovered": 1,
+          "specificViewsCoverage": 4.2,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 8,
+          "setModules": 23,
+          "libRbFiles": 5,
+          "hamlFiles": 3
+        }
+      },
+      "inv": {
+        "gem": "card-mod-layout-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-layout-0.20.0",
+        "counts": {
+          "setRbFiles": 23,
+          "libRbFiles": 5,
+          "hamlFiles": 3,
+          "setModules": 23,
+          "viewsDeclared": 25,
+          "defs": 115,
+          "eventHooks": 3,
+          "beforeHooks": 0,
+          "includeSetRefs": 3,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 4,
+          "all": 6,
+          "right": 3,
+          "self": 8,
+          "type": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "bar_bottom",
+            "close_modal_link",
+            "core",
+            "edit_inline",
+            "head_content",
+            "input",
+            "invite",
+            "modal",
+            "modal_footer",
+            "modal_link",
+            "modal_menu",
+            "modal_title",
+            "my_card",
+            "nav_item",
+            "nav_link_in_dropdown",
+            "navbar_links",
+            "one_line_content",
+            "overlay_header",
+            "overlay_help_link",
+            "overlay_menu",
+            "overlay_title",
+            "pop_out_modal_link",
+            "sign_in",
+            "sign_out",
+            "sign_up"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "validate_role_enabling",
+            "file": "set/right/enabled_roles.rb"
+          },
+          {
+            "event": "clear_roles_cache",
+            "file": "set/right/enabled_roles.rb"
+          },
+          {
+            "event": "update_layout_registry",
+            "file": "set/type/layout_type.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AccountDropdown",
+          "Items",
+          "Type::Html"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-list-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=input, list, nest_list_input, one_line_content, view_list",
+        "evidence": "1/6 html views in HTML_VIEWS (0/5 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 6,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 5,
+          "htmlViewsMissingNames": [
+            "input",
+            "list",
+            "nest_list_input",
+            "one_line_content",
+            "view_list"
+          ],
+          "specificViewsDeclared": 5,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 16.7,
+          "setModules": 16,
+          "libRbFiles": 0,
+          "hamlFiles": 8
+        }
+      },
+      "inv": {
+        "gem": "card-mod-list-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-list-0.20.0",
+        "counts": {
+          "setRbFiles": 18,
+          "libRbFiles": 0,
+          "hamlFiles": 8,
+          "setModules": 16,
+          "viewsDeclared": 30,
+          "defs": 66,
+          "eventHooks": 5,
+          "beforeHooks": 0,
+          "includeSetRefs": 4,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 6,
+          "all": 1,
+          "right": 2,
+          "self": 3,
+          "type": 4
+        },
+        "viewsByFormat": {
+          "html": [
+            "core",
+            "input",
+            "list",
+            "nest_list_input",
+            "one_line_content",
+            "view_list"
+          ],
+          "csv": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ],
+          "js": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ],
+          "data": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ],
+          "json": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ],
+          "css": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ],
+          "rss": [
+            "content",
+            "core",
+            "links",
+            "titled"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "add_and_drop_items",
+            "file": "set/abstract/01_list/events.rb"
+          },
+          {
+            "event": "insert_item_event",
+            "file": "set/abstract/01_list/events.rb"
+          },
+          {
+            "event": "validate_item_type",
+            "file": "set/abstract/01_list/events.rb"
+          },
+          {
+            "event": "validate_item_uniqueness",
+            "file": "set/abstract/01_list/events.rb"
+          },
+          {
+            "event": "delist",
+            "file": "set/abstract/delist.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "Items",
+          "List",
+          "Paging",
+          "ReferenceList"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-markdown-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 1,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "type"
+          ],
+          "patternsImplemented": [
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 100,
+          "setModules": 1,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-markdown-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-markdown-0.20.0",
+        "counts": {
+          "setRbFiles": 1,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 1,
+          "viewsDeclared": 1,
+          "defs": 3,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "type": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "core"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-permissions-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=input, one_line_content, pointer_core",
+        "evidence": "1/4 html views in HTML_VIEWS (0/3 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 4,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 3,
+          "htmlViewsMissingNames": [
+            "input",
+            "one_line_content",
+            "pointer_core"
+          ],
+          "specificViewsDeclared": 3,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 25,
+          "setModules": 11,
+          "libRbFiles": 0,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-permissions-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-permissions-0.20.0",
+        "counts": {
+          "setRbFiles": 11,
+          "libRbFiles": 0,
+          "hamlFiles": 0,
+          "setModules": 11,
+          "viewsDeclared": 4,
+          "defs": 45,
+          "eventHooks": 7,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 2,
+          "right": 4,
+          "self": 4
+        },
+        "viewsByFormat": {
+          "html": [
+            "core",
+            "input",
+            "one_line_content",
+            "pointer_core"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "set_read_rule",
+            "file": "set/all/permissions.rb"
+          },
+          {
+            "event": "set_field_read_rules",
+            "file": "set/all/permissions.rb"
+          },
+          {
+            "event": "update_read_rule",
+            "file": "set/all/permissions.rb"
+          },
+          {
+            "event": "check_permissions",
+            "file": "set/all/permissions.rb"
+          },
+          {
+            "event": "update_rule_cache",
+            "file": "set/all/update_read_rules.rb"
+          },
+          {
+            "event": "expire_related",
+            "file": "set/all/update_read_rules.rb"
+          },
+          {
+            "event": "cascade_read_rule",
+            "file": "set/right/read.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "Permission"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-recaptcha-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 1,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 100,
+          "setModules": 8,
+          "libRbFiles": 1,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-recaptcha-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-recaptcha-0.20.0",
+        "counts": {
+          "setRbFiles": 8,
+          "libRbFiles": 1,
+          "hamlFiles": 0,
+          "setModules": 8,
+          "viewsDeclared": 1,
+          "defs": 20,
+          "eventHooks": 3,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 7,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 1,
+          "right": 3,
+          "self": 3
+        },
+        "viewsByFormat": {
+          "html": [
+            "core"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "validate_recaptcha_field",
+            "file": "set/abstract/recaptcha_setting.rb"
+          },
+          {
+            "event": "set_recaptcha_site_key",
+            "file": "set/abstract/recaptcha_setting.rb"
+          },
+          {
+            "event": "recaptcha",
+            "file": "set/all/recaptcha.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "RecaptchaSetting"
+        ],
+        "cardioConfigKeys": [
+          "recaptcha_minimum_score",
+          "recaptcha_private_key",
+          "recaptcha_proxy",
+          "recaptcha_public_key",
+          "recaptcha_secret_key",
+          "recaptcha_site_key",
+          "recaptcha_verify_url"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-rules-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar, bar_bottom, bar_middle, bar_right; missing=accordion_bar_list, accordion_rule_list, bar_setting_list, board_rules_tab, card_select, filtered_accordion_rule_list, ...",
+        "evidence": "5/35 html views in HTML_VIEWS (4/34 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 35,
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 30,
+          "htmlViewsMissingNames": [
+            "accordion_bar_list",
+            "accordion_rule_list",
+            "bar_setting_list",
+            "board_rules_tab",
+            "card_select",
+            "filtered_accordion_rule_list",
+            "grouped_list",
+            "help_text",
+            "input",
+            "modal_nest_rules",
+            "modal_pill_setting_list",
+            "modal_rule",
+            "nest_rules",
+            "one_line_content",
+            "overlay_rule",
+            "overlay_rule_list_link",
+            "overlay_title",
+            "pill_setting_list",
+            "quick_edit",
+            "quick_edit_setting_list",
+            "quick_edit_success",
+            "raw_one_line_content",
+            "rule_board_link",
+            "rule_edit",
+            "rule_form",
+            "rule_form_card_editor",
+            "rule_help",
+            "rule_nest_editor_link",
+            "set_label",
+            "template_link"
+          ],
+          "specificViewsDeclared": 34,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 11.8,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "rstar",
+            "rule",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "rstar",
+            "rule",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 14.3,
+          "setModules": 24,
+          "libRbFiles": 0,
+          "hamlFiles": 4
+        }
+      },
+      "inv": {
+        "gem": "card-mod-rules-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-rules-0.20.0",
+        "counts": {
+          "setRbFiles": 32,
+          "libRbFiles": 0,
+          "hamlFiles": 4,
+          "setModules": 24,
+          "viewsDeclared": 41,
+          "defs": 133,
+          "eventHooks": 1,
+          "beforeHooks": 0,
+          "includeSetRefs": 3,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 3,
+          "right": 4,
+          "rstar": 1,
+          "rule": 8,
+          "self": 2,
+          "type": 4,
+          "type_plus_right": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "accordion_bar_list",
+            "accordion_rule_list",
+            "bar",
+            "bar_bottom",
+            "bar_middle",
+            "bar_right",
+            "bar_setting_list",
+            "board_rules_tab",
+            "card_select",
+            "core",
+            "filtered_accordion_rule_list",
+            "grouped_list",
+            "help_text",
+            "input",
+            "modal_nest_rules",
+            "modal_pill_setting_list",
+            "modal_rule",
+            "nest_rules",
+            "one_line_content",
+            "overlay_rule",
+            "overlay_rule_list_link",
+            "overlay_title",
+            "pill_setting_list",
+            "quick_edit",
+            "quick_edit_setting_list",
+            "quick_edit_success",
+            "raw_one_line_content",
+            "rule_board_link",
+            "rule_edit",
+            "rule_form",
+            "rule_form_card_editor",
+            "rule_help",
+            "rule_nest_editor_link",
+            "set_label",
+            "template_link"
+          ],
+          "data": [
+            "core",
+            "one_line_content",
+            "rule_help"
+          ],
+          "json": [
+            "core",
+            "one_line_content",
+            "rule_help"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "save_recently_edited_settings",
+            "file": "set/rule/rules.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "List",
+          "Type::SearchType",
+          "VirtualSet"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-script-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=compressed, javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables",
+        "evidence": "1/7 html views in HTML_VIEWS (0/6 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 7,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 6,
+          "htmlViewsMissingNames": [
+            "compressed",
+            "javascript_include_tag",
+            "javascript_tags",
+            "remote_script_tags",
+            "script_calls",
+            "script_variables"
+          ],
+          "specificViewsDeclared": 6,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 14.3,
+          "setModules": 16,
+          "libRbFiles": 2,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-script-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-script-0.20.0",
+        "counts": {
+          "setRbFiles": 16,
+          "libRbFiles": 2,
+          "hamlFiles": 0,
+          "setModules": 16,
+          "viewsDeclared": 10,
+          "defs": 37,
+          "eventHooks": 2,
+          "beforeHooks": 0,
+          "includeSetRefs": 12,
+          "cardioConfigKeys": 1,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 7,
+          "all": 1,
+          "right": 1,
+          "self": 1,
+          "type": 4,
+          "type_plus_right": 2
+        },
+        "viewsByFormat": {
+          "js": [
+            "compressed",
+            "core",
+            "javascript_include_tag"
+          ],
+          "html": [
+            "compressed",
+            "core",
+            "javascript_include_tag",
+            "javascript_tags",
+            "remote_script_tags",
+            "script_calls",
+            "script_variables"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "validate_coffeescript_syntax",
+            "file": "set/type/coffee_script.rb"
+          },
+          {
+            "event": "validate_javascript_syntax",
+            "file": "set/type/java_script.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AssetFile",
+          "AssetGroup",
+          "AssetInputter",
+          "AssetOutputter",
+          "AssetScript",
+          "CoffeeScript",
+          "FolderGroup",
+          "JavaScript",
+          "LocalManifestGroup",
+          "ModAssets",
+          "Script",
+          "ScriptGroup"
+        ],
+        "cardioConfigKeys": [
+          "double_click"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-search-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=bar, card_list; missing=add_autocomplete_item, body, checkbox_list, complete, count, feed_body, ...",
+        "evidence": "5/23 html views in HTML_VIEWS (2/20 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 23,
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 18,
+          "htmlViewsMissingNames": [
+            "add_autocomplete_item",
+            "body",
+            "checkbox_list",
+            "complete",
+            "count",
+            "feed_body",
+            "feed_item_description",
+            "goto_autocomplete_item",
+            "molecule",
+            "name_complete",
+            "name_match",
+            "one_line_content",
+            "results_for_keyword",
+            "search_box",
+            "search_box_complete",
+            "search_count",
+            "search_error",
+            "select2_option"
+          ],
+          "specificViewsDeclared": 20,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 10,
+          "patternsUsed": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all",
+            "right",
+            "self",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 21.7,
+          "setModules": 28,
+          "libRbFiles": 1,
+          "hamlFiles": 5
+        }
+      },
+      "inv": {
+        "gem": "card-mod-search-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-search-0.20.0",
+        "counts": {
+          "setRbFiles": 29,
+          "libRbFiles": 1,
+          "hamlFiles": 5,
+          "setModules": 28,
+          "viewsDeclared": 65,
+          "defs": 77,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 8,
+          "cardioConfigKeys": 2,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 6,
+          "all": 1,
+          "right": 17,
+          "self": 2,
+          "type": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "add_autocomplete_item",
+            "bar",
+            "body",
+            "card_list",
+            "checkbox_list",
+            "complete",
+            "core",
+            "count",
+            "feed_body",
+            "feed_item_description",
+            "goto_autocomplete_item",
+            "molecule",
+            "name_complete",
+            "name_match",
+            "no_search_results",
+            "one_line_content",
+            "results_for_keyword",
+            "search_box",
+            "search_box_complete",
+            "search_count",
+            "search_error",
+            "select2_option",
+            "title"
+          ],
+          "json": [
+            "add_autocomplete_item",
+            "body",
+            "card_list",
+            "checkbox_list",
+            "complete",
+            "core",
+            "goto_autocomplete_item",
+            "molecule",
+            "name_complete",
+            "name_match",
+            "no_search_results",
+            "results_for_keyword",
+            "search_box",
+            "search_box_complete",
+            "search_count",
+            "search_error",
+            "select2_option",
+            "title"
+          ],
+          "rss": [
+            "bar",
+            "core",
+            "feed_body",
+            "feed_item_description",
+            "one_line_content",
+            "title"
+          ],
+          "data": [
+            "body",
+            "card_list",
+            "checkbox_list",
+            "molecule",
+            "name_complete",
+            "name_match",
+            "no_search_results",
+            "search_count",
+            "search_error"
+          ],
+          "csv": [
+            "body",
+            "card_list",
+            "checkbox_list",
+            "molecule",
+            "name_complete",
+            "name_match",
+            "no_search_results",
+            "search_count",
+            "search_error"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "CodeContent",
+          "CqlSearch",
+          "Items",
+          "Paging",
+          "Search",
+          "SearchViews",
+          "Type::Json",
+          "VirtualSearch"
+        ],
+        "cardioConfigKeys": [
+          "paging_limit",
+          "search_box_match_start_only"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-session-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "no html view declarations in this mod",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "type"
+          ],
+          "patternsImplemented": [
+            "all",
+            "type"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 2,
+          "libRbFiles": 1,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-session-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-session-0.20.0",
+        "counts": {
+          "setRbFiles": 2,
+          "libRbFiles": 1,
+          "hamlFiles": 0,
+          "setModules": 2,
+          "viewsDeclared": 0,
+          "defs": 12,
+          "eventHooks": 4,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 1,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 1,
+          "type": 1
+        },
+        "viewsByFormat": {
+          "html": []
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "discard_deleted_locations",
+            "file": "set/all/location_history.rb"
+          },
+          {
+            "event": "save_current_location",
+            "file": "set/all/location_history.rb"
+          },
+          {
+            "event": "store_in_session",
+            "file": "set/type/session.rb"
+          },
+          {
+            "event": "delete_in_session",
+            "file": "set/type/session.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "Pointer"
+        ],
+        "cardioConfigKeys": [
+          "allow_anonymous_cookies"
+        ]
+      }
+    },
+    {
+      "gem": "card-mod-style-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=box, box_bottom, box_middle, compiled, compressed, customize_button, ...",
+        "evidence": "1/13 html views in HTML_VIEWS (0/12 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 13,
+          "htmlViewsCovered": 1,
+          "htmlViewsMissing": 12,
+          "htmlViewsMissingNames": [
+            "box",
+            "box_bottom",
+            "box_middle",
+            "compiled",
+            "compressed",
+            "customize_button",
+            "import",
+            "labeled",
+            "remote_include_tags",
+            "remote_style_tags",
+            "stylesheet_include_tag",
+            "stylesheet_path"
+          ],
+          "specificViewsDeclared": 12,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsImplemented": [
+            "all",
+            "self",
+            "type",
+            "type_plus_right"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 7.7,
+          "setModules": 16,
+          "libRbFiles": 0,
+          "hamlFiles": 2
+        }
+      },
+      "inv": {
+        "gem": "card-mod-style-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-style-0.20.0",
+        "counts": {
+          "setRbFiles": 16,
+          "libRbFiles": 0,
+          "hamlFiles": 2,
+          "setModules": 16,
+          "viewsDeclared": 23,
+          "defs": 30,
+          "eventHooks": 3,
+          "beforeHooks": 0,
+          "includeSetRefs": 13,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 7,
+          "self": 2,
+          "type": 5,
+          "type_plus_right": 2
+        },
+        "viewsByFormat": {
+          "html": [
+            "box",
+            "box_bottom",
+            "box_middle",
+            "compiled",
+            "compressed",
+            "core",
+            "customize_button",
+            "import",
+            "labeled",
+            "remote_include_tags",
+            "remote_style_tags",
+            "stylesheet_include_tag",
+            "stylesheet_path"
+          ],
+          "css": [
+            "compiled",
+            "compressed",
+            "concat",
+            "core",
+            "import",
+            "labeled"
+          ],
+          "scss": [
+            "compiled",
+            "core",
+            "labeled",
+            "stylesheet_include_tag"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "validate_css",
+            "file": "set/type/css.rb"
+          },
+          {
+            "event": "validate_scss_syntax",
+            "file": "set/type/scss.rb"
+          },
+          {
+            "event": "no_deletion_if_used",
+            "file": "set/type/skin.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "AssetFile",
+          "AssetGroup",
+          "AssetInputter",
+          "AssetOutputter",
+          "AssetStyle",
+          "Css",
+          "FolderGroup",
+          "List",
+          "LocalManifestGroup",
+          "ModAssets",
+          "Scss",
+          "SkinBox",
+          "StyleGroup"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-tabs-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=pills, pills_static, tabs, tabs_static",
+        "evidence": "0/4 html views in HTML_VIEWS (0/4 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 4,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 4,
+          "htmlViewsMissingNames": [
+            "pills",
+            "pills_static",
+            "tabs",
+            "tabs_static"
+          ],
+          "specificViewsDeclared": 4,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "all"
+          ],
+          "patternsImplemented": [
+            "all",
+            "all"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 2,
+          "libRbFiles": 2,
+          "hamlFiles": 2
+        }
+      },
+      "inv": {
+        "gem": "card-mod-tabs-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-tabs-0.20.0",
+        "counts": {
+          "setRbFiles": 2,
+          "libRbFiles": 2,
+          "hamlFiles": 2,
+          "setModules": 2,
+          "viewsDeclared": 4,
+          "defs": 32,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 1,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1,
+          "all": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "pills",
+            "pills_static",
+            "tabs",
+            "tabs_static"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [
+          "BsBadge"
+        ],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, ...",
+        "evidence": "0/11 html views in HTML_VIEWS (0/11 mod-specific)",
+        "metrics": {
+          "htmlViewsDeclared": 11,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 11,
+          "htmlViewsMissingNames": [
+            "change_create_to_update",
+            "link_editor",
+            "modal_link_editor",
+            "modal_nest_editor",
+            "modal_nest_image",
+            "nest_content",
+            "nest_editor",
+            "nest_image",
+            "new_image",
+            "new_image_buttons",
+            "open_nest_editor"
+          ],
+          "specificViewsDeclared": 11,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all",
+            "self"
+          ],
+          "patternsImplemented": [
+            "all",
+            "self"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 4,
+          "libRbFiles": 1,
+          "hamlFiles": 10
+        }
+      },
+      "inv": {
+        "gem": "card-mod-tinymce_editor-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-tinymce_editor-0.20.0",
+        "counts": {
+          "setRbFiles": 9,
+          "libRbFiles": 1,
+          "hamlFiles": 10,
+          "setModules": 4,
+          "viewsDeclared": 17,
+          "defs": 67,
+          "eventHooks": 0,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "all": 3,
+          "self": 1
+        },
+        "viewsByFormat": {
+          "html": [
+            "change_create_to_update",
+            "link_editor",
+            "modal_link_editor",
+            "modal_nest_editor",
+            "modal_nest_image",
+            "nest_content",
+            "nest_editor",
+            "nest_image",
+            "new_image",
+            "new_image_buttons",
+            "open_nest_editor"
+          ],
+          "js": [
+            "change_create_to_update",
+            "modal_nest_image",
+            "nest_image",
+            "new_image",
+            "new_image_buttons",
+            "open_nest_editor"
+          ]
+        },
+        "aliasPairs": [],
+        "eventHooks": [],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    },
+    {
+      "gem": "card-mod-virtual-0.20.0",
+      "version": "0.20.0",
+      "classification": {
+        "status": "partial",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
+        "evidence": "no html view declarations in this mod",
+        "metrics": {
+          "htmlViewsDeclared": 0,
+          "htmlViewsCovered": 0,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
+          "specificViewsDeclared": 0,
+          "specificViewsCovered": 0,
+          "specificViewsCoverage": 0,
+          "patternsUsed": [
+            "all"
+          ],
+          "patternsImplemented": [
+            "all"
+          ],
+          "patternsCoverage": 100,
+          "viewsCoverage": 0,
+          "setModules": 1,
+          "libRbFiles": 1,
+          "hamlFiles": 0
+        }
+      },
+      "inv": {
+        "gem": "card-mod-virtual-0.20.0",
+        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-virtual-0.20.0",
+        "counts": {
+          "setRbFiles": 1,
+          "libRbFiles": 1,
+          "hamlFiles": 0,
+          "setModules": 1,
+          "viewsDeclared": 0,
+          "defs": 21,
+          "eventHooks": 2,
+          "beforeHooks": 0,
+          "includeSetRefs": 0,
+          "cardioConfigKeys": 0,
+          "viewAliases": 0
+        },
+        "setModulesByPattern": {
+          "abstract": 1
+        },
+        "viewsByFormat": {},
+        "aliasPairs": [],
+        "eventHooks": [
+          {
+            "event": "save_virtual_content",
+            "file": "set/abstract/virtual_cache.rb"
+          },
+          {
+            "event": "delete_virtual_content",
+            "file": "set/abstract/virtual_cache.rb"
+          }
+        ],
+        "beforeHooks": [],
+        "includeSetRefs": [],
+        "cardioConfigKeys": []
+      }
+    }
+  ]
+}
