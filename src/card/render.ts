@@ -491,6 +491,26 @@ export class RenderEngine implements RenderEngineLike {
     return this.renderCards.get(key);
   }
 
+  /** On-demand enrichment for items referenced by plain text (not via
+   *  {{...}}) — the pointer/list core view reads item names from
+   *  db_content and renders each one as a nested slot. The closure walk
+   *  the prefetch uses does NOT chase plain-text references (only
+   *  nest-syntax references), so an item name not reachable from the
+   *  closure is absent from renderCards when the pointer view fires
+   *  fetchRenderCard. This hook fetches + enriches + memoizes the card
+   *  so the next fetchRenderCard call sees it. Returns undefined for a
+   *  fetch miss (the caller falls back to an empty slot). */
+  async prepareItemForRender(name: string): Promise<RenderCard | undefined> {
+    const cached = this.fetchRenderCard(name);
+    if (cached !== undefined) return cached;
+    const record = await this.fetcher.fetchByName(name);
+    if (record === undefined || record.name === undefined) {
+      this.reportUnknownCard?.(name);
+      return undefined;
+    }
+    return this.enrichAndStore(record);
+  }
+
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
    *  membership, precomputed in the prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean {
