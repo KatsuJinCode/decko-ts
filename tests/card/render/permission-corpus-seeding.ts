@@ -52,8 +52,19 @@ const CORPUS_ROW_COLUMNS =
   `read_rule_id, read_rule_class`;
 
 export async function createPermissionSeededStorage(): Promise<RenderTestStorage> {
+  return createCorpusSeededStorage(new Set(readShardLines().map((l) => l.id)));
+}
+
+/**
+ * The permission seeding for an ARBITRARY id set — the corpus replay
+ * driver's entry point (it seeds the union of every shard's ids so
+ * cross-shard nest targets resolve). Same enrichment as the single-shard
+ * path: the rows' stored read_rule_id / read_rule_class columns, the full
+ * read-rule universe, the rules' card_references party grants, the
+ * permission codename cards, and the transitive side/type closure.
+ */
+export async function createCorpusSeededStorage(ids: Set<number>): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
-  const lines: ShardLine[] = readShardLines();
   const corpus = new Database(CORPUS_DB, { readonly: true });
 
   const readId = (
