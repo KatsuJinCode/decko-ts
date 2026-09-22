@@ -130,6 +130,11 @@ if (existsSync(opts.out) && !opts.append) {
   process.exit(1);
 }
 
+// Ensure the output directory exists before opening the SQLite file;
+// better-sqlite3 refuses to create the file if the parent is missing.
+const outDir = path.dirname(path.resolve(opts.out));
+if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+
 const reportPath = opts.report ?? `${opts.out}.migrate-report.json`;
 const roundtripPath = opts.roundtrip ?? `${opts.out}.roundtrip.md`;
 
