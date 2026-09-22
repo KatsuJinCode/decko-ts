@@ -49,22 +49,15 @@ class Card
         # card is already cached). Called from Card::Format::Render#render!
         # (patched in render.rb). Returns the row count for telemetry.
         #
-        # PROTOTYPE NOTE (2026-09-21): the recursive CTE in walk_closure_rows
-        # below is the design target (single statement, ANY depth). It works
-        # in the TS port because nest-syntax.ts is the semantic authority for
-        # the boundary-under score key algorithm; the SQL extraction is a
-        # best-effort prescan. In this Ruby port we don't have an equivalent
-        # best-effort key transform in SQL (the letter/digit boundary
-        # underscore insert is decko-specific and not a SQL primitive), so
-        # the prototype uses a Ruby-side recursive bulk-SELECT walk
-        # (walk_via_bulk_select below) that uses the real Card::Content
-        # parser to extract refs and Card::Name[name].key to compute keys.
-        # One SELECT per level until closure -- still O(depth) round trips,
-        # each indexable, vs the depth-first O(depth) per-inclusion fetches
-        # the patch replaces. The design doc
-        # (docs/ruby-dividend-cte.md) describes the single-statement
-        # target; the prototype demonstrates the cache-warming contract
-        # that target will satisfy when ported.
+        # PROTOTYPE NOTE (2026-09-21): the recursive CTE in walk_closure
+        # below walks card_references (the inclusion edges) directly. This
+        # is the ONE-statement design target from the TS port: the entire
+        # {{...}} closure reaches the cache in one round trip regardless of
+        # depth. The CTE is index-friendly (referer_id + ref_type='I'
+        # narrows to inclusion edges) and relies on the fact that
+        # Card.create! populates card_references as part of the act
+        # machinery (verified: card_references INSERT follows
+        # card_actions/card_acts on every Card.create!).
         def prefetch_inclusion_closure root_card, _view
           return 0 unless root_card&.key
 
@@ -72,12 +65,7 @@ class Card
           # calls come from Nesting#nest -> subformat.render -> render!;
           # the cache is already warm from the top-level prefetch, so
           # subsequent prefetches are wasted DB round trips.
-          #
-          # The counter is incremented on entry and decremented on exit so
-          # it spans the entire nested render tree (matches the TS port's
-          # "run the prefetch once per top-level render" contract).
-          # render! is patched to manage the depth counter across its full
-          # lifetime; this method just checks it.
+          # See the perf doc note for the why.
           STDOUT.puts "  [prefetch] enter depth=#{prefetch_depth} root=#{root_card.key}" if ENV["PREFETCH_DEBUG"]
           if prefetch_depth >= 1
             STDOUT.puts "  [prefetch] SKIP (depth>=#{prefetch_depth})" if ENV["PREFETCH_DEBUG"]
@@ -86,10 +74,10 @@ class Card
 
           stats = { rows: 0, statements: 0, fallback_rounds: 0 }
 
-          # --- 1) Ruby-side closure walk, one SELECT per level -----------
-          rows = walk_via_bulk_select(root_card.key, stats)
+          # --- 1) the recursive-CTE closure walk, ONE statement ---------
+          rows = walk_closure_cte(root_card.key, stats)
           if ENV["PREFETCH_DEBUG"]
-            puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
+            puts "  [prefetch] walk_closure_cte: #{rows.size} rows, " \
                  "#{stats[:statements]} statements"
           end
 
