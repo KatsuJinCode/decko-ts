@@ -190,6 +190,17 @@ export class RenderEngine implements RenderEngineLike {
     const structureCold = this.structureContents === undefined;
     const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
+    // The codename registry's peekNameForId is synchronous (the codehash
+    // gets folded into the prefetch batch below) but the prefetch's
+    // cacheFetchedRecord callback already calls enrichAndStore BEFORE
+    // parseRuleTypeIds runs, so the peek would see an empty codehash
+    // during the prefetch walk. Preload the codehash here, in its own
+    // single round trip on a cold render — the prefetch batch below
+    // still folds the result (foldCodehashResults is idempotent), and
+    // the synchronous peek inside enrichAndStore now sees the
+    // populated i2c map. Costs ONE extra round trip on the first
+    // cold render only; warm renders skip it (ruleTypeIds is memoized).
+    if (ruleTypesCold) await this.fetcher.codenames.ensureLoaded();
     if (!this.closureWarm(record)) {
       const coldStatements = [
         ...permissionStatements,
