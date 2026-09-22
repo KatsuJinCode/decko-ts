@@ -73,7 +73,7 @@ export interface FollowNotice {
  *  contains `{{slot_name|something}}` (the inclusion syntax mod-follow's
  *  notification views emit), this function leaves it untouched — the
  *  template chose to skip the substitution. */
-function interpolateTemplate(
+export function interpolateTemplate(
   template: string,
   vars: Readonly<Record<string, string>>,
 ): string {
