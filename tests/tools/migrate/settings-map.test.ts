@@ -53,7 +53,7 @@ describe("isSettingsTable", () => {
 describe("inventorySettings", () => {
   it("inventories settings tables, samples key names, never copies values", () => {
     const path = makeDbWithSettings();
-    const db = Database(path, { readonly: true });
+    const db = new Database(path, { readonly: true });
     try {
       const inv = inventorySource(db);
       const settings = inventorySettings(db, inv);
@@ -88,7 +88,7 @@ describe("inventorySettings", () => {
     db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)`);
     db.exec(`INSERT INTO cards (id, name) VALUES (1, 'only-cards')`);
     db.close();
-    const src = Database(path, { readonly: true });
+    const src = new Database(path, { readonly: true });
     try {
       const inv = inventorySource(src);
       const settings = inventorySettings(src, inv);

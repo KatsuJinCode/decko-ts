@@ -25,6 +25,8 @@
 //                     heading shift)
 // - :menu             card-mod-format set/all/html/menu.rb (help popover via
 //                     bootstrap helper.rb#popover_opts, edit_link, board_link)
+//                     + help-popover.ts (the help-rule resolution the
+//                     data-bs-content value needs)
 // - :core/:card_list  card-mod-search-0.20.0 set/abstract/search_views.rb
 //                     (search_result_view -> :card_list) + 0_search/views.rb
 //                     (html card_list item wrapping) + card-mod-collection
@@ -106,12 +108,20 @@ function helpTitle(ctx: ViewContext): string {
 
 /** menu.rb view :menu (denial/unknown branches deferred - known cards only
  *  in the captured deck). menu_link_classes: "nodblclick" + " _show-on-hover"
- *  (show_view?(:hover_link) default show). */
+ *  (show_view?(:hover_link) default show).
+ *
+ *  The data-bs-content value comes from the format's helpRules resolver
+ *  (help-popover.ts - the full help.rb/popover_opts chain); without an
+ *  installed resolver (and for Ruby-blank help text) it is the "&nbsp;"
+ *  placeholder helper.rb:48 substitutes - escaped to &amp;nbsp; by the
+ *  attribute emitter, the byte shape the corpus pins for help-less cards. */
 const menuView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const url = fmt.urlKey();
+  const rawHelp = fmt.menuHelpContentBytes();
+  const helpContent = /^\s*$/.test(rawHelp) ? "&nbsp;" : rawHelp;
   const help =
-    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="&amp;nbsp;"` +
+    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="${h(helpContent)}"` +
     ` data-bs-placement="left" class="help-link ps-1 _popover_link _card-menu-popover"` +
     ` data-bs-title="${h(helpTitle(ctx))}" href="#">${icon("help")}</a>`;
   const edit =
@@ -170,6 +180,29 @@ const cardListView: ViewFn = (ctx) => {
 };
 
 const noSearchResultsView: ViewFn = () => `<div class="search-no-results"></div>`;
+
+// ---------------------------------------------------------------------------
+// :link (card-mod-format set/all/base.rb) - the [[...]] link-chunk target
+// ---------------------------------------------------------------------------
+
+/** base.rb:35-37 view :link + :39-43 link_view: `opts[:known] =
+ *  card.known?; link_to_card card.name, _render_title, opts`. The anchor
+ *  class is known-card / wanted-card (links.rb add_known_or_wanted_class),
+ *  the text is the :title view. A link-chunk LABEL overrides the title view
+ *  through the nest's title option (link.rb:31-33 options title:
+ *  link_text) - that label path inlines the title bytes here because the
+ *  shared :title view does not read voo.title yet (wave-3); the no-label
+ *  path renders the real :title view, which is the whole corpus surface. */
+const linkView: ViewFn = ({ fmt, voo }) => {
+  const known = fmt.card.unknown !== true;
+  const cls = known ? "known-card" : "wanted-card";
+  const label = typeof voo.opts["title"] === "string" ? (voo.opts["title"] as string) : undefined;
+  const inner =
+    label !== undefined
+      ? `<span class="card-title" title="${h(label)}">${h(label)}</span>`
+      : fmt.renderView("title");
+  return `<a class="${cls}" href="/${h(fmt.urlKey())}">${inner}</a>`;
+};
 
 // ---------------------------------------------------------------------------
 // :open / :closed (bar.rb) + accordion (bootstrap)
@@ -408,6 +441,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   titled: titledView,
   titled_content: titledContentView,
   menu: menuView,
+  link: linkView,
   bar: itemBarView,
   mini_bar: miniBarView,
   bar_left: barLeftView,

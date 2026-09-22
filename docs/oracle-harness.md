@@ -162,7 +162,7 @@ because a patched oracle would fabricate behavior the production engine
    require "cardname"; require "core_ext"` (the gem never requires its
    own `lib/core_ext.rb`; `Object#to_name` lives there), then
    `"A+B".to_name` -> key/left/right/absolute/compound?/piece_names/
-   tag_name/trunk_name. The gem lacks card-level aliases (`junction?`,
+   trunk_name. The gem lacks card-level aliases (`junction?`,
    `trait_name?` are card-gem extensions).
 2. **Fresh decko app: YES.** `decko new decko-oracle-app -d sqlite3`
    scaffolded cleanly; needed the two Gemfile patches above and
@@ -173,3 +173,117 @@ because a patched oracle would fabricate behavior the production engine
    rendering via `quirks_mode`; slot-id randomization needed recording
    -layer normalization. Final state: byte-stable.
 4. **CQL battery: YES.** 11 recorded queries, byte-stable.
+5. **MySQL rung (match capture): YES** (2026-09-21). See the next section.
+
+## MySQL rung: CQL `match` capture (2026-09-21)
+
+Closes the `match` gap left open above: this rung runs the SAME oracle
+app against a MySQL-protocol server, where card 1.110's CQL `match`
+actually executes (`ConnectionAdapters#match` -> `REGEXP`; the abstract
+raise is all SQLite can record). The parity analysis this capture feeds
+lives in `docs/cql-match-decision.md`; the TS replay is
+`tests/cql/oracle-match-replay.test.ts`.
+
+### Server: portable MariaDB, no install
+
+Machine recon found no Docker, no MySQL/MariaDB install or service, and
+one WSL distro (the Handler app environment - left untouched). What the
+recon DID find: the `mysql2` gem's build had been attempted before and
+failed (`extconf failed, exit code 1` - no client headers/libs), and the
+network reachable. Provisioning therefore used the portable MariaDB
+Windows zip, run entirely in userspace:
+
+- `tools/oracle/downloads/mariadb-11.4.5-winx64.zip` (90.8 MB,
+  archive.mariadb.org; extracted to
+  `tools/oracle/portable-mariadb/mariadb-11.4.5-winx64/` - server, client,
+  AND the client dev files the gem build needs).
+- `tools/oracle/mysql-server/my.ini` - loopback-only (127.0.0.1:33061),
+  dedicated datadir `tools/oracle/mysql-server/data`, charset
+  utf8mb4 / collation utf8mb4_general_ci (the collation is load-bearing
+  for match case semantics and is recorded in the fixture). Nothing is
+  installed as a Windows service; deleting the two directories removes
+  every trace.
+- Init: `mariadb-install-db.exe -d <datadir> -c <my.ini>` (the Windows
+  binary takes neither `--defaults-file` nor `--basedir`; use `-d`/`-c`).
+- Boot: `bin/mariadbd.exe --defaults-file=<my.ini> --standalone`, or
+  `bash tools/oracle/boot-mysql-server.sh` (waits for readiness).
+- DB `decko_oracle` created manually (`CREATE DATABASE ... CHARACTER SET
+  utf8mb4 COLLATE utf8mb4_general_ci`); `decko setup` ran the schema +
+  core-card seed into it (604 cards, same count as the SQLite rung).
+
+### The mysql2 gem fight (all steps required, in order)
+
+1. The gem's Windows build path has TWO branches
+   (`ext/mysql2/extconf.rb:246+`): the dlltool/libmysql.a vendoring branch
+   is skipped on RubyInstaller Rubies (`defined?(RubyInstaller)` - true
+   here), so the link happens via plain `have_library('mysqlclient')`
+   (`:115`): the lib dir must contain a `mysqlclient.lib`.
+2. `tools/oracle/mysql-client-scratch/` provides the layout extconf
+   wants: `include/` = the zip's `include/mysql/` contents (mysql.h at
+   top), `lib/mysqlclient.lib` = copy of `libmariadb.lib`, plus
+   `libmariadb.dll`.
+3. Build: `gem install --local <cache>/mysql2-0.5.7.gem --no-document --
+   --with-mysql-dir=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch`.
+   The resulting import lib binds to `libmariadb.dll` (MariaDB's own dll
+   name, not MySQL's). Noise from a RubyInstaller pacman keyring hook
+   during the build is non-blocking.
+4. The .so only finds `libmariadb.dll` when `RUBY_DLL_PATH` points at the
+   client lib dir (RubyInstaller's DLL search mechanism; vendoring next
+   to the .so and PATH entries both failed). EVERY mysql2-rung command
+   therefore needs
+   `RUBY_DLL_PATH=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch/lib`.
+5. The app Gemfile carries `gem "mysql2", "~> 0.5.7", require: false`.
+   The `require: false` is NOT optional: bundler's auto-require otherwise
+   loads mysql2 on EVERY boot and the default SQLite rung dies with
+   `LoadError: 126` (its dll needs RUBY_DLL_PATH). Rails' mysql2 adapter
+   requires the gem itself when selected.
+
+### Adapter switching
+
+`config/database.yml` is now an ERB switch: default = the original SQLite
+rung, byte-identical contract; `ORACLE_DB=mysql2` selects the mysql2
+adapter at 127.0.0.1:33061 (db decko_oracle; `_test`/`_production` names
+exist only because `decko setup` runs `db:create` for every environment).
+The `decko setup` flow for MySQL needed development/Test/production all
+mysql2-valid (its first attempt aborted creating `db/test.sqlite3` with a
+sqlite filename under the mysql2 adapter).
+
+### Capture
+
+`tools/oracle/cql_match_capture.rb` (run header has the exact command):
+seeds ten self-contained probe cards (all carry the unique token
+"Matchprobe"; create-if-missing, content-converging) and records to
+`fixtures/captured/cql-mysql-match.json`:
+
+- `mechanism` - server version, adapter, collations, the applied
+  `#match` method's source location (runtime proof of which patch module
+  fired), the adapter's match output, and the generated SQL shape
+  (`(c0.name REGEXP ... OR c0.db_content REGEXP ...)`).
+- `queries` - 30 entries: plain words, case (both directions), escaped
+  metacharacters, `~~` raw regex (wildcards, `\b`, classes, POSIX classes,
+  backreferences, `\p{Han}`, `[[:<:]]`), `=` exact-name (incl. case
+  variant), field-restricted `name:`/`content:` match, array values,
+  empty-match no-op, compound-row NULL-name invisibility, accented/CJK
+  matching, accent sensitivity. Every query pins `sort: "name"`.
+- `rendered_match_search` - a Search card whose query IS a match query,
+  rendered (`open`/`content`/`bar`), with `data-slot-id` AND
+  `data-card-id` normalized (card ids are DB-local: the MySQL ids differ
+  from the SQLite rung's).
+
+Byte-stability verified 2026-09-21: three consecutive captures produced
+identical sha256 (`d5780dc5...` for runs 2 and 3; run 1 differed because
+first-creation state converges - the create-then-capture contract from
+the SQLite rung applies here too).
+
+### Concurrency warning for the SHARED SQLite deck (2026-09-21 incident)
+
+The SQLite rung's deck (`db/development.sqlite3`) is shared state, and on
+2026-09-21 another fleet stream was actively mutating it (probe cards
+`TstR*_root`, read-rule/account state mid-experiment). A `cql_capture.rb`
+re-run during that window recorded all-empty result sets and overwrote
+`fixtures/captured/cql-basic.json`; the file was restored byte-identical
+to its committed sha (3463b60e...) and `smoke.json` was never touched.
+Rule of thumb: SQLite-rung captures are only trustworthy when no other
+stream is mutating the shared deck (check for recent non-seed cards first);
+the MySQL rung is immune - its server, datadir and database are private
+to this rung.

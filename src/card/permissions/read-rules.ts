@@ -29,7 +29,9 @@
 // codenames + the ReadRuleCache join) issued as ONE driver.batch — folded
 // into the render prefetch's existing batch by the engine
 // (src/card/render.ts), so a cold render stays ONE round trip and warm
-// renders issue zero permission queries.
+// renders issue zero permission queries. A signed-in viewer appends ONE
+// more statement to the SAME batch (its role parties, see ReadViewer) —
+// still one round trip, never per-render.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
@@ -51,6 +53,48 @@ const ANYONE_CODENAME = "anyone";
 const ANYONE_SIGNED_IN_CODENAME = "anyone_signed_in";
 /** Codename of the signed-out actor card. */
 const ANONYMOUS_CODENAME = "anonymous";
+/** Codename of the Administrator role card — its members get Ruby's
+ *  always_ok? short-circuit (auth/permissions.rb:8-13 -> :52-60 cached
+ *  `admin?`; account_holder.rb:63-65 `admin?` = `role? AdministratorID`).
+ *  Codename registered in card-mod-account data/real.yml:30-32. */
+const ADMINISTRATOR_CODENAME = "administrator";
+/** Codename of the administrator bot (Auth always_ok? `when DeckoBotID
+ *  then true`, auth/permissions.rb:9 — "cannot disable"). */
+const DECKOBOT_CODENAME = "deckobot";
+/** Codename of the *members setting — the joint name Ruby's rolehash hangs
+ *  off (Self::Role.generate_rolehash searches `left: {type_id: RoleID},
+ *  right_id: MembersID`, card-mod-account set/self/role.rb:33-40). */
+const MEMBERS_CODENAME = "members";
+/** Codename of the Role CARDTYPE card — Card::RoleID (the type filter of
+ *  the same search; role cards are cards whose type IS this card). */
+const ROLE_CODENAME = "role";
+
+/**
+ * The viewer whose permission verdicts an engine computes — the port of
+ * `Auth.as_card` as the read check sees it (set/all/permissions.rb:142:
+ * `Auth.as_card.read_rules_hash[read_rule_id]`).
+ *
+ * Anonymous is the default: `{ signedIn: false }` (with actorId left
+ * undefined the caller supplies it — resolveAnonymousReadPermission /
+ * anonymousIdFromResults). A signed-in viewer carries the account card id
+ * the session resolved to; its role parties are derived from storage in
+ * the SAME batch (rolePartyStatement below — the port of fetch_roles,
+ * account_holder.rb:111-113: [AnyoneSignedInID] + the member lists of the
+ * role cards the actor sits in).
+ */
+export interface ReadViewer {
+  /** True when a live session resolved to an account card (Ruby:
+   *  Auth.current_id != AnonymousID). */
+  readonly signedIn: boolean;
+  /** The account card id (Ruby: Auth.as_card.id). Undefined for the pure
+   *  signed-out viewer. */
+  readonly actorId?: number;
+}
+
+/** The signed-out corpus viewer — what every engine computed before the
+ *  actor wave, and what an unresolved/expired token degrades to
+ *  (auth/current.rb:58-63). */
+export const ANONYMOUS_VIEWER: ReadViewer = { signedIn: false };
 
 /** The resolved permission state: the read rule ids the viewer may read
  *  through (Ruby: Auth.as_card.read_rules_hash), whether the deck carries
@@ -59,6 +103,13 @@ const ANONYMOUS_CODENAME = "anonymous";
 export interface ReadPermissionState {
   /** read_rules_hash keys (account_holder.rb:51-53). */
   readonly readableRuleIds: Set<number>;
+  /** Ruby's Auth.always_ok? short-circuit (auth/permissions.rb:8-13): true
+   *  for the DeckoBot actor (`when DeckoBotID then true` — "cannot
+   *  disable") or an Administrator-role member (cached `admin?`,
+   *  :52-60; account_holder.rb:63-65). Overrides every read verdict —
+   *  ok_to_read? returns before the read_rules_hash lookup
+   *  (set/all/permissions.rb:140). */
+  readonly alwaysOk: boolean;
   /** False when the deck has NO live read rule cards: Ruby decks bootstrap
    *  *all+*read, so this only occurs in synthetic/rule-less seeds; there
    *  the stored-id fallback is skipped (no rule can resolve anyway) and
@@ -79,22 +130,32 @@ interface PartyRuleRow {
 }
 
 /**
- * The two statements, ready for a driver.batch fold.
+ * The permission statements, ready for a driver.batch fold.
  *
  * Statement 1 (parties): the codename cards the party math needs — the
  * port of the boot-time AnonymousID/AnyoneID constants
- * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`).
+ * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`),
+ * plus the two codenames the signed-in path compares against
+ * (administrator: the always_ok? role; deckobot: the always_ok? actor).
  *
  * Statement 2 (the cache): read_rule_cache.rb's SQL verbatim, with ReadID
  * and SetID as scalar subqueries on the codename cards so the statement is
  * self-contained (a batch cannot reference a sibling's results).
+ *
+ * Statement 3 (the gate): hasReadRules / hasCatchAllReadRule counters.
+ *
+ * Statement 4 (signed-in viewers only): the actor's role parties —
+ * appended LAST so the Anonymous batch stays exactly the historical three
+ * statements (zero diff for the default viewer). One batch total either
+ * way: folding in the actor's roles costs no extra round trip.
  */
-export function readPermissionStatements(): SQLStatement[] {
-  return [
+export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
+  const statements: SQLStatement[] = [
     {
       sql:
         `SELECT id, codename FROM cards WHERE codename IN ` +
-        `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}') ` +
+        `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}', ` +
+        `'${ADMINISTRATOR_CODENAME}', '${DECKOBOT_CODENAME}') ` +
         `AND trash = 0`,
       params: [],
     },
@@ -131,32 +192,125 @@ export function readPermissionStatements(): SQLStatement[] {
       params: [],
     },
   ];
+  if (viewer !== undefined && viewer.signedIn && viewer.actorId !== undefined) {
+    statements.push(rolePartyStatement(viewer.actorId));
+  }
+  return statements;
+}
+
+/**
+ * The signed-in actor's role parties — the SQL form of the port's
+ * fetch_roles tail (account_holder.rb:107-113):
+ *
+ * 1. `role_ids_from_role_member_cards` -> `Self::Role.role_ids(user_id)`
+ *    (card-mod-account set/self/role.rb:8-14): every role card whose
+ *    `+*members` list includes the user.
+ * 2. The rolehash those lists feed (`generate_rolehash`, set/self/role.rb:
+ *    33-40) is built from cards with `left: {type_id: RoleID},
+ *    right_id: MembersID`; this statement reads the same rows.
+ * 3. The member ids come from card_references because that is where the
+ *    list layer itself puts them: an IdList maintains one reference row
+ *    per item (ref_type "L", referee_key NULL) at save time
+ *    (card-mod-list set/abstract/id_list.rb:33-47 create_references_out).
+ *    The corpus deck proves the shape: every `<Role>+*members` row's
+ *    reference set matches its content item count exactly, and the
+ *    anonymized corpus rewrote the CONTENT while the id references
+ *    survived — references are the durable id truth.
+ *
+ * Parameterized by the actor id; rides the SAME batch as the base
+ * statements (see readPermissionStatements). ORDER BY is a port-side
+ * normalization for deterministic diagnostics — Ruby's rolehash iteration
+ * order is not contractual (the union is order-insensitive:
+ * account_holder.rb:51-53 hashes it away).
+ */
+function rolePartyStatement(actorId: number): SQLStatement {
+  return {
+    sql:
+      `SELECT lists.left_id AS roleId ` +
+      `FROM card_references refs ` +
+      `JOIN cards lists ON lists.id = refs.referer_id ` +
+      `JOIN cards roles ON roles.id = lists.left_id ` +
+      `WHERE refs.referee_id = ? AND refs.referee_id IS NOT NULL ` +
+      `AND lists.right_id = ` +
+      `  (SELECT id FROM cards WHERE codename = '${MEMBERS_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+      `AND lists.trash = 0 AND roles.trash = 0 ` +
+      `AND roles.type_id = ` +
+      `  (SELECT id FROM cards WHERE codename = '${ROLE_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+      `ORDER BY lists.left_id`,
+    params: [actorId],
+  };
 }
 
 /** Parse the batch results (statements in readPermissionStatements order)
- *  for one actor's parties into the permission state. */
+ *  for one actor's parties into the permission state. Legacy entry point —
+ *  the Anonymous corpus path passes
+ *  (results, anonymousIdFromResults(results), false). */
 export function readPermissionStateFromResults(
   results: SQLQueryResult[],
   actorId: number | undefined,
   signedIn: boolean,
 ): ReadPermissionState {
+  return readPermissionStateFromViewerResults(results, { signedIn, actorId });
+}
+
+/**
+ * Parse the batch results for ONE viewer into the permission state — the
+ * port of account_holder.rb's read_rules_hash construction:
+ *
+ * - parties (:27-29 `all_enabled_roles << id`): for a signed-in actor
+ *   [AnyoneSignedIn, ...roleMemberRoles, selfId] (fetch_roles :111-113
+ *   puts AnyoneSignedIn first; the role ids are statement 4's rows).
+ *   Anonymous joins no roles (:39-41 all_enabled_roles is [] when id ==
+ *   AnonymousID), so its parties are [Anyone, AnonymousID].
+ * - fetch_read_rules (:115-123): the union of
+ *   `Card::Rule.read_rule_cache[party]` over `[AnyoneID] + parties`
+ *   (DeckoBot returns [] there — always_ok short-circuits first, :116).
+ * - alwaysOk: the port of ok_to_read?'s opening short-circuit
+ *   (set/all/permissions.rb:140 `return true if Auth.always_ok?`) — true
+ *   when the actor IS DeckoBot (auth/permissions.rb:9) or holds the
+ *   Administrator role (auth/permissions.rb:52-60 cached `admin?` =
+ *   account_holder.rb:63-65 `all_enabled_roles.include? AdministratorID`).
+ */
+export function readPermissionStateFromViewerResults(
+  results: SQLQueryResult[],
+  viewer: ReadViewer,
+): ReadPermissionState {
   const codenameRows = (results[0]?.rows ?? []) as Array<{ id: number; codename: string | null }>;
   const cacheRows = (results[1]?.rows ?? []) as Array<PartyRuleRow>;
   const ruleCount = (results[2]?.rows ?? []) as Array<{ c: number; catchAll: number }>;
+  const actorId = viewer.actorId;
+  const signedIn = viewer.signedIn === true && actorId !== undefined;
+  // Statement 4 exists only when readPermissionStatements got a signed-in
+  // viewer (the two functions' guards are the same predicate on purpose).
+  const roleRows = signedIn
+    ? ((results[3]?.rows ?? []) as Array<{ roleId: number }>)
+    : [];
 
   const byCodename = new Map<string, number>();
   for (const row of codenameRows) {
     if (row.codename !== null) byCodename.set(row.codename, row.id);
   }
   const anyone = byCodename.get(ANYONE_CODENAME);
-  const parties: number[] = anyone !== undefined ? [anyone] : [];
-  if (signedIn) {
-    // account_holder.rb:111-113 fetch_roles puts AnyoneSignedIn first; the
-    // deck-role walk (role member cards) is the non-anonymous remainder.
-    const anyoneSignedIn = byCodename.get(ANYONE_SIGNED_IN_CODENAME);
-    if (anyoneSignedIn !== undefined) parties.push(anyoneSignedIn);
+  const anyoneSignedIn = byCodename.get(ANYONE_SIGNED_IN_CODENAME);
+  const administratorId = byCodename.get(ADMINISTRATOR_CODENAME);
+  const deckobotId = byCodename.get(DECKOBOT_CODENAME);
+
+  // Role member-card roles, deduped in statement order (ORDER BY role id).
+  const roles: number[] = [];
+  for (const row of roleRows) {
+    if (!roles.includes(row.roleId)) roles.push(row.roleId);
   }
-  if (actorId !== undefined) parties.push(actorId); // #parties << id (:27-29)
+
+  const alwaysOk =
+    signedIn &&
+    actorId !== undefined &&
+    (actorId === deckobotId ||
+      (administratorId !== undefined && roles.includes(administratorId)));
+
+  const parties: number[] = anyone !== undefined ? [anyone] : [];
+  if (signedIn && anyoneSignedIn !== undefined) parties.push(anyoneSignedIn);
+  parties.push(...roles);
+  if (actorId !== undefined) parties.push(actorId);
 
   // read_rule_cache.rb lookup_hash: party_id -> [read_rule_id, ...]
   const cache = new Map<number, number[]>();
@@ -167,14 +321,14 @@ export function readPermissionStateFromResults(
     else list.push(row.readRuleId);
   }
 
-  // account_holder.rb:115-123 fetch_read_rules: concat cache[party]
-  // (DeckoBot returns [] there — always_ok short-circuits first).
+  // account_holder.rb:115-123 fetch_read_rules: concat cache[party].
   const readableRuleIds = new Set<number>();
   for (const party of parties) {
     for (const ruleId of cache.get(party) ?? []) readableRuleIds.add(ruleId);
   }
   return {
     readableRuleIds,
+    alwaysOk,
     hasReadRules: (ruleCount[0]?.c ?? 0) > 0,
     hasCatchAllReadRule: (ruleCount[0]?.catchAll ?? 0) > 0,
     parties,
@@ -199,15 +353,20 @@ export async function resolveAnonymousReadPermission(
   driver: SQLDatabaseDriver,
 ): Promise<ReadPermissionState> {
   const results = await driver.batch(readPermissionStatements());
-  return readPermissionStateFromResults(results, anonymousIdFromResults(results), false);
+  return readPermissionStateFromViewerResults(results, {
+    signedIn: false,
+    actorId: anonymousIdFromResults(results),
+  });
 }
 
 /** Verdict for a card whose readRuleId is known — the pure half of
- *  permissions.rb:139-146 ok_to_read? (set membership, no queries). */
+ *  permissions.rb:139-146 ok_to_read? (set membership, no queries), with
+ *  Ruby's always_ok? short-circuit in front of it (:140). */
 export function canReadByStoredRule(
   readRuleId: number,
   state: ReadPermissionState,
 ): boolean {
+  if (state.alwaysOk) return true;
   return state.readableRuleIds.has(readRuleId);
 }
 
@@ -236,6 +395,7 @@ export async function canReadByRuleLookup(
   card: PatternCardInput,
   state: ReadPermissionState,
 ): Promise<boolean | undefined> {
+  if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
   if (!state.hasReadRules || !state.hasCatchAllReadRule) return undefined;
   const candidates = ruleNamesForCard(card, READ_SETTING_NAME);
   const resolved = await resolveRuleIdsByKeys(

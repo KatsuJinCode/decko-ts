@@ -188,3 +188,22 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
   });
   await seedCard(storage, { leftId: 7, rightId: 8, typeId: TYPE_IDS.richText });
 }
+
+/** Seed an extended deck: standard + the Phrase and Pointer type cards
+ *  the Gherkin features reference (pointer_inputs.feature creates
+ *  Phrase cards and the pointer inputs machinery needs both). */
+export async function seedExtendedDeck(storage: GherkinTestStorage): Promise<void> {
+  await seedStandardDeck(storage);
+  await seedCard(storage, {
+    id: TYPE_IDS.phrase,
+    name: "Phrase",
+    codename: "phrase",
+    typeId: TYPE_IDS.cardtype,
+  });
+  await seedCard(storage, {
+    id: TYPE_IDS.pointer,
+    name: "Pointer",
+    codename: "pointer",
+    typeId: TYPE_IDS.cardtype,
+  });
+}

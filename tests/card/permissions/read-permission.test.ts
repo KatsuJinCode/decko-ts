@@ -182,7 +182,11 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // The whole closure walk AND the permission state resolved in ONE
       // driver.batch (one round trip stays one round trip).
       expect(stats?.batches).toBe(1);
-      expect(stats?.additionalResults?.length).toBe(4); // 3 read-permission + 1 codename codehash (rule? ids)
+      // 3 read-permission + 1 codename codehash (rule? ids) + 1 *structure
+      // rule universe (the structured-content stream rides the same batch,
+      // appended AFTER the permission statements — the parser reads the
+      // permission results by fixed index 0..2).
+      expect(stats?.additionalResults?.length).toBe(5);
     } finally {
       cold.close();
     }

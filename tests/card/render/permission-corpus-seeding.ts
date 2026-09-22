@@ -28,6 +28,10 @@ export interface ShardLine {
   id: number;
   name: string;
   views?: Record<string, string>;
+  /** The captured card record (the corpus JSONL's `record` payload); the
+   *  structure-template replay (structure-corpus-replay.test.ts) reads
+   *  `.content` for its classification predicate. */
+  record?: { content: string };
 }
 
 interface CorpusRow {

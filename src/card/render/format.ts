@@ -28,7 +28,7 @@ import {
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
 import { h } from "./slot-html.js";
-import { viewPerms, viewDenialView, quietDenial } from "../permissions/index.js";
+import { viewPermissionDenial, quietDenial, type CrudTask } from "../permissions/view-perms.js";
 
 /** render.rb#view_method: unknown views raise Card::Error::UserError with
  *  card-mod-format set/all/error.rb#unsupported_view_error_message (en.yml:
@@ -189,6 +189,15 @@ export interface ViewContext {
 
 export type ViewFn = (ctx: ViewContext) => string;
 
+/** The menu help-popover resolver (help-popover.ts HelpRulesResolver), when
+ *  a composition installed one. Optional: engines without it keep the
+ *  help-less placeholder bytes for every card. */
+export interface HelpRulesApi {
+  /** The unescaped data-bs-content value; "" renders the &nbsp; placeholder
+   *  (bootstrap helper.rb:48). */
+  menuHelpContentBytes(fmt: RenderFormat): string;
+}
+
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
@@ -258,22 +267,28 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
-      // view/permission.rb #altered_view (:19-23): `alter_unknown || denial`
-      // — the unknown branch ran above; for KNOWN cards a failed read check
-      // (ok_to_read?, card-mod-permissions set/all/permissions.rb:139-146)
-      // replaces the view before any hook or body runs. The verdict is
-      // precomputed engine state (zero queries here); the markup contract —
-      // the quiet denial span REPLACES the whole view including the slot
-      // wrapper — lives in src/card/permissions/view-perms.ts. `denial:`
-      // configured views (menu -> :blank) render that view instead
-      // (format/error.rb:27-31 view_for_denial).
-      if (
-        this.card.unknown !== true &&
-        viewPerms(normalized) !== "none" &&
-        this.engine.isDenied(this.card)
-      ) {
-        const denialView = viewDenialView(normalized);
-        return denialView === "blank" ? "" : quietDenial();
+      // view/permission.rb #altered_view (:19-23): the unknown branch ran
+      // above; for KNOWN cards the view-permission gate replaces the view
+      // before any hook or body runs. Task resolution (view_perms, :13-15),
+      // skip_check? (:25-27 — perms :none views and the skip_perms render
+      // option), the ok_to_<task>? verdict lookup (format/error.rb:5-8 ok?)
+      // and the denial substitution (view_for_denial, error.rb:27-31) live
+      // in src/card/permissions/view-perms.ts. Verdicts are precomputed
+      // engine state (zero queries here): read through isDenied's verdict
+      // map, non-read tasks through the optional isTaskDenied hook (the
+      // ported view registry carries no non-read view today — an absent
+      // hook leaves those views unverified-allowed, per
+      // docs/view-perms-notes.md).
+      if (this.card.unknown !== true) {
+        const denial = viewPermissionDenial(normalized, {
+          renderOpts: opts,
+          isNewCard: this.card.id === undefined,
+          taskAllowed: (task: CrudTask): boolean | undefined =>
+            task === "read"
+              ? !this.engine.isDenied(this.card)
+              : this.engine.taskAllowed?.(this.card, task),
+        });
+        if (denial !== undefined) return denial;
       }
       this.runBeforeHook(effective, voo);
       const viewFn = this.engine.views[effective];
@@ -503,6 +518,16 @@ export class RenderFormat {
   urlKey(): string {
     return this.card.name.urlKey;
   }
+
+  /**
+   * The :menu view's data-bs-content value (menu.rb help_link -> bootstrap
+   * helper.rb popover_opts). Delegates to the installed helpRules resolver;
+   * "" (no resolver, or Ruby-blank text) renders the &nbsp; placeholder
+   * exactly like the pre-resolution hardcode.
+   */
+  menuHelpContentBytes(): string {
+    return this.engine.helpRules?.menuHelpContentBytes(this) ?? "";
+  }
 }
 
 /** Minimal engine surface the format needs (implemented by RenderEngine in
@@ -519,6 +544,18 @@ export interface RenderEngineLike {
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean;
+  /** ok_to_<task>? for the NON-read view tasks (ok_to_update?/create?/
+   *  delete?, card-mod-permissions set/all/permissions.rb:148-157) —
+   *  precomputed like isDenied, same undefined-means-unverifiable contract
+   *  as canReadByRuleLookup (docs/view-perms-notes.md). Optional: engines
+   *  without it leave every non-read task unverified-allowed; the ported
+   *  view registry carries no non-read view today, so the surface is
+   *  unaffected either way. */
+  taskAllowed?(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined;
+  /** The menu help-popover resolver, when the composition installed one
+   *  (help-popover.ts installHelpRules). Optional: engines without it render
+   *  the help-less &nbsp; placeholder for every card. */
+  readonly helpRules?: HelpRulesApi;
   /** Called when a nest resolves to an unknown card (fetch miss). Engines
    *  that track it (RenderEngine may record the key in a negative closure
    *  map) keep warm re-renders at zero queries; the render is byte-correct
