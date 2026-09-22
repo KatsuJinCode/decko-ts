@@ -68,7 +68,14 @@ describe("CaptureTransport", () => {
     const out = t.drain();
     expect(out).toHaveLength(1);
     expect(t.count()).toBe(0);
-    expect(t.seq()).toBe(0);
+  });
+
+  it("drain re-seats the seq counter", async () => {
+    const t = new CaptureTransport("t");
+    await t.sendMail({ to: "a", from: "b", subject: "s1", textBody: "x" } as never);
+    t.drain();
+    await t.sendMail({ to: "c", from: "d", subject: "s2", textBody: "y" } as never);
+    expect(t.captured()[0].seq).toBe(1);
   });
 });
 
