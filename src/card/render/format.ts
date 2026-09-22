@@ -715,3 +715,20 @@ const PERMS_NONE_VIEWS: ReadonlySet<string> = new Set([
 function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
 }
+
+// ---------------------------------------------------------------------------
+// Card::Setting category membership (card-mod-rules set/type/set/
+// setting_categories.rb:6-7): the per-category setting lists that drive
+// the "_category-all", "_category-common", "_category-field" class chain
+// the bar view adds to rule cards (bar_view.rb:10 + editor.rb:54-58).
+// ---------------------------------------------------------------------------
+
+/** card-mod-rules set/type/set/setting_categories.rb:6 COMMON_SETTINGS. */
+const COMMON_SETTINGS: ReadonlySet<string> = new Set([
+  "create", "read", "update", "delete", "structure", "default", "guide",
+]);
+
+/** card-mod-rules set/type/set/setting_categories.rb:7 FIELD_SETTINGS. */
+const FIELD_SETTINGS: ReadonlySet<string> = new Set([
+  "default", "help", "input_type", "content_options", "content_option_view",
+]);
