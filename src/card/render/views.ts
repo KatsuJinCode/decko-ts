@@ -596,31 +596,32 @@ const linkView: ViewFn = ({ fmt, voo }) => {
 // :open / :closed (bar.rb) + accordion (bootstrap)
 // ---------------------------------------------------------------------------
 
-/** bar.rb#prepare_bar. For the rule's :bar view (card-mod-rules
- *  set/rule/bar_view.rb:2-3), Ruby uses bar_cols 5, 4, 3 — three columns
- *  (left, middle, right) — so bar_middle is NOT hidden. For the
- *  standard item-bar :bar view, Ruby uses mini_bar_cols 9, 3 (or 6, 6
- *  for *rule pattern on the item path), so bar_middle IS hidden
- *  (prepare_bar:9 `voo.hide :bar_middle unless three_cols`). */
+/** bar.rb#prepare_bar. Ruby's prepare_bar:
+ *   `class_up_cols %w[bar-left bar-right], two_cols` (applies 2-col
+ *   defaults; `d-none d-md-flex` on bar-middle; if three_cols, also
+ *   adds the md-prefix col-md-X/Y/Z for all three).
+ *   The rule's :bar view uses three_cols (5, 4, 3 for md sizes), so
+ *   bar_middle is NOT hidden there. All other views (mini_bar,
+ *   closed, open) use only mini_bar_cols (2-col), so bar_middle IS
+ *   hidden. */
 function prepareBar(ctx: ViewContext): void {
   const { fmt, voo } = ctx;
   const isRule = fmt.engine.cardIsRule?.(fmt.card) ?? false;
-  // The rule's :bar view is the ONLY view that uses three columns;
-  // :open/:closed/:mini_bar all hide bar_middle (2-col layout).
   const isRuleBar = isRule && ctx.voo.requestedView === "bar";
+  const cols = readBarCols(fmt.card);
+  // Always: 2-col default for bar-left/bar-right.
+  voo.classUp("bar", fmt.card.setKeys);
+  voo.classUp("bar-left", `col-${cols[0]}`);
+  voo.classUp("bar-right", `col-${cols[1]}`);
   if (isRuleBar) {
-    const cols = readBarCols(fmt.card, true);
-    voo.classUp("bar", fmt.card.setKeys);
-    voo.classUp("bar-left", `col-${cols[0]}`);
-    voo.classUp("bar-middle", `col-${cols[1]} d-none d-md-flex`);
-    voo.classUp("bar-right", `col-${cols[2]}`);
-    // bar_middle NOT hidden — three_cols is true.
+    // 3-col override at md+.
+    voo.classUp("bar-left", `col-md-${cols[2]}`);
+    voo.classUp("bar-middle", `d-none d-md-flex col-md-${cols[3]}`);
+    voo.classUp("bar-right", `col-md-${cols[4]}`);
+    // bar_middle NOT hidden.
   } else {
-    const [leftCol, rightCol] = readMiniBarCols(fmt.card);
-    voo.classUp("bar", fmt.card.setKeys); // class_up "bar", full_page_card.safe_set_keys
-    voo.classUp("bar-left", `col-${leftCol}`);
-    voo.classUp("bar-right", `col-${rightCol}`);
-    voo.hide("bar_middle"); // prepare_bar without three_cols: voo.hide :bar_middle
+    voo.classUp("bar-middle", "d-none d-md-flex");
+    voo.hide("bar_middle");
   }
 }
 
