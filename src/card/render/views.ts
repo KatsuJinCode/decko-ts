@@ -327,7 +327,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     body += `<div class='accordion-item _setting-group'>\n`;
     body += `<h2 class='accordion-header nodblclick w-100'>\n`;
     body += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
-    body += `${groupName} <span class="_count badge bg-secondary ms-3">${groupRules.length}</span>\n`;
+    body += `${groupName} <span class="_count badge bg-secondary ms-3">${SETTING_GROUP_COUNTS[groupName]}</span>\n`;
     body += `</button>\n`;
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
@@ -366,16 +366,36 @@ const SETTING_GROUPS: ReadonlyArray<string> = [
   "other",
 ];
 
+/** Number of SETTINGS in each group (not rules). Ruby's
+ *  card-mod-rules set/type/set/html_views/rule_lists.rb:49-59
+ *  category_accordion_item: `list.size` is the number of settings the
+ *  group contains (visible_settings(group).size), regardless of
+ *  whether the set has rules for them — the captured oracle's
+ *  count badge is 3/5/4/5/3/3 (the per-group setting count) for every
+ *  set card. The actual rule rows in the accordion body are a subset
+ *  (some rules are denied; some settings have no rule for this set).
+ *
+ *  Counts derived from the setting_opts declarations in the card-mod-*
+ *  set/self/*.rb files:
+ *    - templating: 3 (autoname, default, structure)
+ *    - permission: 5 (create, read, update, delete, captcha)
+ *    - webpage:    4 (head, layout, style, script)
+ *    - editing:    5 (help, input_type, guide, content_options, content_option_view)
+ *    - event:      3 (on_create, on_update, on_delete)
+ *    - other:      3 (thanks, follow_fields, follow)
+ */
+const SETTING_GROUP_COUNTS: Readonly<Record<string, number>> = {
+  templating: 3,
+  permission: 5,
+  webpage: 4,
+  editing: 5,
+  event: 3,
+  other: 3,
+};
+
 /** Map from setting codename -> group key. Mirrors the setting_opts
  *  group: declarations in the card-mod-* set/self/*.rb files (the only
- *  source of group membership Ruby has at runtime):
- *    - templating: autoname, default, structure
- *    - permission: create, read, update, delete, captcha
- *    - webpage:    head, layout, style, script
- *    - editing:    help, input_type, guide, content_options, content_option_view
- *    - event:      on_create, on_update, on_delete
- *    - other:      thanks, follow_fields, follow
- *  See /c/Ruby33-x64/.../card-mod-* set/self/*.rb for the source. */
+ *  source of group membership Ruby has at runtime). */
 const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
   // templating
   ["autoname", "templating"], ["default", "templating"], ["structure", "templating"],
@@ -398,9 +418,7 @@ const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
  *  FIXED six-group order (templating/permission/webpage/editing/event/
  *  other); for each group it collects the rules whose right-side setting
  *  codename maps to that group, then yields the list to the accordion
- *  item body builder. The captured oracle bytes pin every group header
- *  regardless of whether the set has rules in it (the "0" count badge
- *  is what Ruby's accordion_item emits). */
+ *  item body builder. */
 function groupRulesByCategory(rules: RenderCard[]): Array<[string, RenderCard[]]> {
   const byGroup = new Map<string, RenderCard[]>();
   for (const g of SETTING_GROUPS) byGroup.set(g, []);
