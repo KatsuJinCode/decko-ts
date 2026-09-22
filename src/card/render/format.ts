@@ -591,6 +591,13 @@ export interface RenderEngineLike {
    *  it skip the enrichment and the render shows the empty-list
    *  fallback. */
   prepareItemForRender?(name: string): Promise<RenderCard | undefined> | RenderCard | undefined;
+  /** All rule cards whose left_id equals the host card's id (Card.search
+   *  left: id, limit: 0, sorted by content+name). The set-card Rules
+   *  section core override (views.ts setRulesCoreHtml) reads this to
+   *  build the per-category accordion. Optional: engines without it
+   *  return an empty list (no rule rows — a degenerate Rules section
+   *  still renders the h4 header + filter form, no accordion). */
+  collectRules?(host: RenderCard): RenderCard[];
 }
 
 // ---------------------------------------------------------------------------
