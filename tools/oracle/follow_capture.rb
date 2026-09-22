@@ -283,9 +283,13 @@ Card::Auth.as_bot do
   # actual lookup key (lib/card/codename.rb:161 raises
   # Card::Error::CodenameNotFound when no card has it). The seed card
   # `card-mod-follow/data/real.yml:67` declares the codename; trashing
-  # the seed row via `trash=true` left the codename column unset on
-  # the new card, so the integration phase was raising and skipping
-  # deliveries silently.
+  # the seed row via `trash=true` left the codename column on the
+  # OLD (trashed) card, so subsequent Card[:follower_notification_email]
+  # lookups returned the trashed card with its old subcards. We clear
+  # the codename on the trashed row first, then set it on the new one.
+  if existing && !existing.new_card?
+    existing.update_columns(codename: nil)
+  end
   Card["follower notification email"].update! codename: "follower_notification_email"
 
   # A card John will edit (Sara is NOT the actor).
