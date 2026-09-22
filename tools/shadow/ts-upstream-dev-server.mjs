@@ -189,12 +189,19 @@ async function bootEngine() {
   const drivers = await import(pathToFileURL(
     join(REPO_ROOT, "dist-ts", "server", "drivers", "local-sqlite.js"),
   ).href);
+  const nameMod = await import(pathToFileURL(
+    join(REPO_ROOT, "dist-ts", "card", "name.js"),
+  ).href);
   const fetchMod = await import(pathToFileURL(
     join(REPO_ROOT, "dist-ts", "card", "fetch.js"),
   ).href);
   const renderMod = await import(pathToFileURL(
     join(REPO_ROOT, "dist-ts", "card", "render.js"),
   ).href);
+  // Resolve DeckoName once so the seed uses the engine's own canonical key
+  // (Plural-stem collapsing turns "Basics" -> "basic"; we cannot get the
+  // right key without going through the engine).
+  const { DeckoName } = nameMod;
 
   const driver = new drivers.LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(SCHEMA_PATH, "utf8");
