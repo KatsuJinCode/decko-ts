@@ -359,7 +359,10 @@ export class RenderFormat {
    *    fires for rule cards only (right side is a setting).
    *  - card-mod-search set/abstract/search_views.rb:35-38 view :bar:
    *    `voo.hide :one_line_content; super()` - hides one_line_content
-   *    for Search-type cards. */
+   *    for Search-type cards. Ruby's set-module dispatch fires when the
+   *    card's type matches SearchTypeID; in this port, the codename
+   *    registry is the source of truth for that match (the corpus's
+   *    search_type card has a random NAME, so a typeName check misses). */
   private runBeforeHook(view: string, voo: Voo): void {
     if (view === "content") {
       // html/views.rb#prepare_content_slot
@@ -371,11 +374,20 @@ export class RenderFormat {
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
         voo.classUp("card-slot", classExtra);
       }
-      if (this.card.typeName === "Search") {
+      if (this.cardTypeCodename === "search_type" || this.card.typeName === "Search") {
         // search_views.rb:36 voo.hide :one_line_content
         voo.hide("one_line_content");
       }
     }
+  }
+
+  /** The type card's codename (e.g. "search_type", "set", "list"). Read
+   *  through the engine's codename registry — zero-query (the cold
+   *  render folds the codehash into the prefetch batch). */
+  private get cardTypeCodename(): string | undefined {
+    const id = this.card.record.typeId;
+    if (id === undefined) return undefined;
+    return this.engine.peekCodenameById?.(id);
   }
 
   /** card.rule? predicate (lib/card/rule/all.rb:32-51): the card is a rule
