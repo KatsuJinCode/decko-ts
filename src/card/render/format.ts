@@ -594,10 +594,12 @@ export interface RenderEngineLike {
   /** All rule cards whose left_id equals the host card's id (Card.search
    *  left: id, limit: 0, sorted by content+name). The set-card Rules
    *  section core override (views.ts setRulesCoreHtml) reads this to
-   *  build the per-category accordion. Optional: engines without it
-   *  return an empty list (no rule rows — a degenerate Rules section
-   *  still renders the h4 header + filter form, no accordion). */
-  collectRules?(host: RenderCard): RenderCard[];
+   *  build the per-category accordion. Async because the prefetch
+   *  closure walk doesn't chase rule cards hanging off a set — the
+   *  set's random content does not name them. Engines without it
+   *  produce no rules (degenerate Rules section still renders the h4
+   *  header + filter form, no accordion). */
+  collectRules?(host: RenderCard): Promise<RenderCard[]>;
 }
 
 // ---------------------------------------------------------------------------
