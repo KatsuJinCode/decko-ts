@@ -244,9 +244,9 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     expect(mail!.to).toBe("john@example.com");
     expect(mail!.from).toBe("deck@example.com");
     expect(mail!.subject).toBe(
-      "follower changed followed_set on follow_option",
+      "John changed John Following on always",
     );
-    expect(mail!.textBody).toBe("Hi! follower changed followed_set.");
+    expect(mail!.textBody).toBe("Hi! John changed John Following.");
     expect(mail!.tags).toMatchObject({
       trigger: "follow_notification",
       follower: "John",
