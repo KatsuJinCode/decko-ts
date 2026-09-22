@@ -78,10 +78,10 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 
 ## Runtime abstraction + delivery (#1282 product surface)
 
-- `[~]` T6 mod compatibility report generator — per-mod
-  ported/partial/missing verdict with evidence, from the installed
-  card-mod gems vs the TS registry surface. Owner: MM pool. Owns
-  `tools/compat-report/**`.
+- `[x]` T6 mod compatibility report generator — LANDED 2026-09-21 (MM
+  wave A): 33 mods → 1 ported / 30 partial / 0 missing / 2 ignored;
+  `tools/compat-report/**` + `docs/mod-compat-notes.md`. Static
+  inventory only (no runtime load test — rides S3).
 - `[ ]` T1 Deploy-to-Cloudflare button on a public repo (artifact shipped;
   repo placement is Julian's call).
 - `[ ]` T2 Bunny Edge Scripting + Bunny Database adapter path.
