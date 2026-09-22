@@ -2,7 +2,19 @@ class Card
   class Format
     class Nest
       # Fetch card for a nest
+      #
+      # PROTOTYPE PATCH (KatsuJinCode/decko-ts #9 / docs/ruby-dividend-cte.md):
+      # the original fetch_card is unchanged. The prefetch lives in
+      # Card::Format::Nest::Prefetch (prefetch.rb) and runs once at the top
+      # of Card::Format::Render#render! (patched in render.rb). The per-
+      # inclusion fetch_card here is expected to be a warm-cache hit after
+      # the prefetch; if the prefetch wasn't run (older caller, or the
+      # prefetch opt-out), fetch_card still works depth-first exactly as
+      # before. No behavior change for non-prefetched code paths.
       module Fetch
+        require_relative "prefetch"
+        include Prefetch
+
         private
 
         def fetch_card cardish
