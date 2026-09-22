@@ -39,14 +39,17 @@ export function scanHtml(input: string): string {
 
   // Regexes pulled from html.rb. The CDATA branch is rare in real decks;
   // the corpus doesn't exercise it, but we keep the shape for parity.
+  // NB: no `m` flag - it would make `^` match line starts in the *current*
+  // slice (after a `\n` in the source), so a regex like /^<\// would
+  // re-match `</body>` mid-document, looping on the corpus's nested tags.
   const CDATA_OPEN = /^<!\[CDATA\[/;
   const CDATA_BODY = /^.*?\]\]>/s;
   const COMMENT = /^<!--(?:.*?-->|.*)/s;
   const DOCTYPE = /^<!(?:\w+)(?:.*?>|.*)|^\]>/s;
   const XML_PI = /^<\?xml(?:.*?\?>|.*)/s;
   const PI = /^<\?(?:.*?\?>|.*)/s;
-  const CLOSE_TAG = /^<\/[-\w.:]*>?/m;
-  const OPEN_TAG = /^<(?:(script|style)|[-\w.:]+)(>)?/m;
+  const CLOSE_TAG = /^<\/[-\w.:]*>?/;
+  const OPEN_TAG = /^<(?:(script|style)|[-\w.:]+)(>)?/;
   const PLAIN = /^[^<>&]+/;
   const ENTITY = /^&(?:\w+|#\d+|#x[0-9a-fA-F]+);/;
   const TAG_END = /^\/?>/;
@@ -54,7 +57,7 @@ export function scanHtml(input: string): string {
   const ATTR_EQ = /^=/;
   const ATTR_VALUE_BARE = /^[\w.:-]+/;
   const QUOTE = /^["']/;
-  const WHITE = /^\s+/m;
+  const WHITE = /^\s+/;
   const STR_CONTENT_DQ = /^[^&">\n]+/;
   const STR_CONTENT_SQ = /^[^&'\n]+/;
 
