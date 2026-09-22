@@ -68,38 +68,37 @@ class Card
         def prefetch_inclusion_closure root_card, _view
           return 0 unless root_card&.key
 
-          # Idempotency guard: Ruby's render! recurses once per nested
-          # subformat (Nesting#nest -> subformat.render -> render! -> ...).
-          # Without this guard, the prefetch would walk the full closure at
-          # every level -- 8 walks for a depth-8 chain. Two complementary
-          # checks:
-          #   1) Same-key repeat: set membership (cheap, no DB)
-          #   2) Cache-warm: the root card is already in Card::Cache[Card]
-          #      -- the closure's been seen in this process (a cold root
-          #      also passes this; the closure walk is the cost we pay).
-          # Check (1) first to keep the fast path truly zero-query.
-          if prefetch_done_for_thread.include?(root_card.key)
+          # Depth guard: prefetch only at the top level (depth 0). Nested
+          # render! calls come from Nesting#nest -> subformat.render ->
+          # render!; the cache is already warm from the top-level prefetch,
+          # so subsequent prefetches are wasted DB round trips.
+          # See the perf doc note for the why.
+          prefetch_depth += 1
+          if prefetch_depth > 1
             return 0
           end
-          prefetch_done_for_thread << root_card.key
 
-          stats = { rows: 0, statements: 0, fallback_rounds: 0 }
+          begin
+            stats = { rows: 0, statements: 0, fallback_rounds: 0 }
 
-          # --- 1) Ruby-side closure walk, one SELECT per level -------------
-          rows = walk_via_bulk_select(root_card.key, stats)
-          if ENV["PREFETCH_DEBUG"]
-            puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
-                 "#{stats[:statements]} statements"
+            # --- 1) Ruby-side closure walk, one SELECT per level -----------
+            rows = walk_via_bulk_select(root_card.key, stats)
+            if ENV["PREFETCH_DEBUG"]
+              puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
+                   "#{stats[:statements]} statements"
+            end
+
+            # --- 2) hydrate Card::Cache[Card] + Card::Cache[Lexicon] -----
+            hydrate_cache rows, stats
+            if ENV["PREFETCH_DEBUG"]
+              puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
+                   "#{stats[:statements]} statements total"
+            end
+
+            stats[:rows]
+          ensure
+            prefetch_depth -= 1
           end
-
-          # --- 2) hydrate Card::Cache[Card] + Card::Cache[Lexicon] ---------
-          hydrate_cache rows, stats
-          if ENV["PREFETCH_DEBUG"]
-            puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
-                 "#{stats[:statements]} statements total"
-          end
-
-          stats[:rows]
         end
 
         # --- helpers --------------------------------------------------------
