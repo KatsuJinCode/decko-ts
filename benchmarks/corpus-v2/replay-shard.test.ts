@@ -33,6 +33,26 @@
 // Run:
 //   npx vitest run benchmarks/corpus-v2/replay-shard.test.ts           # all shards
 //   CORPUS_SHARD=shard-000000.jsonl npx vitest run benchmarks/corpus-v2/replay-shard.test.ts
+//   CORPUS_SHARDS=shard-000003.jsonl,shard-000004.jsonl npx vitest run ...   # split slice
+//
+// Single-pass seed (the M1 flip): the union of every requested shard's ids
+// is seeded ONCE, enriched with the full read-rule universe (stored
+// read_rule_id / read_rule_class columns, every *read rule card, the rules'
+// card_references party grants, the permission codename cards) AND the
+// *structure rule universe (every *structure rule card, its set context, the
+// template-reference closure) plus the transitive side/type closure — the
+// proven structure-corpus-seeding recipe. Consequences:
+//   - cross-shard nest targets resolve (a shard-N card nesting a shard-M
+//     card renders instead of raising "nest target not found");
+//   - denied captures are JUDGED (the engine renders as the anonymous
+//     viewer, the capture's viewer, and reproduces the denial bytes — the
+//     permissionPending skip/class is retired; a denied mismatch is a real
+//     permission-layer failure);
+//   - structured-content records are JUDGED (the record handler applies the
+//     ported structuredCardContent — Ruby Card#content is
+//     structured_content || standard_content); the structure-pending class
+//     remains ONLY as the honest classification for the documented
+//     *default-template remainder.
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
