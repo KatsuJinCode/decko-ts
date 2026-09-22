@@ -111,21 +111,18 @@ Card::Auth.as_bot do
 
   # Ensure Sara+account+*email is set even on re-runs (the card's
   # `email` field is what the notify trigger reads — see comment above).
-  sara_account = Card.fetch("Sara+account", new: { type_id: Card::BasicID })
-  if sara_account.new_card?
-    sara_account = Card.create!("Sara+account", "+*email" => { content: "sara@example.com" })
-  elsif Card["Sara+account+*email"].nil? || Card["Sara+account+*email"].content.to_s.strip.empty?
-    sara_account.update! "+*email" => "sara@example.com"
-    seed_log["Sara+account+*email"] = "updated"
+  sara_account_email = Card["Sara+account+*email"]
+  if sara_account_email.nil? || sara_account_email.content.to_s.strip.empty?
+    Card.create! name: "Sara+account+*email", content: "sara@example.com"
+    seed_log["Sara+account+*email"] = "ensured"
   end
 
   john = Card.fetch("John")
-  john_account = Card.fetch("John+account", new: { type_id: Card::BasicID })
-  if john_account.new_card?
-    john_account = Card.create!("John+account", "+*email" => { content: "john@example.com" })
-  elsif Card["John+account+*email"].nil? || Card["John+account+*email"].content.to_s.strip.empty?
-    john_account.update! "+*email" => "john@example.com"
-    seed_log["John+account+*email"] = "updated"
+
+  john_account_email = Card["John+account+*email"]
+  if john_account_email.nil? || john_account_email.content.to_s.strip.empty?
+    Card.create! name: "John+account+*email", content: "john@example.com"
+    seed_log["John+account+*email"] = "ensured"
   end
 
   # The actor (John). We need a non-bot, non-Sara actor because the
