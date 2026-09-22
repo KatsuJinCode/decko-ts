@@ -360,3 +360,76 @@ Run output is recorded verbatim in the `result` step.
   series needs a follow-up stream for it; called out here so the
   prototype's query counts aren't misread as covering the whole cold
   render path.
+
+## Honest wall (prototype measurement, 2026-09-21)
+
+The prototype's measurement script (`prototype/measure.rb`) boots the
+oracle app, seeds an 8-deep `PrefR1_chain_open_d08_n01` chain, and
+prints queries-per-render before/after the patch. The actual numbers
+recorded in `prototype/results/measurement.json`:
+
+| phase | cold queries (median, n=5) | warm queries (median) | cold wall ms |
+|---|---|---|---|
+| A (depth-first, installed gem) | 11 | 0 | 114.3 |
+| B (closure-prefetch, prototype overlay) | 11 | 0 | 116.2 |
+
+**Reduction: 0%.**
+
+The Phase A baseline is the corpus report's depth+3=11 exactly
+(`docs/benchmark-corpus-report.md` section 4) — a strong
+sanity-anchoring result on this machine.
+
+The 0% reduction is honest work, not measurement noise. Tracing the
+wall back to its source:
+
+- **The CTE works.** `walk_closure_cte` (the `card_references`-walking
+  recursive statement in `prototype/lib/card/format/nest/prefetch.rb`)
+  issues 1 statement and returns the full closure's rows for any depth
+  (verified at depth-2 in the standalone probe — 2 rows, 1 statement;
+  in `prototype/measure.rb` at depth-8 the closure CTE returns the 8
+  chain rows). The single-statement target is met.
+- **Cache hydration works.** `hydrate_cache` writes each closure row's
+  full Card into `Card::Cache[Card].temp.store` keyed by `card.key`
+  and populates `Card::Cache[Lexicon].temp.store` for id→name and
+  lex-key→id lookups. Verified by post-prefetch probe:
+`Card.cache.temp.store` contains every chain card's key.
+- **Per-inclusion `Card.fetch` still issues queries.** The depth-first
+  path runs `Card::Format::Nest::Fetch#fetch_card`
+  (`card-1.110.0 lib/card/format/nest/fetch.rb:8-17`) which dispatches
+  to `new_card` for string cardish (`fetch.rb:30-33`). `new_card`
+  calls `Card.fetch cardish, new: new_card_args`. The `:new` opts
+  trigger `Card::Fetch::Results#new_result_card`
+  (`card-1.110.0 lib/card/fetch/results.rb:16-29`), which calls
+  `with_new_card` → `renew` → `card.newish` → `reset_patterns`
+  (`card-1.110.0 mod/core/set/all/initialize.rb:61-72`).
+  `reset_patterns` wipes `@set_mods_loaded` even when the card was
+  retrieved from the prefetch-warmed cache; subsequent
+  `include_set_modules` re-runs the pattern walk, which costs DB
+  queries for trait-based patterns
+  (`card-1.110.0 lib/card/set/pattern/all.rb:14-23` concrete_patterns).
+
+**Why the TS port escapes this.** The TS engine's `format.ts` constructs
+the fetch result without the Ruby `:new:` mass-reset; cached cards
+carry cached status intact; the cache hit path is the no-op. The Ruby
+`new_result_card` is doing real work that the TS port doesn't need to
+do, because Ruby's `Card` is a live AR record with callbacks, not a
+plain value object.
+
+**The fix (for an upstream series follow-up).** Either (a) the
+contribution series lands a `skip_modules: true` opt on `Card.fetch`
+that the depth-first `Nest#initialize` uses when the card is in cache
+(checked via `Card.cache.read(card.key)`), or (b) `reset_patterns`
+gains a guard that preserves `@set_mods_loaded` when the patterns
+state hasn't actually changed (instance-variable comparison). Both
+are < 10 lines each and can be a wave 2 / contribution-series-2
+stream; called out here so a future contributor doesn't retrace this.
+
+**What the prototype still proves.** The design's full surface
+(overlay mechanism, CTE-walk shape, cache-write contract, render-hook
+placement) lands cleanly and runs end-to-end against the installed
+gem. The single-statement walk + bulk hydration are the two
+contributions; the deck-renderer's `reset_patterns` is the gem-side
+blocker. For an upstream contribution, the series opener documents
+the design + measurement + blocker; a follow-up streams (b) above.
+For the TS port, this work is already done
+(`src/card/render/prefetch.ts` + `src/card/render/format.ts`).
