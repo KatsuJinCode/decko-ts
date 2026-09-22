@@ -97,30 +97,26 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       const baseIds = new Set(readShardLines().map((l) => l.id));
       for (const id of EXTRA_IDS) baseIds.add(id);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed yzzw's read-rule chain directly: the *all+*read rule card
-      // (id=6568) is already in the corpus rows the closure walk picks
-      // up, but yzzw's card row needs the stored read_rule_id / class
-      // columns the render's read-permission verdict map reads. yzzw is
-      // NOT in the captured shard (only id=77 references it), so the
-      // closure walk doesn't fetch it.
+      // Seed yzzw's type card (id=22281, name "swtktey" — the captured
+      // bytes pin data-card-type-id=22281 + data-card-type-name=swtktey
+      // for the inner slot). The closure walk above fetches id=22281
+      // because yzzw's type_id points there; we just need the row.
       await seedCard(storage, {
         id: 22281,
+        name: "swtktey",
+        typeId: 5, // cardtype
+      });
+      // Seed yzzw itself (NOT in the captured shard). The captured
+      // bytes pin yzzw's slot with type_id=22281 + type_name="swtktey".
+      // We assign yzzw an arbitrary id; the slot id the captured bytes
+      // pin is `${name}-mini_bar-view`, not `${id}-...`, so the id
+      // doesn't appear in the rendered bytes.
+      await seedCard(storage, {
+        id: 999,
         name: "yzzw",
-        key: DeckoName.parse("yzzw").key,
-        typeId: 5,
-        dbContent: "<p>{{xxxxxxxxxxxx}}</p>i",
+        typeId: 22281,
         readRuleId: 6568,
         readRuleClass: "*all",
-      });
-      // yzzw's type card (id=5, name "swtktey") — also not in the shard
-      // but referenced by yzzw's type_id.
-      await seedCard(storage, {
-        id: 5,
-        name: "swtktey",
-        key: DeckoName.parse("swtktey").key,
-        typeId: 2,
-        codename: null,
-        dbContent: null,
       });
       const html = await storage.engine.render("*home", "content");
       const normalized = normalizeSlotIds(html);
@@ -156,15 +152,21 @@ describe("pointer/list content view byte parity (corpus:77, corpus:275)", () => 
       const baseIds = new Set(readShardLines().map((l) => l.id));
       for (const id of EXTRA_IDS) baseIds.add(id);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed bifaarykabanhm (the corpus:275 list item; same shape as
-      // yzzw but referenced by *all+*layout's content) with the same
-      // read-rule chain (id=6568 = *all+*read).
+      // Seed bifaarykabanhm's type card (same type as yzzw: id=22281,
+      // name "swtktey" — the captured bytes pin type_id=22281 +
+      // type_name="swtktey" for the corpus:275 inner slot).
       await seedCard(storage, {
-        id: 45283,
-        name: "bifaarykabanhm",
-        key: DeckoName.parse("bifaarykabanhm").key,
+        id: 22281,
+        name: "swtktey",
         typeId: 5,
-        dbContent: "x",
+      });
+      // Seed bifaarykabanhm itself (NOT in the captured shard). The
+      // captured bytes pin the slot id `bifaarykabanhm-mini_bar-view`
+      // (not id-based), so the row id is arbitrary.
+      await seedCard(storage, {
+        id: 1000,
+        name: "bifaarykabanhm",
+        typeId: 22281,
         readRuleId: 6568,
         readRuleClass: "*all",
       });
