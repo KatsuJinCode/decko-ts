@@ -155,14 +155,12 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
       // read-permission + structured-content engines can JUDGE every
       // captured view (the permission-pending skip is gone).
       const allLinesByShard = shardPaths.map((p) => ({ p, lines: loadShard(p) }));
-      {
-        const corpus = new Database(CORPUS_DB, { readonly: true });
-        const everyLiveId = (
-          corpus.prepare("SELECT id FROM cards WHERE trash = 0").all() as Array<{ id: number }>
-        ).map((r) => r.id);
-        corpus.close();
-        var storage = await createStructureSeededStorageFor(new Set(everyLiveId));
-      }
+      const idLister = new Database(CORPUS_DB, { readonly: true });
+      const everyLiveId = (
+        idLister.prepare("SELECT id FROM cards WHERE trash = 0").all() as Array<{ id: number }>
+      ).map((r) => r.id);
+      idLister.close();
+      const storage = await createStructureSeededStorageFor(new Set(everyLiveId));
       const registry = new HandlerRegistry();
       const outcomes: ShardOutcome[] = [];
       const realFailures: Array<{ shard: string; area: string; id: string; first: string }> = [];
