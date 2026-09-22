@@ -15,7 +15,6 @@
 //   4. Byte parity against the captured corpus:67 :closed bytes.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "node:fs";
 import {
   createRenderTestStorage,
   seedCard,
@@ -31,6 +30,8 @@ import type { RenderCard } from "../../../src/card/render/format.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { normalizeSlotIds } from "../../../src/testing/diff.js";
 import { readShardLines } from "./permission-corpus-seeding.js";
+import { createStructureSeededStorage } from "./structure-corpus-seeding.js";
+import { installHelpRules } from "../../../src/card/render/help-popover.js";
 
 const BASIC_TYPE_ID = 2;
 const SET_TYPE_ID = 10;
