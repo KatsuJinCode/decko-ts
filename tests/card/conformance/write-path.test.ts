@@ -303,6 +303,12 @@ async function replay02(): Promise<number[]> {
   }>("SELECT left_id, right_id FROM cards WHERE id = ?", [child.cardId]);
   const leftId = junction?.left_id ?? -1;
   const rightId = junction?.right_id ?? -1;
+  const all = await s.selectAll<{ id: number; name: string | null; left_id: number | null; right_id: number | null }>(
+    "SELECT id, name, left_id, right_id FROM cards WHERE id IN (?, ?, ?) ORDER BY id",
+    [signUp.cardId, leftId, rightId],
+  );
+  // DEBUG
+  console.log("DEBUG 02 cards:", JSON.stringify(all));
   await snapshotAndAssert(s, "02-create-junction", [signUp.cardId, leftId, rightId]);
   s.close();
   return [signUp.cardId, leftId, rightId];
