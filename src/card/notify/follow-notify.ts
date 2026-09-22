@@ -64,8 +64,10 @@ export type FollowerResolver = (
  *  `+text_message` / `+html_message` children, all stamped as
  *  `*content` views; the TS port treats the template as a triple of
  *  literals (the resolver may rewrite those literals from the deck —
- *  see docs/notify-port-notes.md, "first mechanism template"). */
-export type EmailTemplateResolver = () => EmailTemplate;
+ *  see docs/notify-port-notes.md, "first mechanism template"). May be
+ *  async: the deck-backed resolver reads those children through the
+ *  async fetch engine (test sugar stays sync). */
+export type EmailTemplateResolver = () => EmailTemplate | Promise<EmailTemplate>;
 
 /** Build the follow-notify integration hook. The returned SavePathIntegrationHook
  *  is the registration the coordinator must attach to the action engine
