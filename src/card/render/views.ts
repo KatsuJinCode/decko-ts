@@ -596,16 +596,30 @@ const linkView: ViewFn = ({ fmt, voo }) => {
 // :open / :closed (bar.rb) + accordion (bootstrap)
 // ---------------------------------------------------------------------------
 
-/** bar.rb#prepare_bar for the two-col case (bar_cols 9, 3 by default; the
- *  *rule set module overrides to 6, 6 — see bar-cols.ts): class_up the bar
- *  set keys, bar-left/right cols, hide bar-middle. */
+/** bar.rb#prepare_bar. For the rule's :bar view (card-mod-rules
+ *  set/rule/bar_view.rb:2-3), Ruby uses bar_cols 5, 4, 3 — three columns
+ *  (left, middle, right) — so bar_middle is NOT hidden. For the
+ *  standard item-bar :bar view, Ruby uses mini_bar_cols 9, 3 (or 6, 6
+ *  for *rule pattern on the item path), so bar_middle IS hidden
+ *  (prepare_bar:9 `voo.hide :bar_middle unless three_cols`). */
 function prepareBar(ctx: ViewContext): void {
   const { fmt, voo } = ctx;
-  const [leftCol, rightCol] = readMiniBarCols(fmt.card);
-  voo.classUp("bar", fmt.card.setKeys); // class_up "bar", full_page_card.safe_set_keys
-  voo.classUp("bar-left", `col-${leftCol}`);
-  voo.classUp("bar-right", `col-${rightCol}`);
-  voo.hide("bar_middle"); // prepare_bar without three_cols: voo.hide :bar_middle
+  const isRule = fmt.engine.cardIsRule?.(fmt.card) ?? false;
+  if (isRule) {
+    // Rule's :bar view (bar_cols 5, 4, 3): three columns.
+    const cols = readBarCols(fmt.card, true);
+    voo.classUp("bar", fmt.card.setKeys);
+    voo.classUp("bar-left", `col-${cols[0]}`);
+    voo.classUp("bar-middle", `col-${cols[1]} d-none d-md-flex`);
+    voo.classUp("bar-right", `col-${cols[2]}`);
+    // bar_middle NOT hidden — three_cols is true.
+  } else {
+    const [leftCol, rightCol] = readMiniBarCols(fmt.card);
+    voo.classUp("bar", fmt.card.setKeys); // class_up "bar", full_page_card.safe_set_keys
+    voo.classUp("bar-left", `col-${leftCol}`);
+    voo.classUp("bar-right", `col-${rightCol}`);
+    voo.hide("bar_middle"); // prepare_bar without three_cols: voo.hide :bar_middle
+  }
 }
 
 /** bar_body.haml: the bar-left/bar-middle/bar-right columns. */
