@@ -5,7 +5,7 @@
   "description": "TypeScript port of the Decko card engine. Full compatibility with Ruby Decko (card 1.110.0 / decko 0.20.0), Ruby-as-oracle conformance testing, edge-native (Cloudflare D1, Bunny/libSQL). Upstream proposal: decko-commons/decko#1282.",
   "type": "module",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run tests/card/",
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing"
   },
