@@ -481,13 +481,6 @@ unused but kept for API compatibility). The mail and follow-notify
 tests were updated to assert the captured bytes. The
 `tags` carry the active_notice values for the transport; they are
 NOT substituted into the subject/body.
-  not EmailTemplateID 21777).
-
-The script is wired for a follow-on capture run after the next deck
-bootstrap that loads the missing mods. The TS port's tests assert
-against the hand-derived input pairs, not against the captured
-fixture — a deliberate choice: the hand-derivation is the proof; the
-fixture would only prove the fixture.
 
 ## 4. What was NOT done (deferred / out of scope)
 
