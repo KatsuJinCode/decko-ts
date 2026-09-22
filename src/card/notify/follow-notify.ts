@@ -53,11 +53,13 @@ export interface FollowerRef {
 
 /** Resolves the followers of one card. The act-stream owns this against
  *  the rule algebra; for the first-mechanism test the harness supplies
- *  an inline resolver so the trigger is deterministic. */
+ *  an inline resolver so the trigger is deterministic. Async allowed:
+ *  the real resolver (follower-resolver.ts) reads the deck's rule
+ *  storage. Rendering is unaffected — fire() awaits before rendering. */
 export type FollowerResolver = (
   cardId: number | null,
   event: SavePathEvent,
-) => readonly FollowerRef[];
+) => readonly FollowerRef[] | Promise<readonly FollowerRef[]>;
 
 /** Where the email template comes from. Ruby reads
  *  `Card[:follower_notification_email]` + its `+subject` /
@@ -156,7 +158,7 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
     async fire(event: SavePathEvent, ctx: NotifyContext): Promise<void> {
       if (event.isDeletePath === true) return; // notify_after_delete is a separate hook
       const cardId = event.card?.id ?? null;
-      const followers = deps.followers(cardId, event);
+      const followers = await deps.followers(cardId, event);
       if (followers.length === 0) return;
 
       const template = await deps.template();

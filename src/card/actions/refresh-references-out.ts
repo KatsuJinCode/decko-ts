@@ -219,11 +219,19 @@ function referenceValuesArray(
 // Chunk scanning (content/parser.rb:45-59 walk; link.rb + nest.rb grammar)
 // -----------------------------------------------------------------------
 
-interface ReferenceChunk {
+export interface ReferenceChunk {
   /** undefined = the chunk carries no reference (explicit-resource link,
    *  comment nest). */
   refereeName: string | undefined;
   refType: "L" | "I";
+  /** Full-token span, start inclusive / end exclusive, into the scanned
+   *  content string. Lets the rename-side rewrite (update-referer-content.ts)
+   *  splice swapped chunk text back into the content. */
+  start: number;
+  end: number;
+  /** The raw inner text between the delimiters (link.rb `match[1]`,
+   *  nest.rb `match[1]`): the swap rebuild re-derives target|text from it. */
+  inner: string;
 }
 
 /** Ruby full_res, anchored at the prefix position (parser.rb:37-43 slices
@@ -235,7 +243,7 @@ const NEST_FULL_STICKY = /\{\{([^{}]*)\}\}/y;
 /** link.rb:105 — the nest spans divider_index masks. */
 const NEST_SPAN = /\{\{[^{}]*\}\}/g;
 /** link.rb:82 — %r{^(/|https?:|mailto:)} explicit-resource targets. */
-const EXPLICIT_LINK = /^(\/|https?:|mailto:)/;
+export const EXPLICIT_LINK = /^(\/|https?:|mailto:)/;
 
 /** The parser walk (parser.rb:45-59): leftmost [[ or {{ prefix wins; its
  *  full regex consumes through the closer; a failed full match advances
@@ -253,14 +261,26 @@ export function scanReferenceChunks(content: string): ReferenceChunk[] {
       LINK_FULL_STICKY.lastIndex = idx;
       const m = LINK_FULL_STICKY.exec(content);
       if (m !== null) {
-        matched = { refereeName: linkRefereeName(m[1] ?? ""), refType: "L" };
+        matched = {
+          refereeName: linkRefereeName(m[1] ?? ""),
+          refType: "L",
+          start: idx,
+          end: idx + m[0].length,
+          inner: m[1] ?? "",
+        };
         position = idx + m[0].length;
       }
     } else {
       NEST_FULL_STICKY.lastIndex = idx;
       const m = NEST_FULL_STICKY.exec(content);
       if (m !== null) {
-        matched = { refereeName: nestRefereeName(m[1] ?? ""), refType: "I" };
+        matched = {
+          refereeName: nestRefereeName(m[1] ?? ""),
+          refType: "I",
+          start: idx,
+          end: idx + m[0].length,
+          inner: m[1] ?? "",
+        };
         position = idx + m[0].length;
       }
     }
@@ -291,8 +311,10 @@ function linkRefereeName(rawSyntax: string): string | undefined {
 
 /** link.rb:99-109 divider_index: no pipe -> nil; mask every {{...}} span
  *  with same-length filler, then the first surviving pipe divides. A mask
- *  that swallows every pipe returns nil (target keeps its pipes). */
-function dividerIndex(raw: string): number | undefined {
+ *  that swallows every pipe returns nil (target keeps its pipes). Exported
+ *  for the rename-side rewrite (update-referer-content.ts), which re-derives
+ *  target|link_text from the raw syntax exactly as link.rb:89-97 does. */
+export function dividerIndex(raw: string): number | undefined {
   if (!raw.includes("|")) return undefined;
   const masked = raw.replace(NEST_SPAN, (span) => "x".repeat(span.length));
   const idx = masked.indexOf("|");

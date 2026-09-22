@@ -5,36 +5,60 @@
 //   event :validate_type, :validate, changed: :type_id, on: :save do
 //     errors.add :type, t(:core_error_no_such_type) unless type_name   # :24-30
 //   end
-//   def ensure_type_id lookup                                          # :62-70
+//   def ensure_type_id lookup                                          # :58-66
 //     new_type_id = type_id_from_code || type_id_from_template
 //   ...
-//   def extract_type_id! args={}                                       # :81-92
+//   def type_id_from_code                                              # :68-76
+//     return if simple?                                               # :69 — SIMPLE short-circuit
+//     each_type_assigning_module_key do |module_key|
+//       type_id = Card::Set::Type.assignment[module_key]&.card_id      # :72
+//       return type_id if type_id
+//     end
+//     nil
+//   end
+//   def extract_type_id! args={}                                       # :87-96
 //     when (type_id = args.delete(:type_id)&.to_i)  then (zero? ? nil : type_id)
 //     when (type_code = args.delete(:type_code)&.to_sym) then type_id_from_codename
 //     when (type_name = args.delete :type)          then type_id_from_cardname
 //   end
-//   def type_id_from_codename code   # :96-99  -> Card::Codename.id code
-//   def type_id_from_cardname name   # :100-103 -> name.card_id (Lexicon)
+//   def type_id_from_codename code   # :98-101 -> Card::Codename.id code
+//   def type_id_from_cardname name   # :102-105 -> name.card_id (Lexicon)
 //   def default_type_id              # :3-5     -> Card.fetch_type_id %i[all default]
+//
+// The full precedence on :create with no explicit type args is therefore
+// (Card.new args -> handle_type -> ensure_type_id):
+//   extract_type_id!  (nil when no type_id/type_code/type in args)
+//   || type_id_from_code || type_id_from_template
+//   || default_type_id at the FETCH level (Card.fetch_type_id %i[all default])
+// validate_type (:24-30) raises when none of the above resolve. The walk
+// here mirrors that chain in TS, with the type-assignment walk sitting
+// between the explicit-arg check and the default. See
+// src/card/set-patterns/set-type-assignment.ts for the registry port.
 
 import { DeckoName, type Nameish } from "../name.js";
 import type { FetchEngine } from "../fetch.js";
 import { CardActionError, type TypeSpec } from "./types.js";
+import { resolveAssignedTypeIdForCard } from "../set-patterns/set-type-assignment.js";
 
 /** Resolve the cards.type_id for a create/update, or throw type-unknown.
- *  Precedence is extract_type_id!'s: explicit typeId > typeCode > typeName,
- *  then Card.default_type_id when nothing was given (ensure_type_id fills
- *  the blank on :create). */
+ *  Precedence is extract_type_id!'s (type.rb:87-96): explicit typeId >
+ *  typeCode > typeName. When none was given the type-assignment walk runs
+ *  (type.rb:68-76 — same shape as ensure_type_id's type_id_from_code; the
+ *  walk fires only for COMPOUND cards, exactly like Ruby's `simple?`
+ *  guard). Finally, if neither an explicit arg nor an assignment hits,
+ *  Card.default_type_id (type.rb:3-5, *all+*default rule card's type_id)
+ *  is the fallback the port keeps for parity with Ruby's
+ *  `ensure_type_id -> nil -> fetch sets default` behavior. */
 export async function resolveTypeId(
   fetcher: FetchEngine,
-  spec: TypeSpec,
+  spec: TypeSpec & { name?: Nameish },
 ): Promise<number> {
   if (spec.typeId !== undefined && spec.typeId !== 0) {
     await assertTypeCardExists(fetcher, spec.typeId);
     return spec.typeId;
   }
   if (spec.typeCode !== undefined) {
-    // type_id_from_codename via type_id_or_error (type.rb:104-110):
+    // type_id_from_codename via type_id_or_error (type.rb:98-101):
     // a missing codename adds "<val> is not a known type."
     const id = await fetcher.codenames.id(spec.typeCode);
     if (id === undefined) {
@@ -51,6 +75,19 @@ export async function resolveTypeId(
     }
     await assertTypeCardExists(fetcher, id);
     return id;
+  }
+  // type_id_from_code (type.rb:68-76) — the type-assignment walk. Fires
+  // only when a name is present and the card is COMPOUND (the simple?
+  // guard, type.rb:69, sits in findAssignedTypeName). The walk returns
+  // undefined for unresolvable cases (no registration, no anchor
+  // codenames), exactly like Ruby's `Card::Set::Type.assignment[...]`
+  // returning nil.
+  if (spec.name !== undefined) {
+    const assignedId = await resolveAssignedTypeIdForCard(fetcher, {
+      name: spec.name,
+      isNew: true, // ensureSides creates a NEW card; ensure_type_id is a new-arg flow
+    });
+    if (assignedId !== undefined) return assignedId;
   }
   return defaultTypeId(fetcher);
 }

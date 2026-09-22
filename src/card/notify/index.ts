@@ -50,3 +50,9 @@ export {
 export {
   deckEmailTemplateResolver,
 } from "./deck-resolvers.js";
+
+export {
+  defaultFollowerResolver,
+  defaultFollowNotifyDeps,
+  resolveFollowers,
+} from "./follower-resolver.js";

@@ -88,4 +88,17 @@ export {
   ruleSettingCardName,
 } from "./set-patterns/rule-names.js";
 
+export {
+  registerSetTypeAssignment,
+  resetSetTypeAssignments,
+  getSetTypeAssignment,
+  findAssignedTypeName,
+  resolveAssignedTypeId,
+  resolveAssignedTypeIdForCard,
+  listAssignedTypeNamesForCard,
+  type SetTypeAssignment,
+  type AssignedTypeCardInput,
+  type AssignedTypeName,
+} from "./set-patterns/set-type-assignment.js";
+
 export type { PatternCardInput, PrototypeArgs } from "./set-patterns/types.js";

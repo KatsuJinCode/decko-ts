@@ -1,0 +1,427 @@
+// The card_references rename-side write path: when a card's name changes,
+// the cards that REFER to it get their content rewritten so their [[links]]
+// and {{inclusions}} point at the new name, and their reference rows are
+// rebuilt. TypeScript port of Ruby's update_referer_content event family.
+//
+// Ruby trail (card-1.110.0 unless noted; every behavior cites its source):
+// - event :update_referer_content, :finalize, on: :update, changed: :name
+//   (mod/core/set/all/reference_events.rb:7-10):
+//     referers.each { |r| r.replace_references name_before_act, name }
+//     each_descendant { |d| d.rename_as_descendant !skip_update_referers? }
+// - referers (lib/card/reference/all.rb:13-15 via Card#references_in,
+//   lib/card.rb:169): rows whose referee_id is this card's id, mapped to
+//   referer cards, ids uniq'd in first-occurrence order; trashed/missing
+//   referers drop out (Card[id] is nil for them -> Array#compact).
+// - replace_references (reference_events.rb:48-50):
+//   `self.content_quietly = swap_names(old_name, new_name) unless structure`
+//   — the `structure` gate skips cards whose content is inherited from a
+//   structure rule; rule-based content is a later stream in this port and
+//   no structure cards exist yet, so the gate is always false here.
+// - swap_names (all.rb:65-71): parse the content, swap EVERY Reference
+//   chunk (not just rows matching the old name), re-serialize:
+//   - Link#swap_name (card-mod-content-0.20.0 lib/card/content/chunk/
+//     link.rb:35-40): @name = name.to_name.swap(old, new) (key comparison,
+//     cardname-0.20.0 lib/cardname/manipulate.rb:20-33), link text gets
+//     Name#sub_in (:45-50), then the text is REBUILT as
+//     "[[#{referee_name}|#{link_text}]]" where referee_name is the swapped
+//     name ABSOLUTIZED against the referer's own name (chunk/reference.rb
+//     :11-18 absolute_name at :15).
+//   - Nest#swap_name (chunk/nest.rb:77-81): the swapped name is rebuilt
+//     WITHOUT absolutizing; the raw option list after the first pipe of the
+//     tag-stripped brackets is preserved verbatim (interpret at :16-26
+//     splits the stripped text, so interior whitespace of the name part is
+//     gone but everything after the first pipe survives).
+//   - Ruby rebuilds EVERY chunk unconditionally, including chunks that carry
+//     no reference. This port deliberately LEAVES those untouched:
+//     explicit-resource links ([[https://...]] — link.rb:82-83 sets
+//     @explicit_link, @name stays nil) would rebuild to "[[|text]]"/"[[]]"
+//     (referee_name returns nil, reference.rb:12), and comment nests
+//     ({{#...}} — nest.rb:20-21 never sets @name) would rebuild to
+//     "{{}}". Both are Ruby data-corruption warts, not behaviors the
+//     parity corpus asserts; the divergences are recorded here and in the
+//     task report. QueryReference chunks (CQL, chunk/query_reference.rb
+//     :86-89) are outside this port's chunk model, same as in the
+//     out-direction, and stay untouched too.
+// - content_quietly= (reference_events.rb:52-58): assign the content; if
+//   the db_content column actually changed (the loop guard, :54), write the
+//   column DIRECTLY (`update_column` — no validations, no callbacks, no
+//   act/action rows, no updated_at bump) and run update_references_out
+//   (:57) — the referer's rows are deleted and rebuilt from the new
+//   content (all.rb:47-50), which is why this module shares the out-
+//   direction machinery in refresh-references-out.ts.
+// - each_descendant (lib/card/name/all/descendants.rb:41-46) walks the
+//   child graph (left_id OR right_id, descendants.rb:21-29); each
+//   descendant runs rename_as_descendant (reference_events.rb:39-46),
+//   whose first half — update_referer_content for the descendant's OWN
+//   name_before_act -> name pair — is what rewrites referers of virtually
+//   renamed junctions (A renamed -> "A+B" is now "Uno+B", and cards
+//   linking "A+B" follow). The expire + Lexicon.update halves
+//   (:44-45) are the engine's refreshDescendantCaches; this module is
+//   only the referer-content half. The descendant's name_before_act is
+//   the parts' before-names (lib/card/dirty.rb:60-70): each renamed side
+//   contributes its before-name, unchanged sides their current ones.
+//   Ruby re-walks subtrees per descendant (each rename_as_descendant
+//   recurses through update_referer_content again), so deep nodes are
+//   visited several times; every visit after the first finds the content
+//   already swapped and db_content_changed? goes false (reference_events.rb
+//   :54 loop guard). The port computes each descendant once (children of
+//   the renamed part-tree, shortest names first, which is the only order
+//   the before-name data dependency allows) — same rows written, no
+//   redundant passes.
+// - event :update_referer_references_out (reference_events.rb:16-19) is
+//   the skip twin: when referer content is NOT rewritten
+//   (skip: :update_referer_content), referers keep their content but their
+//   rows are rebuilt so partial references stay correctly tracked
+//   (all.rb's "P" rows). The TS save path has no skip machinery yet, so
+//   the engine never calls it; it is exported here for the skip stream
+//   and tested directly.
+
+import { DeckoName } from "../name.js";
+import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
+import { stripTags } from "../render/nest-syntax.js";
+import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { CardsRow } from "../../server/schema.js";
+import {
+  dividerIndex,
+  EXPLICIT_LINK,
+  refreshReferencesOut,
+  scanReferenceChunks,
+  type ReferenceLexicon,
+} from "./refresh-references-out.js";
+
+/** What the rename rewrite needs from the engine: the same driver/Lexicon
+ *  pair the out-direction uses, plus the Lexicon's compound-name
+ *  composition and write-through (DbLexicon.composeName, fetch/lexicon.ts
+ *  :102; DbLexicon.write, :114 — the Lexicon.update half of
+ *  rename_as_descendant, reference_events.rb:45). */
+export interface RenameSwapLexicon extends ReferenceLexicon {
+  composeName(
+    leftId: number,
+    rightId: number | undefined | null,
+  ): Promise<DeckoName | undefined>;
+  write(id: number, name: DeckoName, lex: [number, number]): void;
+}
+
+/** What the rename rewrite needs from the engine: the same driver/Lexicon
+ *  pair the out-direction uses. */
+export interface RenameSwapDeps {
+  driver: SQLDatabaseDriver;
+  lexicon: RenameSwapLexicon;
+}
+
+// -----------------------------------------------------------------------
+// Event entry points
+// -----------------------------------------------------------------------
+
+/** event :update_referer_content (reference_events.rb:7-10): rewrite the
+ *  referers' content old -> new, then the descendants' referers. Callers
+ *  gate on `changed: :name` (an actual rename) and pass the card's
+ *  name_before_act / name pair. */
+export async function updateRefererContent(
+  deps: RenameSwapDeps,
+  renamedCardId: number,
+  nameBeforeAct: DeckoName,
+  name: DeckoName,
+): Promise<void> {
+  // reference_events.rb:8 — referers.each { |r| r.replace_references
+  // name_before_act, name }.
+  await rewriteReferersOf(deps, renamedCardId, nameBeforeAct, name);
+  // reference_events.rb:9 — each_descendant { |d| d.rename_as_descendant
+  // !skip_update_referers? } (the referer-content half; skip is always
+  // false in this port).
+  await rewriteDescendantReferers(deps, renamedCardId, nameBeforeAct, name);
+}
+
+/** event :update_referer_references_out (reference_events.rb:16-19): the
+ *  skip twin — referers rebuild their rows from UNCHANGED content
+ *  (each referer's update_references_out, all.rb:47-50), so partial
+ *  references to the renamed card's old name are correctly tracked. */
+export async function updateRefererReferencesOut(
+  deps: RenameSwapDeps,
+  renamedCardId: number,
+): Promise<void> {
+  for (const referer of await referersOf(deps, renamedCardId)) {
+    const name = await composedNameOf(deps, referer);
+    if (name === undefined) continue;
+    await refreshReferencesOut(
+      deps.driver,
+      deps.lexicon,
+      referer.id,
+      name,
+      referer.db_content ?? "",
+    );
+  }
+}
+
+// -----------------------------------------------------------------------
+// The referer rewrite (reference_events.rb:8, :48-58)
+// -----------------------------------------------------------------------
+
+/** One pass of reference_events.rb:8 against one card's referers. */
+async function rewriteReferersOf(
+  deps: RenameSwapDeps,
+  cardId: number,
+  nameBeforeAct: DeckoName,
+  name: DeckoName,
+): Promise<void> {
+  for (const referer of await referersOf(deps, cardId)) {
+    await replaceReferences(deps, referer, nameBeforeAct, name);
+  }
+}
+
+/** all.rb:13-15 + lib/card.rb:169 — the referers of one card: rows whose
+ *  referee_id is the card's id, uniq'd by referer in first-occurrence
+ *  order (Ruby's references.map(&:referer_id).uniq), mapped to LIVE cards
+ *  (trash = 0; trashed/missing drop out via Array#compact, all.rb:23). */
+async function referersOf(
+  deps: RenameSwapDeps,
+  cardId: number,
+): Promise<CardsRow[]> {
+  const grouped = await deps.driver.query<{ referer_id: number; first_row_id: number }>(
+    `SELECT referer_id, MIN(id) AS first_row_id FROM card_references
+     WHERE referee_id = ? GROUP BY referer_id ORDER BY first_row_id`,
+    [cardId],
+  );
+  const referers: CardsRow[] = [];
+  for (const { referer_id } of grouped.rows) {
+    const result = await deps.driver.query<CardsRow>(
+      "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+      [referer_id],
+    );
+    if (result.rows[0] !== undefined) referers.push(result.rows[0]);
+  }
+  return referers;
+}
+
+/** replace_references (reference_events.rb:48-50): swap the names in the
+ *  referer's content, then the quiet write. The `unless structure` gate
+ *  (:49) has no true case in this port — see the module header. */
+async function replaceReferences(
+  deps: RenameSwapDeps,
+  referer: CardsRow,
+  nameBeforeAct: DeckoName,
+  name: DeckoName,
+): Promise<void> {
+  const refererName = await composedNameOf(deps, referer);
+  if (refererName === undefined) return;
+  const newContent = swapNames(
+    referer.db_content,
+    nameBeforeAct,
+    name,
+    refererName,
+  );
+  await contentQuietlySet(deps, referer, refererName, newContent);
+}
+
+/** content_quietly= (reference_events.rb:52-58): write the column only
+ *  when the content actually changed (:54, the loop guard), DIRECTLY via
+ *  update_column semantics (no updated_at, no act/action rows), then
+ *  rebuild the referer's reference rows (:57 -> all.rb:47-50). */
+async function contentQuietlySet(
+  deps: RenameSwapDeps,
+  referer: CardsRow,
+  refererName: DeckoName,
+  newContent: string,
+): Promise<void> {
+  if (newContent === (referer.db_content ?? null)) return; // db_content_changed?
+  await deps.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
+    newContent,
+    referer.id,
+  ]);
+  await refreshReferencesOut(deps.driver, deps.lexicon, referer.id, refererName, newContent);
+}
+
+// -----------------------------------------------------------------------
+// swap_names (all.rb:65-71) + the chunk swap_name pair
+// ----------------------------------------------------------------
+
+/** swap_names (all.rb:65-71): swap every Reference chunk and re-serialize.
+ *  Chunks that carry no reference (explicit-resource links, comment nests)
+ *  stay untouched — see the module header for the divergence from Ruby,
+ *  which rebuilds them into corrupted forms. */
+export function swapNames(
+  content: string | null | undefined,
+  oldName: DeckoName,
+  newName: DeckoName,
+  refererName: DeckoName,
+): string {
+  const source = content ?? "";
+  let result = "";
+  let cursor = 0;
+  for (const chunk of scanReferenceChunks(source)) {
+    result += source.slice(cursor, chunk.start);
+    result += swapChunkText(chunk, oldName, newName, refererName);
+    cursor = chunk.end;
+  }
+  return result + source.slice(cursor);
+}
+
+/** Link#swap_name (link.rb:35-40) / Nest#swap_name (nest.rb:77-81) for one
+ *  chunk; returns the chunk's ORIGINAL text when the port leaves it
+ *  untouched. */
+function swapChunkText(
+  chunk: ReturnType<typeof scanReferenceChunks>[number],
+  oldName: DeckoName,
+  newName: DeckoName,
+  refererName: DeckoName,
+): string {
+  const original = (chunk.refType === "L" ? "[[" : "{{") + chunk.inner + (chunk.refType === "L" ? "]]" : "}}");
+  try {
+    if (chunk.refType === "L") {
+      // link.rb:35-40. The target|text split follows interpret
+      // (link.rb:89-97) via the same divider_index (link.rb:99-109).
+      const divider = dividerIndex(chunk.inner);
+      const target =
+        divider === undefined || divider === 0 ? chunk.inner : chunk.inner.slice(0, divider);
+      // Ruby rebuilds explicit-resource links into "[[|text]]" (link.rb
+      // :35-40 with a nil @name, reference.rb:12); this port leaves them
+      // byte-identical — see the module header.
+      if (EXPLICIT_LINK.test(target)) return original;
+      const linkText = divider === undefined ? undefined : chunk.inner.slice(divider + 1);
+      // replace_name_reference (reference.rb:30-35): swap on the parsed
+      // (stripped) name, key comparison (manipulate.rb:20-33).
+      const swapped = DeckoName.parse(target).swap(oldName, newName);
+      // referee_name (reference.rb:11-18): absolutize against the
+      // referer's own name.
+      const referee = swapped.absoluteName(refererName);
+      // replace_link_text (link.rb:124-128): sub_in on the STRIPPED text
+      // (objectify stripped it at interpret, link.rb:113-122); blank text
+      // is absent (present?, :38).
+      let textSyntax = "";
+      if (linkText !== undefined) {
+        const stripped = rubyStrip(linkText);
+        if (stripped !== "") {
+          textSyntax = `|${oldName.subIn(stripped, newName)}`;
+        }
+      }
+      return `[[${referee.s}${textSyntax}]]`;
+    }
+    // Nest#swap_name (nest.rb:77-81). Comment nests (@name nil) would
+    // rebuild to "{{}}" in Ruby; this port leaves them untouched — see
+    // the module header.
+    if (chunk.refereeName === undefined) return original;
+    const swapped = DeckoName.parse(chunk.refereeName).swap(oldName, newName);
+    // interpret (nest.rb:16-26) splits the TAG-STRIPPED brackets at the
+    // first pipe; @opt_lists is the verbatim remainder (nil when no pipe
+    // existed, "" kept when the pipe was last). Rebuild preserves it.
+    const strippedInner = stripTags(chunk.inner);
+    const pipe = strippedInner.indexOf("|");
+    const optLists = pipe === -1 ? undefined : strippedInner.slice(pipe + 1);
+    const nestBody = optLists === undefined ? swapped.s : `${swapped.s}|${optLists}`;
+    return `{{${nestBody}}}`;
+  } catch (error) {
+    // reference.rb:16-18 — "do not break on missing id/codename
+    // references": a chunk whose name resolution explodes stays as it is
+    // (Ruby's rescue yields a nil referee_name and a corrupted rebuild;
+    // this port preserves the original text instead).
+    if (error instanceof NameNotFoundError || error instanceof CodenameNotFoundError) {
+      return original;
+    }
+    throw error;
+  }
+}
+
+/** Ruby String#strip: leading/trailing whitespace and NUL removed. */
+function rubyStrip(str: string): string {
+  return str.replace(/^[ \t\n\v\f\r\0]+/, "").replace(/[ \t\n\v\f\r\0]+$/, "");
+}
+
+// -----------------------------------------------------------------------
+// The descendant walk (reference_events.rb:9, :39-46)
+// -----------------------------------------------------------------------
+
+/** The rename a descendant underwent: its composed name before and after
+ *  the ancestor's rename (lib/card/dirty.rb:60-70 — name_before_act is
+ *  the parts' before-names). */
+interface DescendantRename {
+  id: number;
+  before: DeckoName;
+  after: DeckoName;
+}
+
+/** The each_descendant half of update_referer_content: every junction
+ *  under the renamed card had its composed name change virtually; its
+ *  referers' content follows (rename_as_descendant -> the descendant's
+ *  own update_referer_content, reference_events.rb:39-41). The expire +
+ *  Lexicon.update halves (:44-45) live in the engine's
+ *  refreshDescendantCaches. */
+async function rewriteDescendantReferers(
+  deps: RenameSwapDeps,
+  renamedCardId: number,
+  nameBeforeAct: DeckoName,
+  name: DeckoName,
+): Promise<void> {
+  // Collect the descendant rows (each_child's graph: left_id OR right_id,
+  // descendants.rb:21-29, trash excluded) breadth-first like Ruby's walk.
+  const renames = new Map<number, DescendantRename>();
+  renames.set(renamedCardId, { id: renamedCardId, before: nameBeforeAct, after: name });
+  const rows: CardsRow[] = [];
+  const visited = new Set<number>([renamedCardId]);
+  let frontier = [renamedCardId];
+  while (frontier.length > 0) {
+    const next: number[] = [];
+    for (const parentId of frontier) {
+      const result = await deps.driver.query<CardsRow>(
+        "SELECT * FROM cards WHERE (left_id = ? OR right_id = ?) AND trash = 0",
+        [parentId, parentId],
+      );
+      for (const child of result.rows) {
+        if (visited.has(child.id)) continue;
+        visited.add(child.id);
+        rows.push(child);
+        next.push(child.id);
+      }
+    }
+    frontier = next;
+  }
+
+  // Each descendant's after-name is its composed name in the post-rename
+  // Lexicon (lib/card/name/all.rb:12-14); its before-name substitutes the
+  // before-names of any renamed sides (dirty.rb:64-70). BFS order is the
+  // only order the data dependency allows: a renamed side is always a
+  // strict walk-ancestor of the node, so its (before, after) pair exists
+  // by the time the node needs it. Writing each junction's fresh name
+  // into the Lexicon AS THE WALK PROCEEDS is the Card::Lexicon.update
+  // half of rename_as_descendant (reference_events.rb:45): a junction's
+  // id entry caches its NAME STRING frozen at create time, so a deeper
+  // descendant composing through this junction would otherwise resolve
+  // the stale pre-rename name. (The engine's refreshDescendantCaches
+  // repeats these writes afterwards — idempotent; it owns the expire
+  // half too, reference_events.rb:44.)
+  const withNames: DescendantRename[] = [];
+  for (const row of rows) {
+    if (row.left_id === null || row.right_id === null) continue; // not a junction: no composed name
+    const after = await deps.lexicon.composeName(row.left_id, row.right_id);
+    if (after === undefined || !after.isCompound) continue;
+    const leftBefore = renames.get(row.left_id)?.before ?? after.leftName;
+    const rightBefore = renames.get(row.right_id)?.before ?? after.rightName;
+    if (leftBefore === undefined || rightBefore === undefined) continue;
+    const before = DeckoName.compose([leftBefore, rightBefore]);
+    const rename = { id: row.id, before, after };
+    renames.set(row.id, rename);
+    deps.lexicon.write(row.id, after, [row.left_id, row.right_id]);
+    withNames.push(rename);
+  }
+
+  for (const rename of withNames) {
+    await rewriteReferersOf(deps, rename.id, rename.before, rename.after);
+  }
+}
+
+// -----------------------------------------------------------------------
+// shared helpers
+// -----------------------------------------------------------------------
+
+/** The composed name of a row — lib/card/name/all.rb:12-14 (compound names
+ *  compose through the Lexicon; simple cards read the column), the same
+ *  resolution card-action-engine.ts uses. */
+async function composedNameOf(
+  deps: RenameSwapDeps,
+  row: CardsRow,
+): Promise<DeckoName | undefined> {
+  if (row.left_id !== null && row.left_id !== undefined) {
+    const composed = await deps.lexicon.composeName(row.left_id, row.right_id);
+    if (composed !== undefined) return composed;
+  }
+  return row.name !== null && row.name !== undefined ? DeckoName.parse(row.name) : undefined;
+}

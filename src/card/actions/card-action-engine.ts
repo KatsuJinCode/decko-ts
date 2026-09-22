@@ -38,11 +38,13 @@
 // saved rule card re-derives its set's members and every card pointing at
 // it. The ok? write/read CHECKS remain the canWrite seam + the read side.
 // Reference maintenance status: card_references population on
-// create/update (refresh_references_out) and cleanup on delete
-// (clear_references) ARE built here (refresh-references-out.ts). The
-// rename-side referer machinery — update_referer_content rewrites and
-// refresh_references_in's map_referees/unmap_referees backfill — is still
-// a later stream.
+// create/update (refresh_references_out), cleanup on delete
+// (clear_references), the referee-side backfill (refresh_references_in —
+// map_referees on every name-bearing save; its unmap_referees arm is
+// unused until the save path learns `skip:`), and the rename-side referer
+// rewrite (update_referer_content, update-referer-content.ts) ARE built
+// here. update_referer_references_out — the rewrite's skip twin — is
+// exported but not yet wired (no skip machinery on this save path).
 
 import {
   ActWriter,
@@ -86,10 +88,13 @@ import {
   type ReadRuleWriteDeps,
 } from "../permissions/set-read-rule.js";
 import {
+  buildFollowNotifyHook,
+  defaultFollowNotifyDeps,
   defaultTransport,
   expandActionResultToSavePathEvents,
   makeNotifyContext,
   runIntegrationHooks,
+  type FollowerResolver,
   type NotifyTransport,
   type SavePathIntegrationHook,
 } from "../notify/index.js";
@@ -97,6 +102,8 @@ import {
   clearReferencesOnDelete,
   refreshReferencesOut,
 } from "./refresh-references-out.js";
+import { refreshReferencesIn } from "./refresh-references-in.js";
+import { updateRefererContent } from "./update-referer-content.js";
 
 export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
@@ -120,6 +127,14 @@ export interface CardActionEngineOptions {
    *  before. Failures inside hooks are logged, never raised
    *  (email_template.rb:6's rescue Net::SMTPError shape). */
   integrationHooks?: SavePathIntegrationHook[];
+  /** The follower lookup the DEFAULT follow-notify hook uses when
+   *  integrationHooks is omitted (docs/notify-port-notes.md, "save-path
+   *  registration line"): defaultFollowerResolver(fetch) — Ruby's
+   *  follow-rule algebra (card-mod-follow set/all/follow/follower_ids.rb
+   *  + set/all/follow/followed_by.rb). Injecting an override here keeps
+   *  hosts on fixed test resolvers while the template/auth halves stay
+   *  deck-backed. Ignored when integrationHooks is provided. */
+  followerResolver?: FollowerResolver;
   /** The transport the integration hooks send through (default: the
    *  notify module's NoopTransport default). */
   notifyTransport?: NotifyTransport;
@@ -145,6 +160,7 @@ export class CardActionEngine {
   private readonly ipAddress: string | null;
   private readonly canWrite: CanWriteHook | undefined;
   private readonly integrationHooks: SavePathIntegrationHook[] | undefined;
+  private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
 
@@ -155,6 +171,7 @@ export class CardActionEngine {
     this.ipAddress = options.ipAddress ?? null;
     this.canWrite = options.canWrite;
     this.integrationHooks = options.integrationHooks;
+    this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
   }
@@ -174,23 +191,38 @@ export class CardActionEngine {
   /**
    * The integration stage (phases.rb:33-39): after expire, before the
    * caller sees the result, the act's events go to every registered
-   * save-path hook (follow notifications today). No hooks configured or
-   * an anonymous actor (Ruby: notifications carry the acting user;
-   * anonymous writes notify no one) -> dispatch nothing. Hook failures
-   * are logged inside runIntegrationHooks, never raised — mail must not
-   * break the save that triggered it.
+   * save-path hook. An anonymous actor (Ruby: notifications carry the
+   * acting user; anonymous writes notify no one) -> dispatch nothing.
+   * Hook failures are logged inside runIntegrationHooks, never raised —
+   * mail must not break the save that triggered it.
+   *
+   * Hook list (docs/notify-port-notes.md, "Save-path registration
+   * line"): the host's integrationHooks when provided; otherwise the
+   * built-in follow-notify hook — Ruby registers
+   * notify_followers_after_save unconditionally (card-mod-follow
+   * set/all/notify.rb:13-16), so the default save path resolves real
+   * followers with the rule-algebra walk (defaultFollowNotifyDeps ->
+   * defaultFollowerResolver) and mails only when the deck has follow
+   * rules + a follower_notification_email template. An explicit `[]`
+   * still means "no integrations" (?? semantics), which is what every
+   * pre-existing caller without hooks observes.
    */
   private async dispatchSavePathIntegrations(result: ActionResult | null): Promise<void> {
     if (result === null) return;
-    if (this.integrationHooks === undefined || this.integrationHooks.length === 0) return;
     if (this.actor === null || this.actor.name === ANONYMOUS_ACTOR_NAME) return;
+    const hooks = this.integrationHooks ?? [
+      buildFollowNotifyHook(
+        defaultFollowNotifyDeps(this.fetch, { followers: this.followerResolver }),
+      ),
+    ];
+    if (hooks.length === 0) return;
     const actor = { id: this.actor.id, name: this.actor.name, email: null };
     await runIntegrationHooks({
       actId: result.actId,
       actor,
       silent: false,
       events: expandActionResultToSavePathEvents(result, actor, false),
-      hooks: this.integrationHooks,
+      hooks,
       context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
     });
   }
@@ -222,7 +254,7 @@ export class CardActionEngine {
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
-    const typeId = await resolveTypeId(this.fetch, input); // extract_type_id! + validate_type
+    const typeId = await resolveTypeId(this.fetch, { ...input, name }); // extract_type_id! + type_id_from_code + default
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
 
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
@@ -296,6 +328,12 @@ export class CardActionEngine {
         contentBefore: trashed.db_content,
         contentAfter: input.content ?? null,
       });
+      // FINALIZE (card_references write path): refresh_references_in on the
+      // revival save (reference_events.rb:22-25 — changed: :name, on:
+      // :save). A :create save runs only the map_referees arm (the unmap
+      // arm needs action == :update), so dangling rows keyed to the revived
+      // name adopt the id (reference.rb:26-28).
+      await refreshReferencesIn(this.fetch.driver, trashed.id, name.key);
       // FINALIZE: a revived RULE card still cascades (event
       // :cascade_read_rule, set/right/read.rb:9-14 — the revival's name is
       // changing).
@@ -357,6 +395,12 @@ export class CardActionEngine {
       contentBefore: null,
       contentAfter: input.content ?? null,
     });
+    // FINALIZE (card_references write path): refresh_references_in on the
+    // create save (reference_events.rb:22-25 — changed: :name, on: :save;
+    // :create action, so only map_referees runs): rows written earlier with
+    // this card's key and referee_id NULL — "L"/"I" rows for a not-yet-
+    // existing name and "P" partial rows — adopt the id (reference.rb:26-28).
+    await refreshReferencesIn(this.fetch.driver, created.cardId, name.key);
     return {
       cardId: created.cardId,
       actionId: created.actionId,
@@ -433,7 +477,7 @@ export class CardActionEngine {
     // rename-conflict checks, which need the would-be type_id.
     const resolvedTypeId =
       input.typeId !== undefined || input.typeCode !== undefined || input.typeName !== undefined
-        ? await resolveTypeId(this.fetch, input)
+        ? await resolveTypeId(this.fetch, { ...input, name: newName ?? row.name })
         : undefined;
 
     if (nameChanged && newName !== undefined) {
@@ -574,6 +618,25 @@ export class CardActionEngine {
       contentBefore: before.db_content,
       contentAfter: after.db_content,
     });
+    // FINALIZE (card_references write path, the rename seam): Ruby's
+    // finalize events run in definition order (reference_events.rb:7 then
+    // :22). update_referer_content (:7-10, `on: :update, changed: :name`)
+    // rewrites every referring card's content so its [[links]] /
+    // {{includes}} point at the new name — including referers of
+    // virtually-renamed descendants — and refresh_references_in (:22-25)
+    // backfills the referee_id columns (map_referees). The unmap_referees
+    // arm is gated on Ruby's skip_update_referers? (skip:
+    // :update_referer_content); this save path has no skip machinery yet,
+    // so it never fires here (refresh-references-in.ts).
+    if (nameChanged && nameAfter !== undefined && currentName !== undefined) {
+      await updateRefererContent(
+        { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+        row.id,
+        currentName,
+        nameAfter,
+      );
+      await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key);
+    }
     // STORE tail (event :set_field_read_rules, permissions.rb:7-9 — after
     // :set_read_rule, on: :update, changed: :type_id): a type-changing save
     // re-derives every field card.
@@ -628,6 +691,12 @@ export class CardActionEngine {
         lexAfter: obstacleName.s,
         verb: "update",
       });
+      // FINALIZE (card_references write path): the obstacle's own save!
+      // runs refresh_references_in too (reference_events.rb:22-25). Its
+      // update_referer_content twin no-ops in Ruby as well — a trashed
+      // card's referers resolve to nil and drop out (all.rb:23 Array#
+      // compact) — so only the map arm is ported here.
+      await refreshReferencesIn(this.fetch.driver, obstacle.id, obstacleName.key);
     }
   }
 
