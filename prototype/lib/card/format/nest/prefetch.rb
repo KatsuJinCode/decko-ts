@@ -37,15 +37,32 @@ class Card
         # Public entry. Idempotent (warm-cache writes are no-ops when the
         # card is already cached). Called from Card::Format::Render#render!
         # (patched in render.rb). Returns the row count for telemetry.
+        #
+        # PROTOTYPE NOTE (2026-09-21): the recursive CTE in walk_closure_rows
+        # below is the design target (single statement, ANY depth). It works
+        # in the TS port because nest-syntax.ts is the semantic authority for
+        # the boundary-under score key algorithm; the SQL extraction is a
+        # best-effort prescan. In this Ruby port we don't have an equivalent
+        # best-effort key transform in SQL (the letter/digit boundary
+        # underscore insert is decko-specific and not a SQL primitive), so
+        # the prototype uses a Ruby-side recursive bulk-SELECT walk
+        # (walk_via_bulk_select below) that uses the real Card::Content
+        # parser to extract refs and Card::Name[name].key to compute keys.
+        # One SELECT per level until closure -- still O(depth) round trips,
+        # each indexable, vs the depth-first O(depth) per-inclusion fetches
+        # the patch replaces. The design doc
+        # (docs/ruby-dividend-cte.md) describes the single-statement
+        # target; the prototype demonstrates the cache-warming contract
+        # that target will satisfy when ported.
         def prefetch_inclusion_closure root_card, _view
           return 0 unless root_card&.key
 
           stats = { rows: 0, statements: 0, fallback_rounds: 0 }
 
-          # --- 1) the SQL closure walk, one statement ------------------------
-          rows = walk_closure_rows(root_card.key, stats)
+          # --- 1) Ruby-side closure walk, one SELECT per level -------------
+          rows = walk_via_bulk_select(root_card.key, stats)
           if ENV["PREFETCH_DEBUG"]
-            puts "  [prefetch] walk_closure_rows: #{rows.size} rows, " \
+            puts "  [prefetch] walk_via_bulk_select: #{rows.size} rows, " \
                  "#{stats[:statements]} statements"
           end
 
@@ -54,15 +71,6 @@ class Card
           if ENV["PREFETCH_DEBUG"]
             puts "  [prefetch] hydrate_cache: #{stats[:rows]} cache entries, " \
                  "#{stats[:statements]} statements total"
-          end
-          return stats[:rows] if rows.empty?
-
-          # --- 3) JS-level verification (cheap, no recursion on small sets) -
-          pending = collect_pending rows
-          fallback_warm_cache root_card.key, pending, stats
-          if ENV["PREFETCH_DEBUG"]
-            puts "  [prefetch] fallback_warm_cache: #{stats[:fallback_rounds]} " \
-                 "rounds, #{stats[:statements]} statements grand total"
           end
 
           stats[:rows]
