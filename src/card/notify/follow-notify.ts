@@ -159,7 +159,7 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
       const followers = deps.followers(cardId, event);
       if (followers.length === 0) return;
 
-      const template = deps.template();
+      const template = await deps.template();
       if (template.subject.length === 0 && template.textBody.length === 0 && (template.htmlBody?.length ?? 0) === 0) {
         // Empty template — Ruby's `Card[:follower_notification_email]`
         // defaults carry a stocked subject + body. A blank template
