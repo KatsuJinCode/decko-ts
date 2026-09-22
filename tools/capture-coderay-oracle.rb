@@ -68,7 +68,9 @@ CASES.each do |c|
   content = load_content(c[:shard], c[:card_id])
   html = CodeRay.scan(content, c[:lang]).div
   out_path = "#{OUT_DIR}/#{c[:name]}.html"
-  File.write(out_path, html)
+  # Binary write so Windows-mode LF->CRLF translation doesn't change the
+  # bytes. CodeRay emits LF; the TS port matches LF; tests compare bytes.
+  File.binwrite(out_path, html)
   puts "wrote #{out_path} (#{html.bytesize} bytes; lang=#{c[:lang]})"
 end
 
