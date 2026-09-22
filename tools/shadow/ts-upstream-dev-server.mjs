@@ -171,18 +171,18 @@ async function insertCard(driver, row, DeckoName) {
 // URL parsing (Decko convention: spaces -> '+' in the path).
 // ----------------------------------------------------------------------------
 
-/** Decode a URL mark. Ruby's CGI.unescape turns '+' into ' ' (standard
- *  form-encoding behavior), so the live proof here uses the same
- *  convention: '+' -> space. Compound names (literal '+' between
- *  parts) must URL-encode the joint as '%2B' to survive the round
- *  trip; this dev server does NOT test compound names because the
- *  smoke proof only needs the four SIMPLE cards. Trailing .<format>
+/** Decode a URL mark. Decko's URL convention (verified live against
+ *  the Ruby oracle at 127.0.0.1:3055 on 2026-09-21) URL-encodes
+ *  spaces as %20, NOT as '+'. Rails does not apply the
+ *  form-encoding '+'-space rule to PATH components (only to query
+ *  strings and POST bodies), so a literal '+' in a Decko URL stays a
+ *  '+'. The marker joiner for compound names is a literal '+' and
+ *  must arrive as %2B (otherwise it would be confused with a literal
+ *  '+' inside a name). This dev server mirrors that exactly:
+ *  decodeURIComponent, no separate '+'-handling. Trailing .<format>
  *  is stripped. */
 function decodeMark(rawMark) {
   let s = decodeURIComponent(rawMark);
-  // Restore spaces from '+' markers.
-  s = s.replace(/\+/g, " ");
-  // Strip trailing .<format>.
   const dotIdx = s.lastIndexOf(".");
   if (dotIdx > 0) s = s.slice(0, dotIdx);
   return s;
