@@ -79,6 +79,8 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
       rows: (result.results ?? []) as T[],
       rowsAffected: result.meta?.changes ?? 0,
       lastInsertRowId: rowIdOrOmit(result.meta?.last_row_id),
+      rowsRead: metaNumberOrOmit(result.meta?.rows_read),
+      rowsWritten: metaNumberOrOmit(result.meta?.rows_written),
     };
   }
 }
@@ -98,4 +100,13 @@ function assertSuccess(op: string, target: string, result: D1ResultLike): void {
 function rowIdOrOmit(lastRowId: number | bigint | undefined): number | bigint | undefined {
   if (lastRowId === undefined) return undefined;
   return BigInt(lastRowId) > 0n ? lastRowId : undefined;
+}
+
+/** D1 reports rows_read/rows_written as numbers on real D1; the workerd
+ *  emulation may surface them as undefined or non-numbers. The driver
+ *  contract treats them as optional; non-numbers (incl. NaN, strings,
+ *  undefined) are normalized to "omitted" so callers never see a wrong-
+ *  typed value — only a present-and-numeric one or undefined. */
+function metaNumberOrOmit(n: unknown): number | undefined {
+  return typeof n === "number" && Number.isFinite(n) ? n : undefined;
 }

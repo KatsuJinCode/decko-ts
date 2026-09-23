@@ -10,6 +10,15 @@ export interface SQLQueryResult<T = unknown> {
   rows: T[];
   rowsAffected: number;
   lastInsertRowId?: number | bigint;
+  /** Provider-reported rows read by the engine (D1 meta.rows_read). UNDEFINED
+   *  means the runtime did not surface it (local-sqlite has no equivalent;
+   *  D1 in production reports a number, workerd's local D1 emulation may
+   *  also be undefined). The deploy/worker-metrics wrapper never silently
+   *  invents a value — see worker-metrics.ts for the ESTIMATE fallback. */
+  rowsRead?: number;
+  /** Provider-reported rows written by the engine (D1 meta.rows_written).
+   *  Same undefined semantics as rowsRead. */
+  rowsWritten?: number;
 }
 
 export interface SQLStatement {
