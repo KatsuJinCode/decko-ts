@@ -32,3 +32,12 @@ tmp/
 # anonymized corpus deck artifacts (deploy-scale D1 seed; rebuilt on demand;
 # never committed - 700MB+ each)
 benchmarks/corpus-v2-anonymized/
+
+# machine-local corpus input paths (data rule: never committed)
+benchmarks/local-paths.json
+*.cpuprofile
+
+# worker/deploy local state (never committed)
+deploy/.wrangler/
+state/
+tools/hygiene/out/

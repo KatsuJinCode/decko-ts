@@ -62,7 +62,7 @@ hardware-independent). Artifact: same JSONs as R1.
 - Scale: the sanitized corpus `corpus/bench-corpus.sqlite3` --
   47,235 live cards (49,829 rows incl. trash), 556,526 card_references rows,
   the full inclusion graph with ids preserved. Built by
-  `sanitize_corpus.py` from the Culturesmith production dump; verified by
+  `sanitize_corpus.py` from the SourceDeck production dump; verified by
   `verify_sanitized.py`; see `docs/benchmark-corpus-report.md` for the
   fidelity and content-absence proofs. On-disk size of the corpus DB is
   part of the environment block of every R3 artifact.

@@ -2,8 +2,8 @@
 -- schema.mysql-reference.sql
 --
 -- VERBATIM extraction of the CREATE TABLE statements from the production
--- Culturesmith mysqldump:
---   C:\localProjects\culturesmith-migration\incoming\culturesmith-2026-09-07.sql
+-- SourceDeck mysqldump:
+--   C:\localProjects\source-deck-migration\incoming\source-deck-2026-09-07.sql
 --   (mysqldump 10.13, MySQL 8.0.39 dump of server 8.0.45, 1.2 GB)
 --
 -- This file is the COMPARISON REFERENCE for db/schema.sqlite.sql. It is not
@@ -260,10 +260,10 @@ CREATE TABLE `transform_migrations` (
 --   the application layer, standard for this codebase's ActiveRecord era.
 -- - No FULLTEXT or SPATIAL indexes exist in the core schema.
 -- - No site-custom ("deck") tables and no mod-created tables exist in the
---   Culturesmith production dump. Extension points observed elsewhere:
+--   SourceDeck production dump. Extension points observed elsewhere:
 --   card-mod-delayed_job consumes delayed_jobs; the Rails session store
 --   consumes sessions; the card gem's stale site dump additionally showed
 --   a legacy `users` table (dropped in production by the 2014
 --   user-data-to-cards transform) and site-custom library_* tables that
---   belong to a different (dev) database, not to Culturesmith production.
+--   belong to a different (dev) database, not to SourceDeck production.
 -- ============================================================================

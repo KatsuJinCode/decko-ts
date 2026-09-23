@@ -12,7 +12,7 @@ Corpus v2 rebuilds the corpus with REAL name structure under sanitization:
      name(card) = name(left_id) + "+" + name(right_id)          (recursively,
      simple cards provide the atoms). The walk is the mechanism the proven
      name-correct extraction is built on; the extract
-     (culturesmith-migration/review/cards-extract.jsonl) is loaded as a
+     (source-deck-migration/review/cards-extract.jsonl) is loaded as a
      CROSS-CHECK: every extract row that carries a real (non-placeholder)
      name must equal the walk's reconstruction exactly, and every live card
      must receive a non-null reconstructed name.
@@ -22,7 +22,7 @@ Corpus v2 rebuilds the corpus with REAL name structure under sanitization:
      length lowercase token. Engine-structural parts are preserved VERBATIM:
      star-rule parts ("*read", "*type", "*all", ...) and relative-reference
      parts ("_self", "_left", ...) -- these are Decko vocabulary, not
-     Culturesmith content, and rule names are load-bearing structure.
+     SourceDeck content, and rule names are load-bearing structure.
      Codenames are engine vocabulary and are likewise preserved verbatim.
      Part-count, part order, junction depth, and EXACT name byte length are
      preserved by construction (per-part equal length). Shared atoms map to
@@ -123,8 +123,9 @@ def resolve_inclusion_v2(inner, name_to_id, san_name_of):
 
 _sc.resolve_inclusion = resolve_inclusion_v2
 
-DUMP_DEFAULT = r"C:\localProjects\culturesmith-migration\incoming\culturesmith-2026-09-07.sql"
-EXTRACT_DEFAULT = r"C:\localProjects\culturesmith-migration\review\cards-extract.jsonl"
+# Machine-local input paths (source dump + review extraction) are resolved at
+# run time in main() via sanitize_corpus.local_input_path: env vars or the
+# gitignored benchmarks/local-paths.json. Nothing committed names the paths.
 
 EXTRACT_NULL_PLACEHOLDER = "NULL"  # the extraction writes this literal when the
 # raw cards.name column was NULL and it did not reconstruct (compound cards)
@@ -249,7 +250,7 @@ def crosscheck_extract(recon, type_by_id, extract_path):
 def is_structural_part(part):
     """Engine-structural name parts kept verbatim: star rules (*read, ...)
     and Decko relative references (_self, _left, ...). These are Decko
-    vocabulary shared by every installation, not Culturesmith content."""
+    vocabulary shared by every installation, not SourceDeck content."""
     return part.startswith("*") or part.startswith("_")
 
 
@@ -365,8 +366,10 @@ def histogram(values):
 
 
 def main():
-    dump = sys.argv[1] if len(sys.argv) > 1 else DUMP_DEFAULT
-    extract_path = sys.argv[2] if len(sys.argv) > 2 else EXTRACT_DEFAULT
+    dump = sys.argv[1] if len(sys.argv) > 1 else \
+        _sc.local_input_path("source_dump", "CORPUS_SOURCE_DUMP")
+    extract_path = sys.argv[2] if len(sys.argv) > 2 else \
+        _sc.local_input_path("source_extract", "CORPUS_SOURCE_EXTRACT")
     outdir = sys.argv[3] if len(sys.argv) > 3 else HERE
     os.makedirs(outdir, exist_ok=True)
     dbpath = os.path.join(outdir, "bench-corpus-v2.sqlite3")
@@ -587,8 +590,10 @@ def main():
     ref_mix = Counter(r["ref_type"] for r in refs)
 
     manifest = {
-        "source_dump": os.path.basename(dump),
-        "extract": os.path.basename(extract_path),
+        # Receipt records the input's SHAPE, never its machine-local name or
+        # the source site identity (data rule; paths stay in local-paths.json).
+        "source_dump": "source-deck-dump.sql",
+        "extract": "source-deck-extract.jsonl",
         "seed": SEED,
         "card_rows_total": len(cards),
         "live_cards": len(live),

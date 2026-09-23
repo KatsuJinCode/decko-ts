@@ -81,7 +81,7 @@ sql-generation suite). Mechanics per query family:
 The capture ran against a fresh 618-card decko app. The replay seeds the
 query-relevant model of that deck with its REAL capture-deck ids (read
 from `tools/oracle/decko-oracle-app` read-only; standard decko seed
-content, no Culturesmith data). Two properties are load-bearing and
+content, no SourceDeck data). Two properties are load-bearing and
 documented in the seed file:
 
 1. **NULL-key sort windows.** `sort: "name"` orders by the `key` column;

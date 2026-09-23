@@ -41,12 +41,12 @@ plans the next wave. Agents never git-commit and never run npm install
 
 ## Milestones (2026-09-19, mapped to the #1282 promises)
 
-DATA RULE: real Culturesmith content never leaves this workstation (not the VM, not Cloudflare, nowhere); sanitized structure-preserving artifacts (proven content-free) may go anywhere.
+DATA RULE: real SourceDeck content never leaves this workstation (not the VM, not Cloudflare, nowhere); sanitized structure-preserving artifacts (proven content-free) may go anywhere.
 
 - **M1 — corpus-scale parity**: corpus v2 (Lexicon-reconstructed names/keys) loaded into a Ruby oracle deck; capture rendered views + CQL result sets for the FULL 47,235-card payload (resumable); replay through the TS engine via the harness — full-payload byte-parity is the claim, not smoke fixtures.
 - **M2 — one-click Cloudflare demo (THE core deliverable per Julian)**: ✅ **SHIPPED 2026-09-20.** wrangler config + D1 migrations + seed path on a PUBLIC repo with a working Deploy-to-Cloudflare button; demo-able to Ethan. Note: button requires a public repo — repo placement is Julian's call. Artifact: `worker.js` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + README button. The actual `wrangler deploy` is one Julian-scope away (CF account + scope in the current turn).
-- **M3 — published metrics (AMENDED per Julian 2026-09-19)**: final numbers = the LIVE culturesmith.com deployment (Ethan's VM, not ours) vs an ACTUAL Cloudflare deployment, per #1282. Local + juc-vm numbers are intermediate/engineering artifacts. Live-site measurement is read-only, rate-limited, normal-page-load traffic — heavy/borderline-abusive load testing happens locally only — and Ethan gets a heads-up via Julian before we measure his server.
-- **M4 — one-click MIGRATION (REFINED per Julian 2026-09-19)**: any Ruby-hosted deck can become a Cloudflare-hosted decko-ts in the same one-click flow — same data, new runtime underneath, no editorial transforms. The proven Culturesmith importer generalizes into this path; Brandon's public/private sorting is a SUPERSET use case layered on top (his adds review decisions; the base migration is data-faithful).
+- **M3 — published metrics (AMENDED per Julian 2026-09-19)**: final numbers = the LIVE source-deck.example deployment (Ethan's VM, not ours) vs an ACTUAL Cloudflare deployment, per #1282. Local + juc-vm numbers are intermediate/engineering artifacts. Live-site measurement is read-only, rate-limited, normal-page-load traffic — heavy/borderline-abusive load testing happens locally only — and Ethan gets a heads-up via Julian before we measure his server.
+- **M4 — one-click MIGRATION (REFINED per Julian 2026-09-19)**: any Ruby-hosted deck can become a Cloudflare-hosted decko-ts in the same one-click flow — same data, new runtime underneath, no editorial transforms. The proven SourceDeck importer generalizes into this path; Brandon's public/private sorting is a SUPERSET use case layered on top (his adds review decisions; the base migration is data-faithful).
 
 ## Wave 2 (launched 2026-09-19)
 
@@ -62,7 +62,7 @@ DATA RULE: real Culturesmith content never leaves this workstation (not the VM, 
 |---|---|---|---|---|
 | 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | NOT STARTED | The renderer currently returns static HTML_VIEWS regardless of card type/set. The rule stream walks the set-module inheritance chain, fetches rule cards by name, applies view overrides per card. Without this, only the html-format views apply — no per-type/per-set customizations. |
 | 13 | Mod loading | `src/card/mod-loader.ts`, `src/card/mod-loader/**`, `tests/card/mod-loader/**`, `docs/mod-loader-port-notes.md` | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, card-mod-format, etc.) are the port targets. The mod-loader's job is the registration mechanism; each mod is its own port. |
-| 14 | Migration tool | `tools/migrate/**`, `tests/tools/migrate/**`, `docs/migration-tool.md` | NOT STARTED | Generalize the proven Culturesmith importer (Ruby dump → decko-ts) into a reusable one-shot path. Same data, new runtime underneath, no editorial transforms. The base migration is data-faithful; Brandon's public/private sorting is a SUPERSET use case layered on top. |
+| 14 | Migration tool | `tools/migrate/**`, `tests/tools/migrate/**`, `docs/migration-tool.md` | NOT STARTED | Generalize the proven SourceDeck importer (Ruby dump → decko-ts) into a reusable one-shot path. Same data, new runtime underneath, no editorial transforms. The base migration is data-faithful; Brandon's public/private sorting is a SUPERSET use case layered on top. |
 | 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | **LANDED 2026-09-20**: lookup.ts + apply.ts + index.ts + 21 tests. Names already in rule-names.ts; this stream added the storage walk (findRule / findRules) and the JSON rule-application layer (parseViewOverride / applyViewOverride / resolveViewOverride). JSON-encoded rules in db_content — HAML/Ruby round-trip is deferred to a v2 stream. Render-side hook (RenderEngine.renderView integration) deliberately left as a follower stream so the engine stays a library. |
 
 ## Concurrency gate (2026-09-19)
@@ -81,13 +81,13 @@ in place of bare `npx tsc --noEmit`.
 - Card fetch/cache layer over the driver (card, card_actions, card_changes,
   card_acts, card_revisions reads/writes).
 - Sets, rules, permission resolution (the read_rule machinery the
-  Culturesmith migration already mapped from the data side).
+  SourceDeck migration already mapped from the data side).
 - Renderer with batched inclusion prefetch (the scaling fix from #1282:
   constant queries per page render regardless of depth).
 - View/format layer parity (:open, :closed, :content, :title...).
 - Mod loading + mod compatibility report (feeds the migration tool).
 - Migration tool: Ruby dump -> decko-ts import (generalize the proven
-  Culturesmith importer).
+  SourceDeck importer).
 - Response-time comparison harness (deep-nesting fixtures, Ruby vs TS).
 - Mod porting begins (the 33 installed card-mods, priority by Brandon's
   stack: account, bootstrap, ...).
@@ -127,7 +127,7 @@ The remaining work is the rule-application engine and mod loading — the pieces
 | Rule evaluation engine | NOT STARTED | Render-side: when a card has rules, walk the set-module inheritance chain, fetch rule cards, apply view overrides. Currently the renderer returns the static HTML_VIEWS regardless of card type/set. |
 | Mod loading | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, etc.) are the port targets. |
 | Mod porting (33 mods) | NOT STARTED | Each mod is its own port. Priority by Brandon's stack: account, bootstrap, … |
-| Migration tool | NOT STARTED | Generalize the proven Culturesmith importer (Ruby dump → decko-ts) into a reusable one-shot path. |
+| Migration tool | NOT STARTED | Generalize the proven SourceDeck importer (Ruby dump → decko-ts) into a reusable one-shot path. |
 | Response-time harness (Ruby vs TS) | NOT STARTED | Deep-nesting fixtures, measure both runtimes end-to-end. |
 
 These are the streams M3 (published metrics) and M4 (one-click migration) depend on. The HTML render side and the data layer are both ready — what's missing is the metaprogramming layer that Ruby Decko's mod system gets for free from `module Card::Set::Pattern::Base` chains.

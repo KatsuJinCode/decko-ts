@@ -1,6 +1,6 @@
 // parse-dump.test.ts — the streaming mysqldump INSERT parser.
 //
-// The core contract under test (the lesson from the 1.2 GB Culturesmith
+// The core contract under test (the lesson from the 1.2 GB SourceDeck
 // migration): parsing must be LINEAR, ANCHORED, QUOTE-AWARE and STREAMING.
 // The sharpest expression of that contract is FEED-SIZE INVARIANCE: the
 // same dump fed whole, in 7-char slices, or one character at a time must

@@ -158,7 +158,7 @@ Regression tests: `tests/card/render/prefetch-cache-codename-parity.test.ts`
   TYPE_PLUS_RIGHT fallback; plus an end-to-end slot-class test rendering a
   synthetic star card (`*tiny_mce` closed view →
   `class="card-slot closed-view ALL TYPE-exi STAR SELF-Xtiny_mce"`, no
-  `STAR-X` fragment). All fixtures are synthetic (no Culturesmith content).
+  `STAR-X` fragment). All fixtures are synthetic (no SourceDeck content).
 - `tests/card/render/prefetch-cache-codename-parity.test.ts` — codename
   survives the render-then-fetch order (corpus:274 mechanism).
 

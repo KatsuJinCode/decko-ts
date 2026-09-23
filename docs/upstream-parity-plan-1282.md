@@ -155,10 +155,10 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 - `[ ]` T3 config-page provisioning payload doubling as recovery artifact
   (non-button providers).
 - `[ ]` T4 migration tool generalization (tracker stream 14) — the
-  proven Culturesmith importer into the one-click path.
+  proven SourceDeck importer into the one-click path.
 - `[ ]` T5 shadow-compare router (TS behind Ruby, live-traffic byte
   comparison, clean-cutover report).
-- `[ ]` T7 M3 published metrics: live culturesmith.com vs actual CF deploy
+- `[ ]` T7 M3 published metrics: live source-deck.example vs actual CF deploy
   (needs Julian/Ethan coordination; local numbers are engineering
   artifacts).
 

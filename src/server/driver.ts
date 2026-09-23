@@ -1,5 +1,5 @@
 // The one seam every storage provider plugs into. From
-// brandonDojoTech docs/plans/decko-typescript-edge-port-strategy.md (v2, section 2.1).
+// workspace docs/plans/decko-typescript-edge-port-strategy.md (v2, section 2.1).
 // Upstream proposal: decko-commons/decko#1282.
 //
 // Rules: the engine never imports vendor SDKs. Adapters implement this

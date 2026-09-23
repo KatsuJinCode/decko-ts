@@ -99,7 +99,7 @@ constant queries per render regardless of inclusion depth.
 - Typecheck: `npm run typecheck`. Tests: `npm test`. Both must pass
   before any commit lands.
 - Ruby truth lives in the installed gems (C:\Ruby33-x64, card-1.110.0,
-  decko-0.20.0) and, for the production schema, the Culturesmith mysqldump.
+  decko-0.20.0) and, for the production schema, the SourceDeck mysqldump.
 - Nothing from this repo goes to decko-commons upstream until Julian says
   so.
 

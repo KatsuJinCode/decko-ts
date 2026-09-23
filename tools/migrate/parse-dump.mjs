@@ -1,8 +1,8 @@
 // parse-dump.mjs — streaming, quote-aware mysqldump INSERT parser.
 //
 // M4 migration tool (port-tracker stream 14, decko-commons/decko#1282).
-// Generalizes the parser proven on the 1.2 GB Culturesmith production dump
-// (brandonDojoTech scripts/culturesmith-migration/cards-read-rule-probe.py).
+// Generalizes the parser proven on the 1.2 GB SourceDeck production dump
+// (workspace scripts/source-deck-migration/cards-read-rule-probe.py).
 //
 // THE KEY LESSON FROM THAT MIGRATION (and the design constraint here): the
 // production dump is 1.2 GB and carries multi-row INSERT statements as

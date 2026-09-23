@@ -30,7 +30,7 @@ Older decko-demo issues remain historical references. New work lives here; do no
 
 ## Related documentation to reconcile
 
-- brandonDojoTech/docs/plans/decko-typescript-edge-port-strategy.md
+- workspace/docs/plans/decko-typescript-edge-port-strategy.md
 - decko-demo/docs/plans/2026-09-20-decko-port-parent-direction.md
 - decko-demo/docs/decisions/2026-09-20-decko-ts-port-phase-ruby-parity.md
 - This repository docs/port-tracker.md and stream notes

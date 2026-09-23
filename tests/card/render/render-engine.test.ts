@@ -180,7 +180,7 @@ describe("slot set-key classes through the render engine", () => {
   it("renders a star card's slot class with the bare STAR fragment", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // synthetic Culturesmith-shaped cards (type card "exi" = the deck's
+      // synthetic SourceDeck-shaped cards (type card "exi" = the deck's
       // renamed Set cardtype, codename "set"); the expected class list is
       // the captured corpus:53 shape for a simple star card
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });

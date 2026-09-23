@@ -14,7 +14,7 @@
 // report what was filled with NULL, what was renamed, and what was
 // dropped. This is the Generalized M4 generalization: the same importer
 // code now handles the production mysqldump shape (verified on the
-// 1.2 GB Culturesmith dump) AND the bench corpus-v2 shape (sanitized
+// 1.2 GB SourceDeck dump) AND the bench corpus-v2 shape (sanitized
 // SQLite source, columns renamed and trimmed to fit the sanitization
 // constraints — verified during the M4-generalize milestone).
 //

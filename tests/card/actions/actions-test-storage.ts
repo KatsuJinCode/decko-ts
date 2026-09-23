@@ -6,7 +6,7 @@
 // how the capture's oracle DB was seeded upstream; the ACTION layer under
 // test is the only code writing through the history machinery.
 //
-// All fixture content is synthetic (DATA RULE: no real Culturesmith content).
+// All fixture content is synthetic (DATA RULE: no real SourceDeck content).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

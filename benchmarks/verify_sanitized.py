@@ -35,7 +35,7 @@ import sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from sanitize_corpus import parse_dump, is_read_rule_name  # noqa: E402
+from sanitize_corpus import parse_dump, is_read_rule_name, local_input_path  # noqa: E402
 
 SAMPLE_MOD = 199
 SAMPLE_RES = 3
@@ -125,7 +125,7 @@ def collect_original(dump):
 
 def main():
     dump = sys.argv[1] if len(sys.argv) > 1 else \
-        r"C:\localProjects\culturesmith-migration\incoming\culturesmith-2026-09-07.sql"
+        local_input_path("source_dump", "CORPUS_SOURCE_DUMP")
     here = os.path.dirname(os.path.abspath(__file__))
     dbpath = os.path.join(here, "corpus", "bench-corpus.sqlite3")
     outdir = os.path.join(here, "results")

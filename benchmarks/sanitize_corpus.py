@@ -2,11 +2,11 @@
 """sanitize_corpus.py -- build the structure-preserving, content-free benchmark
 corpus for decko-ts (#1282 benchmark program).
 
-Input : the Culturesmith mysqldump (1.2 GB) -- parsed LINEARLY, anchored on
+Input : the SourceDeck mysqldump (1.2 GB) -- parsed LINEARLY, anchored on
         `INSERT INTO ... VALUES` line boundaries (never a backtracking regex
         over chunks; per-field matching is the quote/backslash-aware C-speed
         scanner pattern proven on this exact dump by the privacy-review
-        tooling in brandonDojoTech/scripts/culturesmith-migration).
+        tooling in workspace/scripts/source-deck-migration).
 Output: benchmarks/corpus/bench-corpus.sqlite3 (gitignored) plus
         benchmarks/corpus/sanitize-manifest.json (histograms + build facts,
         no original text).
@@ -46,6 +46,36 @@ from datetime import datetime, timedelta
 SEED = 0xDEC0
 TIMESTAMP_SHIFT = timedelta(days=427, seconds=11111)
 LOWER = "abcdefghijklmnopqrstuvwxyz"
+
+# --- machine-local input paths (intentionally not committed) ---------------
+# The production dump and extraction files stay outside the repo (data rule:
+# real content never leaves the build machine), so their locations live in
+# env vars or the gitignored benchmarks/local-paths.json. Nothing in the
+# published tree names the source site; the corpus builder is the only
+# component that ever needs the real paths.
+_LOCAL_PATHS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "local-paths.json")
+
+
+def local_input_path(key, env_var):
+    """Resolve a machine-local input path: env var first, then the gitignored
+    benchmarks/local-paths.json, else fail with setup instructions. The
+    fallback failure (instead of a committed default path) is what keeps the
+    source-site identity out of the published tree."""
+    val = os.environ.get(env_var)
+    if val:
+        return val
+    try:
+        with open(_LOCAL_PATHS_FILE, "r", encoding="utf-8") as fh:
+            val = json.load(fh).get(key)
+    except (OSError, ValueError):
+        val = None
+    if not val:
+        raise SystemExit(
+            "missing machine-local input '%s': set %s or add it to "
+            "benchmarks/local-paths.json (gitignored; data rule in "
+            "docs/port-tracker.md)" % (key, env_var)
+        )
+    return val
 
 CARDS_PREFIX = "INSERT INTO `cards` VALUES"
 REFS_PREFIX = "INSERT INTO `card_references` VALUES"
@@ -509,7 +539,7 @@ def histogram(values):
 
 def main():
     dump = sys.argv[1] if len(sys.argv) > 1 else \
-        r"C:\localProjects\culturesmith-migration\incoming\culturesmith-2026-09-07.sql"
+        local_input_path("source_dump", "CORPUS_SOURCE_DUMP")
     outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "corpus")
     os.makedirs(outdir, exist_ok=True)
     dbpath = os.path.join(outdir, "bench-corpus.sqlite3")

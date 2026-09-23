@@ -69,7 +69,7 @@ finds little purchase. Sequence:
 The repo must be presentable, followable, and fully auditable by a stranger:
 
 - **Hygiene sweep** — nothing in the published tree but port work:
-  - no corpus fixtures or Culturesmith/Brandon content (the corpus DB and
+  - no corpus fixtures or SourceDeck/Brandon content (the corpus DB and
     benchmarks/results stay out of the published tree; the audit docs cite
     numbers, not data),
   - no secrets, keys, machine paths (C:/Users/..., C:/localProjects/...),
