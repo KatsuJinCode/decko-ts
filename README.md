@@ -138,13 +138,13 @@ registry, fetch/cache, renderer with batched inclusion prefetch, rule
 application, mod loading with chain-aware per-card view dispatch, request
 metrics, the perf harness, and the generalized dump importer.
 
-Full-corpus render parity (the famfix48 with-mods replay, 2026-09-23):
-166,727 / 180,442 captured views byte-identical (92.4%); the two landed
-render families (image-content leak, mini-bar wrapper) are effectively
-cleared corpus-wide and the remaining mass is dominated by the permission
-family (~58%: rule counts, denied sentinels, read-rule universe) whose fix
-is diagnosed — see `docs/final-rounds-to-publication-plan.md` and
-`tools/corpus-failure-classes/failure-buckets-famfix48.json`.
+Full-corpus render parity (the permfix48 with-mods replay, 2026-09-23):
+167,674 / 180,442 captured views byte-identical (92.9%; arc this day:
+91.4% → 92.4% → 92.9%). The rule-count, name-leak, mini-bar, and
+structure-wrapper families are eliminated corpus-wide; the remaining mass
+is dominated by the permission family (~58%: denied sentinels and the
+read-rule universe) plus two freshly re-signatured structure buckets —
+see `tools/corpus-failure-classes/failure-buckets-permfix48.json`.
 
 Remaining to publication: the three corpus families above, mod view
 deepening (1 mod fully ported, 30 registered with partial view coverage),
