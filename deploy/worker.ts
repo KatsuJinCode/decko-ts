@@ -16,20 +16,32 @@
 //   GET  /:card-name.json -> the card record as JSON
 //   POST /api/query     -> { "cql": <CQL JSON> } body -> CQL result JSON
 //   GET  /_status        -> engine + database health JSON
+//   GET  /__metrics      -> per-isolate request/SQL/D1-rows aggregate
 //
 // Deploy recipe: deploy/README.md. Architecture + compatibility notes:
 // docs/deploy-notes.md.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/d1.js";
+import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
 import { RenderEngine } from "../src/card/render.js";
 import { executeQuery } from "../src/cql/execute.js";
 import { CqlBadQuery } from "../src/cql/ast.js";
 import { DeckoName } from "../src/card/name.js";
+import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
 interface Env {
   DB: D1DatabaseLike;
+}
+
+/** Per-isolate measurement for the Gate-6 set: request wall-time histogram,
+ *  SQL statement counts, D1 rows read/written. /__metrics prints the
+ *  aggregate. Constructed lazily because workerd's module-init clock reads
+ *  epoch — the first request is the honest anchor for the since field. */
+let metrics: MetricsRecorder | undefined;
+function recorder(): MetricsRecorder {
+  return (metrics ??= new MetricsRecorder());
 }
 
 /** The per-isolate engine bundle. The first request boots it; every later
@@ -60,10 +72,48 @@ function getDeck(env: Env): Promise<Deck> {
 
 async function bootDeck(env: Env): Promise<Deck> {
   const driver = new CloudflareD1Adapter(env.DB);
+  observeDriverQueries(driver, recorder());
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
   const resolveCardId = await primeCqlNameResolver(driver);
   return { driver, fetcher, render, resolveCardId, primedAt: new Date().toISOString() };
+}
+
+/** Feed every adapter SQL call into the recorder. query() carries D1 meta
+ *  (rows_read/rows_written) on its result; batch() carries it per statement,
+ *  observed one-by-one. meta-absent results are counted by the recorder's
+ *  ESTIMATE labelling (worker-metrics.ts). The casts exist because query()
+ *  is generic on the adapter class while the observer wraps it erasing T;
+ *  callers reach the driver through the SQLDatabaseDriver interface, whose
+ *  generic signature the wrapped instance still satisfies at runtime. */
+function observeDriverQueries(driver: CloudflareD1Adapter, recorder: MetricsRecorder): void {
+  type ErasedQueryFn = (sql: string, params: unknown[]) => Promise<SQLQueryResult<unknown>>;
+  const rawQuery = driver.query.bind(driver) as ErasedQueryFn;
+  (driver as { query: ErasedQueryFn }).query = async (sql, params) => {
+    const result = await rawQuery(sql, params);
+    recorder.observeQuery({ rowsRead: result.rowsRead, rowsWritten: result.rowsWritten });
+    return result;
+  };
+  const rawBatch = driver.batch.bind(driver);
+  (driver as { batch: typeof rawBatch }).batch = async (statements) => {
+    const results = await rawBatch(statements);
+    for (const result of results) {
+      recorder.observeQuery({ rowsRead: result.rowsRead, rowsWritten: result.rowsWritten });
+    }
+    return results;
+  };
+}
+
+/** Route tag for the recorder — the same normalization handle() applies. */
+function routeTag(pathname: string, method: string): MetricsRoute {
+  if (pathname === "/") return method === "GET" ? "/" : "other";
+  if (pathname === "/_status") return "/_status";
+  if (pathname === "/__metrics") return "/__metrics";
+  if (pathname === "/api/query") return method === "POST" ? "/api/query" : "other";
+  if (method !== "GET") return "other";
+  if (pathname.endsWith(".json")) return "/<card-name>.json";
+  if (!pathname.slice(1).includes("/")) return "/<card-name>";
+  return "other";
 }
 
 // ---------------------------------------------------------------------------
@@ -292,6 +342,23 @@ async function status(deck: Deck): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const rec = recorder();
+    const url = new URL(request.url);
+    // Normalize: drop one trailing slash ("/Home/" and "/Home" are one card).
+    const pathname = url.pathname.replace(/\/+$/, "") || "/";
+    rec.startRequest(routeTag(pathname, request.method));
+    let response: Response;
+    try {
+      response = await this.handle(request, env);
+    } catch (error) {
+      rec.endRequest(0);
+      throw error;
+    }
+    rec.endRequest(response.status);
+    return response;
+  },
+
+  async handle(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     // Normalize: drop one trailing slash ("/Home/" and "/Home" are one card).
     const pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -307,6 +374,11 @@ export default {
           database: { ok: false, error: error instanceof Error ? error.message : String(error) },
         });
       }
+    }
+
+    if (pathname === "/__metrics") {
+      if (request.method !== "GET") return jsonResponse(405, { error: "method not allowed" });
+      return jsonResponse(200, recorder().getAggregate());
     }
 
     if (pathname === "/api/query") {
