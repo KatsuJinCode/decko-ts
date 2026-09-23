@@ -32,8 +32,9 @@
 //   validate_role_enabling/clear_roles_cache events) - the edit framework is
 //   unported (docs/render-port-notes.md) and the events are write-path
 // - set/right/head.rb :one_line_content - body is card-mod-format's
-//   raw_one_line_content (truncate/strip_tags text helpers); Rails text
-//   helper byte semantics unported
+//   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
+//   (rightHeadOneLineContentView) using text-helpers.ts#truncate +
+//   nest-syntax.ts#stripTags
 // - set/self/head.rb :core (escape_in_main { nest root.card, view: :head }) -
 //   view :head and the root/main page machinery are unported; *head's core
 //   falls through to the base (documented divergence)
@@ -78,9 +79,13 @@
 
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
-import { scanNests } from "../../render/nest-syntax.js";
+import { scanNests, stripTags } from "../../render/nest-syntax.js";
 import { highlight } from "../../render/code-highlighting/index.js";
 import { HTML_VIEWS } from "../../render/views.js";
+import {
+  ONE_LINE_CHARACTER_LIMIT,
+  truncate,
+} from "../../render/text-helpers.js";
 import {
   UnsupportedViewError,
   type RenderCard,
@@ -784,6 +789,28 @@ const headContentView: ViewFn = (ctx) => {
   return fmt.processContent(fmt.renderRaw());
 };
 
+/** right/head.rb:12-14 view :one_line_content: `raw_one_line_content` - the
+ *  card-mod-format helper (set/all/content.rb:43-45): `truncate strip_tags
+ *  (render_raw), length: one_line_character_limit`, where the limit is
+ *  `voo.size || ONE_LINE_CHARACTER_LIMIT` (60, content.rb:51-53). The
+ *  truncate helper (src/card/render/text-helpers.ts:203-211) is the Rails
+ *  String#truncate port (filters.rb:70-83) - length 60 with the "..."
+ *  omission when truncation happened; strip_tags (nest-syntax.ts:24-26,
+ *  nest.rb's `string.gsub(/<[^>]*>/, "")`) drops the HTML tags the head-
+ *  rule raw carries (the *head setting's rule dbContent, e.g.
+ *  `<meta name="..." content="...">`). The view exists ONLY on the
+ *  Right::Head set; outside it Ruby's dispatch raises the unsupported-view
+ *  UserError (render.rb#view_method) - same guard as :head_content. */
+const rightHeadOneLineContentView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  if (!isRightHeadCard(fmt.card)) {
+    throw new UnsupportedViewError("one_line_content", fmt.card.name.s);
+  }
+  const sizeOpt = voo.opts["size"];
+  const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
+  return truncate(stripTags(fmt.renderRaw()), length, "...");
+};
+
 // ---------------------------------------------------------------------------
 // set/self/head.rb - the *head card's own set
 // ---------------------------------------------------------------------------
@@ -869,14 +896,17 @@ const cardModLayout: DeckoModManifest = {
       },
     },
     {
-      // card-mod-layout-0.20.0/set/right/head.rb (its :one_line_content is
-      // not ported - Rails text helpers; its :core override rides the
-      // composed layoutCoreView registered here)
+      // card-mod-layout-0.20.0/set/right/head.rb (its :core override rides
+      // the composed layoutCoreView registered here; :one_line_content is
+      // the right/head.rb:12-14 truncate(strip_tags(render_raw)) body, now
+      // portable via src/card/render/text-helpers.ts#truncate +
+      // nest-syntax.ts#stripTags)
       setPath: "right/head",
       formats: {
         html: {
           views: [
             { view: "head_content", viewFn: headContentView, config: { cache: "yes" } },
+            { view: "one_line_content", viewFn: rightHeadOneLineContentView },
             { view: "core", viewFn: layoutCoreView },
           ],
         },

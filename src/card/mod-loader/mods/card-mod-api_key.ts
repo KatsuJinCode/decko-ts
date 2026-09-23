@@ -71,6 +71,7 @@
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
+import { superView } from "../mod-view-helpers.js";
 
 // ---------------------------------------------------------------------------
 // The mod's config/locales/en.yml strings, inlined (no i18n surface in TS).
@@ -209,14 +210,19 @@ const currentView: ViewFn = (ctx) => {
 
 /** api_key.rb:73-75 `view :titled, :titled_content, :content, unknown:
  *  true { super() }`. The `super()` call delegates to the parent class's
- *  same view - in TS terms, re-dispatching through the format. The
- *  api_key's :core (the HAML template above) IS the api_key's "view of
- *  self", so re-routing :titled/:titled_content/:content through :core
- *  preserves the unknown: true semantic on unknown api_key cards while
- *  keeping the layout the api_key declares. */
-const titledView: ViewFn = (ctx) => ctx.fmt.renderView("core");
-const titledContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
-const contentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
+ *  same view - in TS terms, walking the per-card MRO chain for the SAME
+ *  view name (set/format.rb:146-150 + view_definition.rb:18-21) and
+ *  rendering the next entry's view fn. The api_key set is the
+ *  most-specific contribution for these views; the chain contains it
+ *  followed by the parent's same view (All::* or Right::* depending on
+ *  what other mods loaded). When no further entry exists in the chain
+ *  superView returns "" (the same way Ruby's super() past the base
+ *  raises NoMethodError - the headless port returns "" so callers don't
+ *  crash during composition; mod-view-helpers.ts:74-79 documents the
+ *  fallback). */
+const titledView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
+const titledContentView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
+const contentView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
 
 /** api_key.rb:77-79 `view :token_link do link_to t(:api_key_get_jwt_token),
  *  path: {format: :json, view: :token} end`. The link href is the

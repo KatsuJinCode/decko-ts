@@ -15,19 +15,24 @@
 // Ported here byte-verifiably the views whose bytes do NOT depend on
 // rails / haml / file-system / event machinery:
 //
-// - set/abstract/01_code_content.rb:1-19 :input (literal "Content is
-//   stored in file and can't be edited.") + :bar_middle (the icon-tag
-//   + "file" span shape, ported with a generic icon library rendering
-//   the same classes - card-mod-bootstrap's icon_tag family is the
-//   library-specific generator; the headless port mirrors the class
-//   attributes the icon_tag emits)
+// - set/abstract/01_code_content.rb:1-19 :input (chained via superView
+//   to the next :input in the chain - the MRO delegate; the bare
+//   literal "Content is stored in file and can't be edited." is the
+//   fallback when no next module registered :input) + :bar_middle (the
+//   icon-tag + "file" span shape, ported with a generic icon library
+//   rendering the same classes - card-mod-bootstrap's icon_tag family
+//   is the library-specific generator; the headless port mirrors the
+//   class attributes the icon_tag emits)
 // - set/abstract/02_code_file.rb:29-31 :file_size ("#{card.name}:
 //   #{number_to_human_size card.content.bytesize}" - ported with a
 //   Ruby-faithful number_to_human_size helper)
-// - set/abstract/haml_file.rb:11-22 :input ("Content is managed by
-//   code and cannot be edited") - the bare literal; the file's :core
-//   calls haml() and is NOT ported (see below)
+// - set/abstract/haml_file.rb:11-22 :input (chained via superView to
+//   the next :input in the chain - the MRO delegate; the bare literal
+//   "Content is managed by code and cannot be edited" is the fallback
+//   when no next module registered :input) - the file's :core calls
+//   haml() and is NOT ported (see below)
 // - set/abstract/read_only.rb:1-14 :input ("Content can't be edited.")
+//   - the chain's terminal literal; nothing further to delegate to
 // - set/right/default.rb:3-7 :one_line_content ("#{card.type_name}
 //   : #{raw.present? ? raw : '<em>empty</em>'}" - raw = _render_raw)
 // - set/right/structure.rb:13-16 :one_line_content
@@ -96,6 +101,7 @@ import type {
   DeckoModManifest,
   ModSetModuleFile,
 } from "../mod-manifest.js";
+import { superView } from "../mod-view-helpers.js";
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -130,12 +136,26 @@ function numberToHumanSize(bytes: number): string {
 // ---------------------------------------------------------------------------
 
 /** set/abstract/01_code_content.rb:2-5 view :input:
- *  `"Content is stored in file and can't be edited."` - the literal
- *  message code-content cards show when their input view renders.
+ *  Ruby body: `"Content is stored in file and can't be edited."` - the
+ *  literal message code-content cards render. The TS body chains via
+ *  superView (mod-view-helpers.ts) to the next :input in the MRO
+ *  (Ruby's `super()` inside a view body, view_definition.rb:18-21 +
+ *  set/format.rb:146-150); the chain reaches Abstract::HamlFile's
+ *  :input next, and Abstract::ReadOnly's :input last. ReadOnly's body
+ *  is the terminal literal "Content can't be edited." (abstract/
+ *  read_only.rb:1-4) - which is the bytes the format module's
+ *  view_method returns in Ruby (the LAST reopening of :input wins,
+ *  same end-state the chain walks to). When no next module registered
+ *  :input (no card ever includes HamlFile/ReadOnly after CodeContent),
+ *  superView returns "" (mod-view-helpers.ts:96-97), so the original
+ *  Ruby literal stands as a documented fallback if the chain ever
+ *  terminates early.
+ *
  *  No wrap config -> the body returns bare (the render layer's
  *  before(:content_formgroups) chain consumes it; no slot wrap). */
-const codeContentInputView: ViewFn = () =>
-  "Content is stored in file and can't be edited.";
+const codeContentInputView: ViewFn = (ctx) =>
+  superView(ctx, "Abstract::CodeContent", "input")
+    || "Content is stored in file and can't be edited.";
 
 /** set/abstract/01_code_content.rb:7-14 view :bar_middle:
  *  `short_content` = `icon_tag(:warning, class: "text-muted pe-2") +
@@ -176,14 +196,31 @@ const fileSizeView: ViewFn = ({ fmt }: ViewContext) => {
 };
 
 /** set/abstract/haml_file.rb:12-14 view :input:
- *  `"Content is managed by code and cannot be edited"` - the literal
- *  message haml-template-content cards show. */
-const hamlFileInputView: ViewFn = () =>
-  "Content is managed by code and cannot be edited";
+ *  Ruby body: `"Content is managed by code and cannot be edited"` - the
+ *  literal message haml-template-content cards render. The TS body
+ *  chains via superView (mod-view-helpers.ts) to the next :input in
+ *  the MRO (Ruby's `super()`); the chain reaches Abstract::ReadOnly's
+ *  :input next, which is the terminal literal "Content can't be
+ *  edited." (abstract/read_only.rb:1-4). When no next module
+ *  registered :input (no card includes ReadOnly after HamlFile),
+ *  superView returns "" (mod-view-helpers.ts:96-97), so the original
+ *  Ruby literal stands as a documented fallback if the chain ever
+ *  terminates early. */
+const hamlFileInputView: ViewFn = (ctx) =>
+  superView(ctx, "Abstract::HamlFile", "input")
+    || "Content is managed by code and cannot be edited";
 
 /** set/abstract/read_only.rb:1-4 view :input:
- *  `"Content can't be edited."` - the literal message read-only cards
- *  show. */
+ *  `"Content can't be edited."` - the chain's terminal literal. The
+ *  three abstract :input views chain in MRO order
+ *  (Abstract::CodeContent -> Abstract::HamlFile -> Abstract::ReadOnly);
+ *  ReadOnly has no further module to delegate to, so its body is the
+ *  bare Ruby literal. In Ruby the LAST reopening of :input wins
+ *  (same end-state); in the TS port the LAST registration in
+ *  views.input is this ReadOnly body, and the live render dispatch
+ *  reads through it directly (format.ts:312). No wrap config -> the
+ *  body returns bare (the render layer's before(:content_formgroups)
+ *  chain consumes it; no slot wrap). */
 const readOnlyInputView: ViewFn = () => "Content can't be edited.";
 
 /** set/right/default.rb:3-7 view :one_line_content:
@@ -231,11 +268,14 @@ const setModules: ModSetModuleFile[] = [
   { setPath: "abstract/00_sources" },
   {
     // set/abstract/01_code_content.rb:1-19 format :html do block -
-    // :input (port - the literal "Content is stored in file and can't
-    // be edited."), :bar_middle (port - short_content's icon-tag + span
-    // bytes), short_content (not ported: icon_tag library-specific +
-    // wrap_with), standard_submit_button (not ported: super chain,
-    // multi_card_editor? predicate).
+    // :input (port - chained via superView to the next :input in the
+    // MRO; the chain reaches Abstract::HamlFile next and Abstract::
+    // ReadOnly last, where the terminal literal "Content can't be
+    // edited." lives; superView's "" return keeps the original Ruby
+    // literal as a documented fallback), :bar_middle (port -
+    // short_content's icon-tag + span bytes), short_content (not
+    // ported: icon_tag library-specific + wrap_with), standard_submit_
+    // button (not ported: super chain, multi_card_editor? predicate).
     setPath: "abstract/01_code_content",
     formats: {
       html: {
@@ -262,9 +302,11 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/abstract/haml_file.rb:1-23 - self.included + content (not
     // ported: File.read template_path) + format :html do block: :input
-    // (port - the literal "Content is managed by code and cannot be
-    // edited"), haml_locals (not ported), :core (not ported: haml
-    // processor).
+    // (port - chained via superView to the next :input in the MRO; the
+    // chain reaches Abstract::ReadOnly last, where the terminal
+    // literal "Content can't be edited." lives; superView's "" return
+    // keeps the original Ruby literal as a documented fallback),
+    // haml_locals (not ported), :core (not ported: haml processor).
     setPath: "abstract/haml_file",
     formats: {
       html: {
@@ -275,9 +317,12 @@ const setModules: ModSetModuleFile[] = [
   { setPath: "abstract/lock" },
   {
     // set/abstract/read_only.rb:1-14 format :html do block - :input
-    // (port - the literal "Content can't be edited."), short_content
-    // (not ported: icon_tag + wrap_with), standard_submit_button (not
-    // ported: super chain).
+    // (port - the chain's terminal literal "Content can't be edited." -
+    // the end-state the superView chain from Abstract::CodeContent and
+    // Abstract::HamlFile walks to; the mod loader's flat last-wins
+    // also surfaces this same body as the live views.input after
+    // registration), short_content (not ported: icon_tag + wrap_with),
+    // standard_submit_button (not ported: super chain).
     setPath: "abstract/read_only",
     formats: {
       html: {

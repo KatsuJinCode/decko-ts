@@ -263,6 +263,7 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
         "navbar_links",
         "nav_item",
         "head_content",
+        "one_line_content",
         "input",
       ]),
     );
@@ -431,6 +432,62 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     const s = storage!;
     await expect(s.engine.render(PROBE, "head_content")).rejects.toThrow(
       UnsupportedViewError,
+    );
+  });
+
+  it("WITH the mod: :one_line_content strips html tags and truncates the raw content on right-of-head cards (right/head.rb:12-14 + content.rb:43-45)", async () => {
+    const s = storage!;
+    // The rule card's dbContent is exactly one HTML tag
+    // (`<meta name="layout-probe" content="head-rule">`); stripTags
+    // (nest.rb's `string.gsub(/<[^>]*>/, "")`) reduces it to "" and the
+    // 60-char truncate (filters.rb:70-83) leaves it unchanged (the
+    // "<= length" early return).
+    expect(await s.engine.render(RULE, "one_line_content")).toBe("");
+  });
+
+  it("WITH the mod: :one_line_content outside the Right::Head set raises the unsupported-view error", async () => {
+    const s = storage!;
+    await expect(s.engine.render(PROBE, "one_line_content")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+    await expect(s.engine.render(HEAD, "one_line_content")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+  });
+
+  it("WITH the mod: :one_line_content on a right-of-head card with a long raw content strips + truncates to 60 chars with the '...' omission (filters.rb:70-83)", async () => {
+    const s = storage!;
+    // Build two new right-of-head rule cards with unique left ids (so the
+    // (left_id, right_id) unique index on the cards table isn't violated by
+    // reusing PROBE/1169). The 70-char input (after strip_tags) is truncated
+    // to 57 chars + "..." = 60 chars total (filters.rb:70-83).
+    const LONG_LEFT = "Layout Long Rule Left";
+    const SHORT_LEFT = "Layout Short Rule Left";
+    const LONG_RULE = `${LONG_LEFT}+*head`;
+    const SHORT_RULE = `${SHORT_LEFT}+*head`;
+    const longText = "abcdefghij".repeat(7); // 70 chars
+    await seedCard(s, { id: 60, name: LONG_LEFT });
+    await seedCard(s, {
+      id: 61,
+      leftId: 60,
+      rightId: 15,
+      typeId: 14,
+      dbContent: `<span class="x">${longText}</span>`,
+    });
+    await seedCard(s, { id: 62, name: SHORT_LEFT });
+    await seedCard(s, {
+      id: 63,
+      leftId: 62,
+      rightId: 15,
+      typeId: 14,
+      dbContent: `plain text`,
+    });
+    expect(await s.engine.render(LONG_RULE, "one_line_content")).toBe(
+      `${longText.slice(0, 57)}...`,
+    );
+    // The truncate helper returns the input unchanged when <= length
+    expect(await s.engine.render(SHORT_RULE, "one_line_content")).toBe(
+      `plain text`,
     );
   });
 
