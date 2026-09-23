@@ -28,3 +28,7 @@ tools/corpus-anonymizer/out/
 # wave D build/dev-server output (M5) + scratch
 dist-ts/
 tmp/
+
+# anonymized corpus deck artifacts (deploy-scale D1 seed; rebuilt on demand;
+# never committed - 700MB+ each)
+benchmarks/corpus-v2-anonymized/

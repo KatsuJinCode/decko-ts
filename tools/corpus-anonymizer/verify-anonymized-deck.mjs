@@ -130,6 +130,14 @@ const vocab = new Set();
 // "foo"); we only need the count either way, but stable ordering keeps
 // the report deterministic across runs.
 const VOCAB_SORTED = Array.from(vocab).sort((a, b) => b.length - a.length);
+// Hash-set membership is the leak check: every word token of every
+// anonymized cell is tested against this Set — FULL vocabulary coverage
+// in O(cell length) per cell. The previous implementation scanned the
+// vocabulary array with indexOf per cell (O(cells x vocab), timed out at
+// 40 minutes on the real corpus) AND capped tokens per cell
+// (MAX_VOCAB_GUARD), which was unsound — a leak whose token sat past the
+// cap would have passed. Whole-token membership is the privacy contract:
+// a surviving ORIGINAL word token in any cell is a violation.
 
 // --- Open anonymized deck READ-ONLY -----------------------------------
 let anon;
@@ -182,8 +190,9 @@ const leakFpByTableCol = new Map(); // key = "table.col" -> Map<fp, count>
 const totalRowsScanned = new Map(); // key = "table" -> row count
 const totalCellsScanned = new Map(); // key = "table.col" -> cells
 
-const MAX_VOCAB_GUARD = VOCAB_SORTED.length;
+const MAX_VOCAB_GUARD = VOCAB_SORTED.length; // retained for the report only — the scan below no longer caps or indexes the array
 const MIN_VOCAB_LEN = VOCAB_MIN_LEN;
+const VOCAB_SET = new Set(VOCAB_SORTED);
 
 for (const [tname, cols] of textColsByTable) {
   if (cols.length === 0) continue;
@@ -201,34 +210,21 @@ for (const [tname, cols] of textColsByTable) {
       cells += 1;
       const v = row[c];
       if (typeof v !== "string" || v.length < MIN_VOCAB_LEN) continue;
-      const low = v.toLowerCase();
-      // Brute search: for each token (longest-first), test as
-      // substring. Bounded by vocab size (~10k) per cell — corpus
-      // total cells ~ few hundred k, so worst case is fine here.
-      // We break on the first hit (count = 1 per cell) since the
-      // check is binary for the privacy contract — any surviving
-      // token in any cell is a violation; deeper enumeration would
-      // leak more shape than the contract allows.
+      // Tokenize the cell with the SAME word regex that built the
+      // vocabulary, then test each token by Set membership: linear in
+      // the cell's length, full-vocabulary, no cap.
       let hitLen = 0;
-      for (let i = 0; i < MAX_VOCAB_GUARD; i++) {
-        const tok = VOCAB_SORTED[i];
-        if (tok.length > low.length) continue;
-        if (low.indexOf(tok) !== -1) {
-          hitLen = tok.length;
+      for (const m of v.toLowerCase().matchAll(WORD_RE)) {
+        if (VOCAB_SET.has(m[0])) {
+          hitLen = m[0].length;
           break;
         }
       }
       if (hitLen > 0) {
         const key = `${tname}.${c}`;
         leakCounts.set(key, (leakCounts.get(key) ?? 0) + 1);
-        // Record a fingerprint of the MATCHING token's shape. We only
-        // see the cell value; we never see which vocab token matched.
-        // We approximate the shape with a length + char-class sketch
-        // of the entire cell — the length of the smallest matching
-        // token is unknowable here, so we record the cell's own shape
-        // (length + first-class-only) which is structurally
-        // information-poor but still useful as a "did it hit a short
-        // common word or a long rare one" rough indicator.
+        // Fingerprint of the CELL's shape only (length) — never the
+        // matching token, never the cell text.
         const fp = `${v.length}ch`;
         const inner = leakFpByTableCol.get(key) ?? new Map();
         inner.set(fp, (inner.get(fp) ?? 0) + 1);

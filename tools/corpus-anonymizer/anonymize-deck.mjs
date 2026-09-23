@@ -396,6 +396,13 @@ function main() {
     const anonName = anon(row.name ?? "");
     const anonCodename = anon(row.codename ?? "");
     const anonKey = anon(row.key ?? "");
+    // read_rule_class values are short Latin taxonomy tokens ("*type",
+    // "*right", "*all", "*self", ...). Without anonymization they survive
+    // verbatim in the output and the independent leak verifier flags them
+    // as corpus-vocab matches. Pass them through anon() so every letter
+    // run becomes a Cyrillic token; non-letter characters ("*", " ",
+    // "plus") are preserved by the regex.
+    const anonReadRuleClass = anon(row.readRuleClass ?? "");
     const rowContent = row.content ?? "";
 
     for (let rep = 0; rep < factor; rep++) {
@@ -410,7 +417,7 @@ function main() {
       const rightId = row.rightId;
       const creatorId = row.creatorId;
       const updaterId = row.updaterId;
-      const readRuleClass = row.readRuleClass;
+      const readRuleClass = anonReadRuleClass;
       const readRuleId = row.readRuleId;
       const trash = 0;
       const typeId = row.typeId;
@@ -586,14 +593,18 @@ function main() {
   // 9. Meta rows: schema is preserved (table created), but values that
   //    were derived from private content (digests, seeds, timestamp
   //    shifts, captured shard names) are dropped — leaving structural
-  //    counts only. The anonymized-deck.sqlite3 therefore has a populated
-  //    meta table without leaking the source corpus's private digests.
+  //    counts only. The KEY is also anonymized: corpus labels like
+  //    "live_cards" / "card_rows" / "content_length_overflows" are Latin
+  //    strings that match corpus vocabulary and would otherwise be flagged
+  //    by the independent leak verifier. Anonymizing them keeps the
+  //    structural counts in the table without leaking the original
+  //    taxonomy. Values stay numeric/structural.
   for (const m of metaRows) {
     if (/digest|seed|shift|unresolved/i.test(m.key)) continue;
-    insertMeta.run(m.key, m.value ?? "");
+    insertMeta.run(anon(m.key), m.value ?? "");
     sqlOut(
       "INSERT INTO meta (key, value) VALUES (" +
-        sqlLiteral(m.key) +
+        sqlLiteral(anon(m.key)) +
         ", " +
         sqlLiteral(m.value ?? "") +
         ");",
