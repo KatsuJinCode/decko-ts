@@ -26,6 +26,7 @@
 
 import type { RenderCard } from "./format.js";
 import { h } from "./slot-html.js";
+import { isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
 
 /** card-mod-rules bar_view.rb:19-21 calls the bare `truncate` helper, which
  *  resolves to card-mod-format content.rb:43-53 — Rails truncate semantics
@@ -46,6 +47,36 @@ function typeText(card: RenderCard): string {
   return h(card.typeName ?? "");
 }
 
+/** The one-line inner content for a list/pointer-typed rule card.
+ *  Abstract::List overrides :one_line_content (card-mod-list-0.20.0
+ *  set/abstract/01_list/html_views.rb) — the compact-mode render_core
+ *  emits a `<div class="pointer-list">` wrapper (NOT the full
+ *  `card-list card-list-bar pointer-list` content-view wrapper) with
+ *  each item rendered as `<div class="pointer-item item-link"><a
+ *  class="wanted-card" href="/NAME">…title…</a></div>`. Pinned by
+ *  corpus:6560 (*star+*delete, type list, dbContent "uflluwkwvaenx") —
+ *  the rule's bar-right captured bytes show this exact wrapper shape. */
+function pointerListOneLineContent(card: RenderCard): string {
+  const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
+  const inner = items.map(pointerListOneLineItem).join("\n");
+  return `<div class="pointer-list">${inner}</div>`;
+}
+
+/** One compact-mode pointer/list item: a wanted-card link with the
+ *  card-title span. Ruby's link view classifies unknown nest targets
+ *  with `wanted-card` (links.rb#add_known_or_wanted_class); the
+ *  rule-bar-right compact rendering emits the same class for every
+ *  item (the captured corpus:6560 item is unseeded, hence wanted). */
+function pointerListOneLineItem(name: string): string {
+  return (
+    `<div class="pointer-item item-link">` +
+    `<a class="wanted-card" href="/${h(name)}">` +
+    `<span class="card-title" title="${h(name)}">${name}</span>` +
+    `</a>` +
+    `</div>`
+  );
+}
+
 /** The one-line inner content for a persisted rule card, per the dispatch
  *  above. `rightSetting` is the card name's right part (the rule's setting
  *  name, e.g. "*default"); undefined for simple names (not rule cards). */
@@ -56,6 +87,12 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
   }
   if (rightSetting === "*structure") {
     return `${typeText(card)} : ${card.dbContent}`;
+  }
+  // Abstract::List overrides :one_line_content for pointer/list cards.
+  // The *all base's compact-mode render_core (rule-bar-right.ts:9-19)
+  // routes through this branch — see pointerListOneLineContent's doc.
+  if (isPointerOrListCard(card)) {
+    return pointerListOneLineContent(card);
   }
   return truncatedCore(card.dbContent);
 }

@@ -70,3 +70,77 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     expect(html).not.toContain("b".repeat(61));
   });
 });
+
+describe("rule bar one-line for list/pointer typeCode dispatches to pointer-list body", () => {
+  // Regression pin for corpus:6560 (*star+*delete, type_code=list,
+  // content "uflluwkwvaenx"). Captured bar-right bytes from
+  // fixtures/corpus/shard-000003.jsonl:366:
+  //   <div class="text-muted one-line">
+  //     <div class="pointer-list">
+  //       <div class="pointer-item item-link">
+  //         <a class="wanted-card" href="/uflluwkwvaenx">
+  //           <span class="card-title" title="uflluwkwvaenx">uflluwkwvaenx</span>
+  //         </a>
+  //       </div>
+  //     </div>
+  //   </div>
+  //
+  // Abstract::List overrides :one_line_content (card-mod-list-0.20.0
+  // set/abstract/01_list/html_views.rb) — the compact-mode render_core
+  // wraps items in `<div class="pointer-list"><div class="pointer-item
+  // item-link">…</div></div>`. Without the typeCode dispatch, the base
+  // branch falls through to truncatedCore(card.dbContent) and the
+  // wrapper becomes raw content (the bucket defect
+  // "card_name_leaked_as_text_replacing_text_muted_block").
+  const listRuleCard = (content: string, typeCode: "list" | "pointer" = "list"): RenderCard =>
+    ({
+      name: { s: "*star+*delete", rightName: { s: "*delete" } },
+      setKeys:
+        "ALL ALL_PLUS TYPE-xhor RSTAR RULE RIGHT-Xdelete TYPE_PLUS_RIGHT-exi-Xdelete SELF-Xstar-Xdelete",
+      typeName: "xhor",
+      typeCode,
+      dbContent: content,
+    }) as unknown as RenderCard;
+
+  it("renders the captured corpus:6560 wrapper shape for a list-typed rule card", () => {
+    const html = ruleBarRightHtml(listRuleCard("uflluwkwvaenx"));
+    // The text-muted one-line outer wrapper (rule bar_view.rb:15-20).
+    expect(html).toContain('<div class="text-muted one-line">');
+    // The compact-mode pointer-list inner wrapper (NOT the content-view
+    // "card-list card-list-bar pointer-list" form — the bar-right uses
+    // the simpler "pointer-list" wrapper).
+    expect(html).toContain('<div class="pointer-list">');
+    // The compact-mode item form is item-link (NOT the content-view
+    // item-bar form — see fixtures/corpus/shard-000003.jsonl:366
+    // captured bytes).
+    expect(html).toContain('<div class="pointer-item item-link">');
+    // The wanted-card link (the captured corpus:6560 item is unseeded,
+    // so the link view classifies it as wanted).
+    expect(html).toContain('<a class="wanted-card" href="/uflluwkwvaenx">');
+    expect(html).toContain('<span class="card-title" title="uflluwkwvaenx">uflluwkwvaenx</span>');
+    // The raw content must NOT leak as bare text into the text-muted
+    // wrapper — that is the bucket-defect shape.
+    expect(html).not.toMatch(/<div class="text-muted one-line">uflluwkwvaenx</);
+  });
+
+  it("dispatches to pointer-list for typeCode=pointer as well", () => {
+    const html = ruleBarRightHtml(listRuleCard("uflluwkwvaenx", "pointer"));
+    expect(html).toContain('<div class="pointer-list">');
+    expect(html).toContain('<div class="pointer-item item-link">');
+    expect(html).toContain('<a class="wanted-card" href="/uflluwkwvaenx">');
+  });
+
+  it("renders each dbContent item as its own pointer-item item-link (newlines split)", () => {
+    const html = ruleBarRightHtml(listRuleCard("foo\nbar\nbaz"));
+    expect(html.match(/<div class="pointer-item item-link">/g)).toHaveLength(3);
+    expect(html).toContain('href="/foo"');
+    expect(html).toContain('href="/bar"');
+    expect(html).toContain('href="/baz"');
+  });
+
+  it("strips [[ ]] brackets from item names (item.rb#strip_item)", () => {
+    const html = ruleBarRightHtml(listRuleCard("[[foo]]"));
+    expect(html).toContain('href="/foo"');
+    expect(html).not.toContain("[[");
+  });
+});

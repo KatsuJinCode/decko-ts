@@ -162,7 +162,15 @@ function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): s
 
 const coreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
-  if (fmt.card.typeName === "Search") {
+  // Match by codename (card-mod-search type card's codehash has codename
+  // "search_type"); the corpus search cards have type cards whose CARD
+  // NAME is random (id=101 -> type_card name="qnzkqz"), so the original
+  // typeName === "Search" gate silently skipped every corpus-shaped
+  // entry. The prepare phase keyed on the same wrong axis (render.ts:
+  // 1100 was typeName === SEARCH_TYPE_NAME) — fixed in lockstep here.
+  // Same pattern format.ts:378 already uses, with the typeName kept as
+  // a fallback for fixture decks that name the Search type card "Search".
+  if (fmt.card.typeCode === "search_type" || fmt.card.typeName === "Search") {
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
@@ -183,7 +191,16 @@ const coreView: ViewFn = (ctx) => {
     // content view delegates to core, set/type/set.rb + html/views.rb).
     return setRulesCoreHtml(ctx);
   }
-  if (fmt.card.typeName === "Date") {
+  // Match by codename (card-mod-date type card's codehash has codename
+  // "date"); see coreView Search-gate comment for the parallel. The
+  // corpus date cards (id=1135 "evog+*right+*default", etc.) have type
+  // cards whose CARD NAME is "evog" — the typeName === "Date" gate
+  // silently skipped them, so this branch never ran and the engine
+  // emitted an empty content body instead of the formatDateCore output
+  // (or, on the prepare phase's invalid content, the Date::Error raise
+  // — but the same fix in render.ts fires the raise earlier, so this
+  // branch is only reached for VALID content the prepare phase passed).
+  if (fmt.card.typeCode === "date" || fmt.card.typeName === "Date") {
     // card-mod-date-0.20.0 set/type/date.rb:6-8 `view :core do
     //   ::Date.parse(card.content).strftime "%B %-d, %Y"
     // end`. The captured corpus (shard-000000.jsonl) carries ZERO Date

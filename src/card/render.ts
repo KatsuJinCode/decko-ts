@@ -85,7 +85,23 @@ export {
 export type { RenderCard, PrefetchStats };
 export { HTML_VIEWS };
 
-const SEARCH_TYPE_NAME = "Search";
+const SEARCH_TYPE_CODE = "search_type";
+// The codename the search-type type card carries in the codehash
+// (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). Corpus
+// search cards have type cards whose CARD NAME is random
+// (id=101 -> type_card name="qnzkqz"), so gating on typeName silently
+// skips every corpus-shaped entry — the prepare phase never runs
+// runSearch and the JSON-parse BadQuery never fires. Match by codename
+// (the value the codehash lookup returns) for parity with the captured
+// Ruby deck.
+const DATE_TYPE_CODE = "date";
+// The codename the date-type type card carries. Corpus date cards (id=1135
+// with content "brcvtwrvz", etc.) have type cards whose CARD NAME is
+// random ("evog"), so the typeName gate silently skipped them — the
+// prepare phase never ran the date validator and :open/:content views
+// rendered content instead of raising Date::Error (capture_error_not_raised:
+// Date bucket, 963 entries in the fresh full replay). Match by codename,
+// independent of the type card's display name.
 
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
@@ -223,17 +239,38 @@ export class RenderEngine implements RenderEngineLike {
     // template at Card#content time — every view reads the substituted
     // accessor; templating.rb#structure).
     await this.applyStructureContent();
+    // Read-permission verdicts for the closure MUST be computed BEFORE
+    // prepareSearches — the Ruby render path short-circuits denied cards
+    // before the Search card's JSON.parse (corpus:34 *children+*right+
+    // *structure, captured as `<span class="denied">` — not
+    // CAPTURE_ERROR:BadQuery). The port must respect that ordering, or a
+    // denied Search card with non-JSON content would raise BadQuery on
+    // a render Ruby never reached the search core for. ensureVerdicts
+    // populates `deniedVerdicts` for every prepared card from the folded
+    // permission state; prepareSearches then skips cards in that map.
+    await this.ensureVerdicts();
+    // Type-code pass MUST run before prepareSearches — the cold-render
+    // prefetch walk runs enrichAndStore before parseRuleTypeIds folds
+    // the codehash, so a freshly enriched card's `typeCode` is undefined
+    // here on cold renders. The Search / Date gates inside prepareSearches
+    // (and the Search gate inside closureWarm) match on typeCode, NOT
+    // typeName — the latter would silently miss corpus-shaped type cards
+    // whose NAME is random (corpus:1135 has the date-type card named
+    // "evog"; corpus:101 has the search-type card named "qnzkqz"). Patch
+    // every prepared card's typeCode from the (now-folded) codehash
+    // before the prepare walk reads it.
+    this.populateTypeCodes();
     await this.prepareSearches(record);
     // Pass #2: cards enrichAndStore'd during search preparation (their
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
-    // Type-code pass: enrichAndStore runs inside the prefetch walk
-    // BEFORE parseRuleTypeIds folds the codehash, so the sync peek
-    // for typeCode (`card.type_code` lookup the pointer/list core
-    // view reads) returns undefined on cold renders. Patch every
-    // prepared card here, now that the codehash is loaded.
+    // Pass #2 populateTypeCodes: cards enriched during runSearch also
+    // need their typeCode patched (their enrichAndStore ran AFTER the
+    // batch fold, so peekNameForId returned the right codename — but
+    // items reached transitively from another search's results might
+    // have been enriched without the typeCode fixup, mirroring the
+    // prefetch walk's shape).
     this.populateTypeCodes();
-    await this.ensureVerdicts();
     await this.ensureTaskVerdicts(view);
     if (this.helpResolver === undefined) {
       this.helpResolver = installHelpRules(this, this.fetcher);
@@ -977,7 +1014,11 @@ export class RenderEngine implements RenderEngineLike {
         if (!this.renderCards.has(ref)) return false;
         if (!seen.has(ref)) queue.push(ref);
       }
-      if (card.typeName === SEARCH_TYPE_NAME && !this.searchResults.has(card.key)) {
+      // Same typeCode gate as prepareSearches (see SEARCH_TYPE_CODE comment):
+      // the corpus's search cards have type cards whose NAME is random,
+      // so matching on typeName silently skips them and warm-closure never
+      // reports ready.
+      if (card.typeCode === SEARCH_TYPE_CODE && !this.searchResults.has(card.key)) {
         return false;
       }
     }
@@ -1097,7 +1138,14 @@ export class RenderEngine implements RenderEngineLike {
         const refCard = this.renderCards.get(refKey);
         if (refCard !== undefined && !visited.has(refKey)) queue.push(refCard.record);
       }
-      if (card.typeName === SEARCH_TYPE_NAME) {
+      // Skip cards that the permission engine has already denied — Ruby
+      // short-circuits the denied branches before the Search card's
+      // JSON.parse fires (corpus:34 captured as the denial span, not a
+      // CAPTURE_ERROR sentinel). The prepare phase must mirror that
+      // ordering: only READABLE Search / Date cards get their JSON.parse
+      // or Date.parse raised here.
+      if (this.isDenied(card)) continue;
+      if (card.typeCode === SEARCH_TYPE_CODE) {
         if (this.searchResults.has(key)) continue;
         const items = await this.runSearch(card);
         this.searchResults.set(key, items);
@@ -1106,9 +1154,14 @@ export class RenderEngine implements RenderEngineLike {
         }
         continue;
       }
-      if (card.typeName === "Date") {
+      if (card.typeCode === DATE_TYPE_CODE) {
         // Ruby Date.parse raises Date::Error on invalid input; mirror at the
         // prepare phase so :open / :content views surface the same raise.
+        // Key on the type card's codename (corpus:1135 has the Date card
+        // named "evog" with codename "date" — a corpus-shaped type card
+        // whose card.name is NOT the literal "Date" string, the typeName
+        // gate silently skipped; the typeCode gate matches the codename,
+        // independent of the type card's display name).
         if (!isValidDateContent(card.dbContent)) {
           throw dateError();
         }

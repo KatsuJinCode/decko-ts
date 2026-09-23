@@ -29,6 +29,7 @@
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import {
+  CORPUS_DB,
   createStructureSeededStorageFor,
   readShardLines,
 } from "./structure-corpus-seeding.js";
@@ -47,10 +48,7 @@ describe("closed-view hot-spot: applyStructureContent sync pattern input", () =>
     "renders ynxkmsesggismplqulbsud:closed in O(renderCards) with byte parity",
     { timeout: 600_000 },
     async () => {
-      const corpus = new Database(
-        "benchmarks/corpus-v2/bench-corpus-v2.sqlite3",
-        { readonly: true }
-      );
+      const corpus = new Database(CORPUS_DB, { readonly: true });
       const ids = corpus.prepare("SELECT id FROM cards WHERE trash = 0").all().map((r: any) => r.id);
       corpus.close();
       const storage = await createStructureSeededStorageFor(new Set(ids));

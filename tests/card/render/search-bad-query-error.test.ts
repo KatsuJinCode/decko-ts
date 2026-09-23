@@ -175,6 +175,96 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
+  // ----- corpus-shaped fixture: search-type card name is NOT "Search" ------
+  //
+  // The unit fixtures above seed the Search type card with `name: "Search"`
+  // — the original (reverted) gate `card.typeName === "Search"` matched
+  // them and hid the bug from the test bed. The corpus capture records
+  // search-type cards with a different type card name: corpus:101's record
+  // pins `"type":"qnzkqz","type_code":"search_type"` — the type card is
+  // named "qnzkqz" but its codename is "search_type". This fixture
+  // reproduces that shape so the codename-keyed gate is locked by the
+  // parity: a future revert to typeName would leave corpus-shaped search
+  // cards silently un-parsed (the 3,122-entry BadQuery bucket the
+  // diagnose finds). Same class of fix as date-error.test.ts (the date
+  // fixture pins type card name "evog" / codename "date").
+
+  it("rendering :open of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 corpus-shaped fixture)", async () => {
+    // Corpus pin: id=101 (wrjuvyhaoiwnvvnblfl, content
+    // "jjmduarnmhbvnahsoeyvmxkpec") type="qnzkqz" type_code="search_type"
+    // — the type card's NAME is the random string "qnzkqz", but its
+    // codename (the codehash lookup) is "search_type". The prepare
+    // phase's Search gate (render.ts:1100) was previously keyed on
+    // typeName === "Search", which silently skipped this corpus entry,
+    // and JSON.parse was never called on the content — the BadQuery
+    // sentinel was never raised (3,122 captures hit this bucket).
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      // The corpus-shaped type card: name="qnzkqz" (NOT "Search"),
+      // codename="search_type".
+      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      // The simple card shape whose :open view raises — mirrors id=101's
+      // content. The content MUST be raw non-JSON so JSON.parse throws,
+      // matching the corpus content "jjmduarnmhbvnahsoeyvmxkpec" shape
+      // (random alphabetic).
+      await seedCard(storage, {
+        id: 101,
+        name: "wrjuvyhaoiwnvvnblfl",
+        typeId: 30,
+        dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
+      });
+      let captured: unknown;
+      try {
+        await storage.engine.render("wrjuvyhaoiwnvvnblfl", "open");
+      } catch (err) {
+        captured = err;
+      }
+      expect(captured).toBeInstanceOf(Error);
+      const err = captured as Error & { query?: string };
+      expect(err.constructor.name).toBe("Card::Error::BadQuery");
+      expect(err.message).toBe(
+        "Invalid JSON search query: jjmduarnmhbvnahsoeyvmxkpec",
+      );
+      expect(err.query).toBe("jjmduarnmhbvnahsoeyvmxkpec");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("rendering :content of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 :content view)", async () => {
+    // Same corpus-shaped type card (qnzkqz / search_type) + content
+    // shape, but the :content view is also captured as
+    //   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: jjmdu...
+    // for id=101 (the corpus pins both views). The :content view
+    // dispatches through :core -> :card_list -> executeSearch, the same
+    // path :open takes, so the codename-keyed gate fires here too.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, {
+        id: 101,
+        name: "wrjuvyhaoiwnvvnblfl content",
+        typeId: 30,
+        dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
+      });
+      let captured: unknown;
+      try {
+        await storage.engine.render("wrjuvyhaoiwnvvnblfl_content", "content");
+      } catch (err) {
+        captured = err;
+      }
+      const err = captured as Error;
+      expect(err.constructor.name).toBe("Card::Error::BadQuery");
+      expect(err.message).toBe(
+        "Invalid JSON search query: jjmduarnmhbvnahsoeyvmxkpec",
+      );
+    } finally {
+      storage.close();
+    }
+  });
+
   // ----- the corpus-v2 replay sentinel contract ----------------------------
 
   it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:77 capture recorded", () => {

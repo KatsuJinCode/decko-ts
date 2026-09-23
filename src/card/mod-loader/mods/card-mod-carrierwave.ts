@@ -186,10 +186,17 @@ const imageOneLineContentView: ViewFn = (ctx) =>
 // image html-format views (set/type/image/html_views.rb).
 // ---------------------------------------------------------------------------
 
-/** set/type/image/html_views.rb:5-11 view :core. */
+/** set/type/image/html_views.rb:5-11 view :core.
+ *  set/type/file.rb:34-45 handle_source: blank src short-circuits to ""
+ *  (the content-view wrapper renders an empty body, e.g. corpus:79 *logo
+ *  with dbContent that does not match any storage prefix). */
 const imageHtmlCoreView: ViewFn = (ctx) => {
   const src = imageSource(ctx);
-  if (src === "" || src === "missing") {
+  if (src === "") {
+    // Ruby's handle_source: blank -> "" (no comment, no leak).
+    return "";
+  }
+  if (src === "missing") {
     // with_valid_source / invalid_image (html_views.rb:13-23 + 31-34):
     // missing source -> "<!-- invalid image for NAME; source: SOURCE -->"
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
@@ -197,10 +204,14 @@ const imageHtmlCoreView: ViewFn = (ctx) => {
   return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}">`;
 };
 
-/** set/type/image/html_views.rb:25-29 view :full_width. */
+/** set/type/image/html_views.rb:25-29 view :full_width. Same blank-src
+ *  short-circuit as :core (file.rb:34-45 handle_source). */
 const imageHtmlFullWidthView: ViewFn = (ctx) => {
   const src = imageSource(ctx);
-  if (src === "" || src === "missing") {
+  if (src === "") {
+    return "";
+  }
+  if (src === "missing") {
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
   }
   return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}" class="w-100">`;

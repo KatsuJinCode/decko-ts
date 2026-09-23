@@ -11,10 +11,10 @@
     },
     "renders": {
       "total": 3242,
-      "pass": 2850,
+      "pass": 2846,
       "structurePending": 1,
       "nestGap": 0,
-      "realFail": 391
+      "realFail": 395
     },
     "real_failures": [
       {
@@ -51,7 +51,13 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:87:render:closed",
-        "first": "FAIL corpus:87:render:closed (render-engine)\n  first difference at code-unit offset 1622 (byte offset 1622): expected \"4\" but got \"1\"\n  expected excerpt: ...nown-card&quot; href=&quot;/*default&quot;&gt; (49 default rules)&lt;/a&gt;&lt;/div&gt;\" data-bs...\n  actual excerpt:   ...nown-card&quot; href=&quot;/*default&quot;&gt; (140 default rules)&lt;/a&gt;&lt;/div&gt;\" data-b...\n  sizes: expected 3078 bytes, actual 3079 bytes"
+        "first": "FAIL corpus:87:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: can't run search with empty content but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"Xcontent_option-Xright-Xdefault-closed-...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: can't run ...\n  sizes: expected 3078 bytes, actual 73 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:87:render:title",
+        "first": "FAIL corpus:87:render:title (render-engine)\n  handler raised Card::Error::BadQuery: can't run search with empty content but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"*content options...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: can't run ...\n  sizes: expected 131 bytes, actual 73 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -86,14 +92,14 @@
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:101:render:content",
-        "first": "FAIL corpus:101:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"wrjuvyhaoiwnvvnblfl-content-view\" class...\n  sizes: expected 91 bytes, actual 429 bytes"
+        "id": "corpus:101:render:closed",
+        "first": "FAIL corpus:101:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: jjmduarnmhbvnahsoeyvmxkpec but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"wrjuvyhaoiwnvvnblfl-closed-view\" class=...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 2218 bytes, actual 91 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:101:render:open",
-        "first": "FAIL corpus:101:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"wrjuvyhaoiwnvvnblfl-open-view\" class=\"c...\n  sizes: expected 91 bytes, actual 2666 bytes"
+        "id": "corpus:101:render:title",
+        "first": "FAIL corpus:101:render:title (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: jjmduarnmhbvnahsoeyvmxkpec but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"wrjuvyhaoiwnvvnb...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 79 bytes, actual 91 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -231,19 +237,19 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:274:render:content",
-        "first": "FAIL corpus:274:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-content-view\" class=\"card-slot con...\n  sizes: expected 91 bytes, actual 33815 bytes"
+        "first": "FAIL corpus:274:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-content-view\" class=\"card-slot con...\n  sizes: expected 91 bytes, actual 6684 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:274:render:open",
-        "first": "FAIL corpus:274:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-open-view\" class=\"card-slot open-v...\n  sizes: expected 91 bytes, actual 35909 bytes"
+        "first": "FAIL corpus:274:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-open-view\" class=\"card-slot open-v...\n  sizes: expected 91 bytes, actual 8778 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:275:render:closed",
-        "first": "FAIL corpus:275:render:closed (render-engine)\n  first difference at code-unit offset 1572 (byte offset 1572): expected \"1\" but got \"2\"\n  expected excerpt: ...known-card&quot; href=&quot;/*layout&quot;&gt; (18 layout rules)&lt;/a&gt;&lt;/div&gt;\" data-bs-...\n  actual excerpt:   ...known-card&quot; href=&quot;/*layout&quot;&gt; (23 layout rules)&lt;/a&gt;&lt;/div&gt;\" data-bs-...\n  sizes: expected 2837 bytes, actual 2837 bytes"
+        "first": "FAIL corpus:275:render:closed (render-engine)\n  first difference at code-unit offset 971 (byte offset 971): expected \"b\" but got \"<\"\n  expected excerpt: ...-right col-6'>\n<div class=\"text-muted one-line\">bifaarykabanhm</div>\n</div>\n</div>\n\n</button>\n</...\n  actual excerpt:   ...-right col-6'>\n<div class=\"text-muted one-line\"><div class=\"pointer-list\"><div class=\"pointer-it...\n  sizes: expected 2837 bytes, actual 3016 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -255,7 +261,7 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:275:render:open",
-        "first": "FAIL corpus:275:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-Xlayout-open-view\" class=\"card-slo...\n  sizes: expected 83 bytes, actual 3393 bytes"
+        "first": "FAIL corpus:275:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xall-Xlayout-open-view\" class=\"card-slo...\n  sizes: expected 83 bytes, actual 3572 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -339,13 +345,13 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:305:render:content",
-        "first": "FAIL corpus:305:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhelp-Xright-content-view\" class=\"card-...\n  sizes: expected 91 bytes, actual 14797 bytes"
+        "first": "FAIL corpus:305:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhelp-Xright-content-view\" class=\"card-...\n  sizes: expected 91 bytes, actual 15304 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:305:render:open",
-        "first": "FAIL corpus:305:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhelp-Xright-open-view\" class=\"card-slo...\n  sizes: expected 91 bytes, actual 17353 bytes"
+        "first": "FAIL corpus:305:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhelp-Xright-open-view\" class=\"card-slo...\n  sizes: expected 91 bytes, actual 17860 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -375,13 +381,25 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:316:render:closed",
-        "first": "FAIL corpus:316:render:closed (render-engine)\n  first difference at code-unit offset 2305 (byte offset 2305): expected \"1\" but got \"5\"\n  expected excerpt: ...d&quot; href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  actual excerpt:   ...d&quot; href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  sizes: expected 3763 bytes, actual 3763 bytes"
+        "first": "FAIL corpus:316:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: lkxchgttdixjvgdasd but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"Xlayout-Xright-Xcontent_option-closed-v...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 3763 bytes, actual 83 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:316:render:content",
+        "first": "FAIL corpus:316:render:content (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: lkxchgttdixjvgdasd but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"Xlayout-Xright-Xcontent_option-content-...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 545 bytes, actual 83 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:316:render:open",
-        "first": "FAIL corpus:316:render:open (render-engine)\n  first difference at code-unit offset 2292 (byte offset 2292): expected \"1\" but got \"5\"\n  expected excerpt: ...d&quot; href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  actual excerpt:   ...d&quot; href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  sizes: expected 3664 bytes, actual 4315 bytes"
+        "first": "FAIL corpus:316:render:open (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: lkxchgttdixjvgdasd but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"Xlayout-Xright-Xcontent_option-open-vie...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 3664 bytes, actual 83 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:316:render:title",
+        "first": "FAIL corpus:316:render:title (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: lkxchgttdixjvgdasd but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"*layout+*right+*...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 129 bytes, actual 83 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -470,14 +488,14 @@
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:456:render:content",
-        "first": "FAIL corpus:456:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"zuncjryjjbfhga-content-view\" class=\"car...\n  sizes: expected 121 bytes, actual 439 bytes"
+        "id": "corpus:456:render:closed",
+        "first": "FAIL corpus:456:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: vkfcgbjcdagpbddz\nxlkkbvgjxfuygeelhnqus\ncdyaytofomolqzb\nx but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"zuncjryjjbfhga-closed-view\" class=\"card...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 2148 bytes, actual 121 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:456:render:open",
-        "first": "FAIL corpus:456:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"zuncjryjjbfhga-open-view\" class=\"card-s...\n  sizes: expected 121 bytes, actual 2611 bytes"
+        "id": "corpus:456:render:title",
+        "first": "FAIL corpus:456:render:title (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: vkfcgbjcdagpbddz\nxlkkbvgjxfuygeelhnqus\ncdyaytofomolqzb\nx but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"zuncjryjjbfhga\">...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 69 bytes, actual 121 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -573,13 +591,25 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:571:render:closed",
-        "first": "FAIL corpus:571:render:closed (render-engine)\n  first difference at code-unit offset 2295 (byte offset 2295): expected \"1\" but got \"5\"\n  expected excerpt: ...d&quot; href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  actual excerpt:   ...d&quot; href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  sizes: expected 3747 bytes, actual 3747 bytes"
+        "first": "FAIL corpus:571:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: nrvgzdgebrbvursjn but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"skpist-Xright-Xcontent_option-closed-vi...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 3747 bytes, actual 82 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:571:render:content",
+        "first": "FAIL corpus:571:render:content (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: nrvgzdgebrbvursjn but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"skpist-Xright-Xcontent_option-content-v...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 540 bytes, actual 82 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:571:render:open",
-        "first": "FAIL corpus:571:render:open (render-engine)\n  first difference at code-unit offset 2282 (byte offset 2282): expected \"1\" but got \"5\"\n  expected excerpt: ...d&quot; href=&quot;/*content_options&quot;&gt; (15 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  actual excerpt:   ...d&quot; href=&quot;/*content_options&quot;&gt; (53 content options rules)&lt;/a&gt;&lt;/div&gt;\"...\n  sizes: expected 3648 bytes, actual 4295 bytes"
+        "first": "FAIL corpus:571:render:open (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: nrvgzdgebrbvursjn but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"skpist-Xright-Xcontent_option-open-view...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 3648 bytes, actual 82 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:571:render:title",
+        "first": "FAIL corpus:571:render:title (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: nrvgzdgebrbvursjn but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"skpist+*right+*c...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 127 bytes, actual 82 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -1238,14 +1268,14 @@
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:817:render:content",
-        "first": "FAIL corpus:817:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"zbxggwfbwlmurtwz-content-view\" class=\"c...\n  sizes: expected 130 bytes, actual 456 bytes"
+        "id": "corpus:817:render:closed",
+        "first": "FAIL corpus:817:render:closed (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: kyhpewljxphksovgvbimplgcrgdvvuzrljzvxqapgtbipbetvgakufnukrabbdhgt but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"zbxggwfbwlmurtwz-closed-view\" class=\"ca...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 2176 bytes, actual 130 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:817:render:open",
-        "first": "FAIL corpus:817:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"zbxggwfbwlmurtwz-open-view\" class=\"card...\n  sizes: expected 130 bytes, actual 2654 bytes"
+        "id": "corpus:817:render:title",
+        "first": "FAIL corpus:817:render:title (render-engine)\n  handler raised Card::Error::BadQuery: Invalid JSON search query: kyhpewljxphksovgvbimplgcrgdvvuzrljzvxqapgtbipbetvgakufnukrabbdhgt but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"zbxggwfbwlmurtwz...\n  actual excerpt:   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  sizes: expected 73 bytes, actual 130 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -2085,19 +2115,13 @@
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
         "id": "corpus:1135:render:closed",
-        "first": "FAIL corpus:1135:render:closed (render-engine)\n  first difference at code-unit offset 1508 (byte offset 1508): expected \"4\" but got \"1\"\n  expected excerpt: ...nown-card&quot; href=&quot;/*default&quot;&gt; (49 default rules)&lt;/a&gt;&lt;/div&gt;\" data-bs...\n  actual excerpt:   ...nown-card&quot; href=&quot;/*default&quot;&gt; (140 default rules)&lt;/a&gt;&lt;/div&gt;\" data-b...\n  sizes: expected 2888 bytes, actual 2889 bytes"
+        "first": "FAIL corpus:1135:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"evog-Xright-Xdefault-closed-view\" class...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2888 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1135:render:content",
-        "first": "FAIL corpus:1135:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"evog-Xright-Xdefault-content-view\" clas...\n  sizes: expected 40 bytes, actual 477 bytes"
-      },
-      {
-        "shard": "shard-000000.jsonl",
-        "area": "render-engine",
-        "id": "corpus:1135:render:open",
-        "first": "FAIL corpus:1135:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"evog-Xright-Xdefault-open-view\" class=\"...\n  sizes: expected 40 bytes, actual 3384 bytes"
+        "id": "corpus:1135:render:title",
+        "first": "FAIL corpus:1135:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"evog+*right+*def...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 107 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -2114,14 +2138,14 @@
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1138:render:content",
-        "first": "FAIL corpus:1138:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"dpysuovuvrxuozoorrkodfao-evog-content-v...\n  sizes: expected 40 bytes, actual 496 bytes"
+        "id": "corpus:1138:render:closed",
+        "first": "FAIL corpus:1138:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"dpysuovuvrxuozoorrkodfao-evog-closed-vi...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2708 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1138:render:open",
-        "first": "FAIL corpus:1138:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"dpysuovuvrxuozoorrkodfao-evog-open-view...\n  sizes: expected 40 bytes, actual 3213 bytes"
+        "id": "corpus:1138:render:title",
+        "first": "FAIL corpus:1138:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"dpysuovuvrxuozoo...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 112 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -2246,38 +2270,38 @@
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1211:render:content",
-        "first": "FAIL corpus:1211:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"nylnnxhfjjnlez-evog-content-view\" class...\n  sizes: expected 40 bytes, actual 460 bytes"
+        "id": "corpus:1211:render:closed",
+        "first": "FAIL corpus:1211:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"nylnnxhfjjnlez-evog-closed-view\" class=...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2566 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1211:render:open",
-        "first": "FAIL corpus:1211:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"nylnnxhfjjnlez-evog-open-view\" class=\"c...\n  sizes: expected 40 bytes, actual 3045 bytes"
+        "id": "corpus:1211:render:title",
+        "first": "FAIL corpus:1211:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"nylnnxhfjjnlez+e...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 92 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1218:render:content",
-        "first": "FAIL corpus:1218:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"bnwuestovpzbqmqfrwdzwberk-evog-content-...\n  sizes: expected 40 bytes, actual 504 bytes"
+        "id": "corpus:1218:render:closed",
+        "first": "FAIL corpus:1218:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"bnwuestovpzbqmqfrwdzwberk-evog-closed-v...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2731 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1218:render:open",
-        "first": "FAIL corpus:1218:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"bnwuestovpzbqmqfrwdzwberk-evog-open-vie...\n  sizes: expected 40 bytes, actual 3243 bytes"
+        "id": "corpus:1218:render:title",
+        "first": "FAIL corpus:1218:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"bnwuestovpzbqmqf...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 114 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1222:render:content",
-        "first": "FAIL corpus:1222:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"roqcexctzjiopdqctmseavgau-evog-content-...\n  sizes: expected 40 bytes, actual 504 bytes"
+        "id": "corpus:1222:render:closed",
+        "first": "FAIL corpus:1222:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"roqcexctzjiopdqctmseavgau-evog-closed-v...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2731 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
         "area": "render-engine",
-        "id": "corpus:1222:render:open",
-        "first": "FAIL corpus:1222:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"roqcexctzjiopdqctmseavgau-evog-open-vie...\n  sizes: expected 40 bytes, actual 3243 bytes"
+        "id": "corpus:1222:render:title",
+        "first": "FAIL corpus:1222:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"roqcexctzjiopdqc...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 114 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000000.jsonl",
@@ -2364,7 +2388,7 @@
         "first": "FAIL corpus:1352:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"ttrdlgjfbagmsnlbvqwig-trqze-open-view\" ...\n  sizes: expected 67 bytes, actual 3279 bytes"
       }
     ],
-    "real_failure_count": 391
+    "real_failure_count": 395
   },
   "shards": [
     {
@@ -2379,10 +2403,10 @@
       },
       "renders": {
         "total": 3242,
-        "pass": 2850,
+        "pass": 2846,
         "structurePending": 1,
         "nestGap": 0,
-        "realFail": 391
+        "realFail": 395
       }
     }
   ]

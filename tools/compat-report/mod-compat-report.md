@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-09-21T23:45:48.425Z
+Generated: 2026-09-23T06:21:59.341Z
 Gem dir:   C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems
 Repo:      C:\localProjects\decko-ts
 
@@ -16,7 +16,7 @@ Mods scanned: **33**
 ## decko-ts implemented surface (truth)
 
 - Set patterns (9): all, all_plus, right, rstar, rule, self, star, type, type_plus_right
-- Html views in HTML_VIEWS (19): bar, bar_bottom, bar_left, bar_middle, bar_right, blank, card_list, closed, content, core, menu, mini_bar, mini_unknown, no_search_results, open, title, titled, titled_content, unknown
+- Html views in HTML_VIEWS (20): bar, bar_bottom, bar_left, bar_middle, bar_right, blank, card_list, closed, content, core, link, menu, mini_bar, mini_unknown, no_search_results, open, title, titled, titled_content, unknown
 - Rules: lookup=yes, apply=yes
 - Permissions: yes (read-rules.ts, view-perms.ts)
 

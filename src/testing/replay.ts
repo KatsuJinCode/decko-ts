@@ -28,6 +28,16 @@ import {
   type SmokeFixture,
 } from "./fixture-schema.js";
 import { compareNormalized, type ByteDiffResult } from "./diff.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const FIXTURES_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "fixtures",
+  "captured"
+);
 
 // ---- handler contract ------------------------------------------------------
 
@@ -219,8 +229,8 @@ export function collectReplayEntries(fixtures: LoadedFixture[]): ReplayEntry[] {
 }
 
 export const DEFAULT_FIXTURE_PATHS = [
-  "fixtures/captured/smoke.json",
-  "fixtures/captured/cql-basic.json",
+  path.join(FIXTURES_DIR, "smoke.json"),
+  path.join(FIXTURES_DIR, "cql-basic.json"),
 ];
 
 // ---- judgment --------------------------------------------------------------

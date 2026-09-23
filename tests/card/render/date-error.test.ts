@@ -142,6 +142,87 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     }
   });
 
+  // ----- corpus-shaped fixture: type card name is NOT "Date" ---------------
+  //
+  // The unit fixtures above seed the Date type card with `name: "Date"`
+  // — the original (reverted) gate `card.typeName === "Date"` matched
+  // them and hid the bug from the test bed. The corpus capture records
+  // Date cards with a different type card name: corpus:1135's record
+  // pins `"type":"evog","type_code":"date"` — the type card is named
+  // "evog" but its codename is "date". This fixture reproduces that
+  // shape so the codename-keyed gate is locked by the parity: a future
+  // revert to typeName would leave corpus-shaped cards silently
+  // unvalidated (the 963-entry bucket the diagnose finds).
+
+  it("rendering :open of a Date-type card whose type card name is NOT 'Date' still raises DateError (corpus:1135 corpus-shaped fixture)", async () => {
+    // Corpus pin: id=1135 (evog+*right+*default, content "brcvtwrvz")
+    // type="evog" type_code="date" — the type card's NAME is the random
+    // string "evog", but its codename (the codehash lookup the engine
+    // uses) is "date". A typeName gate skips it; a typeCode gate fires.
+    //
+    // The fixture uses the simple card shape (`name: "evog+*right+*default"`
+    // would require the side cards `*right` / `*default` to exist too;
+    // the gate under test is type-card-name-independent, so we collapse
+    // the compound to a one-name card whose type card's name is "evog"
+    // and codename is "date" — the captured-shape invariant).
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      // The corpus-shaped type card: name="evog" (NOT "Date"), codename="date".
+      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      // The simple card shape whose :open view raises — mirrors id=1135's
+      // content "brcvtwrvz" with a random name; only the type card's
+      // (name, codename) shape matters for the gate.
+      await seedCard(storage, {
+        id: 1135,
+        name: "brcvtwrvz card",
+        typeId: 17,
+        dbContent: "brcvtwrvz",
+      });
+      let captured: unknown;
+      try {
+        await storage.engine.render("brcvtwrvz_card", "open");
+      } catch (err) {
+        captured = err;
+      }
+      const err = captured as Error;
+      expect(err).toBeInstanceOf(Error);
+      expect(err.constructor.name).toBe("Date::Error");
+      expect(err.message).toBe("invalid date");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("rendering :content of a Date-type card whose type card name is NOT 'Date' still raises DateError (corpus:1211 corpus-shaped fixture)", async () => {
+    // Corpus pin: id=1211 carries content "iaqgzhboog" with the same
+    // type="evog" / type_code="date" shape. Different content verifies
+    // the gate isn't keyed on any one corpus row's content; it keys on
+    // the codename regardless.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      await seedCard(storage, {
+        id: 1211,
+        name: "iaqgzhboog card",
+        typeId: 17,
+        dbContent: "iaqgzhboog",
+      });
+      let captured: unknown;
+      try {
+        await storage.engine.render("iaqgzhboog_card", "content");
+      } catch (err) {
+        captured = err;
+      }
+      const err = captured as Error;
+      expect(err.constructor.name).toBe("Date::Error");
+      expect(err.message).toBe("invalid date");
+    } finally {
+      storage.close();
+    }
+  });
+
   // ----- the corpus-v2 replay sentinel contract ----------------------------
 
   it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:1135 capture recorded", () => {

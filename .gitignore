@@ -21,6 +21,9 @@ __pycache__/
 # migration tool scratch outputs (generalized importer writes here for
 # determinism checks; rebuilt on demand; never committed)
 tools/migrate/scratch-out/
+# anonymized corpus deck artifacts (tools/corpus-anonymizer/anonymize-deck.mjs):
+# rebuilt on demand; never committed
+tools/corpus-anonymizer/out/
 
 # wave D build/dev-server output (M5) + scratch
 dist-ts/
