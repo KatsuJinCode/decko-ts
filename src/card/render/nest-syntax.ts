@@ -116,15 +116,19 @@ function optionStringToHash(listString: string, hash: Record<string, unknown>): 
     const colon = pair.indexOf(":");
     const value = (colon === -1 ? pair : pair.slice(colon + 1)).trim();
     const key = (colon === -1 ? DEFAULT_OPTION : pair.slice(0, colon)).trim();
-    if (!SHARK_KEYS.has(key)) continue;
+    // nest.rb:54-57 checks `key == :item` FIRST — :item is not a shark key
+    // (it never reaches the shark filter in Ruby either), and it folds into
+    // options[:items][:view]. Guarding on SHARK_KEYS before this branch made
+    // the branch unreachable and silently dropped every `item:` option.
     if (key === "item") {
       // nest.rb: options_hash[:items] ||= {}; options_hash[:items][:view] = value
       const items = (hash["items"] ?? {}) as Record<string, unknown>;
       items["view"] = value;
       hash["items"] = items;
-    } else {
-      hash[key] = value;
+      continue;
     }
+    if (!SHARK_KEYS.has(key)) continue;
+    hash[key] = value;
   }
 }
 

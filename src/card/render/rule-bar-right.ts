@@ -15,8 +15,8 @@
 //                       "#{_render_type} : #{_render_raw}"
 //   - otherwise         the *all base (card-mod-format set/all/base.rb:97-99):
 //                       with_nest_mode(:compact) { truncate render_core }
-//                       — for plain-text content the core IS the content, and
-//                       Rails' truncate cuts at 50 chars with a "..." omission.
+//                       — truncate resolves to card-mod-format content.rb's
+//                       helper: Rails semantics, ONE_LINE_CHARACTER_LIMIT=60.
 //
 // Raw/content caveat: Ruby's :raw view reads db_content, while the port's
 // RenderCard.dbContent carries structured content once a *structure rule
@@ -27,10 +27,17 @@
 import type { RenderCard } from "./format.js";
 import { h } from "./slot-html.js";
 
-/** set/all/base.rb:97-99 — truncate(render_core), Rails defaults: 50 chars,
- *  omission "..." (only when longer). */
+/** card-mod-rules bar_view.rb:19-21 calls the bare `truncate` helper, which
+ *  resolves to card-mod-format content.rb:43-53 — Rails truncate semantics
+ *  (omission "..." only when longer) but with `one_line_character_limit` =
+ *  voo.size || ONE_LINE_CHARACTER_LIMIT = 60 (content.rb:1), NOT Rails' 50
+ *  default. No captured oracle pins these bytes (verified 2026-09-22), so
+ *  the limit is gem-cited. */
+const ONE_LINE_CHARACTER_LIMIT = 60;
 function truncatedCore(content: string): string {
-  if (content.length > 50) return `${content.slice(0, 50)}...`;
+  if (content.length > ONE_LINE_CHARACTER_LIMIT) {
+    return `${content.slice(0, ONE_LINE_CHARACTER_LIMIT)}...`;
+  }
   return content;
 }
 
