@@ -56,7 +56,7 @@ it("measures warm ms/entry on 80 shard-0 entries", { timeout: 600_000 }, async (
   }
 
   // same-entry repeats: separates per-CARD first-render cost from per-VIEW cost
-  const repeat = sample[0];
+  const repeat = entries[0];
   for (let i = 0; i < 3; i++) {
     const t2 = Date.now();
     try { await storage.engine.render(repeat.name, repeat.view); } catch { /* ignore */ }
@@ -64,6 +64,6 @@ it("measures warm ms/entry on 80 shard-0 entries", { timeout: 600_000 }, async (
   }
   const stats = storage.engine.lastRenderStats;
   console.log("[probe] lastRenderStats:", JSON.stringify(stats));
-  expect(sample.length).toBeGreaterThan(0);
+  expect(entries.length).toBeGreaterThan(0);
   storage.close();
 }, 600_000);

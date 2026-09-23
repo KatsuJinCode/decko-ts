@@ -6,6 +6,48 @@ review he commissioned from Astra (his ChatGPT model), preserved verbatim in
 `docs/upstream-1282-external-critical-review-fulltext.md` (16-row claim table,
 21 section theses, 7 gates, lines 128-139).
 
+## What the product is (operator steering, 2026-09-23)
+
+The deliverable is the **migration path**. The population that matters is the
+small number of teams running existing Decko decks, and the win is minimum
+friction in three dimensions at once:
+
+- **Data** — an existing Decko database lands in D1 without hand-rebuilding
+  content (importer path, prototype already exists: the corpus extraction
+  machinery reads real deck databases; `deploy/seed` is the landing zone).
+- **Launch** — one command from "my deck's database" to "my deck running on
+  Workers" (milestone M2's one-click deploy, made the acceptance).
+- **Experience** — the deck renders and behaves as the migrating user knows
+  it; every visible difference is enumerated and labeled rather than
+  discovered.
+
+Byte-for-byte render parity is the **trust mechanism** for the experience
+dimension, not an end in itself: it is claimed where it is corpus-proven
+(content rendering) and labeled honestly everywhere else. The Rails-generated
+admin chrome is a potential later port — never the priority. The fork ships a
+functional, honestly-labeled native admin, and Gate 5's
+tested/unchanged/porting/impossible inventory is the mod headline. Decision
+rule for every remaining mod thread: does this reduce migration friction?
+
+**OPEN DECISION (operator flagged 2026-09-23): the published headline's
+byte-parity scope.** The framing above is the migration-first position, but
+the operator has not ruled the headline scope — and flagged exactly that gap.
+Two clean options: **(A)** headline = byte parity on content rendering
+(corpus-proven), admin UI functional and labeled — the migration-first
+position; **(B)** headline extends byte parity to the admin surface, which
+requires porting the Rails HTML output layer before publication (weeks of
+additional work against a framework-internals oracle). Until the operator
+rules, nothing public claims either, and the engine keeps byte-matching
+every surface it can reach — no test was or will be downgraded in the
+meantime.
+
+**CF data rule (refined by the operator 2026-09-23, recorded verbatim in
+memory):** raw Brandon content never uploads to Cloudflare without a
+per-deployment safety assurance; **shape-preserving anonymized data is
+operator-approved for scale testing** — same card count, same connections,
+same sizes, words replaced with meaningless ones — gated by a verification
+that zero original text survives in the deployed artifact.
+
 ## The gate that shapes everything
 
 Ethan's first move on receiving the fork will be what he did last time: ask
@@ -52,14 +94,18 @@ The repo must be presentable, followable, and fully auditable by a stranger:
 
 ## Current in-flight rounds (context for the above)
 
-- Activation round (superView migrations + surface wiring) — running.
-- Registration wiring (manifest content-override field + SetLoader
-  population + 30-mod order-constrained registration + mod events surface).
-- Capstone: 48-shard corpus replay, 4 slices grinding; on completion every
-  realFail reconciles against the ledger's failure classes and the capstone
-  proof is recorded with its commit hash.
-- Oracle byte-capture round (per-mod view bytes vs live Ruby).
-- CF worker redeploy + live smoke (Gate 6 numbers).
+- Sensible test: static-deck prewarm driver landed and validated
+  classification-identical on shard-0; perf round (dwfrun-c08a9577) is
+  fixing the two measured hot spots, then all 48 shards relaunch.
+- Oracle byte-capture round landed (dwfrun-1965a3e7) — per-mod view bytes
+  pinned against live Ruby; two engine parity bugs found and fixed.
+- **Round M — migration path** (bumped ahead of deep mod work): deck
+  importer → D1, one-command launch, migrating-user change inventory,
+  PostgreSQL read path for the importer (Gate 2's rung).
+- CF worker redeploy with the metrics recorder + measured smoke
+  (the live numbers: p50/p95/cold start/CPU/D1 rows/cost).
+- Event execution seams and mod deepening continue in batches behind the
+  above, ordered by the migration-friction decision rule.
 
 Gates 1/3/4/5 evidence is in the ledger; Gate 2 (live PostgreSQL rung) and
 Gate 7 (migration promise) are explicitly out of scope until Julian calls

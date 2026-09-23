@@ -347,6 +347,27 @@ export class RenderEngine implements RenderEngineLike {
    * structureProcessed; names that already missed fetch skip via
    * structureRefMisses (the corpus's {{xxxx}} targets are not cards — Ruby
    * renders them as unknown-card views; we must not re-query them ever).
+   *
+   * Raw-ref walk (2026-09-22 fix): every render card's dbContent refs are
+   * walked for closure closureWarm parity, not just structured cards'
+   * templates. Without this the closureWalk returned false for cards whose
+   * transitive refs (e.g. ojib -> tazcdqsapii -> {{xxxx...}}) sat on a
+   * card without an applicable *structure rule: structureProcessed
+   * skipped such cards (the old `if (resolved === undefined) continue`
+   * shape) so the xxx refs never entered structureRefMisses, closureWarm
+   * saw them missing on every render, and the cold SQL walk re-ran —
+   * measured 4.5 s/render on ojib:closed alone (well past the 25 ms
+   * budget; warm-render-sample avg 102 ms is 60× that single entry).
+   * Walking raw refs matches Ruby's closure behavior: every ref in every
+   * card's content contributes to the closure.
+   *
+   * Performance note: this loop iterates every prepared render card on
+   * every render. The pattern input for each card is built SYNCHRONOUSLY
+   * from already-enriched state (leftTypeName read from the render-card
+   * map; isRule read from the safe_set_keys "RULE" token). The previous
+   * async path paid one microtask boundary per awaited fetch (4 awaits per
+   * compound card × ~37k compound cards = ~150k microtask hops; measured
+   * 26-33 s on a 47k-card deck for nothing in the result).
    */
   private async applyStructureContent(): Promise<void> {
     const universe = this.structureContents;
@@ -357,12 +378,20 @@ export class RenderEngine implements RenderEngineLike {
         if (this.structureProcessed.has(key)) continue;
         this.structureProcessed.add(key);
         const resolved = resolveStructuredContent(
-          await this.structurePatternInputFor(card),
+          this.structurePatternInputForSync(card),
           universe,
         );
-        if (resolved === undefined) continue;
-        if (resolved.templateContent !== card.dbContent) card.dbContent = resolved.templateContent;
-        for (const refName of templateReferenceNames(resolved.templateContent)) {
+        // Walk refs from the structured template when one applies; otherwise
+        // walk the raw dbContent refs. Both branches must run — the template
+        // refs are what a *structure rule contributes; the raw refs are the
+        // closure the prefetch already walked and the render must answer to.
+        const contentForRefs = resolved !== undefined
+          ? resolved.templateContent
+          : card.dbContent;
+        if (resolved !== undefined && resolved.templateContent !== card.dbContent) {
+          card.dbContent = resolved.templateContent;
+        }
+        for (const refName of templateReferenceNames(contentForRefs)) {
           const refKey = DeckoName.parse(refName).key;
           if (
             refKey === "" ||
@@ -450,6 +479,79 @@ export class RenderEngine implements RenderEngineLike {
       ...(leftTypeName !== undefined ? { leftTypeName } : {}),
       ...(isRule !== undefined ? { isRule } : {}),
     };
+  }
+
+  /**
+   * Synchronous counterpart to structurePatternInputFor. Reads
+   * leftTypeName from the render-card map and computes isRule in-place
+   * from the now-loaded rule type ids + the right/left records'
+   * render-card typeIds. The original async path paid 1 await per
+   * compound card in the applyStructureContent inner loop (4 awaits
+   * per card including the isRule walks: fetchByName, enrichAndStore,
+   * fetchTypeIdForPart for the right part, fetchTypeIdForPart for the
+   * left part). On a 47k-card deck with ~37k compound cards that was
+   * ~150k microtask hops per render — the entire cost of the closed
+   * view of a basic-type card on the prewarmed deck. The sync path
+   * avoids the awaits: the render-card map is the same data the async
+   * fetches would have returned (cache hits) and ruleTypeIds is loaded
+   * before applyStructureContent runs.
+   *
+   * Reading isRule from setKeys (which would have been the cheapest
+   * option) is WRONG: setKeys was written by enrichAndStore during the
+   * prefetch walk, BEFORE parseRuleTypeIds ran. rule cards in the
+   * prefetched closure therefore have setKeys WITHOUT the "RULE" token
+   * (computeIsRule returned undefined when ruleTypeIds was undefined),
+   * and a later re-read at applyStructureContent time would mis-classify
+   * them. Re-computing from ruleTypeIds + render-card typeIds is the
+   * only byte-correct sync path.
+   */
+  private structurePatternInputForSync(card: RenderCard): PatternCardInput {
+    let leftTypeName: string | undefined;
+    if (card.name.isCompound) {
+      const leftKey = card.name.leftName?.key;
+      if (leftKey !== undefined) {
+        const leftCard = this.renderCards.get(leftKey);
+        if (leftCard !== undefined) leftTypeName = leftCard.typeName;
+      }
+    }
+    const isRule = this.computeIsRuleSync(card);
+    return {
+      name: card.name,
+      id: card.id,
+      typeId: card.typeId,
+      typeName: card.typeName,
+      ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+      ...(isRule ? { isRule } : {}),
+    };
+  }
+
+  /**
+   * Sync counterpart to computeIsRule: resolves the rule? predicate from
+   * the render-card map (no fetches). Returns true only when the right
+   * part's type_id is the *setting codename and the left part's type_id
+   * is the *set codename — the standard_rule? path (lib/card/rule/all.rb
+   * :32-51). Preference shapes (>3 parts) return false here; the
+   * corpus's structured-content path doesn't exercise them and the
+   * async computeIsRule would re-fetch through the ladder for those.
+   */
+  private computeIsRuleSync(card: RenderCard): boolean {
+    const ids = this.ruleTypeIds;
+    if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
+      return false;
+    }
+    const name = card.name;
+    if (!name.isCompound) return false;
+    const rightKey = name.rightName?.key;
+    if (rightKey === undefined) return false;
+    const rightCard = this.renderCards.get(rightKey);
+    if (rightCard === undefined || rightCard.record.typeId !== ids.setting) return false;
+    if (name.parts.length === 2) return false; // 2-part names can't be standard rules
+    // 3-part: standard_rule? — left (the 2-part trunk) type_id === set
+    const leftKey = name.leftName?.key;
+    if (leftKey === undefined) return false;
+    const leftCard = this.renderCards.get(leftKey);
+    if (leftCard !== undefined) return leftCard.record.typeId === ids.set;
+    return false;
   }
 
   // -------------------------------------------------------------------------
@@ -883,12 +985,18 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /** Absolute reference keys inside one render card's content (the real
-   *  parser - the same one the render uses). */
+   *  parser - the same one the render uses). Nest view options ride the
+   *  reference text ("*head|core") but the RESOLVED card is the part before
+   *  the pipe; keeping the suffix made closureWarm miss every template
+   *  reference and forced cold closure walks for cards nesting them
+   *  (26/1000 shard-0 cards cold after prewarm, render-perf harness). */
   private cardReferenceKeys(card: RenderCard): string[] {
     const keys: string[] = [];
     for (const ref of referencedNames(card.dbContent)) {
       if (ref.relative) continue;
-      const key = DeckoName.parse(ref.name).key;
+      const pipe = ref.name.indexOf("|");
+      const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
+      const key = DeckoName.parse(base).key;
       if (key !== "") keys.push(key);
     }
     return keys;
