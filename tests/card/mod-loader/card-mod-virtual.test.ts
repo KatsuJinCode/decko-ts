@@ -10,8 +10,10 @@
 // 0, htmlViewsMissingNames: []), so the proof surface is the record model's
 // SQL semantics + the set module's predicates/event bodies/manifest shape.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { createHistoryTestStorage, type HistoryTestStorage } from "../history/history-test-storage.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { HTML_VIEWS } from "../../../src/card/render/views.js";
 import cardModVirtual, {
   VirtualRecordCache,
   virtualLeftId,
@@ -36,6 +38,8 @@ import cardModVirtual, {
   VIRTUAL_FOLLOWABLE_ENABLED,
   virtualDeleteCard,
   virtualDeleteCardBang,
+  saveVirtualContentEventFn,
+  deleteVirtualContentEventFn,
 } from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
 import { ActWriter, cardFieldStateFromRow } from "../../../src/card/history/write-path.js";
@@ -115,12 +119,45 @@ function virtualRows(s: HistoryTestStorage) {
 const NAME_OF_ID = (id: number): string | undefined =>
   ({ 10: "Jane Doe", 20: "Books", 75: "Caesar" })[id];
 
+// ---------------------------------------------------------------------------
+// the mod-loads-into-loader prove: registeredEvents + eventRegistry
+// (forStage / forEvent / all) — vitest path for this lane
+// ---------------------------------------------------------------------------
+
+let liveLoader: ModLoader | undefined;
+
+afterEach(() => {
+  liveLoader?.reset();
+  liveLoader = undefined;
+});
+
 describe("card-mod-virtual: the manifest", () => {
   it("registers the gem's one set module, abstract/virtual_cache, with no views", () => {
     expect(cardModVirtual.name).toBe("virtual");
     expect(cardModVirtual.gemName).toBe("card-mod-virtual");
+    // The setModule carries the two events[] entries (the LANDED+WIDENED
+    // mod-manifest.ts ModSetModuleFile.events surface). fn is the live
+    // exported stub; we assert the declaration shape + the fn identity
+    // (the body itself is exercised by the eventRegistry describe block
+    // below).
     expect(cardModVirtual.setModules).toEqual([
-      { setPath: "abstract/virtual_cache" },
+      {
+        setPath: "abstract/virtual_cache",
+        events: [
+          {
+            event: "save_virtual_content",
+            at: "prepare_to_store",
+            on: ["save"],
+            fn: saveVirtualContentEventFn,
+          },
+          {
+            event: "delete_virtual_content",
+            at: "prepare_to_store",
+            on: ["delete"],
+            fn: deleteVirtualContentEventFn,
+          },
+        ],
+      },
     ]);
   });
 
@@ -134,6 +171,126 @@ describe("card-mod-virtual: the manifest", () => {
   it("pins history? and followable? false (virtual_cache.rb:35-41)", () => {
     expect(VIRTUAL_HISTORY_ENABLED).toBe(false);
     expect(VIRTUAL_FOLLOWABLE_ENABLED).toBe(false);
+  });
+});
+
+describe("card-mod-virtual: the events surface through the loader (virtual_cache.rb:21,26)", () => {
+  // The two events sit on abstract/virtual_cache (the gem's one set file)
+  // and ride the SetLoader phase's events[] registration
+  // (mod-loader.ts:283-293): the loader injects setPath + modName into
+  // each entry's registered copy, reports the names in
+  // ModLoadReport.registeredEvents, and exposes them via
+  // loader.eventRegistry() (forStage / forEvent / all).
+
+  it("load() reports both event names in registeredEvents, in declaration order", () => {
+    const loader = new ModLoader([{ manifest: cardModVirtual }], { ...HTML_VIEWS });
+    liveLoader = loader;
+    const report = loader.load();
+    // virtual_cache.rb:21 (save) declares before :26 (delete);
+    // SetLoader walks the gem's setModules in path order (one file), so
+    // registration order = declaration order.
+    expect(report.registeredEvents).toEqual([
+      "save_virtual_content",
+      "delete_virtual_content",
+    ]);
+  });
+
+  it("loader.eventRegistry() carries both events with setPath + modName + at + on injected", () => {
+    const loader = new ModLoader([{ manifest: cardModVirtual }], { ...HTML_VIEWS });
+    liveLoader = loader;
+    loader.load();
+    const registry = loader.eventRegistry();
+
+    expect(registry.size()).toBe(2);
+    expect(registry.all().map((e) => `${e.modName}:${e.event}:${e.setPath}`)).toEqual([
+      "virtual:save_virtual_content:abstract/virtual_cache",
+      "virtual:delete_virtual_content:abstract/virtual_cache",
+    ]);
+
+    // forStage preserves registration order (Ruby's same-stage execution
+    // order is definition load order - lib/card/set/event.rb's stage
+    // runner). Both events declare the same stage.
+    expect(registry.forStage("prepare_to_store").map((e) => e.event)).toEqual([
+      "save_virtual_content",
+      "delete_virtual_content",
+    ]);
+    // Stages the mod never fires at stay empty (the cross-check that
+    // forStage is a stage filter, not a total dump).
+    expect(registry.forStage("validate")).toEqual([]);
+    expect(registry.forStage("integrate")).toEqual([]);
+    expect(registry.forStage("store")).toEqual([]);
+    expect(registry.forStage("finalize")).toEqual([]);
+
+    // forEvent returns the first registration for the name, with the
+    // file coordinates + stage + on[] populated. The fn reference is the
+    // same one the manifest exported (object identity preserved).
+    const save = registry.forEvent("save_virtual_content");
+    expect(save?.setPath).toBe("abstract/virtual_cache");
+    expect(save?.modName).toBe("virtual");
+    expect(save?.at).toBe("prepare_to_store");
+    expect(save?.on).toEqual(["save"]);
+    expect(save?.fn).toBe(saveVirtualContentEventFn);
+
+    const del = registry.forEvent("delete_virtual_content");
+    expect(del?.setPath).toBe("abstract/virtual_cache");
+    expect(del?.modName).toBe("virtual");
+    expect(del?.at).toBe("prepare_to_store");
+    expect(del?.on).toEqual(["delete"]);
+    expect(del?.fn).toBe(deleteVirtualContentEventFn);
+  });
+
+  it("the registered event fns are the documented stubs (fn returns void; no body side effects)", () => {
+    // The body needs SQLDatabaseDriver + VirtualRecordCache + Date clock
+    // (virtual_save / virtual_delete - virtual.rb:28-35); ModEventFn has
+    // neither, so the bodies are stubs that return void without
+    // performing the Virtual side effect (the header in card-mod-virtual.ts
+    // names this seam + the WRITE PATH seam it leaves open).
+    const loader = new ModLoader([{ manifest: cardModVirtual }], { ...HTML_VIEWS });
+    liveLoader = loader;
+    loader.load();
+    const registry = loader.eventRegistry();
+
+    const save = registry.forEvent("save_virtual_content");
+    const del = registry.forEvent("delete_virtual_content");
+
+    // The documented stub takes the card + host and does nothing
+    // observable. We do not have a card or driver in scope here, so we
+    // exercise the same fns the registry holds via the same exported
+    // symbols the loader registered (object identity proves the wiring).
+    const fakeCard = { name: "Probe" };
+    const fakeHost = {
+      fetchRenderCard: () => undefined,
+      isDenied: () => false,
+      batch: async () => [],
+      codenames: { ensureLoaded: async () => undefined, peekId: () => undefined },
+      fetchById: async () => undefined,
+      cacheFetchedRecord: async () => undefined,
+    } as never; // structural - ModEngineHost's full surface unused
+    expect(() => save?.fn(fakeCard, fakeHost)).not.toThrow();
+    expect(() => del?.fn(fakeCard, fakeHost)).not.toThrow();
+  });
+
+  it("reset() drops both events from the registry (loader round-trip)", () => {
+    const loader = new ModLoader([{ manifest: cardModVirtual }], { ...HTML_VIEWS });
+    liveLoader = loader;
+    const report = loader.load();
+    expect(report.registeredEvents).toEqual([
+      "save_virtual_content",
+      "delete_virtual_content",
+    ]);
+    loader.reset();
+    expect(loader.eventRegistry().size()).toBe(0);
+    expect(loader.eventRegistry().all()).toEqual([]);
+    expect(loader.eventRegistry().forStage("prepare_to_store")).toEqual([]);
+    expect(loader.eventRegistry().forEvent("save_virtual_content")).toBeUndefined();
+
+    // a fresh load() reproduces the same registrations (idempotence).
+    const rep2 = loader.load();
+    expect(rep2.registeredEvents).toEqual([
+      "save_virtual_content",
+      "delete_virtual_content",
+    ]);
+    expect(loader.eventRegistry().size()).toBe(2);
   });
 });
 

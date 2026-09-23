@@ -62,9 +62,11 @@
 //   (CQL parser support exists - src/cql/parser.ts:515 - but no render-time
 //   search execution surface takes a query string).
 // - events :detect_conflict body (errors.add + I18n) and :rollback_actions
-//   (process_revert_actions drives update! + abort :success) - the error/
-//   abort pipeline is a later wave; edit_conflict? (the event's guard) IS
-//   ported here
+//   body (process_revert_actions drives update! + abort :success) - the
+//   error / abort pipeline is a later wave; edit_conflict? (the
+//   detect_conflict guard) IS ported here. ALL SIX event declarations
+//   pin into the manifest events[] surface (the fn bodies are stubs -
+//   see the events-block header below).
 // - lib/card/action/differ.rb diff objects (Card::Content::Diff) and
 //   lib/card/action/admin.rb janitors, lib/card/act/act_renderer/* and
 //   lib/card/action/action_renderer.rb (the bootstrap act/action renderers
@@ -1015,20 +1017,20 @@ export async function actionHashList(
 // its three event pins)
 // ---------------------------------------------------------------------------
 //
-// Of the six events in events.rb (1-7, 15-17, 19-22, 25-46, 40-46, 48-50),
-// THREE pin into the manifest events[] (the stages the ModEventStage union
-// at mod-manifest.ts:151-159 covers): :update_ancestor_timestamps at
-// :integrate, :finalize_action at :finalize, :rollback_actions at
-// :prepare_to_validate (with on: :update). THREE are BLOCKED:
-//   - :assign_action at :initialize    (the union lacks :initialize;
-//     card-1.110.0 lib/card/director/stages.rb:5 includes it)
-//   - :detect_conflict at :validate     (the union lacks :validate)
-//   - :finalize_act via `after: :finalize_action` (no relative :after
-//     ordering on ModEventRegistration - the union's `extend` is the
-//     extend hook, not a same-card ordering offset)
-// All three pinned bodies need DB write access; the fns are no-op stubs
-// that document the seam each body would call into (the host argument is
-// reserved for a future write-path composition surface).
+// Of the six events in events.rb (1-7, 15-17, 19-22, 25-38, 40-46, 48-50),
+// ALL SIX now pin into the manifest events[] (the union at
+// mod-manifest.ts:151-163 covers every Ruby stage the gem declares and the
+// `after:` relative-ordering field - mod-manifest.ts:209-212 - carries the
+// :finalize_act -> :finalize_action chain):
+//   :update_ancestor_timestamps at :integrate
+//   :assign_action             at :initialize,    when: :actionable?
+//   :detect_conflict           at :validate,      on: [:update], when: :edit_conflict?
+//   :finalize_action           at :finalize,      when: :finalize_action?
+//   :rollback_actions          at :prepare_to_validate, on: [:update], when: :rollback_request?
+//   :finalize_act              via `after: :finalize_action`, when: :act_card?
+// All six pinned bodies need DB write access; the fns are no-op stubs that
+// document the seam each body would call into (the host argument is reserved
+// for a future write-path composition surface).
 
 /** events.rb:1-7 update_ancestor_timestamps (integrate) - `ids =
  *  history_ancestor_ids; return unless ids.present?; Card.where(id: ids)
@@ -1038,6 +1040,34 @@ export async function actionHashList(
 const updateAncestorTimestampsEvent: ModEventFn = (_card, _host) => {
   // see header: history_ancestor_ids (ported above) -> DB update_all ->
   // Card.expire (cache.invalidate + prepareEngine fetch surface).
+};
+
+/** events.rb:15-17 assign_action (initialize, when: :actionable?) -
+ *  Ruby body: `@current_action = new_action` where `new_action`
+ *  (events.rb:74-82) builds `Card::Action.new(act: director.need_act,
+ *  action_type: action, draft: draft_action?, super_action: super_action)`.
+ *  The :initialize stage runs BEFORE any other history event; the action
+ *  row does not yet exist and the engine's ModEventCard surface
+ *  (name/id/dbContent) cannot carry the act + super-action + draft flag.
+ *  The write path lives in src/card/history/write-path.ts (ActWriter); the
+ *  event fn records the declaration without reaching into write-path
+ *  seams the surface cannot supply. */
+const assignActionEvent: ModEventFn = (_card, _host) => {
+  // see header: write-path (ActWriter.assignAction) is not exposed to the
+  // event fn signature; @current_action requires the act row + action_type
+  // + draft + super_action, none of which the (card, host) surface carries.
+};
+
+/** events.rb:19-22 detect_conflict (validate, on: :update, when:
+ *  :edit_conflict?) - Ruby body: `errors.add :conflict, ::I18n.t
+ *  (:history_error_not_latest_revision)`. The error pipeline
+ *  (`Card::Error::Abort` + the `abort` callable) is a later-wave seam;
+ *  the guard `edit_conflict?` IS ported above (events.rb:65-72, see
+ *  isEditConflict at card-mod-history.ts:851-870). */
+const detectConflictEvent: ModEventFn = (_card, _host) => {
+  // see header: errors.add :conflict + I18n.t(:history_error_not_latest_revision)
+  // need the errors-object + I18n-in-flight seams; the edit_conflict?
+  // guard it depends on is ported (isEditConflict above).
 };
 
 /** events.rb:25-38 finalize_action (finalize, when: :finalize_action?) -
@@ -1062,6 +1092,17 @@ const rollbackActionsEvent: ModEventFn = (_card, _host) => {
   // see header: Env.params["revert_actions"] -> process_revert_actions
   // (set/all/history/actions.rb) -> update! -> abort :success; all three
   // are later-wave seams.
+};
+
+/** events.rb:48-50 finalize_act (after: :finalize_action, when:
+ *  :act_card?) - Ruby body: `Card::Director.act.update! card_id: id`
+ *  (the act's primary-card UPDATE - the row was inserted with card_id
+ *  NULL). The ActWriter already owns this UPDATE
+ *  (write-path.ts:605-621 finalizeActCard); the event fn records the
+ *  declaration without reaching back into the writer's private seam. */
+const finalizeActEvent: ModEventFn = (_card, _host) => {
+  // see header: write-path (ActWriter.finalizeActCard) is not exposed to
+  // the event fn signature; the seam belongs to a later wave.
 };
 
 // ---------------------------------------------------------------------------
@@ -1097,18 +1138,31 @@ const cardModHistory: DeckoModManifest = {
       setPath: "all/history/act_listing",
     },
     {
-      // card-mod-history-0.20.0/set/all/history/events.rb - of the six
-      // events in this file, THREE pin into the manifest events[] (the
-      // stages the ModEventStage union covers); THREE are BLOCKED - the
-      // :initialize / :validate stages are absent from the union (see
-      // the events-block header above). Bodies are stubs - the write
-      // path + DB seam are out of scope for this lane.
+      // card-mod-history-0.20.0/set/all/history/events.rb - all SIX events
+      // (events.rb:1-50) pin into the manifest events[]: the union at
+      // mod-manifest.ts:151-163 now covers :initialize + :validate, and
+      // the `after:` relative-ordering field (mod-manifest.ts:209-212)
+      // carries the :finalize_act -> :finalize_action chain. Bodies are
+      // stubs - the write path + DB seam are out of scope for this lane.
       setPath: "all/history/events",
       events: [
         {
           event: "update_ancestor_timestamps",
           at: "integrate",
           fn: updateAncestorTimestampsEvent,
+        },
+        {
+          event: "assign_action",
+          at: "initialize",
+          when: "actionable?",
+          fn: assignActionEvent,
+        },
+        {
+          event: "detect_conflict",
+          at: "validate",
+          on: ["update"],
+          when: "edit_conflict?",
+          fn: detectConflictEvent,
         },
         {
           event: "finalize_action",
@@ -1122,6 +1176,12 @@ const cardModHistory: DeckoModManifest = {
           on: ["update"],
           when: "rollback_request?",
           fn: rollbackActionsEvent,
+        },
+        {
+          event: "finalize_act",
+          after: "finalize_action",
+          when: "act_card?",
+          fn: finalizeActEvent,
         },
       ],
     },

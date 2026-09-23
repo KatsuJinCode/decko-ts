@@ -43,14 +43,13 @@
 //   by Decko Bot 2 minutes ago" in the capture) - not byte-pinnable
 // - set/abstract/01_list/events.rb + set/abstract/delist.rb - the five
 //   events (add_and_drop_items, insert_item_event, validate_item_type,
-//   validate_item_uniqueness, delist). The three whose stages fit the
-//   ModEventStage union (mod-manifest.ts:151-159) are pinned as
-//   DECLARATIONS in the manifest events[] fields (the registry records
-//   name/stage/on/when + a stub fn; the action engine's stage seam is not
-//   wired in this port - see listEventFns below). The two :validate-stage
-//   events (validate_item_type, validate_item_uniqueness) are BLOCKERS:
-//   "validate" is not in the ModEventStage union, and mod-manifest.ts is
-//   out of scope for this lane.
+//   validate_item_uniqueness, delist) pin as DECLARATIONS in the manifest
+//   events[] fields (the registry records name/stage/on/when + a stub fn;
+//   the action engine's stage seam is not wired in this port - see
+//   listEventFns below; the two :validate-stage events were blockers in
+//   batch 1 and are now adopted - the ModEventStage union was widened to
+//   the full Ruby director stage list including :validate,
+//   mod-manifest.ts:152-163, f172ab5).
 // - non-html formats (set/abstract/01_list/other_views.rb csv/js/data/json/
 //   css/rss views) - the engine is html-format only
 // - the :input editor variants beyond radio + list - checkbox/select/
@@ -781,18 +780,18 @@ async function prepareListRules(host: ModEngineHost): Promise<void> {
 // event declarations - the set-module `event` DSL (lib/card/set/event.rb).
 // Five events across set/abstract/01_list/events.rb (1, 8, 13, 29) and
 // set/abstract/delist.rb:2. The ModEventStage union (mod-manifest.ts:
-// 151-159) carries: prepare_to_validate / prepare_to_store / store /
-// finalize / integrate / integrate_with_delay / extend / extend_with_delay.
-// Ruby adds :initialize / :validate / :after_integrate (card-1.110.0
-// lib/card/director/stages.rb:5-8) - those stages are NOT in the TS union
-// and mod-manifest.ts is out of scope. Three events pin (the two
-// :validate-stage events are recorded as blockers below).
+// 152-163) carries the full Ruby director stage list including
+// :initialize / :validate / :after_integrate / :integrate_with_delay /
+// :extend / :extend_with_delay; all five gem events pin as declarations
+// here.
 //
 // The event registry records declarations only; the action engine's stage
-// seam (eventsForStage at src/card/mod-loader.ts:78) does not fire them in
-// this port. The fn bodies are honest stubs: Env.params / add_item /
-// drop_item / insert_item / item_cards / errors.add / referers / subcard
-// have no TS surface.
+// seam (eventsForStage at src/card/mod-loader/mod-event-registry.ts:120) does
+// not fire them in this port. The fn bodies are honest stubs: Env.params /
+// add_item / drop_item / insert_item / item_cards / duplicate_item_names /
+// ok_item_types / errors.add / referers / subcard / t(...) have no TS
+// surface (the validation write-path seam is absent - see validateItemType /
+// validateItemUniqueness below).
 // ---------------------------------------------------------------------------
 
 /** Env.params lookup for the list event fns - Ruby's Env.params (card-core
@@ -839,6 +838,40 @@ const delistEvent: ModEventFn = (_card, _host) => {
   // see header: write path / set membership / subcard not ported
 };
 
+/** events.rb:13-23 validate_item_type (validate, on: save, when:
+ *  validate_item_type?) - the Ruby body reads `ok_item_types`
+ *  (events.rb:35-37 - nil default, overridden on Type::Style /
+ *  Type::Script + the bootswatch_skin+stylesheets rule), wraps it via
+ *  Array.wrap, maps each by codename, then walks `item_cards` adding an
+ *  error `:content` per item whose `type_code` is not in `ok_types`
+ *  (events.rb:14-22). The error message uses t(:list_invalid_item_type)
+ *  (the i18n surface). The fn preserves the (card, host) shape the
+ *  ModEventFn signature demands; the semantics need the validation
+ *  WRITE-PATH SEAM: `errors.add` on the acting card, `ok_item_types` /
+ *  `item_cards` card methods, the i18n `t` helper. None of those have a
+ *  TS surface in this port. Documented stub. */
+const validateItemType: ModEventFn = (_card, host) => {
+  // validation write-path seam absent: ok_item_types / item_cards /
+  // errors.add / t(:list_invalid_item_type) not ported (events.rb:13-23).
+  void host;
+};
+
+/** events.rb:29-33 validate_item_uniqueness (validate, on: save, when:
+ *  unique_items?) - the Ruby body returns unless `duplicate_item_names`
+ *  is present, then `errors.add :content` with t(:list_duplicate_items_
+ *  names). The `unique_items?` predicate and `duplicate_item_names`
+ *  helper live in card-mod-collection set/all/item_assignment.rb (the
+ *  include side); the events.rb:25-28 inline comment notes that at
+ *  present this validator MAY NEVER raise because `#standardize_items`
+ *  (card-mod-permissions set/abstract/permission.rb) already dedupes.
+ *  Documented stub: the validation write-path seam (errors.add + the
+ *  i18n t helper + the collection method surface) is absent. */
+const validateItemUniqueness: ModEventFn = (_card, host) => {
+  // validation write-path seam absent: duplicate_item_names / unique_items?
+  // / errors.add / t(:list_duplicate_items_names) not ported (events.rb:29-33).
+  void host;
+};
+
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
@@ -858,15 +891,22 @@ const cardModList: DeckoModManifest = {
       setPath: "abstract/01_list",
     },
     {
-      // card-mod-list-0.20.0/set/abstract/01_list/events.rb - of the four
-      // events in this file, two pin as declarations (events.rb:1
-      // add_and_drop_items, events.rb:8 insert_item_event - both
-      // :prepare_to_validate). The two :validate-stage events
-      // (events.rb:13 validate_item_type, events.rb:29
-      // validate_item_uniqueness) are BLOCKERS - the ModEventStage union
-      // (mod-manifest.ts:151-159) lacks the :validate stage. The pinned
-      // fns are stubs (write path not ported); the registry records the
-      // name/stage/on/when verbatim.
+      // card-mod-list-0.20.0/set/abstract/01_list/events.rb - the four
+      // events in this file pin as declarations (all five gem-side `event`
+      // calls; see the file's fifth event on abstract/delist below).
+      //   events.rb:1  add_and_drop_items        prepare_to_validate, on: save
+      //   events.rb:8  insert_item_event         prepare_to_validate, on: save,
+      //                                          when: :item_to_insert
+      //   events.rb:13 validate_item_type        validate, on: save,
+      //                                          when: :validate_item_type?
+      //   events.rb:29 validate_item_uniqueness  validate, on: save,
+      //                                          when: :unique_items?
+      // The :validate stage is in the ModEventStage union (mod-manifest.ts:
+      // 152-163 - the full Ruby director stage list); the two previously-
+      // blocked events pin here as well. The pinned fns are stubs (the
+      // validation write path - errors.add / i18n t / ok_item_types /
+      // item_cards / duplicate_item_names - has no TS surface); the
+      // registry records the name/stage/on/when verbatim.
       setPath: "abstract/01_list/events",
       events: [
         {
@@ -881,6 +921,20 @@ const cardModList: DeckoModManifest = {
           on: ["save"],
           when: "item_to_insert",
           fn: insertItemEvent,
+        },
+        {
+          event: "validate_item_type",
+          at: "validate",
+          on: ["save"],
+          when: "validate_item_type?",
+          fn: validateItemType,
+        },
+        {
+          event: "validate_item_uniqueness",
+          at: "validate",
+          on: ["save"],
+          when: "unique_items?",
+          fn: validateItemUniqueness,
         },
       ],
     },

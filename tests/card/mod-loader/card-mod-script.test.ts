@@ -426,4 +426,59 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     const content = await s.engine.render("Oracle Head Probe", "content");
     expect(content).toContain("head probe body");
   });
+
+  it("WITH the mod: the load report lists the two validate events (type/coffee_script.rb:5, type/java_script.rb:5)", () => {
+    // The two `event :` declarations adopted from the gem:
+    // - type/coffee_script.rb:5-9 validate_coffeescript_syntax at :validate
+    // - type/java_script.rb:5-9 validate_javascript_syntax at :validate
+    // Both carry on: :save (recorded as ["save"]; the execution seam
+    // applies Ruby's :save -> [:create, :update] expansion at fire time)
+    // and changed: %i[type_id content] (recorded verbatim).
+    const report = loader!.load();
+    expect(report.modNames).toEqual(["script"]);
+    expect(report.registeredEvents).toEqual([
+      "validate_coffeescript_syntax",
+      "validate_javascript_syntax",
+    ]);
+  });
+
+  it("WITH the mod: the ModEventRegistry carries both validate events with file coordinates injected", () => {
+    // The SetLoader phase (mod-loader.ts:283-293) injects setPath + modName
+    // at registration time; the registry's all() / forStage() / forEvent()
+    // surfaces read the adopted declarations verbatim.
+    const registry = loader!.eventRegistry();
+    expect(registry.size()).toBe(2);
+    expect(registry.all().map((e) => `${e.modName}:${e.event}:${e.setPath}`)).toEqual([
+      "script:validate_coffeescript_syntax:type/coffee_script",
+      "script:validate_javascript_syntax:type/java_script",
+    ]);
+    // forStage preserves registration order (Ruby's same-stage execution
+    // order is definition load order; the gem's two set files load in
+    // path order: type/coffee_script < type/java_script).
+    expect(registry.forStage("validate").map((e) => e.event)).toEqual([
+      "validate_coffeescript_syntax",
+      "validate_javascript_syntax",
+    ]);
+    // stages the events do not run at stay empty (the cross-check that
+    // forStage is genuinely a stage filter).
+    expect(registry.forStage("store")).toEqual([]);
+    expect(registry.forStage("integrate")).toEqual([]);
+    // forEvent returns the first registration for the name with setPath +
+    // modName + at + on + changed injected.
+    const cs = registry.forEvent("validate_coffeescript_syntax");
+    expect(cs?.setPath).toBe("type/coffee_script");
+    expect(cs?.modName).toBe("script");
+    expect(cs?.at).toBe("validate");
+    expect(cs?.on).toEqual(["save"]);
+    // changed: %i[type_id content] (Ruby permissions.rb:1) stored verbatim
+    expect(cs?.changed).toEqual(["type_id", "content"]);
+    expect(typeof cs?.fn).toBe("function");
+    const js = registry.forEvent("validate_javascript_syntax");
+    expect(js?.setPath).toBe("type/java_script");
+    expect(js?.modName).toBe("script");
+    expect(js?.at).toBe("validate");
+    expect(js?.on).toEqual(["save"]);
+    expect(js?.changed).toEqual(["type_id", "content"]);
+    expect(typeof js?.fn).toBe("function");
+  });
 });

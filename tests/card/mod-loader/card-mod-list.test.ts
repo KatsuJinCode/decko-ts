@@ -199,30 +199,35 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     expect(report.registeredSettings).toEqual(["content_option_view", "content_options"]);
   });
 
-  it("WITH the mod: event declarations pin the three gem events whose stage fits the ModEventStage union", () => {
-    // five events in the gem (set/abstract/01_list/events.rb:1,8,13,29 +
-    // set/abstract/delist.rb:2); three pin into the manifest (the two
-    // :validate-stage events - events.rb:13 validate_item_type,
-    // events.rb:29 validate_item_uniqueness - cannot pin because the
-    // ModEventStage union at mod-manifest.ts:151-159 does not carry
-    // "validate"; mod-manifest.ts is out of scope for this lane).
+  it("WITH the mod: event declarations pin all five gem events (the two :validate-stage events adopted this batch)", () => {
+    // Five events in the gem (set/abstract/01_list/events.rb:1,8,13,29 +
+    // set/abstract/delist.rb:2) - all five now pin into the manifest. The
+    // two :validate-stage events (events.rb:13 validate_item_type,
+    // events.rb:29 validate_item_uniqueness) were batch-1 blockers; this
+    // batch adopts them now that the ModEventStage union at
+    // mod-manifest.ts:152-163 carries the full Ruby director stage list
+    // including :validate.
     // Load order within the abstract pattern group is bySetPath:
-    //   abstract/01_list/events (2 events) -> abstract/delist (1 event).
+    //   abstract/01_list/events (4 events) -> abstract/delist (1 event).
     const report = loader!.load();
     expect(report.registeredEvents).toEqual([
       "add_and_drop_items",
       "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness",
       "delist",
     ]);
 
     const events = loader!.eventRegistry();
-    expect(events.size()).toBe(3);
+    expect(events.size()).toBe(5);
 
     // registration order is preserved; the file coordinates the SetLoader
     // phase injected are setPath + modName (mod-loader.ts:283-292).
     expect(events.all().map((e) => `${e.modName}:${e.event}@${e.setPath}`)).toEqual([
       "list:add_and_drop_items@abstract/01_list/events",
       "list:insert_item_event@abstract/01_list/events",
+      "list:validate_item_type@abstract/01_list/events",
+      "list:validate_item_uniqueness@abstract/01_list/events",
       "list:delist@abstract/delist",
     ]);
 
@@ -232,6 +237,10 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     expect(
       events.forStage("prepare_to_validate").map((e) => e.event),
     ).toEqual(["add_and_drop_items", "insert_item_event"]);
+    expect(events.forStage("validate").map((e) => e.event)).toEqual([
+      "validate_item_type",
+      "validate_item_uniqueness",
+    ]);
     expect(events.forStage("prepare_to_store").map((e) => e.event)).toEqual([
       "delist",
     ]);
@@ -256,16 +265,24 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     expect(insert?.on).toEqual(["save"]);
     expect(insert?.when).toBe("item_to_insert");
 
+    const validateItem = events.forEvent("validate_item_type");
+    expect(validateItem?.setPath).toBe("abstract/01_list/events");
+    expect(validateItem?.modName).toBe("list");
+    expect(validateItem?.at).toBe("validate");
+    expect(validateItem?.on).toEqual(["save"]);
+    expect(validateItem?.when).toBe("validate_item_type?");
+
+    const validateUnique = events.forEvent("validate_item_uniqueness");
+    expect(validateUnique?.setPath).toBe("abstract/01_list/events");
+    expect(validateUnique?.modName).toBe("list");
+    expect(validateUnique?.at).toBe("validate");
+    expect(validateUnique?.on).toEqual(["save"]);
+    expect(validateUnique?.when).toBe("unique_items?");
+
     const delist = events.forEvent("delist");
     expect(delist?.setPath).toBe("abstract/delist");
     expect(delist?.at).toBe("prepare_to_store");
     expect(delist?.on).toEqual(["delete"]);
-
-    // BLOCKERS: the two :validate-stage events the gem declares but the
-    // ModEventStage union does not cover. They are NOT in the registry
-    // because they cannot be declared without modifying mod-manifest.ts.
-    expect(events.forEvent("validate_item_type")).toBeUndefined();
-    expect(events.forEvent("validate_item_uniqueness")).toBeUndefined();
   });
 
   it("WITH the mod: the view-config registry matches the live _view_*__setting probe", () => {

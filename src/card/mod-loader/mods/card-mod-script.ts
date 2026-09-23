@@ -65,10 +65,6 @@
 //   the T6 verdict counts :core as covered by the engine's core view, and a
 //   byte-port of CodeRay's js tokenizer (span color classes) is not
 //   headlessly reproducible with a JS highlighter.
-// - the two validate events (type/coffee_script.rb:5-9
-//   validate_coffeescript_syntax, type/java_script.rb:5-9
-//   validate_javascript_syntax): write-path save events; the manifest has
-//   no event surface and the write path is another stream.
 // - lib/cardio/utils/ansi2_html.rb: consumed only by the
 //   validate_javascript_syntax error message (type/java_script.rb:8) - no
 //   reachable consumer headlessly.
@@ -98,6 +94,7 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventFn,
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -514,6 +511,86 @@ async function prepareScriptRules(host: ModEngineHost): Promise<void> {
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// type/coffee_script.rb + type/java_script.rb - the two validate events
+// ---------------------------------------------------------------------------
+
+/** The validate-stage body stub for both validate_*_syntax events
+ *  (type/coffee_script.rb:5-9, type/java_script.rb:5-9). The Ruby bodies
+ *  call ::CoffeeScript.compile / Uglifier.compile on `content`, then
+ *  `errors.add :content, <formatted message>` on the ExecJS::RuntimeError /
+ *  Uglifier::Error - the write-path "errors" seam that names the field and
+ *  carries the message into the save validation surface (card-1.110.0
+ *  lib/card/error.rb). The TS engine has no errors.add seam yet (the
+ *  action engine's validate path is hardcoded, card-action-engine.ts:256-258;
+ *  no eventsForStage consult), so the body is a documented stub: it
+ *  resolves `card.dbContent`, names the field it would annotate, and
+ *  records the compiler/runtime seam the future execution wiring must
+ *  compose. Calls into the actual compiler packages (coffeescript,
+ *  uglifier) and the missing errors.add surface are documented in the
+ *  body comments below. */
+const validateSyntaxField = "content";
+
+/** type/coffee_script.rb:5-9 event :validate_coffeescript_syntax, :validate,
+ *  on: :save, changed: %i[type_id content] do
+ *    ::CoffeeScript.compile content
+ *  rescue ExecJS::RuntimeError => e
+ *    errors.add :content, e.message.remove("[stdin]:")
+ *  end
+ *
+ *  SEAM: the TS engine has no `errors.add :content` write-path surface
+ *  (errors live in lib/card/error.rb - card-1.110.0 - and the action
+ *  engine's validate path is hardcoded for the name legality / type
+ *  resolution checks, card-action-engine.ts:256-258). The :coffee_script
+ *  gem (`coffeescript.org` -> coffeescript npm) is not installed in this
+ *  project's node_modules; the ExecJS bridge is unported. The body is
+ *  the declaration's recorded shape: it reads the card's content, names
+ *  the field it would validate against, and leaves the compile + error
+ *  composition as the seam the action engine's validate stage must wire
+ *  when mod-event execution lands. */
+const validateCoffeescriptSyntaxFn: ModEventFn = (card, _host) => {
+  // SEAM (no-op stub, see header): when execution wiring lands, this body
+  // must (a) call ::CoffeeScript.compile on card.dbContent (the Ruby
+  // `content` method on the acting card), (b) rescue ExecJS::RuntimeError,
+  // strip the leading "[stdin]:" from e.message (Ruby's String#remove),
+  // and (c) call errors.add :content, <stripped message> against the
+  // action engine's write-path error surface. The :coffee_script + execjs
+  // gems are unported (no TS compiler bridge); the errors.add seam is
+  // unported (no TS error surface); the stage selector below is the only
+  // piece the event registry admits today.
+  void validateSyntaxField;
+  void card;
+};
+
+/** type/java_script.rb:5-9 event :validate_javascript_syntax, :validate,
+ *  on: :save, changed: %i[type_id content] do
+ *    Uglifier.compile content, harmony: true
+ *  rescue Uglifier::Error => e
+ *    errors.add :content, "<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>".html_safe
+ *  end
+ *
+ *  SEAM: same as the coffeescript event - the TS engine has no errors.add
+ *  seam, the uglifier gem is unported, and Cardio::Utils.ansi2html
+ *  (lib/cardio/utils/ansi2_html.rb) is consumed only by this error
+ *  message (no other reachable consumer headlessly - see the header's
+ *  honest remainder). The body reads the card's content, names the
+ *  field, and leaves the compile + ansi2html-wrapped errors.add as the
+ *  seam the validate execution wiring must wire. */
+const validateJavascriptSyntaxFn: ModEventFn = (card, _host) => {
+  // SEAM (no-op stub, see header): when execution wiring lands, this body
+  // must (a) call Uglifier.compile(card.dbContent, harmony: true), (b)
+  // rescue Uglifier::Error, ANSI->HTML the message through
+  // Cardio::Utils.ansi2html (lib/cardio/utils/ansi2_html.rb), wrap it in
+  // "<pre>...</pre>".html_safe, and (c) call errors.add :content,
+  // <wrapped message> against the action engine's write-path error surface.
+  // The uglifier gem is unported (no TS compiler bridge); the ansi2html
+  // helper has no headless consumer outside this event; the errors.add
+  // seam is unported (no TS error surface); the stage selector below is
+  // the only piece the event registry admits today.
+  void validateSyntaxField;
+  void card;
+};
+
 /** A set file whose ported bytes are registration bookkeeping only (the
  *  module basket entry Ruby's SetLoader creates; its card methods / events
  *  have no manifest surface - see the header's NOT-ported list and the
@@ -605,11 +682,55 @@ const cardModScript: DeckoModManifest = {
       },
     },
     // set/type/coffee_script.rb - Type::CoffeeScript (Script include +
-    // validate_coffeescript_syntax save event).
-    passiveSetModule("type/coffee_script"),
+    // validate_coffeescript_syntax save event - type/coffee_script.rb:5-9,
+    // adopted below).
+    {
+      setPath: "type/coffee_script",
+      events: [
+        {
+          // type/coffee_script.rb:5-9 event :validate_coffeescript_syntax,
+          // :validate, on: :save, changed: %i[type_id content] do
+          //   ::CoffeeScript.compile content
+          // rescue ExecJS::RuntimeError => e
+          //   errors.add :content, e.message.remove("[stdin]:")
+          // end
+          // SEAM: body is a no-op stub - the action engine's validate path
+          // is hardcoded (no eventsForStage consult), the :coffee_script +
+          // execjs gems are unported (no TS compiler bridge), and the
+          // `errors.add :content` write-path surface has no TS port.
+          event: "validate_coffeescript_syntax",
+          at: "validate",
+          on: ["save"],
+          changed: ["type_id", "content"],
+          fn: validateCoffeescriptSyntaxFn,
+        },
+      ],
+    },
     // set/type/java_script.rb - Type::JavaScript (Script include +
-    // validate_javascript_syntax save event).
-    passiveSetModule("type/java_script"),
+    // validate_javascript_syntax save event - type/java_script.rb:5-9,
+    // adopted below).
+    {
+      setPath: "type/java_script",
+      events: [
+        {
+          // type/java_script.rb:5-9 event :validate_javascript_syntax,
+          // :validate, on: :save, changed: %i[type_id content] do
+          //   Uglifier.compile content, harmony: true
+          // rescue Uglifier::Error => e
+          //   errors.add :content,
+          //     "<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>".html_safe
+          // end
+          // SEAM: body is a no-op stub - same as the coffeescript event;
+          // uglifier + Cardio::Utils.ansi2html are unported, and the
+          // `errors.add :content` write-path surface has no TS port.
+          event: "validate_javascript_syntax",
+          at: "validate",
+          on: ["save"],
+          changed: ["type_id", "content"],
+          fn: validateJavascriptSyntaxFn,
+        },
+      ],
+    },
     // set/type/local_script_folder_group.rb - FolderGroup + ScriptGroup +
     // non_createable_types basket.
     passiveSetModule("type/local_script_folder_group"),

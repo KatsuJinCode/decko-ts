@@ -44,20 +44,22 @@
 // dispatch pass can register it verbatim; the tests pin its bytes directly.
 //
 // NOT ported (honest remainder):
-// - the event half of the gem (set/all/permissions.rb:1-26 events
+// - the EVENT BODIES of the gem (set/all/permissions.rb:1-26 bodies of
 //   set_read_rule / set_field_read_rules / update_read_rule /
-//   check_permissions; set/all/update_read_rules.rb:4-11 events
-//   update_rule_cache / expire_related; set/right/read.rb:9-14 event
-//   cascade_read_rule + its cascade machinery, 16-77) - the manifest models
-//   no event bus (mod-loader-port-notes.md "Events, chunks, ... are not
-//   modeled"). The READ half of the permission semantics already exists
-//   engine-side: RenderEngineLike.isDenied/taskAllowed cite exactly
-//   permissions.rb:142-143 (ok_to_read?) and 148-157 (ok_to_update?/
-//   ok_to_create?/ok_to_delete?) as their Ruby source
-//   (src/card/render/format.ts:637-648), precomputed in the engine's
-//   prepare phase. The persistence half (read_rule_id/read_rule_class
-//   columns, update_read_rule's update_all, the without_timestamps write)
-//   is DB-write behavior with no TS write-path surface.
+//   check_permissions; set/all/update_read_rules.rb:4-11 bodies of
+//   update_rule_cache / expire_related; set/right/read.rb:9-14 body of
+//   cascade_read_rule + its cascade machinery, 16-77) - the manifest
+//   models no event bus (mod-loader-port-notes.md "Events, chunks, ...
+//   are not modeled"). The DECLARATIONS land on the ModEventRegistry
+//   (see the Events section below); the bodies are no-op stubs. The READ
+//   half of the permission semantics already exists engine-side:
+//   RenderEngineLike.isDenied/taskAllowed cite exactly permissions.rb:
+//   142-143 (ok_to_read?) and 148-157 (ok_to_update?/ok_to_create?/
+//   ok_to_delete?) as their Ruby source (src/card/render/format.ts:
+//   637-648), precomputed in the engine's prepare phase. The persistence
+//   half (read_rule_id/read_rule_class columns, update_read_rule's
+//   update_all, the without_timestamps write) is DB-write behavior with
+//   no TS write-path surface.
 // - set/abstract/permission.rb:1-3 standardize_items and 5-7 options_card -
 //   card-level methods; the format-level consumer (options_card_name,
 //   card-mod-layout set/abstract/items/options_api.rb:51-53) is reproduced
@@ -74,28 +76,26 @@
 //   en.yml:2) is consumed only by require_permission_rule!
 //   (permissions.rb:77-85), an event-path error with no TS surface.
 //
-// Events (this lane): the six events the manifest's events[] surface can
+// Events (this lane): the seven events the manifest's events[] surface can
 // carry verbatim - file coordinates injected by the loader's SetLoader
 // phase (mod-loader.ts:283-293, the same path card-mod-list's not-ported
 // events would take). Ruby file -> manifest field map:
 //   - set/all/permissions.rb:1-26 - events :set_read_rule (`:store`,
-//     `on: :save`, `changed: %i[type_id name]` - the `changed` clause has
-//     no ModEventRegistration field, recorded as a blocker),
-//     :set_field_read_rules (`after: :set_read_rule, on: :update,
-//     changed: :type_id` - `after`/`changed` clauses are blockers, only
-//     `on: ["update"]` is portable), :update_read_rule (no stage, no opts).
-//     NOT PORTED: :check_permissions (permissions.rb:22-26) - its stage
-//     `:validate` is NOT in ModEventStage (mod-manifest.ts:151-159 lists
-//     prepare_to_validate / prepare_to_store / store / finalize / integrate
-//     / integrate_with_delay / extend / extend_with_delay; Ruby's validate
-//     stage, card-1.110.0 director.rb:18, is missing). The cleanest port
-//     is to record the omission here rather than coerce a stage - this
-//     lane's blocker section names it.
+//     `on: :save`, `changed: %i[type_id name]` - `changed` is the
+//     ModEventRegistration.changed field, mod-manifest.ts:204-207,
+//     stored verbatim), :set_field_read_rules (`after: :set_read_rule`,
+//     `on: :update`, `changed: :type_id` - `after` is the
+//     ModEventRegistration.after field, mod-manifest.ts:209-212, stored
+//     verbatim; `changed` is the same surface as above),
+//     :update_read_rule (no stage, no opts), :check_permissions
+//     (`:validate`, permissions.rb:22-26 - Ruby's validate stage,
+//     card-1.110.0 director.rb:18, is in ModEventStage, mod-manifest.ts:
+//     155; recorded verbatim).
 //   - set/all/update_read_rules.rb:4-11 - events :update_rule_cache
 //     (`:finalize, when: :rule?`) and :expire_related (`:finalize`).
 //   - set/right/read.rb:9-14 - event :cascade_read_rule (`:finalize,
-//     after: :update_rule_cache, when: :rule?` - `after` clause has no
-//     ModEventRegistration field, recorded as a blocker).
+//     after: :update_rule_cache, when: :rule?` - `after` is the
+//     ModEventRegistration.after field, stored verbatim).
 //
 // Event bodies: every fn is a no-op stub. The bodies live on Ruby's save
 // path (set_read_rule mutates read_rule_id/read_rule_class; update_read_rule
@@ -618,23 +618,50 @@ const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
   // no-op: see the header's "Event bodies" paragraph.
 };
 
+/** permissions.rb:22-26 `event :check_permissions, :validate do
+ *  track_permission_errors do ok? action_for_permission_check end end`.
+ *  Body: tracks permission errors via `@permission_errors` and routes
+ *  through the action-specific ok_to_*? predicates
+ *  (permissions.rb:142-157). The read half lives engine-side
+ *  (RenderEngineLike.isDenied/taskAllowed, format.ts:637-648, citing
+ *  permissions.rb:142-157); the validate-stage write path
+ *  (`errors.add :permission_denied` + `raise Card::Error::PermissionDenied`,
+ *  permissions.rb:77-85) is a DB-write / state-mutating surface with no
+ *  TS consumer. */
+const checkPermissionsFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
 /** A set-module entry that registers no views (the passive files:
  *  events carry separately into events[], see the headers below; setting
- *  opts are the same). The setPaths follow the gem tree verbatim. */
+ *  opts are the same). The setPaths follow the gem tree verbatim.
+ *
+ *  The events shape mirrors ModEventRegistration (mod-manifest.ts:190-218):
+ *  the full Ruby director stage list (validate + initialize included) and
+ *  the `changed`/`after` fields the batch-1 blockers named as missing.
+ *  Inline shape so the per-file declarations stay textually close to
+ *  Ruby; the cast at registration time (mod-loader.ts:283-293) re-uses
+ *  ModEventRegistration. */
 function passiveSetModule(setPath: string, events?: ReadonlyArray<{
   event: string;
-  at?: "prepare_to_validate" | "prepare_to_store" | "store" | "finalize" |
-    "integrate" | "integrate_with_delay" | "extend" | "extend_with_delay";
+  at?: "initialize" | "prepare_to_validate" | "validate" | "prepare_to_store" |
+    "store" | "finalize" | "integrate" | "after_integrate" |
+    "integrate_with_delay" | "extend" | "extend_with_delay";
   on?: readonly ("create" | "update" | "delete" | "save")[];
   when?: string;
+  changed?: readonly string[];
+  after?: string;
   priority?: number;
   fn: ModEventFn;
 }>): { setPath: string; events?: ReadonlyArray<{
   event: string;
-  at?: "prepare_to_validate" | "prepare_to_store" | "store" | "finalize" |
-    "integrate" | "integrate_with_delay" | "extend" | "extend_with_delay";
+  at?: "initialize" | "prepare_to_validate" | "validate" | "prepare_to_store" |
+    "store" | "finalize" | "integrate" | "after_integrate" |
+    "integrate_with_delay" | "extend" | "extend_with_delay";
   on?: readonly ("create" | "update" | "delete" | "save")[];
   when?: string;
+  changed?: readonly string[];
+  after?: string;
   priority?: number;
   fn: ModEventFn;
 }> } {
@@ -668,40 +695,42 @@ const cardModPermissions: DeckoModManifest = {
       // half lives engine-side as isDenied/taskAllowed,
       // format.ts:637-648, citing permissions.rb:142-157)
       //
-      // Events (permissions.rb:1-26):
+      // Events (permissions.rb:1-26) - the four declarations record the
+      // Ruby clauses verbatim now that ModEventRegistration carries
+      // `changed` and `after` (mod-manifest.ts:204-212) and the full Ruby
+      // director stage list including :validate (mod-manifest.ts:151-163):
       //   - :set_read_rule (`:store, on: :save, changed: %i[type_id name]`,
-      //     lines 1-5) - the `changed` clause has no ModEventRegistration
-      //     field (the TS schema is event/at/on/when/priority/fn only);
-      //     BLOCKER: the changed-fields gate is not ported.
+      //     lines 1-5) - `changed: ["type_id", "name"]` is the field gate.
       //   - :set_field_read_rules (`after: :set_read_rule, on: :update,
-      //     changed: :type_id`, lines 7-9) - BLOCKER: `after`/`changed`
-      //     clauses have no ModEventRegistration fields. Only `on:
-      //     ["update"]` is portable; the declaration records it verbatim
-      //     and the comment names the dropped clauses.
+      //     changed: :type_id`, lines 7-9) - `after` names the dependency,
+      //     `changed: ["type_id"]` is the single-field gate.
       //   - :update_read_rule (lines 11-20) - no stage, no on, no opts.
-      //   - :check_permissions (`:validate`, lines 22-26) - NOT REGISTERED.
-      //     BLOCKER: `:validate` is a Ruby stage (card-1.110.0
-      //     lib/card/director.rb:18) that is NOT in ModEventStage
-      //     (mod-manifest.ts:151-159 lists prepare_to_validate /
-      //     prepare_to_store / store / finalize / integrate /
-      //     integrate_with_delay / extend / extend_with_delay).
-      //     coerce(string) would compile but be a lie; the declaration is
-      //     left out and the test asserts it is absent.
+      //   - :check_permissions (`:validate`, lines 22-26) - :validate is
+      //     the Ruby validate stage (card-1.110.0 director.rb:18), present
+      //     in ModEventStage; recorded verbatim.
       ...passiveSetModule("all/permissions", [
         {
           event: "set_read_rule",
           at: "store",
           on: ["save"],
+          changed: ["type_id", "name"],
           fn: setReadRuleFn,
         },
         {
           event: "set_field_read_rules",
+          after: "set_read_rule",
           on: ["update"],
+          changed: ["type_id"],
           fn: setFieldReadRulesFn,
         },
         {
           event: "update_read_rule",
           fn: updateReadRuleFn,
+        },
+        {
+          event: "check_permissions",
+          at: "validate",
+          fn: checkPermissionsFn,
         },
       ]),
     },
@@ -739,12 +768,14 @@ const cardModPermissions: DeckoModManifest = {
       // assign_type :list + the html-format include + event
       // cascade_read_rule (`:finalize, after: :update_rule_cache, when:
       // :rule?`, lines 9-14) and the read-rule cascade machinery (16-77).
-      // BLOCKER: `after: :update_rule_cache` has no ModEventRegistration
-      // field; only `:finalize` + `when: "rule?"` are portable.
+      // All three clauses land: `after: "update_rule_cache"` is the
+      // relative ordering recorded verbatim, `at: "finalize"` is the
+      // stage, `when: "rule?"` is the named predicate.
       ...passiveSetModule("right/read", [
         {
           event: "cascade_read_rule",
           at: "finalize",
+          after: "update_rule_cache",
           when: "rule?",
           fn: cascadeReadRuleFn,
         },

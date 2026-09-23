@@ -42,10 +42,18 @@
 //   note as card-mod-history's events); the event bodies here return the
 //   abort marker and the caller plays it. The Virtual side effects (the
 //   card_virtuals writes) run for real and are proven against storage.
-// - event REGISTRATION: the manifest has no events field (see
-//   card-mod-integrate.ts's OBSERVER_EVENT_DECLARATIONS for the same
-//   shape) - VIRTUAL_EVENT_DECLARATIONS below pins the exact
-//   event/stage/on tuples for a coordinator-level events surface.
+// - event execution wiring: the mod's events[] ARE pinned on the manifest
+//   below (saving_miracle - the LANDED+WIDENED events surface in
+//   mod-manifest.ts ModSetModuleFile.events). The fn bodies are
+//   documented stubs - the Ruby body needs the SQL driver (card_virtuals
+//   INSERT/UPDATE/DELETE), the VirtualRecordCache (the Card::Cache[Virtual]
+//   analog), and the deterministic clock (sqlDateTime); none of those
+//   surfaces ride the current ModEngineHost (the body receives only
+//   ModEventCard + ModEngineHost - see mod-manifest.ts:172-184). Stubs
+//   cite the Ruby body lines and name the seam each one would call into;
+//   the real wired bodies belong to a later wave that grows the host
+//   shape (or moves the events into the write path's stage seam where
+//   driver + clock are in scope).
 
 import type { SQLDatabaseDriver, SQLStatement } from "../../../server/driver.js";
 import type { CardVirtualsRow, SQLDateTime } from "../../../server/schema.js";
@@ -54,7 +62,7 @@ import type { SavedAction, ActWriter, CardFieldState } from "../../history/write
 import type { CardRecord } from "../../fetch/card-record.js";
 import { isNewCard, isRealCard } from "../../fetch/card-record.js";
 import { DeckoName } from "../../name.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import type { DeckoModManifest, ModEventFn } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
 // the Card::Cache[Virtual] analog - temp-only class cache
@@ -471,12 +479,72 @@ export async function deleteVirtualContent(
 }
 
 /** virtual_cache.rb:21,26 - the two event declarations, pinned as data for
- *  a coordinator-level events surface (the manifest has no events field;
- *  same pattern as card-mod-integrate's OBSERVER_EVENT_DECLARATIONS). */
+ *  a coordinator-level events surface (mirrors the manifest events[] on
+ *  abstract/virtual_cache below, same pattern as card-mod-integrate's
+ *  OBSERVER_EVENT_DECLARATIONS). Read-only citation record. */
 export const VIRTUAL_EVENT_DECLARATIONS = [
   { event: "save_virtual_content", stage: "prepare_to_store", on: "save" },
   { event: "delete_virtual_content", stage: "prepare_to_store", on: "delete" },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// event bodies (the manifest events[] surface)
+// ---------------------------------------------------------------------------
+//
+// The mod's events on abstract/virtual_cache:
+//   - save_virtual_content at :prepare_to_store, on: :save
+//   - delete_virtual_content at :prepare_to_store, on: :delete
+// both per virtual_cache.rb:21-29.
+//
+// The bodies below are DOCUMENTED STUBS - the Ruby body needs three
+// things ModEventFn cannot supply today:
+//   1. SQLDatabaseDriver (card_virtuals INSERT/UPDATE/DELETE - the host
+//      exposes host.batch() for generic statements but the driver carries
+//      the exact connection this gem uses),
+//   2. VirtualRecordCache (the Card::Cache[Virtual] analog, the temp-only
+//      cache the port's Virtual.save/Virtual.delete write through - the
+//      cache lives at the mod-process level, not the engine level),
+//   3. Date clock (sqlDateTime - the port's deterministic fake clock,
+//      supplied by the caller / the write-path writer, not by the host).
+// The real bodies belong to a later wave that widens ModEngineHost (or
+// moves these events into the action engine's stage seam where driver +
+// clock are in scope - card-mod-history.ts:1038-1065 documents the same
+// shape). Each stub names the seam in its comment.
+
+/** virtual_cache.rb:21-24 `event :save_virtual_content, :prepare_to_store,
+ *  on: :save do Virtual.save self; abort :success end`. Body needs:
+ *  - SQLDatabaseDriver (host + the card_virtuals schema seam),
+ *  - VirtualRecordCache (the temp cache the mod owns),
+ *  - Date clock (the write-path's deterministic clock).
+ *  All three are out of scope for ModEventFn today; the stub records the
+ *  load and the marker the Ruby body returns for the caller to play. */
+export const saveVirtualContentEventFn: ModEventFn = (_card, _host) => {
+  // SEAM: virtual_save(driver, card, cache, now, sides?) (virtual.rb:28-30)
+  // needs SQLDatabaseDriver + VirtualRecordCache + Date; ModEngineHost
+  // (mod-manifest.ts:308-341) exposes fetchRenderCard/isDenied/batch but
+  // carries no driver / VirtualRecordCache / clock. The wired body lands
+  // when the host widens (or the action engine's stage seam fires these
+  // events instead). The Ruby abort :success marker lands with the body;
+  // the caller plays it (the engine has no save-unwind pipeline yet).
+  void _card;
+  void _host;
+};
+
+/** virtual_cache.rb:26-29 `event :delete_virtual_content,
+ *  :prepare_to_store, on: :delete do Virtual.delete self; abort :success
+ *  unless real? end`. Same seam as save_virtual_content_event (the
+ *  Card::Cache[Virtual] + driver + clock); the abort marker fires only
+ *  on an unreal card (`abort :success unless real?`, virtual_cache.rb:28)
+ *  - the `real?` predicate is `!new?`, which the mod's existing
+ *  isRealCard (card-record.ts) already ports; the body guards with it
+ *  in its future wired form. */
+export const deleteVirtualContentEventFn: ModEventFn = (_card, _host) => {
+  // SEAM: virtual_delete(driver, card, cache, sides?) (virtual.rb:32-35) +
+  // the abort :success marker gated on isRealCard(card). The wired body
+  // runs virtualDelete then returns "success" when !isRealCard(card).
+  void _card;
+  void _host;
+};
 
 /** virtual_cache.rb:35-37 history?: false - a virtual card keeps no acts.
  *  (The Ruby source's own TODO at :31-33 questions whether this is reachable
@@ -524,9 +592,33 @@ const cardModVirtual: DeckoModManifest = {
     {
       // card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb - the card
       // methods, predicates and delete delegates are exported above; the
-      // two events live in VIRTUAL_EVENT_DECLARATIONS + the exported event
-      // bodies (the manifest has no events field - see the header).
+      // two events ride manifest events[] below (mod-manifest.ts
+      // ModSetModuleFile.events surface, LANDED+WIDENED in f172ab5).
+      // VIRTUAL_EVENT_DECLARATIONS is the matching citation record.
       setPath: "abstract/virtual_cache",
+      events: [
+        {
+          // virtual_cache.rb:21 - `event :save_virtual_content,
+          // :prepare_to_store, on: :save`. The body (`Virtual.save self;
+          // abort :success`, :22-23) is a stub today - the host does not
+          // carry the SQL driver / VirtualRecordCache / clock the wired
+          // body needs (see saveVirtualContentEventFn above).
+          event: "save_virtual_content",
+          at: "prepare_to_store",
+          on: ["save"],
+          fn: saveVirtualContentEventFn,
+        },
+        {
+          // virtual_cache.rb:26 - `event :delete_virtual_content,
+          // :prepare_to_store, on: :delete`. The body (`Virtual.delete
+          // self; abort :success unless real?`, :27-28) is a stub for the
+          // same seam reasons; deleteVirtualContentEventFn cites them.
+          event: "delete_virtual_content",
+          at: "prepare_to_store",
+          on: ["delete"],
+          fn: deleteVirtualContentEventFn,
+        },
+      ],
     },
   ],
 };

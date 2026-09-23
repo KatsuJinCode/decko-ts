@@ -166,6 +166,95 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "box_middle",
     ]);
     expect(report.registeredSettings).toEqual(["style"]);
+    // the three pinned `event` declarations from the gem tree, in the
+    // loader's walk order (groups outer, mods, pattern codes, files
+    // path-sorted - type/css (7-16) before type/scss (4-23) before
+    // type/skin (13-17) because type/css < type/scss < type/skin in
+    // path sort and all three share the "type" pattern code):
+    // type/css.rb:7  validate_css
+    // type/scss.rb:4 validate_scss_syntax
+    // type/skin.rb:13 no_deletion_if_used
+    expect(report.registeredEvents).toEqual([
+      "validate_css",
+      "validate_scss_syntax",
+      "no_deletion_if_used",
+    ]);
+  });
+
+  it("eventRegistry(): the three pinned event declarations land on the registry with exact stages and triggers", () => {
+    const registry = loader!.eventRegistry();
+
+    // forStage("validate") returns every event at the :validate stage
+    // the gem declares (all three; the loader's SetLoader phase
+    // registers them in declaration order, which is also the
+    // SetLoader walk's path-sort order across the type/ pattern group).
+    const validateEvents = registry.forStage("validate");
+    expect(validateEvents.map((e) => e.event)).toEqual([
+      "validate_css",
+      "validate_scss_syntax",
+      "no_deletion_if_used",
+    ]);
+
+    // forEvent(name) returns the first registration of the named event;
+    // cross-check the EXACT shape the loader wrote per declaration:
+
+    // type/css.rb:7 - validate_css at :validate, on: :save with
+    // changed: [type_id, content]
+    const validateCss = registry.forEvent("validate_css");
+    expect(validateCss).toBeDefined();
+    expect(validateCss?.at).toBe("validate");
+    expect(validateCss?.on).toEqual(["save"]);
+    expect(validateCss?.changed).toEqual(["type_id", "content"]);
+    expect(validateCss?.setPath).toBe("type/css");
+    expect(validateCss?.modName).toBe("style");
+    expect(typeof validateCss?.fn).toBe("function");
+
+    // type/scss.rb:4 - validate_scss_syntax at :validate, on: :save with
+    // changed: [type_id, content]
+    const validateScssSyntax = registry.forEvent("validate_scss_syntax");
+    expect(validateScssSyntax).toBeDefined();
+    expect(validateScssSyntax?.at).toBe("validate");
+    expect(validateScssSyntax?.on).toEqual(["save"]);
+    expect(validateScssSyntax?.changed).toEqual(["type_id", "content"]);
+    expect(validateScssSyntax?.setPath).toBe("type/scss");
+    expect(validateScssSyntax?.modName).toBe("style");
+    expect(typeof validateScssSyntax?.fn).toBe("function");
+
+    // type/skin.rb:13 - no_deletion_if_used at :validate, on: :delete
+    // (no changed: gate - skin.rb:13 omits the field)
+    const noDeletionIfUsed = registry.forEvent("no_deletion_if_used");
+    expect(noDeletionIfUsed).toBeDefined();
+    expect(noDeletionIfUsed?.at).toBe("validate");
+    expect(noDeletionIfUsed?.on).toEqual(["delete"]);
+    expect(noDeletionIfUsed?.changed).toBeUndefined();
+    expect(noDeletionIfUsed?.setPath).toBe("type/skin");
+    expect(noDeletionIfUsed?.modName).toBe("style");
+    expect(typeof noDeletionIfUsed?.fn).toBe("function");
+
+    // all() returns the three registrations in registration order
+    const all = registry.all();
+    expect(all.map((e) => e.event)).toEqual([
+      "validate_css",
+      "validate_scss_syntax",
+      "no_deletion_if_used",
+    ]);
+    expect(registry.size()).toBe(3);
+
+    // the other ModEventStage values the manifest surface carries
+    // (per mod-manifest.ts:152-163 the full director stage list) are
+    // deliberately empty for this gem - the gem declares nothing at
+    // prepare_to_store, store, finalize, integrate, after_integrate,
+    // integrate_with_delay, extend, extend_with_delay, or initialize.
+    expect(registry.forStage("initialize")).toEqual([]);
+    expect(registry.forStage("prepare_to_validate")).toEqual([]);
+    expect(registry.forStage("prepare_to_store")).toEqual([]);
+    expect(registry.forStage("store")).toEqual([]);
+    expect(registry.forStage("finalize")).toEqual([]);
+    expect(registry.forStage("integrate")).toEqual([]);
+    expect(registry.forStage("after_integrate")).toEqual([]);
+    expect(registry.forStage("integrate_with_delay")).toEqual([]);
+    expect(registry.forStage("extend")).toEqual([]);
+    expect(registry.forStage("extend_with_delay")).toEqual([]);
   });
 
   it("WITH the mod: :box_bottom on a Skin card renders the empty string (skin_box.rb:8 + box_bottom.haml:1)", async () => {

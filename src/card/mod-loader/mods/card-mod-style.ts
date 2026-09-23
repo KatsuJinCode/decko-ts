@@ -126,7 +126,12 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import type {
+  DeckoModManifest,
+  ModEngineHost,
+  ModEventCard,
+  ModEventFn,
+} from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
 // set/abstract/skin_box.rb - the Skin cardtype's box-family views
@@ -312,6 +317,127 @@ export function skinDeletionError(
 }
 
 // ---------------------------------------------------------------------------
+// event bodies (the declarations land on setModules[n].events[] below) -
+// the card-mod-style gem's three `event ... do ... end` blocks. All three
+// run at the :validate stage (event.rb's stage position):
+//   - type/css.rb:7   validate_css        :save, changed: [type_id, content]
+//   - type/scss.rb:4  validate_scss_syntax :save, changed: [type_id, content]
+//   - type/skin.rb:13 no_deletion_if_used  :delete
+//
+// SEAM: the event runner (lib/card/set/event.rb's stage runner, fired
+// from the action engine's stage seams) runs the body with `self =
+// card`. card.errors.add(field, message) is the engine-side write that
+// adds the validation error (mod/core/set/all/errors.rb). That write
+// seam does not exist in the TS engine today, so the two Sass/SCSS
+// validators' bodies cannot run end-to-end; they are pinned as
+// documented STUBS that the engine's eventual save-path seam replaces
+// line-for-line. The bodies cite the Ruby source verbatim so a future
+// execution wiring lands the SAME bytes.
+
+// ---------------------------------------------------------------------------
+// type/css.rb:7-16 validate_css body (DOCUMENTED STUB - READ COMMENT)
+//
+// Ruby body (type/css.rb:7-16):
+//   event :validate_css, :validate, on: :save, changed: %i[type_id content] do
+//     ::Sass::SCSS::Parser.new(content, nil, nil).parse
+//   rescue ::Sass::SyntaxError => e
+//     errors.add :content, e.message
+//   end
+//
+// Pin verbatim: the `require "sass"` on line 5 declares the `sass`
+// GEM dependency (Sass::SCSS::Parser, the deprecated Sass 3.x parser,
+// NOT SassC - the require line is its own write-path seam). SEAM: the
+// engine has no `card.errors.add` to attach a parse error to. The body
+// is pinned as a stub; the loader registers the DECLARATION so the
+// registry records the event name + stage + triggers + changed gate
+// (eventsForStage("validate") finds it); the body itself runs only
+// after the save-path error-write seam lands. Cited dependency:
+// card-mod-style is sassgem-not-SassC; type/scss.rb requires SassC
+// separately.
+const validateCssBody: ModEventFn = () => {
+  // STUB - replace with the Ruby body verbatim once the engine exposes
+  // the action engine's :validate-stage runner AND a card.errors.add
+  // seam (see SEAM note above). The runtime work this would do:
+  //   const parser = new SassSCSSParser(card.dbContent, null, null);
+  //   parser.parse();
+  //   // rescue Sass::SyntaxError -> card.errors.add("content", e.message);
+};
+
+// ---------------------------------------------------------------------------
+// type/scss.rb:4-23 validate_scss_syntax body (DOCUMENTED STUB - READ COMMENT)
+//
+// Ruby body (type/scss.rb:4-23):
+//   event :validate_scss_syntax, :validate, on: :save,
+//          changed: %i[type_id content] do
+//     variables = Card[:all, :style]&.joined_items_content
+//     return unless variables.present? # happens during card:seed:build
+//     SassC::Engine.new([variables.strip, content].join("\n")).render
+//   rescue SassC::SyntaxError => e
+//     match = e.message.match(/line (\d+)/)
+//     message =
+//       if match
+//         offset = 6
+//         corrected_line = match[1].to_i - variables.lines.count + offset
+//         e.message
+//          .sub(/line \d+:(\d+) of stdin/, "line #{corrected_line}:\\1")
+//          .sub(/>>.*$/, ">> #{content.lines[corrected_line - 1]}")
+//       else
+//         e.message
+//       end
+//     errors.add(:content, "<pre>#{message}</pre>".html_safe)
+//   end
+//
+// SEAM (the doubled write-path seam this needs):
+//   1. Card[:all, :style]&.joined_items_content - the *all+*style
+//      pointer's joined item content (type_plus_right/set/style.rb:58-60
+//      joined_items_content). Unported: the pointer's joined-content
+//      method is not on the TS engine's render path.
+//   2. SassC::Engine.new(...).render - the SassC gem does not exist
+//      in node_modules (the engine has no sass / sassc dependency).
+//      Even an oracle-faithful port of the line-rewriting backtrace
+//      (.sub(...) for line and >> markers) would need a real SCSS
+//      compile to render against.
+//   3. card.errors.add(:content, "<pre>#{message}</pre>".html_safe) -
+//      the save-path error add seam + html_safe flag.
+// The body is a stub. The declaration runs through the registry.
+const validateScssSyntaxBody: ModEventFn = () => {
+  // STUB - see SEAM note above; a future sassc-node + engine errors
+  // seam replaces this with the verbatim Ruby body. The declaration
+  // itself (name / stage / on:save / changed:[type_id, content]) is
+  // what the test asserts and the loader records.
+};
+
+// ---------------------------------------------------------------------------
+// type/skin.rb:13-17 no_deletion_if_used body
+//
+// Ruby body (type/skin.rb:13-17):
+//   event :no_deletion_if_used, :validate, on: :delete do
+//     if Card[:all, :style].item_keys.include? key
+//       errors.add :delete, t(:style_delete_error_skin_used)
+//     end
+//   end
+//
+// SEAM: this is a pure-predicate event. The check
+//   Card[:all, :style].item_keys.include? key
+// is fully ported as skinDeletionError above (the predicate takes the
+// *all+*style pointer's item_keys and the card key; returns the i18n
+// message or undefined). The errors.add write is the same save-path
+// seam as the two Sass validators - the predicate composes in one call
+// once that seam lands. The body is a stub that exercises the
+// predicate compose so future wiring observes the SAME message:
+//   const itemKeys = host.fetchRenderCard("all+style")?.itemKeys ?? [];
+//   const msg = skinDeletionError(itemKeys, card.name);
+//   if (msg !== undefined) /* card.errors.add("delete", msg) */;
+const noDeletionIfUsedBody: ModEventFn = (card: ModEventCard, _host: ModEngineHost) => {
+  // STUB - composes skinDeletionError (the verbatim predicate) so the
+  // save-path error seam replaces the comment with the real
+  // `card.errors.add("delete", msg)` once the seam lands. Until then
+  // the predicate is what the port pins: every line past `if ... end`
+  // is the engine's write seam (mod/core/set/all/errors.rb's
+  // errors.add), surface-unported today.
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree,
 // path-sorted like the loader's file walk)
 // ---------------------------------------------------------------------------
@@ -425,11 +551,30 @@ const cardModStyle: DeckoModManifest = {
     {
       // card-mod-style-0.20.0/set/type/css.rb
       // `include_set Abstract::Css` + AssetInputter(css/compressed)
-      // (:1-2) + event :validate_css (:7-16, Sass SCSS parse of content
-      // on save - SassC, no TS event surface). No views of its own; the
-      // Abstract::Css views ride the abstract/01_css entry.
+      // (:1-2). No views of its own; the Abstract::Css views ride the
+      // abstract/01_css entry.
+      //
+      // events[0] - css.rb:7 `event :validate_css, :validate, on: :save,
+      // changed: %i[type_id content] do ... end` (body :13-16):
+      // `::Sass::SCSS::Parser.new(content, nil, nil).parse` rescues
+      // `::Sass::SyntaxError` -> `errors.add :content, e.message`. The
+      // require "sass" on :5 is the sass gem (Sass 3.x SCSS parser,
+      // not SassC). The body is a documented stub - the save-path
+      // `card.errors.add` write seam does not exist; the declaration
+      // runs through the registry (eventsForStage("validate") finds it
+      // at ModSetModuleFile.events[].at === "validate",
+      // on: ["save"], changed: ["type_id","content"]).
       setPath: "type/css",
       formats: {},
+      events: [
+        {
+          event: "validate_css",
+          at: "validate",
+          on: ["save"],
+          changed: ["type_id", "content"],
+          fn: validateCssBody,
+        },
+      ],
     },
     {
       // card-mod-style-0.20.0/set/type/local_style_folder_group.rb
@@ -449,24 +594,58 @@ const cardModStyle: DeckoModManifest = {
     },
     {
       // card-mod-style-0.20.0/set/type/scss.rb
-      // `include_set Abstract::Scss` + AssetInputter(scss) (:1-2) +
-      // event :validate_scss_syntax (:4-23, compiles
-      // ["*all+*style" variables + content] and rewrites the sass
-      // backtrace's line numbers - SassC, no TS event surface).
+      // `include_set Abstract::Scss` + AssetInputter(scss) (:1-2). No
+      // views of its own; the Abstract::Scss views ride the
+      // abstract/02_scss entry.
+      //
+      // events[0] - scss.rb:4 `event :validate_scss_syntax, :validate,
+      // on: :save, changed: %i[type_id content] do ... end` (body :5-22):
+      // `SassC::Engine.new([variables.strip, content].join("\n")).render`
+      // rescues `SassC::SyntaxError` - rewrites the sass backtrace's
+      // line numbers via two .sub passes (:14-17) and tags the error
+      // `<pre>#{message}</pre>.html_safe`. The body needs THREE write-
+      // path seams (the *all+*style pointer's joined_items_content, the
+      // SassC compile, the card.errors.add write) - all unported.
+      // Documented stub; declaration runs through the registry.
       setPath: "type/scss",
       formats: {},
+      events: [
+        {
+          event: "validate_scss_syntax",
+          at: "validate",
+          on: ["save"],
+          changed: ["type_id", "content"],
+          fn: validateScssSyntaxBody,
+        },
+      ],
     },
     {
       // card-mod-style-0.20.0/set/type/skin.rb
       // `include_set Abstract::AssetInputter, input_format: :css,
       // input_view: :concat` + Abstract::SkinBox + List (:1-3); css view
-      // :concat (:5-11, css-format - joins item asset inputs/cores);
-      // event :no_deletion_if_used (:13-17) - its predicate is ported
-      // above as skinDeletionError. The SkinBox views ride the
-      // abstract/skin_box entry (Ruby includes the SAME module, so the
-      // view definitions are identical for Skin-type cards either way).
+      // :concat (:5-11, css-format - joins item asset inputs/cores).
+      // The SkinBox views ride the abstract/skin_box entry (Ruby
+      // includes the SAME module, so the view definitions are
+      // identical for Skin-type cards either way).
+      //
+      // events[0] - skin.rb:13 `event :no_deletion_if_used, :validate,
+      // on: :delete do ... end` (body :14-16): `if
+      // Card[:all, :style].item_keys.include? key; errors.add :delete,
+      // t(:style_delete_error_skin_used)`. The check is the pure
+      // predicate ported above as skinDeletionError (returns the i18n
+      // message verbatim, en.yml:2). The errors.add write is the save-
+      // path seam; the body is a stub that composes the predicate so
+      // future wiring observes the SAME message.
       setPath: "type/skin",
       formats: {},
+      events: [
+        {
+          event: "no_deletion_if_used",
+          at: "validate",
+          on: ["delete"],
+          fn: noDeletionIfUsedBody,
+        },
+      ],
     },
     {
       // card-mod-style-0.20.0/set/type_plus_right/mod/style.rb
