@@ -10,8 +10,8 @@
   },
   "renders": {
     "total": 3242,
-    "pass": 2846,
-    "structurePending": 1,
+    "pass": 2845,
+    "structurePending": 2,
     "nestGap": 0,
     "realFail": 395
   }

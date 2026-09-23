@@ -105,6 +105,15 @@ function redact(text) {
 }
 
 // --- Worktree scan ---------------------------------------------------------
+// The hygiene gates themselves are exempt from the private-content classes:
+// they are the pattern registry and legitimately contain the real identity
+// strings. (Secret-shape classes still apply to them — a leaked key in a
+// gate script is still a leaked key.)
+const GATE_SELF_EXEMPT = new Set([
+  "tools/hygiene/scan-secrets-and-leaks.mjs",
+  "tools/hygiene/genericize-source-identity.mjs",
+]);
+
 function listTrackedFiles() {
   const out = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
     .toString("utf8");
@@ -134,7 +143,7 @@ function scanWorktree(report) {
       report.worktreeSkipped.push({ path: rel, reason: "binary file (no secret tripwire present)" });
       continue;
     }
-    scanText(text, rel, "worktree", report);
+    scanText(text, rel, "worktree", report, GATE_SELF_EXEMPT.has(rel));
   }
 }
 
@@ -204,7 +213,7 @@ function scanHistory(report) {
 }
 
 // --- Shared text scanner ---------------------------------------------------
-function scanText(text, filePath, where, report) {
+function scanText(text, filePath, where, report, isGateScript = false) {
   const lower = text.toLowerCase();
 
   const record = (finding) => {
@@ -225,7 +234,7 @@ function scanText(text, filePath, where, report) {
     }
   }
 
-  for (const t of KNOWN_TRIPWIRES) {
+  for (const t of isGateScript ? [] : KNOWN_TRIPWIRES) {
     let idx = lower.indexOf(t.needle);
     let hits = 0;
     while (idx !== -1 && hits < 50) {
@@ -236,7 +245,7 @@ function scanText(text, filePath, where, report) {
     }
   }
 
-  for (const p of PRIVATE_CONTENT) {
+  for (const p of isGateScript ? [] : PRIVATE_CONTENT) {
     let idx = lower.indexOf(p.needle);
     let hits = 0;
     while (idx !== -1 && hits < 50) {

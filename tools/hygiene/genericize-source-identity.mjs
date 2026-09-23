@@ -19,8 +19,13 @@ import { join, resolve } from "node:path";
 const REPO = resolve(new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 
 // In-flight workflow lanes may be editing these; re-run after they land.
+// The hygiene gates themselves are ALWAYS skipped: they must carry the real
+// identity strings as scan patterns, or the sweep erases its own tripwires
+// (happened 2026-09-23: the sweep rewrote its own REPLACEMENTS into no-ops
+// and the scanner's tripwires into pseudonyms).
 const SKIP = new Set([
-  "docs/postgres-dialect-notes.md",
+  "tools/hygiene/genericize-source-identity.mjs",
+  "tools/hygiene/scan-secrets-and-leaks.mjs",
 ]);
 
 const REPLACEMENTS = [

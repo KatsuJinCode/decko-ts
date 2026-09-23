@@ -274,7 +274,11 @@ describe("replay machinery over real smoke.json / cql-basic.json entries", () =>
   });
 
   it("replays the whole committed fixture set with fakes: 51 pass, 1 pending (rules-engine)", async () => {
-    const report = await replayFixtureFiles(DEFAULT_FIXTURE_PATHS.map((p) => join(repoRoot, p)), fakeEngines());
+    // DEFAULT_FIXTURE_PATHS are already absolute (cwd-independence fix,
+    // commit 1ec2761); joining repoRoot onto an absolute path CONCATENATES
+    // on win32 (path.join does not reset) and produced the doubled
+    // C:\…decko-ts\C:\…decko-ts\fixtures\… path this test used to choke on.
+    const report = await replayFixtureFiles(DEFAULT_FIXTURE_PATHS, fakeEngines());
     expect(report.summary).toEqual({ total: 52, pass: 51, fail: 0, pending: 1 });
     const pending = report.entries.find((entry) => entry.status === "pending")!;
     expect(pending.id).toBe("smoke:read_rule:Oracle Restricted");
