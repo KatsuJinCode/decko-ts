@@ -157,7 +157,12 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
       // process: cross-shard AND cross-slice nest targets resolve, and the
       // read-permission + structured-content engines can JUDGE every
       // captured view (the permission-pending skip is gone).
-      const allLinesByShard = shardPaths.map((p) => ({ p, lines: loadShard(p) }));
+      // Shard payloads are loaded LAZILY, one shard at a time (the 2026-09-22
+      // crash: holding every shard's parsed JSONL for the whole run pinned
+      // multiple GB per worker, and four workers + the mod fleet hit the
+      // machine's commit wall together). The slot object lets the loop drop
+      // each shard's lines before moving on.
+      const allLinesByShard = shardPaths.map((p) => ({ p, lines: undefined as ReturnType<typeof loadShard> | undefined }));
       const idLister = new Database(CORPUS_DB, { readonly: true });
       const everyLiveId = (
         idLister.prepare("SELECT id FROM cards WHERE trash = 0").all() as Array<{ id: number }>
@@ -254,8 +259,19 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           }
         });
 
-        for (const { p: shardPath, lines } of allLinesByShard) {
+        for (const shardSlot of allLinesByShard) {
+          const shardPath = shardSlot.p;
           const shardName = path.basename(shardPath);
+          const outcomeFile = path.join(RESULTS_DIR, `replay-shard-outcome${RESULTS_TAG}-${shardName}.json`);
+          // Resume support: a completed shard's flushed outcome is trusted on
+          // relaunch (CORPUS_RESUME=1), so a mid-run crash costs the in-flight
+          // shard only — never the hours before it.
+          if (process.env.CORPUS_RESUME === "1" && existsSync(outcomeFile)) {
+            outcomes.push(JSON.parse(readFileSync(outcomeFile, "utf-8")) as ShardOutcome);
+            console.log(`[resume] ${shardName}: outcome already flushed, skipping`);
+            continue;
+          }
+          const lines = (shardSlot.lines = loadShard(shardPath));
 
           // ---- build corpus entries ----------------------------------------
           const entries: ReplayEntry[] = [];
@@ -374,6 +390,19 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
               realFail: renderRealReal.length,
             },
           });
+
+          // Flush THIS shard's outcome immediately + log progress: a crash
+          // mid-run preserves every completed shard (resume reads these), and
+          // the log finally shows where the run is.
+          mkdirSync(RESULTS_DIR, { recursive: true });
+          writeFileSync(outcomeFile, JSON.stringify(outcomes[outcomes.length - 1], null, 2) + "\n");
+          console.log(
+            `[shard-done] ${shardName}: records ${outcomes[outcomes.length - 1].records.pass}/${outcomes[outcomes.length - 1].records.total}` +
+              ` (realFail ${outcomes[outcomes.length - 1].records.realFail}), renders ${outcomes[outcomes.length - 1].renders.pass}/${outcomes[outcomes.length - 1].renders.total}` +
+              ` (nestGap ${outcomes[outcomes.length - 1].renders.nestGap}, realFail ${outcomes[outcomes.length - 1].renders.realFail})`,
+          );
+          // Release the parsed JSONL before the next shard seeds its entries.
+          shardSlot.lines = undefined;
         }
 
         // ---- aggregate + write results --------------------------------------

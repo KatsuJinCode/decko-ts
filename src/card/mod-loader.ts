@@ -45,11 +45,14 @@ import {
   ModViewConfigTable,
   PatternOverlay,
   ViewRegistrationTable,
+  SetModuleViewTable,
   setModuleShortname,
   setPathPattern,
   type RegisteredSetModule,
   type SetModuleKind,
+  type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
+import { safeKeyToModuleShortname } from "./render/set-keys-to-modules.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
@@ -58,9 +61,11 @@ import type {
 
 export { normalizeModName, resolveModOrder } from "./mod-loader/mod-order.js";
 export { ModNotFoundError, ModNameConflictError } from "./mod-loader/mod-order.js";
-export { SettingRegistry, PatternOverlay, setModuleShortname } from "./mod-loader/mod-registrar.js";
+export { SettingRegistry, PatternOverlay, setModuleShortname, SetModuleViewTable } from "./mod-loader/mod-registrar.js";
+export type { ViewChainEntry } from "./mod-loader/mod-registrar.js";
 export { modEngineHost } from "./mod-loader/mod-engine-host.js";
 export { default as cardModHelp } from "./mod-loader/mods/card-mod-help.js";
+export { setKeysToModuleChain } from "./render/set-keys-to-modules.js";
 export type { DeckoModManifest, ModEngineHost } from "./mod-loader/mod-manifest.js";
 export type { ModViewConfig, ModSetModuleFile, ModSettingOpts, ModPatternRegistration } from "./mod-loader/mod-manifest.js";
 export type { RegisteredSetting } from "./mod-loader/mod-registrar.js";
@@ -93,6 +98,11 @@ export class ModLoader {
   private loaded = false;
 
   private readonly views: ViewRegistrationTable;
+  /** Per-set-module view table: the chain-aware companion to `views`.
+   *  Populated alongside the flat last-wins record so the chain walker can
+   *  resolve Ruby's MRO per card and the superView helper can delegate
+   *  to the next module's same view (set/format.rb:146-150). */
+  private readonly viewChains = new SetModuleViewTable();
   private readonly viewConfigs = new ModViewConfigTable();
   private readonly settings = new SettingRegistry();
   private readonly patterns = new PatternOverlay();
@@ -195,9 +205,17 @@ export class ModLoader {
           for (const file of files) {
             this.registerSetModule(mod.manifest.name, file);
             registeredSetModules.push(setModuleShortname(file.setPath));
+            const shortname = setModuleShortname(file.setPath);
             for (const formatBlock of Object.values(file.formats ?? {})) {
               for (const view of formatBlock.views ?? []) {
+                // flat last-wins (render-path seam, byte-compatible).
                 this.views.register(view.view, view.viewFn);
+                // chain-aware: every view is recorded under its
+                // contributing set module so the walker can resolve
+                // Ruby's MRO per card (set/format.rb:146-150) and the
+                // superView helper can delegate to the next module's
+                // same view (Ruby's `super()`).
+                this.viewChains.register(shortname, view.view, view.viewFn);
                 this.viewConfigs.register(view.view, view.config);
                 if (!registeredViews.includes(view.view)) registeredViews.push(view.view);
               }
@@ -245,6 +263,7 @@ export class ModLoader {
   /** Restore the exact pre-load state (the reverse of every registration). */
   reset(): void {
     this.views.unregisterAll();
+    this.viewChains.clear();
     this.viewConfigs.clear();
     this.settings.clear();
     this.patterns.clear();
@@ -285,6 +304,96 @@ export class ModLoader {
     return this.views.record();
   }
 
+  /** The per-set-module view table (the chain-aware companion to the
+   *  flat last-wins viewsTable). Tests + the superView helper walk it. */
+  viewChainTable(): SetModuleViewTable {
+    return this.viewChains;
+  }
+
+  /**
+   * Resolve the view chain for a given card's set module chain + view
+   * name. The result is ordered MOST-SPECIFIC-FIRST (Ruby's MRO walk:
+   * set/format.rb:146-150 + format.rb:62-68). The first entry is the
+   * view the format would dispatch; the rest are the super()-chain the
+   * superView helper steps through.
+   *
+   * `setKeys` is the safe_set_keys string (render/set-keys.ts:63,
+   * "ALL TYPE-rich_text SELF-oracle_basic"). Each token is a
+   * safe_key from `safeSetKeysForCard`; the input is general-FIRST so
+   * we reverse to most-specific-FIRST for the MRO walk.
+   *
+   * Resolution rules:
+   * - anchored token (e.g. "RIGHT-api_key"): resolves to the set
+   *   module shortname "Right::ApiKey" via safeKeyToModuleShortname.
+   * - anchorless token (e.g. "ALL", "RSTAR", "RULE"): no single
+   *   module shortname applies; the walker expands to EVERY registered
+   *   set module whose pattern code matches (the ALL token expands
+   *   to every All::* module; RSTAR expands to every Rstar::* module
+   *   if any registered; RULE expands to every Rule::* module).
+   *   Per-token order is preserved so Ruby's MRO walk is honored.
+   */
+  viewChain(setKeys: string, view: string): ViewChainEntry[] {
+    const tokens = setKeys.split(/\s+/).filter((s) => s !== "");
+    // Empty setKeys = "no concrete pattern applies" (the Abstract
+    // pseudo-pattern case). Fall back to load-order registration so
+    // the chain walker returns every module that registered the view
+    // (the abstract sets CodeContent/HamlFile/ReadOnly etc. match here).
+    if (tokens.length === 0) {
+      const out: ViewChainEntry[] = [];
+      for (const entry of this.viewChains.entries()) {
+        if (entry.view === view) out.push(entry);
+      }
+      return out;
+    }
+    const mostSpecificFirst = tokens.slice().reverse();
+    const out: ViewChainEntry[] = [];
+    for (const token of mostSpecificFirst) {
+      const dashIdx = token.indexOf("-");
+      if (dashIdx === -1) {
+        // Anchorless: expand to every registered module with this
+        // pattern code (e.g. "ALL" -> All::Base, All::Help, ...).
+        const code = token.toLowerCase();
+        const matches = this.setModuleShortnamesForCode(code);
+        for (const shortname of matches) {
+          const viewFn = this.viewChains.viewFor(shortname, view);
+          if (viewFn !== undefined) {
+            out.push({ setModule: shortname, view, viewFn });
+          }
+        }
+      } else {
+        // Anchored: resolve to a single shortname.
+        const shortname = safeKeyToModuleShortname(token);
+        const viewFn = this.viewChains.viewFor(shortname, view);
+        if (viewFn !== undefined) {
+          out.push({ setModule: shortname, view, viewFn });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Every registered set module shortname whose pattern code matches
+   * `code`. Used by viewChain's anchorless-token expansion: "ALL"
+   * expands to every set module whose setPath's first segment is "all"
+   * (the base bucket + the All::* nonbase entries). Load order is
+   * preserved (base first, then nonbase in insertion order).
+   */
+  setModuleShortnamesForCode(code: string): string[] {
+    const out: string[] = [];
+    for (const mod of this.basket.base) {
+      const setPath = this.basket.setPathFor(mod.shortname);
+      if (setPath === undefined) continue;
+      if (setPath.startsWith(`${code}/`) || setPath === code) out.push(mod.shortname);
+    }
+    for (const mod of this.basket.allNonbase()) {
+      const setPath = this.basket.setPathFor(mod.shortname);
+      if (setPath === undefined) continue;
+      if (setPath.startsWith(`${code}/`) || setPath === code) out.push(mod.shortname);
+    }
+    return out;
+  }
+
   /** The mod-contributed view-config table (format.ts consults it via the
    *  coordinator patch; direct callers: tests, tooling). */
   viewConfigFor(view: string): ModViewConfigTableEntry | undefined {
@@ -320,6 +429,9 @@ export class ModLoader {
     const kind: SetModuleKind = kindOfSetPath(file.setPath);
     const module: RegisteredSetModule = { shortname, kind, modName };
     this.basket.register(module);
+    // Record the shortname <-> setPath mapping so the chain walker
+    // can recover the pattern code for anchorless-token expansion.
+    this.basket.recordSetPath(shortname, file.setPath);
   }
 }
 
@@ -337,9 +449,17 @@ export type ModViewConfigTableEntry = ReturnType<ModViewConfigTable["configFor"]
 
 let defaultLoader: ModLoader | undefined;
 
-/** Bind the deck's loader as the default (call after load()). */
-export function setDefaultModLoader(loader: ModLoader): void {
+/** Bind the deck's loader as the default (call after load()). Pass
+ *  undefined to clear (tests + reload sequences). */
+export function setDefaultModLoader(loader: ModLoader | undefined): void {
   defaultLoader = loader;
+}
+
+/** Read the deck's default loader (the seam the superView helper
+ *  consults when no per-engine loader is exposed on ctx.fmt yet).
+ *  Undefined when setDefaultModLoader has not been called. */
+export function getDefaultModLoader(): ModLoader | undefined {
+  return defaultLoader;
 }
 
 /** The mod view's `unknown:` config for the unknown-card routing

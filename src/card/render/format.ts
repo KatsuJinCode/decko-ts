@@ -29,6 +29,7 @@ import {
 import { safeSetKeys } from "./set-keys.js";
 import { h } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, type CrudTask } from "../permissions/view-perms.js";
+import { resolveContentOverride } from "./content-overrides.js";
 
 /** render.rb#view_method: unknown views raise Card::Error::UserError with
  *  card-mod-format set/all/error.rb#unsupported_view_error_message (en.yml:
@@ -596,8 +597,14 @@ export class RenderFormat {
   }
 
   /** base.rb (card-mod-format)#core: process_content(_render_raw); the raw
-   *  content of the record (content/all.rb:19). */
+   *  content of the record (content/all.rb:19). Card#content (content/all.rb
+   *  :5-7) consults registered set overrides BEFORE falling through to
+   *  standard_content; this renderRaw mirrors that - a registered content
+   *  override whose setPath matches this card wins, otherwise dbContent
+   *  passes through unchanged (the corpus suites pin those bytes). */
   renderRaw(): string {
+    const override = resolveContentOverride(this);
+    if (override !== undefined) return override;
     return this.card.dbContent;
   }
 

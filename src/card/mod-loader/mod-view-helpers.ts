@@ -1,14 +1,18 @@
 // Shared view emitters for mod ports: the slot wrapper Ruby's `wrap: :slot`
 // view config applies (the `wrapper :slot` registration,
 // card-mod-format-0.20.0 set/all/html/wrap.rb:11-14, fed by
-// slot_attributes:26-31, wrap_classes:94-99, wrap_data:37-48) and the
-// byte shapes the core views use (src/card/render/views.ts#slotWrap). Mod
-// ports cannot import the module-private core helper, so the loader package
-// carries this one port; bytes are identical by construction (same
-// emitters, same attribute order).
+// slot_attributes:26-31, wrap_classes:94-99, wrap_data:37-48), the byte
+// shapes the core views use (src/card/render/views.ts#slotWrap), and the
+// super()-style delegation helper view bodies use to walk Ruby's MRO
+// (set/format.rb:146-150 + view_definition.rb:18-21). Mod ports cannot
+// import the module-private core helper, so the loader package carries
+// these ports; bytes are identical by construction (same emitters, same
+// attribute order).
 
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../render/slot-html.js";
+import { getDefaultModLoader } from "../mod-loader.js";
 import type { ViewContext, ViewFn } from "../render/format.js";
+import type { ViewChainEntry } from "./mod-registrar.js";
 
 /** wrap.rb#slot_id: "#{card.name.safe_key}-#{@current_view}-view". */
 function slotId(card: ViewContext["fmt"]["card"], view: string): string {
@@ -43,4 +47,53 @@ export function modSlotWrap(ctx: ViewContext, view: string, inner: string): stri
  *  composed elsewhere). */
 export function wrappedView(view: string, body: (ctx: ViewContext) => string): ViewFn {
   return (ctx) => modSlotWrap(ctx, view, body(ctx));
+}
+
+// ---------------------------------------------------------------------------
+// superView - Ruby's `super()` in view bodies (view_definition.rb:18-21 +
+//             set/format.rb:146-150)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ruby's super() inside a view body: render the next set module's
+ * SAME view (the next entry in the MRO chain).
+ *
+ * - currentModule: the set module shortname of the view that's calling
+ *   superView (the mod's manifest declares it via the registration's
+ *   contributing set module; see ViewChainEntry.setModule).
+ * - view: the view name (the SAME view as the caller; Ruby's super()
+ *   re-dispatches through the same method name on the parent class).
+ *
+ * The walker resolves the per-card chain for `view`, finds the entry
+ * whose setModule matches `currentModule`, and returns the NEXT entry's
+ * view fn output. When there is no entry after `currentModule` (the
+ * view is the most-specific or the chain only has one entry), the call
+ * terminates with empty string (Ruby's super() past the base raises
+ * NoMethodError; the headless port returns "" so callers don't crash
+ * during composition).
+ *
+ * superView falls back gracefully when no loader is registered (returns
+ * ""): the helper is always safe to call from a view body even before
+ * the loader has wired up. The loader is fetched through the process-
+ * wide default (setDefaultModLoader); when the render layer later
+ * exposes a per-engine loader on ctx.fmt, superView consults THAT first.
+ */
+export function superView(
+  ctx: ViewContext,
+  currentModule: string,
+  view: string,
+): string {
+  const loader = getDefaultModLoader();
+  if (loader === undefined) return "";
+  const card = ctx.fmt.card;
+  const chain = loader.viewChain(card.setKeys, view);
+  const idx = chain.findIndex((entry) => entry.setModule === currentModule);
+  if (idx === -1) {
+    // currentModule did not register this view; the caller's identity
+    // is unknown to the chain. Treat as base-of-chain (no super).
+    return "";
+  }
+  const next = chain[idx + 1];
+  if (next === undefined) return ""; // delegation terminates
+  return next.viewFn(ctx);
 }

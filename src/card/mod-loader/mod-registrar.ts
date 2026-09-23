@@ -78,6 +78,10 @@ export class SetModuleBasket {
   readonly base: RegisteredSetModule[] = [];
   readonly abstract: RegisteredSetModule[] = [];
   readonly nonbase: Map<string, RegisteredSetModule[]> = new Map();
+  /** shortname -> setPath (the loader's bookkeeping reverse map, used by
+   *  the chain walker's anchorless-token expansion to recover the
+   *  pattern code for each registered module). */
+  private readonly shortnameToSetPath = new Map<string, string>();
 
   register(module: RegisteredSetModule): void {
     const list =
@@ -96,10 +100,33 @@ export class SetModuleBasket {
     if (!exists) list.push(module);
   }
 
+  /** Track a shortname <-> setPath mapping so the chain walker can
+   *  recover the pattern code. The loader calls this alongside
+   *  registerSetModule so the basket carries the Ruby-source setPath
+   *  alongside the shortname (registrar.rb:21-29's bookkeeping). */
+  recordSetPath(shortname: string, setPath: string): void {
+    this.shortnameToSetPath.set(shortname, setPath);
+  }
+
+  /** Look up the setPath for a registered shortname. */
+  setPathFor(shortname: string): string | undefined {
+    return this.shortnameToSetPath.get(shortname);
+  }
+
+  /** Every nonbase RegisteredSetModule, flattened across all shortnames,
+   *  in insertion order. Used by the chain walker's anchorless-token
+   *  expansion to find every set module whose pattern code matches. */
+  allNonbase(): RegisteredSetModule[] {
+    const out: RegisteredSetModule[] = [];
+    for (const list of this.nonbase.values()) out.push(...list);
+    return out;
+  }
+
   clear(): void {
     this.base.length = 0;
     this.abstract.length = 0;
     this.nonbase.clear();
+    this.shortnameToSetPath.clear();
   }
 }
 
@@ -286,13 +313,19 @@ export class PatternOverlay {
 }
 
 // ---------------------------------------------------------------------------
-// view registration with override tracking
+// view registration with override tracking (flat last-wins, render-path compat)
 // ---------------------------------------------------------------------------
 
 /**
  * Mutates the live views record the way Ruby's define_method replaces a
  * method, remembering every replaced/added entry so unload restores the
  * pre-load state exactly.
+ *
+ * The flat last-wins table is the render-path seam (RenderEngine.views);
+ * the per-set-module table below is the chain-aware companion used to
+ * resolve views per-card (Ruby's MRO walk: format.rb:62-68 +
+ * set/format.rb:146-150) and to provide super()-style delegation
+ * (view_definition.rb:18-21).
  */
 export class ViewRegistrationTable {
   private readonly undo = new Map<string, ViewFn | undefined>();
@@ -313,7 +346,7 @@ export class ViewRegistrationTable {
     return this.views;
   }
 
-  /** Restore the exact pre-registration state (every touched key back to
+  /** Restore the exact pre-load state (every touched key back to
    *  its previous value or removed when the loader added it). */
   unregisterAll(): void {
     for (const [view, previous] of this.undo) {
@@ -326,5 +359,132 @@ export class ViewRegistrationTable {
 
   touchedViews(): string[] {
     return [...this.touched];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// chain-aware view table (Ruby MRO walk per card, set/format.rb:146-150)
+// ---------------------------------------------------------------------------
+
+/**
+ * One resolved step in a view chain for a specific card: which set module
+ * contributed it and which view fn that module registered. Used by the
+ * chain walker + superView helper to delegate to the next set module's
+ * same view (Ruby's `super()` in view bodies).
+ */
+export interface ViewChainEntry {
+  readonly setModule: string;
+  readonly view: string;
+  readonly viewFn: ViewFn;
+}
+
+/**
+ * The per-set-module view table: Ruby's "module reopening with
+ * define_method" (view_definition.rb:18-21) per set module. Each set
+ * module contributes the views it defines; later registrations from the
+ * SAME set module override earlier ones (mirrors reopening).
+ *
+ * The loader records each `view :name` call alongside the set module it
+ * came from; the format's render path consults this table to walk Ruby's
+ * MRO per card (set modules most-specific-first), and the superView helper
+ * consults it to find the next module's same view.
+ *
+ * The table is independent of the flat last-wins ViewRegistrationTable:
+ * the live views record is the render-path seam (engine.views[view]) and
+ * stays byte-compatible with the existing render layer; the chain table
+ * is the new lookup the super()-aware dispatch walks.
+ */
+export class SetModuleViewTable {
+  /** set module shortname -> (view name -> view fn). Insertion order is
+   *  preserved per shortname so a later re-registration from the same mod
+   *  wins (Ruby reopening). */
+  private readonly byModule = new Map<string, Map<string, ViewFn>>();
+
+  /** Insertion-ordered list of (setModule, view, viewFn) tuples across all
+   *  set modules. Used by the chain walker when the per-card chain is
+   *  empty (every view applies) so the walker falls back to load order. */
+  private readonly order: Array<{ setModule: string; view: string; viewFn: ViewFn }> = [];
+
+  /** record(view, viewFn, setModule): register a view under its set module.
+   *  A re-registration from the same set module replaces (Ruby reopening). */
+  register(setModule: string, view: string, viewFn: ViewFn): void {
+    let inner = this.byModule.get(setModule);
+    if (inner === undefined) {
+      inner = new Map<string, ViewFn>();
+      this.byModule.set(setModule, inner);
+    }
+    if (inner.has(view)) {
+      // Same set module re-opened (Ruby reopening): update in place.
+      // The order tuple for the FIRST registration stays as the
+      // "earliest" marker so super() walks past re-openings.
+      inner.set(view, viewFn);
+      const first = this.order.find((e) => e.setModule === setModule && e.view === view);
+      if (first !== undefined) first.viewFn = viewFn;
+      return;
+    }
+    inner.set(view, viewFn);
+    this.order.push({ setModule, view, viewFn });
+  }
+
+  /** The view fn a set module registered for the given view name
+   *  (undefined if none - the chain walker's "next module" probe). */
+  viewFor(setModule: string, view: string): ViewFn | undefined {
+    return this.byModule.get(setModule)?.get(view);
+  }
+
+  /** Every set module shortname that registered this view, in load order.
+   *  Used by viewChain when the per-card chain is empty (the view applies
+   *  globally, e.g. set/all/*). */
+  registeringModulesFor(view: string): string[] {
+    const out: string[] = [];
+    for (const e of this.order) {
+      if (e.view === view && !out.includes(e.setModule)) out.push(e.setModule);
+    }
+    return out;
+  }
+
+  /**
+   * The chain of view fns for (cardChain, view) in MOST-SPECIFIC-FIRST
+   * order. cardChain is the set module shortnames for the card being
+   * rendered (most-specific first, Ruby's MRO). The walker returns an
+   * ordered list of ViewChainEntry so the superView helper can step
+   * forward through it.
+   *
+   * Resolution: for each set module in cardChain (most-specific first),
+   * find the LATEST registration of `view` under that set module. The
+   * chain terminates when no further set module in cardChain has a
+   * registration for `view` AND no fallback is requested.
+   *
+   * emptyChain: when cardChain is empty, the walker falls back to every
+   * registering set module in load order (the "no set applies" case,
+   * where the only matches are from set/all/* modules).
+   */
+  chainFor(cardChain: readonly string[], view: string): ViewChainEntry[] {
+    const out: ViewChainEntry[] = [];
+    if (cardChain.length === 0) {
+      // Fallback: walk registering modules in load order.
+      for (const mod of this.registeringModulesFor(view)) {
+        const viewFn = this.viewFor(mod, view);
+        if (viewFn !== undefined) out.push({ setModule: mod, view, viewFn });
+      }
+      return out;
+    }
+    // Walk the card's set module chain; for each, find the view.
+    for (const mod of cardChain) {
+      const viewFn = this.viewFor(mod, view);
+      if (viewFn !== undefined) out.push({ setModule: mod, view, viewFn });
+    }
+    return out;
+  }
+
+  /** Drop every per-set-module registration. Loader-side reset hook. */
+  clear(): void {
+    this.byModule.clear();
+    this.order.length = 0;
+  }
+
+  /** Every (setModule, view) pair currently registered (introspection). */
+  entries(): Array<{ setModule: string; view: string; viewFn: ViewFn }> {
+    return [...this.order];
   }
 }

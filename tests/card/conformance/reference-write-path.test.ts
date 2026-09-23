@@ -299,9 +299,11 @@ describe("card_references write path (refresh_references_out port)", () => {
     ]);
     // NOTE: Ruby's capture shows the P row's referee_id BACKFILLED once the
     // referee card is created (refresh_references_in -> map_referees,
-    // reference_events.rb:22-25). That backfill is a documented later
-    // stream (see src/card/actions/card-action-engine.ts header), so it is
-    // not asserted here.
+    // reference_events.rb:22-25). That backfill is built now
+    // (refresh-references-in.ts, wired in card-action-engine.ts) and is
+    // covered by tests/card/actions/refresh-references-in.test.ts; this
+    // fixture test pins only the at-creation rows, so it stays unasserted
+    // here.
     storage.close();
   });
 });
