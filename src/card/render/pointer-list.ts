@@ -152,9 +152,41 @@ export function pointerListCoreHtml(
   const inner = filtered
     .map((name) => itemWrap(name, renderItem(name)))
     .join("\n");
+  // Ruby's standard_pointer_core (card-mod-list set/abstract/01_list/html_views.rb:6-13)
+  // emits TWO different wrapper shapes depending on the parent's RULE pattern
+  // and permission-setting right:
+  //
+  //   * card-list-bar wrapper (`<div class="card-list card-list-bar
+  //     pointer-list">…</div>`): wrap_with :div adds a `\n` BEFORE the
+  //     wrapper's closing `</div>`, producing the trailing sequence
+  //     `</div>\n</div></div></div>\n</div>` — the inner pointer-item
+  //     close is followed by `\n</div>` for the pointer-list, then `\n</div>`
+  //     for the outer content-view slot wrap. Pinned at corpus:77 (shard
+  //     -000000.jsonl, *home pointer card). The famfix48 family
+  //     (unclassified:L/~/exp=\n/act=<, 208 sample / 1,399 population)
+  //     depended on this trailing `\n`.
+  //
+  //   * simple pointer-list wrapper (`<div class="pointer-list">…</div>`)
+  //     used for rule cards whose right is one of *create / *read /
+  //     *update / *delete (isRuleCardWithPermissionRight, see lines 98-135
+  //     and the OUTER-family survey at line 30): the wrapper's inner is
+  //     closed INLINE with the pointer-item wrap's `</div>` and the outer
+  //     content-view slot wrap's `</div>`, producing the captured oracle's
+  //     `</div></div></div></div></div>` — five closes inline, only the
+  //     first preceded by `\n` (from the phantom body at
+  //     pointerListItemBodyForUnknown line 262). Pinned by corpus:6551
+  //     *star+*create list rule (shard-000003.jsonl:359).
+  //
+  // The two wrappers MUST diverge on the trailing newline: an earlier
+  // revision applied the card-list-bar `\n` to BOTH branches and that is
+  // the permfix48 unclassified:L/~/exp=</act=\n family (369 sample,
+  // 2,308 population, 368 with expected_size - actual_size = 1 + the
+  // corpus:755 pagination compound case). Adding the newline back only
+  // on the card-list-bar branch keeps the famfix48 family green and
+  // collapses the permfix48 family.
   const wrapper = isRuleCardWithPermissionRight(parent)
     ? `<div class="pointer-list">${inner}</div>`
-    : `<div class="card-list card-list-${POINTER_LIST_ITEM_VIEW} pointer-list">${inner}</div>`;
+    : `<div class="card-list card-list-${POINTER_LIST_ITEM_VIEW} pointer-list">${inner}</div>\n`;
   return wrapper;
 }
 

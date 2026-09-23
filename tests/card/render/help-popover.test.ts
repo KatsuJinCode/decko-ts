@@ -248,4 +248,66 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       storage.close();
     }
   });
+
+  // Permission family mechanism: the setting_rule_count predicate must
+  // honor the viewer's read_rules_hash exactly the way Ruby's
+  // card-mod-rules set/type/setting.rb#count honors Card.search's read
+  // filter. The captured corpus:87/88/91/105/155/201/205/217/242/248/253/257
+  // shows '(49 default rules)' for Anonymous vs the unfiltered engine
+  // '(140 default rules)'; this test pins the read filter at the SQL
+  // shape — a rule card with read_rule_id NOT in the viewer's readable
+  // set is excluded from the count.
+  it("setting_rule_count honors read_rules_hash: rules readable by the viewer only", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCodenameCards(storage);
+      await seedCard(storage, { id: 700, name: "*default", codename: "default", typeId: SETTING_TYPE_ID });
+      await seedCard(storage, { id: 701, name: "*right", codename: "right", typeId: SETTING_TYPE_ID });
+      // Three distinct sets (one rule each) so the left_id+right_id
+      // unique key holds across all three default rules.
+      await seedCard(storage, { id: 702, name: "Set A", typeId: SET_TYPE_ID });
+      await seedCard(storage, { id: 703, name: "Set B", typeId: SET_TYPE_ID });
+      await seedCard(storage, { id: 704, name: "Set C", typeId: SET_TYPE_ID });
+      // Three junctions: "Set A+*right", "Set B+*right", "Set C+*right".
+      // typeId=SET_TYPE_ID so isRuleCard's left.type_id === SET_TYPE_ID
+      // check passes (the rule card's left must be a Set-typed card).
+      await seedCard(storage, { id: 705, leftId: 702, rightId: 701, typeId: SET_TYPE_ID });
+      await seedCard(storage, { id: 706, leftId: 703, rightId: 701, typeId: SET_TYPE_ID });
+      await seedCard(storage, { id: 707, leftId: 704, rightId: 701, typeId: SET_TYPE_ID });
+      // Three *default rules: one readable (no stored read_rule_id),
+      // one readable via the *all+*read grant (7000), one restricted
+      // (read_rule_id=8000 NOT in Anonymous's readable set).
+      await seedCard(storage, { id: 710, leftId: 705, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "A default" });
+      await seedCard(storage, { id: 711, leftId: 706, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "B default", readRuleId: 7000 });
+      await seedCard(storage, { id: 712, leftId: 707, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "C default", readRuleId: 8000 });
+      // The viewer's read-permission state (the anonymous viewer; only
+      // rule 7000 is in the readable set, mirrors Anonymous's [Anyone]
+      // party grant on the corpus). readPermission is the field the
+      // resolver reads; the engine populates it in ensureReadPermission.
+      const engineHost = storage.engine as unknown as {
+        readPermission?: {
+          readableRuleIds: ReadonlySet<number>;
+          alwaysOk: boolean;
+        };
+      };
+      engineHost.readPermission = {
+        readableRuleIds: new Set<number>([7000]),
+        alwaysOk: false,
+      };
+      const resolver = installHelpRules(storage.engine, storage.fetcher);
+      await resolver.prepare();
+
+      // The unresolved rule (no stored read_rule_id) IS readable
+      // (Ruby's Card.search default), and rule 711 IS readable (in the
+      // viewer's readable set). Rule 712 is NOT. Result: 2 default
+      // rules in the count, mirroring Ruby's filtered count. Without
+      // the filter the count would be 3 (the unfiltered baseline the
+      // engine produced before this fix; verified by famfix48 at
+      // corpus:87/88/91/105/155/201/205/217/242/248/253/257 + 251).
+      const ruleHtml = await storage.engine.render("Set A+*right+*default", "closed");
+      expect(helpContentOf(ruleHtml)).toContain("(2 default rules)");
+    } finally {
+      storage.close();
+    }
+  });
 });

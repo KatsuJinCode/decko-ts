@@ -816,8 +816,27 @@ const barMiddleView: ViewFn = () => "";
 // bar_view.rb:36-37); the *all bar_right stays empty for everything else.
 const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
 
-/** bar.rb view :bar_bottom -> render :content, home_view: :content. */
-const barBottomView: ViewFn = ({ fmt }) => fmt.renderView("content", { home_view: "content" });
+/** bar.rb view :bar_bottom -> render :content, home_view: :content.
+ *
+ *  For pointer/list cardtypes the captured corpus bytes show the
+ *  accordion-body containing the `<div class="pointer-list">` directly,
+ *  with no intermediate `<div id="X-content-view" class="card-slot
+ *  content-view …">` wrap (oracle pin: corpus:6551 *star+*create at
+ *  fixtures/corpus/shard-000003.jsonl:359). All other cardtypes'
+ *  captured open views carry the content-view wrap inside
+ *  accordion-body (e.g. corpus:1 *tkxqkflwgtb at
+ *  fixtures/corpus/shard-000000.jsonl). The TS engine's contentView
+ *  unconditionally calls slotWrapCommon("content", core); bypassing it
+ *  for pointer/list cards reproduces the captured byte shape. Per-item
+ *  slots inside the list still dispatch through renderPointerListItem
+ *  and carry `view:"bar"` in their data-slot — the change is strictly
+ *  the outer accordion-body wrapper, not the per-item mini_bar slots. */
+const barBottomView: ViewFn = ({ fmt }) => {
+  if (isPointerOrListCard(fmt.card)) {
+    return fmt.renderView("core", { home_view: "content" });
+  }
+  return fmt.renderView("content", { home_view: "content" });
+};
 
 // ---------------------------------------------------------------------------
 // :titled (html/views.rb + header.rb)

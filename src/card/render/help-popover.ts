@@ -77,6 +77,16 @@ interface RenderEngineHelpHost {
   /** render.ts parseRuleTypeIds memo - read by enrichAndStore's rule?
    *  check while this prepare enriches rule cards. */
   ruleTypeIds: { setting?: number; set?: number; user?: number } | undefined;
+  /** render.ts readPermission - the resolved viewer state. The setting-rule
+   *  count mirrors Ruby's Card.search read-filter (see
+   *  settingRuleCountsStatement below). The deck's alwaysOk actor sees the
+   *  whole universe; the anonymous viewer sees only rules whose stored
+   *  read_rule_id is in this set or NULL. Empty set is treated as "no
+   *  readable rule ids" (count only the NULL-read_rule_id rules). */
+  readPermission?: {
+    readonly readableRuleIds: ReadonlySet<number>;
+    readonly alwaysOk: boolean;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +232,13 @@ export class HelpRulesResolver implements HelpRulesApi {
     }
     const results = await this.fetcher.driver.batch([
       helpRuleSidesStatement(setTypeId, settingTypeId),
-      settingRuleCountsStatement(setTypeId, settingTypeId),
+      settingRuleCountsStatement(
+        setTypeId,
+        settingTypeId,
+        host.readPermission?.alwaysOk
+          ? new Set<number>()
+          : host.readPermission?.readableRuleIds ?? new Set<number>(),
+      ),
     ]);
     const counts = results[1];
     for (const row of (counts?.rows ?? []) as Array<{ sid: number; c: number }>) {
@@ -498,19 +514,41 @@ function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLSt
 
 /** Setting#count for every setting at once
  *  (card-mod-rules set/type/setting.rb:12-14: `Card.search left: {type:
- *  SetID}, right: id, return: :count` - CQL defaults to trash: false). */
-function settingRuleCountsStatement(setTypeId: number, settingTypeId: number): SQLStatement {
-  return {
-    sql:
-      "SELECT settings.id AS sid, COUNT(*) AS c\n" +
-      "FROM cards rules\n" +
-      "  JOIN cards sets ON rules.left_id = sets.id\n" +
-      "  JOIN cards settings ON rules.right_id = settings.id\n" +
-      "WHERE sets.type_id = ? AND settings.type_id = ?\n" +
-      "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n" +
-      "GROUP BY settings.id",
-    params: [setTypeId, settingTypeId],
-  };
+ *  SetID}, right: id, return: :count` - CQL defaults to trash: false).
+ *
+ *  Read filter (the permission family mechanism): Ruby's Card.search
+ *  honors the viewer's read_rules_hash (lib/card/auth/setup.rb#read_rule
+ *  _hash; account_holder.rb#fetch_read_rules). Anonymous joins [Anyone];
+ *  a rule card is counted only when its `read_rule_id` is in the
+ *  viewer's readable set OR is NULL (no restriction). The engine
+ *  mirrors this with a SQL predicate that takes the readable rule ids
+ *  as params (callers pass `Array.from(state.readableRuleIds)` and an
+ *  empty params list when alwaysOk). Without this filter the engine
+ *  counts every live rule card matching the structural joins - on the
+ *  corpus that produces 140 *default rules vs Ruby's 49 (corpus:87/88/91
+ *  /105/155/201/205/217/242/248/253/257 + 251 on *input_type). */
+function settingRuleCountsStatement(
+  setTypeId: number,
+  settingTypeId: number,
+  readableRuleIds: ReadonlySet<number>,
+): SQLStatement {
+  const readableIds = Array.from(readableRuleIds);
+  const hasFilter = readableIds.length > 0;
+  const readableParams: number[] = hasFilter ? readableIds : [];
+  const sql =
+    "SELECT settings.id AS sid, COUNT(*) AS c\n" +
+    "FROM cards rules\n" +
+    "  JOIN cards sets ON rules.left_id = sets.id\n" +
+    "  JOIN cards settings ON rules.right_id = settings.id\n" +
+    "WHERE sets.type_id = ? AND settings.type_id = ?\n" +
+    "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n" +
+    (hasFilter
+      ? "  AND (rules.read_rule_id IS NULL OR rules.read_rule_id IN (" +
+        readableParams.map(() => "?").join(",") +
+        "))\n"
+      : "  AND rules.read_rule_id IS NULL\n") +
+    "GROUP BY settings.id";
+  return { sql, params: [setTypeId, settingTypeId, ...readableParams] };
 }
 
 // ---------------------------------------------------------------------------

@@ -269,12 +269,15 @@ export class RenderEngine implements RenderEngineLike {
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
-    // *structure, captured as `<span class="denied">` — not
-    // CAPTURE_ERROR:BadQuery). The port must respect that ordering, or a
-    // denied Search card with non-JSON content would raise BadQuery on
-    // a render Ruby never reached the search core for. ensureVerdicts
-    // populates `deniedVerdicts` for every prepared card from the folded
-    // permission state; prepareSearches then skips cards in that map.
+    // *structure + corpus:95 *edited+*right+*structure, both captured as
+    // `<span class="denied">` — NOT CAPTURE_ERROR:BadQuery). The port
+    // must respect that ordering: a denied Search card with non-JSON
+    // content renders as the denial span, not BadQuery, exactly mirroring
+    // Ruby's view/permission.rb:46-50 #denial -> view_for_denial, which
+    // wraps the rendered view BEFORE view_method (render.rb:87-89) ever
+    // dispatches to cql_search.rb. ensureVerdicts populates
+    // `deniedVerdicts` for every prepared card from the folded permission
+    // state; prepareSearches then skips cards in that map at line 1257.
     await this.ensureVerdicts();
     // Type-code pass MUST run before prepareSearches — the cold-render
     // prefetch walk runs enrichAndStore before parseRuleTypeIds folds
@@ -302,6 +305,21 @@ export class RenderEngine implements RenderEngineLike {
     if (this.helpResolver === undefined) {
       this.helpResolver = installHelpRules(this, this.fetcher);
       await this.helpResolver.prepare();
+      // Help-rules prepare enriches *help rule cards into renderCards (via
+      // cacheFetchedRecord → enrichAndStore, help-popover.ts:439-444). Those
+      // records land AFTER the main ensureVerdicts at line 281 has already
+      // memoized its verdicts, so their card.ids have no entry in
+      // deniedVerdicts and isDenied() returns false — the sync render path
+      // then renders them as placeholder content instead of the Ruby
+      // `<span class="denied">` (view/permission.rb:46-50 altered_view
+      // wraps the view before view_method dispatches). Re-call the verdict
+      // pass after help-rules; ensureVerdicts' skip-if-set guard
+      // (line 733) means this is a no-op for cards already judged — it
+      // only fills verdicts for the help-rules batch's newly-enriched cards.
+      // Closes the corpus-wide permission_denied_sentinel_replaced_with
+      // _placeholder growth that permfix48 surfaced (+238 on the slice,
+      // +487 corpus-wide across 489a22c's readableRuleIds filter side).
+      await this.ensureVerdicts();
     }
 
     const rootCard = this.renderCards.get(name.key);
