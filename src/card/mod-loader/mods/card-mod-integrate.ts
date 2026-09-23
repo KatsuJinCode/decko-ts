@@ -24,13 +24,16 @@
 // NOT ported (honest remainder):
 // - the EVENT WIRING (observer.rb:1-9: observer_create/observer_update/
 //   observer_delete at the :integrate stage, cache_delete_card_events at
-//   :store). DeckoModManifest has no events field (mod-manifest.ts carries
-//   setPatterns/setModules/prepareEngine only), and the engine's only
-//   save-path seam is notify's follow-specific SavePathIntegrationHook
-//   (src/card/notify/types.ts:83-98) - neither is editable from a mod
-//   port. The declarations are pinned as OBSERVER_EVENT_DECLARATIONS and
-//   the bodies as the exported functions; a coordinator-level events field
-//   is the wiring step this port leaves open.
+//   :store) - the DECLARATIONS land on the manifest's events[] surface
+//   (mod-manifest.ts:ModSetModuleFile.events, ModEventRegistration); the
+//   BODIES call the ported executeCardEvents with a no-op deliver (the
+//   shipped deliverers - email, notifications - come from unported mods,
+//   so the per-card deliver is a documented no-op while the rule walk
+//   and recursed-item expansion run for real). Engine-side STAGE
+//   execution (event.rb's runner firing the declarations at their named
+//   stage during save) is the action engine's stage seam
+//   (eventsForStage, src/card/mod-loader/mod-event-registry.ts:116-118);
+//   the registry is the mod-writable surface the declarations land on.
 // - right/on_create.rb, right/on_delete.rb, right/on_update.rb -
 //   `assign_type :list` each (the files' entire content). assign_type is a
 //   class-side DSL call: Type.assignment[module_key] = :list (card-1.110.0
@@ -48,7 +51,12 @@
 
 import { ruleNamesForCard, settingCardNameForCode } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import type {
+  DeckoModManifest,
+  ModEngineHost,
+  ModEventCard,
+  ModEventFn,
+} from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
 // the card surface the observer reads (observer.rb's receivers, as data)
@@ -266,9 +274,9 @@ export function cacheDeleteCardEvents(
 /**
  * observer.rb:1-9, the file's event declarations, pinned as data: three
  * :integrate-stage events (one per action) plus the :store-stage delete
- * cache. These are the registrations the manifest cannot carry (no events
- * field) - a coordinator-level events surface wires these exact
- * name/stage/on tuples.
+ * cache. Mirrors the `events[]` entries on the all/observer setModule
+ * manifest below (the live declarations ride the registry; this constant
+ * is the read-only citation record used in tests + tooling).
  */
 export const OBSERVER_EVENT_DECLARATIONS = [
   { event: "observer_create", stage: "integrate", on: "create" },
@@ -276,6 +284,93 @@ export const OBSERVER_EVENT_DECLARATIONS = [
   { event: "observer_delete", stage: "integrate", on: "delete" },
   { event: "cache_delete_card_events", stage: "store", on: "delete" },
 ] as const;
+
+// ---------------------------------------------------------------------------
+// the host adapter: ModEngineHost -> ObserverLookup (the wiring step that
+// lets the exported semantics run against the live engine)
+// ---------------------------------------------------------------------------
+
+/**
+ * Adapt a ModEngineHost's fetchRenderCard into an ObserverLookup. Maps
+ * host.fetchRenderCard(name) -> ObserverCardRef ({name, dbContent,
+ * typeName}) and provides isListCard reading typeName (Ruby's
+ * recursable_items? membership - card-mod-collection
+ * set/abstract/items.rb:1-2; the production typeName is the TYPE card's
+ * NAME - mod/core/set/all/type.rb#type_name - so the predicate accepts
+ * both the lowercase codename form "list"/"listed" used in the test
+ * stubs and the capitalized name form "List" produced by the render
+ * engine's enrichment path, src/card/render.ts:915-922).
+ */
+export function observerLookupFromHost(host: ModEngineHost): ObserverLookup {
+  return {
+    fetch: (name: string, _context: string | undefined) => {
+      const fetched = host.fetchRenderCard(name) as
+        | { name?: { s: string }; dbContent?: string; typeName?: string }
+        | undefined;
+      if (fetched === undefined) return undefined;
+      return {
+        name: fetched.name?.s ?? name,
+        dbContent: fetched.dbContent ?? "",
+        typeName: fetched.typeName,
+      };
+    },
+    isListCard: (c) =>
+      c.typeName === "list" ||
+      c.typeName === "listed" ||
+      c.typeName === "List",
+  };
+}
+
+/** Documented no-op deliver (README.md: "Any card that implements a
+ *  #deliver method"). The shipped deliverers are the email/notification
+ *  template card types from unported mods, so the per-card deliver is
+ *  left as a seam. The rule walk and the recursed-item expansion
+ *  (executeCardEvents -> eventCards -> recursedItemCards) run for real;
+ *  only the per-card deliver call is dropped. */
+export const NO_OP_DELIVER: EventCardDeliver = () => {
+  // HONEST REMAINDER: deliverers (email, notifications, ...) are unported.
+  // The observer's rule walk + item expansion are exercised; the per-card
+  // deliver call is a no-op until the deliverer mods land.
+};
+
+/** Module-level memo for the :store -> :integrate cache bridge. Ruby's
+ *  @card_event_cache (observer.rb:8) is per-card instance state set at
+ *  :store and consumed at :integrate; the TS events have no per-card
+ *  state, so we key by card name (the same identity the
+ *  recursed_item_cards book uses, recursed.rb:5). Set by
+ *  cache_delete_card_events at :store; read by observer_delete at
+ *  :integrate and cleared after. */
+const deleteEventCache = new Map<string, readonly ObserverCardRef[]>();
+
+/** Body for the three observer_<action> events (observer.rb:1-5's
+ *  `%i[create update delete].each do |action| event :"observer_#{action}",
+ *  :integrate, on: action do execute_card_events on: action end end`).
+ *  For :delete, the memo from cache_delete_card_events (observer.rb:7-9)
+ *  wins, mirroring observer.rb:19's @card_event_cache short-circuit. */
+function makeObserverEventFn(
+  action: "create" | "update" | "delete",
+): ModEventFn {
+  return (card: ModEventCard, host: ModEngineHost) => {
+    const lookup = observerLookupFromHost(host);
+    const memo =
+      action === "delete" ? deleteEventCache.get(card.name) : undefined;
+    if (action === "delete") deleteEventCache.delete(card.name);
+    executeCardEvents({ on: action }, { name: card.name }, lookup, NO_OP_DELIVER, memo);
+  };
+}
+
+/** Body for cache_delete_card_events (observer.rb:7-9:
+ *  `@card_event_cache = event_cards :on_delete`). Memoizes the
+ *  *on delete rule's recursed items so the subsequent observer_delete at
+ *  :integrate sees them even though the rule card is gone by then. */
+function cacheDeleteCardEventsFn(
+  card: ModEventCard,
+  host: ModEngineHost,
+): void {
+  const lookup = observerLookupFromHost(host);
+  const memo = cacheDeleteCardEvents({ name: card.name }, lookup);
+  deleteEventCache.set(card.name, memo);
+}
 
 /**
  * right/on_create.rb, right/on_delete.rb, right/on_update.rb (each file's
@@ -300,10 +395,46 @@ const cardModIntegrate: DeckoModManifest = {
   group: "gem-defaults",
   setModules: [
     {
-      // card-mod-integrate-0.20.0/set/all/observer.rb - the events live in
-      // OBSERVER_EVENT_DECLARATIONS + the exported functions above; the
-      // manifest has no events field (see the header's honest remainder).
+      // card-mod-integrate-0.20.0/set/all/observer.rb - the four event
+      // declarations from observer.rb:1-9 (observer_create / observer_update
+      // / observer_delete at the :integrate stage; cache_delete_card_events
+      // at :store). The bodies call the ported executeCardEvents with a
+      // documented no-op deliver (the shipped deliverers come from unported
+      // mods - see the header's honest remainder + NO_OP_DELIVER).
       setPath: "all/observer",
+      events: [
+        {
+          // observer.rb:2 - `event :"observer_#{action}", :integrate, on:
+          // action do execute_card_events on: action end` for action: create.
+          event: "observer_create",
+          at: "integrate",
+          on: ["create"],
+          fn: makeObserverEventFn("create"),
+        },
+        {
+          // observer.rb:2 - action: update.
+          event: "observer_update",
+          at: "integrate",
+          on: ["update"],
+          fn: makeObserverEventFn("update"),
+        },
+        {
+          // observer.rb:2 - action: delete (reads the @card_event_cache
+          // memo set by cache_delete_card_events at :store).
+          event: "observer_delete",
+          at: "integrate",
+          on: ["delete"],
+          fn: makeObserverEventFn("delete"),
+        },
+        {
+          // observer.rb:7-9 - `event :cache_delete_card_events, :store, on:
+          // :delete do @card_event_cache = event_cards :on_delete end`.
+          event: "cache_delete_card_events",
+          at: "store",
+          on: ["delete"],
+          fn: cacheDeleteCardEventsFn,
+        },
+      ],
     },
     {
       // card-mod-integrate-0.20.0/set/right/on_create.rb - assign_type :list

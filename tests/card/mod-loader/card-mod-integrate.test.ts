@@ -22,12 +22,17 @@
 //      (observer.rb:13-15), and the delete-time memo (observer.rb:7-9).
 //
 // NOT tested (honest remainder, see the port file's header):
-//   - engine-side event wiring: DeckoModManifest has no events field and
-//     the save path is not mod-writable; the declarations are data until a
-//     coordinator-level events surface exists.
+//   - engine-side STAGE execution: eventsForStage consults the registry,
+//     but the action engine's stage seam (eventsForStage ->
+//     lib/card/set/event.rb's runner) is the wiring the port leaves open;
+//     this suite proves the declarations land, not that the stage seam
+//     fires them.
 //   - assign_type's save-path effect (Type.assignment ->
 //     type_id_from_code, mod/core/set/all/type.rb:69-76): the action
 //     engine's type resolution is shared, not mod-writable.
+//   - the per-card deliver: deliverers (email, notifications, ...) are
+//     unported - the events pass a documented NO_OP_DELIVER; the rule
+//     walk + recursed-item expansion run for real.
 //   - render: nothing - the T6 verdict declares 0 html views for this gem.
 
 import { describe, it, expect, afterEach } from "vitest";
@@ -203,6 +208,73 @@ describe("card-mod-integrate manifest structure", () => {
     const thanks = registry.findByCodename("thanks");
     expect(thanks?.shortHelpText).toBe("destination after card is created");
     expect(thanks?.group).toBe("other");
+  });
+
+  it("registers the four observer events on the loader's ModEventRegistry (observer.rb:1-9)", () => {
+    // The all/observer setModule now carries events[] for the four
+    // declarations (observer.rb:1-9): three at :integrate (create / update
+    // / delete) + the delete cache at :store. The SetLoader phase
+    // (mod-loader.ts:283-293) injects setPath + modName and reports each
+    // name in ModLoadReport.registeredEvents.
+    const loader = new ModLoader([{ manifest: cardModIntegrate }], { ...HTML_VIEWS });
+    liveLoader = loader;
+    const report = loader.load();
+
+    expect(report.registeredEvents).toEqual([
+      "observer_create",
+      "observer_update",
+      "observer_delete",
+      "cache_delete_card_events",
+    ]);
+
+    const registry = loader.eventRegistry();
+    expect(registry.size()).toBe(4);
+    expect(registry.all().map((e) => `${e.modName}:${e.event}:${e.setPath}`)).toEqual([
+      "integrate:observer_create:all/observer",
+      "integrate:observer_update:all/observer",
+      "integrate:observer_delete:all/observer",
+      "integrate:cache_delete_card_events:all/observer",
+    ]);
+
+    // forStage preserves registration order (Ruby's same-stage
+    // execution order is definition load order - lib/card/set/event.rb's
+    // stage runner).
+    expect(registry.forStage("integrate").map((e) => e.event)).toEqual([
+      "observer_create",
+      "observer_update",
+      "observer_delete",
+    ]);
+    expect(registry.forStage("store").map((e) => e.event)).toEqual([
+      "cache_delete_card_events",
+    ]);
+    // Stages the observer never fires at stay empty (the cross-check that
+    // forStage is genuinely a stage filter, not a total dump).
+    expect(registry.forStage("finalize")).toEqual([]);
+    expect(registry.forStage("prepare_to_store")).toEqual([]);
+
+    // forEvent returns the first registration for the name, with setPath +
+    // modName + at + on injected.
+    const create = registry.forEvent("observer_create");
+    expect(create?.setPath).toBe("all/observer");
+    expect(create?.modName).toBe("integrate");
+    expect(create?.at).toBe("integrate");
+    expect(create?.on).toEqual(["create"]);
+    expect(typeof create?.fn).toBe("function");
+
+    const update = registry.forEvent("observer_update");
+    expect(update?.at).toBe("integrate");
+    expect(update?.on).toEqual(["update"]);
+
+    const del = registry.forEvent("observer_delete");
+    expect(del?.at).toBe("integrate");
+    expect(del?.on).toEqual(["delete"]);
+
+    const cache = registry.forEvent("cache_delete_card_events");
+    expect(cache?.setPath).toBe("all/observer");
+    expect(cache?.modName).toBe("integrate");
+    expect(cache?.at).toBe("store");
+    expect(cache?.on).toEqual(["delete"]);
+    expect(typeof cache?.fn).toBe("function");
   });
 });
 

@@ -299,6 +299,147 @@ describe("card-mod-history manifest structure", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 1b. event registrations (events.rb pin to the manifest events[] surface)
+// ---------------------------------------------------------------------------
+
+describe("card-mod-history event declarations (events.rb)", () => {
+  it("pins the three stage-fitting events through the ModLoader SetLoader phase", () => {
+    // events.rb: six events. THREE pin into the manifest events[] (the
+    // ModEventStage union covers them); THREE are BLOCKED - the
+    // :initialize / :validate stages are absent from the union, and the
+    // `after: :finalize_action` relative-ordering form has no
+    // ModEventRegistration field. Pinned events land at:
+    //   :update_ancestor_timestamps -> :integrate
+    //   :finalize_action             -> :finalize, when: finalize_action?
+    //   :rollback_actions            -> :prepare_to_validate, on: [:update],
+    //                                   when: rollback_request?
+    const loader = new ModLoader([{ manifest: cardModHistory }]);
+    const report = loader.load();
+
+    // report.registeredEvents carries event NAMES in registration order
+    // (mod-loader.ts:283-292). Only the events file registers events here
+    // (events: []), so the three pins arrive in their manifest order.
+    expect(report.registeredEvents).toEqual([
+      "update_ancestor_timestamps",
+      "finalize_action",
+      "rollback_actions",
+    ]);
+
+    const events = loader.eventRegistry();
+    expect(events.size()).toBe(3);
+
+    // registration order: the file coordinates the SetLoader phase
+    // injected are setPath + modName (mod-loader.ts:283-292)
+    expect(events.all().map((e) => `${e.modName}:${e.event}@${e.setPath}`)).toEqual([
+      "history:update_ancestor_timestamps@all/history/events",
+      "history:finalize_action@all/history/events",
+      "history:rollback_actions@all/history/events",
+    ]);
+
+    // forStage: same-stage execution order = registration order
+    // (Ruby runs same-stage events in definition load order)
+    expect(events.forStage("integrate").map((e) => e.event)).toEqual([
+      "update_ancestor_timestamps",
+    ]);
+    expect(events.forStage("finalize").map((e) => e.event)).toEqual([
+      "finalize_action",
+    ]);
+    expect(events.forStage("prepare_to_validate").map((e) => e.event)).toEqual([
+      "rollback_actions",
+    ]);
+    // no other stages receive history events
+    expect(events.forStage("prepare_to_store")).toEqual([]);
+    expect(events.forStage("store")).toEqual([]);
+    expect(events.forStage("integrate_with_delay")).toEqual([]);
+    expect(events.forStage("extend")).toEqual([]);
+  });
+
+  it("forEvent reads the verbatim at/on/when the gem declared (lib/card/set/event.rb)", () => {
+    const loader = new ModLoader([{ manifest: cardModHistory }]);
+    loader.load();
+    const events = loader.eventRegistry();
+
+    const updateAnc = events.forEvent("update_ancestor_timestamps");
+    expect(updateAnc?.setPath).toBe("all/history/events");
+    expect(updateAnc?.modName).toBe("history");
+    expect(updateAnc?.at).toBe("integrate");
+    expect(updateAnc?.on).toBeUndefined(); // events.rb:1 declares no `on:`
+    expect(updateAnc?.when).toBeUndefined();
+
+    const finalize = events.forEvent("finalize_action");
+    expect(finalize?.at).toBe("finalize");
+    expect(finalize?.on).toBeUndefined(); // events.rb:25 declares no `on:`
+    expect(finalize?.when).toBe("finalize_action?");
+
+    const rollback = events.forEvent("rollback_actions");
+    expect(rollback?.at).toBe("prepare_to_validate");
+    expect(rollback?.on).toEqual(["update"]); // events.rb:40 `on: :update`
+    expect(rollback?.when).toBe("rollback_request?");
+  });
+
+  it("the pinned event bodies are call-able (the (card, host) fn shape the seam demands)", () => {
+    const loader = new ModLoader([{ manifest: cardModHistory }]);
+    loader.load();
+    // The fns are stubs (write path not ported - see the events-block
+    // header in card-mod-history.ts); the seam surface only requires they
+    // accept (card, host) and return void | Promise<void>. Exercising
+    // each one proves the signature lines up with what the registry
+    // recorded.
+    const updateAnc = loader.eventRegistry().forEvent("update_ancestor_timestamps");
+    const finalize = loader.eventRegistry().forEvent("finalize_action");
+    const rollback = loader.eventRegistry().forEvent("rollback_actions");
+    expect(updateAnc?.fn).toBeDefined();
+    expect(finalize?.fn).toBeDefined();
+    expect(rollback?.fn).toBeDefined();
+    // calling each fn with a minimal ModEventCard + a null host cast does
+    // not throw (the bodies are void).
+    const card = { name: "x", id: 1 };
+    const host = {} as Parameters<NonNullable<typeof updateAnc>["fn"]>[1];
+    expect(() => updateAnc!.fn(card, host)).not.toThrow();
+    expect(() => finalize!.fn(card, host)).not.toThrow();
+    expect(() => rollback!.fn(card, host)).not.toThrow();
+  });
+
+  it("BLOCKED: the three :initialize / :validate / after-chain events are NOT in the registry", () => {
+    // events.rb declares six events; three cannot pin because:
+    //   - :assign_action  (events.rb:15-17, :initialize, when: :actionable?)
+    //     - the ModEventStage union (mod-manifest.ts:151-159) lacks
+    //       "initialize"; card-1.110.0 lib/card/director/stages.rb:5
+    //       includes it. Out of scope to widen the union from a mod port.
+    //   - :detect_conflict (events.rb:19-22, :validate, on: :update,
+    //     when: :edit_conflict?) - the union lacks "validate".
+    //   - :finalize_act   (events.rb:48-50, `after: :finalize_action`,
+    //     when: :act_card?) - ModEventRegistration has no `:after` field
+    //       (relative ordering vs another event); `at` would lose the
+    //       relationship. Pinned only as data in write-path.ts.
+    // The registry must therefore NOT contain them; the mod-level stub
+    // bodies in card-mod-history.ts document the seam each one would
+    // need to fire.
+    const loader = new ModLoader([{ manifest: cardModHistory }]);
+    loader.load();
+    const events = loader.eventRegistry();
+    expect(events.forEvent("assign_action")).toBeUndefined();
+    expect(events.forEvent("detect_conflict")).toBeUndefined();
+    expect(events.forEvent("finalize_act")).toBeUndefined();
+    // total registry size = exactly the three pin-able events, nothing
+    // else slips in.
+    expect(events.size()).toBe(3);
+  });
+
+  it("reset() empties the event registry but leaves the default binding observable-identical", () => {
+    // mirrors the mod-events-registry.test.ts contract: reset() clears
+    // the loader-owned table; the deck-boot seam's manual wirings
+    // survive unrelated loads.
+    const loader = new ModLoader([{ manifest: cardModHistory }]);
+    loader.load();
+    expect(loader.eventRegistry().size()).toBe(3);
+    loader.reset();
+    expect(loader.eventRegistry().size()).toBe(0);
+    expect(loader.eventRegistry().all()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 2. view + legend bytes
 // ---------------------------------------------------------------------------
 

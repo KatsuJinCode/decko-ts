@@ -1,8 +1,8 @@
 // The card-mod-help mod loader test: the mod loaded through the loader
-// registers its three html views (help, help_text, lead), the two settings
-// (help, guide) and the gem tree's six set modules. Each view proves its
-// Ruby-source semantics against a probe deck that mirrors the oracle
-// capture (fixtures/captured/help-mod-loader.json).
+// registers its four html views (help, help_text, lead, popover), the two
+// settings (help, guide) and the gem tree's six set modules. Each view
+// proves its Ruby-source semantics against a probe deck that mirrors the
+// oracle capture (fixtures/captured/help-mod-loader.json).
 //
 // Proof shape (A/B per ported view):
 //   WITHOUT the mod: render the view on the seeded probe card raises the
@@ -20,17 +20,19 @@
 //   - *help (id 12) is the codename card for the setting
 //
 // Set module basket (set/all/help.rb:6-12 / :help, :help_text; :27-30 /
-// :lead; set/self/help.rb setting_opts; set/self/guide.rb setting_opts):
+// :lead; set/all/guide.rb:6-16 / :guide; set/right/help.rb:4-6 / :popover;
+// set/self/help.rb setting_opts; set/self/guide.rb setting_opts):
 // the 6 gem-tree entries are: all/help, all/guide, right/help, right/guide,
 // self/help, self/guide.
 //
 // Of the gem's five html views (compat-report metrics.htmlViewsMissingNames
-// for card-mod-help-0.20.0): help, help_text, lead are ported below;
-// :guide and :popover are not headlessly-portable (set/all/guide.rb nests
-// the guide card's Markdown core through card-mod-markdown's :core, and
-// set/right/help.rb's :popover wraps _render_core in card-mod-bootstrap's
-// popover_link helper - the recorded bytes would either render raw
-// markdown source or call an unported bootstrap helper). See viewsMissing.
+// for card-mod-help-0.20.0): help, help_text, lead are ported with oracle
+// bytes; :popover is ported via card-mod-bootstrap's popover_link helper
+// (set/right/help.rb:4-6) with CAPTURE PENDING (no oracle fixture pins
+// the live :popover dispatch bytes; tests assert the helper anchor shape
+// with the _render_core text payload instead); set/right/guide.rb only
+// defines a card-level raw_help_text method (no view declared). See
+// viewsMissing for the full set-block accounting.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -134,6 +136,13 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Help Probe", "guide")).rejects.toThrow(
       UnsupportedViewError,
     );
+    // set/right/help.rb:4-6 view :popover - the popover_link helper from
+    // card-mod-bootstrap's set/all/bootstrap/helper.rb:41-44. Without the
+    // mod the view is not on the live registry, so dispatch raises
+    // UnsupportedViewError - same proof shape as the other ported views.
+    await expect(s.engine.render("Oracle Help Probe", "popover")).rejects.toThrow(
+      UnsupportedViewError,
+    );
   });
 
   it("WITH the mod: :help on a ruled card wraps the help text in <div class='help-text'> (set/all/help.rb:7-12)", async () => {
@@ -227,27 +236,60 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     expect(html).not.toContain("class=\"guide-text\"");
   });
 
+  it("WITH the mod: :popover wraps the :core text inside the card-mod-bootstrap popover_link anchor (set/right/help.rb:4-6) - CAPTURE PENDING", async () => {
+    const s = storage!;
+    // help.rb:4-6 view :popover: `popover_link _render_core`. The TS
+    // port calls popoverLink(ctx.fmt.renderView("core")) - the same
+    // dispatch shape (popoverLink export at card-mod-bootstrap.ts:166
+    // mirrors helper.rb:41-44 `popover_link text`; helper.rb:46-57
+    // popover_opts builds the anchor attrs).
+    //
+    // CAPTURE PENDING: no oracle capture pins the live :popover dispatch
+    // bytes. The helper bytes themselves are pinned by
+    // card-mod-bootstrap.test.ts#popoverLink unit tests; here we assert
+    // the *combination* (popoverLink anchor + the :core text payload)
+    // but do NOT claim byte parity to a captured oracle capture that
+    // does not exist for set/right/help.rb.
+    const html = await s.engine.render("Oracle Help Probe", "popover");
+    // popover_link's anchor shape (helper.rb:41-57 + popoverLink
+    // export, card-mod-bootstrap.ts:166):
+    expect(html).toContain('href="#"');
+    expect(html).toContain('class="ps-1 _popover_link"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('data-bs-toggle="popover"');
+    expect(html).toContain('data-bs-trigger="hover focus"');
+    // _render_core -> renderView("core") -> the core slot's content;
+    // RichText :core renders the card's dbContent verbatim. The text
+    // payload rides on data-bs-content per popover_opts(helper.rb:53).
+    expect(html).toContain("probe card body");
+    expect(html).toMatch(/data-bs-content="[^"]*probe card body/);
+    // material help icon as linkText (helper.rb:42 link_text ||=
+    // icon_tag :help -> icon.rb:120-123 material -> universal:130-135
+    // adds notranslate).
+    expect(html).toContain(
+      '<i class="notranslate material-icons">help</i>',
+    );
+  });
+
   it("WITH the mod: every ported set module from the gem tree is in the basket", () => {
     const basket = loader!.setModules();
     // The port registers a setModules entry per .rb file with ported
-    // views or settings: set/all/help, set/all/guide, set/self/help,
-    // set/self/guide. The remaining two gem-tree files (set/right/help,
-    // set/right/guide) define no ported view - set/right/help's :popover
-    // runs through card-mod-bootstrap's popover_link which is unported;
-    // set/right/guide.rb only defines a card-level raw_help_text method
-    // served through render/setting-help-text.ts's registry. Both stay
-    // in viewsMissing rather than registering a registration the
-    // fixtures could not verify.
+    // views or settings: set/all/help, set/all/guide, set/right/help
+    // (the :popover view delegates to card-mod-bootstrap's popoverLink
+    // helper), set/self/help, set/self/guide. set/right/guide.rb only
+    // defines a card-level raw_help_text method served through
+    // render/setting-help-text.ts's registry and stays in viewsMissing.
     //
     // all/* -> base bucket (loader.ts#kindOfSetPath: "all" is the base)
     const baseShortnames = basket.base.map((m) => m.shortname);
     expect(baseShortnames).toContain("All::Help");
     expect(baseShortnames).toContain("All::Guide");
-    // self/* -> nonbase (loader.ts#kindOfSetPath: anything not all/
-    // or abstract lands in nonbase keyed by shortname)
+    // self/* + right/* -> nonbase (loader.ts#kindOfSetPath: anything
+    // not all/ or abstract lands in nonbase keyed by shortname)
     const nonbaseShortnames = [...basket.nonbase.values()].flat().map((m) => m.shortname);
     expect(nonbaseShortnames).toContain("Self::Help");
     expect(nonbaseShortnames).toContain("Self::Guide");
+    expect(nonbaseShortnames).toContain("Right::Help");
   });
 
   it("WITH the mod: the mod loader's load report lists every ported view", () => {
@@ -258,6 +300,9 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     expect(report.registeredViews).toContain("help_text");
     expect(report.registeredViews).toContain("lead");
     expect(report.registeredViews).toContain("guide");
+    // set/right/help.rb:4-6 :popover - registered via card-mod-bootstrap's
+    // popoverLink helper import.
+    expect(report.registeredViews).toContain("popover");
   });
 
   it("WITH the mod: the setting_opts registrations match the gem's Card::Setting state", () => {

@@ -199,6 +199,75 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     expect(report.registeredSettings).toEqual(["content_option_view", "content_options"]);
   });
 
+  it("WITH the mod: event declarations pin the three gem events whose stage fits the ModEventStage union", () => {
+    // five events in the gem (set/abstract/01_list/events.rb:1,8,13,29 +
+    // set/abstract/delist.rb:2); three pin into the manifest (the two
+    // :validate-stage events - events.rb:13 validate_item_type,
+    // events.rb:29 validate_item_uniqueness - cannot pin because the
+    // ModEventStage union at mod-manifest.ts:151-159 does not carry
+    // "validate"; mod-manifest.ts is out of scope for this lane).
+    // Load order within the abstract pattern group is bySetPath:
+    //   abstract/01_list/events (2 events) -> abstract/delist (1 event).
+    const report = loader!.load();
+    expect(report.registeredEvents).toEqual([
+      "add_and_drop_items",
+      "insert_item_event",
+      "delist",
+    ]);
+
+    const events = loader!.eventRegistry();
+    expect(events.size()).toBe(3);
+
+    // registration order is preserved; the file coordinates the SetLoader
+    // phase injected are setPath + modName (mod-loader.ts:283-292).
+    expect(events.all().map((e) => `${e.modName}:${e.event}@${e.setPath}`)).toEqual([
+      "list:add_and_drop_items@abstract/01_list/events",
+      "list:insert_item_event@abstract/01_list/events",
+      "list:delist@abstract/delist",
+    ]);
+
+    // forStage: same-stage execution order = registration order
+    // (Ruby runs same-stage events in definition load order;
+    // event.rb's stage runner).
+    expect(
+      events.forStage("prepare_to_validate").map((e) => e.event),
+    ).toEqual(["add_and_drop_items", "insert_item_event"]);
+    expect(events.forStage("prepare_to_store").map((e) => e.event)).toEqual([
+      "delist",
+    ]);
+    // other stages = empty (no pinned events fire there)
+    expect(events.forStage("integrate")).toEqual([]);
+    expect(events.forStage("store")).toEqual([]);
+    expect(events.forStage("finalize")).toEqual([]);
+
+    // forEvent: the verbatim at/on/when the gem declared
+    // (lib/card/set/event.rb). "save" stays as ["save"] verbatim -
+    // the execution seam applies :save -> [:create, :update] expansion
+    // (event.rb#deferred_conditions).
+    const addDrop = events.forEvent("add_and_drop_items");
+    expect(addDrop?.setPath).toBe("abstract/01_list/events");
+    expect(addDrop?.modName).toBe("list");
+    expect(addDrop?.at).toBe("prepare_to_validate");
+    expect(addDrop?.on).toEqual(["save"]);
+    expect(addDrop?.when).toBeUndefined();
+
+    const insert = events.forEvent("insert_item_event");
+    expect(insert?.at).toBe("prepare_to_validate");
+    expect(insert?.on).toEqual(["save"]);
+    expect(insert?.when).toBe("item_to_insert");
+
+    const delist = events.forEvent("delist");
+    expect(delist?.setPath).toBe("abstract/delist");
+    expect(delist?.at).toBe("prepare_to_store");
+    expect(delist?.on).toEqual(["delete"]);
+
+    // BLOCKERS: the two :validate-stage events the gem declares but the
+    // ModEventStage union does not cover. They are NOT in the registry
+    // because they cannot be declared without modifying mod-manifest.ts.
+    expect(events.forEvent("validate_item_type")).toBeUndefined();
+    expect(events.forEvent("validate_item_uniqueness")).toBeUndefined();
+  });
+
   it("WITH the mod: the view-config registry matches the live _view_*__setting probe", () => {
     // FIXTURE.probe_format_configs: method_defined? on the probe card's
     // real format class (oracle-capture-list-mod.rb)

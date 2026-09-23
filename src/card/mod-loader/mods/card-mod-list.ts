@@ -43,8 +43,14 @@
 //   by Decko Bot 2 minutes ago" in the capture) - not byte-pinnable
 // - set/abstract/01_list/events.rb + set/abstract/delist.rb - the five
 //   events (add_and_drop_items, insert_item_event, validate_item_type,
-//   validate_item_uniqueness, delist) need the write path / event engine;
-//   the registered set modules are bookkeeping only
+//   validate_item_uniqueness, delist). The three whose stages fit the
+//   ModEventStage union (mod-manifest.ts:151-159) are pinned as
+//   DECLARATIONS in the manifest events[] fields (the registry records
+//   name/stage/on/when + a stub fn; the action engine's stage seam is not
+//   wired in this port - see listEventFns below). The two :validate-stage
+//   events (validate_item_type, validate_item_uniqueness) are BLOCKERS:
+//   "validate" is not in the ModEventStage union, and mod-manifest.ts is
+//   out of scope for this lane.
 // - non-html formats (set/abstract/01_list/other_views.rb csv/js/data/json/
 //   css/rss views) - the engine is html-format only
 // - the :input editor variants beyond radio + list - checkbox/select/
@@ -78,6 +84,7 @@ import type { CardRecord } from "../../fetch/card-record.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventFn,
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -771,6 +778,68 @@ async function prepareListRules(host: ModEngineHost): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// event declarations - the set-module `event` DSL (lib/card/set/event.rb).
+// Five events across set/abstract/01_list/events.rb (1, 8, 13, 29) and
+// set/abstract/delist.rb:2. The ModEventStage union (mod-manifest.ts:
+// 151-159) carries: prepare_to_validate / prepare_to_store / store /
+// finalize / integrate / integrate_with_delay / extend / extend_with_delay.
+// Ruby adds :initialize / :validate / :after_integrate (card-1.110.0
+// lib/card/director/stages.rb:5-8) - those stages are NOT in the TS union
+// and mod-manifest.ts is out of scope. Three events pin (the two
+// :validate-stage events are recorded as blockers below).
+//
+// The event registry records declarations only; the action engine's stage
+// seam (eventsForStage at src/card/mod-loader.ts:78) does not fire them in
+// this port. The fn bodies are honest stubs: Env.params / add_item /
+// drop_item / insert_item / item_cards / errors.add / referers / subcard
+// have no TS surface.
+// ---------------------------------------------------------------------------
+
+/** Env.params lookup for the list event fns - Ruby's Env.params (card-core
+ *  mod/core/env.rb) is request-time state; ModEngineHost (mod-manifest.ts:
+ *  295-327) does not expose it. The port returns undefined for every key
+ *  so the fns record their access without attempting write-path semantics
+ *  (the write path is not ported). Exported as the host-side adapter the
+ *  task asks for. */
+export function listEventParams(
+  host: ModEngineHost,
+  key: string,
+): string | string[] | undefined {
+  // No port surface for request params; the stub below documents what each
+  // Ruby body would have read. The host argument is reserved for a future
+  // composition seam (e.g. an `eventParams()` host method).
+  void host;
+  void key;
+  return undefined;
+}
+
+/** events.rb:1-6 add_and_drop_items (prepare_to_validate, on: save) - the
+ *  Ruby body reads Env.params["add_item"|"drop_item"] and calls the card
+ *  methods add_item / drop_item. The fn preserves the (card, host) shape
+ *  the ModEventFn signature demands; the semantics need the write path. */
+const addAndDropItems: ModEventFn = (_card, host) => {
+  listEventParams(host, "add_item");
+  listEventParams(host, "drop_item");
+};
+
+/** events.rb:8-11 insert_item_event (prepare_to_validate, on: save, when:
+ *  :item_to_insert) - the Ruby body calls insert_item with item_to_insert
+ *  (item_to_insert -> Env.params["insert_item"]). The `when` predicate
+ *  resolves at the execution seam. */
+const insertItemEvent: ModEventFn = (_card, host) => {
+  listEventParams(host, "insert_item");
+  listEventParams(host, "item_index");
+};
+
+/** delist.rb:2-9 delist (prepare_to_store, on: delete) - the Ruby body
+ *  walks `referers`, gates on delistable? + Abstract::List + real?, and
+ *  calls drop_item + subcard on each. The set membership + subcard
+ *  machinery is not ported. */
+const delistEvent: ModEventFn = (_card, _host) => {
+  // see header: write path / set membership / subcard not ported
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -789,9 +858,31 @@ const cardModList: DeckoModManifest = {
       setPath: "abstract/01_list",
     },
     {
-      // card-mod-list-0.20.0/set/abstract/01_list/events.rb - the five
-      // events need the write path / event engine; bookkeeping only
+      // card-mod-list-0.20.0/set/abstract/01_list/events.rb - of the four
+      // events in this file, two pin as declarations (events.rb:1
+      // add_and_drop_items, events.rb:8 insert_item_event - both
+      // :prepare_to_validate). The two :validate-stage events
+      // (events.rb:13 validate_item_type, events.rb:29
+      // validate_item_uniqueness) are BLOCKERS - the ModEventStage union
+      // (mod-manifest.ts:151-159) lacks the :validate stage. The pinned
+      // fns are stubs (write path not ported); the registry records the
+      // name/stage/on/when verbatim.
       setPath: "abstract/01_list/events",
+      events: [
+        {
+          event: "add_and_drop_items",
+          at: "prepare_to_validate",
+          on: ["save"],
+          fn: addAndDropItems,
+        },
+        {
+          event: "insert_item_event",
+          at: "prepare_to_validate",
+          on: ["save"],
+          when: "item_to_insert",
+          fn: insertItemEvent,
+        },
+      ],
     },
     {
       // card-mod-list-0.20.0/set/abstract/01_list/html_views.rb
@@ -841,8 +932,18 @@ const cardModList: DeckoModManifest = {
     },
     {
       // card-mod-list-0.20.0/set/abstract/delist.rb - the delist delete
-      // event needs the write path; bookkeeping only
+      // event (delist.rb:2) pins as a declaration at :prepare_to_store.
+      // The fn body walks referers + subcard (not ported); the registry
+      // records the declaration only.
       setPath: "abstract/delist",
+      events: [
+        {
+          event: "delist",
+          at: "prepare_to_store",
+          on: ["delete"],
+          fn: delistEvent,
+        },
+      ],
     },
     {
       // card-mod-list-0.20.0/set/abstract/id_list.rb - id-storage item

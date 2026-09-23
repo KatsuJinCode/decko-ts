@@ -95,7 +95,10 @@ import {
   trackedFieldIndex,
   type TrackedField,
 } from "../../history/change.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import type {
+  DeckoModManifest,
+  ModEventFn,
+} from "../mod-manifest.js";
 import type { ViewFn } from "../../render/format.js";
 
 // ---------------------------------------------------------------------------
@@ -1006,6 +1009,62 @@ export async function actionHashList(
 }
 
 // ---------------------------------------------------------------------------
+// set/all/history/events.rb - the event declarations (pinned to the manifest
+// events[] surface; bodies are stubs because the write path / DB seam
+// stays out of scope for this lane, mirroring the list mod's pattern for
+// its three event pins)
+// ---------------------------------------------------------------------------
+//
+// Of the six events in events.rb (1-7, 15-17, 19-22, 25-46, 40-46, 48-50),
+// THREE pin into the manifest events[] (the stages the ModEventStage union
+// at mod-manifest.ts:151-159 covers): :update_ancestor_timestamps at
+// :integrate, :finalize_action at :finalize, :rollback_actions at
+// :prepare_to_validate (with on: :update). THREE are BLOCKED:
+//   - :assign_action at :initialize    (the union lacks :initialize;
+//     card-1.110.0 lib/card/director/stages.rb:5 includes it)
+//   - :detect_conflict at :validate     (the union lacks :validate)
+//   - :finalize_act via `after: :finalize_action` (no relative :after
+//     ordering on ModEventRegistration - the union's `extend` is the
+//     extend hook, not a same-card ordering offset)
+// All three pinned bodies need DB write access; the fns are no-op stubs
+// that document the seam each body would call into (the host argument is
+// reserved for a future write-path composition surface).
+
+/** events.rb:1-7 update_ancestor_timestamps (integrate) - `ids =
+ *  history_ancestor_ids; return unless ids.present?; Card.where(id: ids)
+ *  .update_all(...); ids.map { |anc_id| Card.expire anc_id.cardname }`.
+ *  The DB UPDATE + cache.expire are the write-path acts/CQL seam that
+ *  stays out of scope here (see header). */
+const updateAncestorTimestampsEvent: ModEventFn = (_card, _host) => {
+  // see header: history_ancestor_ids (ported above) -> DB update_all ->
+  // Card.expire (cache.invalidate + prepareEngine fetch surface).
+};
+
+/** events.rb:25-38 finalize_action (finalize, when: :finalize_action?) -
+ *  Ruby body: `if changed_fields.present?` then `@current_action.update!
+ *  card_id: id; store_card_changes_for_create_action if first_change?;
+ *  store_card_changes unless first_create?`; else drop the empty action.
+ *  The write path lives in src/card/history/write-path.ts (ActWriter);
+ *  the fn records the body without attempting to call write-path seams
+ *  the ModEventCard surface (name/id/dbContent, no action row) cannot
+ *  supply. */
+const finalizeActionEvent: ModEventFn = (_card, _host) => {
+  // see header: write-path (ActWriter.finalizeAction) is not exposed to
+  // the event fn signature; the seam belongs to a later wave.
+};
+
+/** events.rb:40-46 rollback_actions (prepare_to_validate, on: :update,
+ *  when: :rollback_request?) - the body reads `revert_actions` from
+ *  Env.params, calls `process_revert_actions`, runs `update!` on the
+ *  result, clears drafts, then `abort :success`. Both Env.params + the
+ *  abort pipeline + the revert write path are out of scope here. */
+const rollbackActionsEvent: ModEventFn = (_card, _host) => {
+  // see header: Env.params["revert_actions"] -> process_revert_actions
+  // (set/all/history/actions.rb) -> update! -> abort :success; all three
+  // are later-wave seams.
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem set file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -1038,10 +1097,33 @@ const cardModHistory: DeckoModManifest = {
       setPath: "all/history/act_listing",
     },
     {
-      // card-mod-history-0.20.0/set/all/history/events.rb - the six events;
-      // the write events are src/card/history/write-path.ts, edit_conflict?
-      // is ported above
+      // card-mod-history-0.20.0/set/all/history/events.rb - of the six
+      // events in this file, THREE pin into the manifest events[] (the
+      // stages the ModEventStage union covers); THREE are BLOCKED - the
+      // :initialize / :validate stages are absent from the union (see
+      // the events-block header above). Bodies are stubs - the write
+      // path + DB seam are out of scope for this lane.
       setPath: "all/history/events",
+      events: [
+        {
+          event: "update_ancestor_timestamps",
+          at: "integrate",
+          fn: updateAncestorTimestampsEvent,
+        },
+        {
+          event: "finalize_action",
+          at: "finalize",
+          when: "finalize_action?",
+          fn: finalizeActionEvent,
+        },
+        {
+          event: "rollback_actions",
+          at: "prepare_to_validate",
+          on: ["update"],
+          when: "rollback_request?",
+          fn: rollbackActionsEvent,
+        },
+      ],
     },
     {
       // card-mod-history-0.20.0/set/all/history/export.rb - json

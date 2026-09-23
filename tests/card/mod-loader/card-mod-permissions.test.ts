@@ -376,6 +376,169 @@ describe("card-mod-permissions through the loader", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 2b. events[] - the manifest events surface (lane: events)
+// ---------------------------------------------------------------------------
+
+describe("card-mod-permissions events[] through the loader", () => {
+  it("registers all six portable events into ModLoadReport.registeredEvents in walk order", () => {
+    // the SetLoader phase registers events in pattern-group outer, then mod
+    // order, then path-sorted files within a mod, then declaration order
+    // within a file (mod-loader.ts:283-293). For card-mod-permissions
+    // (gem-defaults group, 11 set files) the walk order is:
+    //   All::Permissions    -> set_read_rule, set_field_read_rules,
+    //                          update_read_rule
+    //   All::UpdateReadRules -> update_rule_cache, expire_related
+    //   Right::Read          -> cascade_read_rule
+    // (check_permissions at :validate is BLOCKED - see the port file header
+    // and the "does NOT register check_permissions" test below)
+    const loader = new ModLoader([{ manifest: cardModPermissions }]);
+    liveLoader = loader;
+    const report = loader.load();
+    expect(report.registeredEvents).toEqual([
+      "set_read_rule",
+      "set_field_read_rules",
+      "update_read_rule",
+      "update_rule_cache",
+      "expire_related",
+      "cascade_read_rule",
+    ]);
+  });
+
+  it("populates the loader's event registry with file coordinates + modName injected", () => {
+    const loader = new ModLoader([{ manifest: cardModPermissions }]);
+    liveLoader = loader;
+    loader.load();
+    const registry = loader.eventRegistry();
+    expect(registry.size()).toBe(6);
+    // every entry carries the loader-injected file coordinates
+    expect(registry.all().map((e) => `${e.setPath}:${e.event}`)).toEqual([
+      "all/permissions:set_read_rule",
+      "all/permissions:set_field_read_rules",
+      "all/permissions:update_read_rule",
+      "all/update_read_rules:update_rule_cache",
+      "all/update_read_rules:expire_related",
+      "right/read:cascade_read_rule",
+    ]);
+    // modName on every entry ("permissions", mod-manifest.ts:258-266)
+    expect(registry.all().every((e) => e.modName === "permissions")).toBe(true);
+  });
+
+  it("pins each event's stage + on + when fields from the Ruby declarations", () => {
+    // :set_read_rule (permissions.rb:1 - `:store, on: :save`)
+    const setReadRule = loaderFor(cardModPermissions).eventRegistry().forEvent("set_read_rule");
+    expect(setReadRule?.setPath).toBe("all/permissions");
+    expect(setReadRule?.at).toBe("store");
+    expect(setReadRule?.on).toEqual(["save"]);
+    expect(setReadRule?.when).toBeUndefined();
+    // the `changed: %i[type_id name]` clause (permissions.rb:1) has no
+    // ModEventRegistration field - the surface can't carry it; the port's
+    // blockers section names this divergence
+    expect(setReadRule?.priority).toBeUndefined();
+
+    // :set_field_read_rules (permissions.rb:7 - `after: :set_read_rule,
+    // on: :update, changed: :type_id`) - the `after` and `changed` clauses
+    // are dropped (no TS schema field); only `on: ["update"]` survives
+    const setField = loaderFor(cardModPermissions).eventRegistry().forEvent("set_field_read_rules");
+    expect(setField?.at).toBeUndefined();
+    expect(setField?.on).toEqual(["update"]);
+
+    // :update_read_rule (permissions.rb:11 - no opts at all)
+    const updateReadRule = loaderFor(cardModPermissions).eventRegistry().forEvent("update_read_rule");
+    expect(updateReadRule?.at).toBeUndefined();
+    expect(updateReadRule?.on).toBeUndefined();
+    expect(updateReadRule?.when).toBeUndefined();
+
+    // :update_rule_cache (update_read_rules.rb:4 - `:finalize, when: :rule?`)
+    const updateRuleCache = loaderFor(cardModPermissions).eventRegistry().forEvent("update_rule_cache");
+    expect(updateRuleCache?.at).toBe("finalize");
+    expect(updateRuleCache?.when).toBe("rule?");
+
+    // :expire_related (update_read_rules.rb:8 - `:finalize`)
+    const expireRelated = loaderFor(cardModPermissions).eventRegistry().forEvent("expire_related");
+    expect(expireRelated?.at).toBe("finalize");
+    expect(expireRelated?.when).toBeUndefined();
+
+    // :cascade_read_rule (right/read.rb:9 - `:finalize, after:
+    // :update_rule_cache, when: :rule?`) - `after:` is dropped
+    const cascade = loaderFor(cardModPermissions).eventRegistry().forEvent("cascade_read_rule");
+    expect(cascade?.at).toBe("finalize");
+    expect(cascade?.when).toBe("rule?");
+  });
+
+  it("does NOT register :check_permissions - :validate stage is not in ModEventStage", () => {
+    // permissions.rb:22-26 `event :check_permissions, :validate do ... end`.
+    // :validate is a Ruby stage (card-1.110.0 director.rb:18) that is
+    // missing from ModEventStage (mod-manifest.ts:151-159 lists
+    // prepare_to_validate / prepare_to_store / store / finalize / integrate
+    // / integrate_with_delay / extend / extend_with_delay). Coercing a
+    // string would compile but lie; the port omits the declaration and the
+    // loader registry confirms it stays absent.
+    const registry = loaderFor(cardModPermissions).eventRegistry();
+    expect(registry.forEvent("check_permissions")).toBeUndefined();
+    expect(registry.all().some((e) => e.event === "check_permissions")).toBe(false);
+  });
+
+  it("forStage groups events by stage preserving registration order", () => {
+    // forStage: ModEventRegistry#forStage (mod-event-registry.ts:78-80)
+    // returns the events declared at the named stage in walk order - the
+    // same order Ruby's same-stage execution walks them. For this mod:
+    //   store     -> set_read_rule (1)
+    //   finalize  -> update_rule_cache, expire_related, cascade_read_rule (3)
+    //   <no stage> -> set_field_read_rules, update_read_rule (2)
+    const registry = loaderFor(cardModPermissions).eventRegistry();
+    expect(registry.forStage("store").map((e) => e.event)).toEqual([
+      "set_read_rule",
+    ]);
+    expect(registry.forStage("finalize").map((e) => e.event)).toEqual([
+      "update_rule_cache",
+      "expire_related",
+      "cascade_read_rule",
+    ]);
+    // the empty-stage stages the mod touches NO event at - confirming the
+    // omissions are honest, not "the stage lookup broke"
+    expect(registry.forStage("integrate")).toEqual([]);
+    expect(registry.forStage("prepare_to_validate")).toEqual([]);
+    expect(registry.forStage("prepare_to_store")).toEqual([]);
+  });
+
+  it("the registered fns are no-op stubs adapted to (card, host) - the bodies live on Ruby's save path", async () => {
+    // every registered fn is `(card, host) => void | Promise<void>` per
+    // ModEventFn (mod-manifest.ts:177-180) and a no-op stub - the actual
+    // bodies (read_rule_id assignment, Card.where.update_all, Auth.as_bot
+    // role warm, Rule::Cache.clear_rule_cache, Director.expirees push,
+    // member-walk update_read_rule) are DB-write / class-side state with
+    // no TS write-path surface. The signature is the contract; the body
+    // resolves to undefined.
+    const registry = loaderFor(cardModPermissions).eventRegistry();
+    const fakeCard = { name: "*all+*read" };
+    const fakeHost = {} as ModEngineHost;
+    for (const entry of registry.all()) {
+      const result = await entry.fn(fakeCard, fakeHost);
+      expect(result).toBeUndefined();
+    }
+  });
+
+  it("reset() empties the loader-owned event registry without touching the process default", () => {
+    const loader = new ModLoader([{ manifest: cardModPermissions }]);
+    liveLoader = loader;
+    loader.load();
+    expect(loader.eventRegistry().size()).toBe(6);
+    loader.reset();
+    expect(loader.eventRegistry().size()).toBe(0);
+    expect(loader.eventRegistry().all()).toEqual([]);
+  });
+});
+
+/** Build a fresh loader for assertions whose loader isn't surfaced (the
+ *  shared `liveLoader` is single-slot by afterEach contract). */
+function loaderFor(manifest: DeckoModManifest): ModLoader {
+  const loader = new ModLoader([{ manifest }]);
+  liveLoader = loader;
+  loader.load();
+  return loader;
+}
+
+// ---------------------------------------------------------------------------
 // 3-7. the view bodies
 // ---------------------------------------------------------------------------
 

@@ -73,6 +73,44 @@
 //   permission_error_no_action_rule ("No %{action} rule for %{name}",
 //   en.yml:2) is consumed only by require_permission_rule!
 //   (permissions.rb:77-85), an event-path error with no TS surface.
+//
+// Events (this lane): the six events the manifest's events[] surface can
+// carry verbatim - file coordinates injected by the loader's SetLoader
+// phase (mod-loader.ts:283-293, the same path card-mod-list's not-ported
+// events would take). Ruby file -> manifest field map:
+//   - set/all/permissions.rb:1-26 - events :set_read_rule (`:store`,
+//     `on: :save`, `changed: %i[type_id name]` - the `changed` clause has
+//     no ModEventRegistration field, recorded as a blocker),
+//     :set_field_read_rules (`after: :set_read_rule, on: :update,
+//     changed: :type_id` - `after`/`changed` clauses are blockers, only
+//     `on: ["update"]` is portable), :update_read_rule (no stage, no opts).
+//     NOT PORTED: :check_permissions (permissions.rb:22-26) - its stage
+//     `:validate` is NOT in ModEventStage (mod-manifest.ts:151-159 lists
+//     prepare_to_validate / prepare_to_store / store / finalize / integrate
+//     / integrate_with_delay / extend / extend_with_delay; Ruby's validate
+//     stage, card-1.110.0 director.rb:18, is missing). The cleanest port
+//     is to record the omission here rather than coerce a stage - this
+//     lane's blocker section names it.
+//   - set/all/update_read_rules.rb:4-11 - events :update_rule_cache
+//     (`:finalize, when: :rule?`) and :expire_related (`:finalize`).
+//   - set/right/read.rb:9-14 - event :cascade_read_rule (`:finalize,
+//     after: :update_rule_cache, when: :rule?` - `after` clause has no
+//     ModEventRegistration field, recorded as a blocker).
+//
+// Event bodies: every fn is a no-op stub. The bodies live on Ruby's save
+// path (set_read_rule mutates read_rule_id/read_rule_class; update_read_rule
+// wraps `Card.where(id: id).update_all read_rule_id: ..., read_rule_class:
+// ...` in `without_timestamps`, permissions.rb:11-20; cascade_read_rule
+// walks the rule set's members and rewrites their read_rule_id,
+// read.rb:28-63; check_permissions tracks permission errors and raises
+// Card::Error::PermissionDenied, permissions.rb:201-207 / 77-85; the
+// `:update_rule_cache` body calls Card::Rule.clear_rule_cache, line 5;
+// `:expire_related` resets patterns + pushes structurees to Director.
+// expirees, line 8-11). All are DB-write / class-side state with no TS
+// write-path surface; the registry pins the DECLARATIONS so the coordinator
+// knows which event names land at which stages, the same surface
+// card-mod-integrate pins as OBSERVER_EVENT_DECLARATIONS for the same
+// reason.
 
 import { UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
@@ -84,6 +122,7 @@ import { h } from "../../render/slot-html.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventFn,
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -516,12 +555,91 @@ export async function preparePermissionRoles(host: ModEngineHost): Promise<void>
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
-/** A set-module entry that registers nothing (the passive files: their
- *  events/methods have no TS surface - see the header's honest remainder),
- *  keeping the registrar's per-file bookkeeping faithful. */
-const passiveSetModule = (setPath: string): { setPath: string } => ({
-  setPath,
-});
+// ---------------------------------------------------------------------------
+// the event bodies (lib/card/set/event.rb registrations; fn signature
+// (card, host) -> void | Promise<void> per mod-manifest.ts:177-180)
+// ---------------------------------------------------------------------------
+
+/** permissions.rb:1-5 `event :set_read_rule, :store, on: :save, changed:
+ *  %i[type_id name] do ... end`. Body: `read_rule_id, read_rule_class =
+ *  permission_rule_id_and_class(:read); self.read_rule_id = read_rule_id;
+ *  self.read_rule_class = read_rule_class` - mutates the acting card's
+ *  read_rule columns on save. DB-write behavior with no TS write-path
+ *  surface; the registry carries the declaration, the fn is a no-op. */
+const setReadRuleFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** permissions.rb:7-9 `event :set_field_read_rules, after: :set_read_rule,
+ *  on: :update, changed: :type_id do each_field_as_bot(&:update_read_rule)
+ *  end`. Body: walks the card's field cards as Auth.as_bot and calls
+ *  update_read_rule on each. The TS field-walk + Auth.as_bot role + the
+ *  update_read_rule recursion are all DB-write surfaces. */
+const setFieldReadRulesFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** permissions.rb:11-20 `event :update_read_rule do without_timestamps do
+ *  reset_patterns; set_read_rule; Card.where(id: id).update_all
+ *  read_rule_id: read_rule_id, read_rule_class: read_rule_class; expire
+ *  :shared; update_field_read_rules end end`. Body: full read-rule
+ *  recomputation + update_all over a Card.where + pattern reset + cache
+ *  expiration. All DB-write / cache-write; the registry carries the
+ *  declaration only. */
+const updateReadRuleFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** update_read_rules.rb:4-6 `event :update_rule_cache, :finalize, when:
+ *  :rule? do Card::Rule.clear_rule_cache end`. Body: clears the
+ *  process-wide Rule::Cache (rule/cache.rb - the lookup table the
+ *  rule_card walk reads). Cache-write on a class-side object; no TS
+ *  consumer; the registry carries the declaration only. */
+const updateRuleCacheFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** update_read_rules.rb:8-11 `event :expire_related, :finalize do
+ *  reset_patterns; structuree_names.each { |name| Director.expirees <<
+ *  name } if is_structure? end`. Body: pattern reset + push structuree
+ *  names onto the Director's expirees queue. Class-side / director-side
+ *  state with no TS consumer. */
+const expireRelatedFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** right/read.rb:9-14 `event :cascade_read_rule, :finalize, after:
+ *  :update_rule_cache, when: :rule? do return unless name_is_changing? ||
+ *  trash_is_changing?; update_read_ruled_cards end`. Body: walks the rule
+ *  set's members, calls update_read_rule on each, and rewrites
+ *  read_rule_id-bearing cards via Auth.as_bot. read.rb:28-63. DB-write
+ *  surface with no TS consumer. */
+const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
+  // no-op: see the header's "Event bodies" paragraph.
+};
+
+/** A set-module entry that registers no views (the passive files:
+ *  events carry separately into events[], see the headers below; setting
+ *  opts are the same). The setPaths follow the gem tree verbatim. */
+function passiveSetModule(setPath: string, events?: ReadonlyArray<{
+  event: string;
+  at?: "prepare_to_validate" | "prepare_to_store" | "store" | "finalize" |
+    "integrate" | "integrate_with_delay" | "extend" | "extend_with_delay";
+  on?: readonly ("create" | "update" | "delete" | "save")[];
+  when?: string;
+  priority?: number;
+  fn: ModEventFn;
+}>): { setPath: string; events?: ReadonlyArray<{
+  event: string;
+  at?: "prepare_to_validate" | "prepare_to_store" | "store" | "finalize" |
+    "integrate" | "integrate_with_delay" | "extend" | "extend_with_delay";
+  on?: readonly ("create" | "update" | "delete" | "save")[];
+  when?: string;
+  priority?: number;
+  fn: ModEventFn;
+}> } {
+  return events === undefined ? { setPath } : { setPath, events };
+}
 
 const cardModPermissions: DeckoModManifest = {
   name: "permissions",
@@ -549,12 +667,62 @@ const cardModPermissions: DeckoModManifest = {
       // check_permissions + the ok?/permit/who_can machinery (the read
       // half lives engine-side as isDenied/taskAllowed,
       // format.ts:637-648, citing permissions.rb:142-157)
-      ...passiveSetModule("all/permissions"),
+      //
+      // Events (permissions.rb:1-26):
+      //   - :set_read_rule (`:store, on: :save, changed: %i[type_id name]`,
+      //     lines 1-5) - the `changed` clause has no ModEventRegistration
+      //     field (the TS schema is event/at/on/when/priority/fn only);
+      //     BLOCKER: the changed-fields gate is not ported.
+      //   - :set_field_read_rules (`after: :set_read_rule, on: :update,
+      //     changed: :type_id`, lines 7-9) - BLOCKER: `after`/`changed`
+      //     clauses have no ModEventRegistration fields. Only `on:
+      //     ["update"]` is portable; the declaration records it verbatim
+      //     and the comment names the dropped clauses.
+      //   - :update_read_rule (lines 11-20) - no stage, no on, no opts.
+      //   - :check_permissions (`:validate`, lines 22-26) - NOT REGISTERED.
+      //     BLOCKER: `:validate` is a Ruby stage (card-1.110.0
+      //     lib/card/director.rb:18) that is NOT in ModEventStage
+      //     (mod-manifest.ts:151-159 lists prepare_to_validate /
+      //     prepare_to_store / store / finalize / integrate /
+      //     integrate_with_delay / extend / extend_with_delay).
+      //     coerce(string) would compile but be a lie; the declaration is
+      //     left out and the test asserts it is absent.
+      ...passiveSetModule("all/permissions", [
+        {
+          event: "set_read_rule",
+          at: "store",
+          on: ["save"],
+          fn: setReadRuleFn,
+        },
+        {
+          event: "set_field_read_rules",
+          on: ["update"],
+          fn: setFieldReadRulesFn,
+        },
+        {
+          event: "update_read_rule",
+          fn: updateReadRuleFn,
+        },
+      ]),
     },
     {
       // card-mod-permissions-0.20.0/set/all/update_read_rules.rb - events
-      // update_rule_cache / expire_related (rule-cache invalidation)
-      ...passiveSetModule("all/update_read_rules"),
+      // update_rule_cache (`:finalize, when: :rule?`, lines 4-6) +
+      // expire_related (`:finalize`, lines 8-11). Both are recordable
+      // verbatim.
+      ...passiveSetModule("all/update_read_rules", [
+        {
+          event: "update_rule_cache",
+          at: "finalize",
+          when: "rule?",
+          fn: updateRuleCacheFn,
+        },
+        {
+          event: "expire_related",
+          at: "finalize",
+          fn: expireRelatedFn,
+        },
+      ]),
     },
     {
       // card-mod-permissions-0.20.0/set/right/create.rb - include_set
@@ -569,8 +737,18 @@ const cardModPermissions: DeckoModManifest = {
     {
       // card-mod-permissions-0.20.0/set/right/read.rb - include +
       // assign_type :list + the html-format include + event
-      // cascade_read_rule and the read-rule cascade machinery (9-77)
-      ...passiveSetModule("right/read"),
+      // cascade_read_rule (`:finalize, after: :update_rule_cache, when:
+      // :rule?`, lines 9-14) and the read-rule cascade machinery (16-77).
+      // BLOCKER: `after: :update_rule_cache` has no ModEventRegistration
+      // field; only `:finalize` + `when: "rule?"` are portable.
+      ...passiveSetModule("right/read", [
+        {
+          event: "cascade_read_rule",
+          at: "finalize",
+          when: "rule?",
+          fn: cascadeReadRuleFn,
+        },
+      ]),
     },
     {
       // card-mod-permissions-0.20.0/set/right/update.rb - same shape

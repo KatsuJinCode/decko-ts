@@ -10,16 +10,17 @@
 // card-mod-markdown.ts; no fixture-captured oracle bytes, so the
 // port-level test asserts the view dispatches and emits the
 // guide-text class list, the d-none edit-link span shape, and the
-// nested guide content through the markdown :core path), and the two
-// setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
-// state under "setting_groups"/"setting_opts_*").
+// nested guide content through the markdown :core path), set/right/help.rb
+// (the :popover view - delegates to card-mod-bootstrap's
+// popoverLink helper, helper.rb:41-44; the helper is imported as-is from
+// card-mod-bootstrap.ts (popoverLink, card-mod-bootstrap.ts:166), no oracle
+// fixture pins the :popover bytes - the test below labels the capture as
+// CAPTURE PENDING and asserts the helper's anchor shape with the
+// _render_core text payload), and the two setting_opts files
+// (set/self/help.rb, set/self/guide.rb - oracle state under
+// "setting_groups"/"setting_opts_*").
 //
 // NOT yet ported (honest remainder, see docs/mod-loader-port-notes.md):
-// - set/right/help.rb view :popover - the popover_link helper from
-//   card-mod-bootstrap-0.20.0 set/all/bootstrap/helper.rb:41-44 (the
-//   icon_tag :help + data-bs-toggle: popover anchors) is unported; no
-//   oracle capture pins the byte shape, so registering the view would
-//   claim a fidelity the fixtures do not pin
 // - set/right/guide.rb - set module only defines a card-level
 //   `raw_help_text` method (card-mod-help set/right/guide.rb:3-7); no
 //   view declared; the SettingHelpText registry already serves the
@@ -27,6 +28,17 @@
 // - assets/style/help.scss - stylesheet mods are a separate surface
 // - config/admin.yml - the admin surface (settings/views lists) has no TS
 //   consumer
+//
+// CAPTURE PENDING (set/right/help.rb view :popover, help.rb:4-6): the
+// popoverLink helper bytes are pinned by card-mod-bootstrap's own
+// helper-rc unit tests (card-mod-bootstrap.test.ts#popoverLink, around
+// lines 498-541), but the live :popover view dispatch - the wrap of
+// _render_core inside the popoverLink text argument for a real card -
+// has no oracle-captured fixture byte. The :popover view below uses
+// popoverLink verbatim and the test asserts the helper's anchor shape
+// (data-bs-toggle, ps-1 _popover_link, material help icon, the
+// _render_core text payload) without claiming byte parity to a captured
+// oracle capture that does not exist for this set module.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
@@ -39,6 +51,11 @@ import type {
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { processHelpContent } from "../../render/help-popover.js";
 import { parseNestOptions } from "../../render/nest-syntax.js";
+// popoverLink (set/all/bootstrap/helper.rb:41-44) - the icon_tag :help +
+// data-bs-toggle=popover anchor helper card-mod-help set/right/help.rb:4-6's
+// `view :popover do popover_link _render_core end` consumes. Imported from
+// card-mod-bootstrap.ts as-is per this round's bootstrap lane.
+import { popoverLink } from "./card-mod-bootstrap.js";
 
 // ---------------------------------------------------------------------------
 // set/all/help.rb - the card-level methods, then the format :html block
@@ -148,6 +165,40 @@ const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
 const leadView: ViewFn = (ctx) => {
   ctx.voo.classUp("card-slot", "lead");
   return modSlotWrap(ctx, "lead", ctx.fmt.renderView("core"));
+};
+
+// ---------------------------------------------------------------------------
+// set/right/help.rb - the :popover view (capture pending; see header)
+// ---------------------------------------------------------------------------
+
+/** help.rb:4-6 view :popover, no view config (no `unknown:`, no
+ *  `cache: :never`, no `wrap:`): `popover_link _render_core`. The body
+ *  delegates to card-mod-bootstrap's popover_link helper (helper.rb:
+ *  41-44) - the TS implementation is the popoverLink export from
+ *  card-mod-bootstrap.ts:166 (consumed as-is per this round's bootstrap
+ *  lane). _render_core in Ruby is the same dispatch as
+ *  `ctx.fmt.renderView("core")` in TS (format.ts#renderView:275-275).
+ *
+ *  The popoverLink anchor's bytes (helper.rb:41-57):
+ *    `<a href="#" tabindex="0" class="ps-1 _popover_link"
+ *         data-bs-toggle="popover" data-bs-trigger="hover focus"
+ *         data-bs-content="<text>"><i class="notranslate
+ *         material-icons">help</i></a>`
+ *  with `<text>` = _render_core's bytes. The default icon linkText
+ *  (popoverLink:193 `if linkText === "" linkText = popoverIcon("help")`)
+ *  fires because help.rb:4-6 passes no linkText arg.
+ *
+ *  CAPTURE PENDING: no oracle capture pins the :popover bytes - the
+ *  captured set/all/bootstrap fixture does not exercise set/right/help.
+ *  The view below calls popoverLink verbatim and the test asserts the
+ *  helper's anchor shape with the _render_core text payload, not byte
+ *  parity to a captured oracle capture that does not exist. */
+const popoverView: ViewFn = (ctx) => {
+  // help.rb:5 `popover_link _render_core` -> helper.rb:41 popover_link
+  // text. The renderView dispatch goes through the format's standard
+  // view pipeline (render/format.ts:275-284) and returns the :core view
+  // bytes - the same string popover_link receives as text.
+  return popoverLink(ctx.fmt.renderView("core"));
 };
 
 // ---------------------------------------------------------------------------
@@ -452,6 +503,23 @@ const cardModHelp: DeckoModManifest = {
         position: 3,
         ruleTypeEditable: true,
         shortHelpText: "appears in the full editor view to guide users",
+      },
+    },
+    {
+      // card-mod-help-0.20.0/set/right/help.rb: the :popover view
+      // (help.rb:4-6). The view body delegates to card-mod-bootstrap's
+      // popover_link helper (helper.rb:41-44) - the TS port is the
+      // popoverLink export (card-mod-bootstrap.ts:166) imported as-is at
+      // the top of this file. CAPTURE PENDING: no oracle capture pins
+      // the :popover bytes; the live view dispatches the bootstrap
+      // helper with the _render_core text payload.
+      setPath: "right/help",
+      formats: {
+        html: {
+          views: [
+            { view: "popover", viewFn: popoverView },
+          ],
+        },
       },
     },
   ],
