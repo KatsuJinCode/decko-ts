@@ -57,6 +57,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { prewarmStaticDeck } from "./prewarm-static-deck.js";
 import {
   HandlerRegistry,
   jsonValue,
@@ -197,6 +198,22 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
       ]);
       const structureUniverse = structureUniverseFromResults(universeBatch[0]);
 
+      // Sensible-test fast path (CORPUS_PREWARM=1): the deck is static for
+      // the whole run - compose + cache + enrich every card once here so
+      // closureWarm answers true and the per-entry closure walk never
+      // runs. Judgment and bytes are unchanged; only the recomputation of
+      // a static world is hoisted (benchmarks/corpus-v2/prewarm-static-deck.ts).
+      if (process.env.CORPUS_PREWARM === "1") {
+        const t0 = Date.now();
+        const warmed = await prewarmStaticDeck(storage);
+        console.log(
+          "[prewarm] rows=" + warmed.rows + " records=" + warmed.records +
+            " enriched=" + warmed.enriched + " searches=" + warmed.searches +
+            " phases=" + JSON.stringify(warmed.phases) +
+            " totalMs=" + (Date.now() - t0),
+        );
+      }
+
       try {
         // Handlers are registered ONCE for the whole run (the seed is the
         // union deck; nothing changes between shards).
@@ -272,6 +289,7 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
             continue;
           }
           const lines = (shardSlot.lines = loadShard(shardPath));
+          const shardT0 = Date.now();
 
           // ---- build corpus entries ----------------------------------------
           const entries: ReplayEntry[] = [];
@@ -399,7 +417,8 @@ describe("corpus v2 replay: full-payload oracle parity", () => {
           console.log(
             `[shard-done] ${shardName}: records ${outcomes[outcomes.length - 1].records.pass}/${outcomes[outcomes.length - 1].records.total}` +
               ` (realFail ${outcomes[outcomes.length - 1].records.realFail}), renders ${outcomes[outcomes.length - 1].renders.pass}/${outcomes[outcomes.length - 1].renders.total}` +
-              ` (nestGap ${outcomes[outcomes.length - 1].renders.nestGap}, realFail ${outcomes[outcomes.length - 1].renders.realFail})`,
+              ` (nestGap ${outcomes[outcomes.length - 1].renders.nestGap}, realFail ${outcomes[outcomes.length - 1].renders.realFail})` +
+              ` wallMs=${Date.now() - shardT0}`,
           );
           // Release the parsed JSONL before the next shard seeds its entries.
           shardSlot.lines = undefined;
