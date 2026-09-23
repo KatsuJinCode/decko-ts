@@ -196,39 +196,35 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :created_at reads the card record's date (base.rb:61)", async () => {
     const s = storage!;
-    // The headless engine's prefetch drops created_at from the
-    // composed CardRecord (toRawRow keeps only the columns the
-    // read-rule cache needs; created_at is not one of them - the
-    // columns are id/name/key/codename/leftId/rightId/typeId/
-    // dbContent/trash/readRuleId/readRuleClass). The port renders
-    // the empty string when the date is absent - documented
-    // divergence from Ruby, which always has the timestamp.
+    // The prefetch walk carries cards.created_at through to the
+    // composed CardRecord (prefetch.ts RawRow), so the seeded
+    // "2026-09-19 00:00:00.000" renders through the date view - the
+    // former "documented divergence from Ruby" (empty timestamp) is
+    // closed; Ruby always has the timestamp and so does the port now.
     const rendered = await s.engine.render("Oracle Date Probe", "created_at");
-    expect(rendered).toBe("");
+    expect(rendered).toBe("2026-09-19");
   });
 
   it("WITH the mod: :updated_at reads the card record's date (base.rb:62)", async () => {
     const s = storage!;
     const rendered = await s.engine.render("Oracle Date Probe", "updated_at");
-    expect(rendered).toBe("");
+    expect(rendered).toBe("2026-09-19");
   });
 
   it("WITH the mod: :acted_at reads the card record's date (base.rb:63)", async () => {
     const s = storage!;
     // :acted_at falls through to updated_at (the schema has no acted_at).
     const rendered = await s.engine.render("Oracle Date Probe", "acted_at");
-    expect(rendered).toBe("");
+    expect(rendered).toBe("2026-09-19");
   });
 
   it("WITH the mod: :created_at formats a present date when voo.variant is a strftime pattern", async () => {
     const s = storage!;
-    // The headless test path does not hydrate created_at through the
-    // prefetch, so the port returns "" in practice. The variant
-    // branch (strftime) is exercised by the formatStrftime helper
-    // directly; this test guards the public surface doesn't throw.
+    // The seeded timestamp hydrates through the prefetch row, so the
+    // view formats it; the variant branch (strftime) is exercised by
+    // the formatStrftime helper directly.
     const result = await s.engine.render("Oracle Date Probe", "created_at");
-    // dateView with no SQL date returns "".
-    expect(result).toBe("");
+    expect(result).toBe("2026-09-19");
   });
 
   it("WITH the mod: :raw renders the dbContent (base.rb:75-77)", async () => {

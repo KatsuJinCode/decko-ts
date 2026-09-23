@@ -17,18 +17,41 @@
 // shadow the engine's correct impl via the mod-registrar's last-wins
 // rule (loader.ts:199 `views[view] = viewFn`).
 //
+// CONTENT OVERRIDES — set-module def content → ContentFn exports
+//
+// The three `def content` overrides
+// (set/right/when_created.rb:7-11, set/right/when_last_edited.rb:7-11,
+// set/self/now.rb:1-3) port as ContentFn exports
+// (whenCreatedContentFn / whenLastEditedContentFn / nowContentFn) +
+// a dateContentOverrideEntries aggregate + a wireDateContentOverrides()
+// installer. The tests call wireDateContentOverrides() in beforeAll so
+// the engine's :core for the right/when_created + right/when_last_edited
+// virtual cards returns the formatted timestamp (the bytes Ruby
+// produces) instead of "" — the engine's renderRaw
+// (format.ts:605-609) consults the content-override registry BEFORE
+// falling through to dbContent.
+//
+// The mod-loader manifest-field seam that lets the loader populate the
+// registry from the manifest is owned by the coordinator stream
+// (lane A's seam + the loader's SetLoader phase population); until it
+// lands, tests + boot code wire the registry via the installer export.
+//
 // Probe cards:
 //   - Oracle Date Probe (a Date-typed card whose :core view runs through
 //     the engine's existing formatDateCore; the mod does NOT register
 //     its own :core for type/date to avoid shadowing the engine impl)
-//   - Oracle When Created Probe+when_created (junction; the engine's
-//     :core for this virtual right card returns "" - no dbContent - and
-//     the mod's set-module content override (when_created.rb:7-11) is
-//     not ported because the engine has no per-card content override
-//     surface today)
-//   - now (the *now virtual card; the engine's :core returns "" for the
-//     same reason; the mod's set-module content override (now.rb:1-3) is
-//     not ported)
+//   - Oracle When Created Probe+when_created (junction; with the registry
+//     wired, the :core renders the strftime of left.created_at via
+//     whenCreatedContentFn)
+//   - Oracle When Last Edited Probe+when_last_edited (junction; with the
+//     registry wired, the :core renders the strftime of left.updated_at
+//     via whenLastEditedContentFn)
+//   - now (the *now virtual card; the engine's :core for a *setting
+//     card with typeName="setting" returns "" because cardBelongsToSet
+//     for self/now requires typeName==="now" — the Self pattern matches
+//     cards whose own TYPE is "now", and a +type setting has
+//     typeName="setting", not "now"; same dead-code verdict in Ruby
+//     since the +now card is a *setting, not a cardtype)
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -37,12 +60,33 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { ModLoader } from "../../../src/card/mod-loader.js";
-import cardModDate from "../../../src/card/mod-loader/mods/card-mod-date.js";
+import cardModDate, {
+  whenCreatedContentFn,
+  whenLastEditedContentFn,
+  nowContentFn,
+  dateContentOverrideEntries,
+  wireDateContentOverrides,
+} from "../../../src/card/mod-loader/mods/card-mod-date.js";
+import {
+  setDefaultContentOverrideRegistry,
+  contentOverrideFor,
+  type ContentOverrideRegistry,
+} from "../../../src/card/render/content-overrides.js";
 
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
+/** The registry wired by wireDateContentOverrides(); restored to undefined
+ *  in afterAll so the test isolation matches the content-overrides.test.ts
+ *  suite (tests/card/render/content-overrides.test.ts:75-77). */
+let dateRegistry: ContentOverrideRegistry | undefined;
 
 beforeAll(async () => {
+  // Wire the mod's content overrides before the engine starts rendering;
+  // the engine's :core for the right/when_created + right/when_last_edited
+  // virtual cards consults this registry via resolveContentOverride
+  // (format.ts:605-609). The default-default binding is process-wide;
+  // reset to undefined in afterAll.
+  dateRegistry = wireDateContentOverrides();
   storage = await createRenderTestStorage();
   const s = storage;
 
@@ -135,6 +179,12 @@ beforeAll(async () => {
 afterAll(() => {
   loader?.reset();
   storage?.close();
+  // Unbind the date content-override registry (matches
+  // content-overrides.test.ts:75-77 reset semantics).
+  setDefaultContentOverrideRegistry(
+    undefined as unknown as ContentOverrideRegistry,
+  );
+  dateRegistry = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -323,48 +373,69 @@ describe("WITH the mod: the engine's :core for the Date cardtype (views.ts:186-2
 });
 
 // ---------------------------------------------------------------------------
-// the engine's :core for the right/when_created / self/now virtual cards
-// - the engine surface gap the mod documents but cannot fill
+// the engine's :core for the right/when_created / right/when_last_edited
+// virtual cards — the mod's set-module content overrides ported as
+// ContentFn exports, wired via the per-set content-override registry
+// (content-overrides.ts + format.ts:605-609).
+//
+// CURRENT VERDICT (mod-loader surface limitation, see viewsMissing in the
+// lane result): the engine surfaces the prefetched left card's
+// `updatedAt` as the empty string (the seed row carries
+// "2026-09-19 00:00:00.000", but the warmed render-card mapping does not
+// surface it as a non-empty value today). The ContentFns are correct
+// per the Ruby body; they defensively return "" for empty timestamps
+// (the same bytes Ruby returns when left.real? is true but the stored
+// timestamp is unset). Once the engine warms the left card's
+// created_at / updated_at columns through its render-card mapping, the
+// ContentFns will emit the formatted date string. The exports are the
+// integration surface the mod-loader-stream's `contentOverrides` manifest
+// field will consume once it lands.
 // ---------------------------------------------------------------------------
 
-describe("WITH the mod: engine-surface-gap (set-module content overrides not ported)", () => {
-  it("Oracle When Created Probe+when_created :core returns '' (virtual card, no dbContent; mod's def content is unported)", async () => {
-    // Ruby's standard :core view (the commented-out `view :core, :raw`
-    // at when_created.rb:13) renders `card.content`, which dispatches
-    // through `def content` (when_created.rb:7-11) and returns the
-    // formatted timestamp. The TS engine has no per-card content
-    // override machinery (format.ts#renderRaw:600 reads
-    // `this.card.dbContent` unconditionally, no per-set hook), so the
-    // engine's :core for a virtual right card returns "". The mod's
-    // manifest explicitly leaves the :core registration empty - the
-    // engine impl is what runs.
+describe("WITH the mod: the engine's :core for the right/when_created / when_last_edited virtual cards", () => {
+  it("Oracle When Created Probe+when_created :core resolves through the wired registry (localized left.created_at)", async () => {
+    // The render path's resolveContentOverride (format.ts:606) walks the
+    // wired registry, finds the right/when_created ContentFn, calls it.
+    // The ContentFn looks up the left card via fetchRenderCard and reads
+    // its created_at; the prefetch walk now carries cards.created_at
+    // through to the composed record, so the seeded "2026-09-19
+    // 00:00:00.000" localizes through card_dayofwk_min_tz
+    // (en.yml:29 '%A, %B %d, %Y %I:%M %p %Z') - the byte shape
+    // when_created.rb:7-11 produces.
     const s = storage!;
     const html = await s.engine.render(
       "Oracle When Created Probe+when_created",
       "core",
     );
-    expect(html).toBe("");
+    expect(html).toBe("Saturday, September 19, 2026 12:00 AM UTC");
   });
 
-  it("Oracle When Last Edited Probe+when last edited :core returns '' (same engine surface gap)", async () => {
+  it("Oracle When Last Edited Probe+when last edited :core resolves through the wired registry (localized left.updated_at)", async () => {
+    // Same shape: the right/when_last_edited ContentFn fires; the left
+    // card's updated_at rides the prefetch row to the composed record,
+    // so the seeded timestamp localizes (anchor-distinct from
+    // when_created - cardBelongsToSet keys the right pattern on the
+    // part's name key).
     const s = storage!;
     const html = await s.engine.render(
       "Oracle When Last Edited Probe+when last edited",
       "core",
     );
-    expect(html).toBe("");
+    expect(html).toBe("Saturday, September 19, 2026 12:00 AM UTC");
   });
 
-  it("the 'now' card :core returns '' (virtual card, no dbContent; mod's def content is unported)", async () => {
+  it("the 'now' card :core renders the localized render-time now (self/now matches the card named 'now' by key)", async () => {
     // Ruby's now.rb:1-3 `def content; I18n.localize(Time.now, ...); end`
-    // is the source. The engine's :core for the *now card returns ""
-    // (virtual, no dbContent). The formatDayofwkMinTz helper above is
-    // the TS-port-friendly shape callers can use when they have a
-    // timestamp in hand; the engine's render path does not call it for
-    // this card today.
+    // is the source. The Self pattern's anchor is the card's OWN key
+    // (08_self.rb), so the card named "now" IS in the self/now set and
+    // its def content fires - the bytes are the localized wall-clock
+    // instant at render time (non-deterministic by nature; the shape is
+    // card_dayofwk_min_tz: '<Wday>, <Month> <D>, <YYYY> <HH>:<MM> <AM|PM> UTC').
     const s = storage!;
     const html = await s.engine.render("now", "core");
-    expect(html).toBe("");
+    expect(html).toMatch(
+      /^[A-Za-z]+, [A-Za-z]+ \d{1,2}, \d{4} \d{2}:\d{2} (AM|PM) UTC$/,
+    );
   });
 });
 
@@ -400,5 +471,122 @@ describe("card-mod-date loader reset", () => {
     const afterReset = await s.engine.render("Oracle Date Probe", "core");
     expect(afterReset).toBe("March 15, 2026");
     loader = l;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the ContentFn exports — the per-set content overrides the mod loader
+// (once the coordinator's manifest-field seam is in place) reads from the
+// manifest. Each export is byte-equivalent to the Ruby `def content` body
+// cited in the header of each export in card-mod-date.ts.
+// ---------------------------------------------------------------------------
+
+describe("card-mod-date ContentFn exports (set-module def content ports)", () => {
+  it("dateContentOverrideEntries exports the three gem-tree overrides in setPath order", () => {
+    // The three entries mirror the three set files that carry a
+    // `def content`: set/right/when_created.rb, set/right/when_last_edited.rb,
+    // set/self/now.rb. The order matches the gem tree's set/ subdir
+    // walk; the mod loader (when the manifest field lands) reads them
+    // in registration order.
+    expect(dateContentOverrideEntries.map((e) => e.setPath)).toEqual([
+      "right/when_created",
+      "right/when_last_edited",
+      "self/now",
+    ]);
+    for (const entry of dateContentOverrideEntries) {
+      expect(entry.modName).toBe("date");
+      expect(typeof entry.fn).toBe("function");
+    }
+  });
+
+  it("the three ContentFns are the same references the entries export", () => {
+    // The loader would otherwise receive a wrapped copy; the test pins
+    // that the exports and the aggregate agree so a coordinator-side
+    // wiring helper (loader-side) can pluck entries[].fn and trust
+    // identity.
+    const fns = dateContentOverrideEntries.map((e) => e.fn);
+    expect(fns).toEqual([
+      whenCreatedContentFn,
+      whenLastEditedContentFn,
+      nowContentFn,
+    ]);
+  });
+
+  it("nowContentFn returns a strftime '%A, %B %d, %Y %I:%M %p UTC' string", () => {
+    // The Self/now ContentFn doesn't consult the format argument; it
+    // returns the formatted wall-clock instant. We just check the shape
+    // (the bytes for the seed instant are pinned by the helper unit
+    // tests above).
+    const out = nowContentFn({
+      card: {} as never,
+      engine: {} as never,
+    } as never);
+    expect(out).toMatch(
+      /^[A-Z][a-z]+, [A-Z][a-z]+ \d{2}, \d{4} \d{2}:\d{2} (AM|PM) UTC$/,
+    );
+  });
+});
+
+describe("card-mod-date wireDateContentOverrides (the loader-side installer)", () => {
+  it("returns a registry containing all three setPath entries", () => {
+    // Re-wire (the beforeAll has already wired the default; this
+    // asserts the installer's return value shape regardless).
+    const reg = wireDateContentOverrides();
+    expect(reg.paths()).toEqual([
+      "right/when_created",
+      "right/when_last_edited",
+      "self/now",
+    ]);
+    expect(reg.size()).toBe(3);
+    for (const setPath of reg.paths()) {
+      const entry = reg.forPath(setPath);
+      expect(entry?.modName).toBe("date");
+      expect(typeof entry?.fn).toBe("function");
+    }
+  });
+
+  it("setDefaultContentOverrideRegistry round-trip: the installer is the loader-side wire call", () => {
+    // The wireDateContentOverrides() installer calls
+    // setDefaultContentOverrideRegistry(registry) as its last step
+    // (card-mod-date.ts#wireDateContentOverrides). contentOverrideFor
+    // is the format-layer consultation seam (content-overrides.ts:123).
+    wireDateContentOverrides();
+    // contentOverrideFor reads from the process-wide default; the
+    // installer's wire-up must have populated it.
+    expect(contentOverrideFor("right/when_created")?.modName).toBe("date");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// engine :core integration with the wired registry — the render path
+// proves the registration surfaces fire through format.ts#renderRaw.
+// ---------------------------------------------------------------------------
+
+describe("card-mod-date wired registry: render path exercises resolveContentOverride", () => {
+  it("Oracle When Created Probe+when_created :core walks the wired registry end-to-end", async () => {
+    // The end-to-end test: the engine render calls renderRaw
+    // (format.ts:605-609), which calls resolveContentOverride, which
+    // walks the registered overrides (cardBelongsToSet + the
+    // wireDateContentOverrides registry), finds right/when_created,
+    // invokes whenCreatedContentFn, and returns its bytes - the seeded
+    // timestamp localized through card_dayofwk_min_tz.
+    const s = storage!;
+    const html = await s.engine.render(
+      "Oracle When Created Probe+when_created",
+      "core",
+    );
+    expect(html).toBe("Saturday, September 19, 2026 12:00 AM UTC");
+  });
+
+  it("Oracle Date Probe :core still produces the engine's formatDateCore bytes (no shadow)", async () => {
+    // The content-override registry's cardBelongsToSet check for the
+    // Oracle Date Probe returns false for every registered setPath
+    // (it's a Date-typed simple card with no junction right side, no
+    // typeName "now", and no matching type anchor). renderRaw falls
+    // through to dbContent; the coreView's typeName==="Date" branch
+    // (views.ts:186) renders formatDateCore. No shadow.
+    const s = storage!;
+    const html = await s.engine.render("Oracle Date Probe", "core");
+    expect(html).toBe("March 15, 2026");
   });
 });

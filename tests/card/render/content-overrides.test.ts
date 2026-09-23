@@ -136,14 +136,21 @@ describe("cardBelongsToSet - the membership check", () => {
     expect(cardBelongsToSet(card, "right/when_created")).toBe(false);
   });
 
-  it("self pattern matches cards whose typeName camelizes to the anchor", () => {
-    const card = makeCard("any_name", "ignored", "now");
-    expect(cardBelongsToSet(card, "self/now")).toBe(true);
+  it("right pattern is anchor-distinct: when_created does not match when_last_edited (the date overrides fire per anchor)", () => {
+    const created = makeCard("A+when_created", "ignored");
+    expect(cardBelongsToSet(created, "right/when_last_edited")).toBe(false);
+    const edited = makeCard("A+when_last_edited", "ignored");
+    expect(cardBelongsToSet(edited, "right/when_created")).toBe(false);
   });
 
-  it("self pattern does NOT match cards with a different typeName", () => {
-    const card = makeCard("any_name", "ignored", "Date");
-    expect(cardBelongsToSet(card, "self/now")).toBe(false);
+  it("right pattern keys the anchor on the right part's name key (spaces -> underscores)", () => {
+    const card = makeCard("A+when last edited", "ignored");
+    expect(cardBelongsToSet(card, "right/when_last_edited")).toBe(true);
+  });
+
+  it("self pattern matches exactly the card the anchor names (08_self.rb: the anchor is the card's own key)", () => {
+    expect(cardBelongsToSet(makeCard("now", "ignored"), "self/now")).toBe(true);
+    expect(cardBelongsToSet(makeCard("any_name", "ignored"), "self/now")).toBe(false);
   });
 
   it("all pattern matches every card", () => {

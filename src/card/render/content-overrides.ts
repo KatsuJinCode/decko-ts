@@ -170,15 +170,22 @@ export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
         && camelizeAnchor(card.typeName) === camelizeAnchor(anchor);
     case "right":
       // 09_right.rb anchor_name is the right part's NAME (not codename);
-      // a compound card with a right part satisfies the RIGHT pattern.
-      return card.name.isCompound === true && card.name.rightName !== undefined;
+      // a compound card whose right part IS the anchor satisfies the
+      // RIGHT pattern - compared on the name KEY ("when last edited" ->
+      // "when_last_edited"), so right/when_created and
+      // right/when_last_edited are distinct sets.
+      return (
+        card.name.isCompound === true &&
+        card.name.rightName?.key === anchor
+      );
     case "left":
-      return card.name.isCompound === true && card.name.leftName !== undefined;
+      return (
+        card.name.isCompound === true && card.name.leftName?.key === anchor
+      );
     case "self":
-      // The Self pattern matches when the card IS its own type (anchor is
-      // the type's codename; a Self card's typeName equals that codename).
-      return anchor.length > 0 && card.typeName !== undefined
-        && camelizeAnchor(card.typeName) === camelizeAnchor(anchor);
+      // 08_self.rb: the Self pattern's anchor is the card's OWN key - the
+      // set contains exactly the card named by the anchor.
+      return card.name.key === anchor;
     case "plus":
       return card.name.isCompound === true;
     case "star":

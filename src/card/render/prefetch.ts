@@ -102,6 +102,14 @@ interface RawRow {
    *  Ruby actually rendered with. */
   readRuleId: number | null;
   readRuleClass: string | null;
+  /** cards.created_at / cards.updated_at - the date mod's set-module
+   *  `def content` overrides render them (card-mod-date set/right/
+   *  when_created.rb:7-11 localizes left.created_at; when_last_edited.rb
+   *  on updated_at), so the earlier "dates are not rendered" premise no
+   *  longer holds; dropping them surfaced "" through the warmed record
+   *  and blanked the override bytes. */
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 function toRawRow(row: CardsRow): RawRow {
@@ -117,6 +125,8 @@ function toRawRow(row: CardsRow): RawRow {
     trash: row.trash ?? 0,
     readRuleId: row.read_rule_id ?? null,
     readRuleClass: row.read_rule_class ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
   };
 }
 
@@ -280,6 +290,8 @@ function recordToRawRow(record: CardRecord): RawRow {
     trash: record.trash ? 1 : 0,
     readRuleId: record.readRuleId ?? null,
     readRuleClass: record.readRuleClass ?? null,
+    createdAt: record.createdAt ?? null,
+    updatedAt: record.updatedAt ?? null,
   };
 }
 
@@ -371,10 +383,11 @@ async function sideName(
 }
 
 function rowToCardsRow(row: RawRow): CardsRow {
-  // Only the fields composeCardRecord reads matter here (dates/creators are
-  // not rendered); the NOT-NULL columns get inert values. codename is read
-  // (lib/card/codename.rb#codename) and read_rule_id/read_rule_class are
-  // read by the permission layer (RawRow note) - both ride along.
+  // The fields composeCardRecord reads; the date columns ride along now
+  // that the date mod's content overrides render them (RawRow note).
+  // codename is read (lib/card/codename.rb#codename) and
+  // read_rule_id/read_rule_class are read by the permission layer
+  // (RawRow note) - both ride along.
   return {
     id: row.id,
     name: row.name,
@@ -383,8 +396,8 @@ function rowToCardsRow(row: RawRow): CardsRow {
     left_id: row.leftId,
     right_id: row.rightId,
     current_revision_id: null,
-    created_at: "",
-    updated_at: "",
+    created_at: row.createdAt ?? "",
+    updated_at: row.updatedAt ?? "",
     creator_id: 0,
     updater_id: 0,
     read_rule_class: row.readRuleClass,
