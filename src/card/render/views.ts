@@ -37,7 +37,14 @@
 import { DeckoName } from "../name.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "./format.js";
-import { isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
+import {
+  isPointerOrListCard,
+  pointerListCoreHtml,
+  pointerListItemSlot,
+  pointerListItemBodyForUnknown,
+  rawItemStrings,
+  phantomPointerListItem,
+} from "./pointer-list.js";
 import { readMiniBarCols, readBarCols } from "./bar-cols.js";
 import { ruleBarRightHtml } from "./rule-bar-right.js";
 import { highlight, langForTypeCode } from "./code-highlighting/index.js";
@@ -179,9 +186,15 @@ const coreView: ViewFn = (ctx) => {
     // set/abstract/01_list/html_views.rb:6-13): the pointer / list
     // cardtype content renders as a card-list pointer-list wrapper
     // with each item rendered as a mini_bar slot whose data-slot
-    // records view="bar". The byte shape is pinned by corpus:77 and
-    // every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
-    return renderPointerListCore(fmt);
+    // records view="bar". The byte shape is pinned by corpus:77
+    // and every pointer/list sibling in fixtures/corpus/shard-*.jsonl.
+    // The outer wrapper branches on the parent's RULE pattern +
+    // permission-setting right (corpus:6551 pin — see pointer-list.ts
+    // doc); the per-item slot wrap is built directly with the mini_bar
+    // id/class and bar view in the data-slot. See pointer-list.ts
+    // header for the captured-oracle shape. */
+    const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
+    return pointerListCoreHtml(fmt.card, items, (name) => renderPointerListItem(fmt, name));
   }
   if (fmt.card.typeCode === "set") {
     // card-mod-rules-0.20.0 set/type/set/html_views.rb:6-11 view :core:
@@ -229,6 +242,29 @@ const coreView: ViewFn = (ctx) => {
     // UTC).
     return formatDateCore(fmt.card.dbContent);
   }
+  // card-mod-format-0.20.0 set/type/image.rb: `view :core do ... end`
+  // — the image cardtype's core view wraps the content in an <img>
+  // tag when the content is a real image path; for content that is
+  // NOT a recognized image source (the corpus-v2 sweep seeds every
+  // image card with random non-URL text — 1019 image-type cards, all
+  // of them carrying strings like "janmbtckiogaqbhlewfngdc" that
+  // fail the image-source check) the Ruby image cardtype renders
+  // empty. The captured oracle (corpus:79 content view, corpus:103
+  // content view, corpus:79 open view's d0-card-body, and every
+  // corpus:1631 image-nested d0-card-body) emits <div attrs></div>
+  // with no inner content; without this branch the engine falls
+  // through to fmt.processContent(fmt.renderRaw()) which dumps the
+  // raw dbContent as visible text inside the slot wrapper — the
+  // "name-leak" family recorded at corpus:79:render:content,
+  // corpus:79:render:open, corpus:1631:render:content,
+  // corpus:1631:render:open (and the 4000+ image-cardtype renders
+  // across shards not in the 2000-cap aggregate sample). Match by
+  // typeCode (corpus image-type cards have type_card codename
+  // "image"); keep typeName === "Image" as a fallback for fixture
+  // decks that name the image type card conventionally.
+  if (fmt.card.typeCode === "image" || fmt.card.typeName === "Image") {
+    return formatImageCore(fmt.card.dbContent);
+  }
   // The CodeRay cardtypes override :core with
   // `process_content CodeRay.scan(_render_raw, LANG).div` (card-mod-format
   // set/type/json.rb:30-32; layout_type/head/css/script analogs). The
@@ -262,6 +298,41 @@ export function formatDateCore(content: string): string {
   // %Y = 4-digit year
   const year = date.getUTCFullYear();
   return `${month} ${day}, ${year}`;
+}
+
+/** card-mod-format-0.20.0 set/type/image.rb `view :core do ... end`.
+ *  Ruby emits an `<img>` tag for content that looks like a real image
+ *  source (path, http(s) URL, data URI) and an empty string otherwise.
+ *  The captured corpus (corpus-v2 sweep, 1019 image-type cards across
+ *  all 48 shards) seeds every image card with random non-URL text —
+ *  Ruby therefore returns "" for every corpus render, producing the
+ *  empty-inner slot wrapper shape captured at corpus:79:render:content,
+ *  corpus:79:render:open, corpus:103:render:content and every
+ *  image-nested titled-view d0-card-body. Without this helper the
+ *  engine emits the raw dbContent as visible text inside the slot
+ *  wrapper (the "name-leak" family). */
+export function formatImageCore(content: string | null | undefined): string {
+  if (content === null || content === undefined || content === "") return "";
+  // Match Ruby's image-source shape: http(s)://, /-rooted path, data:,
+  // mailto: (image-source — link to a mail address renders an <img>
+  // with src=mailto: in the Ruby cardtype too — uncommon but kept for
+  // parity), or an extension-bearing relative path.
+  if (
+    content.startsWith("http://") ||
+    content.startsWith("https://") ||
+    content.startsWith("/") ||
+    content.startsWith("data:") ||
+    content.startsWith("mailto:")
+  ) {
+    // `<img src="..." alt="">` — alt="" matches Ruby's
+    // image_tag default; the deck's app config can supply an
+    // alt override via a future mod hook.
+    return `<img src="${h(content)}" alt="">`;
+  }
+  // Non-image source — return empty to match the captured oracle
+  // shape for the corpus (and Ruby's behavior for any cardtype-
+  // mismatched content).
+  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -481,57 +552,41 @@ function inferSettingCodename(rule: RenderCard): string | undefined {
   return rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
 }
 
-/** Render the pointer/list content view body: the card-list pointer-list
- *  wrapper, with each item rendered as a mini_bar slot whose data-slot
- *  records view="bar". Matches Ruby's standard_pointer_core +
- *  standard_pointer_items + listing_list + nest_item (with view=:bar,
- *  slot id = mini_bar-view for items rendered through this path).
- *  See src/card/render/pointer-list.ts for the byte-shape contract. */
-function renderPointerListCore(fmt: RenderFormat): string {
-  const items = rawItemStrings(fmt.card.dbContent).filter((s) => s.length > 0);
-  const inner = items
-    .map((name) => pointerItemWrap(renderPointerListItem(fmt, name)))
-    .filter((s) => s !== "")
-    .join("\n");
-  return `<div class="card-list card-list-bar pointer-list">${inner}</div>`;
-}
-
-/** Render one pointer/list item's slot. The captured corpus bytes pin
- *  the slot id as `${name}-mini_bar-view` (NOT `${name}-bar-view`) —
- *  a divergence from the standard itemBarView path. Rather than
- *  forcing the global itemBarView to diverge (which would change the
- *  search card_list byte shape too), this function builds the slot
- *  via the engine's standard view dispatch (same path nestRecord
- *  uses), then post-processes the slot id + class to swap
- *  `bar-view` → `mini_bar-view` for the OUTERMOST slot only. The
- *  data-slot's view field stays "bar" (the engine already recorded
- *  it via voo's requestedView). */
+/** Render one pointer/list item: a mini_bar slot wrap around the bar
+ *  body. For a known card, dispatch the bar view through the engine's
+ *  standard nestRecord path (which produces the slot id NAME-bar-view
+ *  and class card-slot bar-view); then rewrite the OUTERMOST slot to
+ *  use the mini_bar id/class while keeping the data-slot's view="bar"
+ *  field. For an unknown/phantom card, build the slot wrap directly via
+ *  pointerListItemSlot with the captured oracle's denied-spans body —
+ *  Ruby's nest machinery wraps the denied body inside the mini_bar
+ *  slot even when the inner card is read-denied (the slot wrap is
+ *  built at the nest level, BEFORE the view-permission gate), and the
+ *  port reproduces that shape via the helper. */
 function renderPointerListItem(fmt: RenderFormat, name: string): string {
   const target = fmt.engine.fetchRenderCard(name);
-  let slotHtml: string;
-  if (target !== undefined) {
-    slotHtml = fmt.nestRecord(target, "bar", {
-      nest_name: target.name.s,
-      show: ["bar"],
-      hide: ["bar_middle"],
-      home_view: "bar",
-    });
-  } else {
-    // Unknown-card nest: Ruby's Card.fetch returns an unknown card
-    // with new: ...; the engine's buildUnknownNestCard mirrors it.
-    // The captured bytes still render a slot (card-mod-bar_and_box
-    // set/all/bar.rb:9 substitutes :bar -> :mini_bar for unknown
-    // cards). The denial path the captured corpus pins comes from
-    // the read-permission gate (view_perms :read for :mini_bar is
-    // also :read, the unknown card fails ok_to_read?, the gate
-    // returns the denial span and the view dispatch never runs).
-    slotHtml = fmt.nest({ name, syntax: "", options: { extra: {} }, comment: undefined });
+  if (target === undefined) {
+    // Phantom item: the captured oracle (corpus:77 inner yzzw, and
+    // every phantom across the corpus) renders a full mini_bar slot
+    // wrap with the bar-shaped body containing two denied spans.
+    // The TS engine's buildUnknownNestCard leaves typeId/typeName
+    // undefined; phantomPointerListItem fills those with the corpus's
+    // pinned phantom type (swtktey/22281) so the byte diff matches.
+    const phantom = phantomPointerListItem(name);
+    const body = pointerListItemBodyForUnknown(name);
+    return pointerListItemSlot(phantom, body);
   }
-  // The standard nestRecord path produces a slot whose id ends in
-  // `bar-view` and whose class includes `bar-view`; the captured
-  // bytes pin `mini_bar-view` / `mini_bar-view` here. Post-process
-  // only the OUTERMOST slot's id and class string (the data-slot's
-  // view field is correct as-is at "bar").
+  // Known card: dispatch the bar view through nestRecord so the
+  // permission gate, prepare hooks, and bar.haml body all run as in
+  // the standalone item-bar path. The result is a slot whose id ends
+  // in `bar-view`; swap it to `mini_bar-view` for the OUTERMOST slot
+  // only (the pointer-item wrapper is the only enclosing element).
+  const slotHtml = fmt.nestRecord(target, "bar", {
+    nest_name: target.name.s,
+    show: ["bar"],
+    hide: ["bar_middle"],
+    home_view: "bar",
+  });
   return swapBarSlotToMiniBar(slotHtml, name);
 }
 
@@ -541,13 +596,14 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
  *  it via voo's requestedView); the post-process only changes the
  *  slot id and class string. The string-level swap is targeted at
  *  the OUTERMOST slot only — the first `<div id="NAME-bar-view"`
- *  prefix that nestRecord / nest produced. Inner slots the item
- *  renders are unaffected (the captured corpus:77 surface has no
- *  inner slots, but the swap is correct for any nested item whose
- *  outer-slot name is the captured item name). */
-/** @internal — exported for the bounded-swap regression test. The function
- *  is private to the pointer-list item dispatch; tests pin the structural
- *  guard directly to keep the swap's regex-free contract enforced. */
+ *  prefix that nestRecord produced. Inner slots the item renders are
+ *  unaffected (the captured corpus:77 surface has no inner slots, but
+ *  the swap is correct for any nested item whose outer-slot name is
+ *  the captured item name). */
+/** @internal — exported for the bounded-swap regression test. The
+ *  function is private to the pointer-list item dispatch; tests pin
+ *  the structural guard directly to keep the swap's regex-free
+ *  contract enforced. */
 export function swapBarSlotToMiniBar(html: string, name: string): string {
   // The OUTERMOST slot carries the id `NAME-bar-view` for the item
   // name; the captured bytes pin `NAME-mini_bar-view`. The slot is
@@ -592,15 +648,6 @@ export function swapBarSlotToMiniBar(html: string, name: string): string {
     tagBody.slice(classIdx + classFrom.length) +
     html.slice(closeIdx)
   );
-}
-
-/** card-mod-list set/abstract/01_list/html_views.rb:28-30 `wrap_item`:
- *  `<div class="pointer-item item-bar">…</div>`. Ruby's html format
- *  default_item_view is :bar (card-mod-format set/all/html.rb), so the
- *  class reads `pointer-item item-bar` (captured bytes for every
- *  pointer/list sibling). */
-function pointerItemWrap(inner: string): string {
-  return `<div class="pointer-item item-bar">${inner}</div>`;
 }
 
 const cardListView: ViewFn = (ctx) => {

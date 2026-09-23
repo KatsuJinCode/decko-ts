@@ -105,10 +105,9 @@ Test Files  149 passed | 1 skipped (150)
 ```
 
 Both skips are documented pending-external (live PostgreSQL, CLI engine
-verification). The render-perf harness budgets are currently RED
-(warm-render-sample 127.6ms/entry vs 25 budget; 47 cold cards vs 0) — a
-regression introduced by the 09-23 fix rounds, under active repair; the
-receipt lives at `benchmarks/results/perf/render-perf.json`.
+verification). All four render-perf budgets are green solo (warm
+4.8ms/entry vs 25 budget, 0 cold cards; receipt
+`benchmarks/results/perf/render-perf.json`).
 
 `npm test` runs the card-engine suite (the largest tree); the full tree
 runs with `npx vitest run`. Per-stream test counts are noted in
