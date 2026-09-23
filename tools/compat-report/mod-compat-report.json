@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-23T06:21:59.341Z",
+  "generatedAt": "2026-09-23T23:01:29.512Z",
   "gemDir": "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems",
   "repo": "C:\\localProjects\\decko-ts",
   "surface": {
@@ -15,26 +15,133 @@
       "type_plus_right"
     ],
     "htmlViews": [
+      "acted_at",
+      "add_autocomplete_item",
+      "admin",
+      "api_key",
+      "bad_address",
       "bar",
       "bar_bottom",
       "bar_left",
       "bar_middle",
       "bar_right",
       "blank",
+      "box_bottom",
+      "box_middle",
+      "buttons",
       "card_list",
+      "carousel",
+      "change_create_to_update",
+      "close_modal_link",
       "closed",
+      "closed_account",
+      "closed_content",
+      "codename",
+      "comment_box",
+      "compact_missing",
+      "confirm_update_all",
       "content",
+      "content_changes",
       "core",
+      "count",
+      "created_at",
+      "current",
+      "customize_button",
+      "denial",
+      "draft_legend",
+      "edit",
+      "email_page",
+      "errors",
+      "file_size",
+      "full_width",
+      "generate_button",
+      "goto_autocomplete_item",
+      "grouped_list",
+      "guide",
+      "head_content",
+      "help",
+      "help_text",
+      "icons",
+      "id",
+      "id_url",
+      "image_complete",
+      "inline",
+      "input",
+      "javascript_include_tag",
+      "javascript_tags",
+      "just_deleted",
+      "key",
+      "label",
+      "labeled",
+      "labeled_content",
+      "last_action",
+      "lead",
       "link",
+      "link_tag",
+      "linkname",
+      "list",
       "menu",
       "mini_bar",
       "mini_unknown",
+      "modal",
+      "modal_footer",
+      "modal_link",
+      "modal_menu",
+      "modal_title",
+      "name",
+      "nav_item",
+      "nav_link",
+      "nav_link_in_dropdown",
+      "navbar_links",
+      "nest_list_input",
       "no_search_results",
+      "not_found",
+      "one_line_content",
       "open",
+      "open_content",
+      "open_nest_editor",
+      "overlay_header",
+      "overlay_help_link",
+      "overlay_menu",
+      "overlay_title",
+      "paging",
+      "pills",
+      "pills_static",
+      "pointer_core",
+      "pop_out_modal_link",
+      "popover",
+      "preview",
+      "progress_bar",
+      "raw",
+      "raw_one_line_content",
+      "remote_script_tags",
+      "reset_password_days",
+      "rule_help",
+      "script_calls",
+      "script_variables",
+      "search_count",
+      "search_error",
+      "server_error",
+      "set_label",
+      "source",
+      "status",
+      "stylesheet_include_tag",
+      "tabs",
+      "tabs_static",
+      "template_nest",
       "title",
       "titled",
       "titled_content",
-      "unknown"
+      "token",
+      "token_days",
+      "token_expiry",
+      "token_link",
+      "type",
+      "unknown",
+      "updated_at",
+      "url",
+      "url_link",
+      "verify_days"
     ],
     "hasRuleLookup": true,
     "hasRuleApply": true,
@@ -50,38 +157,29 @@
       "version": "0.20.0",
       "classification": {
         "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=account_tab, closed_account, closure, configs, content_formgroups, edit, ...",
-        "evidence": "3/24 html views in HTML_VIEWS (0/19 mod-specific)",
+        "verdict": "mod-specific: covered=closed_account, edit, one_line_content, open_content; missing=account_tab, closure, configs, content_formgroups, edit_buttons, link_with_checkbox, ...; pins=1/12",
+        "evidence": "12/24 html views in HTML_VIEWS∪mod-manifests (7/19 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=1",
         "metrics": {
           "htmlViewsDeclared": 24,
-          "htmlViewsCovered": 3,
-          "htmlViewsMissing": 21,
+          "htmlViewsCovered": 12,
+          "htmlViewsMissing": 12,
           "htmlViewsMissingNames": [
             "account_tab",
-            "closed_account",
             "closure",
             "configs",
             "content_formgroups",
-            "edit",
             "edit_buttons",
             "link_with_checkbox",
             "new",
             "new_buttons",
-            "one_line_content",
-            "open_content",
-            "raw",
-            "reset_password_days",
             "reset_password_success",
             "reset_password_url",
             "setup",
-            "token_days",
-            "token_expiry",
-            "verify_days",
             "verify_url"
           ],
           "specificViewsDeclared": 19,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 7,
+          "specificViewsCoverage": 36.8,
           "patternsUsed": [
             "all",
             "all",
@@ -99,10 +197,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 12.5,
+          "viewsCoverage": 50,
           "setModules": 22,
           "libRbFiles": 1,
-          "hamlFiles": 6
+          "hamlFiles": 6,
+          "manifestExists": true,
+          "manifestViewsDeclared": 8,
+          "testExists": true,
+          "testCount": 12,
+          "bytePins": 1
         }
       },
       "inv": {
@@ -312,6 +415,22 @@
           "account_password_length",
           "account_password_requirements"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "closed_account",
+          "token_days",
+          "verify_days",
+          "reset_password_days",
+          "token_expiry",
+          "open_content",
+          "one_line_content",
+          "raw"
+        ],
+        "testExists": true,
+        "testCount": 12,
+        "bytePins": 1
       }
     },
     {
@@ -319,8 +438,8 @@
       "version": "0.20.0",
       "classification": {
         "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "no html view declarations in this mod",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=2/10",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=10 it(), byte-pins=2",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -341,7 +460,12 @@
           "viewsCoverage": 0,
           "setModules": 2,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 0,
+          "testExists": true,
+          "testCount": 10,
+          "bytePins": 2
         }
       },
       "inv": {
@@ -372,30 +496,30 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [],
+        "testExists": true,
+        "testCount": 10,
+        "bytePins": 2
       }
     },
     {
       "gem": "card-mod-api_key-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=api_key, buttons, current, generate_button, token, token_link",
-        "evidence": "1/7 html views in HTML_VIEWS (0/6 mod-specific)",
+        "status": "ported",
+        "verdict": "6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link",
+        "evidence": "7/7 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=30 it(), byte-pins=12",
         "metrics": {
           "htmlViewsDeclared": 7,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 6,
-          "htmlViewsMissingNames": [
-            "api_key",
-            "buttons",
-            "current",
-            "generate_button",
-            "token",
-            "token_link"
-          ],
+          "htmlViewsCovered": 7,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 6,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 6,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "right"
           ],
@@ -403,10 +527,15 @@
             "right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 14.3,
+          "viewsCoverage": 100,
           "setModules": 2,
           "libRbFiles": 2,
-          "hamlFiles": 2
+          "hamlFiles": 2,
+          "manifestExists": true,
+          "manifestViewsDeclared": 10,
+          "testExists": true,
+          "testCount": 30,
+          "bytePins": 12
         }
       },
       "inv": {
@@ -463,26 +592,41 @@
           "AccountField"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "core",
+          "current",
+          "titled",
+          "titled_content",
+          "content",
+          "token_link",
+          "buttons",
+          "generate_button",
+          "token",
+          "api_key"
+        ],
+        "testExists": true,
+        "testCount": 30,
+        "bytePins": 12
       }
     },
     {
       "gem": "card-mod-assets-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=javascript_include_tag, stylesheet_include_tag",
-        "evidence": "1/3 html views in HTML_VIEWS (0/2 mod-specific)",
+        "status": "ported",
+        "verdict": "2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag",
+        "evidence": "3/3 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=11",
         "metrics": {
           "htmlViewsDeclared": 3,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 2,
-          "htmlViewsMissingNames": [
-            "javascript_include_tag",
-            "stylesheet_include_tag"
-          ],
+          "htmlViewsCovered": 3,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 2,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "right",
@@ -494,10 +638,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 33.3,
+          "viewsCoverage": 100,
           "setModules": 12,
           "libRbFiles": 1,
-          "hamlFiles": 1
+          "hamlFiles": 1,
+          "manifestExists": true,
+          "manifestViewsDeclared": 2,
+          "testExists": true,
+          "testCount": 15,
+          "bytePins": 11
         }
       },
       "inv": {
@@ -563,6 +712,16 @@
           "VirtualCache"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "javascript_include_tag",
+          "stylesheet_include_tag"
+        ],
+        "testExists": true,
+        "testCount": 15,
+        "bytePins": 11
       }
     },
     {
@@ -571,7 +730,7 @@
       "classification": {
         "status": "ported",
         "verdict": "6 mod-specific view(s) ported: bar, bar_bottom, bar_left, bar_middle, bar_right, mini_bar",
-        "evidence": "8/17 html views in HTML_VIEWS (6/11 mod-specific)",
+        "evidence": "8/17 html views in HTML_VIEWS∪mod-manifests (6/11 mod-specific)",
         "metrics": {
           "htmlViewsDeclared": 17,
           "htmlViewsCovered": 8,
@@ -604,7 +763,12 @@
           "viewsCoverage": 47.1,
           "setModules": 4,
           "libRbFiles": 0,
-          "hamlFiles": 5
+          "hamlFiles": 5,
+          "manifestExists": false,
+          "manifestViewsDeclared": 0,
+          "testExists": false,
+          "testCount": 0,
+          "bytePins": 0
         }
       },
       "inv": {
@@ -675,30 +839,30 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": false,
+        "manifestViews": [],
+        "testExists": false,
+        "testCount": 0,
+        "bytePins": 0
       }
     },
     {
       "gem": "card-mod-bootstrap-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar_bottom, bar_left, bar_middle, bar_right; missing=carousel, customize_button, icons, input, one_line_content, progress_bar",
-        "evidence": "5/11 html views in HTML_VIEWS (4/10 mod-specific)",
+        "status": "ported",
+        "verdict": "10 mod-specific view(s) ported: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ...",
+        "evidence": "11/11 html views in HTML_VIEWS∪mod-manifests (10/10 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=30",
         "metrics": {
           "htmlViewsDeclared": 11,
-          "htmlViewsCovered": 5,
-          "htmlViewsMissing": 6,
-          "htmlViewsMissingNames": [
-            "carousel",
-            "customize_button",
-            "icons",
-            "input",
-            "one_line_content",
-            "progress_bar"
-          ],
+          "htmlViewsCovered": 11,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 10,
-          "specificViewsCovered": 4,
-          "specificViewsCoverage": 40,
+          "specificViewsCovered": 10,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -714,10 +878,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 45.5,
+          "viewsCoverage": 100,
           "setModules": 11,
           "libRbFiles": 16,
-          "hamlFiles": 11
+          "hamlFiles": 11,
+          "manifestExists": true,
+          "manifestViewsDeclared": 6,
+          "testExists": true,
+          "testCount": 32,
+          "bytePins": 30
         }
       },
       "inv": {
@@ -797,30 +966,39 @@
         "cardioConfigKeys": [
           "icon_libraries"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "progress_bar",
+          "icons",
+          "carousel",
+          "input",
+          "one_line_content",
+          "customize_button"
+        ],
+        "testExists": true,
+        "testCount": 32,
+        "bytePins": 30
       }
     },
     {
       "gem": "card-mod-carrierwave-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=content_changes, full_width, input, link_tag, preview_editor, source",
-        "evidence": "2/8 html views in HTML_VIEWS (0/6 mod-specific)",
+        "status": "ported",
+        "verdict": "5 mod-specific view(s) ported: content_changes, full_width, input, link_tag, source",
+        "evidence": "7/8 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=18",
         "metrics": {
           "htmlViewsDeclared": 8,
-          "htmlViewsCovered": 2,
-          "htmlViewsMissing": 6,
+          "htmlViewsCovered": 7,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "content_changes",
-            "full_width",
-            "input",
-            "link_tag",
-            "preview_editor",
-            "source"
+            "preview_editor"
           ],
           "specificViewsDeclared": 6,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 83.3,
           "patternsUsed": [
             "all",
             "all",
@@ -834,10 +1012,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 25,
+          "viewsCoverage": 87.5,
           "setModules": 11,
           "libRbFiles": 7,
-          "hamlFiles": 3
+          "hamlFiles": 3,
+          "manifestExists": true,
+          "manifestViewsDeclared": 9,
+          "testExists": true,
+          "testCount": 33,
+          "bytePins": 18
         }
       },
       "inv": {
@@ -1014,27 +1197,42 @@
           "file_storage",
           "files_web_path"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "full_width",
+          "preview",
+          "content_changes",
+          "link_tag",
+          "image_complete",
+          "source",
+          "core",
+          "inline",
+          "one_line_content"
+        ],
+        "testExists": true,
+        "testCount": 33,
+        "bytePins": 18
       }
     },
     {
       "gem": "card-mod-collection-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=count, paging, paging_urls",
-        "evidence": "0/3 html views in HTML_VIEWS (0/3 mod-specific)",
+        "status": "ported",
+        "verdict": "2 mod-specific view(s) ported: count, paging",
+        "evidence": "2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=16",
         "metrics": {
           "htmlViewsDeclared": 3,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 3,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "count",
-            "paging",
             "paging_urls"
           ],
           "specificViewsDeclared": 3,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 66.7,
           "patternsUsed": [
             "all",
             "all"
@@ -1044,10 +1242,15 @@
             "all"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 66.7,
           "setModules": 6,
           "libRbFiles": 1,
-          "hamlFiles": 1
+          "hamlFiles": 1,
+          "manifestExists": true,
+          "manifestViewsDeclared": 2,
+          "testExists": true,
+          "testCount": 22,
+          "bytePins": 16
         }
       },
       "inv": {
@@ -1090,6 +1293,16 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "count",
+          "paging"
+        ],
+        "testExists": true,
+        "testCount": 22,
+        "bytePins": 16
       }
     },
     {
@@ -1097,8 +1310,8 @@
       "version": "0.20.0",
       "classification": {
         "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "no html view declarations in this mod",
+        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=4/12",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=12 it(), byte-pins=4",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -1119,7 +1332,12 @@
           "viewsCoverage": 0,
           "setModules": 3,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 7,
+          "testExists": true,
+          "testCount": 12,
+          "bytePins": 4
         }
       },
       "inv": {
@@ -1155,27 +1373,38 @@
           "Permission"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "comment_box",
+          "open",
+          "open_content",
+          "titled",
+          "titled_content",
+          "core",
+          "input"
+        ],
+        "testExists": true,
+        "testCount": 12,
+        "bytePins": 4
       }
     },
     {
       "gem": "card-mod-content-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar_middle; missing=file_size, input, one_line_content",
-        "evidence": "2/5 html views in HTML_VIEWS (1/4 mod-specific)",
+        "status": "ported",
+        "verdict": "4 mod-specific view(s) ported: bar_middle, file_size, input, one_line_content",
+        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (4/4 mod-specific); mod-loader pins: manifest=yes, test=16 it(), byte-pins=9",
         "metrics": {
           "htmlViewsDeclared": 5,
-          "htmlViewsCovered": 2,
-          "htmlViewsMissing": 3,
-          "htmlViewsMissingNames": [
-            "file_size",
-            "input",
-            "one_line_content"
-          ],
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 4,
-          "specificViewsCovered": 1,
-          "specificViewsCoverage": 25,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -1189,10 +1418,15 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 40,
+          "viewsCoverage": 100,
           "setModules": 14,
           "libRbFiles": 7,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 4,
+          "testExists": true,
+          "testCount": 16,
+          "bytePins": 9
         }
       },
       "inv": {
@@ -1251,15 +1485,27 @@
           "TemplatedNests"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "input",
+          "bar_middle",
+          "file_size",
+          "one_line_content"
+        ],
+        "testExists": true,
+        "testCount": 16,
+        "bytePins": 9
       }
     },
     {
       "gem": "card-mod-date-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (20 pins across 32 it()): ",
+        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=20",
         "metrics": {
           "htmlViewsDeclared": 1,
           "htmlViewsCovered": 1,
@@ -1284,7 +1530,12 @@
           "viewsCoverage": 100,
           "setModules": 5,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 0,
+          "testExists": true,
+          "testCount": 32,
+          "bytePins": 20
         }
       },
       "inv": {
@@ -1319,6 +1570,13 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [],
+        "testExists": true,
+        "testCount": 32,
+        "bytePins": 20
       }
     },
     {
@@ -1342,7 +1600,12 @@
           "viewsCoverage": 0,
           "setModules": 0,
           "libRbFiles": 1,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": false,
+          "manifestViewsDeclared": 0,
+          "testExists": false,
+          "testCount": 0,
+          "bytePins": 0
         }
       },
       "inv": {
@@ -1368,6 +1631,13 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": false,
+        "manifestViews": [],
+        "testExists": false,
+        "testCount": 0,
+        "bytePins": 0
       }
     },
     {
@@ -1391,7 +1661,12 @@
           "viewsCoverage": 0,
           "setModules": 0,
           "libRbFiles": 2,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": false,
+          "manifestViewsDeclared": 0,
+          "testExists": false,
+          "testCount": 0,
+          "bytePins": 0
         }
       },
       "inv": {
@@ -1419,6 +1694,13 @@
         "cardioConfigKeys": [
           "delaying"
         ]
+      },
+      "pins": {
+        "manifestExists": false,
+        "manifestViews": [],
+        "testExists": false,
+        "testCount": 0,
+        "bytePins": 0
       }
     },
     {
@@ -1426,12 +1708,12 @@
       "version": "0.20.0",
       "classification": {
         "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...",
-        "evidence": "0/42 html views in HTML_VIEWS (0/41 mod-specific)",
+        "verdict": "mod-specific: covered=edit, input, just_deleted; missing=board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit_buttons, ...; pins=4/9",
+        "evidence": "3/42 html views in HTML_VIEWS∪mod-manifests (3/41 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=4",
         "metrics": {
           "htmlViewsDeclared": 42,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 42,
+          "htmlViewsCovered": 3,
+          "htmlViewsMissing": 39,
           "htmlViewsMissingNames": [
             "board",
             "board_type_formgroup",
@@ -1439,7 +1721,6 @@
             "conflict_tracker",
             "content_formgroup",
             "content_formgroups",
-            "edit",
             "edit_buttons",
             "edit_form",
             "edit_in_form",
@@ -1458,8 +1739,6 @@
             "follow_section",
             "guide_tab",
             "history_tab",
-            "input",
-            "just_deleted",
             "name_form",
             "name_formgroup",
             "new",
@@ -1477,8 +1756,8 @@
             "type_formgroup"
           ],
           "specificViewsDeclared": 41,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 3,
+          "specificViewsCoverage": 7.3,
           "patternsUsed": [
             "all",
             "right",
@@ -1492,10 +1771,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 7.1,
           "setModules": 21,
           "libRbFiles": 0,
-          "hamlFiles": 5
+          "hamlFiles": 5,
+          "manifestExists": true,
+          "manifestViewsDeclared": 2,
+          "testExists": true,
+          "testCount": 9,
+          "bytePins": 4
         }
       },
       "inv": {
@@ -1577,26 +1861,33 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "just_deleted",
+          "template_nest"
+        ],
+        "testExists": true,
+        "testCount": 9,
+        "bytePins": 4
       }
     },
     {
       "gem": "card-mod-email-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=compact_missing, email_page",
-        "evidence": "3/5 html views in HTML_VIEWS (0/2 mod-specific)",
+        "status": "ported",
+        "verdict": "2 mod-specific view(s) ported: compact_missing, email_page",
+        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=10 it(), byte-pins=4",
         "metrics": {
           "htmlViewsDeclared": 5,
-          "htmlViewsCovered": 3,
-          "htmlViewsMissing": 2,
-          "htmlViewsMissingNames": [
-            "compact_missing",
-            "email_page"
-          ],
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 2,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -1610,10 +1901,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 60,
+          "viewsCoverage": 100,
           "setModules": 13,
           "libRbFiles": 2,
-          "hamlFiles": 1
+          "hamlFiles": 1,
+          "manifestExists": true,
+          "manifestViewsDeclared": 4,
+          "testExists": true,
+          "testCount": 10,
+          "bytePins": 4
         }
       },
       "inv": {
@@ -1666,36 +1962,43 @@
           "TestContext"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "email_page",
+          "unknown",
+          "compact_missing",
+          "last_action"
+        ],
+        "testExists": true,
+        "testCount": 10,
+        "bytePins": 4
       }
     },
     {
       "gem": "card-mod-follow-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...",
-        "evidence": "1/13 html views in HTML_VIEWS (0/12 mod-specific)",
+        "status": "ported",
+        "verdict": "5 mod-specific view(s) ported: confirm_update_all, edit, errors, one_line_content, status",
+        "evidence": "6/13 html views in HTML_VIEWS∪mod-manifests (5/12 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 13,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 12,
+          "htmlViewsCovered": 6,
+          "htmlViewsMissing": 7,
           "htmlViewsMissingNames": [
-            "confirm_update_all",
-            "edit",
             "edit_buttons",
-            "errors",
             "follow_button",
             "follow_item",
             "follow_status",
             "follow_tab",
             "ignore_tab",
-            "one_line_content",
-            "rule_editor",
-            "status"
+            "rule_editor"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 41.7,
           "patternsUsed": [
             "all",
             "all",
@@ -1713,10 +2016,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 7.7,
+          "viewsCoverage": 46.2,
           "setModules": 25,
           "libRbFiles": 2,
-          "hamlFiles": 2
+          "hamlFiles": 2,
+          "manifestExists": true,
+          "manifestViewsDeclared": 5,
+          "testExists": true,
+          "testCount": 12,
+          "bytePins": 6
         }
       },
       "inv": {
@@ -1813,27 +2121,37 @@
           "List"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "core",
+          "status",
+          "one_line_content",
+          "confirm_update_all",
+          "edit"
+        ],
+        "testExists": true,
+        "testCount": 12,
+        "bytePins": 6
       }
     },
     {
       "gem": "card-mod-format-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar_right; missing=add_button, add_link, add_url, admin, board_link, compact_missing, ...",
-        "evidence": "8/57 html views in HTML_VIEWS (1/46 mod-specific)",
+        "status": "ported",
+        "verdict": "11 mod-specific view(s) ported: admin, bar_right, compact_missing, errors, input, label, ...",
+        "evidence": "22/57 html views in HTML_VIEWS∪mod-manifests (11/46 mod-specific); mod-loader pins: manifest=yes, test=37 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 57,
-          "htmlViewsCovered": 8,
-          "htmlViewsMissing": 49,
+          "htmlViewsCovered": 22,
+          "htmlViewsMissing": 35,
           "htmlViewsMissingNames": [
             "add_button",
             "add_link",
             "add_url",
-            "admin",
             "board_link",
-            "closed_content",
-            "compact_missing",
             "configure_button",
             "configure_link",
             "conflict",
@@ -1841,10 +2159,8 @@
             "content_with_title",
             "debug_server_error",
             "demo",
-            "denial",
             "edit_button",
             "edit_link",
-            "errors",
             "favicon_tag",
             "flash",
             "full_page_link",
@@ -1853,33 +2169,24 @@
             "header_title",
             "help_link",
             "hidden_content_field",
-            "input",
-            "label",
-            "labeled",
             "labeled_editor",
             "menu_block",
             "meta_tags",
-            "not_found",
-            "one_line_content",
             "page_title",
             "page_title_tag",
-            "raw_one_line_content",
             "rss_links",
-            "server_error",
             "short_content",
             "smart_label",
             "stylesheet_tags",
             "title_link",
             "title_no_link",
-            "type",
             "type_info",
             "universal_edit_button",
-            "url_link",
             "view_list"
           ],
           "specificViewsDeclared": 46,
-          "specificViewsCovered": 1,
-          "specificViewsCoverage": 2.2,
+          "specificViewsCovered": 11,
+          "specificViewsCoverage": 23.9,
           "patternsUsed": [
             "all",
             "all",
@@ -1895,10 +2202,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 14,
+          "viewsCoverage": 38.6,
           "setModules": 33,
           "libRbFiles": 16,
-          "hamlFiles": 6
+          "hamlFiles": 6,
+          "manifestExists": true,
+          "manifestViewsDeclared": 32,
+          "testExists": true,
+          "testCount": 37,
+          "bytePins": 6
         }
       },
       "inv": {
@@ -2138,29 +2450,63 @@
           "default_html_view",
           "rss_enabled"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "name",
+          "key",
+          "linkname",
+          "url",
+          "id_url",
+          "url_link",
+          "link",
+          "nav_link",
+          "codename",
+          "id",
+          "type",
+          "created_at",
+          "updated_at",
+          "acted_at",
+          "raw",
+          "one_line_content",
+          "labeled_content",
+          "titled_content",
+          "blank",
+          "titled",
+          "labeled",
+          "label",
+          "closed_content",
+          "raw_one_line_content",
+          "compact_missing",
+          "unknown",
+          "server_error",
+          "denial",
+          "not_found",
+          "bad_address",
+          "errors",
+          "admin"
+        ],
+        "testExists": true,
+        "testCount": 37,
+        "bytePins": 6
       }
     },
     {
       "gem": "card-mod-help-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=guide, help, help_text, lead, popover",
-        "evidence": "0/5 html views in HTML_VIEWS (0/5 mod-specific)",
+        "status": "ported",
+        "verdict": "5 mod-specific view(s) ported: guide, help, help_text, lead, popover",
+        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=8",
         "metrics": {
           "htmlViewsDeclared": 5,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 5,
-          "htmlViewsMissingNames": [
-            "guide",
-            "help",
-            "help_text",
-            "lead",
-            "popover"
-          ],
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 5,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "right",
@@ -2172,10 +2518,15 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 100,
           "setModules": 6,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 5,
+          "testExists": true,
+          "testCount": 14,
+          "bytePins": 8
         }
       },
       "inv": {
@@ -2215,19 +2566,32 @@
           "TemplatedNests"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "help",
+          "help_text",
+          "lead",
+          "guide",
+          "popover"
+        ],
+        "testExists": true,
+        "testCount": 14,
+        "bytePins": 8
       }
     },
     {
       "gem": "card-mod-history-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=act, act_legend, action_expanded, action_summary, board_act, change, ...",
-        "evidence": "0/12 html views in HTML_VIEWS (0/12 mod-specific)",
+        "status": "ported",
+        "verdict": "2 mod-specific view(s) ported: draft_legend, last_action",
+        "evidence": "2/12 html views in HTML_VIEWS∪mod-manifests (2/12 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=30",
         "metrics": {
           "htmlViewsDeclared": 12,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 12,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 10,
           "htmlViewsMissingNames": [
             "act",
             "act_legend",
@@ -2236,15 +2600,13 @@
             "board_act",
             "change",
             "creator_credit",
-            "draft_legend",
             "history",
-            "last_action",
             "last_action_verb",
             "updated_by"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 16.7,
           "patternsUsed": [
             "all"
           ],
@@ -2252,10 +2614,15 @@
             "all"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 16.7,
           "setModules": 3,
           "libRbFiles": 12,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 1,
+          "testExists": true,
+          "testCount": 40,
+          "bytePins": 30
         }
       },
       "inv": {
@@ -2329,15 +2696,24 @@
         "cardioConfigKeys": [
           "acts_per_page"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "draft_legend"
+        ],
+        "testExists": true,
+        "testCount": 40,
+        "bytePins": 30
       }
     },
     {
       "gem": "card-mod-integrate-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "no html view declarations in this mod",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (21 pins across 28 it()): ",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=28 it(), byte-pins=21",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -2360,7 +2736,12 @@
           "viewsCoverage": 0,
           "setModules": 8,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 0,
+          "testExists": true,
+          "testCount": 28,
+          "bytePins": 21
         }
       },
       "inv": {
@@ -2395,47 +2776,37 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [],
+        "testExists": true,
+        "testCount": 28,
+        "bytePins": 21
       }
     },
     {
       "gem": "card-mod-layout-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar_bottom; missing=close_modal_link, edit_inline, head_content, input, invite, modal, ...",
-        "evidence": "2/25 html views in HTML_VIEWS (1/24 mod-specific)",
+        "status": "ported",
+        "verdict": "18 mod-specific view(s) ported: bar_bottom, close_modal_link, head_content, input, modal, modal_footer, ...",
+        "evidence": "19/25 html views in HTML_VIEWS∪mod-manifests (18/24 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=7",
         "metrics": {
           "htmlViewsDeclared": 25,
-          "htmlViewsCovered": 2,
-          "htmlViewsMissing": 23,
+          "htmlViewsCovered": 19,
+          "htmlViewsMissing": 6,
           "htmlViewsMissingNames": [
-            "close_modal_link",
             "edit_inline",
-            "head_content",
-            "input",
             "invite",
-            "modal",
-            "modal_footer",
-            "modal_link",
-            "modal_menu",
-            "modal_title",
             "my_card",
-            "nav_item",
-            "nav_link_in_dropdown",
-            "navbar_links",
-            "one_line_content",
-            "overlay_header",
-            "overlay_help_link",
-            "overlay_menu",
-            "overlay_title",
-            "pop_out_modal_link",
             "sign_in",
             "sign_out",
             "sign_up"
           ],
           "specificViewsDeclared": 24,
-          "specificViewsCovered": 1,
-          "specificViewsCoverage": 4.2,
+          "specificViewsCovered": 18,
+          "specificViewsCoverage": 75,
           "patternsUsed": [
             "all",
             "all",
@@ -2451,10 +2822,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 8,
+          "viewsCoverage": 76,
           "setModules": 23,
           "libRbFiles": 5,
-          "hamlFiles": 3
+          "hamlFiles": 3,
+          "manifestExists": true,
+          "manifestViewsDeclared": 19,
+          "testExists": true,
+          "testCount": 33,
+          "bytePins": 7
         }
       },
       "inv": {
@@ -2531,29 +2907,52 @@
           "Type::Html"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "modal",
+          "modal_menu",
+          "modal_title",
+          "modal_footer",
+          "modal_link",
+          "close_modal_link",
+          "pop_out_modal_link",
+          "navbar_links",
+          "nav_item",
+          "nav_link_in_dropdown",
+          "overlay_header",
+          "overlay_title",
+          "overlay_menu",
+          "overlay_help_link",
+          "head_content",
+          "one_line_content",
+          "core",
+          "input",
+          "bar_bottom"
+        ],
+        "testExists": true,
+        "testCount": 33,
+        "bytePins": 7
       }
     },
     {
       "gem": "card-mod-list-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=input, list, nest_list_input, one_line_content, view_list",
-        "evidence": "1/6 html views in HTML_VIEWS (0/5 mod-specific)",
+        "status": "ported",
+        "verdict": "4 mod-specific view(s) ported: input, list, nest_list_input, one_line_content",
+        "evidence": "5/6 html views in HTML_VIEWS∪mod-manifests (4/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 6,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 5,
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "input",
-            "list",
-            "nest_list_input",
-            "one_line_content",
             "view_list"
           ],
           "specificViewsDeclared": 5,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 80,
           "patternsUsed": [
             "all",
             "all",
@@ -2569,10 +2968,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 16.7,
+          "viewsCoverage": 83.3,
           "setModules": 16,
           "libRbFiles": 0,
-          "hamlFiles": 8
+          "hamlFiles": 8,
+          "manifestExists": true,
+          "manifestViewsDeclared": 4,
+          "testExists": true,
+          "testCount": 14,
+          "bytePins": 15
         }
       },
       "inv": {
@@ -2675,15 +3079,27 @@
           "ReferenceList"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "one_line_content",
+          "list",
+          "input",
+          "nest_list_input"
+        ],
+        "testExists": true,
+        "testCount": 14,
+        "bytePins": 15
       }
     },
     {
       "gem": "card-mod-markdown-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (13 pins across 14 it()): core",
+        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=13",
         "metrics": {
           "htmlViewsDeclared": 1,
           "htmlViewsCovered": 1,
@@ -2702,7 +3118,12 @@
           "viewsCoverage": 100,
           "setModules": 1,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 1,
+          "testExists": true,
+          "testCount": 14,
+          "bytePins": 13
         }
       },
       "inv": {
@@ -2734,27 +3155,32 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "core"
+        ],
+        "testExists": true,
+        "testCount": 14,
+        "bytePins": 13
       }
     },
     {
       "gem": "card-mod-permissions-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=input, one_line_content, pointer_core",
-        "evidence": "1/4 html views in HTML_VIEWS (0/3 mod-specific)",
+        "status": "ported",
+        "verdict": "3 mod-specific view(s) ported: input, one_line_content, pointer_core",
+        "evidence": "4/4 html views in HTML_VIEWS∪mod-manifests (3/3 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=33",
         "metrics": {
           "htmlViewsDeclared": 4,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 3,
-          "htmlViewsMissingNames": [
-            "input",
-            "one_line_content",
-            "pointer_core"
-          ],
+          "htmlViewsCovered": 4,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 3,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 3,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -2768,10 +3194,15 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 25,
+          "viewsCoverage": 100,
           "setModules": 11,
           "libRbFiles": 0,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 4,
+          "testExists": true,
+          "testCount": 33,
+          "bytePins": 33
         }
       },
       "inv": {
@@ -2840,15 +3271,27 @@
           "Permission"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "link",
+          "pointer_core",
+          "one_line_content",
+          "input"
+        ],
+        "testExists": true,
+        "testCount": 33,
+        "bytePins": 33
       }
     },
     {
       "gem": "card-mod-recaptcha-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "1/1 html views in HTML_VIEWS (0/0 mod-specific)",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (12 pins across 41 it()): core",
+        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=41 it(), byte-pins=12",
         "metrics": {
           "htmlViewsDeclared": 1,
           "htmlViewsCovered": 1,
@@ -2873,7 +3316,12 @@
           "viewsCoverage": 100,
           "setModules": 8,
           "libRbFiles": 1,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 1,
+          "testExists": true,
+          "testCount": 41,
+          "bytePins": 12
         }
       },
       "inv": {
@@ -2931,19 +3379,28 @@
           "recaptcha_site_key",
           "recaptcha_verify_url"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "core"
+        ],
+        "testExists": true,
+        "testCount": 41,
+        "bytePins": 12
       }
     },
     {
       "gem": "card-mod-rules-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar, bar_bottom, bar_middle, bar_right; missing=accordion_bar_list, accordion_rule_list, bar_setting_list, board_rules_tab, card_select, filtered_accordion_rule_list, ...",
-        "evidence": "5/35 html views in HTML_VIEWS (4/34 mod-specific)",
+        "status": "ported",
+        "verdict": "12 mod-specific view(s) ported: bar, bar_bottom, bar_middle, bar_right, grouped_list, help_text, ...",
+        "evidence": "13/35 html views in HTML_VIEWS∪mod-manifests (12/34 mod-specific); mod-loader pins: manifest=yes, test=29 it(), byte-pins=19",
         "metrics": {
           "htmlViewsDeclared": 35,
-          "htmlViewsCovered": 5,
-          "htmlViewsMissing": 30,
+          "htmlViewsCovered": 13,
+          "htmlViewsMissing": 22,
           "htmlViewsMissingNames": [
             "accordion_bar_list",
             "accordion_rule_list",
@@ -2951,34 +3408,26 @@
             "board_rules_tab",
             "card_select",
             "filtered_accordion_rule_list",
-            "grouped_list",
-            "help_text",
-            "input",
             "modal_nest_rules",
             "modal_pill_setting_list",
             "modal_rule",
             "nest_rules",
-            "one_line_content",
             "overlay_rule",
             "overlay_rule_list_link",
-            "overlay_title",
             "pill_setting_list",
             "quick_edit",
             "quick_edit_setting_list",
             "quick_edit_success",
-            "raw_one_line_content",
             "rule_board_link",
             "rule_edit",
             "rule_form",
             "rule_form_card_editor",
-            "rule_help",
             "rule_nest_editor_link",
-            "set_label",
             "template_link"
           ],
           "specificViewsDeclared": 34,
-          "specificViewsCovered": 4,
-          "specificViewsCoverage": 11.8,
+          "specificViewsCovered": 12,
+          "specificViewsCoverage": 35.3,
           "patternsUsed": [
             "all",
             "all",
@@ -3000,10 +3449,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 14.3,
+          "viewsCoverage": 37.1,
           "setModules": 24,
           "libRbFiles": 0,
-          "hamlFiles": 4
+          "hamlFiles": 4,
+          "manifestExists": true,
+          "manifestViewsDeclared": 5,
+          "testExists": true,
+          "testCount": 29,
+          "bytePins": 19
         }
       },
       "inv": {
@@ -3095,30 +3549,38 @@
           "VirtualSet"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "overlay_title",
+          "rule_help",
+          "grouped_list",
+          "set_label",
+          "input"
+        ],
+        "testExists": true,
+        "testCount": 29,
+        "bytePins": 19
       }
     },
     {
       "gem": "card-mod-script-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=compressed, javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables",
-        "evidence": "1/7 html views in HTML_VIEWS (0/6 mod-specific)",
+        "status": "ported",
+        "verdict": "5 mod-specific view(s) ported: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables",
+        "evidence": "6/7 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=18 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 7,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 6,
+          "htmlViewsCovered": 6,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "compressed",
-            "javascript_include_tag",
-            "javascript_tags",
-            "remote_script_tags",
-            "script_calls",
-            "script_variables"
+            "compressed"
           ],
           "specificViewsDeclared": 6,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 83.3,
           "patternsUsed": [
             "all",
             "all",
@@ -3136,10 +3598,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 14.3,
+          "viewsCoverage": 85.7,
           "setModules": 16,
           "libRbFiles": 2,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 5,
+          "testExists": true,
+          "testCount": 18,
+          "bytePins": 15
         }
       },
       "inv": {
@@ -3211,42 +3678,49 @@
         "cardioConfigKeys": [
           "double_click"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "script_variables",
+          "javascript_tags",
+          "script_calls",
+          "javascript_include_tag",
+          "remote_script_tags"
+        ],
+        "testExists": true,
+        "testCount": 18,
+        "bytePins": 15
       }
     },
     {
       "gem": "card-mod-search-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=bar, card_list; missing=add_autocomplete_item, body, checkbox_list, complete, count, feed_body, ...",
-        "evidence": "5/23 html views in HTML_VIEWS (2/20 mod-specific)",
+        "status": "ported",
+        "verdict": "8 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, count, goto_autocomplete_item, one_line_content, ...",
+        "evidence": "11/23 html views in HTML_VIEWS∪mod-manifests (8/20 mod-specific); mod-loader pins: manifest=yes, test=24 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 23,
-          "htmlViewsCovered": 5,
-          "htmlViewsMissing": 18,
+          "htmlViewsCovered": 11,
+          "htmlViewsMissing": 12,
           "htmlViewsMissingNames": [
-            "add_autocomplete_item",
             "body",
             "checkbox_list",
             "complete",
-            "count",
             "feed_body",
             "feed_item_description",
-            "goto_autocomplete_item",
             "molecule",
             "name_complete",
             "name_match",
-            "one_line_content",
             "results_for_keyword",
             "search_box",
             "search_box_complete",
-            "search_count",
-            "search_error",
             "select2_option"
           ],
           "specificViewsDeclared": 20,
-          "specificViewsCovered": 2,
-          "specificViewsCoverage": 10,
+          "specificViewsCovered": 8,
+          "specificViewsCoverage": 40,
           "patternsUsed": [
             "all",
             "all",
@@ -3262,10 +3736,15 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 21.7,
+          "viewsCoverage": 47.8,
           "setModules": 28,
           "libRbFiles": 1,
-          "hamlFiles": 5
+          "hamlFiles": 5,
+          "manifestExists": true,
+          "manifestViewsDeclared": 6,
+          "testExists": true,
+          "testCount": 24,
+          "bytePins": 6
         }
       },
       "inv": {
@@ -3385,15 +3864,29 @@
           "paging_limit",
           "search_box_match_start_only"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "count",
+          "search_count",
+          "search_error",
+          "one_line_content",
+          "goto_autocomplete_item",
+          "add_autocomplete_item"
+        ],
+        "testExists": true,
+        "testCount": 24,
+        "bytePins": 6
       }
     },
     {
       "gem": "card-mod-session-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "no html view declarations in this mod",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (6 pins across 13 it()): ",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=13 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -3414,7 +3907,12 @@
           "viewsCoverage": 0,
           "setModules": 2,
           "libRbFiles": 1,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 0,
+          "testExists": true,
+          "testCount": 13,
+          "bytePins": 6
         }
       },
       "inv": {
@@ -3466,36 +3964,38 @@
         "cardioConfigKeys": [
           "allow_anonymous_cookies"
         ]
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [],
+        "testExists": true,
+        "testCount": 13,
+        "bytePins": 6
       }
     },
     {
       "gem": "card-mod-style-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=box, box_bottom, box_middle, compiled, compressed, customize_button, ...",
-        "evidence": "1/13 html views in HTML_VIEWS (0/12 mod-specific)",
+        "status": "ported",
+        "verdict": "5 mod-specific view(s) ported: box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag",
+        "evidence": "6/13 html views in HTML_VIEWS∪mod-manifests (5/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=35",
         "metrics": {
           "htmlViewsDeclared": 13,
-          "htmlViewsCovered": 1,
-          "htmlViewsMissing": 12,
+          "htmlViewsCovered": 6,
+          "htmlViewsMissing": 7,
           "htmlViewsMissingNames": [
             "box",
-            "box_bottom",
-            "box_middle",
             "compiled",
             "compressed",
-            "customize_button",
             "import",
-            "labeled",
             "remote_include_tags",
             "remote_style_tags",
-            "stylesheet_include_tag",
             "stylesheet_path"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 41.7,
           "patternsUsed": [
             "all",
             "self",
@@ -3509,10 +4009,15 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 7.7,
+          "viewsCoverage": 46.2,
           "setModules": 16,
           "libRbFiles": 0,
-          "hamlFiles": 2
+          "hamlFiles": 2,
+          "manifestExists": true,
+          "manifestViewsDeclared": 3,
+          "testExists": true,
+          "testCount": 17,
+          "bytePins": 35
         }
       },
       "inv": {
@@ -3600,28 +4105,34 @@
           "StyleGroup"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "box_bottom",
+          "customize_button",
+          "box_middle"
+        ],
+        "testExists": true,
+        "testCount": 17,
+        "bytePins": 35
       }
     },
     {
       "gem": "card-mod-tabs-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=pills, pills_static, tabs, tabs_static",
-        "evidence": "0/4 html views in HTML_VIEWS (0/4 mod-specific)",
+        "status": "ported",
+        "verdict": "4 mod-specific view(s) ported: pills, pills_static, tabs, tabs_static",
+        "evidence": "4/4 html views in HTML_VIEWS∪mod-manifests (4/4 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=1",
         "metrics": {
           "htmlViewsDeclared": 4,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 4,
-          "htmlViewsMissingNames": [
-            "pills",
-            "pills_static",
-            "tabs",
-            "tabs_static"
-          ],
+          "htmlViewsCovered": 4,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 4,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all"
@@ -3631,10 +4142,15 @@
             "all"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 100,
           "setModules": 2,
           "libRbFiles": 2,
-          "hamlFiles": 2
+          "hamlFiles": 2,
+          "manifestExists": true,
+          "manifestViewsDeclared": 4,
+          "testExists": true,
+          "testCount": 9,
+          "bytePins": 1
         }
       },
       "inv": {
@@ -3672,21 +4188,32 @@
           "BsBadge"
         ],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "tabs",
+          "pills",
+          "tabs_static",
+          "pills_static"
+        ],
+        "testExists": true,
+        "testCount": 9,
+        "bytePins": 1
       }
     },
     {
       "gem": "card-mod-tinymce_editor-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, ...",
-        "evidence": "0/11 html views in HTML_VIEWS (0/11 mod-specific)",
+        "status": "ported",
+        "verdict": "2 mod-specific view(s) ported: change_create_to_update, open_nest_editor",
+        "evidence": "2/11 html views in HTML_VIEWS∪mod-manifests (2/11 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=33",
         "metrics": {
           "htmlViewsDeclared": 11,
-          "htmlViewsCovered": 0,
-          "htmlViewsMissing": 11,
+          "htmlViewsCovered": 2,
+          "htmlViewsMissing": 9,
           "htmlViewsMissingNames": [
-            "change_create_to_update",
             "link_editor",
             "modal_link_editor",
             "modal_nest_editor",
@@ -3695,12 +4222,11 @@
             "nest_editor",
             "nest_image",
             "new_image",
-            "new_image_buttons",
-            "open_nest_editor"
+            "new_image_buttons"
           ],
           "specificViewsDeclared": 11,
-          "specificViewsCovered": 0,
-          "specificViewsCoverage": 0,
+          "specificViewsCovered": 2,
+          "specificViewsCoverage": 18.2,
           "patternsUsed": [
             "all",
             "self"
@@ -3710,10 +4236,15 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 0,
+          "viewsCoverage": 18.2,
           "setModules": 4,
           "libRbFiles": 1,
-          "hamlFiles": 10
+          "hamlFiles": 10,
+          "manifestExists": true,
+          "manifestViewsDeclared": 2,
+          "testExists": true,
+          "testCount": 33,
+          "bytePins": 33
         }
       },
       "inv": {
@@ -3764,15 +4295,25 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [
+          "change_create_to_update",
+          "open_nest_editor"
+        ],
+        "testExists": true,
+        "testCount": 33,
+        "bytePins": 33
       }
     },
     {
       "gem": "card-mod-virtual-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views)",
-        "evidence": "no html view declarations in this mod",
+        "status": "ported",
+        "verdict": "manifest + byte-pinned test (16 pins across 33 it()): ",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=33 it(), byte-pins=16",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -3791,7 +4332,12 @@
           "viewsCoverage": 0,
           "setModules": 1,
           "libRbFiles": 1,
-          "hamlFiles": 0
+          "hamlFiles": 0,
+          "manifestExists": true,
+          "manifestViewsDeclared": 0,
+          "testExists": true,
+          "testCount": 33,
+          "bytePins": 16
         }
       },
       "inv": {
@@ -3828,6 +4374,13 @@
         "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
+      },
+      "pins": {
+        "manifestExists": true,
+        "manifestViews": [],
+        "testExists": true,
+        "testCount": 33,
+        "bytePins": 16
       }
     }
   ]

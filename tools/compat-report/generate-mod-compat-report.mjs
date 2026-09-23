@@ -423,8 +423,8 @@ function inventoryDeckoTs() {
   // 2) implemented html views — by reading src/card/render/views.ts HTML_VIEWS.
   const viewsPath = join(RENDER_DIR, "views.ts");
   const viewsSrc = existsSync(viewsPath) ? readText(viewsPath) : "";
-  const htmlViewsRe = /^\s*([a-z_]+):\s*[a-z]\w*View/gm;
   const htmlViews = new Set();
+  const htmlViewsRe = /^\s*([a-z_]+):\s*[a-z]\w*View/gm;
   while ((m = htmlViewsRe.exec(viewsSrc)) !== null) {
     htmlViews.add(m[1]);
   }
@@ -434,6 +434,25 @@ function inventoryDeckoTs() {
   const referencedRe = /renderView\("([a-z_]+)"/g;
   while ((m = referencedRe.exec(viewsSrc)) !== null) {
     htmlViews.add(m[1]);
+  }
+
+  // 2b) MOD-LOADER REGISTRATIONS — every ported mod's manifest exports
+  // additional views through manifest.views[]; the rendered surface the
+  // engine consults at request time is HTML_VIEWS + the mod-loader
+  // view-chains table (src/card/mod-loader.ts#viewsTable). Without unioning
+  // the manifest views, the HTML_VIEWS-only check under-reports covered
+  // views — the report's "mod-specific covered/total" column says 0 for
+  // every mod that registers its views only through the manifest.
+  const modsDir = join(REPO, "src", "card", "mod-loader", "mods");
+  const manifestViewRe = /\{\s*view:\s*"([a-z_]+)"/g;
+  if (existsSync(modsDir)) {
+    for (const modFile of readdirSync(modsDir)) {
+      if (!modFile.endsWith(".ts")) continue;
+      const src = readText(join(modsDir, modFile));
+      while ((m = manifestViewRe.exec(src)) !== null) {
+        htmlViews.add(m[1]);
+      }
+    }
   }
 
   // 3) rule machinery presence — read rules/lookup.ts + apply.ts.
@@ -459,6 +478,64 @@ function inventoryDeckoTs() {
 }
 
 // ---------------------------------------------------------------------------
+// per-mod manifest + test pin inventory (the byte-pinned verification round)
+// ---------------------------------------------------------------------------
+
+// For each mod: scan the mod's manifest (mod-loader/mods/*.ts) for the
+// view registrations it contributes, and the mod's test file
+// (tests/card/mod-loader/*.test.ts) for the A/B pin tests that prove each
+// rendered view matches the Ruby oracle bytes. A mod is "complete" in the
+// honest sense when the manifest exists AND the test file has byte-pinning
+// assertions (toBe(<literal-string>) per the existing pin style in
+// tests/card/mod-loader/card-mod-format.test.ts).
+function inventoryModPins(gemName) {
+  // gemName is e.g. "card-mod-format-0.20.0"; mod id is "card-mod-format".
+  const modId = gemName.replace(/-0\.\d+\.\d+$/, "");
+  const manifestPath = join(REPO, "src", "card", "mod-loader", "mods", modId + ".ts");
+  const testPath = join(REPO, "tests", "card", "mod-loader", modId + ".test.ts");
+
+  let manifestExists = false;
+  let manifestViews = [];
+  if (existsSync(manifestPath)) {
+    manifestExists = true;
+    const src = readText(manifestPath);
+    const re = /\{\s*view:\s*"([a-z_]+)"/g;
+    const seen = new Set();
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      if (! seen.has(m[1])) {
+        seen.add(m[1]);
+        manifestViews.push(m[1]);
+      }
+    }
+  }
+
+  let testExists = false;
+  let testCount = 0;
+  let bytePins = 0;
+  if (existsSync(testPath)) {
+    testExists = true;
+    const src = readText(testPath);
+    testCount = (src.match(/^\s*it\(/gm) || []).length;
+    const pinMatches = src.match(/expect\([^)]+\)\.toBe\([^)]+\)/g) || [];
+    for (const p of pinMatches) {
+      // Pin shape: expect(<var>).toBe('literal-string') — the single-quoted
+      // / double-quoted / backtick form. Numeric-only literals (toBe(5)) do
+      // not count as byte pins.
+      if (/toBe\(\s*['"`]/.test(p)) bytePins++;
+    }
+  }
+
+  return {
+    manifestExists,
+    manifestViews,
+    testExists,
+    testCount,
+    bytePins,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // classification
 // ---------------------------------------------------------------------------
 
@@ -480,7 +557,7 @@ const LEGACY_MODS = new Set([
   "card-mod-defaults-0.20.0",
 ]);
 
-function classify(inv, surface) {
+function classify(inv, surface, pins) {
   const gem = inv.gem;
 
   // Legacy gate first.
@@ -504,6 +581,11 @@ function classify(inv, surface) {
       setModules: inv.counts.setModules,
       libRbFiles: inv.counts.libRbFiles,
       hamlFiles: inv.counts.hamlFiles,
+      manifestExists: pins.manifestExists,
+      manifestViewsDeclared: pins.manifestViews.length,
+      testExists: pins.testExists,
+      testCount: pins.testCount,
+      bytePins: pins.bytePins,
     },
     };
   }
@@ -527,7 +609,8 @@ function classify(inv, surface) {
       ? 0
       : implementedUsed.length / patternsUsed.length;
 
-  // HTML views coverage.
+  // HTML views coverage. surface.htmlViews is the union of HTML_VIEWS and
+  // every ported mod's manifest.views[] (added by inventoryDeckoTs).
   const htmlViewsDeclared = inv.viewsByFormat["html"] ?? [];
   const htmlViewsCovered = htmlViewsDeclared.filter((v) =>
     surface.htmlViews.includes(v),
@@ -559,47 +642,66 @@ function classify(inv, surface) {
       ? 0
       : specificViewsCovered.length / specificViewsDeclared.length;
 
-  // Evidence line - one line per mod.
-  let evidence = "";
-  if (htmlViewsDeclared.length > 0) {
-    evidence = `${htmlViewsCovered.length}/${htmlViewsDeclared.length} html views in HTML_VIEWS (${specificViewsCovered.length}/${specificViewsDeclared.length} mod-specific)`;
-  } else {
-    evidence = "no html view declarations in this mod";
-  }
-
   // Modules coverage signal: how many of this mod's set/<pattern>/ files
   // would land on a pattern that's already implemented in decko-ts.
   const totalSetModules = inv.counts.setModules;
   const patternBackedModules = totalSetModules > 0 && patternsUsed.length > 0;
 
+  // Byte-pin evidence from the per-mod test file: the A/B pattern
+  // (tests/card/mod-loader/card-mod-XYZ.test.ts) pins the rendered bytes
+  // against the Ruby oracle capture. >=5 byte-pins per mod is the threshold
+  // the verification round used to call a mod "complete" — below that, the
+  // manifest may exist but the views are not yet byte-pinned.
+  const hasManifest = pins.manifestExists;
+  const hasTest = pins.testExists;
+  const bytePins = pins.bytePins;
+  const bytePinComplete = hasManifest && hasTest && bytePins >= 5;
+
+  // Evidence line - one line per mod.
+  let evidence = "";
+  if (htmlViewsDeclared.length > 0) {
+    evidence = `${htmlViewsCovered.length}/${htmlViewsDeclared.length} html views in HTML_VIEWS∪mod-manifests (${specificViewsCovered.length}/${specificViewsDeclared.length} mod-specific)`;
+  } else {
+    evidence = "no html view declarations in this mod";
+  }
+  // Append the byte-pin evidence so the report's per-mod detail surfaces
+  // the verification round's "manifest + bytePins" tally.
+  if (hasManifest || hasTest) {
+    evidence += `; mod-loader pins: manifest=${hasManifest ? "yes" : "no"}, test=${pins.testCount} it(), byte-pins=${bytePins}`;
+  }
+
   // Status thresholds (see docs/mod-compat-notes.md for the rubric).
-  // ported:    ≥50% of MOD-SPECIFIC html views are in HTML_VIEWS AND ≥50%
-  //            of patterns the mod uses are implemented AND the mod has
-  //            pattern-backed set modules. The mod-specific check stops
-  //            a "view :core only" mod from looking ported just because
-  //            the universal :core view is implemented.
+  // ported:    either (a) ≥50% of MOD-SPECIFIC html views covered AND ≥50%
+  //            of patterns implemented AND pattern-backed set modules (the
+  //            classic view+set rubric); OR (b) the mod has a ported
+  //            manifest + a byte-pinned test file with ≥5 toBe(<literal>)
+  //            pins (the verification round's "complete" criterion). The
+  //            OR widens the rubric to honor the loader+pin surface that
+  //            the HTML_VIEWS-only check missed.
   // partial:   some coverage (any html view present, or ≥50% pattern
-  //            coverage, or substantial lib/ + permissions), but not
-  //            enough for ported.
+  //            coverage, or substantial lib/ + permissions, or a partial
+  //            pin file), but not enough for ported.
   // missing:   zero coverage.
   let status = "missing";
-  if (totalSetModules === 0 && inv.counts.libRbFiles === 0) {
+  if (totalSetModules === 0 && inv.counts.libRbFiles === 0 && !hasManifest) {
     // Pure data/transform gem with no set/ and no lib/. Treat as
     // config-only / data-only — port is vacuous.
     status = "ignored";
     evidence = "data/transform-only gem (no set/ tree, no lib/ ruby)";
   } else if (
-    specificViewsDeclared.length > 0 &&
-    specificViewsCoverage >= 0.5 &&
-    patternsCoverage >= 0.5 &&
-    patternBackedModules
+    (specificViewsDeclared.length > 0 &&
+      specificViewsCoverage >= 0.5 &&
+      patternsCoverage >= 0.5 &&
+      patternBackedModules) ||
+    bytePinComplete
   ) {
     status = "ported";
   } else if (
     htmlViewsCovered.length > 0 ||
     patternsCoverage >= 0.5 ||
     (inv.counts.libRbFiles > 0 && surface.hasPerms) ||
-    (totalSetModules > 0 && patternBackedModules)
+    (totalSetModules > 0 && patternBackedModules) ||
+    (hasManifest && hasTest && bytePins > 0)
   ) {
     status = "partial";
   } else {
@@ -609,7 +711,12 @@ function classify(inv, surface) {
   // One-line verdict + evidence.
   let verdict = "";
   if (status === "ported") {
-    verdict = `${specificViewsCovered.length} mod-specific view(s) ported: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
+    if (bytePinComplete && specificViewsCovered.length === 0) {
+      // Honored via the byte-pin criterion alone.
+      verdict = `manifest + byte-pinned test (${bytePins} pins across ${pins.testCount} it()): ${pins.manifestViews.slice(0, 6).join(", ")}${pins.manifestViews.length > 6 ? ", ..." : ""}`;
+    } else {
+      verdict = `${specificViewsCovered.length} mod-specific view(s) ported: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
+    }
   } else if (status === "partial") {
     const specificMissing = specificViewsDeclared.filter(
       (v) => !surface.htmlViews.includes(v),
@@ -620,9 +727,10 @@ function classify(inv, surface) {
     const missing = specificMissing.length > 0
       ? specificMissing.slice(0, 6).join(", ") + (specificMissing.length > 6 ? ", ..." : "")
       : "(no mod-specific views)";
-    verdict = `mod-specific: covered=${covered}; missing=${missing}`;
+    const pinSuffix = bytePins > 0 ? `; pins=${bytePins}/${pins.testCount}` : "";
+    verdict = `mod-specific: covered=${covered}; missing=${missing}${pinSuffix}`;
   } else if (status === "missing") {
-    verdict = `no html view registered in HTML_VIEWS; ${totalSetModules} set module(s) across ${patternsUsed.length} pattern(s)`;
+    verdict = `no html view registered in HTML_VIEWS∪mod-manifests; ${totalSetModules} set module(s) across ${patternsUsed.length} pattern(s)`;
   } else if (status === "ignored") {
     verdict = evidence;
   }
@@ -648,6 +756,11 @@ function classify(inv, surface) {
       setModules: totalSetModules,
       libRbFiles: inv.counts.libRbFiles,
       hamlFiles: inv.counts.hamlFiles,
+      manifestExists: hasManifest,
+      manifestViewsDeclared: pins.manifestViews.length,
+      testExists: hasTest,
+      testCount: pins.testCount,
+      bytePins,
     },
   };
 }
@@ -692,17 +805,19 @@ function renderMd(report) {
   lines.push("");
   lines.push("## Per-mod report");
   lines.push("");
-  lines.push("| mod | status | mod-specific views | set modules | lib rb | verdict |");
-  lines.push("|-----|--------|-------------------:|------------:|-------:|---------|");
+  lines.push("| mod | status | mod-specific views | manifest views | set modules | lib rb | test it() / byte-pins | verdict |");
+  lines.push("|-----|--------|-------------------:|---------------:|------------:|-------:|----------------------:|---------|");
   for (const m of report.mods) {
     const cls = m.classification;
     const modSpec = `${cls.metrics.specificViewsCovered ?? 0}/${cls.metrics.specificViewsDeclared ?? 0}`;
+    const manifestSpec = `${m.pins.manifestViews.length} (covered=${m.pins.manifestViews.filter((v) => report.surface.htmlViews.includes(v)).length})`;
     const setModSummary = Object.entries(m.inv.setModulesByPattern || {})
       .filter(([, n]) => n > 0)
       .map(([p, n]) => `${p}=${n}`)
       .join(", ");
+    const pinsSummary = `${m.pins.testCount}/${m.pins.bytePins}`;
     lines.push(
-      `| \`${m.gem}\` | ${cls.status} | ${modSpec} | ${cls.metrics.setModules} (${setModSummary}) | ${cls.metrics.libRbFiles} | ${cls.verdict.replace(/\|/g, "\\|").slice(0, 200)} |`,
+      `| \`${m.gem}\` | ${cls.status} | ${modSpec} | ${manifestSpec} | ${cls.metrics.setModules} (${setModSummary}) | ${cls.metrics.libRbFiles} | ${pinsSummary} | ${cls.verdict.replace(/\|/g, "\\|").slice(0, 200)} |`,
     );
   }
   lines.push("");
@@ -715,6 +830,8 @@ function renderMd(report) {
     lines.push(`- **status**: \`${cls.status}\``);
     lines.push(`- **verdict**: ${cls.verdict}`);
     lines.push(`- **evidence**: ${cls.evidence}`);
+    lines.push(`- **mod-loader manifest**: ${m.pins.manifestExists ? `yes (${m.pins.manifestViews.length} views registered)` : "no"}`);
+    lines.push(`- **byte-pinned test**: ${m.pins.testExists ? `yes (${m.pins.testCount} it() blocks, ${m.pins.bytePins} toBe(<literal>) pins)` : "no"}`);
     lines.push(`- **set modules by pattern**: ${Object.entries(m.inv.setModulesByPattern).filter(([, n]) => n > 0).map(([p, n]) => `${p}=${n}`).join(", ") || "(none)"}`);
     lines.push(`- **mod-specific html views (covered/total)**: ${cls.metrics.specificViewsCovered}/${cls.metrics.specificViewsDeclared} (${(m.inv.viewsByFormat.html ?? []).filter((v) => !["core","content","title","titled","titled_content","menu","open","closed","blank","unknown","mini_unknown","no_search_results"].includes(v)).join(", ") || "(none)"})`);
     lines.push(`- **all html views declared**: ${(m.inv.viewsByFormat.html ?? []).length ? m.inv.viewsByFormat.html.join(", ") : "(none)"}`);
@@ -738,9 +855,12 @@ function renderMd(report) {
   lines.push("");
   lines.push("Compare against decko-ts `src/card/set-patterns/registry.ts` PATTERN_TABLE");
   lines.push("(which set patterns are registered) and `src/card/render/views.ts` HTML_VIEWS");
-  lines.push("(which html views are implemented). Status thresholds:");
-  lines.push("- **ported**: ≥50% of declared html views are in HTML_VIEWS AND ≥50% of patterns the mod uses are implemented AND the mod has pattern-backed set modules.");
-  lines.push("- **partial**: some coverage (any html view present, or ≥50% pattern coverage, or lib/ + permissions), but not enough for ported.");
+  lines.push("UNIONED with every ported mod's manifest views under");
+  lines.push("`src/card/mod-loader/mods/*.ts` (the engine resolves both —");
+  lines.push("HTML_VIEWS is the seed table, the mod loader's `viewsTable` is the");
+  lines.push("post-load live table). Status thresholds:");
+  lines.push("- **ported**: either (a) ≥50% of MOD-SPECIFIC declared html views are covered AND ≥50% of patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a ported manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with ≥5 `toBe(<literal>)` assertions (the verification round's 'complete' criterion).");
+  lines.push("- **partial**: some coverage (any html view present, or ≥50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for ported.");
   lines.push("- **missing**: zero coverage.");
   lines.push("- **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.");
   lines.push("");
@@ -763,8 +883,9 @@ function main() {
   const surface = inventoryDeckoTs();
   const mods = gems.map((g) => {
     const inv = inventoryGem(g.path, g.name);
-    const cls = classify(inv, surface);
-    return { gem: g.name, version: g.version, classification: cls, inv };
+    const pins = inventoryModPins(g.name);
+    const cls = classify(inv, surface, pins);
+    return { gem: g.name, version: g.version, classification: cls, inv, pins };
   });
 
   const report = {

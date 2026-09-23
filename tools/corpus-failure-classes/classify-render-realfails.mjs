@@ -35,14 +35,29 @@ function normalize(text) {
   // Decode the small set of HTML entities the fixtures emit so structural shape matches.
   s = s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&#39;/g, "'");
   // Canonical view-suffix placeholders.
+  // view-suffix rewrites must happen BEFORE the id-strip so the structural
+  // rule at line ~123 (/accordion-body|card-body/.../-CV/) sees the -CV token
+  // when it lives inside an id="..." value (the engine emits the extra
+  // content-view wrapper as <div id="...-content-view"> — without this fix
+  // the id-strip erased the token and the bucket under-collapsed).
   s = s.replace(/-open-view/g, '-OV')
        .replace(/-content-view/g, '-CV')
        .replace(/-closed-view/g, '-CLV')
        .replace(/-mini_bar-view/g, '-MV');
-  // Drop noisy attribute values (ids, hrefs, data-bs-*).
-  s = s.replace(/id="[^"]*"/g, 'id="X"')
+  // Drop noisy attribute values (ids, hrefs, data-bs-*). Stash any id that
+  // carries a view-suffix marker to a sentinel first so the generic id-strip
+  // does not erase the -CV/-OV/-CLV/-MV token; then run the generic strip
+  // on the remaining ids; finally restore the stashed ids as id="X-CV" so
+  // the structural rule still fires on them.
+  const ID_SENTINEL_PREFIX = '\u0001IDSENT';
+  s = s.replace(/id="[^"]*-OV[^"]*"/g, `${ID_SENTINEL_PREFIX}OV`)
+       .replace(/id="[^"]*-CV[^"]*"/g, `${ID_SENTINEL_PREFIX}CV`)
+       .replace(/id="[^"]*-CLV[^"]*"/g, `${ID_SENTINEL_PREFIX}CLV`)
+       .replace(/id="[^"]*-MV[^"]*"/g, `${ID_SENTINEL_PREFIX}MV`)
+       .replace(/id="[^"]*"/g, 'id="X"')
        .replace(/href="[^"]*"/g, 'href="X"')
-       .replace(/data-[a-z-]+="[^"]*"/g, 'data-X="X"');
+       .replace(/data-[a-z-]+="[^"]*"/g, 'data-X="X"')
+       .replace(new RegExp(`${ID_SENTINEL_PREFIX}(OV|CV|CLV|MV)`, 'g'), 'id="X-$1"');
   // Preserve structural class-name vocabulary that matters for bucketing.
   // Anything else that looks like a long lowercase token (>=6 chars) collapses to TOK.
   const preserved = ['pointer-list', 'pointer-item', 'card-list', 'item-bar', 'card-slot', 'd0-card-body', 'accordion-body', 'text-muted', 'one-line', 'home_view', 'mini-bar'];
