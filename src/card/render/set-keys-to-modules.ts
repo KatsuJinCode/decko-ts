@@ -67,6 +67,43 @@ function camelizeAnchor(anchor: string): string {
  * from anchor (TYPE_PLUS_RIGHT's underscores stay intact); "+" splits
  * multi-anchor fragments INSIDE the anchor (TYPE_PLUS_RIGHT's anchor
  * is "set+Xread" with the "+" preserved). */
+/**
+ * Registered-name candidates for one anchored safeKey, EXACT conversion
+ * first. The X-stripped variants exist because Ruby's safe_key renders a
+ * leading "*" as "X" (pattern/all.rb#safe_key) while a set module's PATH
+ * anchor carries the name WITHOUT the star (card-mod-api_key
+ * set/right/api_key.rb -> Right::ApiKey, but the rule card's token is
+ * "RIGHT-Xapi_key" -> the exact conversion answers "Right::XapiKey",
+ * which no registered module uses). The chain walker tries the variants
+ * against the registered table, so the star-marker ambiguity resolves by
+ * lookup, never by guessing: exact hit wins, then X-stripped combinations
+ * (each "-"-separated anchor fragment may independently carry the marker).
+ * Bounded: fragments^n variants, fragments <= 3 in practice. */
+export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
+  const first = safeKeyToModuleShortname(safeKey);
+  const dashIdx = safeKey.indexOf("-");
+  if (dashIdx === -1) return [first];
+  const code = safeKey.slice(0, dashIdx).toLowerCase();
+  const anchor = safeKey.slice(dashIdx + 1);
+  const frags = anchor.split("-");
+  const optionsPerFrag = frags.map((f) =>
+    f.startsWith("X") && f.length > 1 ? [f, f.slice(1)] : [f],
+  );
+  const out = new Set<string>([first]);
+  const total = optionsPerFrag.reduce((a, o) => a * o.length, 1);
+  for (let mask = 1; mask < total; mask++) {
+    let m = mask;
+    const chosen: string[] = [];
+    for (const opts of optionsPerFrag) {
+      const idx = m % opts.length;
+      m = Math.floor(m / opts.length);
+      chosen.push(opts[idx]);
+    }
+    out.add(`${camelizeCode(code)}::${camelizeAnchor(chosen.join("-"))}`);
+  }
+  return [...out];
+}
+
 export function safeKeyToModuleShortname(safeKey: string): string {
   const dashIdx = safeKey.indexOf("-");
   if (dashIdx === -1) return camelizeCode(safeKey.toLowerCase());

@@ -66,11 +66,14 @@ export function wrappedView(view: string, body: (ctx: ViewContext) => string): V
  *
  * The walker resolves the per-card chain for `view`, finds the entry
  * whose setModule matches `currentModule`, and returns the NEXT entry's
- * view fn output. When there is no entry after `currentModule` (the
- * view is the most-specific or the chain only has one entry), the call
- * terminates with empty string (Ruby's super() past the base raises
- * NoMethodError; the headless port returns "" so callers don't crash
- * during composition).
+ * view fn output. When there is no entry after `currentModule`, Ruby's
+ * super() falls to the PARENT method - the base format's view
+ * (view_definition.rb:18-21: definitions reopen the format class; the
+ * chain's terminal parent is the compiled-in core view). The fallback
+ * here renders the engine's base view for the same view name; when the
+ * core table has no such view either, the delegation terminates with ""
+ * (Ruby would raise NoMethodError past the base; the headless port
+ * returns "" so callers don't crash during composition).
  *
  * superView falls back gracefully when no loader is registered (returns
  * ""): the helper is always safe to call from a view body even before
@@ -78,6 +81,8 @@ export function wrappedView(view: string, body: (ctx: ViewContext) => string): V
  * wide default (setDefaultModLoader); when the render layer later
  * exposes a per-engine loader on ctx.fmt, superView consults THAT first.
  */
+import { HTML_VIEWS } from "../render/views.js";
+
 export function superView(
   ctx: ViewContext,
   currentModule: string,
@@ -94,6 +99,11 @@ export function superView(
     return "";
   }
   const next = chain[idx + 1];
-  if (next === undefined) return ""; // delegation terminates
-  return next.viewFn(ctx);
+  if (next !== undefined) return next.viewFn(ctx);
+  // Delegation past the last chain entry falls to the base format's
+  // view - Ruby's super() reaches the parent class method (the core
+  // view the mod's registration had overridden).
+  const base = HTML_VIEWS[view];
+  if (base === undefined) return "";
+  return base(ctx);
 }

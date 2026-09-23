@@ -1,0 +1,30 @@
+{
+  "direct_i18n_localize": {
+    "left_created_at_utc_midnight": "Saturday, September 19, 2026 12:00 AM UTC",
+    "left_created_at_utc_noon": "Monday, June 15, 2026 12:00 PM UTC",
+    "left_updated_at_utc_1430": "Saturday, September 19, 2026 02:30 PM UTC",
+    "time_now_at_capture": "Tuesday, September 22, 2026 08:49 PM Pacific Standard Time"
+  },
+  "i18n_format_string": "%A, %B %d, %Y %I:%M %p %Z",
+  "now_card": {
+    "content": "Tuesday, September 22, 2026 08:49 PM Pacific Standard Time",
+    "format_render_core": "Tuesday, September 22, 2026 08:49 PM Pacific Standard Time",
+    "format_render_raw": "Tuesday, September 22, 2026 08:49 PM Pacific Standard Time",
+    "name": "*now",
+    "type_code": "basic"
+  },
+  "rendered": {
+    "Oracle Date Probe A+*when created#core": "Saturday, September 19, 2026 12:00 AM UTC",
+    "Oracle Date Probe A+*when created#raw": "Saturday, September 19, 2026 12:00 AM UTC",
+    "Oracle Date Probe A+*when last edited#core": "Saturday, September 19, 2026 02:30 PM UTC",
+    "Oracle Date Probe A+*when last edited#raw": "Saturday, September 19, 2026 02:30 PM UTC",
+    "Oracle Date Probe B+*when created#core": "Monday, June 15, 2026 12:00 PM UTC",
+    "Oracle Date Probe B+*when created#raw": "Monday, June 15, 2026 12:00 PM UTC"
+  },
+  "timezone": {
+    "env_tz": null,
+    "time_now_inspect": "2026-09-22 20:49:28.3651764 -0700",
+    "time_now_zone": "Pacific Standard Time",
+    "time_zone_name": "UTC"
+  }
+}

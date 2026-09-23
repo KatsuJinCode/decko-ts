@@ -52,7 +52,7 @@ import {
   type SetModuleKind,
   type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
-import { safeKeyToModuleShortname } from "./render/set-keys-to-modules.js";
+import { safeKeyToModuleShortname, safeKeyToModuleShortnameCandidates } from "./render/set-keys-to-modules.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
@@ -430,11 +430,18 @@ export class ModLoader {
           }
         }
       } else {
-        // Anchored: resolve to a single shortname.
-        const shortname = safeKeyToModuleShortname(token);
-        const viewFn = this.viewChains.viewFor(shortname, view);
-        if (viewFn !== undefined) {
-          out.push({ setModule: shortname, view, viewFn });
+        // Anchored: resolve to the first REGISTERED shortname among the
+        // token's candidates (exact conversion first, then the star-marker
+        // X-stripped variants - right/api_key.rb registers "Right::ApiKey"
+        // while the rule card's token is "RIGHT-Xapi_key"; lookup decides,
+        // never string guessing). Unregistered tokens fall through to the
+        // next set-key token, Ruby's MRO walk unchanged.
+        for (const shortname of safeKeyToModuleShortnameCandidates(token)) {
+          const viewFn = this.viewChains.viewFor(shortname, view);
+          if (viewFn !== undefined) {
+            out.push({ setModule: shortname, view, viewFn });
+            break;
+          }
         }
       }
     }

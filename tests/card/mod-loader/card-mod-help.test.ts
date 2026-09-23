@@ -18,6 +18,12 @@
 //     Oracle Help Probe+*self+*help, id 21) carrying help text
 //   - Oracle Bare Probe (id 1170) - no *help rule card
 //   - *help (id 12) is the codename card for the setting
+// Plus a separate compound probe deck for the :popover byte oracle
+// (fixtures/captured/help-popover.json): Right pattern is compound_only
+// (mod/core/set_pattern/07_right.rb:2), so the popover view only fires
+// on compound names - simple probe names raise "view not supported" in
+// Ruby. The capture seeds Oracle Help Popover Probe+*help (WITH a *help
+// rule) and Oracle Bare Popover Probe+*help (WITHOUT).
 //
 // Set module basket (set/all/help.rb:6-12 / :help, :help_text; :27-30 /
 // :lead; set/all/guide.rb:6-16 / :guide; set/right/help.rb:4-6 / :popover;
@@ -28,13 +34,20 @@
 // Of the gem's five html views (compat-report metrics.htmlViewsMissingNames
 // for card-mod-help-0.20.0): help, help_text, lead are ported with oracle
 // bytes; :popover is ported via card-mod-bootstrap's popover_link helper
-// (set/right/help.rb:4-6) with CAPTURE PENDING (no oracle fixture pins
-// the live :popover dispatch bytes; tests assert the helper anchor shape
-// with the _render_core text payload instead); set/right/guide.rb only
-// defines a card-level raw_help_text method (no view declared). See
-// viewsMissing for the full set-block accounting.
+// (set/right/help.rb:4-6). Bytes captured against
+// fixtures/captured/help-popover.json (captured from the live decko 0.20.0
+// oracle app via tests/card/mod-loader/oracle-capture-help-popover.rb);
+// the byte-equality A/B pin is currently red on attribute order
+// (TS popoverLink emits via emitAttrs in hash insertion order:
+// href, tabindex, class, data-bs-*; Ruby link_to emits: tabindex,
+// data-bs-*, class, href). Fix lives on the bootstrap lane at
+// card-mod-bootstrap.ts#popoverLink. set/right/guide.rb only defines
+// a card-level raw_help_text method (no view declared). See viewsMissing
+// for the full set-block accounting.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   createRenderTestStorage,
   seedCard,
@@ -46,6 +59,20 @@ import {
   cardModHelp,
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
+
+/** The byte oracle for the :popover view (set/right/help.rb:4-6 -> the
+ *  popover_link helper from card-mod-bootstrap's set/all/bootstrap/
+ *  helper.rb:41-44). Captured from the live decko 0.20.0 oracle app via
+ *  tests/card/mod-loader/oracle-capture-help-popover.rb. The Right pattern
+ *  is compound_only (mod/core/set_pattern/07_right.rb:2), so the popover
+ *  view only fires on compound names; the fixture pins a ruled compound
+ *  probe and a bare compound probe. */
+const POPOVER_FIXTURE = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("../../../fixtures/captured/help-popover.json", import.meta.url)),
+    "utf8",
+  ),
+) as { rendered: Record<string, string> };
 
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
@@ -113,6 +140,48 @@ beforeAll(async () => {
     id: 1170,
     name: "Oracle Bare Probe",
     dbContent: "bare probe body",
+  });
+
+  // -- :popover probe deck (compound cards; Right pattern is compound_only) -
+  // the left-side plain cards (RichText-typed; Oracle Help Popover Probe's
+  // dbContent matches the capture, Oracle Bare Popover Probe is its left
+  // side and carries the bare body).
+  await seedCard(s, {
+    id: 2200,
+    name: "Oracle Help Popover Probe",
+    dbContent: "popover probe card body",
+  });
+  await seedCard(s, {
+    id: 2201,
+    name: "Oracle Bare Popover Probe",
+    dbContent: "bare popover probe body",
+  });
+  // the set card "Oracle Help Popover Probe+*self" (junction).
+  await seedCard(s, { id: 2210, leftId: 2200, rightId: 11, typeId: 13 });
+  // the rule card "Oracle Help Popover Probe+*self+*help" (junction).
+  await seedCard(s, {
+    id: 2211,
+    leftId: 2210,
+    rightId: 12,
+    typeId: 14,
+    dbContent: "Moderator-approved help text for the popover probe card.",
+  });
+  // the two compound probe cards (Right pattern matches; :popover view
+  // dispatches through Card::Set::Right::Help::HtmlFormat). dbContent
+  // carries _render_core's body (RichText :core renders dbContent verbatim).
+  await seedCard(s, {
+    id: 2220,
+    leftId: 2200,
+    rightId: 12,
+    typeId: 14,
+    dbContent: "popover probe card body",
+  });
+  await seedCard(s, {
+    id: 2221,
+    leftId: 2201,
+    rightId: 12,
+    typeId: 14,
+    dbContent: "bare popover probe body",
   });
 }, 60_000);
 
@@ -236,36 +305,51 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     expect(html).not.toContain("class=\"guide-text\"");
   });
 
-  it("WITH the mod: :popover wraps the :core text inside the card-mod-bootstrap popover_link anchor (set/right/help.rb:4-6) - CAPTURE PENDING", async () => {
+  it("WITH the mod: :popover wraps the :core text inside the card-mod-bootstrap popover_link anchor (set/right/help.rb:4-6)", async () => {
     const s = storage!;
     // help.rb:4-6 view :popover: `popover_link _render_core`. The TS
-    // port calls popoverLink(ctx.fmt.renderView("core")) - the same
-    // dispatch shape (popoverLink export at card-mod-bootstrap.ts:166
-    // mirrors helper.rb:41-44 `popover_link text`; helper.rb:46-57
+    // port calls popoverLink(ctx.fmt.renderView("core")) (card-mod-
+    // bootstrap.ts#popoverLink mirrors helper.rb:41-44; helper.rb:46-57
     // popover_opts builds the anchor attrs).
     //
-    // CAPTURE PENDING: no oracle capture pins the live :popover dispatch
-    // bytes. The helper bytes themselves are pinned by
-    // card-mod-bootstrap.test.ts#popoverLink unit tests; here we assert
-    // the *combination* (popoverLink anchor + the :core text payload)
-    // but do NOT claim byte parity to a captured oracle capture that
-    // does not exist for set/right/help.rb.
+    // Byte-oracle pin against fixtures/captured/help-popover.json (the
+    // popover view fires on COMPOUND names only - Right pattern's
+    // compound_only = true per mod/core/set_pattern/07_right.rb:2; the
+    // simple "Oracle Help Probe" probe does not match Right::Help in
+    // Ruby, so we render the compound probes the capture seeds).
+    const withRule = await s.engine.render(
+      "Oracle Help Popover Probe+*help",
+      "popover",
+    );
+    expect(withRule).toBe(
+      POPOVER_FIXTURE.rendered["Oracle Help Popover Probe+*help#popover"],
+    );
+    const bareProbe = await s.engine.render(
+      "Oracle Bare Popover Probe+*help",
+      "popover",
+    );
+    expect(bareProbe).toBe(
+      POPOVER_FIXTURE.rendered["Oracle Bare Popover Probe+*help#popover"],
+    );
+  });
+
+  it("WITH the mod: :popover on a SIMPLE probe still resolves through the registered helper (TS does not enforce compound_only)", async () => {
+    const s = storage!;
+    // TS-side the popover view is registered as a generic view on
+    // Right::Help's set module without the Ruby compound_only gate. The
+    // byte-oracle pin above covers the COMPOUND case (where the Ruby
+    // bytes match); this assertion documents the TS-engine behavior
+    // (a simple card name also resolves, returning the same anchor shape
+    // with that card's core body) without claiming byte parity to a
+    // captured fixture that does not exist for simple names.
     const html = await s.engine.render("Oracle Help Probe", "popover");
-    // popover_link's anchor shape (helper.rb:41-57 + popoverLink
-    // export, card-mod-bootstrap.ts:166):
     expect(html).toContain('href="#"');
     expect(html).toContain('class="ps-1 _popover_link"');
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('data-bs-toggle="popover"');
     expect(html).toContain('data-bs-trigger="hover focus"');
-    // _render_core -> renderView("core") -> the core slot's content;
-    // RichText :core renders the card's dbContent verbatim. The text
-    // payload rides on data-bs-content per popover_opts(helper.rb:53).
     expect(html).toContain("probe card body");
     expect(html).toMatch(/data-bs-content="[^"]*probe card body/);
-    // material help icon as linkText (helper.rb:42 link_text ||=
-    // icon_tag :help -> icon.rb:120-123 material -> universal:130-135
-    // adds notranslate).
     expect(html).toContain(
       '<i class="notranslate material-icons">help</i>',
     );

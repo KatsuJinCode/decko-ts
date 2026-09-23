@@ -45,6 +45,9 @@
 //     *structure setting) - same end state via right/structure.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createRenderTestStorage,
   seedCard,
@@ -56,6 +59,29 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModContent from "../../../src/card/mod-loader/mods/card-mod-content.js";
+
+// Oracle byte-pinning for the Abstract::CodeContent / Abstract::HamlFile /
+// Abstract::ReadOnly :input chain (card-mod-content set/abstract/01_code_
+// content.rb:2-5 + haml_file.rb:11-14 + read_only.rb:1-4). The capture
+// script at tests/card/mod-loader/oracle-capture-content-inputs.rb runs
+// from tools/oracle/decko-oracle-app via decko runner; this fixture is
+// the byte oracle the TS port's superView chain terminals pin against.
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const REPO_ROOT = resolve(__dirname, "../../..");
+const CAPTURE_PATH = resolve(
+  REPO_ROOT,
+  "fixtures/captured/content-inputs.json",
+);
+interface ContentInputCapture {
+  registered_views: Record<
+    string,
+    { defined: boolean; source_location: [string, number] | null }
+  >;
+  per_module_input: Record<string, string>;
+}
+const captured: ContentInputCapture = JSON.parse(
+  readFileSync(CAPTURE_PATH, "utf8"),
+);
 
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
@@ -325,5 +351,105 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     expect(typeof html).toBe("string");
     expect(html.length).toBeGreaterThan(0);
     expect(html).toContain("card-slot");
+  });
+
+  // -----------------------------------------------------------------------
+  // Oracle byte-pinning: card-mod-content abstract :input chain terminals
+  // (card-mod-content set/abstract/01_code_content.rb:2-5,
+  //  haml_file.rb:11-14, read_only.rb:1-4). The captured Ruby
+  // per-module :input literals + rendered :input bytes live at
+  // fixtures/captured/content-inputs.json; the assertions below pin the
+  // TS port's superView chain terminals against them.
+  // -----------------------------------------------------------------------
+
+  it("oracle: Abstract::CodeContent's :input literal matches the captured bytes (01_code_content.rb:2-5)", () => {
+    // The Ruby view DSL stores `view :input do "..."` body as a Proc on
+    // Card::Set::Abstract::CodeContent::HtmlFormat.views[self][:input].
+    // Calling the proc returns the literal "Content is stored in file
+    // and can't be edited." - the per-set-module bytes the TS port's
+    // superView chain terminals pin against.
+    expect(captured.per_module_input["Abstract::CodeContent::HtmlFormat"])
+      .toBe("Content is stored in file and can't be edited.");
+  });
+
+  it("oracle: Abstract::HamlFile's :input literal matches the captured bytes (haml_file.rb:11-14)", () => {
+    expect(captured.per_module_input["Abstract::HamlFile::HtmlFormat"])
+      .toBe("Content is managed by code and cannot be edited");
+  });
+
+  it("oracle: Abstract::ReadOnly's :input literal matches the captured bytes (read_only.rb:1-4)", () => {
+    // ReadOnly is the chain's terminal literal - super() past this
+    // module returns "" (no further :input registered). The TS port's
+    // chain terminal IS this literal for every card that walks the
+    // Abstract pseudo-pattern (the OR-fallback in CodeContent's +
+    // HamlFile's superView calls catches this when they're not
+    // bypassed - but in practice the chain walking means the OR
+    // always returns this terminal literal because ReadOnly never
+    // chains further).
+    expect(captured.per_module_input["Abstract::ReadOnly::HtmlFormat"])
+      .toBe("Content can't be edited.");
+  });
+
+  it("oracle: every abstract :input view is registered under its source module", () => {
+    // The :input view must be defined on each abstract set's HtmlFormat
+    // module (so the chain walker can step through CodeContent ->
+    // HamlFile -> ReadOnly). Source locations name the file that
+    // contributed each registration - pinning the TS manifest entries
+    // to their Ruby counterparts.
+    const cc = captured.registered_views.abstract_code_content_view_input;
+    expect(cc.defined).toBe(true);
+    expect(cc.source_location).not.toBeNull();
+    expect(cc.source_location?.[0]).toContain("card-mod-content-0.20.0");
+    expect(cc.source_location?.[0]).toContain("abstract/01_code_content.rb");
+    expect(cc.source_location?.[1]).toBe(2);
+
+    const hf = captured.registered_views.abstract_haml_file_view_input;
+    expect(hf.defined).toBe(true);
+    expect(hf.source_location?.[0]).toContain("abstract/haml_file.rb");
+    expect(hf.source_location?.[1]).toBe(12);
+
+    const ro = captured.registered_views.abstract_read_only_view_input;
+    expect(ro.defined).toBe(true);
+    expect(ro.source_location?.[0]).toContain("abstract/read_only.rb");
+    expect(ro.source_location?.[1]).toBe(2);
+  });
+
+  it("WITH the mod: superView chain for :input walks CodeContent -> HamlFile -> ReadOnly (terminal literal)", async () => {
+    // The superView chain (mod-view-helpers.ts:97-115) walks the
+    // Abstract pseudo-pattern registrations in load order:
+    // CodeContent -> HamlFile -> ReadOnly. ReadOnly has no further
+    // :input (its view body returns the bare literal without calling
+    // superView), so the chain terminates there. The flat last-wins
+    // views.input IS ReadOnly's body - every card that resolves :input
+    // through the abstract chain renders ReadOnly's literal.
+    const s = storage!;
+    const html = await s.engine.render("Oracle Code Probe", "input");
+    // The chain terminal (Abstract::ReadOnly's literal): the bytes
+    // the format module's view_method returns after every abstract
+    // reopening of :input - same end state Ruby reaches at the
+    // format module level after ReadOnly's reopening wins.
+    expect(html).toBe(captured.per_module_input["Abstract::ReadOnly::HtmlFormat"]);
+    expect(html).toBe("Content can't be edited.");
+  });
+
+  it("WITH the mod: every per-module :input literal survives super() chaining (chain terminal = ReadOnly)", () => {
+    // All three abstract modules chain via superView: CodeContent and
+    // HamlFile each delegate via superView and fall back to their own
+    // literal only if super() returns "". ReadOnly is the terminal,
+    // so its literal is what super() ultimately returns. The TS
+    // port's chain terminals therefore pin the ReadOnly literal for
+    // both CodeContent-anchored and HamlFile-anchored cards.
+    loader = new ModLoader([{ manifest: cardModContent }]);
+    loader.load();
+    const chain = loader.viewChain("", "input");
+    const modules = chain.map((e) => e.setModule);
+    expect(modules).toContain("Abstract::CodeContent");
+    expect(modules).toContain("Abstract::HamlFile");
+    expect(modules).toContain("Abstract::ReadOnly");
+
+    // The chain's order is load-order; ReadOnly at the end.
+    const readOnlyIdx = modules.indexOf("Abstract::ReadOnly");
+    expect(readOnlyIdx).toBeGreaterThan(modules.indexOf("Abstract::CodeContent"));
+    expect(readOnlyIdx).toBeGreaterThan(modules.indexOf("Abstract::HamlFile"));
   });
 });

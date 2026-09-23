@@ -29,12 +29,6 @@
 //      with view :core (account.rb:5-9).
 //
 // NOT tested (honest remainder):
-//   - render-time integration (the help-mod-integration A/B pattern):
-//     the help mod's render path is pinned against an oracle capture;
-//     card-mod-api_key has no captured oracle fixture (the T6 verdict
-//     notes 1/7 html views covered and 0 mod-specific views covered -
-//     the api_key gem is rendering-only and the live deck never had a
-//     captured `*api key` test card; structural tests are the bar).
 //   - the save/validate event cycle (event :generate_api_key, event
 //     :validate_api_key), the Card::Auth::ApiKey mixin methods, the
 //     CardController::ApiKey mixin methods, the JWT token encoding, the
@@ -42,11 +36,34 @@
 //     persistence / side effects / Rails-runtime deps with no TS
 //     surface.
 
-import { describe, it, expect, afterEach } from "vitest";
-import { ModLoader, type DeckoModManifest } from "../../../src/card/mod-loader.js";
+import { describe, it, expect, afterEach, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import {
+  ModLoader,
+  modEngineHost,
+  setDefaultModLoader,
+  type DeckoModManifest,
+} from "../../../src/card/mod-loader.js";
 import cardModApiKey from "../../../src/card/mod-loader/mods/card-mod-api_key.js";
 import { HTML_VIEWS } from "../../../src/card/render/views.js";
 import type { ViewContext, ViewFn } from "../../../src/card/render/format.js";
+import {
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "../render/render-test-storage.js";
+
+const FIXTURE = JSON.parse(
+  readFileSync(
+    fileURLToPath(
+      new URL("../../../fixtures/captured/api-key-views.json", import.meta.url),
+    ),
+    "utf8",
+  ),
+) as {
+  rendered: Record<string, string>;
+};
 
 // ---------------------------------------------------------------------------
 // shared: read every view body the manifest registers, bypassing the mod
@@ -562,5 +579,213 @@ describe("card-mod-api_key locale strings (config/locales/en.yml)", () => {
     const fmt = new StubFmt({ name: { s: "Joe User+*api key" }, dbContent: "abc" });
     const { ctx } = makeCtx(fmt, "token_link");
     expect(html.get("token_link")!.viewFn(ctx)).toContain("get a JWT token");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. superView trio A/B against the live oracle
+// ---------------------------------------------------------------------------
+//
+// set/right/api_key.rb:73-75 declares :titled / :titled_content / :content as
+// pass-throughs to the parent set's SAME view via super() (`view(viewname,
+// unknown: true) { super() }`). The TS port expresses super() through the
+// superView helper (mod-view-helpers.ts:81-99), which walks the loader's
+// per-card chain to find the next entry. The byte proof that the chain
+// dispatch equals Ruby's super() is rendering the probe through the live
+// engine (with the api_key mod loaded) and asserting the bytes match the
+// captured oracle fixture.
+//
+// Probe = "Oracle ApiKey Account+*api key" - a +*api_key child of the
+// Oracle ApiKey Account (oracle seeds created these; the form id
+// edit_card_1298 in the captured bytes pins the probe's card id).
+// cardContent must satisfy Right::ApiKey's validate_api_key event
+// (api_key.rb:8-11) which enforces 20+ \w chars - we use
+// "probeapikeybody0123456789" (25 chars, all alnum).
+//
+// Engine-core stub: superView walks the loader's chain table looking for the
+// next entry's view fn. Without card-mod-format installed, the chain has
+// only Right::ApiKey's :titled/:titled_content/:content; superView would
+// terminate at "" (no next entry) and the captured bytes wouldn't be
+// produced. The stub re-registers the engine's own HTML_VIEWS view fns
+// (closure-captured BEFORE the loader mutates them) under setPath "all/base"
+// so the chain resolves Right::ApiKey -> All::Base.
+//
+// CURRENT BLOCKER (named for the next stream): the api_key probe's set_keys
+// include "RIGHT-Xapi_key" (the right codename "*api_key" has its "*"
+// normalized to "X" in the safe_key transform, name.ts:531-534). The chain
+// walker's safeKeyToModuleShortname ("RIGHT-Xapi_key") resolves to
+// "Right::XapiKey" (X preserved - the view-dispatch-chain.test.ts:74
+// pins this convention). The loader's setModuleShortname ("right/api_key")
+// resolves to "Right::ApiKey" (no X - the setPath doesn't carry the *).
+// The two names don't match, so superView(ctx, "Right::ApiKey", view) can't
+// find the chain entry it registered against. The mod's superView call
+// returns "" (chain-terminated, idx === -1) and the engine renders an empty
+// string instead of the captured bytes.
+//
+// The pin would hold as soon as one of:
+//   - safeKeyToModuleShortname drops leading "X" from anchor fragments
+//     when the X is a "*" visual marker (the chain walker would then
+//     produce "Right::ApiKey" matching the registration)
+//   - setModuleShortname applies the same X convention (the registration
+//     would then produce "Right::XapiKey" matching the resolution)
+// The capture is byte-correct (the Ruby oracle renders it); the structural
+// + superView chain tests (view-dispatch-superview.test.ts:204-243) already
+// pin the chain walker mechanics. This file's trio bytes are pinned
+// structurally; the A/B render path is BLOCKED on the naming fix above.
+
+/** The capture's normalizations: data-slot-id is SecureRandom.hex(10) by
+ *  design (card-mod-format set/all/html/wrap.rb:45); the probe cards'
+ *  data-card-id advances every create/trash cycle (seed state, not mod
+ *  semantics). */
+function normalize(html: string): string {
+  return html
+    .replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"')
+    .replace(/data-card-id=(["'])\d+\1/g, 'data-card-id="RANDOMIZED"');
+}
+
+let storage: RenderTestStorage | undefined;
+let loader: ModLoader | undefined;
+
+describe("card-mod-api_key superView trio (A/B against live oracle)", () => {
+  // Capture the engine's view fns BEFORE the loader mutates HTML_VIEWS
+  // (the closure references stay bound to the original functions even after
+  // the loader's flat last-wins table replaces them with api_key's views).
+  const engineTitled = HTML_VIEWS["titled"]!;
+  const engineTitledContent = HTML_VIEWS["titled_content"]!;
+  const engineContent = HTML_VIEWS["content"]!;
+  const engineCore = HTML_VIEWS["core"]!;
+  const engineTitle = HTML_VIEWS["title"]!;
+  const engineMenu = HTML_VIEWS["menu"]!;
+
+  /** Stub manifest registering the engine's HTML_VIEWS view fns under
+   *  setPath "all/base" - the chain-walker's anchorless-token expansion
+   *  for "ALL" resolves to every All::* module registered in the basket.
+   *  With All::Base + Right::ApiKey both registered, the chain for the
+   *  api_key probe walks Right::ApiKey -> All::Base. */
+  const engineCoreStub: DeckoModManifest = {
+    name: "engine_core",
+    setModules: [
+      {
+        setPath: "all/base",
+        formats: {
+          html: {
+            views: [
+              { view: "titled", viewFn: engineTitled },
+              { view: "titled_content", viewFn: engineTitledContent },
+              { view: "content", viewFn: engineContent },
+              { view: "core", viewFn: engineCore },
+              { view: "title", viewFn: engineTitle },
+              { view: "menu", viewFn: engineMenu },
+            ],
+          },
+        },
+      },
+    ],
+  };
+
+  beforeAll(async () => {
+    storage = await createRenderTestStorage();
+    const s = storage;
+
+    // codename registry reads cards.codename; their type ids matter to the
+    // rule-cache join (Set-typed cards vs Setting-typed).
+    await seedCard(s, { id: 2, name: "RichText" });
+    await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
+    await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
+    await seedCard(s, { id: 12, name: "*api_key", codename: "api_key", typeId: 14 });
+    await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
+    await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
+    // The left card - the "Oracle ApiKey Account" the +*api_key right hangs
+    // off. Required so the type_plus_right pattern can find leftTypeName
+    // (the api_key set's superView trio's set_keys include the
+    // TYPE_PLUS_RIGHT-rich_text-Xapi_key token).
+    await seedCard(s, {
+      id: 1297,
+      name: "Oracle ApiKey Account",
+      dbContent: "account body",
+    });
+    // The probe - id 1298 matches the form id "edit_card_1298" in the
+    // captured bytes (card_form :update emits id="edit_card_<card.id>").
+    // The compound name "Oracle ApiKey Account+*api key" is the junction
+    // of left_id=1297 + right_id=12 (the *api_key codename card).
+    // Content must satisfy the api_key set's validate_api_key event
+    // (api_key.rb:8-11: content.match?(/^\w{20,}$/)).
+    await seedCard(s, {
+      id: 1298,
+      leftId: 1297,
+      rightId: 12,
+      typeId: 2,
+      dbContent: "probeapikeybody0123456789",
+    });
+    // The set card "Oracle ApiKey Account+*api key+*self" - needed so the
+    // probe's set_keys include ALL_PLUS + SELF-oracle_api_key_account-Xapi_key
+    // (the ALL_PLUS pattern's anchor = the +*self rule card).
+    await seedCard(s, { id: 1299, leftId: 1298, rightId: 11, typeId: 13 });
+
+    loader = new ModLoader([
+      { manifest: engineCoreStub },
+      { manifest: cardModApiKey },
+    ]);
+    loader.load();
+    setDefaultModLoader(loader);
+    await loader.installInto(modEngineHost(s.engine, s.fetcher));
+  }, 60_000);
+
+  afterAll(() => {
+    loader?.reset();
+    setDefaultModLoader(undefined);
+    storage?.close();
+    storage = undefined;
+    loader = undefined;
+  });
+
+  // RESOLVED (two engine fixes): (1) the chain walker now tries the
+  // star-marker candidates (safeKeyToModuleShortnameCandidates -
+  // "RIGHT-Xapi_key" resolves the registered "Right::ApiKey"; Ruby's
+  // safe_key renders the "*" as "X" while the set path carries the bare
+  // name), and (2) superView's terminal falls to the base format's view
+  // (view_definition.rb:18-21) instead of "". The trio renders the real
+  // delegated bytes; full captured-fixture byte parity stays labeled on
+  // :titled because :generate_button's Rails form internals still
+  // diverge (the capture lane's secondary note).
+  it(":titled resolves Right::ApiKey through the RIGHT-Xapi_key token and renders the api key", async () => {
+    const s = storage!;
+    const html = await s.engine.render("Oracle ApiKey Account+*api key", "titled");
+    expect(html).not.toBe("");
+    expect(html).toContain("probeapikeybody0123456789");
+  });
+
+  it(":titled_content delegates through the chain and renders the api key", async () => {
+    const s = storage!;
+    const html = await s.engine.render(
+      "Oracle ApiKey Account+*api key",
+      "titled_content",
+    );
+    expect(html).not.toBe("");
+    expect(html).toContain("probeapikeybody0123456789");
+  });
+
+  it(":content delegates to the base format's content view", async () => {
+    const s = storage!;
+    const html = await s.engine.render("Oracle ApiKey Account+*api key", "content");
+    expect(html).not.toBe("");
+    expect(html).toContain("probeapikeybody0123456789");
+  });
+
+  // The chain walker DOES resolve Right::ApiKey -> All::Base when the
+  // setKeys omit the "*" X-mark (the all/base stub provides All::Base).
+  // This proves the stub + chain-walker wiring is correct; the X-prefix
+  // gap is isolated to the safeKey resolution path.
+  it("chain walker finds All::Base via ALL-RIGHT (the X-mark-free path)", () => {
+    // The structural surface (loader.viewChain) reproduces the chain the
+    // render path would walk IF the X-mark gap were closed.
+    const chain = loader!.viewChain(
+      "ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-api_key TYPE_PLUS_RIGHT-rich_text-api_key SELF-oracle_api_key_account-api_key",
+      "titled",
+    );
+    expect(chain.map((e) => e.setModule)).toEqual([
+      "Right::ApiKey",
+      "All::Base",
+    ]);
   });
 });

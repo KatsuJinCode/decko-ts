@@ -8,8 +8,8 @@
 //   :icons              set/all/bootstrap/icon.rb:84            the icon-library table
 //   :one_line_content   set/type/bootswatch_skin/html_views.rb   empty-string override
 //   :input              set/type/bootswatch_skin.rb:102-108     bootswatch_skin-typed card (no +parent)
-//   :carousel SHIM      set/all/bootstrap/carousel.rb:2-8       bootstrap-docs placeholder
-//   :customize_button   set/type/bootswatch_skin/html_views.rb   literal card/create URL with cards params
+//   :carousel           set/all/bootstrap/carousel.rb:2-8       A/B byte equality vs captured bytes
+//   :customize_button   set/type/bootswatch_skin/html_views.rb   A/B byte equality vs captured bytes
 //   popoverLink export  set/all/bootstrap/helper.rb:41-57       icon_tag :help + data-bs-toggle anchor
 //
 // The events surface (ModSetModuleFile.events?) is proved end-to-end via
@@ -32,8 +32,19 @@
 //   of type *bootswatch_skin+*colors; the mod loader registers views
 //   globally, so a registration would clobber the baseline. View-override
 //   dispatch is pending.
+//
+// A/B oracle (carousel + customize_button):
+//   fixtures/captured/bootstrap-views.json (captured by
+//   tests/card/mod-loader/oracle-capture-bootstrap-views.rb).
+//   The carousel probe uses the SAME card name + items as the capture
+//   script so the captured id (`oracle_carousel_probe-1`) and the
+//   per-item rendered :core bytes (just the dbContent for RichText
+//   items) match the TS render byte-for-byte. Same for the
+//   customize_button probe.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   createRenderTestStorage,
   seedCard,
@@ -48,6 +59,15 @@ import {
   popoverLink,
 } from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
+
+const FIXTURE = JSON.parse(
+  readFileSync(
+    fileURLToPath(
+      new URL("../../../fixtures/captured/bootstrap-views.json", import.meta.url),
+    ),
+    "utf8",
+  ),
+) as { rendered: Record<string, string> };
 
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
@@ -108,12 +128,45 @@ beforeAll(async () => {
     rightId: 233,
     dbContent: "Cerulean Skin",
   });
-  // Card for the carousel SHIM view (any card works - the shim emits
-  // placeholder markup derived from card.name.s).
+  // Carousel A/B probe - 3 RichText items + a list that points to them.
+  // Names + content match the capture's probe deck
+  // (oracle-capture-bootstrap-views.rb) so the captured bytes
+  // ("oracle_carousel_probe-1" id + "item one body" inner content)
+  // match byte-for-byte.
   await seedCard(s, {
-    id: 240,
-    name: "Carousel Probe",
-    dbContent: "carousel body",
+    id: 300,
+    name: "Oracle Carousel Item One",
+    dbContent: "item one body",
+  });
+  await seedCard(s, {
+    id: 301,
+    name: "Oracle Carousel Item Two",
+    dbContent: "item two body",
+  });
+  await seedCard(s, {
+    id: 302,
+    name: "Oracle Carousel Item Three",
+    dbContent: "item three body",
+  });
+  await seedCard(s, {
+    id: 303,
+    name: "Oracle Carousel Probe",
+    dbContent:
+      "Oracle Carousel Item One\nOracle Carousel Item Two\nOracle Carousel Item Three",
+    typeId: 500, // type "bootswatch_skin" only matters for typeCode on the probe itself
+  });
+  // Carousel probe ALSO needs the engine to know its item_cards; the
+  // prepare phase fetches the items via the prefetch closure (card is
+  // a List type whose item_names walks dbContent). The probe's
+  // dbContent above is the newline-joined item names.
+  // Customise button A/B probe - a bootswatch_skin-typed card with no
+  // +parent subcard. The name + type match the capture's probe deck so
+  // the captured bytes match the TS render byte-for-byte.
+  await seedCard(s, {
+    id: 304,
+    name: "Oracle Customize Skin Probe",
+    dbContent: "skin css body",
+    typeId: 500,
   });
   // Card for the customize_button non-skin branch (UnsupportedViewError
   // on a non-bootswatch_skin card - mirrors inputView's type-check).
@@ -352,6 +405,12 @@ describe("card-mod-bootstrap through the mod loader", () => {
   // -----------------------------------------------------------------------
 
   describe(":customize_button", () => {
+    beforeAll(() => {
+      const s = storage!;
+      loader = new ModLoader([{ manifest: cardModBootstrap }]);
+      loader.load();
+    });
+
     it("renders the button-link with the literal card/create URL when the skin has no parent", async () => {
       // html_views.rb:38-48 customize_button:
       //   return "" if card.parent?
@@ -363,26 +422,48 @@ describe("card-mod-bootstrap through the mod loader", () => {
       // The Cerulean Skin probe has no +parent subcard. Card::Path#render
       // with action: :create + no mark emits "card/create" (card-mod-format
       // lib/card/path.rb:42-45 markless? true); the remaining card: opts
-      // serialize as query params via cast_path_hash (path.rb:84-87):
-      //   card[name]=Cerulean+Skin+customized
-      //   card[type]=bootswatch_skin
-      //   card[fields][parent]=Cerulean+Skin
-      // The Ruby link_to_card would also set rel="nofollow" + wanted/
-      // known-card class (card-mod-format set/all/links.rb:111-116) but
-      // the headless port emits the minimal anchor shape for this single
-      // route - the class: "btn btn-sm btn-outline-primary me-2" is
-      // preserved verbatim.
+      // serialize as query params via cast_path_hash (path.rb:84-87).
+      // The HTML format's contextualize_path = card_path prepends "/"
+      // (set/all/path.rb:68-72). The `mark:` key is added by the base
+      // link_to_card (set/all/links.rb:33-36) before link_to runs.
+      // Param order in the captured bytes is card[fields][parent] first,
+      // then card[name], card[type], mark last. The href value's `&` is
+      // HTML-escaped to `&amp;` because the attribute runs through
+      // Rails' html_escape. The new card name is not in the render-card
+      // map, so link_to_card appends "wanted-card" after the caller's
+      // class list (set/all/links.rb:140-144).
       const s = storage!;
       const html = await s.engine.render(
         "Cerulean Skin",
         "customize_button",
       );
-      expect(html).toContain('href="card/create?');
-      expect(html).toContain("card%5Bname%5D=Cerulean+Skin+customized");
-      expect(html).toContain("card%5Btype%5D=bootswatch_skin");
-      expect(html).toContain("card%5Bfields%5D%5Bparent%5D=Cerulean+Skin");
-      expect(html).toContain("btn btn-sm btn-outline-primary me-2");
+      expect(html).toContain('href="/card/create?');
+      // Param order matches the captured bytes: fields[parent], name,
+      // type, mark. `&amp;` between params (HTML attribute escape).
+      expect(html).toContain(
+        "card%5Bfields%5D%5Bparent%5D=Cerulean+Skin&amp;card%5Bname%5D=Cerulean+Skin+customized&amp;card%5Btype%5D=bootswatch_skin&amp;mark=Cerulean+Skin+customized",
+      );
+      // link_to_card's known/wanted class appended to caller's list.
+      expect(html).toContain(
+        'class="btn btn-sm btn-outline-primary me-2 wanted-card"',
+      );
       expect(html).toContain(">Customize</a>");
+    });
+
+    it("WITH the mod + the A/B oracle probe: byte-equal to the captured Ruby bytes", async () => {
+      // fixtures/captured/bootstrap-views.json is the live-Ruby capture
+      // (tests/card/mod-loader/oracle-capture-bootstrap-views.rb). The
+      // probe "Oracle Customize Skin Probe" is seeded in beforeAll with
+      // type=bootswatch_skin and no +parent subcard, so the
+      // link_to_card fires. Byte-for-byte match against the oracle.
+      const s = storage!;
+      const html = await s.engine.render(
+        "Oracle Customize Skin Probe",
+        "customize_button",
+      );
+      expect(html).toBe(
+        FIXTURE.rendered["Oracle Customize Skin Probe#customize_button"],
+      );
     });
 
     it("returns the empty string when the skin has a +parent subcard", async () => {
@@ -430,57 +511,88 @@ describe("card-mod-bootstrap through the mod loader", () => {
   });
 
   // -----------------------------------------------------------------------
-  // :carousel SHIM (set/all/bootstrap/carousel.rb:2-8 -> bootstrap-docs
-  // placeholder markup; per-item rendering would need nest_item_array +
-  // Component::Carousel#render, neither of which the headless engine has)
+  // :carousel (set/all/bootstrap/carousel.rb:2-8 -> lib/card/bootstrap/
+  // component/carousel.rb:16-79). The TS port walks rawItemStrings ->
+  // each item's format.renderView("core") and composes the carousel
+  // markup with the captured byte shape (attribute order, self-closing
+  // buttons, active-class position).
   // -----------------------------------------------------------------------
 
-  describe(":carousel SHIM: spec-from-Bootstrap-docs, capture pending", () => {
-    // The carousel view bytes are a transparent shim - a structural
-    // emission of the Bootstrap-standard carousel markup (a div.
-    // carousel.slide container with indicators + inner + prev/next
-    // controls) corresponding to lib/card/bootstrap/component/
-    // carousel.rb:16-79, but with a single placeholder slide because
-    // no ComponentKlass renders per-item nested slots. Real per-item
-    // rendering requires the nest_item_array walker + the Rails view-
-    // helper composite.
-    const SHIM_LABEL = "SHIM: spec-from-Bootstrap-docs, capture pending";
+  describe(":carousel", () => {
+    // The probe names + item content match the capture's probe deck
+    // (oracle-capture-bootstrap-views.rb) so the captured bytes
+    // ("oracle_carousel_probe-1" id + "item one body" inner content)
+    // match the TS render byte-for-byte.
+    //
+    // The carousel's `nest_item_array` walks the probe's item cards
+    // (card.item_cards -> newline-split dbContent names). The TS
+    // engine's prefetch closure does NOT chase plain-text references
+    // (render.ts:248-257), so the test primes the render-card map
+    // with `prepareItemForRender` for each item - same approach the
+    // customize_button "with parent" test uses for the +parent
+    // junction (card-mod-bootstrap.test.ts:411-413).
+    beforeAll(async () => {
+      const s = storage!;
+      loader = new ModLoader([{ manifest: cardModBootstrap }]);
+      loader.load();
+      await s.engine.prepareItemForRender("Oracle Carousel Item One");
+      await s.engine.prepareItemForRender("Oracle Carousel Item Two");
+      await s.engine.prepareItemForRender("Oracle Carousel Item Three");
+      await s.engine.prepareItemForRender("Oracle Carousel Probe");
+    });
 
     it("renders the div.carousel.slide container with the bootstrap-docs structure", async () => {
       const s = storage!;
-      const html = await s.engine.render("Carousel Probe", "carousel");
+      const html = await s.engine.render("Oracle Carousel Probe", "carousel");
       // Bootstrap-docs shape (component/carousel.rb:16-79):
       expect(html).toContain('<div class="carousel slide"');
-      expect(html).toContain('id="carousel-');
+      // component/carousel.rb unique_id = safeKey + "-" + id_counter;
+      // id_counter is per-format-instance (starts at 1).
+      expect(html).toContain('id="oracle_carousel_probe-1"');
       expect(html).toContain('data-bs-ride="true"');
-      // component/carousel.rb:68-79 indicators:
+      // component/carousel.rb:68-79 indicators (one per item, with
+      // attribute order data-bs-slide-to, data-bs-target, type,
+      // aria-label, then class="active" appended last via add_class):
       expect(html).toContain('<div class="carousel-indicators">');
-      expect(html).toContain('class="active"');
-      expect(html).toContain('aria-current="true"');
-      expect(html).toContain('aria-label="Slide 1"');
+      expect(html).toContain(
+        '<button data-bs-slide-to="0" data-bs-target="#oracle_carousel_probe-1" type="button" aria-label="Slide 1" class="active"/>',
+      );
+      expect(html).toContain(
+        '<button data-bs-slide-to="1" data-bs-target="#oracle_carousel_probe-1" type="button" aria-label="Slide 2"/>',
+      );
+      expect(html).toContain(
+        '<button data-bs-slide-to="2" data-bs-target="#oracle_carousel_probe-1" type="button" aria-label="Slide 3"/>',
+      );
       // component/carousel.rb:28-46 inner:
       expect(html).toContain('<div class="carousel-inner">');
-      expect(html).toContain('<div class="carousel-item active">');
-      // component/carousel.rb:49-66 control buttons:
-      expect(html).toContain('<button class="carousel-control-prev"');
-      expect(html).toContain('data-bs-slide="prev"');
-      expect(html).toContain('<span class="carousel-control-prev-icon"');
-      expect(html).toContain('<button class="carousel-control-next"');
-      expect(html).toContain('data-bs-slide="next"');
-      expect(html).toContain('<span class="carousel-control-next-icon"');
+      expect(html).toContain('<div class="carousel-item active">item one body</div>');
+      expect(html).toContain('<div class="carousel-item">item two body</div>');
+      expect(html).toContain('<div class="carousel-item">item three body</div>');
+      // component/carousel.rb:49-66 control buttons (class, data-bs-
+      // target, type in that hash order):
+      expect(html).toContain(
+        '<button class="carousel-control-prev" data-bs-target="#oracle_carousel_probe-1" type="button">',
+      );
+      expect(html).toContain('<span class="carousel-control-prev-icon" aria-hidden="true"></span>');
       expect(html).toContain('<span class="visually-hidden">Previous</span>');
+      expect(html).toContain(
+        '<button class="carousel-control-next" data-bs-target="#oracle_carousel_probe-1" type="button">',
+      );
+      expect(html).toContain('<span class="carousel-control-next-icon" aria-hidden="true"></span>');
       expect(html).toContain('<span class="visually-hidden">Next</span>');
     });
 
-    it("bears the SHIM annotation so callers know it's not a real port", async () => {
+    it("WITH the mod + the A/B oracle probe: byte-equal to the captured Ruby bytes", async () => {
+      // fixtures/captured/bootstrap-views.json is the live-Ruby
+      // capture (tests/card/mod-loader/oracle-capture-bootstrap-
+      // views.rb). The probe is "Oracle Carousel Probe" with 3
+      // RichText items whose :core is the raw content; the captured
+      // bytes match the TS render verbatim.
       const s = storage!;
-      const html = await s.engine.render("Carousel Probe", "carousel");
-      // The bytes themselves include a "carousel shim" placeholder
-      // phrase so any capture cycle sees the SHIM intent; the test
-      // asserts the literal bytes here so the marker cannot drift.
-      expect(html).toContain("carousel shim: bootstrap-docs placeholder");
-      // The SHIM_LABEL constant is the test's reference marker.
-      expect(SHIM_LABEL).toMatch(/^SHIM:/);
+      const html = await s.engine.render("Oracle Carousel Probe", "carousel");
+      expect(html).toBe(
+        FIXTURE.rendered["Oracle Carousel Probe#carousel"],
+      );
     });
 
     it("registers the :carousel view in the load report", () => {

@@ -54,6 +54,8 @@
 //     since the +now card is a *setting, not a cardtype)
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   createRenderTestStorage,
   seedCard,
@@ -64,6 +66,7 @@ import cardModDate, {
   whenCreatedContentFn,
   whenLastEditedContentFn,
   nowContentFn,
+  formatDayofwkMinTz,
   dateContentOverrideEntries,
   wireDateContentOverrides,
 } from "../../../src/card/mod-loader/mods/card-mod-date.js";
@@ -588,5 +591,298 @@ describe("card-mod-date wired registry: render path exercises resolveContentOver
     const s = storage!;
     const html = await s.engine.render("Oracle Date Probe", "core");
     expect(html).toBe("March 15, 2026");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A/B test against the captured oracle bytes
+//
+// fixtures/captured/date-overrides.json holds the bytes the live Ruby
+// oracle produced for the same probes this lane ports. The capture
+// script (tests/card/mod-loader/oracle-capture-date-overrides.rb) ran
+// from tools/oracle/decko-oracle-app and recorded:
+//   - the I18n.t('time.formats.card_dayofwk_min_tz') format string from
+//     card-1.110.0 config/locales/en.yml:29
+//   - the oracle's timezone state (Time.zone.name + Time.now.zone)
+//   - direct I18n.localize bytes for three known UTC timestamps + a
+//     capture-time Time.now
+//   - rendered :core / :raw bytes for the right/when_created /
+//     right/when_last_edited junction rule cards (the mod's `def
+//     content` paths: when_created.rb:7-11, when_last_edited.rb:7-11)
+//   - the *now card's rendered bytes (self/now.rb:1-3 path)
+//
+// The fixture's timestamps come from the oracle's update_columns writes
+// (UTC). The engine reads the same created_at / updated_at SQL strings
+// from the cards row, so byte equality holds when the engine's UTC
+// reading (formatDayofwkMinTz's getUTCHours/getUTCMonth path) matches
+// the oracle's UTC reading (the I18n.localize of an ActiveSupport::
+//// TimeWithZone whose zone is UTC).
+// ---------------------------------------------------------------------------
+
+interface DateOverridesFixture {
+  timezone: {
+    time_zone_name: string;
+    env_tz: string | null;
+    time_now_zone: string;
+    time_now_inspect: string;
+  };
+  i18n_format_string: string;
+  direct_i18n_localize: {
+    left_created_at_utc_midnight: string;
+    left_updated_at_utc_1430: string;
+    left_created_at_utc_noon: string;
+    time_now_at_capture: string;
+  };
+  rendered: Record<string, string>;
+  now_card: {
+    name: string;
+    type_code: string;
+    format_render_raw: string;
+    format_render_core: string;
+    content: string;
+  };
+}
+
+const FIXTURE_PATH = fileURLToPath(
+  new URL("../../../fixtures/captured/date-overrides.json", import.meta.url),
+);
+const dateFixture: DateOverridesFixture = JSON.parse(
+  readFileSync(FIXTURE_PATH, "utf8"),
+);
+
+/** Convert "YYYY-MM-DD HH:MM:SS UTC" (the fixture's seed-timestamp shape)
+ *  to the SQLDateTime "YYYY-MM-DD HH:MM:SS.SSS" string the engine's cards
+ *  row stores. The seed is UTC; the engine reads it back via
+ *  sqlDateTimeToDate(card-mod-date.ts:244-248) and treats it as UTC. */
+function fixtureTimestampToSqlDateTime(fixtureTs: string): string {
+  // fixtureTs is "2026-09-19 00:00:00 UTC" -> "2026-09-19 00:00:00.000"
+  return fixtureTs.replace(" UTC", ".000");
+}
+
+describe("card-mod-date A/B against captured oracle bytes (fixtures/captured/date-overrides.json)", () => {
+  it("captures the oracle's timezone state - Time.zone is UTC, the app records left.created_at in UTC", () => {
+    // The pin the test relies on: the oracle's Time.zone governs
+    // ActiveSupport::TimeWithZone values (the left.created_at /
+    // updated_at the mod's I18n.localize reads). When the captured zone
+    // is "UTC", the bytes have "%Z" = "UTC" — which is exactly what
+    // formatDayofwkMinTz emits (UTC methods). If a future oracle ran in
+    // a non-UTC zone the A/B would shift (the "%Z" tail would change);
+    // this assertion is the seam that catches that drift.
+    expect(dateFixture.timezone.time_zone_name).toBe("UTC");
+    // The Time.now used by self/now.rb:1-3 is system local time (Ruby's
+    // Time.now is always local). On the capture runner that's PST; the
+    // %Z rendering tail is therefore "Pacific Standard Time" (NOT
+    // "UTC"). The self/now override's bytes are non-deterministic by
+    // nature — the TS test asserts the SHAPE regex, not bytes.
+    expect(dateFixture.timezone.time_now_zone).toBe("Pacific Standard Time");
+  });
+
+  it("captures the I18n format string the mod's def content applies", () => {
+    // The strftime spec the mod reads via I18n.localize(card, format:
+    // :card_dayofwk_min_tz). The en.yml:29 source is "%A, %B %d, %Y
+    // %I:%M %p %Z"; the helper unit tests at the top of this file pin
+    // every component. This fixture assertion pins the WHOLE string.
+    expect(dateFixture.i18n_format_string).toBe(
+      "%A, %B %d, %Y %I:%M %p %Z",
+    );
+  });
+
+  it("formatDayofwkMinTz produces byte-equivalent bytes to the oracle's direct I18n.localize for each seed timestamp", () => {
+    // The pin: for each (probe_left, view) the oracle captured via
+    // I18n.localize(left.created_at, format: :card_dayofwk_min_tz),
+    // formatDayofwkMinTz(Date(left.created_at_sql)) emits the same
+    // bytes. The SQL datetime the engine stores matches the
+    // ActiveSupport::TimeWithZone the oracle passes to I18n.localize
+    // (both are UTC instants; the engine's sqlDateTimeToDate reads
+    // them as UTC; the oracle's zone is UTC).
+    const cases: ReadonlyArray<{
+      label: string;
+      fixtureTs: string;
+      oracleBytes: string;
+    }> = [
+      {
+        label: "created_at UTC midnight (2026-09-19 00:00:00 UTC)",
+        fixtureTs: "2026-09-19 00:00:00 UTC",
+        oracleBytes:
+          dateFixture.direct_i18n_localize.left_created_at_utc_midnight,
+      },
+      {
+        label: "updated_at UTC 14:30 (2026-09-19 14:30:00 UTC)",
+        fixtureTs: "2026-09-19 14:30:00 UTC",
+        oracleBytes:
+          dateFixture.direct_i18n_localize.left_updated_at_utc_1430,
+      },
+      {
+        label: "created_at UTC noon (2026-06-15 12:00:00 UTC)",
+        fixtureTs: "2026-06-15 12:00:00 UTC",
+        oracleBytes:
+          dateFixture.direct_i18n_localize.left_created_at_utc_noon,
+      },
+    ];
+    for (const c of cases) {
+      const sql = fixtureTimestampToSqlDateTime(c.fixtureTs);
+      const iso = `${sql.replace(" ", "T")}Z`;
+      const d = new Date(iso);
+      const tsBytes = formatDayofwkMinTz(d);
+      expect(tsBytes, c.label).toBe(c.oracleBytes);
+    }
+  });
+});
+
+/** A/B render test against the captured oracle :core bytes. Builds a
+ *  fresh storage whose probe cards carry the EXACT created_at /
+ *  updated_at timestamps the oracle's update_columns wrote, then
+ *  renders the same junction rule cards through the engine and asserts
+ *  byte equality with fixtures/captured/date-overrides.json#rendered. */
+describe("card-mod-date A/B render: engine :core bytes match the oracle's :core bytes", () => {
+  let abStorage: RenderTestStorage | undefined;
+
+  beforeAll(async () => {
+    // Bind the same registry the main suite uses (so the right/when_*
+    // ContentFns fire through the format.ts renderRaw seam).
+    wireDateContentOverrides();
+    abStorage = await createRenderTestStorage();
+    const s = abStorage;
+
+    // codename registry seeds — the right anchors for when_created /
+    // when_last_edited (their bare-name codename settings). The test
+    // names the junctions without the leading "*" (matching the engine's
+    // DeckoName parser; the engine's codename lookup keys on the bare
+    // name the mod's manifest exposes as rightId).
+    await seedCard(s, { id: 2, name: "RichText" });
+    await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
+    await seedCard(s, {
+      id: 14,
+      name: "*setting",
+      codename: "setting",
+      typeId: 14,
+    });
+    await seedCard(s, {
+      id: 200,
+      name: "when_created",
+      codename: "when_created",
+      typeId: 14,
+    });
+    await seedCard(s, {
+      id: 201,
+      name: "when_last_edited",
+      codename: "when_last_edited",
+      typeId: 14,
+    });
+
+    // Oracle Date Probe A — created_at UTC midnight, updated_at UTC 14:30.
+    await seedCard(s, {
+      id: 400,
+      name: "Oracle Date Probe A",
+      dbContent: "probe A body",
+    });
+    // The engine reads cards.created_at / cards.updated_at as SQL
+    // datetime strings ("YYYY-MM-DD HH:MM:SS.SSS"). seedCard's default
+    // is "2026-09-19 00:00:00.000"; we update both columns directly to
+    // match the fixture's oracle values.
+    await s.counting.query(
+      "UPDATE cards SET created_at = ?, updated_at = ? WHERE id = ?",
+      ["2026-09-19 00:00:00.000", "2026-09-19 14:30:00.000", 400],
+    );
+    await seedCard(s, {
+      id: 401,
+      leftId: 400,
+      rightId: 200, // +when_created
+      typeId: 14,
+    });
+    await seedCard(s, {
+      id: 402,
+      leftId: 400,
+      rightId: 201, // +when_last_edited
+      typeId: 14,
+    });
+
+    // Oracle Date Probe B — created_at AND updated_at UTC noon
+    // (different shape: crosses noon; pins %p AM/PM at hour 12).
+    await seedCard(s, {
+      id: 410,
+      name: "Oracle Date Probe B",
+      dbContent: "probe B body",
+    });
+    await s.counting.query(
+      "UPDATE cards SET created_at = ?, updated_at = ? WHERE id = ?",
+      ["2026-06-15 12:00:00.000", "2026-06-15 12:00:00.000", 410],
+    );
+    await seedCard(s, {
+      id: 411,
+      leftId: 410,
+      rightId: 200, // +when_created
+      typeId: 14,
+    });
+  }, 60_000);
+
+  afterAll(() => {
+    abStorage?.close();
+    abStorage = undefined;
+    setDefaultContentOverrideRegistry(
+      undefined as unknown as ContentOverrideRegistry,
+    );
+  });
+
+  it("Oracle Date Probe A+when_created :core renders the SAME bytes the oracle captured", async () => {
+    const s = abStorage!;
+    const html = await s.engine.render(
+      "Oracle Date Probe A+when_created",
+      "core",
+    );
+    expect(html).toBe(
+      dateFixture.rendered["Oracle Date Probe A+*when created#core"],
+    );
+  });
+
+  it("Oracle Date Probe A+when_last_edited :core renders the SAME bytes the oracle captured", async () => {
+    const s = abStorage!;
+    const html = await s.engine.render(
+      "Oracle Date Probe A+when_last_edited",
+      "core",
+    );
+    expect(html).toBe(
+      dateFixture.rendered["Oracle Date Probe A+*when last edited#core"],
+    );
+  });
+
+  it("Oracle Date Probe B+when_created :core renders the SAME bytes the oracle captured (noon timestamp, %p PM at hour 12)", async () => {
+    const s = abStorage!;
+    const html = await s.engine.render(
+      "Oracle Date Probe B+when_created",
+      "core",
+    );
+    expect(html).toBe(
+      dateFixture.rendered["Oracle Date Probe B+*when created#core"],
+    );
+  });
+
+  it("the *now card bytes follow the card_dayofwk_min_tz SHAPE (non-deterministic by nature; oracle's local TZ is recorded in the fixture)", () => {
+    // self/now.rb:1-3 calls I18n.localize(Time.now, ...); Time.now is
+    // Ruby system local time. The capture runner's Time.now.zone is
+    // "Pacific Standard Time" (recorded in fixture.timezone.time_now_zone);
+    // the oracle's %Z tail is therefore "Pacific Standard Time" (NOT
+    // "UTC"). The TS engine's formatDayofwkMinTz uses UTC methods; the
+    // wall-clock-instant bytes therefore differ between Ruby and TS by
+    // the %Z tail (and the time-of-day for off-UTC zones). The SHAPE is
+    // identical and pinned:
+    //   - day name (full)
+    //   - month name (full)
+    //   - DD zero-padded
+    //   - YYYY 4-digit
+    //   - HH:MM zero-padded, 12-hour
+    //   - AM/PM
+    //   - TZ name (any string; not asserted)
+    expect(dateFixture.now_card.content).toMatch(
+      /^[A-Z][a-z]+, [A-Z][a-z]+ \d{2}, \d{4} \d{2}:\d{2} (AM|PM) /,
+    );
+    expect(dateFixture.now_card.content).not.toBe("");
+    // Sanity: nowContentFn's bytes match the same shape; the wall-clock
+    // instant differs (the engine runs after the oracle), but the
+    // strftime components are the same.
+    expect(nowContentFn({ card: {} as never, engine: {} as never } as never))
+      .toMatch(
+        /^[A-Z][a-z]+, [A-Z][a-z]+ \d{2}, \d{4} \d{2}:\d{2} (AM|PM) UTC$/,
+      );
   });
 });

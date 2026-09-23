@@ -1,0 +1,207 @@
+{
+  "mods": [
+    {
+      "group": "gem-card",
+      "index": 0,
+      "name": "core"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 1,
+      "name": "collection"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 2,
+      "name": "content"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 3,
+      "name": "format"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 4,
+      "name": "list"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 5,
+      "name": "markdown"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 6,
+      "name": "permissions"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 7,
+      "name": "help"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 8,
+      "name": "search"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 9,
+      "name": "rules"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 10,
+      "name": "edit"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 11,
+      "name": "email"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 12,
+      "name": "integrate"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 13,
+      "name": "account"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 14,
+      "name": "history"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 15,
+      "name": "carrierwave"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 16,
+      "name": "virtual"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 17,
+      "name": "assets"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 18,
+      "name": "script"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 19,
+      "name": "ace_editor"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 20,
+      "name": "api_key"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 21,
+      "name": "style"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 22,
+      "name": "bar_and_box"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 23,
+      "name": "bootstrap"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 24,
+      "name": "comment"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 25,
+      "name": "date"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 26,
+      "name": "delayed_job"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 27,
+      "name": "follow"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 28,
+      "name": "session"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 29,
+      "name": "tabs"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 30,
+      "name": "layout"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 31,
+      "name": "recaptcha"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 32,
+      "name": "tinymce_editor"
+    },
+    {
+      "group": "gem-defaults",
+      "index": 33,
+      "name": "defaults"
+    }
+  ],
+  "per_module_input": {
+    "Abstract::CodeContent::HtmlFormat": "Content is stored in file and can't be edited.",
+    "Abstract::HamlFile::HtmlFormat": "Content is managed by code and cannot be edited",
+    "Abstract::ReadOnly::HtmlFormat": "Content can't be edited."
+  },
+  "registered_views": {
+    "abstract_code_content_view_input": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-content-0.20.0/set/abstract/01_code_content.rb",
+        2
+      ]
+    },
+    "abstract_haml_file_view_input": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-content-0.20.0/set/abstract/haml_file.rb",
+        12
+      ]
+    },
+    "abstract_read_only_view_input": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-content-0.20.0/set/abstract/read_only.rb",
+        2
+      ]
+    }
+  },
+  "rendered": {
+    "Oracle Content File Probe#input": "<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_content_file_probe-1\" name=\"card[content]\">\nfile content probe body</textarea>",
+    "Oracle Content Haml Probe#input": "<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_content_haml_probe-1\" name=\"card[content]\">\nhaml content probe body</textarea>",
+    "Oracle Content ReadOnly Probe#input": "<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_content_read_only_probe-1\" name=\"card[content]\">\nread-only content probe body</textarea>"
+  }
+}

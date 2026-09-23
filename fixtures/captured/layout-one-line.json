@@ -1,0 +1,31 @@
+{
+  "constants": {
+    "ONE_LINE_CHARACTER_LIMIT": 60
+  },
+  "rendered": {
+    "Oracle One Line Html Probe+*head#one_line_content": "",
+    "Oracle One Line Long Probe+*head#one_line_content": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefg...",
+    "Oracle One Line Mixed Probe+*head#one_line_content": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefg...",
+    "Oracle One Line Plain Probe#one_line_content": "<div class=\"text-muted\">plain probe body</div>",
+    "Oracle One Line Short Probe+*head#one_line_content": "plain text"
+  },
+  "view_registry": {
+    "right_head_html_view_head_content": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-layout-0.20.0/set/right/head.rb",
+        8
+      ]
+    },
+    "right_head_html_view_one_line_content": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-layout-0.20.0/set/right/head.rb",
+        12
+      ]
+    },
+    "right_head_html_view_raw_one_line_content": {
+      "defined": false
+    }
+  }
+}

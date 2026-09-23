@@ -13,12 +13,15 @@
 // nested guide content through the markdown :core path), set/right/help.rb
 // (the :popover view - delegates to card-mod-bootstrap's
 // popoverLink helper, helper.rb:41-44; the helper is imported as-is from
-// card-mod-bootstrap.ts (popoverLink, card-mod-bootstrap.ts:166), no oracle
-// fixture pins the :popover bytes - the test below labels the capture as
-// CAPTURE PENDING and asserts the helper's anchor shape with the
-// _render_core text payload), and the two setting_opts files
-// (set/self/help.rb, set/self/guide.rb - oracle state under
-// "setting_groups"/"setting_opts_*").
+// card-mod-bootstrap.ts (popoverLink, card-mod-bootstrap.ts:166); the
+// oracle bytes for the live :popover dispatch are captured against
+// fixtures/captured/help-popover.json "rendered" - the A/B test asserts
+// byte equality, currently red because popoverLink's emitAttrs hash
+// insertion order (href, tabindex, class, data-bs-*) differs from
+// Ruby's link_to order (tabindex, data-bs-*, class, href); fix lives in
+// card-mod-bootstrap.ts's popoverLink on the bootstrap lane), and the
+// two setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
+// state under "setting_groups"/"setting_opts_*").
 //
 // NOT yet ported (honest remainder, see docs/mod-loader-port-notes.md):
 // - set/right/guide.rb - set module only defines a card-level
@@ -28,17 +31,6 @@
 // - assets/style/help.scss - stylesheet mods are a separate surface
 // - config/admin.yml - the admin surface (settings/views lists) has no TS
 //   consumer
-//
-// CAPTURE PENDING (set/right/help.rb view :popover, help.rb:4-6): the
-// popoverLink helper bytes are pinned by card-mod-bootstrap's own
-// helper-rc unit tests (card-mod-bootstrap.test.ts#popoverLink, around
-// lines 498-541), but the live :popover view dispatch - the wrap of
-// _render_core inside the popoverLink text argument for a real card -
-// has no oracle-captured fixture byte. The :popover view below uses
-// popoverLink verbatim and the test asserts the helper's anchor shape
-// (data-bs-toggle, ps-1 _popover_link, material help icon, the
-// _render_core text payload) without claiming byte parity to a captured
-// oracle capture that does not exist for this set module.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
@@ -168,7 +160,7 @@ const leadView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// set/right/help.rb - the :popover view (capture pending; see header)
+// set/right/help.rb - the :popover view (bytes captured; see header)
 // ---------------------------------------------------------------------------
 
 /** help.rb:4-6 view :popover, no view config (no `unknown:`, no
@@ -180,19 +172,25 @@ const leadView: ViewFn = (ctx) => {
  *  `ctx.fmt.renderView("core")` in TS (format.ts#renderView:275-275).
  *
  *  The popoverLink anchor's bytes (helper.rb:41-57):
- *    `<a href="#" tabindex="0" class="ps-1 _popover_link"
- *         data-bs-toggle="popover" data-bs-trigger="hover focus"
- *         data-bs-content="<text>"><i class="notranslate
- *         material-icons">help</i></a>`
+ *    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
+ *         data-bs-content="<text>" class="ps-1 _popover_link" href="#">
+ *         <i class="notranslate material-icons">help</i></a>`
  *  with `<text>` = _render_core's bytes. The default icon linkText
  *  (popoverLink:193 `if linkText === "" linkText = popoverIcon("help")`)
  *  fires because help.rb:4-6 passes no linkText arg.
  *
- *  CAPTURE PENDING: no oracle capture pins the :popover bytes - the
- *  captured set/all/bootstrap fixture does not exercise set/right/help.
- *  The view below calls popoverLink verbatim and the test asserts the
- *  helper's anchor shape with the _render_core text payload, not byte
- *  parity to a captured oracle capture that does not exist. */
+ *  Bytes captured against fixtures/captured/help-popover.json
+ *  "rendered" (captured from live decko 0.20.0 oracle app via
+ *  tests/card/mod-loader/oracle-capture-help-popover.rb). The view
+ *  fires on COMPOUND names only (Right pattern is compound_only =
+ *  true, mod/core/set_pattern/07_right.rb:2); the capture seeds
+ *  Oracle Help Popover Probe+*help (WITH a *help rule) and Oracle Bare
+ *  Popover Probe+*help (WITHOUT), and the test asserts byte equality
+ *  against the captured bytes for both. The byte-equality pin is
+ *  currently red (TS popoverLink emits attrs in insertion order:
+ *  href, tabindex, class, data-bs-* while Ruby link_to emits
+ *  tabindex, data-bs-*, class, href); fix lives in card-mod-bootstrap.ts's
+ *  popoverLink on the bootstrap lane. */
 const popoverView: ViewFn = (ctx) => {
   // help.rb:5 `popover_link _render_core` -> helper.rb:41 popover_link
   // text. The renderView dispatch goes through the format's standard
@@ -510,9 +508,11 @@ const cardModHelp: DeckoModManifest = {
       // (help.rb:4-6). The view body delegates to card-mod-bootstrap's
       // popover_link helper (helper.rb:41-44) - the TS port is the
       // popoverLink export (card-mod-bootstrap.ts:166) imported as-is at
-      // the top of this file. CAPTURE PENDING: no oracle capture pins
-      // the :popover bytes; the live view dispatches the bootstrap
-      // helper with the _render_core text payload.
+      // the top of this file. Bytes captured against
+      // fixtures/captured/help-popover.json "rendered" (captured via
+      // tests/card/mod-loader/oracle-capture-help-popover.rb); the
+      // A/B test asserts byte equality but is currently red on attr
+      // order (popoverLink lives on the bootstrap lane).
       setPath: "right/help",
       formats: {
         html: {

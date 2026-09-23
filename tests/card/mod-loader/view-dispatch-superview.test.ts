@@ -264,9 +264,11 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
 
   // ---- termination -----------------------------------------------------
 
-  it("super() terminates when the current module is the LAST entry in the chain", () => {
+  it("super() past the LAST chain entry falls to the BASE format's view (view_definition.rb:18-21)", () => {
     // The All set is the most-general set; if All::Base calls super(),
-    // there's no next entry. superView returns "" (delegation terminates).
+    // there's no next chain entry - Ruby's super() reaches the parent
+    // method, which is the compiled-in core view. Only a view with no
+    // core definition at all terminates empty.
     loader = new ModLoader(
       [{ manifest: formatAllBase }],
       HTML_VIEWS,
@@ -275,7 +277,14 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     setDefaultModLoader(loader);
 
     const ctx = makeCtx("ALL", "titled");
-    expect(superView(ctx, "All::Base", "titled")).toBe("");
+    const base = HTML_VIEWS["titled"];
+    if (base !== undefined) {
+      expect(superView(ctx, "All::Base", "titled")).toBe(base(ctx));
+    } else {
+      expect(superView(ctx, "All::Base", "titled")).toBe("");
+    }
+    // a view neither mods nor the core define still terminates ""
+    expect(superView(makeCtx("ALL", "zz_no_core_view"), "All::Base", "zz_no_core_view")).toBe("");
   });
 
   it("super() returns '' when no loader is registered (safe fallback)", () => {
@@ -386,7 +395,11 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     expect(superView(ctx, "Abstract::HamlFile", "input")).toBe(
       "read_only:input",
     );
-    expect(superView(ctx, "Abstract::ReadOnly", "input")).toBe("");
+    // ReadOnly is the chain terminal: super() falls to the base format's
+    // :input if the core table defines one, else ""
+    const baseInput = HTML_VIEWS["input"];
+    const expectedTerminal = baseInput !== undefined ? baseInput(makeCtx("", "input")) : "";
+    expect(superView(ctx, "Abstract::ReadOnly", "input")).toBe(expectedTerminal);
   });
 
   // ---- the full chain composes correctly -------------------------------
@@ -438,8 +451,12 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     expect(superView(ctx, "Right::ApiKey", "titled")).toBe("format:titled");
     // Direct probe of Type::X's :titled (its body) returns All::Base's.
     expect(superView(ctx, "Type::X", "titled")).toBe("format:titled");
-    // All::Base's super() terminates.
-    expect(superView(ctx, "All::Base", "titled")).toBe("");
+    // All::Base's super() falls to the base format's :titled (the parent
+    // method, view_definition.rb:18-21)
+    const baseTitled = HTML_VIEWS["titled"];
+    expect(superView(ctx, "All::Base", "titled")).toBe(
+      baseTitled !== undefined ? baseTitled(ctx) : "",
+    );
   });
 
   it("getDefaultModLoader returns the registered loader (the seam the helper uses)", () => {

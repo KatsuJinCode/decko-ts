@@ -32,6 +32,8 @@
 // "Oracle Layout Probe+*self+*guide" (which the mod's prepareEngine warms).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   createRenderTestStorage,
   seedCard,
@@ -43,6 +45,24 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
+
+/** The captured bytes for the :one_line_content view on right-of-head cards
+ *  (set/right/head.rb:12-14 -> card-mod-format set/all/content.rb:43-45
+ *  `truncate strip_tags(render_raw), length: one_line_character_limit`).
+ *  Captured from the live decko 0.20.0 oracle app via
+ *  tests/card/mod-loader/oracle-capture-layout-one-line.rb. */
+const ONE_LINE_FIXTURE = JSON.parse(
+  readFileSync(
+    fileURLToPath(
+      new URL("../../../fixtures/captured/layout-one-line.json", import.meta.url),
+    ),
+    "utf8",
+  ),
+) as {
+  constants: { ONE_LINE_CHARACTER_LIMIT: number };
+  rendered: Record<string, string>;
+  view_registry: Record<string, { defined?: boolean; source_location?: [string, number] }>;
+};
 
 /** The capture's normalizations: data-slot-id is SecureRandom.hex(10) by
  *  design (card-mod-format set/all/html/wrap.rb:45); data-card-id is
@@ -489,6 +509,67 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     expect(await s.engine.render(SHORT_RULE, "one_line_content")).toBe(
       `plain text`,
     );
+  });
+
+  it("WITH the mod: :one_line_content bytes match the oracle capture for long, short, html and mixed rule cards (one_line_content.json pinning)", async () => {
+    const s = storage!;
+    // Probe deck mirrors tests/card/mod-loader/oracle-capture-layout-one-line.rb.
+    // The capture seeds these four probe cards plus their right-of-head rule
+    // cards, renders :one_line_content on each, and writes the bytes. The
+    // rule cards' left side ids are stable here (the oracle uses fresh ids
+    // each run; only the names matter for the bytes - :one_line_content
+    // emits no data-card-id, it returns just the stripped+truncated text).
+    const LONG_TEXT = "abcdefghij".repeat(7); // 70 chars
+    const SHORT_TEXT = "plain text";
+    const HTML_TEXT = '<meta name="layout-probe" content="head-rule">';
+    const MIXED_TEXT = `<span class="x">${LONG_TEXT}</span>`;
+    const OLP_LONG = "Oracle One Line Long Probe";
+    const OLP_SHORT = "Oracle One Line Short Probe";
+    const OLP_HTML = "Oracle One Line Html Probe";
+    const OLP_MIXED = "Oracle One Line Mixed Probe";
+    // Probe cards (the rule cards auto-compose via left+right join at
+    // fetch time, the same way the oracle's Card.create! did).
+    await seedCard(s, { id: 70, name: OLP_LONG, dbContent: LONG_TEXT });
+    await seedCard(s, { id: 71, name: OLP_SHORT, dbContent: SHORT_TEXT });
+    await seedCard(s, { id: 72, name: OLP_HTML, dbContent: HTML_TEXT });
+    await seedCard(s, { id: 73, name: OLP_MIXED, dbContent: MIXED_TEXT });
+    // Right-of-head rule cards (junctions: left=probe id, right=*head id).
+    await seedCard(s, { id: 80, leftId: 70, rightId: 15, typeId: 14, dbContent: LONG_TEXT });
+    await seedCard(s, { id: 81, leftId: 71, rightId: 15, typeId: 14, dbContent: SHORT_TEXT });
+    await seedCard(s, { id: 82, leftId: 72, rightId: 15, typeId: 14, dbContent: HTML_TEXT });
+    await seedCard(s, { id: 83, leftId: 73, rightId: 15, typeId: 14, dbContent: MIXED_TEXT });
+
+    // Each of the four :one_line_content renders must match the oracle's
+    // captured bytes byte-for-byte (the truncate+strip_tags chain in
+    // right/head.rb:12-14 is the one thing this fixture pins).
+    expect(await s.engine.render(`${OLP_LONG}+*head`, "one_line_content")).toBe(
+      ONE_LINE_FIXTURE.rendered[`${OLP_LONG}+*head#one_line_content`],
+    );
+    expect(await s.engine.render(`${OLP_SHORT}+*head`, "one_line_content")).toBe(
+      ONE_LINE_FIXTURE.rendered[`${OLP_SHORT}+*head#one_line_content`],
+    );
+    expect(await s.engine.render(`${OLP_HTML}+*head`, "one_line_content")).toBe(
+      ONE_LINE_FIXTURE.rendered[`${OLP_HTML}+*head#one_line_content`],
+    );
+    expect(await s.engine.render(`${OLP_MIXED}+*head`, "one_line_content")).toBe(
+      ONE_LINE_FIXTURE.rendered[`${OLP_MIXED}+*head#one_line_content`],
+    );
+  });
+
+  it("WITH the mod: the capture's ONE_LINE_CHARACTER_LIMIT constant pins to 60", () => {
+    // The oracle capture (card-mod-format set/all/content.rb:1
+    // ONE_LINE_CHARACTER_LIMIT = 60) is the contract the truncate helper
+    // (text-helpers.ts:203-211) implements.
+    expect(ONE_LINE_FIXTURE.constants.ONE_LINE_CHARACTER_LIMIT).toBe(60);
+  });
+
+  it("WITH the mod: the :one_line_content view registration matches the oracle's Right::Head set location", () => {
+    const entry = ONE_LINE_FIXTURE.view_registry["right_head_html_view_one_line_content"];
+    expect(entry?.defined).toBe(true);
+    // The capture's source_location points to set/right/head.rb:12 (the
+    // view :one_line_content do raw_one_line_content end definition).
+    expect(entry?.source_location?.[0]).toMatch(/card-mod-layout[^\/\\]*[\/\\]set[\/\\]right[\/\\]head\.rb$/);
+    expect(entry?.source_location?.[1]).toBe(12);
   });
 
   it("WITH the mod: :core runs the CodeRay html scanner on right-of-head and Html-type cards", async () => {

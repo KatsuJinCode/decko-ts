@@ -1,0 +1,35 @@
+{
+  "probe_format_configs": {
+    "_view_content__unknown": false,
+    "_view_titled__unknown": false,
+    "_view_titled_content__unknown": true
+  },
+  "registered_views": {
+    "right_api_key_html_view_content": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-api_key-0.20.0/set/right/api_key.rb",
+        74
+      ]
+    },
+    "right_api_key_html_view_titled": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-api_key-0.20.0/set/right/api_key.rb",
+        74
+      ]
+    },
+    "right_api_key_html_view_titled_content": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-api_key-0.20.0/set/right/api_key.rb",
+        74
+      ]
+    }
+  },
+  "rendered": {
+    "Oracle ApiKey Account+*api key#content": "<div id=\"oracle_api_key_account-Xapi_key-content-view\" class=\"card-slot content-view ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xapi_key TYPE_PLUS_RIGHT-rich_text-Xapi_key SELF-oracle_api_key_account-Xapi_key d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle ApiKey Account+*api key\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_ApiKey_Account+*api_key\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class='api-key-core p-1'>\n<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n<div class='current-api-key nodblclick'>\n<label for='current_api_key'>\nAPI Key\n</label>\n<input type=\"text\" name=\"current_api_key\" id=\"current_api_key\" value=\"probeapikeybody0123456789\" readonly=\"readonly\" />\n</div>\n\n</div>\n<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n<form class=\"card-form slotter autosave\" id=\"edit_card_1298\" action=\"/update/Oracle_ApiKey_Account+*api_key\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><input type=\"hidden\" name=\"card[trigger]\" id=\"card_trigger\" value=\"generate_api_key\" autocomplete=\"off\" />\n<button name=\"button\" type=\"submit\" data-disable-with=\"Generating API Key\" class=\"btn btn-primary\">Regenerate API Key</button></form>\n</div>\n</div>\n</div>",
+    "Oracle ApiKey Account+*api key#titled": "<div id=\"oracle_api_key_account-Xapi_key-titled-view\" class=\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xapi_key TYPE_PLUS_RIGHT-rich_text-Xapi_key SELF-oracle_api_key_account-Xapi_key\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle ApiKey Account+*api key\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_ApiKey_Account+*api_key\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;titled&quot;,&quot;show&quot;:[&quot;titled&quot;]}\"><div class=\"d0-card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"Oracle ApiKey Account+*api key\">Oracle ApiKey Account<span>+</span>*api key</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/Oracle_ApiKey_Account&quot;&gt;Oracle ApiKey Account&lt;/a&gt;+&lt;a class=&quot;known-card&quot; href=&quot;/*api_key&quot;&gt;*api key&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/RichText&quot;&gt;RichText&lt;/a&gt;) &lt;a class=&quot;full-page-link known-card&quot; href=&quot;/Oracle_ApiKey_Account+*api_key&quot;&gt;&lt;i class=&quot;notranslate material-icons&quot;&gt;open_in_full&lt;/i&gt; &lt;/a&gt;\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_ApiKey_Account+*api_key/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/Oracle_ApiKey_Account+*api_key/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body d0-card-content ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xapi_key TYPE_PLUS_RIGHT-rich_text-Xapi_key SELF-oracle_api_key_account-Xapi_key\"><div class='api-key-core p-1'>\n<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n<div class='current-api-key nodblclick'>\n<label for='current_api_key'>\nAPI Key\n</label>\n<input type=\"text\" name=\"current_api_key\" id=\"current_api_key\" value=\"probeapikeybody0123456789\" readonly=\"readonly\" />\n</div>\n\n</div>\n<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n<form class=\"card-form slotter autosave\" id=\"edit_card_1298\" action=\"/update/Oracle_ApiKey_Account+*api_key\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><input type=\"hidden\" name=\"card[trigger]\" id=\"card_trigger\" value=\"generate_api_key\" autocomplete=\"off\" />\n<button name=\"button\" type=\"submit\" data-disable-with=\"Generating API Key\" class=\"btn btn-primary\">Regenerate API Key</button></form>\n</div>\n</div>\n</div></div>",
+    "Oracle ApiKey Account+*api key#titled_content": "<div class='api-key-core p-1'>\n<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n<div class='current-api-key nodblclick'>\n<label for='current_api_key'>\nAPI Key\n</label>\n<input type=\"text\" name=\"current_api_key\" id=\"current_api_key\" value=\"probeapikeybody0123456789\" readonly=\"readonly\" />\n</div>\n\n</div>\n<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n<form class=\"card-form slotter autosave\" id=\"edit_card_1298\" action=\"/update/Oracle_ApiKey_Account+*api_key\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><input type=\"hidden\" name=\"card[trigger]\" id=\"card_trigger\" value=\"generate_api_key\" autocomplete=\"off\" />\n<button name=\"button\" type=\"submit\" data-disable-with=\"Generating API Key\" class=\"btn btn-primary\">Regenerate API Key</button></form>\n</div>\n</div>\n"
+  }
+}

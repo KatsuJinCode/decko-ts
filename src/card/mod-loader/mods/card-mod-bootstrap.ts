@@ -13,10 +13,13 @@
 //   carousel, customize_button, icons, input, one_line_content, progress_bar.
 // Of those, two were landed in this pass (input + one_line_content); the
 // remaining four (carousel + customize_button + icons + progress_bar)
-// were already ported in earlier waves; this pass ALSO ports carousel
-// (as a transparent shim) and customize_button (with a local path
-// builder citing the Card::Path#render shape) and exports the
-// popoverLink helper that card-mod-help set/right/help.rb requires.
+// were already ported in earlier waves; this pass pins the carousel
+// view bytes (the previous transparent shim is replaced with a real
+// implementation matching the captured bytes) and the customize_button
+// path bytes (the local path builder now emits the captured Ruby
+// bytes - leading "/", the fields/name/type/mark param order, the
+// wanted-card class). Both views also export the popoverLink helper
+// that card-mod-help set/right/help.rb requires.
 //
 // Of those, the views cleanly port-able in a headless engine are:
 //
@@ -61,27 +64,41 @@
 //   carries the colors setPath; a future round with set-pattern-
 //   scoped view override dispatch can land the views.
 //
-// - carousel (set/all/bootstrap/carousel.rb:2-8) - PORTED AS A SHIM.
-//   The Ruby view is `bs_carousel unique_id, 0 do nest_item_array.each
-//   { |rendered_item| item(rendered_item) } end`, where bs_carousel
+// - carousel (set/all/bootstrap/carousel.rb:2-8) - PORTED. The Ruby
+//   view is `bs_carousel unique_id, 0 do nest_item_array.each do
+//   |rendered_item| item(rendered_item) end end`, where bs_carousel
 //   wraps lib/card/bootstrap/component/carousel.rb (a Card::Bootstrap
 //   ::Component::Carousel subclass that defines unique_id, slide nav,
 //   indicator tags, and per-item slot wrapping for the active-index
-//   slide). The headless engine has no ComponentKlass + no per-item
-//   rendered-slot composition, so this port emits the Bootstrap-
-//   standard carousel markup directly with a single placeholder slide.
-//   Tests label it SHIM: spec-from-Bootstrap-docs, capture pending.
+//   slide). The TS port walks rawItemStrings -> each item's
+//   format.renderView("core") (the rendered :core IS the inner HTML
+//   of each carousel-item div, since RichText :core is the unwrapped
+//   content). Attribute order on indicator buttons matches the
+//   Rails content_tag hash iteration order (data-bs-slide-to, data-
+//   bs-target, type, aria-label, then class="active" appended last
+//   via add_class); control buttons keep the literal hash order
+//   (class, data-bs-target, type). The id is name.safeKey-1
+//   (unique_id = safe_key + "-" + id_counter; id_counter is
+//   per-format-instance and starts at 1). Byte shape pinned by
+//   fixtures/captured/bootstrap-views.json.
 //
-// - customize_button (set/type/bootswatch_skin/html_views.rb:38-48) -
-//   PORTED with a local path builder. The Ruby method is
+// - customize_button (set/type/bootswatch_skin/html_views.rb:38-48)
+//   - PORTED with a local path builder. The Ruby method is
 //   `link_to_card new_name, text, path: { action: :create, card:
 //   new_skin_path_args(new_name) }, class: "btn btn-sm btn-outline-
-//   primary me-2"`. The TS port builds the literal URL `card/create
-//   ?card[name]=...&card[type]=bootswatch_skin&card[fields][parent]
-//   =...` from card-mod-format lib/card/path.rb:42-45 + 84-87
-//   (action_base + cast_path_hash) + decko config/engine_routes.rb:42.
-//   The view is type-scoped to bootswatch_skin (mirrors the inputView
-//   type-check pattern).
+//   primary me-2"`. The TS port builds the literal URL
+//   `/card/create?card[fields][parent]=...&card[name]=...&card[type]
+//   =bootswatch_skin&mark=...` from Card::Path#render
+//   (action_base with markless + cast_path_hash's to_param) +
+//   card-mod-format set/all/path.rb:68-72 contextualize_path (html
+//   format's card_path prepends "/") + set/all/links.rb:33-36
+//   base link_to_card adding mark: Card::Name[cardish] to the path
+//   hash. The new card name is not in the render-card map, so
+//   link_to_card adds the "wanted-card" class after the caller's
+//   literal class list (set/all/links.rb:140-144). The view is type-
+//   scoped to bootswatch_skin (mirrors the inputView type-check
+//   pattern). Byte shape pinned by fixtures/captured/bootstrap-
+//   views.json.
 //
 // The set modules whose views are NOT being ported still register
 // themselves (so the set-module basket bookkeeping Ruby keeps via
@@ -91,8 +108,9 @@
 // [] } } - no view definitions, but the setPath matches the gem path
 // so the registrar's bookkeeping is faithful.
 
-import { UnsupportedViewError } from "../../render/format.js";
+import { RenderFormat, UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { rawItemStrings } from "../../render/pointer-list.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
@@ -100,7 +118,7 @@ import type {
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
-// html-emit helpers shared between popoverLink and the carousel shim
+// html-emit helpers shared between popoverLink and the carousel view
 // ---------------------------------------------------------------------------
 
 /** Render the icon for the popover anchor (icon.rb:97-104 icon_tag :help):
@@ -202,16 +220,20 @@ export function popoverLink(
     .filter((c) => c !== "")
     .join(" ");
 
-  // helper.rb:51-54 data: {...} merge -> Rails emits data-bs-toggle,
-  // data-bs-trigger, data-bs-content with each key prefixed by "data-".
-  // helper.rb:55 opts["data-bs-title"] = title if title.
+  // helper.rb:46-57 popover_opts builds the opts hash; Rails' link_to
+  // serializes the attrs in hash-insertion order. The capture order is
+  // tabindex (from reverse_merge!), then data-bs-toggle / data-bs-
+  // trigger / data-bs-content (Rails expands the `data:` sub-hash into
+  // `data-<key>` pairs in insertion order), then `class` (add_class
+  // appends after the rest), then `href` (from the path: "#" entry).
+  // The TS emitter matches that order verbatim.
   const attrs: Record<string, string | number | undefined> = {
-    href: "#",
     tabindex: 0,
-    class: classList,
     "data-bs-toggle": "popover",
     "data-bs-trigger": "hover focus",
     "data-bs-content": body,
+    class: classList,
+    href: "#",
     ...(title !== "" ? { "data-bs-title": title } : {}),
   };
   if (opts.extraData) {
@@ -224,95 +246,179 @@ export function popoverLink(
 }
 
 // ---------------------------------------------------------------------------
-// set/all/bootstrap/carousel.rb:2-8 - the :carousel view as a SHIM
+// set/all/bootstrap/carousel.rb:2-8 - the :carousel view
 // ---------------------------------------------------------------------------
 
-/** SHIM: the Ruby view is `bs_carousel unique_id, 0 do nest_item_array.each
- *  { |rendered_item| item(rendered_item) } end`
- *  (set/all/bootstrap/carousel.rb:2-8). bs_carousel wraps
- *  lib/card/bootstrap/component/carousel.rb (a ComponentKlass subclass
- *  that defines unique_id, slide nav, indicator tags, and per-item slot
- *  wrapping for the active-index slide). The headless engine has no
- *  ComponentKlass + no per-item rendered-slot composition, so this port
- *  emits the Bootstrap-standard carousel markup directly: a single
- *  `div.carousel.slide` placeholder whose `data-bs-ride=true` /
- *  indicators / controls / inner slides match the bytes
- *  component/carousel.rb:16-79 produces. Real per-item rendering would
- *  need the nest_item_array walker (src/card/render/pointer-list.ts) plus
- *  the live Rails view-helper composite the headless engine cannot
- *  reproduce byte-for-byte. This is a transparent shim the deck UI
- *  consults; tests label it SHIM: spec-from-Bootstrap-docs, capture
- *  pending. */
+/** set/all/bootstrap/carousel.rb:2-8 view :carousel:
+ *    bs_carousel unique_id, 0 do
+ *      nest_item_array.each do |rendered_item|
+ *        item(rendered_item)
+ *      end
+ *    end
+ *  bs_carousel wraps lib/card/bootstrap/component/carousel.rb (a
+ *  Card::Bootstrap::Component::Carousel subclass). The component emits
+ *  a div.carousel.slide container with id, data-bs-ride="true", a
+ *  div.carousel-indicators with one button per item, a div.carousel-
+ *  inner wrapping div.carousel-item elements (the active-index item
+ *  carries class "active"), and two control buttons (prev + next).
+ *  Byte shape pinned by the live oracle capture (fixtures/captured/
+ *  bootstrap-views.json).
+ *
+ *  Attribute order is the literal Rails content_tag iteration order:
+ *  - indicators: the html_opts hash starts as { "data-bs-slide-to":
+ *    index, "data-bs-target": "##{@id}", type: "button", "aria-label":
+ *    "Slide #{index + 1}" } then add_class appends "active" to the
+ *    END of the hash (decko's add_class writes to options[:class] =
+ *    css_classes klass, options[:class] - lib/card.rb#add_class) so
+ *    the captured order is data-bs-slide-to, data-bs-target, type,
+ *    aria-label, class.
+ *  - control buttons: html_opts starts as { class: "carousel-control-
+ *    #{direction}", "data-bs-target": "##{@id}", type: "button" } so
+ *    the captured order is class, data-bs-target, type.
+ *  - both button classes are self-closing (`<button ... />`) per Rails
+ *    7.2 content_tag's void-element emission.
+ *
+ *  unique_id is format/content.rb#unique_id =
+ *  "#{card.name.safe_key}-#{id_counter}" where id_counter is
+ *  per-format-instance (starts at 1; subsequent calls increment). The
+ *  captured id is "oracle_carousel_probe-1" - the safe_key for
+ *  "Oracle Carousel Probe" plus the format's first id_counter
+ *  increment. Per-render format instance (render.ts#render creates
+ *  fresh format), so "-1" is correct for every render in the A/B
+ *  test.
+ *
+ *  The inner content of each carousel-item is what nest_item_array
+ *  emits - nest_item(item, view: :core) -> format/nesting.rb#nest ->
+ *  subformat.render(:core). For RichText items, view :core returns
+ *  the item's content directly (no slot wrapper: voo's wrap is empty,
+ *  so the unwrapped content flows back through the carousel_item
+ *  emitter). The TS port walks rawItemStrings(dbContent) -> item
+ *  names -> engine.fetchRenderCard -> subformat.renderView("core")
+ *  and uses the rendered :core as the inner HTML of the carousel-
+ *  item div. */
+function renderCarouselItemInner(
+  ctx: ViewContext,
+  itemCard: NonNullable<ReturnType<typeof ctx.fmt.engine.fetchRenderCard>>,
+): string {
+  // Build a fresh RenderFormat for the item card (matches Ruby's
+  // subformat pattern in format/nest.rb#prepare_subformat + nest ->
+  // subformat.render(:core)). The parent is the carousel format so
+  // visibility propagates; maxDepth keeps us out of infinite-nest
+  // trouble if an item recursively renders the carousel (unlikely
+  // for the captured surface).
+  const sub = new RenderFormat(itemCard, ctx.fmt.engine, {
+    parent: ctx.fmt,
+    maxDepth: ctx.fmt.maxDepth,
+  });
+  return sub.renderView("core");
+}
+
 const carouselView: ViewFn = (ctx) => {
-  // SHIM: spec-from-Bootstrap-docs, capture pending
-  const id = `carousel-${ctx.fmt.card.id ?? ctx.fmt.card.name.urlKey ?? "anon"}`;
-  const inner = `<div class="carousel-item active">` +
-    `<div class="d-block w-100 p-5 bg-light text-center">` +
-    `carousel shim: bootstrap-docs placeholder for card ` +
-    `"${ctx.fmt.card.name.s}"` +
-    `</div></div>`;
-  const indicators = `<div class="carousel-indicators">` +
-    `<button type="button" data-bs-target="#${id}" ` +
-    `data-bs-slide-to="0" class="active" aria-current="true" ` +
-    `aria-label="Slide 1"></button></div>`;
-  const controlPrev = `<button class="carousel-control-prev" ` +
-    `type="button" data-bs-target="#${id}" ` +
-    `data-bs-slide="prev">` +
-    `<span class="carousel-control-prev-icon" aria-hidden="true"></span>` +
-    `<span class="visually-hidden">Previous</span></button>`;
-  const controlNext = `<button class="carousel-control-next" ` +
-    `type="button" data-bs-target="#${id}" ` +
-    `data-bs-slide="next">` +
-    `<span class="carousel-control-next-icon" aria-hidden="true"></span>` +
-    `<span class="visually-hidden">Next</span></button>`;
-  return `<div class="carousel slide" id="${id}" ` +
-    `data-bs-ride="true">${indicators}` +
-    `<div class="carousel-inner">${inner}</div>` +
-    `${controlPrev}${controlNext}</div>`;
+  const card = ctx.fmt.card;
+  const itemNames = rawItemStrings(card.dbContent).filter((s) => s !== "");
+  const id = `${card.name.safeKey}-1`;
+  // component/carousel.rb:16 the container div (class, id, data-bs-ride).
+  let out = `<div class="carousel slide" id="${id}" data-bs-ride="true">`;
+  // component/carousel.rb:68-79 indicators: one button per item.
+  // attribute order: data-bs-slide-to, data-bs-target, type, aria-label,
+  // then class="active" appended last via add_class (only on the first).
+  let indicators = `<div class="carousel-indicators">`;
+  itemNames.forEach((_name, index) => {
+    const activeAttr = index === 0 ? ` class="active"` : "";
+    indicators += `<button data-bs-slide-to="${index}" data-bs-target="#${id}" type="button" aria-label="Slide ${index + 1}"${activeAttr}/>`;
+  });
+  indicators += `</div>`;
+  // component/carousel.rb:28-47 items: carousel-inner wrapping each
+  // carousel-item div; the active-index item gets class="active".
+  let items = `<div class="carousel-inner">`;
+  itemNames.forEach((name, index) => {
+    const itemCard = ctx.fmt.engine.fetchRenderCard(name);
+    const inner = itemCard === undefined ? "" : renderCarouselItemInner(ctx, itemCard);
+    const activeClass = index === 0 ? ` class="carousel-item active"` : ` class="carousel-item"`;
+    items += `<div${activeClass}>${inner}</div>`;
+  });
+  items += `</div>`;
+  // component/carousel.rb:49-66 control buttons: class first, then
+  // data-bs-target, then type (the original html_opts hash literal).
+  out += indicators + items;
+  out += `<button class="carousel-control-prev" data-bs-target="#${id}" type="button"><span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous</span></button>`;
+  out += `<button class="carousel-control-next" data-bs-target="#${id}" type="button"><span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next</span></button>`;
+  out += `</div>`;
+  return out;
 };
 
 // ---------------------------------------------------------------------------
 // set/type/bootswatch_skin/html_views.rb:43-48 - customize_button method
 // ---------------------------------------------------------------------------
 
-/** Card::Path#render produces "card/<action>" for action: :create with
- *  no mark (action_base at card-mod-format-0.20.0 lib/card/path.rb:42-45);
- *  the remaining opts (the `card:` sub-hash) serialize as the query
- *  string via cast_path_hash (path.rb:84-87). The literal URL the Ruby
- *  app would emit for a "Customize" button click on the "Cerulean Skin"
- *  card targeting "Cerulean Skin customized" is therefore:
- *    card/create
- *      ?card[name]=Cerulean+Skin+customized
+/** html_views.rb:43-48 customize_button: the literal link_to_card call
+ *  composes a path through Card::Path#render +
+ *  format/all/path.rb#contextualize_path (html format's card_path
+ *  prepends "/"). The href the live Ruby oracle emits is:
+ *    /card/create
+ *      ?card[fields][parent]=<parent>
+ *      &card[name]=<new>
  *      &card[type]=bootswatch_skin
- *      &card[fields][parent]=Cerulean+Skin
- *  (engine_routes.rb:42 `(card)/create(/:mark(.:format))` accepts the
- *  form-urlencoded body via card#create - the Rails-routed POST).
+ *      &mark=<new>
+ *  with the `&` between query params HTML-escaped to `&amp;` (the href
+ *  is an HTML attribute value, so Rails' html_escape runs on it). The
+ *  four params are URL-encoded (square brackets -> %5B / %5D; spaces
+ *  -> + for form-encoding via Rack::Utils).
+ *
+ *  Param order in the captured bytes: card[fields][parent] first, then
+ *  card[name], then card[type], then mark. The base format's
+ *  link_to_card adds `mark:` to the path hash before delegating to
+ *  link_to (card-mod-format set/all/links.rb:33-36), and the card hash's
+ *  internal order through Hash#to_param iterates the nested fields
+ *  before name before type - matches the captured bytes exactly. The
+ *  trailing `mark` param carries the same value as card[name] (the new
+ *  card's name); Ruby's to_param writes it after the card[...] block.
  *  Cited:
- *  - card-mod-bootstrap-0.20.0 set/type/bootswatch_skin/html_views.rb:28-32
- *    new_skin_path_args new_name = { name: new_name, type: :bootswatch_skin,
- *    fields: { parent: card.name } }
- *  - card-mod-bootstrap-0.20.0 set/type/bootswatch_skin/html_views.rb:43-48
- *    customize_button: link_to_card new_name, text, path: { action: :create,
- *    card: new_skin_path_args(new_name) }, class: "btn btn-sm btn-outline-
- *    primary me-2"
- *  - card-mod-format-0.20.0 lib/card/path.rb:42-45 action_base with markless
- *  - card-mod-format-0.20.0 lib/card/path.rb:84-87 query = "?" + cast_path_hash
- *  - deck0-0.20.0 config/engine_routes.rb:42 `(card)/create(/:mark(.:format))`
- *    (-> "card#create")
- *  This local builder reproduces that literal URL for the one route shape
- *  the customize_button view uses; it is NOT a full path-resolution
- *  implementation. */
-function buildCustomizeButtonPath(args: {
+ *  - card-mod-bootstrap-0.20.0 set/type/bootswatch_skin/html_views.rb
+ *    :28-32 new_skin_path_args new_name = { name: new_name, type:
+ *    :bootswatch_skin, fields: { parent: card.name } }
+ *  - card-mod-bootstrap-0.20.0 set/type/bootswatch_skin/html_views.rb
+ *    :43-48 customize_button + link_to_card new_name, text, path: {
+ *    action: :create, card: new_skin_path_args(new_name) }
+ *  - card-mod-format-0.20.0 set/all/path.rb:35-40 path =
+ *    Card::Path.new(card, opts)&.render then contextualize_path
+ *  - card-mod-format-0.20.0 set/all/path.rb:68-72 html format
+ *    contextualize_path = card_path (prepends "/")
+ *  - card-mod-format-0.20.0 set/all/links.rb:33-36 base link_to_card
+ *    adds mark: Card::Name[cardish] to opts[:path] before calling
+ *    link_to (the super in html format's link_to_card delegates to
+ *    base, so mark is in opts[:path] when Card::Path#query reads it)
+ *  This local builder reproduces that literal URL for the one route
+ *  shape the customize_button view uses; it is NOT a full path-
+ *  resolution implementation. */
+function buildCustomizeButtonHref(args: {
   newName: string;
   parentName: string;
 }): string {
-  const params = new URLSearchParams();
-  params.append("card[name]", args.newName);
-  params.append("card[type]", "bootswatch_skin");
-  params.append("card[fields][parent]", args.parentName);
-  // Card::Path#render for action: :create with no mark emits
-  // "card/create" (path.rb:42-45 with markless? true).
-  return `card/create?${params.toString()}`;
+  // The Ruby app URL-encodes spaces as `+` (form encoding); Rack::Utils
+  // produces %5B / %5D for square brackets. Rack::Utils.escape (the
+  // form encoder) encodes every char outside the unreserved set
+  // (ALPHA / DIGIT / `_-.~`), so brackets encode to %5B / %5D. The TS
+  // port mirrors that by URL-encoding the keys (the bracket names
+  // Ruby emits) and form-encoding the values (space -> +).
+  const encodeKey = (s: string) => encodeURIComponent(s);
+  const encodeValue = (s: string) =>
+    encodeURIComponent(s).replace(/%20/g, "+");
+  // Param order is the captured bytes' order: card[fields][parent],
+  // card[name], card[type], mark. The `&` between params is HTML-
+  // escaped to `&amp;` because the href is an HTML attribute value
+  // and link_to runs the attr value through Rails' html_escape. The
+  // TS port applies the same escape here so the href bytes match the
+  // oracle's captured output verbatim.
+  const sep = "&amp;";
+  const query =
+    `${encodeKey("card[fields][parent]")}=${encodeValue(args.parentName)}` +
+    `${sep}${encodeKey("card[name]")}=${encodeValue(args.newName)}` +
+    `${sep}${encodeKey("card[type]")}=bootswatch_skin` +
+    `${sep}mark=${encodeValue(args.newName)}`;
+  // The HTML format's contextualize_path = card_path prepends "/"
+  // (set/all/path.rb:68-72), so the href starts with "/card/create".
+  return `/card/create?${query}`;
 }
 
 /** html_views.rb:4-11 new_customized_name: append " customized" to the
@@ -346,9 +452,21 @@ function newCustomizedName(ctx: ViewContext): string {
  *  `engineFetchRenderCard(\`${name}+parent\`) !== undefined` (mirrors
  *  the inputView branch at card-mod-bootstrap.ts:280-281). For cards
  *  with a parent, the rendered bytes are the literal empty string,
- *  matching Ruby's `return ""` short-circuit. The button then builds
- *  the literal URL via buildCustomizeButtonPath and emits the anchor
- *  bytes. Cited: html_views.rb:38-48. */
+ *  matching Ruby's `return ""` short-circuit.
+ *
+ *  For cards without a parent, link_to_card adds the known-or-wanted
+ *  class (card-mod-format set/all/links.rb:140-144: `add_class opts,
+ *  (known ? "known-card" : "wanted-card")`). The new card name
+ *  ("<parent> customized") is not in the prepared render-card map, so
+ *  the class is "wanted-card" - appended to the caller's class list
+ *  after the literal "btn btn-sm btn-outline-primary me-2" (html_views
+ *  .rb:47). The literal order the captured oracle emits is therefore
+ *  "btn btn-sm btn-outline-primary me-2 wanted-card".
+ *
+ *  The href value's `&` chars are HTML-escaped to `&amp;` because the
+ *  attr value runs through Rails' html_escape; the TS port uses the
+ *  attribute emitter's escape (it serializes `&` to `&amp;` inside
+ *  attribute values). Cited: html_views.rb:38-48. */
 const customizeButtonView: ViewFn = (ctx) => {
   if (ctx.fmt.card.typeCode !== "bootswatch_skin") {
     throw new UnsupportedViewError("customize_button", ctx.fmt.card.name.s);
@@ -359,13 +477,16 @@ const customizeButtonView: ViewFn = (ctx) => {
   if (hasParent) return "";
   // card.new_customized_name (html_views.rb:4-11): compute the new name.
   const newName = newCustomizedName(ctx);
-  const href = buildCustomizeButtonPath({
+  const href = buildCustomizeButtonHref({
     newName,
     parentName: name,
   });
-  // html_views.rb:47 class: "btn btn-sm btn-outline-primary me-2"
-  return `<a href="${href}" class="btn btn-sm btn-outline-primary me-2" ` +
-    `rel="nofollow">Customize</a>`;
+  // The new card name is not in the render-card map, so link_to_card
+  // appends "wanted-card" after the caller's literal class list.
+  // The href value's `&` chars are escaped to `&amp;` by the
+  // attribute emitter; we pass the raw href with `&` and the emitter
+  // does the encoding.
+  return `<a class="btn btn-sm btn-outline-primary me-2 wanted-card" href="${href}">Customize</a>`;
 };
 
 // ---------------------------------------------------------------------------
@@ -657,8 +778,10 @@ const cardModBootstrap: DeckoModManifest = {
     // :2-8) declares `view :carousel` which depends on
     // lib/card/bootstrap/component/carousel.rb - the headless engine
     // has no ComponentKlass. This pass registers the carousel view as
-    // a TRANSPARENT SHIM (popoverLink, see card-mod-bootstrap.ts the
-    // shim comment block; tests label the view SHIM too).
+    // a direct emitter of the captured bytes
+    // (fixtures/captured/bootstrap-views.json's carousel bytes);
+    // see card-mod-bootstrap.ts#carouselView and
+    // tests/card/mod-loader/card-mod-bootstrap.test.ts#:carousel.
     passiveSetModule("all/bootstrap/accordion"),
     {
       // card-mod-bootstrap-0.20.0/set/all/bootstrap/carousel.rb
@@ -673,9 +796,10 @@ const cardModBootstrap: DeckoModManifest = {
       // carousel.rb (a Card::Bootstrap::Component::Carousel subclass
       // that defines unique_id, slide nav, indicator tags, and per-item
       // slot wrapping for the active-index slide). The headless engine
-      // has no ComponentKlass + no per-item rendered-slot composition,
-      // so this port emits the Bootstrap-standard carousel markup
-      // directly. This entry is labeled SHIM in the test.
+      // has no ComponentKlass, so the port walks rawItemStrings ->
+      // each item's format.renderView("core") directly and composes
+      // the captured carousel markup (attribute order, self-closing
+      // indicator buttons, control buttons).
       setPath: "all/bootstrap/carousel",
       formats: {
         html: {
