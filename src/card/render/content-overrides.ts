@@ -111,8 +111,11 @@ let defaultRegistry: ContentOverrideRegistry | undefined;
 /** Bind a registry as the render-path default (call after the mod loader's
  *  SetLoader phase). The render layer reads from this seam; mod porters do
  *  NOT need to know about the engine - they hand their ContentFn to the
- *  loader, the loader registers it here. */
-export function setDefaultContentOverrideRegistry(registry: ContentOverrideRegistry): void {
+ *  loader, the loader registers it here. Pass undefined to unbind (tests +
+ *  reload sequences - the same contract as setDefaultModLoader). */
+export function setDefaultContentOverrideRegistry(
+  registry: ContentOverrideRegistry | undefined,
+): void {
   defaultRegistry = registry;
 }
 

@@ -46,6 +46,7 @@
 // ModViewDefinition, each `setting_opts` call one ModSettingOpts.
 
 import type { ViewFn } from "../render/format.js";
+import type { ContentFn } from "../render/content-overrides.js";
 import type { PatternSpec } from "../set-patterns/registry.js";
 
 /**
@@ -143,6 +144,65 @@ export interface ModSettingOpts {
  * module` line, set_template.rb:47-53) are not ported: they define no
  * registrations.
  */
+
+/** The stages a set-module event can run at (lib/card/set/event.rb's stage
+ *  list; the _with_delay variants exist for delayed_job, which has no TS
+ *  surface - they are recorded so declarations port verbatim). */
+export type ModEventStage =
+  | "prepare_to_validate"
+  | "prepare_to_store"
+  | "store"
+  | "finalize"
+  | "integrate"
+  | "integrate_with_delay"
+  | "extend"
+  | "extend_with_delay";
+
+/** The `on:` triggers (event.rb#deferred_conditions; "save" is stored
+ *  verbatim - the execution seam applies :save -> [:create, :update]). */
+export type ModEventTrigger = "create" | "update" | "delete" | "save";
+
+/** The card surface an event body receives when the execution seam fires
+ *  it (Ruby's `self` in an event body is the acting card). Structural
+ *  minimum; the seam widens it as stages wire in. */
+export interface ModEventCard {
+  readonly name: string;
+  readonly id?: number;
+  readonly dbContent?: string;
+}
+
+/** An event body. Errors propagate to the caller; async bodies are awaited
+ *  by the seam that fires them. The host is the mod engine host (the same
+ *  instance prepareEngine receives). */
+export type ModEventFn = (
+  card: ModEventCard,
+  host: ModEngineHost,
+) => void | Promise<void>;
+
+/** One `event :name, <opts> do ... end` declaration inside a set file
+ *  (lib/card/set/event.rb). The loader injects setPath + modName at
+ *  registration (they come from the file the event sits in); the registry
+ *  lives in mod-loader/mod-event-registry.ts. */
+export interface ModEventRegistration {
+  /** the event's name (`event :observer_create` -> "observer_create"). */
+  readonly event: string;
+
+  /** the stage position (`event :x, :integrate`). */
+  readonly at?: ModEventStage;
+
+  /** the triggers the event runs on. */
+  readonly on?: readonly ModEventTrigger[];
+
+  /** named `when:` predicate (Ruby allows a symbol or proc; the surface
+   *  carries the name, resolved by the execution seam at fire time). */
+  readonly when?: string;
+
+  readonly priority?: number;
+
+  /** the event body (Ruby's block; self = the acting card). */
+  readonly fn: ModEventFn;
+}
+
 export interface ModSetModuleFile {
   /** path under set/ minus the .rb extension, e.g. "all/help" or
    *  "right/comment". The first segment names the pattern; the rest is the
@@ -158,6 +218,17 @@ export interface ModSetModuleFile {
   /** the file's `setting_opts` call (only meaningful on Self-set files;
    *  nothing enforces that here beyond Ruby's own convention). */
   readonly settingOpts?: ModSettingOpts;
+
+  /** the file's set-module `def content` overrides (right/when_created.rb:7,
+   *  self/now.rb:1 - ContentFn = the method body). Registered in order on
+   *  the deck's ContentOverrideRegistry with setPath + modName injected;
+   *  last registration wins per set path (Ruby's method redefinition). */
+  readonly contentOverrides?: readonly ContentFn[];
+
+  /** the file's `event` declarations (see ModEventRegistration; the
+   *  DECLARATION surface - execution wiring into the save path is the
+   *  action engine's stage seam, consult via eventsForStage). */
+  readonly events?: readonly ModEventRegistration[];
 }
 
 /** One set_pattern file registration (SetPatternTemplate postamble:

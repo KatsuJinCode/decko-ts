@@ -53,21 +53,38 @@ import {
   type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
 import { safeKeyToModuleShortname } from "./render/set-keys-to-modules.js";
+import {
+  ContentOverrideRegistry,
+  setDefaultContentOverrideRegistry,
+} from "./render/content-overrides.js";
+import {
+  ModEventRegistry,
+  setDefaultModEventRegistry,
+} from "./mod-loader/mod-event-registry.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventRegistration,
+  ModEventStage,
   ModSetModuleFile,
 } from "./mod-loader/mod-manifest.js";
+import type { ContentFn } from "./render/content-overrides.js";
+import type { RegisteredModEvent } from "./mod-loader/mod-event-registry.js";
 
 export { normalizeModName, resolveModOrder } from "./mod-loader/mod-order.js";
 export { ModNotFoundError, ModNameConflictError } from "./mod-loader/mod-order.js";
 export { SettingRegistry, PatternOverlay, setModuleShortname, SetModuleViewTable } from "./mod-loader/mod-registrar.js";
 export type { ViewChainEntry } from "./mod-loader/mod-registrar.js";
+export { ModEventRegistry, setDefaultModEventRegistry, eventsForStage } from "./mod-loader/mod-event-registry.js";
+export type { RegisteredModEvent } from "./mod-loader/mod-event-registry.js";
+export { ContentOverrideRegistry, setDefaultContentOverrideRegistry, contentOverrideFor, resolveContentOverride } from "./render/content-overrides.js";
+export type { ContentFn, RegisteredContentOverride } from "./render/content-overrides.js";
 export { modEngineHost } from "./mod-loader/mod-engine-host.js";
 export { default as cardModHelp } from "./mod-loader/mods/card-mod-help.js";
 export { setKeysToModuleChain } from "./render/set-keys-to-modules.js";
 export type { DeckoModManifest, ModEngineHost } from "./mod-loader/mod-manifest.js";
 export type { ModViewConfig, ModSetModuleFile, ModSettingOpts, ModPatternRegistration } from "./mod-loader/mod-manifest.js";
+export type { ModEventRegistration, ModEventStage, ModEventTrigger, ModEventCard, ModEventFn } from "./mod-loader/mod-manifest.js";
 export type { RegisteredSetting } from "./mod-loader/mod-registrar.js";
 
 /** One mod input: the manifest plus the Dirs bookkeeping. */
@@ -89,6 +106,10 @@ export interface ModLoadReport {
   readonly registeredViews: string[];
   /** setting codenames registered via setting_opts. */
   readonly registeredSettings: string[];
+  /** set paths with a registered `def content` override, in load order. */
+  readonly registeredContentOverrides: string[];
+  /** event names registered via manifest events, in load order. */
+  readonly registeredEvents: string[];
 }
 
 export class ModLoader {
@@ -107,6 +128,19 @@ export class ModLoader {
   private readonly settings = new SettingRegistry();
   private readonly patterns = new PatternOverlay();
   private readonly basket = new SetModuleBasket();
+  /** The set-module `def content` overrides (right/when_created.rb:7 etc.),
+   *  registered from ModSetModuleFile.contentOverrides during the SetLoader
+   *  phase. The render path consults it via resolveContentOverride
+   *  (format.ts renderRaw) once the deck boot binds the default
+   *  (setDefaultContentOverrideRegistry) - binding is the composition
+   *  seam's job (defaultDeckLoader), never load()'s, so manual wirings
+   *  (tests) are not clobbered by an unrelated load(). */
+  private readonly contentOverrides = new ContentOverrideRegistry();
+  /** The set-module `event` declarations (lib/card/set/event.rb DSL),
+   *  registered from ModSetModuleFile.events during the SetLoader phase.
+   *  The execution seam (the action engine's stages) will consult it via
+   *  eventsForStage once the deck boot binds the default. */
+  private readonly modEvents = new ModEventRegistry();
 
   constructor(mods: readonly ModSource[], views: Record<string, ViewFn> = HTML_VIEWS) {
     this.views = new ViewRegistrationTable(views);
@@ -172,6 +206,8 @@ export class ModLoader {
     const registeredSetModules: string[] = [];
     const registeredViews: string[] = [];
     const registeredSettings: string[] = [];
+    const registeredContentOverrides: string[] = [];
+    const registeredEvents: string[] = [];
 
     // The compiled-in core patterns seed the concrete table (the ported
     // "core mod" - mod/core/set_pattern/01..09, oracle order in
@@ -179,6 +215,8 @@ export class ModLoader {
     // settings registry starts empty the way Ruby's boot does.
     this.patterns.seedCore(PATTERN_TABLE.map((spec) => spec.code));
     this.settings.clear();
+    this.contentOverrides.clear();
+    this.modEvents.clear();
 
     // ---- phase 1: SetPatternLoader (loader.rb:17) ------------------------
     for (const mod of ordered) {
@@ -231,6 +269,28 @@ export class ModLoader {
               this.settings.register(anchor, file.settingOpts);
               registeredSettings.push(anchor);
             }
+            for (const fn of file.contentOverrides ?? []) {
+              // set-module `def content` (right/when_created.rb:7-11):
+              // registered per set path with the contributing mod named;
+              // Map.set last-wins mirrors Ruby's method redefinition.
+              this.contentOverrides.register({
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+                fn,
+              });
+              registeredContentOverrides.push(file.setPath);
+            }
+            for (const event of file.events ?? []) {
+              // set-module `event` declarations (lib/card/set/event.rb):
+              // recorded verbatim, file coordinates injected; execution
+              // wiring is the action engine's stage seam (eventsForStage).
+              this.modEvents.register({
+                ...event,
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+              });
+              registeredEvents.push(event.event);
+            }
           }
         }
       }
@@ -244,6 +304,8 @@ export class ModLoader {
       registeredSetModules,
       registeredViews,
       registeredSettings,
+      registeredContentOverrides,
+      registeredEvents,
     };
   }
 
@@ -260,7 +322,12 @@ export class ModLoader {
     return this.load();
   }
 
-  /** Restore the exact pre-load state (the reverse of every registration). */
+  /** Restore the exact pre-load state (the reverse of every registration).
+   *  The process-wide default bindings (setDefaultModLoader,
+   *  setDefaultContentOverrideRegistry, setDefaultModEventRegistry) are
+   *  NOT touched: they belong to the deck boot seam, and an emptied
+   *  registry resolves nothing, so a stale binding is observable-identical
+   *  to no binding. */
   reset(): void {
     this.views.unregisterAll();
     this.viewChains.clear();
@@ -268,6 +335,8 @@ export class ModLoader {
     this.settings.clear();
     this.patterns.clear();
     this.basket.clear();
+    this.contentOverrides.clear();
+    this.modEvents.clear();
     this.loaded = false;
   }
 
@@ -403,6 +472,18 @@ export class ModLoader {
   /** The Card::Setting registry port (groups with nil holes, preferences). */
   settingsRegistry(): SettingRegistry {
     return this.settings;
+  }
+
+  /** The set-module content-override registry this load populated (the
+   *  instance the deck boot binds as the render-path default). */
+  contentOverrideRegistry(): ContentOverrideRegistry {
+    return this.contentOverrides;
+  }
+
+  /** The set-module event registry this load populated (the instance the
+   *  deck boot binds as the execution seam's default). */
+  eventRegistry(): ModEventRegistry {
+    return this.modEvents;
   }
 
   /** The concrete pattern table INCLUDING mod patterns, in lookup order.
