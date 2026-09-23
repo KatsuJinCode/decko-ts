@@ -167,7 +167,7 @@ const sampleSize = failures.length;
 // Verify shard totals match the render realFail population. The shard-outcome
 // prefix follows the aggregate's own tag (…outcomewithmods48-… for a run
 // tagged withmods48) so re-runs classify against their own shards.
-const runTag = (AGGREGATE_PATH.match(/results(withmods48|prewarm48)\.json/) || [])[1] || 'prewarm48';
+const runTag = (AGGREGATE_PATH.match(/results([A-Za-z0-9]+)\.json/) || [])[1] || 'prewarm48';
 const shardFiles = readdirSync(RESULTS_DIR)
   .filter(f => f.startsWith(`replay-shard-outcome${runTag}-shard-`) && f.endsWith('.jsonl.json'))
   .sort();
