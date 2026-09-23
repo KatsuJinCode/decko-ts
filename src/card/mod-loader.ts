@@ -117,6 +117,20 @@ export class ModLoader {
   /** mod load order (empty until load()). */
   private order: ResolvedModEntry[] = [];
   private loaded = false;
+  /** Monotonic generation counter incremented on every load() and reset().
+   *  The render engine embeds this in its view-dispatch cache key so a
+   *  load()/reset() cycle invalidates any cached view fn that was resolved
+   *  under the previous generation. Without this the cached entry from
+   *  a prior generation would shadow the mod's freshly-registered (or
+   *  freshly-removed) view fn — reset() would not appear to "restore
+   *  pre-load dispatch" because the cache still served the old fn, and
+   *  a fresh load() would not appear to land its hand-typed view fn
+   *  because the cache still served the prior base fn.
+   *  The counter starts at 0 (pre-load baseline) and is bumped to 1
+   *  by the first load()/reset(); subsequent cycles keep incrementing.
+   *  Multiple load() calls without a reset() bump the counter each
+   *  time (a reload still invalidates prior caches). */
+  private generation = 0;
 
   private readonly views: ViewRegistrationTable;
   /** Per-set-module view table: the chain-aware companion to `views`.
@@ -193,6 +207,8 @@ export class ModLoader {
    * state as the first.
    */
   load(): ModLoadReport {
+    this.generation++;
+    bumpModGeneration();
     const modNames = this.order.length > 0
       ? this.order.map((entry) => entry.name)
       : [...this.sources.keys()];
@@ -329,6 +345,8 @@ export class ModLoader {
    *  registry resolves nothing, so a stale binding is observable-identical
    *  to no binding. */
   reset(): void {
+    this.generation++;
+    bumpModGeneration();
     this.views.unregisterAll();
     this.viewChains.clear();
     this.viewConfigs.clear();
@@ -400,13 +418,28 @@ export class ModLoader {
    *   to every All::* module; RSTAR expands to every Rstar::* module
    *   if any registered; RULE expands to every Rule::* module).
    *   Per-token order is preserved so Ruby's MRO walk is honored.
+   *
+   * Format inheritance (AbstractFormat#format block reopen - card-
+   * 1.110.0 lib/card/format.rb:62-68's format_ancestry): when `format`
+   * is not "html" and the format-specific chain produces no entries,
+   * the walker falls back to the html chain. css/js/rss formats
+   * declared without their own registration reopen the html chain;
+   * with one, the css chain wins. The base format record (no format
+   * key, the bare `format do` block) inherits the html chain too.
+   * Default `format = "html"` keeps the html-only render path
+   * byte-identical to the pre-chain dispatcher.
    */
-  viewChain(setKeys: string, view: string): ViewChainEntry[] {
+  viewChain(setKeys: string, view: string, format: string = "html"): ViewChainEntry[] {
     const tokens = setKeys.split(/\s+/).filter((s) => s !== "");
     // Empty setKeys = "no concrete pattern applies" (the Abstract
     // pseudo-pattern case). Fall back to load-order registration so
     // the chain walker returns every module that registered the view
     // (the abstract sets CodeContent/HamlFile/ReadOnly etc. match here).
+    // Format-specific scoping (no per-format registry today): when the
+    // format is not html and the abstract-style fallback returns
+    // entries, those entries win; otherwise the html-chain fallback
+    // applies. The current port registers every view under html, so
+    // the html fallback is what fires for css/js/rss requests today.
     if (tokens.length === 0) {
       const out: ViewChainEntry[] = [];
       for (const entry of this.viewChains.entries()) {
@@ -444,6 +477,15 @@ export class ModLoader {
           }
         }
       }
+    }
+    // Format inheritance: when the named format produces no chain
+    // entries (the typical case for css/js/rss today - all views
+    // register under html), fall back to the html chain. Ruby's
+    // AbstractFormat#format blocks reopen the html parent class when
+    // they don't override a view, so a css/js/rss render lands in
+    // the html chain unless a css-specific registration wins first.
+    if (out.length === 0 && format !== "html") {
+      return this.viewChain(setKeys, view, "html");
     }
     return out;
   }
@@ -541,6 +583,30 @@ let defaultLoader: ModLoader | undefined;
  *  undefined to clear (tests + reload sequences). */
 export function setDefaultModLoader(loader: ModLoader | undefined): void {
   defaultLoader = loader;
+}
+
+/** Process-wide mod lifecycle generation. Bumped on every ModLoader.load()
+ *  and ModLoader.reset() so the render engine can invalidate any cached
+ *  view fn that was resolved under a previous lifecycle. Decks with no
+ *  loader hold generation 0 indefinitely — the no-mod render path stays
+ *  byte-identical to the pre-chain dispatcher. */
+let generation = 0;
+
+/** The current mod lifecycle generation. The render engine embeds this
+ *  in its view-dispatch cache key so load()/reset() invalidates prior
+ *  caches without explicit per-engine wiring (a test that creates a
+ *  loader, calls load(), and never binds it to the engine still picks
+ *  up the new generation on the next render — the cache miss path runs
+ *  computeResolvedView again, which reads engine.views[view], which is
+ *  the same HTML_VIEWS record the loader mutates). */
+export function modGeneration(): number {
+  return generation;
+}
+
+/** Internal hook: bump the global generation. Called by ModLoader.load()
+ *  and ModLoader.reset(). */
+export function bumpModGeneration(): void {
+  generation++;
 }
 
 /** Read the deck's default loader (the seam the superView helper

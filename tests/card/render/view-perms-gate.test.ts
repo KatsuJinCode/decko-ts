@@ -74,6 +74,7 @@ function stubEngine(opts: StubOptions): RenderEngineLike {
     fetchRenderCard: () => undefined,
     executeSearch: () => [],
     isDenied: () => opts.readDenied === true,
+    resolveView: (_card, view) => HTML_VIEWS[view],
   };
   if (opts.withTaskHook !== false) {
     engine.taskAllowed = (_card, task) => opts.taskAllowedByTask?.[task];

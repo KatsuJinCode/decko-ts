@@ -402,7 +402,10 @@ export class SetModuleViewTable {
 
   /** Insertion-ordered list of (setModule, view, viewFn) tuples across all
    *  set modules. Used by the chain walker when the per-card chain is
-   *  empty (every view applies) so the walker falls back to load order. */
+   *  empty (every view applies) so the walker falls back to load order.
+   *  Format defaults to "html" — format inheritance (css/js/rss fall
+   *  back to the html chain) is a separate dimension the chain walker
+   *  applies via viewChainForFormat. */
   private readonly order: Array<{ setModule: string; view: string; viewFn: ViewFn }> = [];
 
   /** record(view, viewFn, setModule): register a view under its set module.

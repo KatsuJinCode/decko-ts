@@ -43,6 +43,11 @@ import {
   type ViewFn,
 } from "./render/format.js";
 import { HTML_VIEWS } from "./render/views.js";
+import {
+  ModLoader,
+  getDefaultModLoader,
+  modGeneration,
+} from "./mod-loader.js";
 import { badQuery, dateError, emptyQueryError, isValidDateContent } from "./render/errors.js";
 import {
   prefetchInclusionClosure,
@@ -106,6 +111,17 @@ const DATE_TYPE_CODE = "date";
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
   readonly views: Record<string, ViewFn>;
+  /** The chain-aware mod loader (ModLoader.viewChain walks this; the
+   *  chain-aware dispatch in format.ts#renderView consults it via
+   *  resolveView). Optional: when undefined, resolveView returns the
+   *  flat engine.views[view] entry (byte-identical to the pre-chain
+   *  render path - 1080-test suite stays green untouched).
+   *
+   *  Defaults to the process-wide getDefaultModLoader() (the seam the
+   *  defaultDeckLoader() binds at boot), so a vanilla engine picks up
+   *  the deck's loader without explicit wiring. A per-engine setter
+   *  is exposed for tests + custom compositions. */
+  modLoader?: ModLoader;
 
   /** Enriched render cards by key - the render path reads this map
    *  synchronously (everything in it was prefetched/enriched). */
@@ -116,6 +132,13 @@ export class RenderEngine implements RenderEngineLike {
    *  This is what keeps the #1282 constant-queries promise: a warm render
    *  issues ZERO queries for rule application. Cleared on resetCaches(). */
   private ruleCache = new Map<string, ReturnType<typeof resolveViewOverride> | undefined>();
+  /** Chain-aware view dispatch cache: `<format>|<card_key>|<view>` -> the
+   *  resolved ViewFn (or undefined if no view applies). Filled on the
+   *  first dispatch per (card, view) pair; subsequent renders skip the
+   *  chain walk entirely. closureWarm-style: warm re-renders stay at
+   *  zero cost (Map lookup, no per-render string parsing or chain walk).
+   *  Cleared on resetCaches(). */
+  private viewDispatchCache = new Map<string, ViewFn | undefined>();
   /** key -> id for prefetched cards - the SYNC resolver CQL's name-to-id
    *  conditions need (parse options take a sync callback; the async lexicon
    *  cannot serve it, so the prefetch primes this map instead). */
@@ -177,6 +200,10 @@ export class RenderEngine implements RenderEngineLike {
   constructor(fetcher: FetchEngine) {
     this.fetcher = fetcher;
     this.views = HTML_VIEWS;
+    // Bind to the process-wide default loader (the seam defaultDeckLoader
+    // populates). The chain-aware dispatch reads this through resolveView;
+    // tests can override the field directly to install their own loader.
+    this.modLoader = getDefaultModLoader();
   }
 
   /** Query-cost stats of the most recent render (diagnostics; the tests
@@ -328,6 +355,88 @@ export class RenderEngine implements RenderEngineLike {
     return baseHtml;
   }
 
+  /**
+   * Chain-aware view dispatch (the new seam): resolve (card, view, format)
+   * through the per-card MRO chain (set/format.rb:146-150 +
+   * format.rb:62-68) when a mod loader is wired up; fall back to the
+   * flat engine.views record when no loader is registered OR the chain
+   * produces no entries (the base format view wins - the parent class
+   * method Ruby's super() reaches, view_definition.rb:18-21).
+   *
+   * The chain-aware path is what prevents the loader's flat last-wins
+   * record from owning every card (the recaptcha/api_key hijack probe):
+   * without this seam, card-mod-recaptcha registering :core last would
+   * make engine.views["core"] = recaptcha's :core for EVERY :content
+   * render; with this seam, each card's chain walks its OWN set modules
+   * most-specific-first, so the :core that fires for a recaptcha_settings
+   * card is recaptcha's, and the :core that fires for any other card is
+   * the most-specific registration its own chain reaches (usually the
+   * compiled-in HTML_VIEWS.core for cards with no mod override).
+   *
+   * Format inheritance (Ruby's format block reopen): css/js/rss format
+   * chains with no entries fall back to the html chain. The base format
+   * record (the html compiled-in views) wins last regardless of format,
+   * mirroring Ruby's AbstractFormat#view lookup chain.
+   *
+   * Closure-warm cache (hits only): per-card+view+format memoized so
+   * warm renders pay ONE Map lookup per dispatch (the same shape
+   * ruleCache uses; maps to the closureWarm rule-walk-cached pattern).
+   * MISSES ARE NOT CACHED - a late-loading mod (a test that calls
+   * loader.load() after the engine's first render of the same card)
+   * would otherwise see a cached undefined result and reject the view.
+   *
+   * Returns undefined when no view applies — the caller raises the
+   * captured UnsupportedViewError UserError (format.ts:317-318).
+   */
+  resolveView(
+    card: RenderCard,
+    view: string,
+    format: string = "html",
+  ): ViewFn | undefined {
+    // The cache key embeds the mod loader generation: every ModLoader.load()
+    // and ModLoader.reset() bumps the global counter, so a cache entry
+    // resolved under one generation cannot shadow the mod view fn that a
+    // later load() registered (or that reset() removed). Without this seam
+    // the cache survives across mod lifecycle events and reset() would not
+    // appear to "restore pre-load dispatch" — the cached prior fn keeps
+    // firing. Decks with no loader (no mod loaded yet) keep generation 0,
+    // so the no-mod render path stays byte-identical to the pre-chain
+    // dispatcher — the 1080-test surface stays green untouched.
+    const key = `${format}|${card.key}|${view}|g${modGeneration()}`;
+    const cached = this.viewDispatchCache.get(key);
+    if (cached !== undefined) return cached;
+    const resolved = this.computeResolvedView(card, view, format);
+    if (resolved !== undefined) this.viewDispatchCache.set(key, resolved);
+    return resolved;
+  }
+
+  /** The chain-walk half of resolveView (uncached). Walks the loader's
+   *  per-card chain, applies format inheritance (html base), and falls
+   *  to the flat engine.views[view] when no chain entry matches. */
+  private computeResolvedView(
+    card: RenderCard,
+    view: string,
+    format: string,
+  ): ViewFn | undefined {
+    const loader = this.modLoader;
+    if (loader !== undefined) {
+      // Format inheritance: the css/js/rss chain walker tries the named
+      // format first, then falls back to html (AbstractFormat#format
+      // blocks reopen the parent class — Ruby's MRO walks the format
+      // hierarchy before reaching the base method).
+      const chain = loader.viewChain(card.setKeys, view, format);
+      if (chain.length > 0) {
+        const entry = chain[0];
+        if (entry !== undefined) return entry.viewFn;
+      }
+    }
+    // Base format view (the compiled-in HTML_VIEWS + any flat
+    // registrations a mod added without registering under a set module
+    // — none today, but the seam covers the case). Byte-identical to
+    // the pre-chain dispatch path when no loader is registered.
+    return this.views[view];
+  }
+
   /** Drop every derived cache (the fetch engine's caches + the render-side
    *  maps). Mirrors FetchEngine#resetCaches for whole-engine resets. */
   resetCaches(): void {
@@ -336,6 +445,7 @@ export class RenderEngine implements RenderEngineLike {
     this.idsByKey.clear();
     this.searchResults.clear();
     this.ruleCache.clear();
+    this.viewDispatchCache.clear();
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
     this.ruleTypeIds = undefined;

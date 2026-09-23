@@ -24,6 +24,7 @@ function stubEngine(): RenderEngineLike {
     fetchRenderCard: () => undefined,
     executeSearch: () => [],
     isDenied: () => false,
+    resolveView: (_card, view) => undefined,
   };
 }
 

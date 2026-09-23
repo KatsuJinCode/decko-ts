@@ -309,7 +309,19 @@ export class RenderFormat {
         if (denial !== undefined) return denial;
       }
       this.runBeforeHook(effective, voo);
-      const viewFn = this.engine.views[effective];
+      // Chain-aware dispatch: when the engine has a mod loader wired up,
+      // resolve through the per-card chain (Ruby's MRO walk - set/
+      // format.rb:146-150) and return the most-specific set module's
+      // view; when NO loader is registered, fall back to the flat
+      // engine.views record (byte-identical to the pre-chain path).
+      // Without this seam the loader's flat last-wins record would
+      // hijack EVERY card with the LAST mod that registered the view
+      // (probe: card-mod-recaptcha's :core hijacks every card's :core
+      // when it loads last; card-mod-api_key's :content hijacks every
+      // card's :content when it loads last - ruby MRO per card fixes
+      // both). The cache lives on the engine (closureWarm-style) so a
+      // warm render path is zero-cost.
+      const viewFn = this.engine.resolveView(this.card, effective, "html");
       if (viewFn === undefined) {
         // render.rb#view_method + error.rb#unsupported_view_error_message
         // (Ruby substitutes first, so an unsupported REQUESTED view on an
@@ -637,6 +649,24 @@ export class RenderFormat {
  *  rule in spirit. */
 export interface RenderEngineLike {
   views: Record<string, ViewFn>;
+  /** Chain-aware view resolution for a single (card, view, format) triple.
+   *  With a mod loader wired up, walks the per-card MRO chain (set/
+   *  format.rb:146-150 + format.rb:62-68) and returns the most-specific
+   *  registered view fn; falls back to the flat `views` record when
+   *  either no loader is registered OR the chain produces no entries
+   *  (the base format view wins - view_definition.rb:18-21).
+   *
+   *  When no loader is registered, the lookup is byte-identical to
+   *  `this.views[view]` — the captured 1080-test render surface stays
+   *  green. With a loader registered, the chain walker honors Ruby's
+   *  per-card MRO so the LAST mod that registers a view does NOT
+   *  hijack every card (the recaptcha/api_key :content probe).
+   *
+   *  Format inheritance (css/js/rss fall back to the html chain when
+   *  their chain is empty - AbstractFormat#format blocks reopen the
+   *  parent class). The format parameter names the caller's format
+   *  ("html" by default; the dispatch seam reads it directly). */
+  resolveView(card: RenderCard, view: string, format?: string): ViewFn | undefined;
   /** Cache-first card resolution (fetch ladder; prefetch made this free). */
   fetchRenderCard(name: string): RenderCard | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */

@@ -545,18 +545,52 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
  *  renders are unaffected (the captured corpus:77 surface has no
  *  inner slots, but the swap is correct for any nested item whose
  *  outer-slot name is the captured item name). */
-function swapBarSlotToMiniBar(html: string, name: string): string {
+/** @internal — exported for the bounded-swap regression test. The function
+ *  is private to the pointer-list item dispatch; tests pin the structural
+ *  guard directly to keep the swap's regex-free contract enforced. */
+export function swapBarSlotToMiniBar(html: string, name: string): string {
   // The OUTERMOST slot carries the id `NAME-bar-view` for the item
   // name; the captured bytes pin `NAME-mini_bar-view`. The slot is
   // also the first `<div ...>` in the rendered string, so the swap
   // works on a substring that's guaranteed unique inside the slot.
   // Slot's class string is `card-slot bar-view ...`; we want
   // `card-slot mini_bar-view ...`. Both id + class live in the
-  // same opening tag, so a single regex targeting the OUTERMOST
-  // slot's opening tag covers both.
-  return html.replace(
-    new RegExp(`(<div )id="${name}-bar-view"([^>]*class="card-slot )bar-view`),
-    `$1id="${name}-mini_bar-view"$2mini_bar-view`,
+  // same opening tag.
+  //
+  // Structural guard: literal-string operations only, NO regex
+  // constructed from user-controlled `name`. The previous regex
+  // `(<div )id="${name}-bar-view"([^>]*class="card-slot )bar-view`
+  // interpolated `name` raw into the pattern. For names containing
+  // regex metacharacters the pattern could form a nested-quantifier
+  // group (`(a+)+` for `name = "(a+)+"`) — exponential-time matches
+  // against any long string of `a`. The corpus v2 names are 8-char
+  // alphanumeric (no metacharacters), so the bug is latent; the
+  // structural guard keeps the swap bounded for any input shape and
+  // keeps the OUTERMOST-only semantics intact (literal `indexOf`
+  // finds the first occurrence, never deeper matches).
+  const idFrom = `<div id="${name}-bar-view"`;
+  const idTo = `<div id="${name}-mini_bar-view"`;
+  const idIdx = html.indexOf(idFrom);
+  if (idIdx === -1) return html;
+  // Walk to the end of the opening tag — the only place the class
+  // swap can fire, so a nested slot with the same id deeper in the
+  // HTML would be left alone (the captured corpus surface has no
+  // inner slots; the structural guard preserves the OUTERMOST-only
+  // semantics).
+  const closeIdx = html.indexOf(">", idIdx);
+  if (closeIdx === -1) return html;
+  const tagBody = html.slice(idIdx + idFrom.length, closeIdx);
+  const classFrom = `class="card-slot bar-view`;
+  const classIdx = tagBody.indexOf(classFrom);
+  if (classIdx === -1) return html;
+  const classTo = `class="card-slot mini_bar-view`;
+  return (
+    html.slice(0, idIdx) +
+    idTo +
+    tagBody.slice(0, classIdx) +
+    classTo +
+    tagBody.slice(classIdx + classFrom.length) +
+    html.slice(closeIdx)
   );
 }
 
