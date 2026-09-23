@@ -11,9 +11,20 @@ import { join } from 'node:path';
 
 const REPO = 'C:/localProjects/decko-ts';
 const RESULTS_DIR = join(REPO, 'benchmarks/results/corpus-v2');
-const AGGREGATE_PATH = join(RESULTS_DIR, 'replay-full-resultsprewarm48.json');
-const OUT_JSON = join(REPO, 'tools/corpus-failure-classes/failure-buckets.json');
-const TARGET_POPULATION = 15530; // aggregate.renders.realFail
+// Inputs overridable for re-classification of later replay runs:
+//   node classify-render-realfails.mjs [aggregateJson [outJson]]
+const AGGREGATE_PATH = process.argv[2]
+  ? join(REPO, process.argv[2].replace(/^benchmarks\//, 'benchmarks/').replace(/^\//, ''))
+  : join(RESULTS_DIR, 'replay-full-resultsprewarm48.json');
+const OUT_JSON = process.argv[3]
+  ? join(REPO, process.argv[3])
+  : join(REPO, 'tools/corpus-failure-classes/failure-buckets.json');
+// Target population read from the aggregate itself (renders.realFail), never
+// hardcoded — later runs re-run this classifier against their own aggregate.
+const _aggregateForTarget = JSON.parse(readFileSync(AGGREGATE_PATH, 'utf8'));
+const TARGET_POPULATION = _aggregateForTarget.aggregate?.renders?.realFail
+  ?? _aggregateForTarget.aggregate?.renders?.realFailCount
+  ?? 0;
 
 // --- normalization -----------------------------------------------------------
 
@@ -153,16 +164,21 @@ const aggregate = JSON.parse(readFileSync(AGGREGATE_PATH, 'utf8'));
 const failures = aggregate.aggregate.real_failures;
 const sampleSize = failures.length;
 
-// Verify shard totals match the 15,530 render realFail population.
+// Verify shard totals match the render realFail population. The shard-outcome
+// prefix follows the aggregate's own tag (…outcomewithmods48-… for a run
+// tagged withmods48) so re-runs classify against their own shards.
+const runTag = (AGGREGATE_PATH.match(/results(withmods48|prewarm48)\.json/) || [])[1] || 'prewarm48';
 const shardFiles = readdirSync(RESULTS_DIR)
-  .filter(f => f.startsWith('replay-shard-outcomeprewarm48-shard-') && f.endsWith('.jsonl.json'))
+  .filter(f => f.startsWith(`replay-shard-outcome${runTag}-shard-`) && f.endsWith('.jsonl.json'))
   .sort();
 let shardSum = 0;
 for (const f of shardFiles) {
   const o = JSON.parse(readFileSync(join(RESULTS_DIR, f), 'utf8'));
   shardSum += o.renders.realFail;
 }
-if (shardSum !== TARGET_POPULATION) {
+if (shardFiles.length === 0) {
+  console.error(`no shard-outcome files matched tag ${runTag}; skipping shard-sum check`);
+} else if (shardSum !== TARGET_POPULATION) {
   console.error(`shard sum ${shardSum} != reported ${TARGET_POPULATION}`);
 }
 
