@@ -1,0 +1,627 @@
+// The card-mod-permissions gem (card-mod-permissions-0.20.0), ported through
+// the mod loader.
+//
+// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// card-mod-permissions-0.20.0/): eleven set files (1 abstract, 2 all,
+// 4 right, 4 self), no lib/, no haml, no set_pattern/, 4 html views
+// declared (tools/compat-report/mod-compat-report.json
+// #card-mod-permissions-0.20.0: htmlViewsDeclared 4, htmlViewsCovered 1,
+// htmlViewsMissingNames ["input", "one_line_content", "pointer_core"]).
+//
+// Ported here:
+// - the three missing views, registered on the abstract/permission set
+//   module exactly where Ruby defines them (set/abstract/permission.rb
+//   format :html block, lines 9-43): :pointer_core, :one_line_content,
+//   :input. Their viewFns carry the set guard Ruby's Right-set inclusion
+//   gives them (right/create.rb:1, right/delete.rb:1, right/read.rb:1,
+//   right/update.rb:1 - include_set/include Abstract::Permission): a card
+//   outside the four permission-right sets raises UnsupportedViewError,
+//   the same verdict Ruby's render.rb#view_method produces for
+//   :pointer_core there (no reachable definition); for :one_line_content
+//   and :input Ruby would fall through to card-mod-list's list-abstract
+//   definitions (set/abstract/01_list/html_views.rb:20-26, 37-39) - those
+//   are another mod's views, outside this port's scope, and are documented
+//   in the guard comments.
+// - the mod's :core override as the exported function permissionCoreView
+//   (NOT registered - see "why :core is not registered" below).
+// - the four setting_opts registrations (set/self/{create,read,update,
+//   delete}.rb) - oracle state under the settings registry, group
+//   "permission", positions 1-4.
+// - prepareEngine: the Auth.as_bot role warm (the port of
+//   set/abstract/permission.rb:64-68 group_options' Card.search type_id:
+//   RoleID sort_by: "name", run once per engine so the :input view's
+//   Groups section renders from warmed state with zero queries - the same
+//   boot-time-warm shape card-mod-help's prepareHelpRules uses).
+//
+// Why :core is not registered: the mod's :core (permission.rb:14-20) is an
+// OVERRIDE of the engine's highest-traffic view, scoped in Ruby to the four
+// permission-right sets. The TS view table is global (one name, one fn -
+// docs/mod-loader-port-notes.md "View dispatch is global, not set-scoped");
+// registering this override would replace :core for EVERY card, and a viewFn
+// cannot delegate to the displaced base view (the loader's undo record is
+// not reachable from the viewFn). The body is ported and exported as
+// permissionCoreView with its full citation so the coordinator's set-scoped
+// dispatch pass can register it verbatim; the tests pin its bytes directly.
+//
+// NOT ported (honest remainder):
+// - the event half of the gem (set/all/permissions.rb:1-26 events
+//   set_read_rule / set_field_read_rules / update_read_rule /
+//   check_permissions; set/all/update_read_rules.rb:4-11 events
+//   update_rule_cache / expire_related; set/right/read.rb:9-14 event
+//   cascade_read_rule + its cascade machinery, 16-77) - the manifest models
+//   no event bus (mod-loader-port-notes.md "Events, chunks, ... are not
+//   modeled"). The READ half of the permission semantics already exists
+//   engine-side: RenderEngineLike.isDenied/taskAllowed cite exactly
+//   permissions.rb:142-143 (ok_to_read?) and 148-157 (ok_to_update?/
+//   ok_to_create?/ok_to_delete?) as their Ruby source
+//   (src/card/render/format.ts:637-648), precomputed in the engine's
+//   prepare phase. The persistence half (read_rule_id/read_rule_class
+//   columns, update_read_rule's update_all, the without_timestamps write)
+//   is DB-write behavior with no TS write-path surface.
+// - set/abstract/permission.rb:1-3 standardize_items and 5-7 options_card -
+//   card-level methods; the format-level consumer (options_card_name,
+//   card-mod-layout set/abstract/items/options_api.rb:51-53) is reproduced
+//   in the :input port via the codename warm (cardsWithAccountUrlKey).
+// - assets/style/permissions.scss - stylesheet mods are a separate surface.
+// - config/admin.yml - the admin surface (settings list) has no TS consumer.
+// - data/real.yml + data/test.yml - deck seed content (the *create/*read/
+//   *update/*delete setting cards, the *all rules "Anyone [Signed In]",
+//   the _left inherit rules on *all_plus) - a deck-fixture surface, not
+//   mod code; the seeds DO pin the setting cards' codename convention
+//   (name "*create" -> codename "create", real.yml:1-16) this port relies on.
+// - config/locales/{en,de}.yml - the single string
+//   permission_error_no_action_rule ("No %{action} rule for %{name}",
+//   en.yml:2) is consumed only by require_permission_rule!
+//   (permissions.rb:77-85), an event-path error with no TS surface.
+
+import { UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
+import { DeckoName } from "../../name.js";
+import { PATTERN_TABLE } from "../../set-patterns/registry.js";
+import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
+import type { PatternCardInput } from "../../set-patterns/types.js";
+import { rawItemStrings } from "../../render/pointer-list.js";
+import { h } from "../../render/slot-html.js";
+import type {
+  DeckoModManifest,
+  ModEngineHost,
+} from "../mod-manifest.js";
+
+// ---------------------------------------------------------------------------
+// the permission-right set guard (right/{create,delete,read,update}.rb)
+// ---------------------------------------------------------------------------
+
+/** The tag codenames whose Right set includes Abstract::Permission
+ *  (right/create.rb:1, right/delete.rb:1, right/read.rb:1,
+ *  right/update.rb:1). The Right pattern applies to a compound card whose
+ *  tag card carries the codename (set_pattern/right.rb anchor); the setting
+ *  cards' codenames are their bare names (data/real.yml:1-16: name "*create"
+ *  -> codename "create"). */
+const PERMISSION_TAG_KEYS = new Set(["*create", "*read", "*update", "*delete"]);
+
+/** True when the card is in one of the four permission-right sets - the
+ *  applicability Ruby's include_set Abstract::Permission gives the mod's
+ *  views. Simple cards and other-tag cards are outside. */
+export function isPermissionRuleCard(card: ViewContext["fmt"]["card"]): boolean {
+  return card.name.isCompound && PERMISSION_TAG_KEYS.has(card.name.tagName.key);
+}
+
+/** The guard every registered view runs first: out-of-set renders raise the
+ *  unsupported-view error the way render.rb#view_method does for a view the
+ *  card's set does not define. */
+function assertPermissionRule(ctx: ViewContext, view: string): void {
+  if (!isPermissionRuleCard(ctx.fmt.card)) {
+    throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// set/abstract/permission.rb - the format-level permission helpers
+// ---------------------------------------------------------------------------
+
+/** permission.rb:70-78 inheritable?:
+ *  `set_name = card.name.trunk_name; set_card = Card.fetch(set_name);
+ *  not_set = set_card && set_card.type_id != SetID;
+ *  not_set ? false : set_card.inheritable?`.
+ *  The trunk of a rule card "Set+*read" is the SET card. The TS render path
+ *  has no raise-on-miss fetch (a miss resolves to an unknown card
+ *  downstream), so a missing trunk returns false here where Ruby's
+ *  Card.fetch raises Card::Error::NotFound - documented divergence.
+ *  Set-typedness reads the enriched typeCode (the codename "set"'s card
+ *  is the Set cardtype; SetID membership == typeCode "set").
+ *  set_card.inheritable? is card-mod-rules set/type/set.rb:21-23:
+ *  `compound_only? || (anchor_name&.compound? && self_set?)` - ported in
+ *  setInheritable below. */
+function inheritable(ctx: ViewContext): boolean {
+  const setCard = ctx.fmt.engine.fetchRenderCard(ctx.fmt.card.name.trunkName.s);
+  if (setCard === undefined || setCard.typeCode !== "set") return false;
+  return setInheritable(setCard.name);
+}
+
+/** card-mod-rules set/type/set.rb:15-27 for a set card:
+ *  `pattern = tag` (the set card's right part, e.g. "*all"); codename =
+ *  the tag name minus the star (the pattern cards' codename convention,
+ *  data/real.yml:1-16); `compound_only?` = the pattern spec's compoundOnly
+ *  (the PATTERN_TABLE is the ported pattern registry);
+ *  `self_set?` = pattern_name == the *self pattern (set.rb:25-27);
+ *  `anchor_name&.compound?` = the set card's trunk. */
+function setInheritable(setName: DeckoName): boolean {
+  const code = setName.tagName.s.replace(/^\*/, "").replace(/\s+/g, "_");
+  const spec = PATTERN_TABLE.find((candidate) => candidate.code === code);
+  const compoundOnly = spec?.compoundOnly ?? false;
+  const selfSet = code === "self";
+  return compoundOnly || (setName.trunkName.isCompound && selfSet);
+}
+
+/** permission.rb:80-82 inheriting?: `inheritable? && card.content == "_left"`. */
+function inheriting(ctx: ViewContext): boolean {
+  return inheritable(ctx) && ctx.fmt.card.dbContent === "_left";
+}
+
+/** permission.rb:98-105 core_inherit_content: a span with the self-set
+ *  context's "Inherit ( roles )" bytes or the bare "Inherit from left
+ *  card". @set_context is rule-editor state the TS voo carries as the
+ *  "set_context" opt (undefined outside the rule editor - the common
+ *  render path). */
+function coreInheritContent(ctx: ViewContext): string {
+  const setContext = typeof ctx.voo.opts["set_context"] === "string"
+    ? (ctx.voo.opts["set_context"] as string)
+    : undefined;
+  const text = inContextOfSelfSet(setContext)
+    ? coreInheritForSelfSet(ctx, setContext as string)
+    : "Inherit from left card";
+  return `<span class="inherit-perm">${text}</span>`;
+}
+
+/** permission.rb:107-111 in_context_of_self_set?: the set context's tag is
+ *  the *self card. */
+function inContextOfSelfSet(setContext: string | undefined): boolean {
+  if (setContext === undefined) return false;
+  return DeckoName.parse(setContext).tagName.key === "*self";
+}
+
+/** permission.rb:113-122 core_inherit_for_content_for_self_set: the
+ *  ancestor's who_can(task) rendered as ", "-joined card links. task is the
+ *  rule card's tag codename ("read" for "+*read" - data/real.yml:1-16);
+ *  who_can (permissions.rb:47-49) reads the ancestor's "<set>+*<task>"
+ *  rule card's items - resolved through the engine's render-card map via
+ *  ruleNamesForCard (the rule-cache walk, lib/card/rule/all.rb:9-15).
+ *  ANY failure renders "Inherit" - permission.rb:120-121
+ *  `rescue StandardError` ("Inherit"). */
+function coreInheritForSelfSet(ctx: ViewContext, setContext: string): string {
+  try {
+    const task = ctx.fmt.card.name.tagName.s.replace(/^\*/, "");
+    const contextName = DeckoName.parse(setContext);
+    const ancestorName = contextName.trunkName.trunkName;
+    const ancestor = ctx.fmt.engine.fetchRenderCard(ancestorName.s);
+    if (ancestor === undefined) return "Inherit";
+    const input: PatternCardInput = {
+      name: ancestor.name.s,
+      id: ancestor.id,
+      typeId: ancestor.typeId,
+      typeName: ancestor.typeName,
+    };
+    let ruleCard: RenderCard | undefined;
+    for (const candidate of ruleNamesForCard(input, `*${task}`)) {
+      const record = ctx.fmt.engine.fetchRenderCard(candidate);
+      if (record !== undefined) {
+        ruleCard = record;
+        break;
+      }
+    }
+    if (ruleCard === undefined) return "Inherit";
+    const links = rawItemStrings(ruleCard.dbContent)
+      .filter((item) => item.length > 0)
+      .map((item) => {
+        const itemCard = ctx.fmt.engine.fetchRenderCard(item);
+        // link_to_card card_id, nil (permission.rb:117): the label falls
+        // back to the card's name; target rides args[:target] (absent on
+        // this path - no target attribute).
+        const label = itemCard?.name.s ?? item;
+        return `<a href="/${h(DeckoName.parse(label).urlKey)}">${h(label)}</a>`;
+      })
+      .join(", ");
+    return `Inherit ( ${links} )`;
+  } catch {
+    return "Inherit"; // permission.rb:120-121 rescue StandardError
+  }
+}
+
+// ---------------------------------------------------------------------------
+// the Rails tag emitters the view bodies compose (byte shapes)
+// ---------------------------------------------------------------------------
+
+/** Rails ActionView form_tag_helper.rb#check_box_tag (455-460): attribute
+ *  order type, name, id (sanitize_to_id(name)), value, then the extra
+ *  options, then checked="checked" last when checked. */
+function checkBoxTag(
+  name: string,
+  value: string,
+  checked: boolean,
+  extraClass: string | undefined,
+): string {
+  const id = name;
+  const classAttr = extraClass === undefined ? "" : ` class="${extraClass}"`;
+  const checkedAttr = checked ? ` checked="checked"` : "";
+  return (
+    `<input type="checkbox" name="${h(name)}" id="${h(id)}" value="${h(value)}"${classAttr}${checkedAttr} />`
+  );
+}
+
+/** The material icon tag (card-mod-bootstrap set/all/bootstrap/icon.rb:97-107
+ *  icon_tag -> 120-123 material_icon_tag: add_class "material-icons",
+ *  wrap_with :i) with the basket's material mapping
+ *  (mods/card-mod-bootstrap.ts ICON_BASKET.material: new_window ->
+ *  "close_fullscreen", reorder -> "reorder", remove -> "close";
+ *  the literal "add" name passes through). */
+function iconTag(materialName: string, extraClass?: string): string {
+  const cls = extraClass === undefined
+    ? "notranslate material-icons"
+    : `notranslate material-icons ${extraClass}`;
+  return `<i class="${cls}">${materialName}</i>`;
+}
+
+// ---------------------------------------------------------------------------
+// set/abstract/permission.rb format :html - view :pointer_core (10-12)
+// ---------------------------------------------------------------------------
+
+/** permission.rb:10-12 view :pointer_core:
+ *  `wrap_with :div, pointer_items, class: "pointer-list"`.
+ *  pointer_items (card-mod-list set/abstract/01_list/other_views.rb:12-14)
+ *  with no args renders EVERY item (no paging on this view) through
+ *  listing_list -> listing -> nest_item (card-mod-collection
+ *  set/all/item.rb:164-172); the html wrap_item (card-mod-list
+ *  set/abstract/01_list/html_views.rb:28-30) gives each item
+ *  `<div class="pointer-item item-#{item_view}">`; output() joins the
+ *  array with "\n" (card-1.110.0 lib/card/format/content.rb:70-73).
+ *  The item view is voo.items' view when the caller set it (the
+ *  :one_line_content path passes {view: :link} through core - the
+ *  voo-items ride nest_item's item_view_options merge,
+ *  item.rb:149-151), else the html default :bar (card-mod-format
+ *  set/all/html.rb:21-23). Items nest through fmt.nest (the real
+ *  nest_item surface): a fetch miss renders the unknown-card bytes
+ *  exactly like Ruby's Card.fetch new: {} item cards. */
+function pointerCoreBody(ctx: ViewContext): string {
+  const items = rawItemStrings(ctx.fmt.card.dbContent).filter((s) => s.length > 0);
+  const itemsOpt = ctx.voo.opts["items"];
+  const itemView =
+    typeof itemsOpt === "object" && itemsOpt !== null && "view" in itemsOpt
+      ? String((itemsOpt as { view: unknown }).view)
+      : "bar";
+  const rendered = items
+    .map((name) =>
+      `<div class="pointer-item item-${itemView}">${ctx.fmt.nest({ name, syntax: "", options: { view: itemView, extra: {} }, comment: undefined })}</div>`)
+    .join("\n");
+  return `<div class="pointer-list">${rendered}</div>`;
+}
+
+/** The registered :pointer_core view (the set guard + the body). */
+const pointerCoreView: ViewFn = (ctx) => {
+  assertPermissionRule(ctx, "pointer_core");
+  return pointerCoreBody(ctx);
+};
+
+// ---------------------------------------------------------------------------
+// set/abstract/permission.rb format :html - view :one_line_content (22-24)
+// ---------------------------------------------------------------------------
+
+/** permission.rb:22-24 view :one_line_content, cache: :never:
+ *  `render_core items: { view: :link }` - the CORE view with the items
+ *  opt; the mod's core dispatches to :pointer_core, whose items inherit
+ *  the link view (see pointerCoreBody). Registered with the same
+ *  cache: :never config. */
+const oneLineContentView: ViewFn = (ctx) => {
+  assertPermissionRule(ctx, "one_line_content");
+  return ctx.fmt.renderView("core", { items: { view: "link" } });
+};
+
+// ---------------------------------------------------------------------------
+// set/abstract/permission.rb format :html - view :core (14-20) - EXPORTED,
+// NOT REGISTERED (see the header: global-table clobber)
+// ---------------------------------------------------------------------------
+
+/** permission.rb:14-20 view :core, cache: :never: content "_left" renders
+ *  the inherit span; anything else renders :pointer_core (render! - the
+ *  full pipeline re-dispatch, format.ts#renderView). The items opt rides
+ *  into the pointer core (the :one_line_content path). NOT registered -
+ *  the coordinator's set-scoped dispatch pass registers this fn with
+ *  config { cache: "never" }. */
+export const permissionCoreView: ViewFn = (ctx) => {
+  assertPermissionRule(ctx, "core");
+  if (ctx.fmt.card.dbContent === "_left") {
+    return coreInheritContent(ctx);
+  }
+  return ctx.fmt.renderView("pointer_core", { items: ctx.voo.opts["items"] });
+};
+
+// ---------------------------------------------------------------------------
+// set/abstract/permission.rb format :html - view :input (26-43)
+// ---------------------------------------------------------------------------
+
+/** The Auth.as_bot role warm's registry: the Role-typed cards, name-sorted
+ *  (permission.rb:64-68 group_options). Filled once per engine by
+ *  preparePermissionRoles; empty (Groups section renders empty) in engines
+ *  without the warm. */
+interface RoleOption {
+  name: string;
+  key: string;
+}
+const roleRegistry: RoleOption[] = [];
+/** The url_key of Card[:cards_with_account] (permission.rb:5-7
+ *  options_card -> card-mod-layout options_api.rb:51-53 options_card_name),
+ *  resolved by the same warm; undefined until resolved (the haml drops a
+ *  nil data-options-card attribute). */
+let cardsWithAccountUrlKey: string | undefined;
+
+/** Test/state reset for the warm registry (the loader's reset() cannot see
+ *  module state). */
+export function resetPermissionRolesForTests(): void {
+  roleRegistry.length = 0;
+  cardsWithAccountUrlKey = undefined;
+}
+
+/** permission.rb:47-62 groups: one form-check row per role option,
+ *  name-sorted; `checked = !item_names.delete(option.name).nil?` - the
+ *  role's presence in item_names CHECKS the box AND CONSUMES the name, so
+ *  the individuals list (the caller's remaining item_names) excludes
+ *  grouped names. Returns the rows AND the consumed list's remainder
+ *  (Ruby mutates item_names in place). */
+function groupRowsAndRemainingItems(
+  itemNames: string[],
+): { rows: string; remainingItems: string[] } {
+  const remaining = [...itemNames];
+  const rows = roleRegistry.map((option) => {
+    const checked = remaining.indexOf(option.name);
+    if (checked !== -1) remaining.splice(checked, 1);
+    const icon = iconTag("close_fullscreen", "text-muted");
+    const optionLink =
+      `<a href="/${h(DeckoName.parse(option.name).urlKey)}" target="decko_role">${icon}</a>`;
+    const box = checkBoxTag(
+      `${option.key}-perm-checkbox`,
+      option.name,
+      checked !== -1,
+      "perm-checkbox-button",
+    );
+    return (
+      `<div class="form-check checkbox">` +
+      `<label class="form-check-label">${box} ${h(option.name)} ${optionLink}</label>` +
+      `</div>`
+    );
+  });
+  return { rows: rows.join("\n"), remainingItems: remaining };
+}
+
+/** card-mod-list set/abstract/01_list/html_views.rb:48-55 list_input +
+ *  html_views/list_input.haml: a ul.pointer-list-editor (plus the extra
+ *  class) of li.pointer-li.mb-1 rows (handle icon, pointer_item text
+ *  field with data-options-card + placeholder, delete button), then the
+ *  add-another button. placeholder_text is "" (card-mod-edit
+ *  set/all/editor.rb:60-62). */
+function listInput(itemNames: string[], extraCssClass: string): string {
+  const rows = itemNames
+    .map(
+      (item) =>
+        `<li class="pointer-li mb-1">` +
+        `<span class="input-group">` +
+        `<span class="input-group-text handle">${iconTag("reorder")}</span>` +
+        `<input type="text" name="pointer_item" id="pointer_item" value="${h(item)}" class="pointer-item-text form-control"` +
+        (cardsWithAccountUrlKey === undefined ? "" : ` data-options-card="${h(cardsWithAccountUrlKey)}"`) +
+        ` placeholder="" />` +
+        `<button class="pointer-item-delete btn btn-secondary" type="button">${iconTag("close")}</button>` +
+        `</span></li>`,
+    )
+    .join("\n");
+  return (
+    `<ul class="pointer-list-editor ${extraCssClass}">${rows}</ul>\n` +
+    `<span class="input-group">` +
+    `<button class="_pointer-item-add btn btn-secondary" type="submit">${iconTag("add")}add another</button>` +
+    `</span>`
+  );
+}
+
+/** permission.rb:84-96 inheritance_checkbox: rendered only when
+ *  inheritable?; the inherit checkbox + a label carrying the inherit
+ *  span and the "?" explainer whose title reads the card's tag
+ *  (card.name.tag = the right part, e.g. "*read"). */
+function inheritanceCheckbox(ctx: ViewContext): string {
+  if (!inheritable(ctx)) return "";
+  const box = checkBoxTag("inherit", "inherit", inheriting(ctx), undefined);
+  const title = `use left's ${ctx.fmt.card.name.tagName.s} rule`;
+  return (
+    `<div class="perm-inheritance perm-section">` +
+    box +
+    `<label>${coreInheritContent(ctx)}` +
+    `<a title="${h(title)}">?</a>` +
+    `</label></div>`
+  );
+}
+
+/** permission.rb:26-43 view :input: the hidden content field, then the
+ *  perm editor (inheritance checkbox when inheritable, the Groups
+ *  checkboxes, the Individuals list_input). item_names is EMPTY when
+ *  inheriting (the rule inherits; nothing to list). The hidden content
+ *  field is _render_hidden_content_field (card-mod-format
+ *  set/all/content.rb:57-59: `hidden_field :content, class:
+ *  "d0-card-content"` - Rails form_for emits
+ *  input[type=hidden][name=card[content]]#card_content); that view is
+ *  card-mod-format's (not in HTML_VIEWS), so the bytes are inlined here
+ *  and cited rather than dispatching to an unregistered view. */
+const inputView: ViewFn = (ctx) => {
+  assertPermissionRule(ctx, "input");
+  const itemNames = inheriting(ctx) ? [] : rawItemStrings(ctx.fmt.card.dbContent);
+  const hiddenField =
+    `<input type="hidden" name="card[content]" id="card_content" class="d0-card-content" value="${h(ctx.fmt.card.dbContent)}" />`;
+  const { rows, remainingItems } = groupRowsAndRemainingItems(itemNames);
+  return (
+    `${hiddenField}\n` +
+    `<div class="perm-editor">\n` +
+    inheritanceCheckbox(ctx) +
+    `\n<div class="perm-group perm-vals perm-section">\n` +
+    `<h5 class="text-muted">Groups</h5>\n` +
+    rows +
+    `\n</div>\n` +
+    `\n<div class="perm-indiv perm-vals perm-section">\n` +
+    `<h5 class="text-muted">Individuals</h5>\n` +
+    listInput(remainingItems, "perm-indiv-ul") +
+    `\n</div>\n` +
+    `</div>`
+  );
+};
+
+// ---------------------------------------------------------------------------
+// prepareEngine - the boot-time role + options-card warm
+// (permission.rb:64-68 group_options' Card.search, run once per engine)
+// ---------------------------------------------------------------------------
+
+/** One batch: the Role-typed cards (Auth.as_bot's search,
+ *  permission.rb:65-67: `Card.search({ type_id: RoleID, sort_by: "name" },
+ *  "roles by name")`) - trash-free, ordered by name key (Card.search
+ *  sort_by: "name" orders by the key column). */
+function rolesStatement(roleTypeId: number): { sql: string; params: unknown[] } {
+  return {
+    sql: "SELECT id FROM cards WHERE type_id = ? AND trash = 0 ORDER BY key ASC",
+    params: [roleTypeId],
+  };
+}
+
+/** The boot warm: every Role card enters the engine's render-card cache
+ *  (so the groups' links resolve with zero queries) and this module's
+ *  registry (the sorted enumeration group_options renders from), plus the
+ *  cards_with_account card for the input's data-options-card. The engine
+ *  render path itself never queries for the role list. */
+export async function preparePermissionRoles(host: ModEngineHost): Promise<void> {
+  resetPermissionRolesForTests();
+  await host.codenames.ensureLoaded(); // memoized; first call only
+  const roleTypeId = host.codenames.peekId("role");
+  if (roleTypeId === undefined) return; // degenerate deck: no Role cardtype
+  const results = await host.batch([rolesStatement(roleTypeId)]);
+  const rows = (results[0] as { rows: { id: number }[] } | undefined)?.rows ?? [];
+  for (const row of rows) {
+    const record = await host.fetchById(row.id);
+    if (record === undefined || record.name === undefined) continue;
+    await host.cacheFetchedRecord(record);
+    roleRegistry.push({ name: record.name.s, key: record.key ?? DeckoName.parse(record.name.s).key });
+  }
+  roleRegistry.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const withAccountId = host.codenames.peekId("cards_with_account");
+  if (withAccountId !== undefined) {
+    const record = await host.fetchById(withAccountId);
+    if (record?.name !== undefined) {
+      await host.cacheFetchedRecord(record);
+      cardsWithAccountUrlKey = DeckoName.parse(record.name.s).urlKey;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// the manifest (one entry per gem file; setPaths as in the gem tree)
+// ---------------------------------------------------------------------------
+
+/** A set-module entry that registers nothing (the passive files: their
+ *  events/methods have no TS surface - see the header's honest remainder),
+ *  keeping the registrar's per-file bookkeeping faithful. */
+const passiveSetModule = (setPath: string): { setPath: string } => ({
+  setPath,
+});
+
+const cardModPermissions: DeckoModManifest = {
+  name: "permissions",
+  gemName: "card-mod-permissions",
+  group: "gem-defaults", // the gemspec metadata card-mod-group (permissions-0.20.0.gemspec)
+  setModules: [
+    {
+      // card-mod-permissions-0.20.0/set/abstract/permission.rb
+      // (the format :html block, lines 9-43; the mod's :core override is
+      // exported above, NOT registered - see the header)
+      setPath: "abstract/permission",
+      formats: {
+        html: {
+          views: [
+            { view: "pointer_core", viewFn: pointerCoreView },
+            { view: "one_line_content", viewFn: oneLineContentView, config: { cache: "never" } },
+            { view: "input", viewFn: inputView },
+          ],
+        },
+      },
+    },
+    {
+      // card-mod-permissions-0.20.0/set/all/permissions.rb - events
+      // set_read_rule / set_field_read_rules / update_read_rule /
+      // check_permissions + the ok?/permit/who_can machinery (the read
+      // half lives engine-side as isDenied/taskAllowed,
+      // format.ts:637-648, citing permissions.rb:142-157)
+      ...passiveSetModule("all/permissions"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/all/update_read_rules.rb - events
+      // update_rule_cache / expire_related (rule-cache invalidation)
+      ...passiveSetModule("all/update_read_rules"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/right/create.rb - include_set
+      // Abstract::Permission + assign_type :list (the views ride the
+      // abstract module's registration above)
+      ...passiveSetModule("right/create"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/right/delete.rb - same shape
+      ...passiveSetModule("right/delete"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/right/read.rb - include +
+      // assign_type :list + the html-format include + event
+      // cascade_read_rule and the read-rule cascade machinery (9-77)
+      ...passiveSetModule("right/read"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/right/update.rb - same shape
+      ...passiveSetModule("right/update"),
+    },
+    {
+      // card-mod-permissions-0.20.0/set/self/create.rb
+      setPath: "self/create",
+      settingOpts: {
+        group: "permission",
+        position: 1,
+        ruleTypeEditable: false,
+        shortHelpText: "who can create cards",
+        helpText: "Who can create new cards",
+      },
+    },
+    {
+      // card-mod-permissions-0.20.0/set/self/delete.rb
+      setPath: "self/delete",
+      settingOpts: {
+        group: "permission",
+        position: 4,
+        ruleTypeEditable: false,
+        shortHelpText: "who can delete cards",
+        helpText: "Who can delete cards",
+      },
+    },
+    {
+      // card-mod-permissions-0.20.0/set/self/read.rb
+      setPath: "self/read",
+      settingOpts: {
+        group: "permission",
+        position: 2,
+        ruleTypeEditable: false,
+        shortHelpText: "who can view cards",
+        helpText: "Who can view cards in the [[Set]].",
+      },
+    },
+    {
+      // card-mod-permissions-0.20.0/set/self/update.rb
+      setPath: "self/update",
+      settingOpts: {
+        group: "permission",
+        position: 3,
+        ruleTypeEditable: false,
+        shortHelpText: "who can update cards",
+        helpText: "Who can update cards",
+      },
+    },
+  ],
+  prepareEngine: preparePermissionRoles,
+};
+
+export default cardModPermissions;
