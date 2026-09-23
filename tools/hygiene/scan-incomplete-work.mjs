@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 // Hygiene round 2 gate A: incomplete-work scan. Finds TODO/FIXME/XXX/HACK,
-// stub / not-implemented markers, and `throw new Error("unreachable")`
-// patterns in tracked source, and classifies each as:
-//   ok-documented  — marker carries an explicit tracker/reference or states
-//                    a deliberate, scoped deferral
-//   needs-work     — bare marker with no explanation (the debt the gate
-//                    exists to surface)
+// stub and not-implemented markers in tracked source, and classifies each
+// as documented (tracker reference or deliberate deferral) or bare debt.
 // Re-runnable; writes the full list to tools/hygiene/out/todos-<ts>.json.
 // Exit code is always 0 — this gate REPORTS, the human pass decides.
 
@@ -18,6 +14,14 @@ const OUT_DIR = join(REPO, "tools", "hygiene", "out");
 
 // Scan source trees, not receipts/docs (docs TODOs are planning notes).
 const SCAN_PREFIXES = ["src/", "deploy/", "tests/", "tools/", "benchmarks/"];
+// The gates themselves are exempt: this script's own docstring and regexes
+// legitimately contain the marker patterns it scans for.
+const SCAN_EXEMPT = new Set([
+  "tools/hygiene/scan-incomplete-work.mjs",
+  "tools/hygiene/scan-secrets-and-leaks.mjs",
+  "tools/hygiene/genericize-source-identity.mjs",
+  "tools/hygiene/check-docs-links.mjs",
+]);
 const SCAN_EXTS = new Set([".ts", ".mts", ".mjs", ".js", ".cjs", ".py", ".rb", ".sql", ".toml"]);
 
 const MARKERS = [
@@ -32,7 +36,7 @@ const MARKERS = [
 // intentional unimplemented-raise. ±2 lines joined give the classifier enough
 // context for pins and doc pointers.
 const DOCUMENTED_RE = /(#[A-Za-z0-9_]+|#[0-9]+|issue|Issue|upstream|deliberate|deferred|by design|tracked|port-tracker|queued)/;
-const DOCUMENTED_CONTEXT_RE = /(deferred|deferral|decided but not implemented|documented but not implemented|see docs|docs\/[a-z]|oracle|upstream|pin preserves|shipped answer|toContain|toThrow|raisedError|CAPTURE_ERROR|expect\(|%\{func\}|lib_exception|[Hh]aml|template box_|sort_by_count|REGEXP|live-PG|Live-PG)/;
+const DOCUMENTED_CONTEXT_RE = /(deferred|deferral|decided but not implemented|documented but not implemented|see docs|docs\/[a-z]|oracle|upstream|pin preserves|shipped answer|toContain|toThrow|raisedError|CAPTURE_ERROR|expect\(|%\{func\}|lib_exception|[Hh]aml|template box_|sort_by_count|REGEXP|live-PG|Live-PG|reported as|in the report)/;
 
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
   .toString("utf8").split("\0").filter(Boolean);
@@ -40,6 +44,7 @@ const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64
 const findings = [];
 for (const rel of files) {
   if (!SCAN_PREFIXES.some((p) => rel.startsWith(p))) continue;
+  if (SCAN_EXEMPT.has(rel)) continue;
   if (!SCAN_EXTS.has(rel.slice(rel.lastIndexOf(".")))) continue;
   let text;
   try { text = readFileSync(join(REPO, rel), "utf8"); } catch { continue; }

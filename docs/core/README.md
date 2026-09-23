@@ -21,6 +21,6 @@ The existing `docs/port-tracker.md` and stream notes are implementation history.
 
 ## Scope and evidence boundaries
 
-Engine and cross-runtime work belong here. Brandon-specific content, integrations and demo operations remain in their existing projects, linked when needed. Private production content and raw dumps must not be included in public audit fixtures. Sanitized fixtures require a documented privacy review before publication.
+Engine and cross-runtime work belong here. the site owner-specific content, integrations and demo operations remain in their existing projects, linked when needed. Private production content and raw dumps must not be included in public audit fixtures. Sanitized fixtures require a documented privacy review before publication.
 
 Every upstream-facing component must explain its Ruby reference, what behavior is preserved, what was abstracted or replaced, intentional deviations, and reproducible verification. The public contribution should be an ordered reviewable series, not an unexplained repository dump.

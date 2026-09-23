@@ -42,7 +42,7 @@ every surface it can reach — no test was or will be downgraded in the
 meantime.
 
 **CF data rule (refined by the operator 2026-09-23, recorded verbatim in
-memory):** raw Brandon content never uploads to Cloudflare without a
+memory):** raw the site owner content never uploads to Cloudflare without a
 per-deployment safety assurance; **shape-preserving anonymized data is
 operator-approved for scale testing** — same card count, same connections,
 same sizes, words replaced with meaningless ones — gated by a verification
@@ -69,7 +69,7 @@ finds little purchase. Sequence:
 The repo must be presentable, followable, and fully auditable by a stranger:
 
 - **Hygiene sweep** — nothing in the published tree but port work:
-  - no corpus fixtures or SourceDeck/Brandon content (the corpus DB and
+  - no corpus fixtures or SourceDeck/the site owner content (the corpus DB and
     benchmarks/results stay out of the published tree; the audit docs cite
     numbers, not data),
   - no secrets, keys, machine paths (C:/Users/..., C:/localProjects/...),

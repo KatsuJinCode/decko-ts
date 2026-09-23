@@ -34,6 +34,9 @@ const REPLACEMENTS = [
   ["Culturesmith", "SourceDeck"],
   ["culturesmith", "source-deck"],
   ["brandonDojoTech", "workspace"],
+  // possessive first, so "Brandon's" becomes "the site owner's"
+  ["Brandon's", "the site owner's"],
+  ["Brandon", "the site owner"],
 ];
 
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })

@@ -11,7 +11,7 @@ render-fix stream; see below).
 - **D1**: `decko-ts-demo-db` (id ac0f6b00-757d-4b09-b131-997a9a3fb4d7,
   region WNAM), 12 tables, 15 synthetic demo cards, ~200 KB — the free-tier
   D1 allowance is 5 GB; this uses 0.004% of it
-- **R2/KV/queues/secrets**: none. Zero Brandon data, zero SourceDeck
+- **R2/KV/queues/secrets**: none. Zero the site owner data, zero SourceDeck
   content — the seed (deploy/seed/seed.sql, 8.3 KB) is synthetic
   (generator-built Notes + a depth-4 compound chain + one Search card).
 
