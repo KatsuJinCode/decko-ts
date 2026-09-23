@@ -53,6 +53,10 @@ export interface RegisteredModEvent {
   /** named `when:` predicate (Ruby allows a symbol or proc; the TS surface
    *  carries the name and the execution seam resolves it against the card). */
   readonly when?: string;
+  /** `changed:` field gate, stored verbatim (see ModEventRegistration). */
+  readonly changed?: readonly string[];
+  /** `after:` relative ordering, stored verbatim (see ModEventRegistration). */
+  readonly after?: string;
   readonly priority?: number;
   readonly fn: ModEventFn;
 }

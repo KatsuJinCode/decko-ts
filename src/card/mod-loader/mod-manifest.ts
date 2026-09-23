@@ -145,15 +145,19 @@ export interface ModSettingOpts {
  * registrations.
  */
 
-/** The stages a set-module event can run at (lib/card/set/event.rb's stage
- *  list; the _with_delay variants exist for delayed_job, which has no TS
- *  surface - they are recorded so declarations port verbatim). */
+/** The stages a set-module event can run at - Ruby's full director stage
+ *  list (card-1.110.0 lib/card/director/director.rb:18; the _with_delay
+ *  variants exist for delayed_job, which has no TS surface - they are
+ *  recorded so declarations port verbatim). */
 export type ModEventStage =
+  | "initialize"
   | "prepare_to_validate"
+  | "validate"
   | "prepare_to_store"
   | "store"
   | "finalize"
   | "integrate"
+  | "after_integrate"
   | "integrate_with_delay"
   | "extend"
   | "extend_with_delay";
@@ -196,6 +200,16 @@ export interface ModEventRegistration {
   /** named `when:` predicate (Ruby allows a symbol or proc; the surface
    *  carries the name, resolved by the execution seam at fire time). */
   readonly when?: string;
+
+  /** `changed:` field gate (permissions.rb:1 `changed: %i[type_id name]`) -
+   *  the card FIELDS whose change gates the event; the execution seam
+   *  evaluates it against the act's changed fields. */
+  readonly changed?: readonly string[];
+
+  /** `after: :event_name` relative ordering (permissions.rb:7
+   *  `after: :set_read_rule`) - the event runs after the named one at the
+   *  same stage; the execution seam sorts by it. */
+  readonly after?: string;
 
   readonly priority?: number;
 
