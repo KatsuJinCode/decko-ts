@@ -448,11 +448,27 @@ export class RenderEngine implements RenderEngineLike {
     // span before any view body runs (view/permission.rb:46-50), and
     // unknown hosts render the unknown substitution — both skip.
     if (
-      view === "open" &&
+      (view === "open" || view === "closed") &&
       (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") &&
       rootCard.unknown !== true &&
       !this.isDenied(rootCard) &&
-      !this.isPermissionRightHost(rootCard)
+      // :open keeps the permission-right-host exclusion (original-corpus
+      // 1,537/1,537 real bytes — fixtures pin bytes, not raises). :closed
+      // does NOT apply the exclusion because the recapture pins 71
+      // permission-right-hosts :closed as CAPTURE_ERROR (the only class
+      // the model distinguishes from the fp 7 — 3-part shapes like
+      // `dn+*right+*read`, which hit a different options chain and do NOT
+      // raise; the 2-part shape gate below keeps them out).
+      !(view === "open" && this.isPermissionRightHost(rootCard)) &&
+      // 2-part-name gate (recapture model list|closed=71 tp / 7 fp):
+      // the 3-part shape `dn+*right+*read` is NOT in the raise class —
+      // the *all+X 2-part shape IS. Belt-and-suspenders with the
+      // permission-right-host exclusion above: the 3-part cases that DO
+      // carry a *read/*create/*update/*delete right (codename "read" etc.
+      // is the right) are permission-right-hosts and would fire the
+      // exclude above for :open; for :closed the 2-part gate keeps them
+      // out as a separate axis.
+      rootCard.name.parts.length === 2
     ) {
       const failContent = await this.itemOptionsParseFailure(rootCard, new Set([rootCard.key]));
       if (failContent !== undefined) {
