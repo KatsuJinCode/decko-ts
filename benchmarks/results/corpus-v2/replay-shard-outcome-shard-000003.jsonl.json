@@ -4,15 +4,15 @@
   "captureErrorLines": 3,
   "records": {
     "total": 997,
-    "pass": 83,
-    "structurePending": 353,
-    "realFail": 561
+    "pass": 959,
+    "structurePending": 35,
+    "realFail": 3
   },
   "renders": {
     "total": 3718,
-    "pass": 2562,
-    "structurePending": 345,
+    "pass": 3345,
+    "structurePending": 0,
     "nestGap": 0,
-    "realFail": 811
+    "realFail": 373
   }
 }

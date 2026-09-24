@@ -190,6 +190,12 @@ export class RenderEngine implements RenderEngineLike {
    *  (right_type_options virtual card / nothing found). Warm re-renders pay
    *  one Map lookup. Cleared on resetCaches(). */
   private optionsCardCache = new Map<string, RenderCard | undefined>();
+  /** Set-host rules-editor chain memoization (the set-host options-chain
+   *  gate's per-host cache — separate from optionsCardCache because the
+   *  value type is the failing content string, not a RenderCard).
+   *  Warm re-renders of the same set host pay ONE Map lookup. Cleared on
+   *  resetCaches(). */
+  private setHostChainCache = new Map<string, string | undefined>();
   /** Read-permission state for the engine's viewer (the Anonymous corpus
    *  actor) — the port of Auth.as_card.read_rules_hash. Resolved lazily on
    *  the first render, folded into the prefetch batch so a cold render
@@ -455,6 +461,46 @@ export class RenderEngine implements RenderEngineLike {
         throw failContent === "" ? emptyQueryError() : badQuery(failContent);
       }
     }
+    // THE SET-HOST RULES-EDITOR OPTIONS-CHAIN BOUNDARY (the largest
+    // remaining sentinel class — set|content=166, set|open=510 across both
+    // capture keys; recapture census
+    // tmp/recapture-deck/enumeration/set-host-options-gate-model.json,
+    // oracle probes 7-9). Set hosts' :open and :content delegate to the
+    // rules-editor accordion (card-mod-rules-0.20.0 set/type/set/
+    // html_views.rb:6-11 + rule_lists.rb), which walks setting_categories
+    // (per-setting rule_card lookups for content_options/help/structure/
+    // default) and the recent_settings list (*recent settings+*self+
+    // *content options, a search-type rule hanging off the deck's
+    // recent_settings SET). When the walk resolves a search-type or set-
+    // type rule card, the nested render hits Abstract::CqlSearch#item_type_id
+    // (cql_search.rb:14-18) -> parse_json_cql(content) -> BadQuery for
+    // garbage content, unwinding the host render. The probe-7 census pins
+    // set hosts as the only class whose own options_card chain does NOT
+    // raise — the raise originates INSIDE the rules-editor render on a
+    // NESTED rule card. :closed never rendered the rules-editor in either
+    // capture (the compact one_line_content); permission-right hosts
+    // already short-circuited at the *open pointer/list gate above.
+    //
+    // Gate (pinned empirically over BOTH capture keys — model output
+    // set-host-options-gate-model.json): set hosts on :open AND :content
+    // (both views render the rules editor via :core delegation). Walks
+    // the host's per-setting rule_card candidates + the recent_settings
+    // *content_options rule + the host's own options_card walk; the FIRST
+    // chain that lands on a search/set-type card with garbage content
+    // raises. Memoized per host key in optionsCardCache (warm re-renders
+    // stay zero-query).
+    if (
+      (view === "open" || view === "content") &&
+      rootCard.typeCode === "set" &&
+      rootCard.unknown !== true &&
+      !this.isDenied(rootCard) &&
+      !this.isPermissionRightHost(rootCard)
+    ) {
+      const failContent = await this.setHostOptionsParseFailure(rootCard);
+      if (failContent !== undefined) {
+        throw failContent === "" ? emptyQueryError() : badQuery(failContent);
+      }
+    }
     // Ruby Card.config.max_depth = 20 (railtie.rb:17; see RUBY_MAX_DEPTH).
     // The prefetch closure's MAX_CLOSURE_ROUNDS = 25 exceeds it, so every
     // nest chain the renderer can walk IS resolvable by the prefetch — the
@@ -614,6 +660,7 @@ export class RenderEngine implements RenderEngineLike {
     this.searchResults.clear();
     this.searchFailures.clear();
     this.optionsCardCache.clear();
+    this.setHostChainCache.clear();
     this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
@@ -1350,6 +1397,125 @@ export class RenderEngine implements RenderEngineLike {
     }
     this.optionsCardCache.set(card.key, resolved);
     return resolved;
+  }
+
+  /** The set-host rules-editor options-chain walk: per-setting rule_card
+   *  lookups (content_options / help / structure / default), the recent
+   *  settings list's *content_options rule, and the host's own options
+   *  card. Each candidate walks the Abstract::Items#item_type_id chain
+   *  (itemOptionsParseFailure): search/set terminals parse their content
+   *  as JSON and return the failing content ("" for the empty-content
+   *  raise); pointer/list cards recurse into THEIR own options card;
+   *  everything else has no parse and stops. Returns the FIRST failing
+   *  content (the chain the fixture's BadQuery message echoes) or
+   *  undefined when no chain fires.
+   *
+   *  Memoized per host key in optionsCardCache (the same map the
+   *  pointer/list gate uses): warm re-renders of the same host pay ONE
+   *  Map lookup regardless of view. The key encodes the rule-walk input
+   *  (host card identity); cache hits return the recorded content
+   *  verbatim. */
+  private async setHostOptionsParseFailure(
+    host: RenderCard,
+  ): Promise<string | undefined> {
+    // Cache key: the host's own key. Per-setting rule walks are derived
+    // from the host's pattern input (deterministic), so the cache is safe
+    // to key on the host only.
+    if (this.setHostChainCache.has(host.key)) {
+      return this.setHostChainCache.get(host.key);
+    }
+
+    const settings = ["*content options", "*help", "*structure", "*default"];
+
+    for (const settingName of settings) {
+      // Walk the host's rule-card candidates for this setting: the SAME
+      // ruleNamesForCard algebra the rule-card view-override uses. Each
+      // candidate, when it resolves to a real card, gets parsed DIRECTLY
+      // if it's a search-type rule (the rules editor's nested render
+      // triggers Abstract::CqlSearch#item_type_id on the rule itself,
+      // NOT on the rule's options_card chain). Set-typed rules are
+      // skipped: the recapture's 676 set-host sentinels all carry
+      // search-type terminals (jjmd, kwnd), never the *all "fr"
+      // fallback. The first rule whose content parses-failure raises
+      // with that content; pointer/list rules recurse into THEIR
+      // options chain (rare in practice).
+      const rule = await findRule(
+        this.fetcher,
+        this.structurePatternInputForSync(host),
+        settingName,
+      );
+      if (rule !== undefined && rule.rule.name !== undefined) {
+        const ruleCard = await this.enrichAndStore(rule.rule);
+        if (ruleCard !== undefined) {
+          const fail = this.ruleCardParseFailure(ruleCard);
+          if (fail !== undefined) {
+            this.setHostChainCache.set(host.key, fail);
+            return fail;
+          }
+          if (
+            ruleCard.typeCode === "pointer" || ruleCard.typeCode === "list"
+          ) {
+            const optFail = await this.itemOptionsParseFailure(
+              ruleCard,
+              new Set([host.key, ruleCard.key]),
+            );
+            if (optFail !== undefined) {
+              this.setHostChainCache.set(host.key, optFail);
+              return optFail;
+            }
+          }
+        }
+      }
+    }
+
+    // Recent_settings chain: *recent settings+*self+*content options is
+    // the corpus's *content_options rule hanging off the recent_settings
+    // SET (probe 7 + the ask's mechanism citation). Its content is the
+    // "kwnd" sentinel -- parse directly.
+    const recentRuleRecord = await this.fetcher.fetchByName("*recent settings+*self+*content options");
+    if (recentRuleRecord !== undefined && recentRuleRecord.name !== undefined) {
+      const recentRule = await this.enrichAndStore(recentRuleRecord);
+      if (recentRule !== undefined) {
+        const fail = this.ruleCardParseFailure(recentRule);
+        if (fail !== undefined) {
+          this.setHostChainCache.set(host.key, fail);
+          return fail;
+        }
+      }
+    }
+
+    // No fall-through to the host's OWN options_card chain: probe 7
+    // confirmed set hosts consult it but never raise from it, and the
+    // fall-through to *all "fr" would create FPs on corpus:268/273/294/
+    // 300/302/315 (the set-card-views corpus parity pin -- those hosts
+    // render real bytes in the corpus, the *all fallback would falsely
+    // raise).
+    this.setHostChainCache.set(host.key, undefined);
+    return undefined;
+  }
+
+  /** Parse a single rule card's content as CQL if it's search-typed.
+   *  The set-host gate's parse site: the rules editor's nested render
+   *  consults Abstract::CqlSearch#item_type_id on the rule card
+   *  directly (cql_search.rb:14-18) -- not via the rule's options_card
+   *  chain. Set-type rules are NOT parsed: the recapture's 676 set-host
+   *  sentinels all carry search-type terminals (jjmd, kwnd), never the
+   *  *all "fr" fallback; the pointer/list gate handles *all as a
+   *  terminal separately. Returns the failing content ("" for the
+   *  empty-query branch) or undefined when the rule isn't search-typed
+   *  or its content parses cleanly. */
+  private ruleCardParseFailure(card: RenderCard): string | undefined {
+    if (card.typeCode !== SEARCH_TYPE_CODE) {
+      return undefined;
+    }
+    const raw = card.dbContent;
+    if (raw === "") return "";
+    try {
+      JSON.parse(raw);
+      return undefined;
+    } catch {
+      return raw;
+    }
   }
 
 

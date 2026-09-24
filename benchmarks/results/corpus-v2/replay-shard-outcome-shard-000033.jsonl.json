@@ -1,0 +1,18 @@
+{
+  "shard": "shard-000033.jsonl",
+  "lines": 1000,
+  "captureErrorLines": 0,
+  "records": {
+    "total": 1000,
+    "pass": 883,
+    "structurePending": 117,
+    "realFail": 0
+  },
+  "renders": {
+    "total": 3844,
+    "pass": 3835,
+    "structurePending": 3,
+    "nestGap": 0,
+    "realFail": 6
+  }
+}
