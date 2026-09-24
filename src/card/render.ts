@@ -99,6 +99,21 @@ export type { RenderCard, PrefetchStats };
 export { HTML_VIEWS };
 
 const SEARCH_TYPE_CODE = "search_type";
+/** The codename of the Set cardtype (Type::Set includes Type::SearchType,
+ *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
+ *  through Abstract::CqlSearch's parse exactly like search-type cards). */
+const SET_TYPE_CODE = "set";
+/** The codename of the Cardtype cardtype (right_type_options gate). */
+const CARDTYPE_TYPE_CODE = "cardtype";
+/** The four permission settings whose right-side set modules include
+ *  Abstract::Permission (card-mod-permissions set/right/*.rb) — the
+ *  options-gate's excluded host class. */
+const PERMISSION_RIGHT_CODENAMES: ReadonlySet<string> = new Set([
+  "read",
+  "create",
+  "update",
+  "delete",
+]);
 // The codename the search-type type card carries in the codehash
 // (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). Corpus
 // search cards have type cards whose CARD NAME is random
@@ -169,6 +184,12 @@ export class RenderEngine implements RenderEngineLike {
    *  (24 each) while :closed/:title are real bytes (105/105 each), i.e.
    *  Ruby only parses the result-rendering views. Cleared on resetCaches(). */
   private searchFailures = new Map<string, Error>();
+  /** Resolved options cards by host key (the options-card parse boundary's
+   *  rule walk). `has(key) === true` means resolved; the value is the
+   *  resolved options card, or undefined when the walk stopped without one
+   *  (right_type_options virtual card / nothing found). Warm re-renders pay
+   *  one Map lookup. Cleared on resetCaches(). */
+  private optionsCardCache = new Map<string, RenderCard | undefined>();
   /** Read-permission state for the engine's viewer (the Anonymous corpus
    *  actor) — the port of Auth.as_card.read_rules_hash. Resolved lazily on
    *  the first render, folded into the prefetch batch so a cold render
@@ -386,6 +407,54 @@ export class RenderEngine implements RenderEngineLike {
     if (rootCard.typeCode === "set") {
       await this.preloadSetRules(rootCard);
     }
+    // THE OPTIONS-CARD CQL PARSE BOUNDARY (the host's own item-view options
+    // chain — one of the firing paths of the capture-sentinel class; oracle
+    // probes tmp/recapture-deck/diagnose-capture-error{,2,3,4,5,6,7}.rb).
+    //
+    // Mechanism (Ruby): rendering :open of a pointer/list card runs
+    // standard_pointer_core (card-mod-list set/abstract/01_list/
+    // html_views.rb:6-13), whose wrapper class needs item_view_options
+    // (collection mod set/all/item.rb:149-159) -> determine_item_view_options
+    // _type -> card.item_type_name -> Abstract::Items#item_type_id
+    // (card-mod-collection set/abstract/items.rb:5-11):
+    //     opt = options_card; return unless opt && opt != self
+    //     opt.item_type_id
+    // options_card (card-mod-layout set/abstract/items/options_api.rb:47-48)
+    // = rule_card(:content_options) || right_type_options || Card[:all].
+    // Pointer/list options cards RECURSE through the same chain; when the
+    // chain lands on a search-type or set-type card, item_type_id is
+    // Abstract::CqlSearch#item_type_id (cql_search.rb:14-18) -> cql_hash ->
+    // parse_json_cql(content) -> Card::Error::BadQuery for garbage content
+    // — and the raise unwinds the whole parent render (the capture's
+    // CAPTURE_ERROR sentinel for the host).
+    //
+    // Gate (pinned empirically over BOTH capture keys — recapture census
+    // tmp/recapture-deck/enumeration/options-gate-model.json, oracle probes
+    // 5-7): pointer/list hosts on :open ONLY. :closed never consults the
+    // options chain for plain lists (labeled/one_line_content), :content
+    // never produced a sentinel in either capture (0/46), set hosts raise
+    // via their rules-editor chains instead (their own options card is
+    // never consulted — probe 7), and Abstract::Permission hosts
+    // (right part *read/*create/*update/*delete) recorded REAL :open bytes
+    // in both captures (original corpus: 1,537/1,537 real) while today's
+    // Ruby raises — a capture-time divergence the fixtures pin as bytes, so
+    // the gate must not fire for them. Read-denied hosts render the denial
+    // span before any view body runs (view/permission.rb:46-50), and
+    // unknown hosts render the unknown substitution — both skip.
+    if (
+      view === "open" &&
+      (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") &&
+      rootCard.unknown !== true &&
+      !this.isDenied(rootCard) &&
+      !this.isPermissionRightHost(rootCard)
+    ) {
+      const failContent = await this.itemOptionsParseFailure(rootCard, new Set([rootCard.key]));
+      if (failContent !== undefined) {
+        // cql_search.rb:29-38 parity: empty content raises the distinct
+        // "can't run search with empty content" BadQuery before the parse.
+        throw failContent === "" ? emptyQueryError() : badQuery(failContent);
+      }
+    }
     // Ruby Card.config.max_depth = 20 (railtie.rb:17; see RUBY_MAX_DEPTH).
     // The prefetch closure's MAX_CLOSURE_ROUNDS = 25 exceeds it, so every
     // nest chain the renderer can walk IS resolvable by the prefetch — the
@@ -544,6 +613,7 @@ export class RenderEngine implements RenderEngineLike {
     this.idsByKey.clear();
     this.searchResults.clear();
     this.searchFailures.clear();
+    this.optionsCardCache.clear();
     this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
@@ -1183,6 +1253,105 @@ export class RenderEngine implements RenderEngineLike {
   peekCodenameById(typeId: number): string | undefined {
     return this.fetcher.codenames.peekNameForId(typeId);
   }
+
+  // -------------------------------------------------------------------------
+  // options-card CQL parse boundary (the capture-sentinel class, chain A)
+  // -------------------------------------------------------------------------
+
+  /** Abstract::Permission host test: a compound card whose RIGHT part's
+   *  card carries one of the four permission setting codenames
+   *  (card-mod-permissions set/right/{read,create,update,delete}.rb all
+   *  `include Abstract::Permission`, whose options_card override returns
+   *  Card[:cards_with_account]). The gate excludes these hosts: both
+   *  captures recorded REAL :open bytes for them (original corpus
+   *  1,537/1,537) despite today's Ruby raising — the fixtures pin bytes,
+   *  so the parse boundary must stay closed for this class. */
+  private isPermissionRightHost(card: RenderCard): boolean {
+    if (!card.name.isCompound) return false;
+    const rightKey = card.name.rightName?.key;
+    if (rightKey === undefined) return false;
+    const right = this.renderCards.get(rightKey);
+    const codename = right?.record.codename;
+    return codename !== undefined && PERMISSION_RIGHT_CODENAMES.has(codename);
+  }
+
+  /** The recursive half of the boundary: resolve `card`'s options card and
+   *  walk the Abstract::Items#item_type_id chain (items.rb:5-11) until a
+   *  search/set-type terminal parses its content (failure content returned,
+   *  "" for the empty-content branch) or the chain stops (undefined):
+   *  - right_type_options (layout options_api.rb:57-59): the right part is
+   *    a cardtype -> Card.fetch [right.name, :type, :by_name] — a VIRTUAL
+   *    card whose Ruby content is a CQL Hash, so cql_content never parses
+   *    and item_type_id returns nil (probe 5, cixvol+jzuqht). The port has
+   *    no such virtual card -> stop, no raise.
+   *  - Card[:all] fallback (options_api.rb:48); *all is set-typed, so the
+   *    terminal parse fires on its db_content ("fr" corpus-wide).
+   *  - `seen` carries the visited keys — `opt != self` recursion guard.
+   *  All fetches ride the fetch engine's cache-first ladder; the resolution
+   *  memoizes per host key so warm re-renders stay zero-query. */
+  private async itemOptionsParseFailure(
+    card: RenderCard,
+    seen: Set<string>,
+  ): Promise<string | undefined> {
+    const opt = await this.resolveOptionsCard(card);
+    if (opt === undefined) return undefined;
+    if (seen.has(opt.key)) return undefined;
+    seen.add(opt.key);
+    if (opt.typeCode === SEARCH_TYPE_CODE || opt.typeCode === SET_TYPE_CODE) {
+      const raw = opt.dbContent;
+      if (raw === "") return "";
+      try {
+        JSON.parse(raw);
+        return undefined;
+      } catch {
+        return raw;
+      }
+    }
+    if (opt.typeCode === "pointer" || opt.typeCode === "list") {
+      return this.itemOptionsParseFailure(opt, seen);
+    }
+    return undefined;
+  }
+
+  /** options_card (options_api.rb:47-48) minus the permission-abstract
+   *  override (excluded at the gate):
+   *  rule_card(:content_options) || right_type_options || Card[:all].
+   *  rule_card rides the SAME rule-name algebra + storage walk the
+   *  view-override lookup uses (findRule -> ruleNamesForCard, the
+   *  pattern-precedence candidate walk). Memoized per card key. */
+  private async resolveOptionsCard(card: RenderCard): Promise<RenderCard | undefined> {
+    const cached = this.optionsCardCache.get(card.key);
+    if (this.optionsCardCache.has(card.key)) return cached;
+    let resolved: RenderCard | undefined;
+    const rule = await findRule(this.fetcher, this.structurePatternInputForSync(card), "*content options");
+    if (rule !== undefined && rule.rule.name !== undefined) {
+      resolved = await this.enrichAndStore(rule.rule);
+    }
+    if (resolved === undefined && card.name.isCompound) {
+      // right_type_options: right part's type is a cardtype -> the by-name
+      // virtual card stops the chain (see itemOptionsParseFailure).
+      const rightKey = card.name.rightName?.key;
+      const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
+      const rightTypeId = right?.record.typeId;
+      if (
+        rightTypeId !== undefined &&
+        this.fetcher.codenames.peekNameForId(rightTypeId) === CARDTYPE_TYPE_CODE
+      ) {
+        this.optionsCardCache.set(card.key, undefined);
+        return undefined;
+      }
+    }
+    if (resolved === undefined) {
+      // Card[:all] fallback
+      const allRecord = await this.fetcher.fetchByName("*all");
+      if (allRecord !== undefined && allRecord.name !== undefined) {
+        resolved = await this.enrichAndStore(allRecord);
+      }
+    }
+    this.optionsCardCache.set(card.key, resolved);
+    return resolved;
+  }
+
 
   // -------------------------------------------------------------------------
   // rule? predicate (lib/card/rule/all.rb:32-51) — the RULE set-key input

@@ -103,11 +103,15 @@ describe("pointer/list open-view accordion-body omits the content-view slot wrap
   );
 
   it(
-    "*home pointer open view: accordion-body contains the card-list-bar pointer-list directly (no X-content-view wrap)",
+    "*home pointer open view: the options-card parse boundary raises (corpus:77 truth) — and with a valid *content options rule the card-list-bar wrapper renders (no X-content-view wrap)",
     async () => {
-      // Mirror of the corpus:6551 pin for the card-list-bar wrapper
-      // branch (non-permission-right pointer cards — corpus:77 family).
-      // Same fix, just exercised on the wider wrapper branch.
+      // Corpus:77 (shard-000000.jsonl id=77, *home pointer) :open captured
+      // CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: fr
+      // — *all's db_content "fr", reached through the options-card chain
+      // (standard_pointer_core -> item_view_options -> item_type_name ->
+      // options_card -> *all). The pre-options-boundary engine emitted the
+      // card-list-bar wrapper bytes here instead; the boundary (see
+      // options-card-cql-parse-boundary.test.ts) closes that divergence.
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(77);
       baseIds.add(34843);
@@ -120,14 +124,46 @@ describe("pointer/list open-view accordion-body omits the content-view slot wrap
         readRuleId: 6568,
         readRuleClass: "*all",
       });
-      const html = await storage.engine.render("*home", "open");
-      // The card-list wrapper is in use (the *home pointer card does
-      // not match the rule+permission-right shape).
+      let captured: unknown;
+      try {
+        await storage.engine.render("*home", "open");
+      } catch (err) {
+        captured = err;
+      }
+      expect(captured).toBeInstanceOf(Error);
+      expect((captured as Error).constructor.name).toBe("Card::Error::BadQuery");
+      expect((captured as Error).message).toBe("Invalid JSON search query: fr");
+
+      // The card-list-bar wrapper-branch structure pin (the shape this
+      // file exists for): a pointer whose *content options rule parses as
+      // valid CQL JSON stops the boundary (cql_search.rb:14-18 answers
+      // item_type_id from cql_hash[:type] — no raise), so :open renders
+      // and the accordion-body contains the card-list-bar pointer-list
+      // directly (no X-content-view wrap) — the same pin, now under the
+      // boundary.
+      await seedCard(storage, { id: 9021, name: "wrapper probe", typeId: 34843, dbContent: "" });
+      await seedCard(storage, {
+        id: 9022,
+        name: "wrapper probe+*self",
+        leftId: 9021,
+        rightId: 264,
+        typeId: 259,
+      });
+      await seedCard(storage, {
+        id: 9023,
+        name: "wrapper probe+*self+*content options",
+        leftId: 9022,
+        rightId: 86,
+        typeId: 30,
+        dbContent: '{"type":"Basic"}',
+      });
+      const html = await storage.engine.render("wrapper_probe", "open");
+      // The card-list wrapper is in use (the probe pointer does not match
+      // the rule+permission-right shape).
       expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
       // Same byte-level pin: no content-view wrap inside accordion-body.
       const accordionBodyIdx = html.indexOf("accordion-body");
       const accordionBodySlice = html.slice(accordionBodyIdx);
-      expect(accordionBodySlice).not.toContain('id="Xhome-content-view"');
       expect(accordionBodySlice).not.toContain("card-slot content-view");
       expect(accordionBodySlice).toMatch(
         /accordion-body[^>]*>\s*<div class="card-list card-list-bar pointer-list">/,
