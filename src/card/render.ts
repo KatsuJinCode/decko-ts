@@ -1064,7 +1064,26 @@ export class RenderEngine implements RenderEngineLike {
     let denied: boolean;
     const stored = record.readRuleId;
     if (stored !== undefined) {
-      denied = !canReadByStoredRule(stored, state);
+      // Two-pass — see ensureVerdicts for the rationale (recapture
+      // 2026-09-24 fix: live walk after a stored-rule miss so the
+      // pattern-precedence catchall is honored).
+      if (canReadByStoredRule(stored, state)) {
+        denied = false;
+      } else {
+        const byRule = record.name
+          ? await canReadByRuleLookup(
+              this.fetcher,
+              {
+                name: record.name,
+                id: record.id,
+                typeId: record.typeId,
+                ...(typeName !== undefined ? { typeName } : {}),
+              },
+              state,
+            )
+          : true; // a name-less record has no rule candidates
+        denied = byRule === false; // undefined = rule-less: allowed
+      }
     } else {
       const byRule = record.name
         ? await canReadByRuleLookup(
