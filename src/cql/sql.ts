@@ -21,7 +21,7 @@
  *   is deferred (wave 2), see the notes
  */
 
-import { ConditionNode, JoinNode, QueryNode } from "./ast.js";
+import { CqlBadQuery, ConditionNode, JoinNode, QueryNode } from "./ast.js";
 import { BASIC_FIELDS, DEFAULT_ORDER_DIRS, LIST_OPS, ORDER_MAP } from "./constants.js";
 import { escapeRegexpCharacters, safeSql } from "./normalize.js";
 
@@ -34,6 +34,72 @@ export interface SqlOptions {
    */
   alwaysOk?: boolean;
   readRuleIds?: number[];
+  /**
+   * REGEXP-on-edge mode (docs/cql-execution-notes.md "The REGEXP decision",
+   * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
+   * OMITTED from the generated SQL and re-applied by the executor in JS
+   * (execute.ts) with the same compile logic as sqlite-regexp.ts. The
+   * `=term`-on-name shape (exact key equality) is portable SQL and stays.
+   * While set, a root query with a dropped match renders
+   * `LIMIT POSTFILTER_ROW_CAP` instead of the statement's own limit/offset —
+   * filtering after LIMIT would truncate before matching, and the executor
+   * applies the user limit/offset in JS after the filter. Groups whose
+   * children all drop render as "" (never "()").
+   */
+  matchPostFilter?: boolean;
+}
+
+/** The superset fetch bound for post-filtered match queries (SqlOptions
+ *  doc): D1/libSQL cannot host the REGEXP UDF, so the executor fetches the
+ *  match-free statement with this LIMIT and filters in JS. Matches beyond
+ *  the first POSTFILTER_ROW_CAP superset rows are missed — the documented
+ *  divergence; FTS5 remains the scaling answer (decision doc, point 3). */
+export const POSTFILTER_ROW_CAP = 10_000;
+
+/** The regexp-shaped match predicate (the "=" name-key equality is portable
+ *  SQL and never post-filters). Shared by the condition dropper and the
+ *  executor's filter collector so both sides see the same set. */
+export function isRegexpMatchCondition(condition: ConditionNode): boolean {
+  return condition.kind === "match" && !(condition.prefix === "=" && condition.cqlField === "name");
+}
+
+/** The ROOT query's post-filter conditions, flattened: direct regexp match
+ *  conditions AND any or-group containing one (the {match: v} expansion is
+ *  a group of name-OR-content; the executor evaluates whole groups). Empty
+ *  when the statement has nothing to post-filter. */
+export function collectMatchPostFilters(root: QueryNode): ConditionNode[] {
+  const filters: ConditionNode[] = [];
+  for (const condition of root.conditions) {
+    if (isRegexpMatchCondition(condition)) {
+      filters.push(condition);
+    } else if (
+      condition.kind === "group" &&
+      condition.conditions.some((child) => isRegexpMatchCondition(child))
+    ) {
+      filters.push(condition);
+    }
+  }
+  return filters;
+}
+
+/** Whether any query BELOW the root carries a regexp match: dropped from
+ *  the SQL by matchPostFilter, but a JS row filter cannot re-apply a
+ *  subselect's membership — the executor refuses those loudly (CqlBadQuery)
+ *  instead of silently returning wrong rows. */
+export function hasNestedRegexpMatch(root: QueryNode): boolean {
+  const visit = (query: QueryNode): boolean => {
+    for (const condition of query.conditions) {
+      if (isRegexpMatchCondition(condition)) return true;
+      if (
+        condition.kind === "group" &&
+        condition.conditions.some((child) => isRegexpMatchCondition(child))
+      ) {
+        return true;
+      }
+    }
+    return query.subqueries.some(visit);
+  };
+  return root.subqueries.some(visit);
 }
 
 export interface SqlResult {
@@ -54,6 +120,8 @@ interface GenContext {
 
 /** SqlStatement#build / #to_s */
 function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string {
+  // (the post-filter limit branch below uses the same collector the
+  // executor filters with, so SQL and JS agree on what was dropped)
   const alias = query.tableAlias;
   const full = isRoot && query.mods.return !== "count"; // CardQuery#full?
 
@@ -77,6 +145,23 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   // with LIMIT (Ruby quirk: offset without limit renders nothing)
   let limitSql = "";
   if (full) {
+    // Post-filter mode bounds the superset fetch with the row cap instead of
+    // the statement's own limit/offset: filtering after LIMIT would truncate
+    // before matching, and the executor applies the user limit/offset in JS
+    // after the filter (SqlOptions.matchPostFilter doc).
+    if (isRoot && ctx.options.matchPostFilter === true && hasRootRegexpMatch(query)) {
+      return [
+        selectSql,
+        fromSql,
+        joinsSql,
+        whereSql,
+        groupSql,
+        orderSql,
+        `LIMIT ${POSTFILTER_ROW_CAP}`,
+      ]
+        .filter((chunk) => chunk !== "")
+        .join(" ");
+    }
     const limit = toInt(query.mods.limit);
     if (limit > 0) {
       limitSql = `LIMIT ${limit}`;
@@ -95,6 +180,12 @@ function toInt(value: string | undefined): number {
   if (value === undefined) return 0;
   const n = parseInt(value, 10);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/** The root query carries a match the post-filter dropped (drives the
+ *  capped-LIMIT branch in renderQuery). */
+function hasRootRegexpMatch(query: QueryNode): boolean {
+  return collectMatchPostFilters(query).length > 0;
 }
 
 /** SqlStatement#full_field */
@@ -196,6 +287,10 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       if (condition.prefix === "=" && condition.cqlField === "name") {
         return `${alias}.key = ${placeholder(ctx, condition.termKey)}`;
       }
+      // REGEXP-on-edge: the post-filter mode omits the shape from the SQL
+      // (the executor re-applies it in JS with the same compile logic —
+      // SqlOptions.matchPostFilter doc).
+      if (ctx.options.matchPostFilter === true) return "";
       const value =
         condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
       return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
@@ -206,12 +301,30 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
     case "raw":
       return condition.sql;
     case "group":
-      // MatchAttributes#or_join — always parenthesized
+      // MatchAttributes#or_join — always parenthesized. In post-filter mode
+      // every child may drop (a {match: v} or-group is all-match); a fully
+      // dropped group renders "" — never "()" — so the executor's WHERE
+      // stays valid (SqlOptions.matchPostFilter doc).
+      if (ctx.options.matchPostFilter === true) {
+        const rendered = condition.conditions
+          .map((c) => renderCondition(c, query, ctx))
+          .filter((chunk) => chunk !== "");
+        if (rendered.length === 0) return "";
+        return `(${rendered.join(` ${condition.conj.toUpperCase()} `)})`;
+      }
       return `(${condition.conditions
         .map((c) => renderCondition(c, query, ctx))
         .join(` ${condition.conj.toUpperCase()} `)})`;
     case "foundBy":
-      throw new Error(
+      // The refusal surfaces as BadQuery (Card::Error::BadQuery's port), not
+      // a generic error: found_by is refused BY DESIGN at generate time
+      // (execute.ts docs — "the generator refuses them", deferred wave 2),
+      // so callers must be able to distinguish the refusal from an engine
+      // crash. Through the deploy worker's /api/query the plain Error fell
+      // into the 500 "CQL execution failed" branch while every other bad
+      // statement answered 400 "bad CQL" — a refused-by-design statement
+      // indistinguishable from a crash (probe api-query-found-by-refused).
+      throw new CqlBadQuery(
         "found_by requires runtime query execution (Query.run / Card.fetch) — deferred to wave 2; see docs/cql-port-notes.md",
       );
   }

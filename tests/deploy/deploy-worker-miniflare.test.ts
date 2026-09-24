@@ -178,6 +178,42 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     expect(await response.text()).toContain("History body at compound depth 4");
   });
 
+  it("GET /:card-name treats '+' as the decko joint, not a space", async () => {
+    // The reconciled decodeName: "Demo+Guide" is the JUNCTION URL (sides
+    // "Demo" and "Guide" — no such rows), not the simple card "Demo Guide"
+    // (seed id 12). The earlier '+' -> ' ' rewrite made this URL render the
+    // simple card while making EVERY junction unreachable (the adversarial
+    // probe battery's headline finding, batch 01); Ruby/decko addresses
+    // junctions as /A+B and multi-word simple names as /A%20B.
+    const response = await fetchPath("/Demo+Guide");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("Card not found");
+  });
+
+  it("GET /~10 resolves the id mark through the primed name environment", async () => {
+    // The F4 pin: '~10' (Home's seeded id) enters DeckoName.parse's mark
+    // resolution, which reads ONLY the process-global environment's warm
+    // lexicon. Without the boot-time prime (installNameEnvironment + the
+    // lexicon/codehash warm) this 500s with "id doesn't exist: 10"
+    // (NameNotFoundError, name.ts badMark) — the probe battery's id-mark
+    // finding (batch 01, /~9 on the targeted deck).
+    const response = await fetchPath("/~10");
+    const body = await response.text();
+    expect(response.status, body).toBe(200);
+    expect(body).toContain("Welcome to the decko-ts synthetic demo deck");
+  });
+
+  it("GET /:search_type resolves the codename mark through the primed codehash", async () => {
+    // The F4 pin's codename arm: ':search_type' resolves through the
+    // environment's codename registry (peekId over the loaded codehash).
+    // Unprimed, this 500s with "codename doesn't exist: search_type"
+    // (CodenameNotFoundError) — the probe battery's codename-mark finding.
+    const response = await fetchPath("/:search_type");
+    const body = await response.text();
+    expect(response.status, body).toBe(200);
+    expect(body).toContain('data-card-name="Search"');
+  });
+
   it("GET /:card-name.json returns the card record with its type name", async () => {
     const response = await fetchPath("/Home.json");
     expect(response.status).toBe(200);
@@ -279,5 +315,56 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   it("404s unknown paths (no accidental card render for slash paths)", async () => {
     const response = await fetchPath("/no/route/here");
     expect(response.status).toBe(404);
+  });
+
+  it("GET /:card-name.json 403s a read-denied card instead of serving db_content", async () => {
+    // The F3 pin (probe battery batch 05, denied-card-json-LEAK-CHECK): the
+    // record-JSON route previously served db_content for cards the HTML
+    // views replace with the denial span. Seed the minimal read-rule
+    // universe — the *read/*all/set codename carriers, a *self set, and a
+    // *read rule card granting NOBODY (no card_references rows) — then a
+    // card carrying that rule id. canReadByStoredRule: the rule id is not
+    // in the anonymous viewer's readable set -> denied.
+    const T = "2026-09-20 00:00:00.000";
+    const insert = (values: string): string =>
+      `INSERT INTO cards (\n` +
+      `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
+      `  created_at, updated_at, creator_id, updater_id,\n` +
+      `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
+      `) VALUES (\n${values}\n)`;
+    for (const statement of [
+      // the codename carriers the permission statements' subselects need
+      insert(`9001, '*read', 'read', 'read', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9002, '*all', 'all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9003, 'Set', 'set', 'set', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9004, '*self', 'self', 'self', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      // the denied card (a plain Note) + its *self set + the *read rule card
+      insert(`9010, 'Probe Restricted', 'probe_restricted', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, 'Restricted secret body'`),
+      insert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 9003, NULL`),
+      insert(`9012, NULL, NULL, NULL, 9011, 9001, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL`),
+      // the rule grants nobody: deliberately NO card_references rows for 9012
+      `UPDATE cards SET read_rule_id = 9012, read_rule_class = 'R' WHERE id = 9010`,
+    ]) {
+      await adapter!.query(statement, []);
+    }
+
+    // The HTML view keeps Ruby's denial shape: 200 + the denial span, body
+    // never in the bytes (view/permission.rb:46-50 -> the quiet span).
+    const page = await fetchPath("/Probe%20Restricted");
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain('class="denied"');
+    expect(html).not.toContain("Restricted secret body");
+
+    // The record JSON answers 403 with no protected fields.
+    const record = await fetchPath("/Probe%20Restricted.json");
+    expect(record.status).toBe(403);
+    const body = await record.json() as { error?: string; name?: string };
+    expect(body).toMatchObject({ error: "permission denied", name: "Probe Restricted" });
+    expect(JSON.stringify(body)).not.toContain("Restricted secret body");
+
+    // A readable card still serves its record (the gate is per-card).
+    const home = await fetchPath("/Home.json");
+    expect(home.status).toBe(200);
   });
 });

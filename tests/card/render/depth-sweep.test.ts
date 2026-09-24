@@ -1,5 +1,8 @@
-// M3 depth sweep: every depth 1..32 measured for the same axes the #1282
-// claim is graded on. No gaps.
+// M3 depth sweep: every depth 1..20 measured for the same axes the #1282
+// claim is graded on. No gaps. (Ceiling aligned to the renderer's
+// RUBY_MAX_DEPTH=20 — Card.config.max_depth, railtie.rb:17; the sweep ran
+// 1..42 until 2026-09-24, when the renderer's old 42 guard was aligned to
+// the vendored prototype. Depths past 20 raise the too-deep guard.)
 //
 // Run via: npx vitest run tests/card/render/depth-sweep.test.ts
 //
@@ -14,8 +17,9 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
 
-const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 28, 32, 36, 40, 42];
+const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20];
 // Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
 
@@ -46,10 +50,14 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
       const storage = await createRenderTestStorage();
       try {
         await seedChain(storage, depth);
-        // The renderer caps at maxDepth=42 by default (src/card/render/format.ts:214).
-        // Past 42 the Format-object recursion throws "nest depth exceeded"; the SQL CTE
-        // walks arbitrarily deep but the render path does not render past 42.
-        if (depth > 42) throw new Error(`DEPTHS should not exceed renderer maxDepth=42`);
+        // The renderer caps at RUBY_MAX_DEPTH=20 by default
+        // (src/card/render/format.ts, Card.config.max_depth railtie.rb:17).
+        // Past 20 the Format-object recursion throws "nest depth exceeded";
+        // the SQL CTE walks arbitrarily deep but the render path does not
+        // render past the guard.
+        if (depth > RUBY_MAX_DEPTH) {
+          throw new Error(`DEPTHS should not exceed renderer RUBY_MAX_DEPTH=${RUBY_MAX_DEPTH}`);
+        }
 
         // Cold render
         storage.counting.reset();

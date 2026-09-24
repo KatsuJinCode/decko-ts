@@ -219,9 +219,18 @@ export interface HelpRulesApi {
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
-  /** maximum nest depth (Ruby Card.config.max_depth; decko default 42). */
+  /** maximum nest depth — Ruby Card.config.max_depth = 20
+   *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
+   *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
+   *  decko's old 42 default; the vendored prototype pins 20 and the
+   *  adversarial probe battery graded the divergence (self-inclusion,
+   *  cycle-two, nest-of-cycle all 500 at the old guard where Ruby renders
+   *  the too-deep UserError at 20). Aligned 2026-09-24. */
   maxDepth?: number;
 }
+
+/** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
+export const RUBY_MAX_DEPTH = 20;
 
 /**
  * One card's html format. Subformats (nests) are child instances holding a
@@ -246,7 +255,7 @@ export class RenderFormat {
     this.engine = engine;
     this.parent = opts.parent;
     this.isMain = opts.main ?? false;
-    this.maxDepth = opts.maxDepth ?? 42;
+    this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
   }
 
   /** view.rb#depth - the subformat chain depth (recursion guard). */

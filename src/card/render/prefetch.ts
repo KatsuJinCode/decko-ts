@@ -47,7 +47,13 @@ import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
 import type { DbLexicon } from "../fetch/lexicon.js";
 import { referencedNames } from "./nest-syntax.js";
 
-/** Safety bound for the closure rounds (BFS over levels). */
+/** Safety bound for the closure rounds (BFS over levels). Deliberately
+ *  ABOVE the renderer's nest-depth guard (RUBY_MAX_DEPTH = 20,
+ *  format.ts — Ruby Card.config.max_depth, railtie.rb:17): every chain the
+ *  renderer can legally walk is resolvable by the prefetch, so the depth
+ *  guard fires deterministically instead of the outcome depending on
+ *  whether the fallback rounds gave up first (the battery's depth-44
+ *  nondeterminism, {200,500} at maxDepth 42 — collapsed by the alignment). */
 const MAX_CLOSURE_ROUNDS = 25;
 
 export interface PrefetchStats {

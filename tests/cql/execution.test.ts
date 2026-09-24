@@ -12,9 +12,11 @@
  * sort/limit/offset, and count semantics.
  *
  * The REGEXP UDF is the LOCAL-path answer (src/cql/sqlite-regexp.ts); the
- * tests also pin the loud failure when a local driver runs match queries
- * WITHOUT the UDF ("no such function") so the registration requirement can
- * never fail silently.
+ * tests also pin the DECIDED edge fallback (docs/cql-execution-notes.md
+ * "The REGEXP decision", implemented 2026-09-24): a match query on a driver
+ * WITHOUT the UDF post-filters in JS to the same set the UDF path returns,
+ * limit/offset leave the SQL, counts post-filter, and a match inside a
+ * subselect (unpost-filterable) refuses loudly as CqlBadQuery.
  */
 
 import { readFileSync } from "node:fs";
@@ -24,6 +26,8 @@ import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { registerSqliteRegexpFunction } from "../../src/cql/sqlite-regexp.js";
 import { executeQuery } from "../../src/cql/execute.js";
 import type { CqlExecuteOptions } from "../../src/cql/execute.js";
+import { CqlBadQuery } from "../../src/cql/ast.js";
+import { POSTFILTER_ROW_CAP } from "../../src/cql/sql.js";
 import type { CardsRow } from "../../src/server/schema.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -590,12 +594,77 @@ describe("count semantics", () => {
   });
 });
 
-describe("REGEXP registration is a loud requirement on local drivers", () => {
-  it("a match query without the UDF fails with 'no such function'", async () => {
+describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decision's edge path)", () => {
+  function rowIds(result: { rows: CardsRow[] } | { count: number }): number[] {
+    if ("count" in result) throw new Error("expected a rows result");
+    return result.rows.map((row) => row.id).sort((a, b) => a - b);
+  }
+
+  it("a match query without the UDF post-filters to the SAME set the UDF path returns", async () => {
     const bare = new LocalSqliteDriver();
     try {
       await loadCoreSchema(bare);
-      await expect(executeQuery(bare, { match: "home" })).rejects.toThrow(/no such function/i);
+      await insertCards(bare);
+      const viaUdf = await ids({ match: "home" });
+      // First query on the bare driver: the statement fails UDF-missing and
+      // the executor flips to the post-filter (one failed attempt, then the
+      // match-free SQL + JS filtering).
+      const first = await executeQuery(bare, { match: "home" }, EXEC_OPTS);
+      expect(rowIds(first)).toEqual(viaUdf);
+      expect(viaUdf.length).toBeGreaterThan(0);
+      expect(first.sql).not.toContain("REGEXP");
+      // The driver memo: a SECOND match query routes straight to the
+      // post-filter (no second failed attempt) and still matches.
+      const again = await executeQuery(bare, { match: "about" }, EXEC_OPTS);
+      expect(rowIds(again)).toEqual(await ids({ match: "about" }));
+      expect(again.sql).not.toContain("REGEXP");
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("post-filter applies limit AFTER filtering (the SQL carries only the cap)", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      const all = await executeQuery(bare, { match: "a" }, EXEC_OPTS);
+      const limited = await executeQuery(bare, { match: "a", limit: 1 }, EXEC_OPTS);
+      expect(all.sql).toContain(`LIMIT ${POSTFILTER_ROW_CAP}`);
+      if ("count" in all || "count" in limited) throw new Error("expected rows results");
+      expect(limited.rows).toHaveLength(1);
+      // The user limit applies in JS over the FILTERED set: the single
+      // returned row is the filtered set's first row (same SQL order).
+      expect(limited.rows[0]!.id).toBe(all.rows[0]!.id);
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("count with match post-filters (the row select runs; the count matches)", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      const expected = await ids({ match: "home" });
+      const result = await executeQuery(bare, { return: "count", match: "home" }, EXEC_OPTS);
+      if (!("count" in result)) throw new Error("expected a count result");
+      expect(result.count).toBe(expected.length);
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("a match inside a subselect refuses loudly (CqlBadQuery), never silently drops", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      // Root-level match post-filters fine, but the any-subselect's match
+      // would be dropped from the SQL with no JS way to re-apply it — the
+      // executor refuses instead of returning wrong rows.
+      const statement = { match: "home", any: [{ match: "about" }] };
+      await expect(executeQuery(bare, statement, EXEC_OPTS)).rejects.toThrow(CqlBadQuery);
     } finally {
       bare.close();
     }
@@ -607,5 +676,16 @@ describe("deferred keys surface honestly at execution time", () => {
     await expect(executeQuery(driver, { found_by: { id: 5 } })).rejects.toThrow(
       /found_by requires runtime query execution/,
     );
+  });
+
+  it("found_by's refusal is CqlBadQuery (the 400-mappable class, not a crash)", async () => {
+    // The refusal is BY DESIGN (deferred wave 2), so it must ride the
+    // BadQuery class the API layer maps to 400 "bad CQL" — a plain Error
+    // surfaced as 500 "CQL execution failed", indistinguishable from an
+    // engine crash (the probe battery's api-query-found-by-refused).
+    const error = await executeQuery(driver, { found_by: { id: 5 } }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(CqlBadQuery);
   });
 });

@@ -660,6 +660,12 @@ export class FetchEngine {
   private peekLexiconName(id: number): string | undefined {
     const lex = this.peekLex(id);
     if (lex === undefined) return undefined;
+    if (lex instanceof DeckoName) {
+      // The WRITE path (Lexicon#write / write_to_temp_cache, lexicon.rb:74-82)
+      // caches the NAME under id.to_s — Ruby's lex_to_name passes non-array
+      // lexes straight through, and this peek serves the same value.
+      return lex.s === "" ? undefined : lex.s;
+    }
     if (typeof lex === "string") {
       const name = DeckoName.parse(lex);
       return name.s === "" ? undefined : name.s;
@@ -679,9 +685,14 @@ export class FetchEngine {
     return typeof value === "number" ? value : undefined;
   }
 
-  private peekLex(id: number): string | [number, number] | undefined {
+  /** The entry under id.to_s: the LEX string (the async read path's shape),
+   *  the [left_id, right_id] pair, or the NAME itself (the write path's
+   *  shape — Ruby lexicon.rb:79-81 caches `name` there; lex_to_name passes
+   *  it through). Anything else is a cold entry. */
+  private peekLex(id: number): string | DeckoName | [number, number] | undefined {
     const value = this.readLexiconCache(String(id));
     if (typeof value === "string") return value;
+    if (value instanceof DeckoName) return value;
     if (Array.isArray(value) && value.length === 2) return value as [number, number];
     return undefined;
   }

@@ -37,6 +37,7 @@ import {
 import type { CardsRow } from "../server/schema.js";
 import {
   RenderFormat,
+  RUBY_MAX_DEPTH,
   UnsupportedViewError,
   type RenderCard,
   type RenderEngineLike,
@@ -367,7 +368,13 @@ export class RenderEngine implements RenderEngineLike {
     if (rootCard.typeCode === "set") {
       await this.preloadSetRules(rootCard);
     }
-    const format = new RenderFormat(rootCard, this, { maxDepth: 42 });
+    // Ruby Card.config.max_depth = 20 (railtie.rb:17; see RUBY_MAX_DEPTH).
+    // The prefetch closure's MAX_CLOSURE_ROUNDS = 25 exceeds it, so every
+    // nest chain the renderer can walk IS resolvable by the prefetch — the
+    // depth guard is always reachable on fully-prefetched chains and the
+    // battery's depth-44 envelope {200,500} collapses to a deterministic
+    // guard hit instead of depending on fallback-round ordering.
+    const format = new RenderFormat(rootCard, this, { maxDepth: RUBY_MAX_DEPTH });
     const baseHtml = format.renderView(view, {});
 
     // A denied render never reaches view dispatch (the denial span REPLACES
@@ -844,6 +851,69 @@ export class RenderEngine implements RenderEngineLike {
       if (card.typeId === undefined) continue;
       card.typeCode = codenames.peekNameForId(card.typeId);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // permission seams for non-HTML entries (the deploy worker's record-JSON
+  // route and CQL API) — same engine state the HTML verdicts read
+  // -------------------------------------------------------------------------
+
+  /** Read verdict for one card record — the per-card half of ensureVerdicts,
+   *  shared by entries that serve card data outside the HTML view pipeline
+   *  (deploy/worker.ts cardRecordJson). Stored read_rule_id resolves purely
+   *  (canReadByStoredRule, permissions.rb:142-143); cards without one fall
+   *  back to the live rule walk (canReadByRuleLookup, permissions.rb:55-61;
+   *  undefined = rule-less deck: allowed, the documented divergence).
+   *  `typeName` is optional — the *type pattern's anchor name; callers that
+   *  already hold the type record pass it, others let the lookup resolve.
+   *  Verdicts memoize into the same deniedVerdicts map ensureVerdicts uses,
+   *  so a card judged here is judged for the HTML path too (and vice versa:
+   *  an existing verdict short-circuits). */
+  async canReadCard(record: CardRecord, typeName?: string): Promise<boolean> {
+    const state = await this.ensureReadPermission();
+    if (record.id !== undefined && this.deniedVerdicts.has(record.id)) {
+      return !this.deniedVerdicts.get(record.id);
+    }
+    let denied: boolean;
+    const stored = record.readRuleId;
+    if (stored !== undefined) {
+      denied = !canReadByStoredRule(stored, state);
+    } else {
+      const byRule = record.name
+        ? await canReadByRuleLookup(
+            this.fetcher,
+            {
+              name: record.name,
+              id: record.id,
+              typeId: record.typeId,
+              ...(typeName !== undefined ? { typeName } : {}),
+            },
+            state,
+          )
+        : true; // a name-less record has no rule candidates (not a real card)
+      denied = byRule === false; // undefined = rule-less: allowed
+    }
+    if (record.id !== undefined) this.deniedVerdicts.set(record.id, denied);
+    return !denied;
+  }
+
+  /** The CQL permission filter for this engine's viewer — the shape
+   *  executeQuery's SqlOptions take (sql.ts implicitConditions, the port of
+   *  Where#permission_conditions). Ruby's Card::Query runs with
+   *  Auth.always_ok? false, so every /api/query-shaped statement is
+   *  filtered to the viewer's readable rule set; serving rows without the
+   *  filter leaks db_content the HTML views deny. The rule-less-deck
+   *  allowance mirrors canReadByRuleLookup's undefined verdict (no read
+   *  rule cards at all: nothing to filter by, everything allowed — the
+   *  same divergence the HTML verdicts document; filtering with the empty
+   *  set would deny every card and break rule-less seeds). */
+  async cqlPermissionOptions(): Promise<{ alwaysOk: boolean; readRuleIds: number[] }> {
+    const state = await this.ensureReadPermission();
+    if (state.alwaysOk) return { alwaysOk: true, readRuleIds: [] };
+    if (!state.hasReadRules || !state.hasCatchAllReadRule) {
+      return { alwaysOk: true, readRuleIds: [] }; // rule-less allowance
+    }
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
   }
 
   // -------------------------------------------------------------------------

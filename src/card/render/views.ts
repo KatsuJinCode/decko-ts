@@ -265,6 +265,24 @@ const coreView: ViewFn = (ctx) => {
   if (fmt.card.typeCode === "image" || fmt.card.typeName === "Image") {
     return formatImageCore(fmt.card.dbContent);
   }
+  // The File cardtype's :core (card-mod-carrierwave set/type/file.rb:24-28
+  // view :core + set/type/file/core.haml:1): the content resolves to an
+  // attachment source URL and renders as `<a href="SRC">SRC</a>`; content
+  // that resolves to NO source (blank, or no recognized storage prefix)
+  // renders "" — the content-view wrapper closes EMPTY. The corpus deck's
+  // 319 file cards (type card codename "file"; the card itself is usually
+  // named gibberish by the anonymizer) carry either empty content or bare
+  // random tokens with no storage prefix, so Ruby rendered every one of
+  // them as an empty wrapper (corpus:808:render:content/:open,
+  // corpus:3737's nested titled/content bodies, and the 226-view
+  // card_name_leaked_as_text bucket of the cfcost-r4 failure ledger).
+  // Without this branch the engine fell through to the raw-content dump —
+  // the same leak family the image branch above closed. Match by typeCode
+  // (the corpus file-type card is NAMED "guwg"); typeName kept as the
+  // fixture-deck fallback, mirroring the image gate.
+  if (fmt.card.typeCode === "file" || fmt.card.typeName === "File") {
+    return formatFileCore(fmt.card.dbContent);
+  }
   // The CodeRay cardtypes override :core with
   // `process_content CodeRay.scan(_render_raw, LANG).div` (card-mod-format
   // set/type/json.rb:30-32; layout_type/head/css/script analogs). The
@@ -333,6 +351,45 @@ export function formatImageCore(content: string | null | undefined): string {
   // shape for the corpus (and Ruby's behavior for any cardtype-
   // mismatched content).
   return "";
+}
+
+/** card-mod-carrierwave set/type/file.rb:24-28 `view :core` +
+ *  set/type/file/core.haml:1 — the file cardtype's core renders the
+ *  attachment source as `<a href="SRC">SRC</a>`; a source that resolves to
+ *  "" renders "" (file.rb:34-45 handle_source: blank source short-circuits
+ *  to the empty string, "no comment, no leak"). Source resolution mirrors
+ *  the ported storage-type walk (card-mod-carrierwave.ts storageTypeFromContent
+ *  + contextualizePath, the headless FileCardUploader.url):
+ *   - blank or no recognized prefix -> "" (the corpus file cards: 9 empty +
+ *     310 bare tokens, every one empty-rendered by the oracle)
+ *   - `http(s)://...` (web) or `(...)/...` (cloud) -> the content as-is
+ *   - `~/...` (local) -> `/files/<id>/<action>.<ext>`
+ *   - `:<codename>/...` (coded) -> `/files/<codename>.<mod>.<ext>`
+ *  The polymorphic carrierwave :core in the mod loader dispatches the same
+ *  logic through the chain; this base-view branch is the flat-table path
+ *  (the replay harness and the deploy worker run without a mod loader). */
+export function formatFileCore(content: string | null | undefined): string {
+  const trimmed = (content ?? "").trim();
+  if (trimmed === "") return "";
+  const source = fileSourceFromContent(trimmed);
+  if (source === "") return "";
+  return `<a href="${h(source)}">${h(source)}</a>`;
+}
+
+/** The carrierwave source resolution for one trimmed file-card content
+ *  (see formatFileCore; mirrors card-mod-carrierwave.ts contextualizePath). */
+function fileSourceFromContent(trimmed: string): string {
+  if (/^\(/.test(trimmed)) return trimmed; // cloud: absolute bucket URL
+  if (/^https?:/.test(trimmed)) return trimmed; // web: the URL as-is
+  if (/^~/.test(trimmed)) {
+    // local: ~/card_id/action_id.ext -> /files/card_id/action_id.ext
+    return `/files/${trimmed.replace(/^~/, "")}`;
+  }
+  if (/^:/.test(trimmed)) {
+    // coded: :codename/mod_name.ext -> /files/codename.mod_name.ext
+    return `/files/${trimmed.replace(/^:/, "").replace(/\//g, ".")}`;
+  }
+  return ""; // unrecognized prefix: no source (handle_source blank -> "")
 }
 
 // ---------------------------------------------------------------------------

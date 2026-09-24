@@ -40,8 +40,11 @@ const patternCache = new Map<string, RegExp | null>();
 
 /** Compile one MySQL-flavored pattern to a JS RegExp. Returns null when the
  *  pattern cannot compile; the UDF turns that into a thrown error so a bad
- *  pattern surfaces as a query failure, never as silently-empty results. */
-function compilePattern(pattern: string): RegExp | null {
+ *  pattern surfaces as a query failure, never as silently-empty results.
+ *  Shared with the post-filter executor (executeQuery's REGEXP-on-edge
+ *  fallback runs the SAME compile logic — one matching implementation, per
+ *  docs/cql-execution-notes.md "The REGEXP decision"). */
+export function compileMatchPattern(pattern: string): RegExp | null {
   const cached = patternCache.get(pattern);
   if (cached !== undefined) return cached;
   let compiled: RegExp | null = null;
@@ -68,7 +71,7 @@ export function sqliteRegexpUdf(pattern: unknown, value: unknown): number | null
     return null;
   }
   if (typeof pattern !== "string" || typeof value !== "string") return 0;
-  const compiled = compilePattern(pattern);
+  const compiled = compileMatchPattern(pattern);
   if (compiled === null) {
     throw new Error(`invalid REGEXP pattern: ${pattern}`);
   }

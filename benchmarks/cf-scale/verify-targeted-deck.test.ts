@@ -38,9 +38,20 @@ describe("targeted Cloudflare test deck — every dimension renders locally", ()
     expect(html).toContain("Cloudflare targeted-test deck home");
   });
 
-  it("depth-32 chain resolves to the deepest content", async () => {
-    const html = await render.render("Depth Root", "content");
-    expect(html).toContain("The deepest content of the 32-level chain.");
+  it("depth-32 chain hits the Ruby max_depth guard (Card.config.max_depth = 20)", async () => {
+    // Aligned 2026-09-24 with the renderer's RUBY_MAX_DEPTH (format.ts;
+    // prototype/lib/cardio/railtie.rb:17). The chain was seeded 32 deep —
+    // past Ruby's guard — and the adversarial probe oracle already flagged
+    // it: depth 32 >= max_depth 20 raises Card::Error::UserError "Man,
+    // you're too deep" in Ruby, so a Ruby-parity claim about this deck
+    // could never include this dimension. The old guard (42) rendered it;
+    // the aligned guard raises at Depth Level 21, exactly where Ruby's
+    // does. The deck generator (targeted-test-deck.mjs) should re-seed the
+    // chain to 19 inclusion levels if a RENDERABLE deep-chain dimension is
+    // wanted on the remote window.
+    await expect(render.render("Depth Root", "content")).rejects.toThrow(
+      /nest depth exceeded \(Depth Level 21\)/,
+    );
   });
 
   it("500-item pointer list renders all items", async () => {

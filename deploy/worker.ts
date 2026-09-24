@@ -75,7 +75,7 @@ async function bootDeck(env: Env): Promise<Deck> {
   observeDriverQueries(driver, recorder());
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
-  const resolveCardId = await primeCqlNameResolver(driver);
+  const resolveCardId = await primeCqlNameResolver(driver, fetcher);
   return { driver, fetcher, render, resolveCardId, primedAt: new Date().toISOString() };
 }
 
@@ -141,7 +141,10 @@ interface IdRow {
   right_id: number | null;
 }
 
-async function primeCqlNameResolver(driver: CloudflareD1Adapter): Promise<(name: string) => number | undefined> {
+async function primeCqlNameResolver(
+  driver: CloudflareD1Adapter,
+  fetcher: FetchEngine,
+): Promise<(name: string) => number | undefined> {
   const { rows } = await driver.query<IdRow>(
     "SELECT id, name, left_id, right_id FROM cards WHERE trash = 0",
     [],
@@ -184,6 +187,29 @@ async function primeCqlNameResolver(driver: CloudflareD1Adapter): Promise<(name:
     const name = composedName(row.id);
     if (name !== undefined) keyToId.set(DeckoName.parse(name).key, row.id);
   }
+  // The sync name environment (DeckoName's mark resolution for "~<id>" and
+  // ":<codename>" strings, name.ts parse -> idFromString) reads ONLY the
+  // warm caches through the engine's peek adapters, so the worker boot has
+  // to install the adapters and warm the caches BEFORE the first request:
+  // without this, "/~9" 500s with "id doesn't exist: 9" (DeckoName.badMark,
+  // the NameNotFoundError path) and "/:search_type" 500s with
+  // "codename doesn't exist: search_type" — the mark URLs are unusable.
+  // The lexicon warm reuses the row load above (no second full scan);
+  // the codename codehash is its own small query. Mirrors FetchEngine#
+  // warmLexicon + installNameEnvironment, the composition the local
+  // engine boots with.
+  fetcher.installNameEnvironment();
+  await fetcher.codenames.ensureLoaded();
+  for (const row of rows) {
+    if (row.left_id !== null && row.right_id !== null) {
+      const joined = composedName(row.id);
+      if (joined === undefined) continue;
+      fetcher.lexicon.write(row.id, DeckoName.parse(joined), [row.left_id, row.right_id]);
+    } else if (row.name !== null && row.name !== "") {
+      const name = DeckoName.parse(row.name);
+      fetcher.lexicon.write(row.id, name, row.name);
+    }
+  }
   return (nameish: string) => keyToId.get(DeckoName.parse(nameish).key);
 }
 
@@ -225,14 +251,23 @@ function errorPage(status: number, title: string, message: string): Response {
   );
 }
 
-/** decodeURIComponent that 400s on malformed input instead of throwing,
- *  then restores '+' as a space: card URLs carry spaces in both forms
- *  (Ruby/decko treats /A+B and /A%20B as the same card; caught by the
- *  targeted Cloudflare test 2026-09-23 — multi-word cards 404'd on the
- *  '+' form while %20 worked). */
+/** decodeURIComponent that 400s on malformed input instead of throwing.
+ *  The '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb)
+ *  and must survive into the name: /Demo%20Guide+Section%20One is the
+ *  junction "Demo Guide+Section One" whose canonical engine key is
+ *  "demo_guide+section_one" (left.key + joint + right.key, name.ts #key).
+ *  An earlier revision rewrote '+' to ' ' here so multi-word simple names
+ *  could ride the bare-plus URL form — that made junction names
+ *  unreachable over HTTP in EVERY form ('+' -> space; '%2B' -> '+' ->
+ *  space) while the engine still composes junction keys WITH the joint,
+ *  so every compound GET 404'd (the adversarial probe battery's headline
+ *  finding, batch 01). Ruby/decko addresses junctions as /A+B and
+ *  multi-word simple names as /A%20B (or the underscore alias form);
+ *  this surface now does the same. Caught by the targeted Cloudflare
+ *  test 2026-09-23; reconciled to the engine-canonical key 2026-09-24. */
 function decodeName(raw: string): string | undefined {
   try {
-    return decodeURIComponent(raw.replace(/\+/g, " "));
+    return decodeURIComponent(raw);
   } catch {
     return undefined;
   }
@@ -263,8 +298,18 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
   }
+  // The read gate: this route previously served db_content for cards the
+  // HTML views replace with the denial span (the probe battery's batch-05
+  // KNOWN HOLE). Ruby's GET of a denied card renders the denial
+  // (ok_to_read? fails, set/all/permissions.rb:139-146); the JSON surface
+  // answers 403 without the protected fields. The verdict comes from the
+  // same engine state the HTML path judges with (RenderEngine#canReadCard).
   const typeRecord =
     record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+  const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
+  if (!readable) {
+    return jsonResponse(403, { error: "permission denied", name: cardName });
+  }
   return jsonResponse(200, {
     id: record.id ?? null,
     name: record.name.s,
@@ -303,8 +348,16 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
     return jsonResponse(400, { error: 'expected a JSON body like {"cql": {...}}' });
   }
   try {
+    // Permission filter (the port of Where#permission_conditions): without
+    // it the API returns db_content for cards the HTML views deny — the
+    // same leak the record-JSON route had. The generator renders
+    // `read_rule_id IN (...)` from the viewer's readable rule set, exactly
+    // Ruby's Card::Query under Auth.always_ok? false.
+    const permission = await deck.render.cqlPermissionOptions();
     const result = await executeQuery(deck.driver, cql, {
       parse: { resolveCardId: deck.resolveCardId },
+      alwaysOk: permission.alwaysOk,
+      readRuleIds: permission.readRuleIds,
     });
     return jsonResponse(200, result);
   } catch (error) {
@@ -414,8 +467,10 @@ export default {
       return cardRecordJson(deck, name);
     }
 
-    // GET /:card-name — rendered :open view. Compound names ride the URL as
-    // plus signs ("/Demo+Guide+Section+One"); no slashes in this surface.
+    // GET /:card-name — rendered :open view. Compound names ride the URL
+    // the decko way: '+' is the joint, %20 (or the underscore alias) the
+    // space within a part ("/Demo%20Guide+Section%20One"). No slashes in
+    // this surface.
     if (pathname.slice(1).includes("/")) {
       return errorPage(404, "Not found", "No route for " + pathname + " — try /<card-name> or /<card-name>.json");
     }
