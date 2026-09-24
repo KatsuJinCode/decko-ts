@@ -178,6 +178,14 @@ export class RenderEngine implements RenderEngineLike {
    *  the prepare phase so the synchronous render path never queries.
    *  Cleared on resetCaches(). */
   private deniedVerdicts = new Map<number, boolean>();
+  /** card key -> denied verdict for ID-LESS cards — the virtual cards
+   *  (states.rb#virtual?) the fetch layer synthesizes for orphan junction
+   *  names: no row, no id, but full view-permission semantics. Keyed by the
+   *  canonical key because multiple virtual cards share no id space (the
+   *  prefetch walk's -1 root placeholder is intercepted in render(), so
+   *  every verdict here belongs to exactly one name). Cleared on
+   *  resetCaches(). */
+  private deniedVerdictsByKey = new Map<string, boolean>();
   /** The viewer whose readable set the permission engine enforces —
    *  Anonymous by default; a signed-in session's actor carries its role
    *  parties (see ReadViewer in src/card/permissions/read-rules.ts). Set
@@ -269,7 +277,17 @@ export class RenderEngine implements RenderEngineLike {
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
-        cacheRecord: (cached) => this.cacheFetchedRecord(cached),
+        cacheRecord: (cached) =>
+          // Virtual-card root: the prefetch's recordToRawRow placeholders an
+          // id-less record as id -1; storing that record would poison the
+          // fetch cache and idsByKey with a fake id (and collide every
+          // virtual card's verdict under one map key). Re-enrich the
+          // PRISTINE id-less record instead — same key, undefined id — and
+          // let the -1 row dissolve (enrichAndStore's existing-key guard
+          // keeps the map entry pristine).
+          cached.id === -1 && record.id === undefined && cached.key === record.key
+            ? this.enrichAndStore(record).then(() => undefined)
+            : this.cacheFetchedRecord(cached),
         ...(coldStatements.length > 0 ? { additionalStatements: coldStatements } : {}),
       });
       this.lastPrefetch = stats;
@@ -530,6 +548,7 @@ export class RenderEngine implements RenderEngineLike {
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
+    this.deniedVerdictsByKey.clear();
     this.ruleTypeIds = undefined;
     this.structureContents = undefined;
     this.structureProcessed.clear();
@@ -822,7 +841,22 @@ export class RenderEngine implements RenderEngineLike {
     const state = this.readPermission;
     if (state === undefined) return;
     for (const card of this.renderCards.values()) {
-      if (card.id === undefined || this.deniedVerdicts.has(card.id)) continue;
+      if (card.id === undefined) {
+        // The virtual cards (states.rb#virtual?): no row, no id — the read
+        // rule resolves through the live name walk exactly like Ruby's
+        // `read_rule_id ||= permission_rule_id(:read)` on a rowless card
+        // (set/all/permissions.rb:139-146). Keyed by card key: virtual
+        // cards share no id space.
+        if (this.deniedVerdictsByKey.has(card.key)) continue;
+        const byRule = await canReadByRuleLookup(
+          this.fetcher,
+          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+          state,
+        );
+        this.deniedVerdictsByKey.set(card.key, byRule === false);
+        continue;
+      }
+      if (this.deniedVerdicts.has(card.id)) continue;
       const stored = card.record.readRuleId;
       if (stored !== undefined) {
         this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
@@ -893,7 +927,12 @@ export class RenderEngine implements RenderEngineLike {
         : true; // a name-less record has no rule candidates (not a real card)
       denied = byRule === false; // undefined = rule-less: allowed
     }
+    // Verdict memoization mirrors ensureVerdicts' split keying: real cards
+    // by id, virtual (id-less) cards by canonical key.
     if (record.id !== undefined) this.deniedVerdicts.set(record.id, denied);
+    else if (record.key !== undefined && record.key !== "") {
+      this.deniedVerdictsByKey.set(record.key, denied);
+    }
     return !denied;
   }
 
@@ -1070,9 +1109,14 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
-   *  membership, precomputed in the prepare phase — never a query here). */
+   *  membership, precomputed in the prepare phase — never a query here).
+   *  ID-less cards (the virtual cards) read their verdicts from the
+   *  key-keyed map (see deniedVerdictsByKey). */
   isDenied(card: RenderCard): boolean {
-    return card.id !== undefined && this.deniedVerdicts.get(card.id) === true;
+    if (card.id !== undefined) {
+      return this.deniedVerdicts.get(card.id) === true;
+    }
+    return this.deniedVerdictsByKey.get(card.key) === true;
   }
 
   /** ok_to_<task>? for the non-read view tasks (docs/view-perms-notes.md). */

@@ -1,0 +1,16 @@
+{
+  "cards": 2278,
+  "refs": 531,
+  "totalRows": 2809,
+  "bytes": 1622567,
+  "file": "C:\\localProjects\\decko-ts\\tools\\deploy\\cf-scale-deck\\seed.sql",
+  "dimensions": {
+    "ordinary": 2000,
+    "chainDepth": 32,
+    "pointerItems": 500,
+    "largeCards": 5,
+    "compounds": 50,
+    "denied": 50,
+    "modProbes": 100
+  }
+}

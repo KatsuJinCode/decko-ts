@@ -84,7 +84,8 @@ export function structureRuleUniverseStatement(): SQLStatement {
       `     WHEN sl."key" IS NOT NULL THEN sl."key" || '+' || p."key"\n` +
       `     ELSE NULL\n` +
       `   END) || '+' || st."key" AS composed_key,\n` +
-      `  r.db_content AS db_content\n` +
+      `  r.db_content AS db_content,\n` +
+      `  r.type_id AS rule_type_id\n` +
       `FROM cards r\n` +
       `JOIN cards st ON st.id = r.right_id\n` +
       `LEFT JOIN cards s ON s.id = r.left_id\n` +
@@ -113,6 +114,31 @@ export function structureUniverseFromResults(
     universe.set(row.composed_key, row.db_content);
   }
   return universe;
+}
+
+/**
+ * Map rule-card composed key -> the RULE CARD's own type_id, from the same
+ * universe rows. This is the virtual-card type source: a new (virtual) card's
+ * `type_id_from_template` answers `template&.type_id` — the applicable
+ * *structure rule card's type (mod/core/set/all/type.rb:78-80,
+ * `type_id_from_template` -> `name && template&.type_id`) — because for a
+ * card under a structure rule, `new_card_template` IS that rule card
+ * (card-mod-content set/all/templating.rb:19-33: `structure =
+ * dup_structure(default&.type_id)` returns the rule card, and
+ * `assign_type_to?` then re-assigns the same id the template lookup already
+ * yielded). Consumed by the fetch layer's virtual-card resolution
+ * (src/card/fetch/virtual-cards.ts); real-card rendering never reads it.
+ */
+export function structureRuleTypesFromResults(
+  result: SQLQueryResult | undefined,
+): Map<string, number> {
+  const types = new Map<string, number>();
+  if (result === undefined) return types;
+  for (const row of result.rows as Array<{ composed_key: string | null; rule_type_id: number | null }>) {
+    if (row.composed_key === null || row.rule_type_id === null) continue;
+    types.set(row.composed_key, row.rule_type_id);
+  }
+  return types;
 }
 
 export interface StructuredContentResult {

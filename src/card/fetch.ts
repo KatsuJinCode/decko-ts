@@ -51,6 +51,7 @@ import {
   type FetchArg,
   type FetchMark,
 } from "./fetch/retrieve.js";
+import type { VirtualCardResolution } from "./fetch/virtual-cards.js";
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import { DeckoName, type Nameish } from "./name.js";
 import { setNameEnvironment, type NameEnvironment } from "./name/environment.js";
@@ -76,6 +77,18 @@ export interface FetchOptions {
    *  actually SAVING is write-path). */
   new?: NewCardOptions;
 }
+
+/**
+ * The injected virtual-card resolver (states.rb#virtual? — see
+ * src/card/fetch/virtual-cards.ts). Optional because the structure-rule
+ * universe it consults is a deck-wide statement the storage factory loads;
+ * engines without the hook keep the historical behavior (unknown compound
+ * names fetch nil — the skip_virtual shape). Card[]/quick_fetch never
+ * consult it (results.rb:28-30 returns before known?).
+ */
+export type VirtualCardLookup = (
+  name: DeckoName,
+) => Promise<VirtualCardResolution | undefined>;
 
 export interface NewCardOptions {
   /** fetch.rb:36-41 normalize_mark absolutizes name marks against it. */
@@ -103,6 +116,8 @@ export class FetchEngine {
   readonly lexiconCache: CardCache;
   readonly lexicon: DbLexicon;
   readonly codenames: DbCodenameRegistry;
+  /** states.rb#virtual? injection (see VirtualCardLookup). */
+  virtualCardLookup?: VirtualCardLookup;
 
   constructor(
     driver: SQLDatabaseDriver,
@@ -178,7 +193,7 @@ export class FetchEngine {
     }
 
     const retrieved = await this.retrieveExisting(mark, opts); // fetch.rb:17
-    return this.updateCache(mark, retrieved, opts); // fetch.rb:18-19
+    return await this.updateCache(mark, retrieved, opts); // fetch.rb:18-19
   }
 
   // ---------------------------------------------------------------------
@@ -252,11 +267,11 @@ export class FetchEngine {
    *  rules wave every TS card is already "prepped", so that branch is
    *  observable-behavior-equivalent to false (a cached real card and a
    *  freshly prepped one are indistinguishable without modules). */
-  private updateCache(
+  private async updateCache(
     mark: FetchMark,
     retrieved: { card: CardRecord | undefined; freshFromDb: boolean },
     opts: FetchOptions,
-  ): CardRecord | undefined {
+  ): Promise<CardRecord | undefined> {
     let card = retrieved.card;
     let createdPlaceholder = false;
     if (this.newForCacheApplies(mark, card, opts)) {
@@ -268,7 +283,7 @@ export class FetchEngine {
     if ((retrieved.freshFromDb || createdPlaceholder) && card !== undefined && !card.uncacheable) {
       this.storeCard(card, opts); // store.rb:8-9 Card.write_to_cache card, local_only?
     }
-    return this.results(card, mark, opts); // fetch.rb:19
+    return await this.results(card, mark, opts); // fetch.rb:19
   }
 
   /** store.rb#reusable? (48-50): !(mark.is_a?(Integer) || (mark.blank? && !opts[:new])). */
@@ -318,13 +333,13 @@ export class FetchEngine {
   // ---------------------------------------------------------------------
 
   /** results.rb#results. */
-  private results(
+  private async results(
     card: CardRecord | undefined,
     mark: FetchMark,
     opts: FetchOptions,
-  ): CardRecord | undefined {
+  ): Promise<CardRecord | undefined> {
     if (card === undefined) return undefined;
-    return isNewCard(card) ? this.newResultCard(card, mark, opts) : this.finalizeResultCard(card);
+    return isNewCard(card) ? await this.newResultCard(card, mark, opts) : this.finalizeResultCard(card);
   }
 
   /** results.rb#finalize_result_card: include_set_modules unless
@@ -335,11 +350,11 @@ export class FetchEngine {
   }
 
   /** results.rb#new_result_card (16-23). */
-  private newResultCard(
+  private async newResultCard(
     card: CardRecord,
     mark: FetchMark,
     opts: FetchOptions,
-  ): CardRecord | undefined {
+  ): Promise<CardRecord | undefined> {
     const newOpts = opts.new;
     let effective = card;
     if (newOpts !== undefined) {
@@ -355,7 +370,31 @@ export class FetchEngine {
     }
     this.finalizeResultCard(effective);
     // results.rb:19-21: card if new_opts || card.known?
-    return newOpts !== undefined || isKnownCard(effective) ? effective : undefined;
+    if (newOpts !== undefined || isKnownCard(effective)) return effective;
+    // states.rb#known? -> virtual? (states.rb:44-50): a COMPOUND unknown name
+    // is known when a *structure rule applies to it. The rule walk is the
+    // injected hook (src/card/fetch/virtual-cards.ts) — storage factories
+    // with a loaded structure universe wire it; engines without it keep the
+    // historical nil (the fetch-port-notes deferral, now closed where the
+    // universe is loaded). A hit makes the placeholder the virtual card:
+    // the rule template becomes the content (content/all.rb:8-10, the
+    // virtual card's standard_content is empty) and the type falls to the
+    // rule card's type (type.rb:78-80 type_id_from_template).
+    if (
+      this.virtualCardLookup !== undefined &&
+      effective.name !== undefined &&
+      effective.name.isCompound
+    ) {
+      const virtual = await this.virtualCardLookup(effective.name);
+      if (virtual !== undefined) {
+        if (virtual.typeId !== undefined && effective.typeId === undefined) {
+          effective.typeId = virtual.typeId;
+        }
+        effective.dbContent = virtual.templateContent;
+        return effective;
+      }
+    }
+    return undefined;
   }
 
   /** results.rb#quick_renew (53-60) + #quick_renew? (69-76): blank new

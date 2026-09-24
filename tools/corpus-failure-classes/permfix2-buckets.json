@@ -1,0 +1,408 @@
+{
+  "targetPopulation": 910,
+  "sampleSize": 924,
+  "shardSum": 910,
+  "bucketCount": 57,
+  "buckets": [
+    {
+      "signature": "capture_error_not_raised:Date",
+      "count": 416,
+      "sampleCount": 422,
+      "representative": "corpus:1135:render:closed",
+      "mechanism": "Ruby raises an error in this scenario but the TS handler returns HTML rather than re-raising the CAPTURE_ERROR sentinel."
+    },
+    {
+      "signature": "capture_error_not_raised:Card",
+      "count": 263,
+      "sampleCount": 267,
+      "representative": "corpus:77:render:open",
+      "mechanism": "Ruby raises an error in this scenario but the TS handler returns HTML rather than re-raising the CAPTURE_ERROR sentinel."
+    },
+    {
+      "signature": "card_name_leaked_as_text_inside_content_view_after_data_attr",
+      "count": 43,
+      "sampleCount": 44,
+      "representative": "corpus:808:render:content",
+      "mechanism": "The TS renderer prints the literal card name where the fixture expects a closing </div> right after the data-attribute block. The engine is including the card key as body text inside the content-view wrapper instead of leaving the wrapper empty (Ruby uses a Nest/Subformat that suppresses the name)."
+    },
+    {
+      "signature": "permission_denied_sentinel_replaced_with_placeholder",
+      "count": 30,
+      "sampleCount": 30,
+      "representative": "corpus:88:render:content",
+      "mechanism": "Ruby renders <p><span class=\"denied\"><!-- Sorry, you don't have permission --></span></p> for denied content; the TS engine emits the placeholder body paragraphs (<p>TOK</p>…) with no denied span. The permission check is missing."
+    },
+    {
+      "signature": "card_name_leaked_as_text_after_home_view_data_attr",
+      "count": 29,
+      "sampleCount": 29,
+      "representative": "corpus:808:render:open",
+      "mechanism": "Same leak as above but inside the home/open view at the end of the render — fixture expects the trailing </div></div></div></div></div> sequence, TS engine emits the card name then partial closing tags."
+    },
+    {
+      "signature": "unclassified:M/~/exp=d/act=s",
+      "count": 27,
+      "sampleCount": 27,
+      "representative": "corpus:22774:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=,/act=]",
+      "count": 21,
+      "sampleCount": 21,
+      "representative": "corpus:22067:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "nest_depth_error_raised_unexpectedly",
+      "count": 12,
+      "sampleCount": 12,
+      "representative": "corpus:314:render:content",
+      "mechanism": "The TS engine raises \"nest depth exceeded\" where Ruby produces a valid render. Cycle detection or recursion guard is firing too aggressively."
+    },
+    {
+      "signature": "unclassified:L/-S/exp= /act=\\",
+      "count": 5,
+      "sampleCount": 5,
+      "representative": "corpus:22019:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=l/act=<",
+      "count": 4,
+      "sampleCount": 4,
+      "representative": "corpus:279:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=a/act=<",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:91:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=b/act=<",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:367:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=f/act=<",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:2543:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=n/act=<",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:67:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=x/act=<",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:2346:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=n/act=i",
+      "count": 3,
+      "sampleCount": 3,
+      "representative": "corpus:276:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "card_name_leaked_as_text_other_position",
+      "count": 2,
+      "sampleCount": 2,
+      "representative": "corpus:3737:render:content",
+      "mechanism": "Same card-name leak as the more specific buckets, but the structural surrounding markup did not match one of the canonical positions (still > expected <, actual starts with a lowercase letter)."
+    },
+    {
+      "signature": "unclassified:L/+S/exp=</act=\\n",
+      "count": 2,
+      "sampleCount": 2,
+      "representative": "corpus:2928:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=A/act=&",
+      "count": 2,
+      "sampleCount": 2,
+      "representative": "corpus:103:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=q/act=<",
+      "count": 2,
+      "sampleCount": 2,
+      "representative": "corpus:251:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "record_system_card_content_empty:cerulean_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22774:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:cosmo_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22778:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:cyborg_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22782:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:darkly_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22786:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:flatly_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22790:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:journal_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22794:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:lumen_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22798:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:sandstone_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22810:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:simplex_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22814:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:slate_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22818:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:spacelab_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22822:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:superhero_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22826:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:united_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22830:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "record_system_card_content_empty:yeti_skin",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22834:record",
+      "mechanism": "Record-engine system card: the TS engine leaves the `content` field empty where Ruby populates it from a seed, format helper, or version source."
+    },
+    {
+      "signature": "unclassified:L/+S/exp=i/act=c",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2985:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=</act=\\n",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:755:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=0/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3042:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=d/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3536:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=h/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2535:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=i/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3540:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=i/act=c",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:400:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=j/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2541:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=k/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3051:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=o/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22021:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=p/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2667:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=p/act=d",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:636:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=s/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22753:render:open",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=t/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3534:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=u/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2577:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=w/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2338:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:L/~/exp=z/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:2539:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/+S/exp=n/act=b",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:22723:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=b/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:275:render:closed",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=l/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:316:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=l/act=a",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:3036:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=n/act=<",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:571:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    },
+    {
+      "signature": "unclassified:M/~/exp=n/act=c",
+      "count": 1,
+      "sampleCount": 1,
+      "representative": "corpus:257:render:content",
+      "mechanism": "Shape-only residual — offset tier / size delta / char-pair hint did not match a known structural class."
+    }
+  ],
+  "method": "Normalize excerpts (decode HTML entities, replace -view suffixes, collapse card-name/gibberish runs to TOK, drop noisy attribute values), then pattern-match each failure to a structural bucket keyed on wrapper shape, sentinel, and offset tier. Counts are scaled from the 2000-sample to the 15,530 population reported by aggregate.renders.realFail."
+}

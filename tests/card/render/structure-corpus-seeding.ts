@@ -27,6 +27,12 @@ import {
 } from "./permission-corpus-seeding.js";
 import { seedCard, type RenderTestStorage } from "./render-test-storage.js";
 import { DeckoName } from "../../../src/card/name.js";
+import {
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+  structureRuleTypesFromResults,
+} from "../../../src/card/rules/structure.js";
+import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
 
 export { CORPUS_DB, readShardLines };
 export type { ShardLine };
@@ -217,6 +223,23 @@ export async function createStructureSeededStorageFor(
       dbContent: row.content,
       readRuleId: row.read_rule_id,
       readRuleClass: row.read_rule_class,
+    });
+  }
+
+  // Virtual-card wiring (states.rb#virtual? via FetchEngine.virtualCardLookup,
+  // src/card/fetch/virtual-cards.ts): the corpus deck's orphan junction rows
+  // (name+key stored, left_id/right_id NULL) are invisible to name-based
+  // fetch exactly like Ruby's Lexicon path, so compound name marks fall to
+  // the virtual-card rule walk. The universe statement answers from the
+  // seeded engine deck's stored key columns (seedCard keeps them), one query
+  // at factory time.
+  {
+    const result = await storage.fetcher.driver.batch([structureRuleUniverseStatement()]);
+    const universe = structureUniverseFromResults(result[0]);
+    const ruleTypes = structureRuleTypesFromResults(result[0]);
+    storage.fetcher.virtualCardLookup = createVirtualCardLookup(storage.fetcher, {
+      contents: universe,
+      ruleTypeIds: ruleTypes,
     });
   }
   return storage;

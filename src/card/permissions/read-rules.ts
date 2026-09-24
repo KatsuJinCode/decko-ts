@@ -397,7 +397,18 @@ export async function canReadByRuleLookup(
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
   if (!state.hasReadRules || !state.hasCatchAllReadRule) return undefined;
-  const candidates = ruleNamesForCard(card, READ_SETTING_NAME);
+  // pattern/all.rb#patterns: a NEW card's pattern list drops the first
+  // concrete pattern (SELF) — and rule_lookup_keys then nils every anchored
+  // candidate whose anchor card has no id. The virtual cards (id ===
+  // undefined) are new cards by definition, so their SELF candidate —
+  // anchored on themselves — never reaches the lookup. Oracle-verified
+  // (2026-09-23 recapture deck, diagnose-capture-error probes):
+  // `Card.fetch("<virtual junction>").permission_rule_id(:read)` answers the
+  // `*all plus+*read` rule, skipping an existing `<name>+*self+*read` rule.
+  const candidates = ruleNamesForCard(
+    card.id === undefined ? { ...card, isNew: true } : card,
+    READ_SETTING_NAME,
+  );
   const resolved = await resolveRuleIdsByKeys(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),

@@ -91,12 +91,14 @@ export function isRealCard(card: CardRecord): boolean {
 }
 
 /**
- * states.rb#known? : real? || virtual?. Virtual? requires structure rules
- * (mod/core/set/all/patterns + rule lookups), owned by the rules wave - the
- * fetch layer reports virtual? as false until that wave lands.
+ * states.rb#known? : real? || virtual?. This predicate stays PURE — the
+ * virtual? half needs the structure-rule universe (a deck-wide lookup), so
+ * it rides the injected FetchEngine.virtualCardLookup hook evaluated inside
+ * newResultCard (src/card/fetch/virtual-cards.ts). A hook hit returns the
+ * placeholder without this predicate being consulted.
  */
 export function isKnownCard(card: CardRecord): boolean {
-  return isRealCard(card) || false /* virtual? - rules wave */;
+  return isRealCard(card);
 }
 
 /** lib/card/content/all.rb#content : db_content || (new_card? ? default_content : "").
