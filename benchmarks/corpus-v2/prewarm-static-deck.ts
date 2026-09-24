@@ -172,13 +172,14 @@ export async function prewarmStaticDeck(
   //    RenderCard[]> (render.ts:147). Public surfaces (engine.peekSearch
   //    etc.) are deliberately not exposed — the prewarm touches private
   //    state via the same structural-cast pattern it already uses for
-  //    enrichAndStore + prepareSearches above. A try/catch around the
-  //    prepare wraps badQuery/emptyQueryError (the corpus's invalid
-  //    search cards have empty dbContent or random non-JSON content,
-  //    and parse/runSearch throws would otherwise abort the prewarm).
-  //    On catch, seed searchResults with [] so closureWarm's `has(key)`
-  //    check returns true and warm renders skip the cold closure walk —
-  //    one structural cast per the engine's existing seam, no new seam.
+  //    enrichAndStore + prepareSearches above. Since the R4 lazy-parse seam
+  //    (render.ts prepareSearches), a search card whose cql parse fails is
+  //    recorded IN THE ENGINE (searchFailures marker + empty seat) and the
+  //    walk completes — the raise moved to the dispatch boundary
+  //    (engine.resolveView, view-gated on :open/:content per the capture
+  //    census). prepareSearches therefore no longer throws for parse
+  //    failures; this try/catch remains only as defense against unexpected
+  //    non-parse errors aborting the whole prewarm.
   t0 = Date.now();
   const engineWithSearchResults = engine as unknown as {
     prepareSearches(root: CardRecord): Promise<void>;

@@ -1,19 +1,19 @@
 // Depth-3+ junction inclusion closure: the defect-2 regression tests.
 //
 // DEFECT (docs/deploy-notes.md finding 2): the prefetcher could not resolve
-// junction (NULL-key) nest targets deeper than two parts. The SQL walk
+// junction (NULL-key) nest targets deeper than two parts. The original walk
 // matched frontier keys against cards.key - which junction rows do not
 // carry - and the JS fallback's side-key join required BOTH sides of a
 // junction reference to be simple keys, so "A+B+C" (left side "A+B" is
 // itself compound) never resolved and the render threw
 // "nest target not found: A+B+C" where Ruby rendered.
 //
-// FIX (src/card/render/prefetch.ts): (1) the SQL walk resolves frontier
-// keys through a `resolved` recursive CTE that composes every junction
-// row's key from its sides (the DbLexicon.nameToLex walk in SQL), so
-// junction targets enter the SQL frontier at ANY depth; (2) the JS
-// fallback resolves compound references recursively through their sides'
-// ids (the UNIQUE left_id/right_id pair join) when the SQL walk missed.
+// FIX (src/card/render/prefetch.ts): the closure rounds resolve compound
+// references recursively through their sides - simple sides by the indexed
+// key column, compound sides by the UNIQUE left_id/right_id pair join once
+// the sides' rows are cached - so junction targets resolve at ANY depth.
+// (The 2026-09-23 read-cost fix replaced the whole-deck `resolved` CTE with
+// these rounds; the mechanism under test is the same side-recursion.)
 //
 // NAMING in these fixtures: parts use digit-suffixed names (chain_c1,
 // chain_c2, ...) because DeckoName.key SINGULARIZES (measured: key of
@@ -66,7 +66,7 @@ function chainCards(depth: number): ChainCard[] {
 }
 
 describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () => {
-  it("renders a depth-3 junction inclusion chain, covered by the SQL walk", async () => {
+  it("renders a depth-3 junction inclusion chain, covered by the per-key closure rounds", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -82,22 +82,25 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 3 body");
       expect(html).toContain("titled-view"); // the html default nest view
-      // The SQL `resolved` closure composed the junction keys, so the JS
-      // fallback had nothing left to fetch.
-      expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(0);
-      // The #1282 shape holds: one root fetch + one batch (2 walk statements
-      // + 3 folded read-permission statements) + 3 rule-lookup candidates -
-      // the same constant as simple chains. The permission statements joined
-      // the closure batch (read-permission stream): round trips unchanged.
+      // The closure rounds resolve level by level: round 0 fetches the
+      // simple sides + the depth-2 junction (side-key pair join), round 1
+      // joins the depth-3 junction by its sides' resolved ids.
+      expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(2);
+      // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
+      // 2 lexicon/enrichment primes (type card by id; the old SQL walk's
+      // type/side priming folded there) + round-0 batch (2 fetch shapes + 5
+      // folded engine statements: 3 read-permission + codename codehash +
+      // structure universe) + round-1 batch (1 side-id join) + 3 rule-lookup
+      // candidates. Constant in deck size; +1 batch per chain LEVEL.
       const snapshot = storage.counting.snapshot();
-      expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(11); // +3 read-permission + 1 codename codehash (rule? ids) + 1 structure-rule universe, all folded
+      expect(snapshot.roundTrips).toBe(8);
+      expect(snapshot.statements).toBe(14);
     } finally {
       storage.close();
     }
   });
 
-  it("renders a depth-4 junction inclusion chain, covered by the SQL walk", async () => {
+  it("renders a depth-4 junction inclusion chain, covered by the per-key closure rounds", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -112,7 +115,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       storage.counting.reset();
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 4 body");
-      expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(0);
+      expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(3);
     } finally {
       storage.close();
     }
@@ -162,8 +165,12 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
-      expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(11); // +3 folded read-permission statements + 1 folded codename codehash (rule? ids) + 1 structure-rule universe
+      // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
+      // 2 lexicon/enrichment primes + round-0 batch (2 fetch shapes + 5
+      // folded engine statements) + 3 rule-lookup candidates. Constant in
+      // deck size; the depth-3/4 tests show the +1 batch per chain level.
+      expect(snapshot.roundTrips).toBe(7);
+      expect(snapshot.statements).toBe(13);
     } finally {
       storage.close();
     }

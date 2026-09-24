@@ -76,6 +76,23 @@ CREATE INDEX "cards_read_rule_id_index" ON "cards" ("read_rule_id");
 CREATE INDEX "cards_created_at_index"   ON "cards" ("created_at");
 CREATE INDEX "cards_updated_at_index"   ON "cards" ("updated_at");
 CREATE INDEX "cards_trash_index"        ON "cards" ("trash");
+-- BINARY-collation twins of the two NOCASE unique indexes above (2026-09-23,
+-- D1 read-cost diagnosis): the engine's lookups compare BINARY ("key" = ? at
+-- src/card/fetch/retrieve.ts:260, lexicon.ts:232, name-validation.ts:97;
+-- "codename" = ?/IN at actor.ts:75, read-rules.ts:156, cql/sql.ts:197), and
+-- SQLite cannot seek an index whose collation differs from the comparison —
+-- the no-stats planner then probes cards_trash_index (trash=0), which matches
+-- the whole live deck (measured: 2,279-row full read per point lookup on the
+-- scale deck, matching the live D1 rows_read insight). These unique BINARY
+-- indexes give the planner a seekable structure. They are safe beside the
+-- NOCASE uniques: NOCASE already rejects case-variant duplicates, so the
+-- weaker BINARY constraint never rejects a row the schema didn't already
+-- reject. Fresh databases get these via 0001-schema.sql; already-provisioned
+-- databases apply deploy/migrations/0002-card-text-binary-lookup-indexes.sql.
+-- NOTE: pair with a post-seed ANALYZE — without planner stats SQLite still
+-- probes cards_trash_index for every " AND trash = 0" predicate.
+CREATE UNIQUE INDEX "cards_key_binary_index"      ON "cards" ("key");
+CREATE UNIQUE INDEX "cards_codename_binary_index" ON "cards" ("codename");
 
 
 -- ----------------------------------------------------------------------------

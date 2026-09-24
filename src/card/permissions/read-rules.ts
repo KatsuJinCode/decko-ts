@@ -416,35 +416,71 @@ export async function canReadByRuleLookup(
 }
 
 /**
- * Composed-key -> card id for the given rule-name keys. The `resolved`
- * closure is the prefetch walk's key-composition CTE
- * (src/card/render/prefetch.ts walkStatement — simple cards by their key
- * column, junction rows by recursively composed side keys, UNION-deduped so
- * cycles terminate; lib/card/lexicon.rb DbLexicon#name_to_lex in SQL).
+ * Composed-key -> card id for the given rule-name keys — TARGET-DRIVEN
+ * per-key resolution (D1 read-cost fix, 2026-09-23). The previous statement
+ * seeded `resolved` from EVERY card in the deck and composed the full
+ * compound-key universe, paying O(deck x recursion passes) rows read per
+ * call regardless of how many keys the caller asked for; the requested keys
+ * appeared only in the outer SELECT's filter. This version grows the same
+ * closure but restricts EVERY arm's output to the key's own fragment set —
+ * every '+'-cut contiguous segment run of the requested keys ("a+b+c"
+ * needs "a", "b", "c", "a+b", "b+c", "a+b+c") — so the recursion touches
+ * only indexed seeks on the requested keys' paths. Any intermediate key the
+ * old universe closure built on the way to a requested key is by
+ * construction one of those segment runs, so the resolvable set for the
+ * requested keys is unchanged (including the old CTE's documented
+ * limitation: a junction whose two sides are BOTH composed still needs a
+ * simple-keyed side at each step — rule candidates are <= 3 parts, where
+ * every split has a simple side).
+ *
+ * The seed seeks cards_key_index (COLLATE NOCASE — the column is BINARY,
+ * the index NOCASE; lossless for decko's lowercase-ASCII keys, the same
+ * annotation the prefetch fallback rounds use). UNION dedups (id, ckey) so
+ * cycles terminate.
  *
  * Exported for the write-side derivation too (set-read-rule.ts resolves the
- * same rule-name candidates against storage).
+ * same rule-name candidates against storage; view-task-rules.ts resolves
+ * its task candidates through this same function).
  */
 export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
   keys: string[],
 ): Promise<Map<string, number>> {
   if (keys.length === 0) return new Map();
-  const placeholders = keys.map(() => "?").join(", ");
-  const result = await driver.query<{ ckey: string; id: number }>(
+  const fragments = new Set<string>();
+  for (const key of keys) {
+    const segments = key.split("+");
+    for (let i = 0; i < segments.length; i++) {
+      for (let j = i; j < segments.length; j++) {
+        fragments.add(segments.slice(i, j + 1).join("+"));
+      }
+    }
+  }
+  const fragList = [...fragments];
+  const fragParams = fragList.map(() => "?").join(", ");
+  const keyParams = keys.map(() => "?").join(", ");
+  // The unary + on j.trash (the established planner guard, the prefetch
+  // walk perf note) keeps the planner OFF cards_trash_index in the seed
+  // and the recursive arms: without it SQLite drives the joins from a
+  // full trash=0 scan instead of the per-fragment key seek and the
+  // per-row left_id/right_id seeks (the no-ANALYZE planner trap). Seek
+  // terms keep their index paths; + is a value no-op.
+const result = await driver.query<{ ckey: string; id: number }>(
     `WITH RECURSIVE resolved(id, ckey) AS (\n` +
-      `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
+      `  SELECT id, "key" FROM cards WHERE "key" COLLATE NOCASE IN (${fragParams}) AND +trash = 0\n` +
       `  UNION\n` +
       `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-      `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
+      `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
       `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+      `   WHERE (l.ckey || '+' || r."key") IN (${fragParams})\n` +
       `  UNION\n` +
       `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-      `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
+      `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
       `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+      `   WHERE (l."key" || '+' || r.ckey) IN (${fragParams})\n` +
       `)\n` +
-      `SELECT rs.ckey, rs.id FROM resolved rs WHERE rs.ckey IN (${placeholders})`,
-    keys,
+      `SELECT rs.ckey, rs.id FROM resolved rs WHERE rs.ckey IN (${keyParams})`,
+    [...fragList, ...fragList, ...fragList, ...keys],
   );
   const out = new Map<string, number>();
   for (const row of result.rows) out.set(row.ckey, row.id);

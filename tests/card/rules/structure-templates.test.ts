@@ -232,12 +232,14 @@ describe("RenderEngine structured content", () => {
       const html = await fresh.engine.render("Doc1", "title");
       expect(html).toContain("Doc1"); // sanity
       const cold = fresh.counting.snapshot();
-      // The closure batch = [walk, walk+sides, perm x3, codehash, universe]
+      // The closure batch = [round-0 fetches, perm x3, codehash, universe]
       // (the universe statement is FOLDED: +1 statement, +0 round trips).
       // The remaining round trips are the pre-existing profile — the root
       // fetchByName + the view-override rule walk (this deck measured
-      // 13 statements / 8 round trips before this stream; 14/8 after).
-      expect(cold.statements).toBe(14);
+      // 13 statements / 8 round trips before this stream; 14/8 after the
+      // structure stream; 12/8 since the 2026-09-23 per-key closure rounds
+      // replaced the two whole-deck walk statements with round-0 folds).
+      expect(cold.statements).toBe(12);
       expect(cold.roundTrips).toBe(8);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();

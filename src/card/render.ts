@@ -48,7 +48,13 @@ import {
   getDefaultModLoader,
   modGeneration,
 } from "./mod-loader.js";
-import { badQuery, dateError, emptyQueryError, isValidDateContent } from "./render/errors.js";
+import {
+  badQuery,
+  dateError,
+  emptyQueryError,
+  isValidDateContent,
+  BAD_QUERY_CLASS_NAME,
+} from "./render/errors.js";
 import {
   prefetchInclusionClosure,
   type PrefetchStats,
@@ -62,6 +68,7 @@ import {
   canReadByStoredRule,
   canReadByRuleLookup,
   ANONYMOUS_VIEWER,
+  anonymousIdFromResults,
   type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
@@ -108,6 +115,13 @@ const DATE_TYPE_CODE = "date";
 // Date bucket, 963 entries in the fresh full replay). Match by codename,
 // independent of the type card's display name.
 
+/** The views whose Ruby view method PARSES (the lazy Search/Date raise
+ *  boundary's gate — src/card/render.ts resolveView). Capture census over
+ *  all 105 corpus search-type cards: :open/:content = 24 CAPTURE_ERROR +
+ *  80 real each; :closed/:title = 105 real each (Ruby never parses them);
+ *  date likewise (corpus:1135 :open/:content raise, :closed/:title real). */
+const PARSE_DISPATCH_VIEWS = new Set(["open", "content"]);
+
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
   readonly views: Record<string, ViewFn>;
@@ -145,6 +159,15 @@ export class RenderEngine implements RenderEngineLike {
   private idsByKey = new Map<string, number>();
   /** Pre-executed search results by search card key. */
   private searchResults = new Map<string, RenderCard[]>();
+  /** Search cards whose cql_search parse raised, by card key -> the error
+   *  the dispatched view re-raises. Ruby's parse fires INSIDE the view
+   *  method of the dispatched card (card-mod-search set/abstract/
+   *  cql_search.rb:29-38) — never at prefetch scope — so the prepare walk
+   *  records the failure and the DISPATCH boundary re-raises it, view-
+   *  gated: the capture census pins search :open/:content as CAPTURE_ERROR
+   *  (24 each) while :closed/:title are real bytes (105/105 each), i.e.
+   *  Ruby only parses the result-rendering views. Cleared on resetCaches(). */
+  private searchFailures = new Map<string, Error>();
   /** Read-permission state for the engine's viewer (the Anonymous corpus
    *  actor) — the port of Auth.as_card.read_rules_hash. Resolved lazily on
    *  the first render, folded into the prefetch batch so a cold render
@@ -411,6 +434,39 @@ export class RenderEngine implements RenderEngineLike {
     view: string,
     format: string = "html",
   ): ViewFn | undefined {
+    // THE SEARCH/DATE PARSE BOUNDARY (the R4 lazy seam's re-raise site).
+    // Ruby parses inside the dispatched view method on THAT card —
+    // cql_search.rb:29-38 for Search, Date.parse for the date cardtype's
+    // content views — and only after the permission gate wrapped any denial
+    // (view/permission.rb:46-50; format.ts runs viewPermissionDenial before
+    // calling this). Only the result-rendering views parse: the capture
+    // census pins search :open/:content CAPTURE_ERROR (24 each) vs
+    // :closed/:title real (105/105), date likewise. This fires for NESTED
+    // dispatches too — every nest routes through this seam (format.ts
+    // renderView -> engine.resolveView) — which is how pointer/list/set
+    // containers reproduce the capture's BadQuery for their search-card
+    // items. View-gated: :title/:closed/:bar never raise here.
+    //
+    // RULE-card asymmetry (capture census, 2026-09-23): a search-TYPE card
+    // that is ALSO a rule (3-part name, right part a setting — e.g.
+    // "*layout+*right+*content options", corpus:316/571/9610) captures REAL
+    // :open/:content bytes (48 *content options + 27 *structure rules, zero
+    // CAPTURE_ERROR), while every CAPTURE_ERROR search card is non-rule;
+    // date-typed rules (corpus:1135 "evog+*right+*default") still capture
+    // the Date::Error sentinel. So the Search arm skips rule cards
+    // (computeIsRuleSync — the same standard_rule? predicate the RULE
+    // set-key uses) and the Date arm does not.
+    if (
+      (card.typeCode === SEARCH_TYPE_CODE || card.typeCode === DATE_TYPE_CODE) &&
+      PARSE_DISPATCH_VIEWS.has(view)
+    ) {
+      if (card.typeCode === SEARCH_TYPE_CODE) {
+        const failed = this.searchFailures.get(card.key);
+        if (failed !== undefined && !this.computeIsRuleSync(card)) throw failed;
+      } else if (!isValidDateContent(card.dbContent)) {
+        throw dateError();
+      }
+    }
     // The cache key embeds the mod loader generation: every ModLoader.load()
     // and ModLoader.reset() bumps the global counter, so a cache entry
     // resolved under one generation cannot shadow the mod view fn that a
@@ -462,6 +518,7 @@ export class RenderEngine implements RenderEngineLike {
     this.renderCards.clear();
     this.idsByKey.clear();
     this.searchResults.clear();
+    this.searchFailures.clear();
     this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
@@ -729,7 +786,20 @@ export class RenderEngine implements RenderEngineLike {
     if (this.readPermission !== undefined) return this.readPermission;
     const results =
       folded ?? (await this.fetcher.driver.batch(readPermissionStatements(this.viewer)));
-    this.readPermission = readPermissionStateFromViewerResults(results, this.viewer);
+    // Actor threading (R4 seam 2): the signed-out viewer's OWN card id is a
+    // party — account_holder.rb:27-29 parties = all_enabled_roles + [self],
+    // and fetch_read_rules (:115-123) unions the cache over [AnyoneID] +
+    // parties. ANONYMOUS_VIEWER carries no actorId, so resolve it from this
+    // batch's codename rows — exactly what resolveAnonymousReadPermission
+    // does (read-rules.ts:352-360) — instead of dropping the [AnonymousID]
+    // party. Corpus-neutral today (verified: 0 read rules grant the
+    // anonymous party, 0 grant anonymous-but-not-anyone), but the parties
+    // must match Ruby's for any deck whose rules grant [[Anonymous]].
+    const viewer: ReadViewer =
+      this.viewer.signedIn === true
+        ? this.viewer
+        : { signedIn: false, actorId: anonymousIdFromResults(results) };
+    this.readPermission = readPermissionStateFromViewerResults(results, viewer);
     return this.readPermission;
   }
 
@@ -1242,14 +1312,21 @@ export class RenderEngine implements RenderEngineLike {
    * map, and item content participates in the walk (nested searches inside
    * results resolve too).
    *
-   * Date-type cores (type_code "date") are validated in the same pass: the
-   * corpus capture (id=1135, 1138, 1211, 1218, 1222) shows Ruby raises
-   * `Date::Error: invalid date` on non-parseable content for :open and
-   * :content views. The port mirrors that raise at the prepare phase so
-   * the render surface sees the same exception class with the same message
-   * — the corpus-v2 replay handler reads `error.constructor.name` and the
-   * literal `Date::Error` name (render/errors.ts) matches the captured
-   * sentinel prefix byte-for-byte.
+   * R4 lazy-parse seam: this walk NO LONGER RAISES. Ruby's Search JSON.parse
+   * and Date.parse fire INSIDE the dispatched view method
+   * (cql_search.rb:29-38; view/permission.rb:46-50 wraps the denial BEFORE
+   * view_method, so only readable cards ever parse), and only on the
+   * result-rendering views — the capture census pins search :open/:content
+   * as CAPTURE_ERROR (24 each) while :closed/:title carry real bytes
+   * (105/105 each; date likewise, corpus:1135). The eager throw here both
+   * over-raised (date :closed/:title — 1,066 corpus views where Ruby
+   * rendered) and, via the prewarm driver's catch arm, poisoned the seat so
+   * dispatched views never raised at all. Now a parse failure is RECORDED
+   * (searchFailures, with the exact error object the dispatched view
+   * re-raises) and the walk COMPLETES — the completion is load-bearing: it
+   * enriches the queue's remaining cards so the post-prepare ensureVerdicts
+   * pass judges them (render.ts's second ensureVerdicts call). The dispatch
+   * boundary that re-raises is engine.resolveView (below).
    */
   private async prepareSearches(root: CardRecord): Promise<void> {
     const visited = new Set<string>();
@@ -1269,31 +1346,38 @@ export class RenderEngine implements RenderEngineLike {
       // Skip cards that the permission engine has already denied — Ruby
       // short-circuits the denied branches before the Search card's
       // JSON.parse fires (corpus:34 captured as the denial span, not a
-      // CAPTURE_ERROR sentinel). The prepare phase must mirror that
-      // ordering: only READABLE Search / Date cards get their JSON.parse
-      // or Date.parse raised here.
+      // CAPTURE_ERROR sentinel; view/permission.rb:46-50). The prepare phase
+      // must mirror that ordering: only READABLE Search cards get their
+      // parse attempted (and only a readable card can ever re-raise at the
+      // dispatch boundary).
       if (this.isDenied(card)) continue;
       if (card.typeCode === SEARCH_TYPE_CODE) {
-        if (this.searchResults.has(key)) continue;
-        const items = await this.runSearch(card);
-        this.searchResults.set(key, items);
-        for (const item of items) {
-          if (!visited.has(item.key)) queue.push(item.record);
+        if (this.searchResults.has(key) || this.searchFailures.has(key)) continue;
+        try {
+          const items = await this.runSearch(card);
+          this.searchResults.set(key, items);
+          for (const item of items) {
+            if (!visited.has(item.key)) queue.push(item.record);
+          }
+        } catch (err) {
+          // Parse failures (cql_search.rb:29-38 BadQuery, both the
+          // invalid-JSON and the empty-content branches) become dispatch
+          // re-raises: seat an empty result (closureWarm's has(key) stays
+          // true — the perf contract the prewarm pins) and record the exact
+          // error. Unknown errors are NOT parse failures — rethrow.
+          if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
+          this.searchFailures.set(key, err);
+          this.searchResults.set(key, []);
         }
         continue;
       }
-      if (card.typeCode === DATE_TYPE_CODE) {
-        // Ruby Date.parse raises Date::Error on invalid input; mirror at the
-        // prepare phase so :open / :content views surface the same raise.
-        // Key on the type card's codename (corpus:1135 has the Date card
-        // named "evog" with codename "date" — a corpus-shaped type card
-        // whose card.name is NOT the literal "Date" string, the typeName
-        // gate silently skipped; the typeCode gate matches the codename,
-        // independent of the type card's display name).
-        if (!isValidDateContent(card.dbContent)) {
-          throw dateError();
-        }
-      }
+      // Date-type cards are validated at the dispatch boundary (resolveView)
+      // — the walk records nothing for them: Ruby's Date.parse runs inside
+      // the dispatched view method on THAT card (corpus:1135's :open/:content
+      // raise while :closed/:title render), never at prefetch scope. Keyed on
+      // the type card's codename (corpus:1135's type card is NAMED "evog";
+      // the typeCode gate matches the codename "date" regardless of the
+      // display name).
     }
   }
 

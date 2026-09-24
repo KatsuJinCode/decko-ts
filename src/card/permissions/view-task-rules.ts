@@ -41,12 +41,13 @@
 // engine's verdict map, so warm renders stay zero-query (the
 // ensureVerdicts model in src/card/render.ts).
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import type { SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import type { ReadPermissionState } from "./read-rules.js";
+import { resolveRuleIdsByKeys } from "./read-rules.js";
 import type { CrudTask } from "./view-perms.js";
 
 /** The tasks the view gate checks beyond read (permission.rb:11 CRUD). */
@@ -293,38 +294,4 @@ async function createSidesAllowed(
     if (verdict === undefined) sawUnverifiable = true;
   }
   return sawUnverifiable ? undefined : true;
-}
-
-/**
- * Composed-key -> card id for rule-name keys — the SAME recursive key
- * composition the prefetch walk and the read fallback resolve through
- * (lib/card/lexicon.rb DbLexicon#name_to_lex in SQL; simple cards by key
- * column, junction rows by recursively composed side keys, UNION-deduped
- * so cycles terminate). Local copy: read-rules.ts's resolver is
- * file-private and that file is outside this stream's edit rights.
- */
-async function resolveRuleIdsByKeys(
-  driver: SQLDatabaseDriver,
-  keys: string[],
-): Promise<Map<string, number>> {
-  if (keys.length === 0) return new Map();
-  const placeholders = keys.map(() => "?").join(", ");
-  const result = await driver.query<{ ckey: string; id: number }>(
-    `WITH RECURSIVE resolved(id, ckey) AS (\n` +
-      `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
-      `  UNION\n` +
-      `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-      `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
-      `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-      `  UNION\n` +
-      `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-      `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
-      `    JOIN cards l ON l.id = j.left_id AND j."key" IS NOT NULL\n` +
-      `)\n` +
-      `SELECT rs.ckey, rs.id FROM resolved rs WHERE rs.ckey IN (${placeholders})`,
-    keys,
-  );
-  const out = new Map<string, number>();
-  for (const row of result.rows) out.set(row.ckey, row.id);
-  return out;
 }

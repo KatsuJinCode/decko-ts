@@ -8,40 +8,35 @@
 //
 // Three cooperating mechanisms:
 //
-// 1. SQL-side closure walk (the accelerator): one recursive CTE follows
-//    {{...}} references through db_content in SQLite itself, so the whole
-//    tree - any depth - arrives in ONE statement. Spans cannot nest braces
-//    (Chunk::Nest full_re [^{}]*), so an instr-chained span scan (find the
-//    next '{{', cut at the first '}}') reproduces the chunker's spans; the
-//    key transform is a best-effort lower/space-to-underscore (the JS parser
-//    is the semantic authority, see 3). Cycle-safe: UNION dedups whole rows.
-//    JUNCTION COVERAGE: post-2020 junction rows carry NULL name/key columns,
-//    so the walk resolves every frontier key through a `resolved` closure -
-//    a second recursive CTE that composes each junction row's key from its
-//    sides (left-resolved+right-simple, then right-resolved+left-simple -
-//    the DbLexicon nameToLex walk in SQL). Frontier keys match resolved.ckey
-//    whether they name simple cards or composed junctions, so junction
-//    references enter the SQL frontier too.
-//    (PERFORMANCE NOTE, 2026-09-20 profile: the previous numbers-table scan
-//    cost O(10k positions x frontier x cards) per walk - up to 173 s per
-//    render on the corpus, because `c."key" = f.key` could not use the
-//    NOCASE-collated cards_key_index under BINARY comparison and fell back
-//    to the near-unselective trash index. The span chain removes the
-//    numbers table entirely and key comparisons are annotated COLLATE
-//    NOCASE - lossless for decko's lowercase-ASCII keys, and it lets the
-//    planner seek cards_key_index.)
-// 2. One driver.batch round trip: [walk+rows, type+side cards]. On the edge
-//    drivers this is the design's whole point (D1 batch = one HTTP request);
-//    LocalSqliteDriver wraps it in one transaction.
-// 3. JS verification + per-level fallback: after composing the fetched rows,
-//    the REAL parser (nest-syntax.ts) re-derives every reference. Anything
-//    the CTE could not resolve (compound references past what `resolved`
-//    composed, relative names, odd key characters, plural stems, content
-//    past the SQL scan cap) is fetched in per-level IN-query rounds - the
-//    prescribed "one batched round trip per level" shape - until closure.
-//    Junction sides resolve recursively: a depth-N chain takes O(N) rounds,
-//    each joining junction rows by their UNIQUE (left_id, right_id) pair.
-//    Correctness never depends on the SQL extraction.
+// 1. PER-KEY CLOSURE ROUNDS (the mechanism since the 2026-09-23 read-cost
+//    fix): the closure is driven in per-level rounds from the JS side - each
+//    round batches the three indexed query shapes (simple keys by
+//    cards_key_index seek, depth-2 junctions by their sides' key pair, deeper
+//    junctions by their sides' resolved id pair) and every fetched card's
+//    content is re-parsed with the REAL parser to collect the next level's
+//    targets, until no reference remains unresolved. The previous mechanism
+//    ran the whole resolution in ONE recursive-CTE statement whose `resolved`
+//    closure was seeded from EVERY card in the deck - it composed the deck's
+//    full compound-key universe per cold render (measured: the 2,279-card
+//    targeted deck read its 2,279-row universe twice per render; the 47k-row
+//    corpus deck materialized 47,232 rows per execution, ~237-352 ms locally,
+//    with O(deck x passes) rows read on D1 - scaling with DECK size, not page
+//    size). The rounds touch only the requested keys' paths: O(page).
+//    Spans cannot nest braces (Chunk::Nest full_re [^{}]*), so the JS span
+//    scan reproduces the chunker's spans exactly (nest-syntax.ts is the
+//    semantic authority).
+// 2. One driver.batch round trip for the FIRST round: the render engine's
+//    permission/codename/structure statements fold into it, so a cold render
+//    still pays ONE round trip for the engine-level state (the #1282 fold);
+//    each further closure level is one batched round trip of its own. On the
+//    edge drivers a batch is literally one HTTP request; LocalSqliteDriver
+//    wraps each batch in one transaction.
+// 3. JS verification at every level: the REAL parser (nest-syntax.ts)
+//    re-derives every reference, so correctness never depends on a key
+//    transform. Junction sides resolve recursively: a depth-N chain takes
+//    O(N) rounds, each joining junction rows by their UNIQUE
+//    (left_id, right_id) pair; unknown names simply stop the rounds - the
+//    render's nest fetch decides what an unknown nest means (wave 3).
 //
 // All fetching is read-only (SELECT); the write path is another stream.
 
@@ -52,26 +47,24 @@ import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
 import type { DbLexicon } from "../fetch/lexicon.js";
 import { referencedNames } from "./nest-syntax.js";
 
-/** Content longer than this is not span-scanned in SQL (the JS fallback
- *  rounds stay correct past the cap; 10k chars is generous for real decks). */
-const SQL_CONTENT_SCAN_CAP = 10_000;
-
-/** Safety bound for the fallback rounds (BFS over levels). */
-const MAX_FALLBACK_ROUNDS = 25;
+/** Safety bound for the closure rounds (BFS over levels). */
+const MAX_CLOSURE_ROUNDS = 25;
 
 export interface PrefetchStats {
   /** driver.batch round trips issued. */
   batches: number;
   /** individual SQL statements issued (batch statements count one each). */
   statements: number;
-  /** JS-verification fallback rounds (0 when the CTE covered everything). */
+  /** closure rounds run (per-level batches; one minimum on a cold closure,
+   *  since the engine-level folds ride round 0's batch). */
   fallbackRounds: number;
   /** cards composed into the fetch cache. */
   cards: number;
   /** Results of `additionalStatements` (present only when they were
-   *  supplied and the closure batch actually ran). The permissions stream
-   *  folds its read-rule resolution in here so the cold render stays ONE
-   *  round trip (decko-commons/decko#1282 shape). */
+   *  supplied and the first round's batch actually ran). The permissions
+   *  stream folds its read-rule resolution in here so the cold render stays
+   *  ONE round trip for the engine-level state (decko-commons/decko#1282
+   *  shape). */
   additionalResults?: SQLQueryResult[];
 }
 
@@ -130,102 +123,6 @@ function toRawRow(row: CardsRow): RawRow {
   };
 }
 
-/**
- * The recursive walk. `frontier(t, rest)` seeds with the root key; each
- * frontier row is either an unresolved target (rest IS NULL) or a scan
- * cursor (rest = content still to search). The recursive arms:
- *   A. seed the scan of a matched target (via the `resolved` key closure, so
- *      junction composed keys match too) - one substr, only nest-bearing
- *      content;
- *   B1. advance one '{{' span (slice the cursor);
- *   B2. emit the span's best-effort key (cut at '|', trim, lower,
- *       spaces->underscores) as a new unresolved target;
- *   B3. mark the scan done (back to rest IS NULL - a row that already
- *       exists, so UNION dedups it and recursion stops).
- * Rows are pure functions of (key, scan position), so cycles terminate.
- */
-function walkStatement(rootKey: string, finalSelect: string): SQLStatement {
-  const at = `instr(f.rest, '{{')`;
-  const restAfter = `substr(f.rest, ${at} + 2)`;
-  const closeAt = `instr(substr(f.rest, ${at} + 2), '}}')`;
-  const span = `substr(f.rest, ${at} + 2, ${closeAt} - 1)`;
-  const cutOptions =
-    `CASE WHEN instr(${span}, '|') = 0 THEN ${span} ` +
-    `ELSE substr(${span}, 1, instr(${span}, '|') - 1) END`;
-  const keyExpr = `lower(replace(trim(${cutOptions}), ' ', '_'))`;
-  const sql =
-    `WITH RECURSIVE\n` +
-    // Composed-key closure over ALL rows (DbLexicon.nameToLex in SQL):
-    // simple cards by their key column, junction rows by their sides - one
-    // joint per pass, both orientations, UNION dedups (rows are pure
-    // functions of the row id, so cycles terminate).
-    // The unary + on j.trash keeps the planner OFF cards_trash_index inside
-    // the recursive arms: without ANALYZE, SQLite costs an indexed
-    // trash = 0 at ~10 rows when the scan is ~40k, and it picks that index
-    // over the left_id/right_id seeks - measured 150 ms -> 6+ minutes per
-    // cold prepare on the 47k-row corpus deck (2026-09-21). Seek-driving
-    // terms (l.id/r.id) keep their index paths; + is a value no-op.
-    `resolved(id, ckey) AS (\n` +
-    `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
-    `  UNION\n` +
-    `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-    `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
-    `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-    `  UNION\n` +
-    `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-    `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
-    `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
-    `),\n` +
-    `frontier(t, rest) AS (\n` +
-    `  SELECT ?, NULL\n` +
-    `  UNION\n` +
-    `  SELECT f.t, substr(c.db_content, 1, ${SQL_CONTENT_SCAN_CAP})\n` +
-    `  FROM frontier f\n` +
-    `  JOIN resolved rs ON rs.ckey = f.t\n` +
-    `  JOIN cards c ON c.id = rs.id AND c.trash = 0\n` +
-    `  WHERE f.rest IS NULL AND c.db_content LIKE '%{{%'\n` +
-    `  UNION\n` +
-    `  SELECT f.t, ${restAfter} FROM frontier f\n` +
-    `   WHERE f.rest IS NOT NULL AND ${at} > 0\n` +
-    `  UNION\n` +
-    `  SELECT DISTINCT ${keyExpr}, NULL FROM frontier f\n` +
-    `   WHERE f.rest IS NOT NULL AND ${at} > 0 AND ${closeAt} > 1\n` +
-    `  UNION\n` +
-    `  SELECT f.t, NULL FROM frontier f\n` +
-    `   WHERE f.rest IS NOT NULL AND ${at} = 0\n` +
-    `)\n` +
-    finalSelect;
-  return { sql, params: [rootKey] };
-}
-
-const SELECT_WALKED =
-  `SELECT DISTINCT c.* FROM resolved rs\n` +
-  `JOIN frontier f ON f.t = rs.ckey\n` +
-  `JOIN cards c ON c.id = rs.id`;
-
-/** Type cards (type names for data attributes + set keys) and side cards
- *  (lexicon composition of compound names + TYPE_PLUS_RIGHT left types) of
- *  everything the walk reached. The side expansion is RECURSIVE to
- *  fixpoint (`reached` = walked rows ∪ transitive sides): a junction chain
- *  needs its sides' sides so every Lexicon#write composes in-batch — a
- *  one-level expansion leaves mid-chain junctions uncomposed and the
- *  composition falls back to cold per-card lexicon queries at render time
- *  (measured: 3 extra round trips per chain level). The leading comma
- *  continues walkStatement's WITH list (resolved, frontier, reached). */
-const SELECT_TYPE_AND_SIDE =
-  `, reached(id) AS (\n` +
-  `  SELECT rs.id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey\n` +
-  `  UNION\n` +
-  `  SELECT s.id FROM reached r\n` +
-  `    JOIN cards j ON j.id = r.id AND j.trash = 0\n` +
-  `    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n` +
-  `)\n` +
-  `SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (\n` +
-  `  SELECT id FROM reached\n` +
-  `  UNION SELECT j.type_id FROM reached r JOIN cards j ON j.id = r.id\n` +
-  `    WHERE j.type_id IS NOT NULL\n` +
-  `)`;
-
 export interface PrefetchContext {
   driver: SQLDatabaseDriver;
   lexicon: DbLexicon;
@@ -234,9 +131,10 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
-  /** Independent statements carried in the SAME closure batch (their
-   *  results come back on stats.additionalResults). Must not depend on the
-   *  walk's output — they execute alongside it in one round trip. */
+  /** Independent statements carried in the SAME batch as the first closure
+   *  round (their results come back on stats.additionalResults). Must not
+   *  depend on the closure's output — they execute alongside it in one
+   *  round trip. */
   additionalStatements?: SQLStatement[];
 }
 
@@ -252,28 +150,9 @@ export async function prefetchInclusionClosure(
   const stats: PrefetchStats = { batches: 0, statements: 0, fallbackRounds: 0, cards: 0 };
   if (root.name === undefined || root.key === undefined) return stats;
 
-  const { driver } = ctx;
-
-  // --- mechanism 1+2: the SQL walk, one batched round trip ------------------
-  const additional = ctx.additionalStatements ?? [];
-  const batch = await driver.batch([
-    walkStatement(root.key, SELECT_WALKED),
-    walkStatement(root.key, SELECT_TYPE_AND_SIDE),
-    ...additional,
-  ]);
-  stats.batches += 1;
-  stats.statements += 2 + additional.length;
-  if (additional.length > 0) stats.additionalResults = batch.slice(2);
-  const walkedRows = ((batch[0]?.rows ?? []) as CardsRow[]).map(toRawRow);
-  const sideRows = ((batch[1]?.rows ?? []) as CardsRow[]).map(toRawRow);
-
-  // Compose + cache everything (idempotent with the fetch cache).
-  const allRows = [...sideRows, ...walkedRows];
-  if (!allRows.some((row) => row.id === root.id)) allRows.push(recordToRawRow(root));
-  const composed = await composeAndCache(allRows, ctx, stats);
-
-  // --- mechanism 3: JS verification + per-level fallback --------------------
-  await verifyClosure([recordToRawRow(root), ...walkedRows], composed, ctx, stats);
+  const rootRow = recordToRawRow(root);
+  const composed = await composeAndCache([rootRow], ctx, stats);
+  await driveClosure([rootRow], composed, ctx, stats);
   return stats;
 }
 
@@ -301,7 +180,7 @@ function recordToRawRow(record: CardRecord): RawRow {
  * lexicon (Lexicon#write - lib/card/lexicon.rb#write) and write every record
  * into the fetch cache. Composing through the warmed lexicon costs zero
  * queries. Returns the composed records so callers can index them by key
- * (the junction-closure walk needs composed-key -> id).
+ * (the junction-closure rounds need composed-key -> id).
  */
 async function composeAndCache(
   rows: RawRow[],
@@ -313,7 +192,7 @@ async function composeAndCache(
 
   // Bottom-up name composition over the row map (sides before junctions),
   // so each Lexicon#write carries the composed name like Ruby's would.
-  // Sides cached by an EARLIER call (previous fallback rounds) resolve
+  // Sides cached by an EARLIER call (previous closure rounds) resolve
   // through the lexicon - warm-cache reads, zero queries - so a junction
   // fetched in round N composes against sides fetched in round N-1.
   const names = new Map<number, DeckoName>();
@@ -410,20 +289,25 @@ function rowToCardsRow(row: RawRow): CardsRow {
 }
 
 /**
- * The semantic authority: parse every fetched card's content with the real
- * parser; any reference not already resolved is fetched here, in per-level
- * rounds (the prescribed one-batch-per-level shape).
+ * The closure driver: BFS over inclusion levels. Every round collects the
+ * not-yet-known reference targets from everything fetched so far (the REAL
+ * parser - the semantic authority), fetches them in ONE batched round trip,
+ * composes + caches the fetched rows, and repeats until no reference remains
+ * or the safety bound hits.
  *
  * Junction handling (the 2020 NULL-key convention): a compound reference
  * resolves through its SIDES, exactly the walk DbLexicon.nameToLex does -
  * simple sides by key, compound sides recursively (each round resolves
  * deeper sides first, then the junction row joins its sides' ids by the
  * UNIQUE (left_id, right_id) pair). Depth-2 pairs keep the direct side-key
- * join (one round); a depth-N chain takes O(N) rounds. Unknown names simply
- * stop the rounds - the render's nest fetch decides what an unknown nest
- * means (wave 3).
+ * join (one round); a depth-N chain takes O(N) rounds.
+ *
+ * `ctx.additionalStatements` (the render engine's permission / codename /
+ * structure folds) rides the FIRST round's batch: a cold render keeps the
+ * one-round-trip engine-state fold, and their results come back on
+ * stats.additionalResults in order.
  */
-async function verifyClosure(
+async function driveClosure(
   scanRows: RawRow[],
   composed: CardRecord[],
   ctx: PrefetchContext,
@@ -461,8 +345,40 @@ async function verifyClosure(
   };
   collect(scanRows);
 
-  for (let round = 0; round < MAX_FALLBACK_ROUNDS && pending.size > 0; round++) {
-    stats.fallbackRounds += 1;
+  const additional = ctx.additionalStatements ?? [];
+  // Transitive side priming (the old SQL walk's `reached` closure): the
+  // synchronous render path reads SIDE cards from the enriched render-card
+  // map (isRuleCard / ruleCandidateNames / computeIsRuleSync), so every
+  // junction row's side rows must be composed into renderCards too - not
+  // just into the fetch cache. The ids ride each round's batch (round 0
+  // primes the root's sides; round N primes the sides of the rows the
+  // previous round fetched). Primed side rows are composed + enriched but
+  // their content is NOT scanned for references (exactly the old reached
+  // semantics: only walked rows fed the frontier).
+  const seenIds = new Set<number>();
+  for (const row of scanRows) seenIds.add(row.id);
+  const nextSideIds = (rows: RawRow[]): number[] => {
+    const ids: number[] = [];
+    for (const row of rows) {
+      for (const sideId of [row.leftId, row.rightId]) {
+        if (sideId === null || sideId === undefined || seenIds.has(sideId)) continue;
+        seenIds.add(sideId);
+        ids.push(sideId);
+      }
+    }
+    return ids;
+  };
+  let sideIdsToPrime = nextSideIds(scanRows);
+
+  for (let round = 0; round < MAX_CLOSURE_ROUNDS; round++) {
+    const firstRound = round === 0;
+    if (
+      pending.size === 0 &&
+      sideIdsToPrime.length === 0 &&
+      !(firstRound && additional.length > 0)
+    ) {
+      return;
+    }
     const simpleKeys: string[] = [];
     const sideKeyPairs: { left: string; right: string }[] = [];
     const sideIdPairs: { leftId: number; rightId: number }[] = [];
@@ -500,51 +416,102 @@ async function verifyClosure(
       }
     }
 
-    const fetched: RawRow[] = [];
+    // The round's statements (only the non-empty shapes ride the batch).
+    const statements: SQLStatement[] = [];
+    const collectors: ((rows: CardsRow[]) => RawRow[])[] = [];
     if (simpleKeys.length > 0) {
       const placeholders = simpleKeys.map(() => "?").join(", ");
-      const result = await ctx.driver.query<CardsRow>(
-        // COLLATE NOCASE matches the collation of cards_key_index (the
-        // column itself is BINARY); lossless for decko's lowercase keys -
-        // see the module perf note.
-        `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
-        simpleKeys,
-      );
-      stats.statements += 1;
-      for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
+      // COLLATE NOCASE matches the collation of cards_key_index (the
+      // column itself is BINARY); lossless for decko's lowercase keys -
+      // the seek is the O(page) lookup the rounds exist for.
+      statements.push({
+        sql: `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+        params: simpleKeys,
+      });
+      collectors.push((rows) => rows.map(toRawRow));
     }
     if (sideKeyPairs.length > 0) {
       const leftKeys = sideKeyPairs.map((pair) => pair.left);
       const rightKeys = sideKeyPairs.map((pair) => pair.right);
       const placeholdersL = leftKeys.map(() => "?").join(", ");
       const placeholdersR = rightKeys.map(() => "?").join(", ");
-      const result = await ctx.driver.query<CardsRow>(
-        `SELECT DISTINCT j.* FROM cards j\n` +
-        `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
-        `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
-        ` WHERE j.trash = 0`,
-        [...leftKeys, ...rightKeys],
-      );
-      stats.statements += 1;
-      for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
+      statements.push({
+        sql:
+          `SELECT DISTINCT j.* FROM cards j\n` +
+          `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
+          `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
+          ` WHERE j.trash = 0`,
+        params: [...leftKeys, ...rightKeys],
+      });
+      collectors.push((rows) => rows.map(toRawRow));
     }
     if (sideIdPairs.length > 0) {
       const tuple = sideIdPairs.map(() => `(j.left_id = ? AND j.right_id = ?)`).join(" OR ");
       const params = sideIdPairs.flatMap((pair) => [pair.leftId, pair.rightId]);
-      const result = await ctx.driver.query<CardsRow>(
-        `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
+      statements.push({
+        sql: `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
         params,
-      );
-      stats.statements += 1;
-      for (const row of result.rows as CardsRow[]) fetched.push(toRawRow(row));
+      });
+      collectors.push((rows) => rows.map(toRawRow));
+    }
+    // Side priming rides LAST in the batch; its rows are composed +
+    // enriched but not content-scanned (closureRows vs sideRows below).
+    let sidePrimeSlot = -1;
+    if (sideIdsToPrime.length > 0) {
+      const placeholders = sideIdsToPrime.map(() => "?").join(", ");
+      statements.push({
+        sql: `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+        params: sideIdsToPrime,
+      });
+      sidePrimeSlot = statements.length - 1;
+      collectors.push((rows) => rows.map(toRawRow));
     }
 
-    if (fetched.length === 0) return; // unknown names: stop, render decides
-    const newComposed = await composeAndCache(fetched, ctx, stats);
+    let closureRows: RawRow[] = [];
+    let sideRows: RawRow[] = [];
+    let additionalResults: SQLQueryResult[] | undefined;
+    const splitResults = (results: SQLQueryResult[]): void => {
+      results.forEach((result, i) => {
+        const rows = collectors[i]!(result.rows as CardsRow[]);
+        if (i === sidePrimeSlot) sideRows.push(...rows);
+        else closureRows.push(...rows);
+      });
+    };
+    if (firstRound && additional.length > 0) {
+      // ONE batched round trip: the round's fetches + the engine's folds.
+      const batch = await ctx.driver.batch([...statements, ...additional]);
+      stats.batches += 1;
+      stats.statements += statements.length + additional.length;
+      additionalResults = batch.slice(statements.length);
+      splitResults(batch.slice(0, statements.length));
+    } else {
+      // One batched round trip for the level (single transaction locally;
+      // one HTTP request per round on the edge drivers).
+      const batch = await ctx.driver.batch(statements);
+      stats.batches += 1;
+      stats.statements += statements.length;
+      splitResults(batch);
+    }
+    stats.fallbackRounds += 1;
+
+    if (closureRows.length === 0 && sideRows.length === 0) {
+      // Unknown names: stop, render decides. (First round with folds only:
+      // the additionalResults were still delivered above.)
+      stats.additionalResults = additionalResults;
+      return;
+    }
+    const newComposed = await composeAndCache([...sideRows, ...closureRows], ctx, stats);
     seedKeys(newComposed); // junction rows resolve through their composed keys
-    collect(fetched); // their content references join the pending set
+    collect(closureRows); // their content references join the pending set
     for (const nameStr of [...pending]) {
       if (known.has(DeckoName.parse(nameStr).key)) pending.delete(nameStr);
+    }
+    // The sides of everything this round composed prime next round (rows
+    // already fetched are in seenIds, so only genuinely-unseen sides prime).
+    for (const row of [...sideRows, ...closureRows]) seenIds.add(row.id);
+    sideIdsToPrime = nextSideIds([...sideRows, ...closureRows]);
+    if (firstRound && additionalResults !== undefined) {
+      stats.additionalResults = additionalResults;
     }
   }
 }

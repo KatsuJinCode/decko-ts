@@ -265,6 +265,101 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
+  it("rendering :closed and :title of a Search-type card with non-JSON content does NOT raise (capture census: 105/105 real bytes)", async () => {
+    // Corpus arbiter (R4 lazy-parse seam): across all 105 corpus search-type
+    // cards, :closed and :title captured REAL bytes (105/105 each) while
+    // :open/:content captured CAPTURE_ERROR on the 24 invalid-content cards.
+    // Ruby parses only the result-rendering views; the raise lives at the
+    // dispatch boundary (engine.resolveView), view-gated on :open/:content.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, {
+        id: 101,
+        name: "broken search card",
+        typeId: 30,
+        dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
+      });
+      const closedHtml = await storage.engine.render("broken_search_card", "closed");
+      expect(closedHtml).toContain("broken_search_card-closed-view");
+      const titleHtml = await storage.engine.render("broken_search_card", "title");
+      expect(typeof titleHtml).toBe("string");
+      // The parsing views still raise at the dispatch boundary.
+      let openCaptured: unknown;
+      try {
+        await storage.engine.render("broken_search_card", "open");
+      } catch (err) {
+        openCaptured = err;
+      }
+      expect((openCaptured as Error)?.constructor.name).toBe("Card::Error::BadQuery");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("a search-TYPE rule card (right part a setting) with non-JSON content does NOT raise on :open (capture census: rule search cards render real bytes)", async () => {
+    // Corpus arbiter (R4 lazy-parse seam, rule asymmetry): search-type RULE
+    // cards — 3-part name, right part a setting ("*layout+*right+*content
+    // options", corpus:316/571/9610) — captured REAL :open/:content bytes
+    // (48 *content options + 27 *structure rules, zero CAPTURE_ERROR), while
+    // every CAPTURE_ERROR search card is non-rule. Ruby's dispatched view for
+    // a rule card is not the cardtype's parse view, so the boundary skips
+    // rule cards (computeIsRuleSync). Non-rule search cards still raise.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      // The rule predicate's type anchors (render.ts computeIsRuleSync):
+      // left part's type is the SET cardtype, right part's type is the
+      // SETTING cardtype.
+      await seedCard(storage, { id: 260, name: "exi", codename: "set", typeId: 2 });
+      await seedCard(storage, { id: 261, name: "Setting", codename: "setting", typeId: 2 });
+      await seedCard(storage, { id: 270, name: "Lesson", typeId: 2 });
+      await seedCard(storage, { id: 271, name: "*right", typeId: 261 });
+      await seedCard(storage, {
+        id: 272,
+        name: "Lesson+*right",
+        leftId: 270,
+        rightId: 271,
+        typeId: 260,
+      });
+      await seedCard(storage, {
+        id: 273,
+        name: "*content options",
+        typeId: 261,
+      });
+      await seedCard(storage, {
+        id: 274,
+        name: "Lesson+*right+*content options",
+        leftId: 272,
+        rightId: 273,
+        typeId: 30, // search TYPE card: the cardtype is search, the SET says rule
+        dbContent: "lkxchgttdixjvgdasd",
+      });
+      // The rule card renders (no parse) — the corpus shape.
+      const openHtml = await storage.engine.render("Lesson+*right+*content_options", "open");
+      expect(typeof openHtml).toBe("string");
+      expect(openHtml).not.toContain("CAPTURE_ERROR");
+      // A NON-rule search card with the same content shape still raises.
+      await seedCard(storage, {
+        id: 275,
+        name: "plain broken search",
+        typeId: 30,
+        dbContent: "lkxchgttdixjvgdasd",
+      });
+      let captured: unknown;
+      try {
+        await storage.engine.render("plain_broken_search", "open");
+      } catch (err) {
+        captured = err;
+      }
+      expect((captured as Error)?.constructor.name).toBe("Card::Error::BadQuery");
+    } finally {
+      storage.close();
+    }
+  });
+
   // ----- the corpus-v2 replay sentinel contract ----------------------------
 
   it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:77 capture recorded", () => {

@@ -1,0 +1,1003 @@
+{
+  "convention": "EQP plan-shape + rows-matched upper-bound accounting, x1, D1 rows_read-aligned; NOT rows-examined telemetry",
+  "phases": [
+    {
+      "phase": "BEFORE",
+      "statsPresent": false,
+      "sizes": {
+        "cards": 2279,
+        "refs": 531
+      },
+      "indexes": [
+        "cards_codename_index",
+        "cards_created_at_index",
+        "cards_key_index",
+        "cards_left_id_index",
+        "cards_name_index",
+        "cards_read_rule_id_index",
+        "cards_right_id_index",
+        "cards_trash_index",
+        "cards_type_id_index",
+        "cards_updated_at_index",
+        "index_cards_on_left_id_and_right_id"
+      ],
+      "battery": [
+        {
+          "label": "home",
+          "statements": 11,
+          "estRows": 29631,
+          "top": [
+            {
+              "sql": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id =   (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id =   (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+              "plan": "SEARCH read_rules USING INDEX cards_trash_index (trash=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_trash_index (trash=?) | SEARCH sets USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_trash_index (trash=?) | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?)",
+              "execs": 1,
+              "estRowsEach": 6838,
+              "estRowsTotal": 6838,
+              "basis": "pk=1 + cards_trash_index.trash=0=2279 + cards_trash_index.trash=0=2279 + cards_trash_index.trash=0=2279 + card_references_referer_id_index.referer_id=undefined=0"
+            },
+            {
+              "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id =   (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_trash_index (trash=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 6837,
+              "estRowsTotal": 6837,
+              "basis": "cards_trash_index.trash=0=2279 + cards_trash_index.trash=0=2279 + cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 3,
+              "estRowsEach": 2279,
+              "estRowsTotal": 6837,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT\n  (CASE\n     WHEN s.\"key\" IS NOT NULL THEN s.\"key\"\n     WHEN sl.\"key\" IS NOT NULL THEN sl.\"key\" || '+' || p.\"key\"\n     ELSE NULL\n   END) || '+' || st.\"key\" AS composed_key,\n  r.db_content AS db_content\nFROM cards r\nJOIN cards st ON st.id = r.right_id\nLEFT JOIN cards s ON s.id = r.left_id\nLEFT JOIN cards sl ON sl.id = s.left_id\nLEFT JOIN cards p ON p.id = s.right_id\nWHERE r.trash = 0\n  AND r.right_id = (SELECT id FROM cards\n                    WHERE (\"key\" = '*structure' OR name = '*structure')\n                      AND trash = 0 ORDER BY id LIMIT 1)",
+              "plan": "SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_trash_index (trash=?) | REUSE SUBQUERY 1 | SEARCH r USING INDEX cards_right_id_index (right_id=?) | SEARCH s USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH sl USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH p USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "execs": 1,
+              "estRowsEach": 2280,
+              "estRowsTotal": 2280,
+              "basis": "pk=1 + cards_trash_index.trash=0=2279 + cards_right_id_index.right_id=undefined=0"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'deckobot') AND trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            }
+          ]
+        },
+        {
+          "label": "point-read (Scale Page 173x)",
+          "statements": 1,
+          "estRows": 2279,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            }
+          ]
+        },
+        {
+          "label": "depth-32 chain (Depth Root)",
+          "statements": 32,
+          "estRows": 2310,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
+              "execs": 31,
+              "estRowsEach": 1,
+              "estRowsTotal": 31,
+              "basis": "uniq(cards_key_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "500-item pointer (Big Pointer)",
+          "statements": 3,
+          "estRows": 2281,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            }
+          ]
+        },
+        {
+          "label": "CQL list (All Scale Page Probe)",
+          "statements": 103,
+          "estRows": 2380,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 51,
+              "estRowsEach": 1,
+              "estRowsTotal": 51,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 50,
+              "estRowsEach": 1,
+              "estRowsTotal": 50,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT DISTINCT c0.*, c1.db_content FROM cards c0 LEFT JOIN cards c1 ON c0.id = c1.left_id AND c1.key = ? AND c1.trash is false WHERE (c0.name REGEXP ? OR c0.db_content REGEXP ?) AND c0.trash is false ORDER BY c1.db_content asc LIMIT 50",
+              "plan": "SCAN c0 | SEARCH c1 USING INDEX cards_left_id_index (left_id=?) LEFT-JOIN | USE TEMP B-TREE FOR DISTINCT | USE TEMP B-TREE FOR ORDER BY",
+              "execs": 1,
+              "estRowsEach": 0,
+              "estRowsTotal": 0,
+              "basis": "cards_left_id_index.left_id=asc=0 + SCAN(c0)=0"
+            }
+          ]
+        },
+        {
+          "label": "denied (Restricted Page 7)",
+          "statements": 1,
+          "estRows": 2279,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            }
+          ]
+        },
+        {
+          "label": "large content (Large Doc 1)",
+          "statements": 1,
+          "estRows": 2279,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            }
+          ]
+        }
+      ],
+      "hashes": {
+        "home": "ea926430d301a13ffb22ab1825284d8cf0fa969976213c5dba7cbcbecf57f72d",
+        "point-read (Scale Page 173x)": "bafab897f0600d489f228558dc562937b8be297a40dcd638ca65c536eb088eae",
+        "depth-32 chain (Depth Root)": "3253a5039b7fe12e098c2cff0fe9d6eaed6a1951dd329a1bb943caffa320609c",
+        "500-item pointer (Big Pointer)": "c9c43c59c0ff03e9ab60f7f85858660f73fa97a3fe3d8a5d1ca2063d9f9093a7",
+        "CQL list (All Scale Page Probe)": "6e2c5e899c2bf22d68158666c26813ecc6fd74acc272922cd9e4c76dd919a57c",
+        "denied (Restricted Page 7)": "e85746c8b727a5a7b3269c71d764d984d925944a8f9892d70b3516137eb614fa",
+        "large content (Large Doc 1)": "bc1509d3d163cfb8668e7c1b52e578b6734622c1ce12ff04117c2be5dbb853dd",
+        "junction Depth Level 30+Depth Level 31": "9ef904485ce4fb019a4afd51d0deaf1ccdcc2c18ed661436c431723d89b01c1a",
+        "junction Depth Level 29+Depth Level 30": "2d7ca30c5e141b8a772a3f64b34f4e29164f6b85b731954c2f5bf25f9d55a23e",
+        "junction Depth Level 28+Depth Level 29": "cf6856a49155fc67203f592978b8ae687c88df8a07f4ea50a56c5bca7e6c34cf",
+        "junction Depth Level 27+Depth Level 28": "440291b8bdf6d30598062686509cf45b7c88a9395699ac40eea28aab66fa6ea0",
+        "junction Depth Level 26+Depth Level 27": "da6ad615a360a99030b0123257cbec788509c24aeb7cfa97524bb1bb19292d57",
+        "junction Depth Level 25+Depth Level 26": "e97e437e07a2b45652b936d9fbed750410c5b2a8f6bcabd89bebd05254d0c79a",
+        "junction Depth Level 24+Depth Level 25": "6f3bc609ed0611fe15ece7203254e5ddeefa91adafec6d109297124d3c8376ec",
+        "junction Depth Level 23+Depth Level 24": "450bc346b167e3c81248c459fcd622cc0390eba153a991f34d4ba863d980285f",
+        "junction Depth Level 22+Depth Level 23": "3fad3103e6bee9c3e1b2aa3db93848d286930a0d57c19f076e135f74d6e0a927",
+        "junction Depth Level 21+Depth Level 22": "8a158cc3b9de5c1d42fb3418b6b1c88010ab5ca6f58574ee32e220bffc2f8df3",
+        "junction Depth Level 20+Depth Level 21": "4d1c5d05fc0300bf95e0e24a6242197ae80481d2d994a3aaed58016f506f8122",
+        "junction Depth Level 19+Depth Level 20": "e4a04f8e7a9396658ae80d7cee26050bd22a0cc8704a996039dfa7f8d2b96614",
+        "junction Depth Level 18+Depth Level 19": "af994bbb4870bf1375c9a34ab7505221a0940df15d53295b18bf54be132be6ac",
+        "junction Depth Level 17+Depth Level 18": "61f82450fceefa7dc3b4bfef884dbda5e172b1bd7186236c09fbc2bcc19ef6c3",
+        "junction Depth Level 16+Depth Level 17": "52a6f0c434c4b5e57fb93f8f2075e7aac0d47bf4e7757f83135ef2cdfe68b265",
+        "junction Depth Level 15+Depth Level 16": "c707ec69f7747ed5c5d26dd0c85ba5f1667574ecd3285ccf4acd7dd5a66d11b2",
+        "junction Depth Level 14+Depth Level 15": "747e37212d758e48e017f711263e3bf71fccd2a8eb72664006981ceed9269b38",
+        "junction Depth Level 13+Depth Level 14": "e1922bf459107e27071c941399867e6ab679a94c536d7437c3f8bf550fa891ed",
+        "junction Depth Level 12+Depth Level 13": "2cfa4b405380750c077420ef23a9cf1f6bff78cb6f4b6eb0bce5dcce5d8b344d",
+        "junction Depth Level 11+Depth Level 12": "8e40a3f36f446c87190e2198c99db297ddaf24aab56a6dd1b611112edc77a1ee",
+        "junction Depth Level 10+Depth Level 11": "1a926a021b72ff3038e74d47c5766cc2b6e8255d73a8acd238e9829342b48c7e",
+        "junction Depth Level 9+Depth Level 10": "db6d4b6afca6edf2a5d77c414825d202bd12af54eff8a81b9842e142c4481a70",
+        "junction Depth Level 8+Depth Level 9": "f30786e838e18f75a26a1366fdebce3f7fa48edd04c846d9f8099cee809405ad",
+        "junction Depth Level 7+Depth Level 8": "958465599acd243d71b2c8531d3f9acaa1ce7bd8854dcccf549b5f2f7e20cf85",
+        "junction Depth Level 6+Depth Level 7": "213d28d1e37e7e48e6e79c3b72f52c2ec67d9041a333e07d7ff3a257bc686f1b",
+        "junction Depth Level 5+Depth Level 6": "01caba63df2e7bd0ac6196e93fc596cc7b5daaeefdcede5b914891654504f260",
+        "junction Depth Level 4+Depth Level 5": "99d7444c1d2290a86418b44b52f0a4359cc2db1f665af11ba29307686992ccf1",
+        "junction Depth Level 3+Depth Level 4": "459123a7b6e33e91f51eb030d37d67bc201266db20bd3c3a49d9980b6aa8b255",
+        "junction Depth Level 2+Depth Level 3": "b81c480ab0b8d9ef12e9637544ae7af15b3671a32c0f4fc4cd6c2467cb015e8f",
+        "junction Depth Level 1+Depth Level 2": "7f9e3f3bade20c4762a7f578b65dc896f642b30dc8a4028677a22294efe3a57d",
+        "junction Depth Root+Depth Level 1": "914c27b828abafadb59bef5c28518f5b9967ad34ce1843168cd477658e00aee0",
+        "junction Scale Page 1x+Scale Page 501x": "42d277e7c1b3f7bf4c4d103b42f61d9fbe519e9cb349ee2770d038b7645cb705",
+        "junction Scale Page 2x+Scale Page 502x": "1ad9ba6b407607646f946ee2a340ef2201eff5f545ac67988fc0aa2f21ef3335",
+        "junction Scale Page 3x+Scale Page 503x": "a8e0ddc252858e1c2e444d620810486b873dcbaf6422acdf4bae3947b82a7a46",
+        "junction Scale Page 4x+Scale Page 504x": "d2c0b0c7f4e983789acc11909582dbc984d62df44fa36bbffa85197c3fe0a343",
+        "junction Scale Page 5x+Scale Page 505x": "53649b2f6acbd5a78168044409b39ffa188b3384bb6de24952e68d849187ffb9",
+        "junction Scale Page 6x+Scale Page 506x": "54a14eaa2d53b3dc43c1dbb7e1a830980ee42a16080fe2fe33b81cf72a9de8d7",
+        "junction Scale Page 7x+Scale Page 507x": "9f9c92be677bde384cced950fea49001a1f88d897c008d4c352f68aac57b76ed",
+        "junction Scale Page 8x+Scale Page 508x": "19f63f008653b701c661640f079ea2c50bfc988626376273a1f526f20bb3967d",
+        "junction Scale Page 9x+Scale Page 509x": "51bf377fb8a0e479763ed7bcb2f0108aa4b7d1192d62b48e85a01605422504ce",
+        "junction Scale Page 10x+Scale Page 510x": "718bdee8e9487c88ca7e824a1e8ad1e8d783bd0156314f010d97ad4269610f13",
+        "junction Scale Page 11x+Scale Page 511x": "15bb51d25f0e3bf726fcf9f1cd3d6005ad3a2959c05944263dcd2df61a37ab6a",
+        "junction Scale Page 12x+Scale Page 512x": "b6f095aa14387c67e8c24869b5630733ec765ded4fc14b71cb50cb8f589a0c0e",
+        "junction Scale Page 13x+Scale Page 513x": "7c0485e35b1faef6f13da360427ecdadbbeb8a91aa1fa2cba22ec21a03fd9781",
+        "junction Scale Page 14x+Scale Page 514x": "eadc86f0f6382a12661821e26247e4b1ec341f167cf7ea0fd4358f78d17908f1",
+        "junction Scale Page 15x+Scale Page 515x": "75f4b141c700460ea284ec66afb631e3e0337869569e95c89a24a48da0321f77",
+        "junction Scale Page 16x+Scale Page 516x": "ed962269c17eb8ae690e4838626743cfa00ae6c74095315935c0a58b86ec4b14",
+        "junction Scale Page 17x+Scale Page 517x": "776d120f1ae0df49716b7cef9aaac58e0d96d8638452ff3d9cf4f8098ee026e1",
+        "junction Scale Page 18x+Scale Page 518x": "cab78421c55722361f515061fbc79859008a580d384cf3ae681bef5e608c95ba",
+        "junction Scale Page 19x+Scale Page 519x": "20a05e62f82da5f8fdb3e7a8f4dbf34d6b5050048972e3fb80ace4f61eb74385",
+        "junction Scale Page 20x+Scale Page 520x": "0217791184d151fa77220556f25c98f2f5df64369a1dcc831999a7af74d792e8",
+        "junction Scale Page 21x+Scale Page 521x": "e6c0c2c77f0a32cd9d12bdf03b4cc8db649a5e2e525baa6a5bb0a33df13782c2",
+        "junction Scale Page 22x+Scale Page 522x": "4d7437c1b3705d5a5ac74fc58d4f254afccadcd223395c769b642022ef037333",
+        "junction Scale Page 23x+Scale Page 523x": "5c3daf5559fbe99359b2c11d47a723183236a52eed9bf9b63cdc1f39858b58bc",
+        "junction Scale Page 24x+Scale Page 524x": "9b5115995574b84889ca09fc08fcbf577636279a095d670ba2d555ed70659e2b",
+        "junction Scale Page 25x+Scale Page 525x": "cf2ebd7fac2898d67715ac79149e60fb4c5ee005cda8afa211959b1a032bb61f",
+        "junction Scale Page 26x+Scale Page 526x": "5de832c38ce5d8ccbfc3ef67f4842dcab1c171a4c1cf83fccef65dcd7d4bc4ee",
+        "junction Scale Page 27x+Scale Page 527x": "ae0792231205359bd0ab7e19e3bbf587684798f247ec97d97325477dc42bd6f9",
+        "junction Scale Page 28x+Scale Page 528x": "b7ff03ae9c6217f3fb61a095a6242a7fa580b69259cdaa646f5c0de92c2fb238",
+        "junction Scale Page 29x+Scale Page 529x": "0fdaa5cafbb682a9b98e362295f119576fc2daa0c2f752c425f9d0539eb7db12",
+        "junction Scale Page 30x+Scale Page 530x": "e6ccb9a806aada4bd7456002b37119d6891f32922d6b5c033d15b97a1850571f",
+        "junction Scale Page 31x+Scale Page 531x": "f74fccc8568e4dd083460f0a074ccbb22a3890cfaa8f381c9d3db0cb9ee9dfad",
+        "junction Scale Page 32x+Scale Page 532x": "3662668905596aa45912401b835c084838c78c4748868015cf7e06e31f850571",
+        "junction Scale Page 33x+Scale Page 533x": "b4877546f4b7c7609b87c9b2dd2e1b094bbc7ed350540ae84738f3d5ce05b978",
+        "junction Scale Page 34x+Scale Page 534x": "4ab8e2b12326d3ef756792ac2f08441b6ab800c7b879d75df9c1d3f8de456176",
+        "junction Scale Page 35x+Scale Page 535x": "de6b2f7e37248c1da63270ff6d34584ce4e9db10aa79382f2be67ae8805dcd8f",
+        "junction Scale Page 36x+Scale Page 536x": "09efffdd4d0c27014c11aa71e40f07bcb2ba6c4ad24a1c042c2310b5acc25b08",
+        "junction Scale Page 37x+Scale Page 537x": "09ec57a524f5b857897b56cf6597265d47db3f468498d25e54fa4deced59b508",
+        "junction Scale Page 38x+Scale Page 538x": "e3b7a3989d52907a93263c4cf0f3c28821f4c0bfc5323052d42b07788f1b6b98",
+        "junction Scale Page 39x+Scale Page 539x": "41146bf4c470e19c06772a27bf6ebcc4e4727b08de6f41bfefb9e44b493318c2",
+        "junction Scale Page 40x+Scale Page 540x": "0ff130d69b757ceed58ee8c42a2ee5e1bd489849b8b8347dcb00eeff138122fa",
+        "junction Scale Page 41x+Scale Page 541x": "ca820e9326f27194fd0550fd9f9be27fffa2c80dbb83bd2c705a20a0bc7e0724",
+        "junction Scale Page 42x+Scale Page 542x": "a7e6801acec85f877b8574bdd3926d31bd9b9c7d55757cbda59fe89c867757f7",
+        "junction Scale Page 43x+Scale Page 543x": "bd45885796552f4f3228f51961434e9dc6e9599a4918c7440ce1cd8854f2de36",
+        "junction Scale Page 44x+Scale Page 544x": "a1a90e1ce75c7f1699d072c6ef6da2621ccd7cf3823016d0dc7261210dc16114",
+        "junction Scale Page 45x+Scale Page 545x": "5c88202484c21558cf27daffb2600af9e7a710cd8c9f88cf3b90cfbccaa34a52",
+        "junction Scale Page 46x+Scale Page 546x": "145412c3d7c9612580e3a15ca94a4761e1588c9b81a0f9aad2db48cec0547d0a",
+        "junction Scale Page 47x+Scale Page 547x": "be7daa3df3469b4443c27c41e9ab2890d7048e68813abab764f27ad4bd3490cd",
+        "junction Scale Page 48x+Scale Page 548x": "15595e6ab88d594750b76a1336d46b5c12ceb3c7ea01663991bb2924f4565c8d",
+        "junction Scale Page 49x+Scale Page 549x": "7cfd4d3ca3bb2ebc06bb50465b6d46aaf621fe6aca8b0b50e65907b00e38874e",
+        "junction Scale Page 50x+Scale Page 550x": "c4a11ced5b97e4b2205b5a1fb40b770752441d1d853893992b86a17feb57468c"
+      }
+    },
+    {
+      "phase": "AFTER-IDX",
+      "statsPresent": false,
+      "sizes": {
+        "cards": 2279,
+        "refs": 531
+      },
+      "indexes": [
+        "cards_codename_binary_index",
+        "cards_codename_index",
+        "cards_created_at_index",
+        "cards_key_binary_index",
+        "cards_key_index",
+        "cards_left_id_index",
+        "cards_name_index",
+        "cards_read_rule_id_index",
+        "cards_right_id_index",
+        "cards_trash_index",
+        "cards_type_id_index",
+        "cards_updated_at_index",
+        "index_cards_on_left_id_and_right_id"
+      ],
+      "battery": [
+        {
+          "label": "home",
+          "statements": 11,
+          "estRows": 11407,
+          "top": [
+            {
+              "sql": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id =   (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id =   (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+              "plan": "SEARCH read_rules USING INDEX cards_trash_index (trash=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SEARCH sets USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?)",
+              "execs": 1,
+              "estRowsEach": 2282,
+              "estRowsTotal": 2282,
+              "basis": "pk=1 + cards_trash_index.trash=0=2279 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1 + card_references_referer_id_index.referer_id=undefined=0"
+            },
+            {
+              "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id =   (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?)",
+              "execs": 1,
+              "estRowsEach": 2281,
+              "estRowsTotal": 2281,
+              "basis": "cards_trash_index.trash=0=2279 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1"
+            },
+            {
+              "sql": "SELECT\n  (CASE\n     WHEN s.\"key\" IS NOT NULL THEN s.\"key\"\n     WHEN sl.\"key\" IS NOT NULL THEN sl.\"key\" || '+' || p.\"key\"\n     ELSE NULL\n   END) || '+' || st.\"key\" AS composed_key,\n  r.db_content AS db_content\nFROM cards r\nJOIN cards st ON st.id = r.right_id\nLEFT JOIN cards s ON s.id = r.left_id\nLEFT JOIN cards sl ON sl.id = s.left_id\nLEFT JOIN cards p ON p.id = s.right_id\nWHERE r.trash = 0\n  AND r.right_id = (SELECT id FROM cards\n                    WHERE (\"key\" = '*structure' OR name = '*structure')\n                      AND trash = 0 ORDER BY id LIMIT 1)",
+              "plan": "SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_trash_index (trash=?) | REUSE SUBQUERY 1 | SEARCH r USING INDEX cards_right_id_index (right_id=?) | SEARCH s USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH sl USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH p USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "execs": 1,
+              "estRowsEach": 2280,
+              "estRowsTotal": 2280,
+              "basis": "pk=1 + cards_trash_index.trash=0=2279 + cards_right_id_index.right_id=undefined=0"
+            },
+            {
+              "sql": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'deckobot') AND trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_trash_index (trash=?)",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "cards_trash_index.trash=0=2279"
+            },
+            {
+              "sql": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+              "plan": "SCAN cards",
+              "execs": 1,
+              "estRowsEach": 2279,
+              "estRowsTotal": 2279,
+              "basis": "SCAN(cards)=2279"
+            },
+            {
+              "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 3,
+              "estRowsEach": 1,
+              "estRowsTotal": 3,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "point-read (Scale Page 173x)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "depth-32 chain (Depth Root)",
+          "statements": 32,
+          "estRows": 32,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
+              "execs": 31,
+              "estRowsEach": 1,
+              "estRowsTotal": 31,
+              "basis": "uniq(cards_key_index)=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "500-item pointer (Big Pointer)",
+          "statements": 3,
+          "estRows": 3,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            }
+          ]
+        },
+        {
+          "label": "CQL list (All Scale Page Probe)",
+          "statements": 103,
+          "estRows": 103,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 51,
+              "estRowsEach": 1,
+              "estRowsTotal": 51,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 50,
+              "estRowsEach": 1,
+              "estRowsTotal": 50,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT DISTINCT c0.*, c1.db_content FROM cards c0 LEFT JOIN cards c1 ON c0.id = c1.left_id AND c1.key = ? AND c1.trash is false WHERE (c0.name REGEXP ? OR c0.db_content REGEXP ?) AND c0.trash is false ORDER BY c1.db_content asc LIMIT 50",
+              "plan": "SCAN c0 | SEARCH c1 USING INDEX cards_key_binary_index (key=?) LEFT-JOIN | USE TEMP B-TREE FOR ORDER BY",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1 + SCAN(c0)=0"
+            }
+          ]
+        },
+        {
+          "label": "denied (Restricted Page 7)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "large content (Large Doc 1)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        }
+      ],
+      "hashes": {
+        "home": "ea926430d301a13ffb22ab1825284d8cf0fa969976213c5dba7cbcbecf57f72d",
+        "point-read (Scale Page 173x)": "bafab897f0600d489f228558dc562937b8be297a40dcd638ca65c536eb088eae",
+        "depth-32 chain (Depth Root)": "3253a5039b7fe12e098c2cff0fe9d6eaed6a1951dd329a1bb943caffa320609c",
+        "500-item pointer (Big Pointer)": "c9c43c59c0ff03e9ab60f7f85858660f73fa97a3fe3d8a5d1ca2063d9f9093a7",
+        "CQL list (All Scale Page Probe)": "6e2c5e899c2bf22d68158666c26813ecc6fd74acc272922cd9e4c76dd919a57c",
+        "denied (Restricted Page 7)": "e85746c8b727a5a7b3269c71d764d984d925944a8f9892d70b3516137eb614fa",
+        "large content (Large Doc 1)": "bc1509d3d163cfb8668e7c1b52e578b6734622c1ce12ff04117c2be5dbb853dd",
+        "junction Depth Level 30+Depth Level 31": "9ef904485ce4fb019a4afd51d0deaf1ccdcc2c18ed661436c431723d89b01c1a",
+        "junction Depth Level 29+Depth Level 30": "2d7ca30c5e141b8a772a3f64b34f4e29164f6b85b731954c2f5bf25f9d55a23e",
+        "junction Depth Level 28+Depth Level 29": "cf6856a49155fc67203f592978b8ae687c88df8a07f4ea50a56c5bca7e6c34cf",
+        "junction Depth Level 27+Depth Level 28": "440291b8bdf6d30598062686509cf45b7c88a9395699ac40eea28aab66fa6ea0",
+        "junction Depth Level 26+Depth Level 27": "da6ad615a360a99030b0123257cbec788509c24aeb7cfa97524bb1bb19292d57",
+        "junction Depth Level 25+Depth Level 26": "e97e437e07a2b45652b936d9fbed750410c5b2a8f6bcabd89bebd05254d0c79a",
+        "junction Depth Level 24+Depth Level 25": "6f3bc609ed0611fe15ece7203254e5ddeefa91adafec6d109297124d3c8376ec",
+        "junction Depth Level 23+Depth Level 24": "450bc346b167e3c81248c459fcd622cc0390eba153a991f34d4ba863d980285f",
+        "junction Depth Level 22+Depth Level 23": "3fad3103e6bee9c3e1b2aa3db93848d286930a0d57c19f076e135f74d6e0a927",
+        "junction Depth Level 21+Depth Level 22": "8a158cc3b9de5c1d42fb3418b6b1c88010ab5ca6f58574ee32e220bffc2f8df3",
+        "junction Depth Level 20+Depth Level 21": "4d1c5d05fc0300bf95e0e24a6242197ae80481d2d994a3aaed58016f506f8122",
+        "junction Depth Level 19+Depth Level 20": "e4a04f8e7a9396658ae80d7cee26050bd22a0cc8704a996039dfa7f8d2b96614",
+        "junction Depth Level 18+Depth Level 19": "af994bbb4870bf1375c9a34ab7505221a0940df15d53295b18bf54be132be6ac",
+        "junction Depth Level 17+Depth Level 18": "61f82450fceefa7dc3b4bfef884dbda5e172b1bd7186236c09fbc2bcc19ef6c3",
+        "junction Depth Level 16+Depth Level 17": "52a6f0c434c4b5e57fb93f8f2075e7aac0d47bf4e7757f83135ef2cdfe68b265",
+        "junction Depth Level 15+Depth Level 16": "c707ec69f7747ed5c5d26dd0c85ba5f1667574ecd3285ccf4acd7dd5a66d11b2",
+        "junction Depth Level 14+Depth Level 15": "747e37212d758e48e017f711263e3bf71fccd2a8eb72664006981ceed9269b38",
+        "junction Depth Level 13+Depth Level 14": "e1922bf459107e27071c941399867e6ab679a94c536d7437c3f8bf550fa891ed",
+        "junction Depth Level 12+Depth Level 13": "2cfa4b405380750c077420ef23a9cf1f6bff78cb6f4b6eb0bce5dcce5d8b344d",
+        "junction Depth Level 11+Depth Level 12": "8e40a3f36f446c87190e2198c99db297ddaf24aab56a6dd1b611112edc77a1ee",
+        "junction Depth Level 10+Depth Level 11": "1a926a021b72ff3038e74d47c5766cc2b6e8255d73a8acd238e9829342b48c7e",
+        "junction Depth Level 9+Depth Level 10": "db6d4b6afca6edf2a5d77c414825d202bd12af54eff8a81b9842e142c4481a70",
+        "junction Depth Level 8+Depth Level 9": "f30786e838e18f75a26a1366fdebce3f7fa48edd04c846d9f8099cee809405ad",
+        "junction Depth Level 7+Depth Level 8": "958465599acd243d71b2c8531d3f9acaa1ce7bd8854dcccf549b5f2f7e20cf85",
+        "junction Depth Level 6+Depth Level 7": "213d28d1e37e7e48e6e79c3b72f52c2ec67d9041a333e07d7ff3a257bc686f1b",
+        "junction Depth Level 5+Depth Level 6": "01caba63df2e7bd0ac6196e93fc596cc7b5daaeefdcede5b914891654504f260",
+        "junction Depth Level 4+Depth Level 5": "99d7444c1d2290a86418b44b52f0a4359cc2db1f665af11ba29307686992ccf1",
+        "junction Depth Level 3+Depth Level 4": "459123a7b6e33e91f51eb030d37d67bc201266db20bd3c3a49d9980b6aa8b255",
+        "junction Depth Level 2+Depth Level 3": "b81c480ab0b8d9ef12e9637544ae7af15b3671a32c0f4fc4cd6c2467cb015e8f",
+        "junction Depth Level 1+Depth Level 2": "7f9e3f3bade20c4762a7f578b65dc896f642b30dc8a4028677a22294efe3a57d",
+        "junction Depth Root+Depth Level 1": "914c27b828abafadb59bef5c28518f5b9967ad34ce1843168cd477658e00aee0",
+        "junction Scale Page 1x+Scale Page 501x": "42d277e7c1b3f7bf4c4d103b42f61d9fbe519e9cb349ee2770d038b7645cb705",
+        "junction Scale Page 2x+Scale Page 502x": "1ad9ba6b407607646f946ee2a340ef2201eff5f545ac67988fc0aa2f21ef3335",
+        "junction Scale Page 3x+Scale Page 503x": "a8e0ddc252858e1c2e444d620810486b873dcbaf6422acdf4bae3947b82a7a46",
+        "junction Scale Page 4x+Scale Page 504x": "d2c0b0c7f4e983789acc11909582dbc984d62df44fa36bbffa85197c3fe0a343",
+        "junction Scale Page 5x+Scale Page 505x": "53649b2f6acbd5a78168044409b39ffa188b3384bb6de24952e68d849187ffb9",
+        "junction Scale Page 6x+Scale Page 506x": "54a14eaa2d53b3dc43c1dbb7e1a830980ee42a16080fe2fe33b81cf72a9de8d7",
+        "junction Scale Page 7x+Scale Page 507x": "9f9c92be677bde384cced950fea49001a1f88d897c008d4c352f68aac57b76ed",
+        "junction Scale Page 8x+Scale Page 508x": "19f63f008653b701c661640f079ea2c50bfc988626376273a1f526f20bb3967d",
+        "junction Scale Page 9x+Scale Page 509x": "51bf377fb8a0e479763ed7bcb2f0108aa4b7d1192d62b48e85a01605422504ce",
+        "junction Scale Page 10x+Scale Page 510x": "718bdee8e9487c88ca7e824a1e8ad1e8d783bd0156314f010d97ad4269610f13",
+        "junction Scale Page 11x+Scale Page 511x": "15bb51d25f0e3bf726fcf9f1cd3d6005ad3a2959c05944263dcd2df61a37ab6a",
+        "junction Scale Page 12x+Scale Page 512x": "b6f095aa14387c67e8c24869b5630733ec765ded4fc14b71cb50cb8f589a0c0e",
+        "junction Scale Page 13x+Scale Page 513x": "7c0485e35b1faef6f13da360427ecdadbbeb8a91aa1fa2cba22ec21a03fd9781",
+        "junction Scale Page 14x+Scale Page 514x": "eadc86f0f6382a12661821e26247e4b1ec341f167cf7ea0fd4358f78d17908f1",
+        "junction Scale Page 15x+Scale Page 515x": "75f4b141c700460ea284ec66afb631e3e0337869569e95c89a24a48da0321f77",
+        "junction Scale Page 16x+Scale Page 516x": "ed962269c17eb8ae690e4838626743cfa00ae6c74095315935c0a58b86ec4b14",
+        "junction Scale Page 17x+Scale Page 517x": "776d120f1ae0df49716b7cef9aaac58e0d96d8638452ff3d9cf4f8098ee026e1",
+        "junction Scale Page 18x+Scale Page 518x": "cab78421c55722361f515061fbc79859008a580d384cf3ae681bef5e608c95ba",
+        "junction Scale Page 19x+Scale Page 519x": "20a05e62f82da5f8fdb3e7a8f4dbf34d6b5050048972e3fb80ace4f61eb74385",
+        "junction Scale Page 20x+Scale Page 520x": "0217791184d151fa77220556f25c98f2f5df64369a1dcc831999a7af74d792e8",
+        "junction Scale Page 21x+Scale Page 521x": "e6c0c2c77f0a32cd9d12bdf03b4cc8db649a5e2e525baa6a5bb0a33df13782c2",
+        "junction Scale Page 22x+Scale Page 522x": "4d7437c1b3705d5a5ac74fc58d4f254afccadcd223395c769b642022ef037333",
+        "junction Scale Page 23x+Scale Page 523x": "5c3daf5559fbe99359b2c11d47a723183236a52eed9bf9b63cdc1f39858b58bc",
+        "junction Scale Page 24x+Scale Page 524x": "9b5115995574b84889ca09fc08fcbf577636279a095d670ba2d555ed70659e2b",
+        "junction Scale Page 25x+Scale Page 525x": "cf2ebd7fac2898d67715ac79149e60fb4c5ee005cda8afa211959b1a032bb61f",
+        "junction Scale Page 26x+Scale Page 526x": "5de832c38ce5d8ccbfc3ef67f4842dcab1c171a4c1cf83fccef65dcd7d4bc4ee",
+        "junction Scale Page 27x+Scale Page 527x": "ae0792231205359bd0ab7e19e3bbf587684798f247ec97d97325477dc42bd6f9",
+        "junction Scale Page 28x+Scale Page 528x": "b7ff03ae9c6217f3fb61a095a6242a7fa580b69259cdaa646f5c0de92c2fb238",
+        "junction Scale Page 29x+Scale Page 529x": "0fdaa5cafbb682a9b98e362295f119576fc2daa0c2f752c425f9d0539eb7db12",
+        "junction Scale Page 30x+Scale Page 530x": "e6ccb9a806aada4bd7456002b37119d6891f32922d6b5c033d15b97a1850571f",
+        "junction Scale Page 31x+Scale Page 531x": "f74fccc8568e4dd083460f0a074ccbb22a3890cfaa8f381c9d3db0cb9ee9dfad",
+        "junction Scale Page 32x+Scale Page 532x": "3662668905596aa45912401b835c084838c78c4748868015cf7e06e31f850571",
+        "junction Scale Page 33x+Scale Page 533x": "b4877546f4b7c7609b87c9b2dd2e1b094bbc7ed350540ae84738f3d5ce05b978",
+        "junction Scale Page 34x+Scale Page 534x": "4ab8e2b12326d3ef756792ac2f08441b6ab800c7b879d75df9c1d3f8de456176",
+        "junction Scale Page 35x+Scale Page 535x": "de6b2f7e37248c1da63270ff6d34584ce4e9db10aa79382f2be67ae8805dcd8f",
+        "junction Scale Page 36x+Scale Page 536x": "09efffdd4d0c27014c11aa71e40f07bcb2ba6c4ad24a1c042c2310b5acc25b08",
+        "junction Scale Page 37x+Scale Page 537x": "09ec57a524f5b857897b56cf6597265d47db3f468498d25e54fa4deced59b508",
+        "junction Scale Page 38x+Scale Page 538x": "e3b7a3989d52907a93263c4cf0f3c28821f4c0bfc5323052d42b07788f1b6b98",
+        "junction Scale Page 39x+Scale Page 539x": "41146bf4c470e19c06772a27bf6ebcc4e4727b08de6f41bfefb9e44b493318c2",
+        "junction Scale Page 40x+Scale Page 540x": "0ff130d69b757ceed58ee8c42a2ee5e1bd489849b8b8347dcb00eeff138122fa",
+        "junction Scale Page 41x+Scale Page 541x": "ca820e9326f27194fd0550fd9f9be27fffa2c80dbb83bd2c705a20a0bc7e0724",
+        "junction Scale Page 42x+Scale Page 542x": "a7e6801acec85f877b8574bdd3926d31bd9b9c7d55757cbda59fe89c867757f7",
+        "junction Scale Page 43x+Scale Page 543x": "bd45885796552f4f3228f51961434e9dc6e9599a4918c7440ce1cd8854f2de36",
+        "junction Scale Page 44x+Scale Page 544x": "a1a90e1ce75c7f1699d072c6ef6da2621ccd7cf3823016d0dc7261210dc16114",
+        "junction Scale Page 45x+Scale Page 545x": "5c88202484c21558cf27daffb2600af9e7a710cd8c9f88cf3b90cfbccaa34a52",
+        "junction Scale Page 46x+Scale Page 546x": "145412c3d7c9612580e3a15ca94a4761e1588c9b81a0f9aad2db48cec0547d0a",
+        "junction Scale Page 47x+Scale Page 547x": "be7daa3df3469b4443c27c41e9ab2890d7048e68813abab764f27ad4bd3490cd",
+        "junction Scale Page 48x+Scale Page 548x": "15595e6ab88d594750b76a1336d46b5c12ceb3c7ea01663991bb2924f4565c8d",
+        "junction Scale Page 49x+Scale Page 549x": "7cfd4d3ca3bb2ebc06bb50465b6d46aaf621fe6aca8b0b50e65907b00e38874e",
+        "junction Scale Page 50x+Scale Page 550x": "c4a11ced5b97e4b2205b5a1fb40b770752441d1d853893992b86a17feb57468c"
+      }
+    },
+    {
+      "phase": "AFTER-IDX+ANALYZE",
+      "statsPresent": true,
+      "sizes": {
+        "cards": 2279,
+        "refs": 531
+      },
+      "indexes": [
+        "cards_codename_binary_index",
+        "cards_codename_index",
+        "cards_created_at_index",
+        "cards_key_binary_index",
+        "cards_key_index",
+        "cards_left_id_index",
+        "cards_name_index",
+        "cards_read_rule_id_index",
+        "cards_right_id_index",
+        "cards_trash_index",
+        "cards_type_id_index",
+        "cards_updated_at_index",
+        "index_cards_on_left_id_and_right_id"
+      ],
+      "battery": [
+        {
+          "label": "home",
+          "statements": 11,
+          "estRows": 15,
+          "top": [
+            {
+              "sql": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id =   (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id =   (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+              "plan": "SEARCH read_rules USING INDEX cards_right_id_index (right_id=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SEARCH sets USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?)",
+              "execs": 1,
+              "estRowsEach": 3,
+              "estRowsTotal": 3,
+              "basis": "pk=1 + cards_right_id_index.right_id=undefined=0 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1 + card_references_referer_id_index.referer_id=undefined=0"
+            },
+            {
+              "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 3,
+              "estRowsEach": 1,
+              "estRowsTotal": 3,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id =   (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_right_id_index (right_id=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?)",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "cards_right_id_index.right_id=undefined=0 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1"
+            },
+            {
+              "sql": "SELECT\n  (CASE\n     WHEN s.\"key\" IS NOT NULL THEN s.\"key\"\n     WHEN sl.\"key\" IS NOT NULL THEN sl.\"key\" || '+' || p.\"key\"\n     ELSE NULL\n   END) || '+' || st.\"key\" AS composed_key,\n  r.db_content AS db_content\nFROM cards r\nJOIN cards st ON st.id = r.right_id\nLEFT JOIN cards s ON s.id = r.left_id\nLEFT JOIN cards sl ON sl.id = s.left_id\nLEFT JOIN cards p ON p.id = s.right_id\nWHERE r.trash = 0\n  AND r.right_id = (SELECT id FROM cards\n                    WHERE (\"key\" = '*structure' OR name = '*structure')\n                      AND trash = 0 ORDER BY id LIMIT 1)",
+              "plan": "SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | MULTI-INDEX OR | INDEX 1 | SEARCH cards USING INDEX cards_key_binary_index (key=?) | INDEX 2 | SEARCH cards USING INDEX cards_name_index (name=?) | USE TEMP B-TREE FOR ORDER BY | REUSE SUBQUERY 1 | SEARCH r USING INDEX cards_right_id_index (right_id=?) | SEARCH s USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH sl USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN | SEARCH p USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "pk=1 + uniq(cards_key_binary_index)=1 + cards_name_index.name=undefined=0 + cards_right_id_index.right_id=undefined=0"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            }
+          ]
+        },
+        {
+          "label": "point-read (Scale Page 173x)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "depth-32 chain (Depth Root)",
+          "statements": 32,
+          "estRows": 32,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
+              "execs": 31,
+              "estRowsEach": 1,
+              "estRowsTotal": 31,
+              "basis": "uniq(cards_key_index)=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "500-item pointer (Big Pointer)",
+          "statements": 3,
+          "estRows": 3,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "pk=1"
+            }
+          ]
+        },
+        {
+          "label": "CQL list (All Scale Page Probe)",
+          "statements": 103,
+          "estRows": 103,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 51,
+              "estRowsEach": 1,
+              "estRowsTotal": 51,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "execs": 50,
+              "estRowsEach": 1,
+              "estRowsTotal": 50,
+              "basis": "pk=1"
+            },
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            },
+            {
+              "sql": "SELECT DISTINCT c0.*, c1.db_content FROM cards c0 LEFT JOIN cards c1 ON c0.id = c1.left_id AND c1.key = ? AND c1.trash is false WHERE (c0.name REGEXP ? OR c0.db_content REGEXP ?) AND c0.trash is false ORDER BY c1.db_content asc LIMIT 50",
+              "plan": "SCAN c0 | SEARCH c1 USING INDEX cards_key_binary_index (key=?) LEFT-JOIN | USE TEMP B-TREE FOR ORDER BY",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1 + SCAN(c0)=0"
+            }
+          ]
+        },
+        {
+          "label": "denied (Restricted Page 7)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        },
+        {
+          "label": "large content (Large Doc 1)",
+          "statements": 1,
+          "estRows": 1,
+          "top": [
+            {
+              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 1,
+              "estRowsTotal": 1,
+              "basis": "uniq(cards_key_binary_index)=1"
+            }
+          ]
+        }
+      ],
+      "hashes": {
+        "home": "ea926430d301a13ffb22ab1825284d8cf0fa969976213c5dba7cbcbecf57f72d",
+        "point-read (Scale Page 173x)": "bafab897f0600d489f228558dc562937b8be297a40dcd638ca65c536eb088eae",
+        "depth-32 chain (Depth Root)": "3253a5039b7fe12e098c2cff0fe9d6eaed6a1951dd329a1bb943caffa320609c",
+        "500-item pointer (Big Pointer)": "c9c43c59c0ff03e9ab60f7f85858660f73fa97a3fe3d8a5d1ca2063d9f9093a7",
+        "CQL list (All Scale Page Probe)": "6e2c5e899c2bf22d68158666c26813ecc6fd74acc272922cd9e4c76dd919a57c",
+        "denied (Restricted Page 7)": "e85746c8b727a5a7b3269c71d764d984d925944a8f9892d70b3516137eb614fa",
+        "large content (Large Doc 1)": "bc1509d3d163cfb8668e7c1b52e578b6734622c1ce12ff04117c2be5dbb853dd",
+        "junction Scale Page 1x+Scale Page 501x": "42d277e7c1b3f7bf4c4d103b42f61d9fbe519e9cb349ee2770d038b7645cb705",
+        "junction Scale Page 2x+Scale Page 502x": "1ad9ba6b407607646f946ee2a340ef2201eff5f545ac67988fc0aa2f21ef3335",
+        "junction Scale Page 3x+Scale Page 503x": "a8e0ddc252858e1c2e444d620810486b873dcbaf6422acdf4bae3947b82a7a46",
+        "junction Scale Page 4x+Scale Page 504x": "d2c0b0c7f4e983789acc11909582dbc984d62df44fa36bbffa85197c3fe0a343",
+        "junction Scale Page 5x+Scale Page 505x": "53649b2f6acbd5a78168044409b39ffa188b3384bb6de24952e68d849187ffb9",
+        "junction Scale Page 6x+Scale Page 506x": "54a14eaa2d53b3dc43c1dbb7e1a830980ee42a16080fe2fe33b81cf72a9de8d7",
+        "junction Scale Page 7x+Scale Page 507x": "9f9c92be677bde384cced950fea49001a1f88d897c008d4c352f68aac57b76ed",
+        "junction Scale Page 8x+Scale Page 508x": "19f63f008653b701c661640f079ea2c50bfc988626376273a1f526f20bb3967d",
+        "junction Scale Page 9x+Scale Page 509x": "51bf377fb8a0e479763ed7bcb2f0108aa4b7d1192d62b48e85a01605422504ce",
+        "junction Scale Page 10x+Scale Page 510x": "718bdee8e9487c88ca7e824a1e8ad1e8d783bd0156314f010d97ad4269610f13",
+        "junction Scale Page 11x+Scale Page 511x": "15bb51d25f0e3bf726fcf9f1cd3d6005ad3a2959c05944263dcd2df61a37ab6a",
+        "junction Scale Page 12x+Scale Page 512x": "b6f095aa14387c67e8c24869b5630733ec765ded4fc14b71cb50cb8f589a0c0e",
+        "junction Scale Page 13x+Scale Page 513x": "7c0485e35b1faef6f13da360427ecdadbbeb8a91aa1fa2cba22ec21a03fd9781",
+        "junction Scale Page 14x+Scale Page 514x": "eadc86f0f6382a12661821e26247e4b1ec341f167cf7ea0fd4358f78d17908f1",
+        "junction Scale Page 15x+Scale Page 515x": "75f4b141c700460ea284ec66afb631e3e0337869569e95c89a24a48da0321f77",
+        "junction Scale Page 16x+Scale Page 516x": "ed962269c17eb8ae690e4838626743cfa00ae6c74095315935c0a58b86ec4b14",
+        "junction Scale Page 17x+Scale Page 517x": "776d120f1ae0df49716b7cef9aaac58e0d96d8638452ff3d9cf4f8098ee026e1",
+        "junction Scale Page 18x+Scale Page 518x": "cab78421c55722361f515061fbc79859008a580d384cf3ae681bef5e608c95ba",
+        "junction Scale Page 19x+Scale Page 519x": "20a05e62f82da5f8fdb3e7a8f4dbf34d6b5050048972e3fb80ace4f61eb74385",
+        "junction Scale Page 20x+Scale Page 520x": "0217791184d151fa77220556f25c98f2f5df64369a1dcc831999a7af74d792e8",
+        "junction Scale Page 21x+Scale Page 521x": "e6c0c2c77f0a32cd9d12bdf03b4cc8db649a5e2e525baa6a5bb0a33df13782c2",
+        "junction Scale Page 22x+Scale Page 522x": "4d7437c1b3705d5a5ac74fc58d4f254afccadcd223395c769b642022ef037333",
+        "junction Scale Page 23x+Scale Page 523x": "5c3daf5559fbe99359b2c11d47a723183236a52eed9bf9b63cdc1f39858b58bc",
+        "junction Scale Page 24x+Scale Page 524x": "9b5115995574b84889ca09fc08fcbf577636279a095d670ba2d555ed70659e2b",
+        "junction Scale Page 25x+Scale Page 525x": "cf2ebd7fac2898d67715ac79149e60fb4c5ee005cda8afa211959b1a032bb61f",
+        "junction Scale Page 26x+Scale Page 526x": "5de832c38ce5d8ccbfc3ef67f4842dcab1c171a4c1cf83fccef65dcd7d4bc4ee",
+        "junction Scale Page 27x+Scale Page 527x": "ae0792231205359bd0ab7e19e3bbf587684798f247ec97d97325477dc42bd6f9",
+        "junction Scale Page 28x+Scale Page 528x": "b7ff03ae9c6217f3fb61a095a6242a7fa580b69259cdaa646f5c0de92c2fb238",
+        "junction Scale Page 29x+Scale Page 529x": "0fdaa5cafbb682a9b98e362295f119576fc2daa0c2f752c425f9d0539eb7db12",
+        "junction Scale Page 30x+Scale Page 530x": "e6ccb9a806aada4bd7456002b37119d6891f32922d6b5c033d15b97a1850571f",
+        "junction Scale Page 31x+Scale Page 531x": "f74fccc8568e4dd083460f0a074ccbb22a3890cfaa8f381c9d3db0cb9ee9dfad",
+        "junction Scale Page 32x+Scale Page 532x": "3662668905596aa45912401b835c084838c78c4748868015cf7e06e31f850571",
+        "junction Scale Page 33x+Scale Page 533x": "b4877546f4b7c7609b87c9b2dd2e1b094bbc7ed350540ae84738f3d5ce05b978",
+        "junction Scale Page 34x+Scale Page 534x": "4ab8e2b12326d3ef756792ac2f08441b6ab800c7b879d75df9c1d3f8de456176",
+        "junction Scale Page 35x+Scale Page 535x": "de6b2f7e37248c1da63270ff6d34584ce4e9db10aa79382f2be67ae8805dcd8f",
+        "junction Scale Page 36x+Scale Page 536x": "09efffdd4d0c27014c11aa71e40f07bcb2ba6c4ad24a1c042c2310b5acc25b08",
+        "junction Scale Page 37x+Scale Page 537x": "09ec57a524f5b857897b56cf6597265d47db3f468498d25e54fa4deced59b508",
+        "junction Scale Page 38x+Scale Page 538x": "e3b7a3989d52907a93263c4cf0f3c28821f4c0bfc5323052d42b07788f1b6b98",
+        "junction Scale Page 39x+Scale Page 539x": "41146bf4c470e19c06772a27bf6ebcc4e4727b08de6f41bfefb9e44b493318c2",
+        "junction Scale Page 40x+Scale Page 540x": "0ff130d69b757ceed58ee8c42a2ee5e1bd489849b8b8347dcb00eeff138122fa",
+        "junction Scale Page 41x+Scale Page 541x": "ca820e9326f27194fd0550fd9f9be27fffa2c80dbb83bd2c705a20a0bc7e0724",
+        "junction Scale Page 42x+Scale Page 542x": "a7e6801acec85f877b8574bdd3926d31bd9b9c7d55757cbda59fe89c867757f7",
+        "junction Scale Page 43x+Scale Page 543x": "bd45885796552f4f3228f51961434e9dc6e9599a4918c7440ce1cd8854f2de36",
+        "junction Scale Page 44x+Scale Page 544x": "a1a90e1ce75c7f1699d072c6ef6da2621ccd7cf3823016d0dc7261210dc16114",
+        "junction Scale Page 45x+Scale Page 545x": "5c88202484c21558cf27daffb2600af9e7a710cd8c9f88cf3b90cfbccaa34a52",
+        "junction Scale Page 46x+Scale Page 546x": "145412c3d7c9612580e3a15ca94a4761e1588c9b81a0f9aad2db48cec0547d0a",
+        "junction Scale Page 47x+Scale Page 547x": "be7daa3df3469b4443c27c41e9ab2890d7048e68813abab764f27ad4bd3490cd",
+        "junction Scale Page 48x+Scale Page 548x": "15595e6ab88d594750b76a1336d46b5c12ceb3c7ea01663991bb2924f4565c8d",
+        "junction Scale Page 49x+Scale Page 549x": "7cfd4d3ca3bb2ebc06bb50465b6d46aaf621fe6aca8b0b50e65907b00e38874e",
+        "junction Scale Page 50x+Scale Page 550x": "c4a11ced5b97e4b2205b5a1fb40b770752441d1d853893992b86a17feb57468c",
+        "junction Depth Level 30+Depth Level 31": "9ef904485ce4fb019a4afd51d0deaf1ccdcc2c18ed661436c431723d89b01c1a",
+        "junction Depth Level 29+Depth Level 30": "2d7ca30c5e141b8a772a3f64b34f4e29164f6b85b731954c2f5bf25f9d55a23e",
+        "junction Depth Level 28+Depth Level 29": "cf6856a49155fc67203f592978b8ae687c88df8a07f4ea50a56c5bca7e6c34cf",
+        "junction Depth Level 27+Depth Level 28": "440291b8bdf6d30598062686509cf45b7c88a9395699ac40eea28aab66fa6ea0",
+        "junction Depth Level 26+Depth Level 27": "da6ad615a360a99030b0123257cbec788509c24aeb7cfa97524bb1bb19292d57",
+        "junction Depth Level 25+Depth Level 26": "e97e437e07a2b45652b936d9fbed750410c5b2a8f6bcabd89bebd05254d0c79a",
+        "junction Depth Level 24+Depth Level 25": "6f3bc609ed0611fe15ece7203254e5ddeefa91adafec6d109297124d3c8376ec",
+        "junction Depth Level 23+Depth Level 24": "450bc346b167e3c81248c459fcd622cc0390eba153a991f34d4ba863d980285f",
+        "junction Depth Level 22+Depth Level 23": "3fad3103e6bee9c3e1b2aa3db93848d286930a0d57c19f076e135f74d6e0a927",
+        "junction Depth Level 21+Depth Level 22": "8a158cc3b9de5c1d42fb3418b6b1c88010ab5ca6f58574ee32e220bffc2f8df3",
+        "junction Depth Level 20+Depth Level 21": "4d1c5d05fc0300bf95e0e24a6242197ae80481d2d994a3aaed58016f506f8122",
+        "junction Depth Level 19+Depth Level 20": "e4a04f8e7a9396658ae80d7cee26050bd22a0cc8704a996039dfa7f8d2b96614",
+        "junction Depth Level 18+Depth Level 19": "af994bbb4870bf1375c9a34ab7505221a0940df15d53295b18bf54be132be6ac",
+        "junction Depth Level 17+Depth Level 18": "61f82450fceefa7dc3b4bfef884dbda5e172b1bd7186236c09fbc2bcc19ef6c3",
+        "junction Depth Level 16+Depth Level 17": "52a6f0c434c4b5e57fb93f8f2075e7aac0d47bf4e7757f83135ef2cdfe68b265",
+        "junction Depth Level 15+Depth Level 16": "c707ec69f7747ed5c5d26dd0c85ba5f1667574ecd3285ccf4acd7dd5a66d11b2",
+        "junction Depth Level 14+Depth Level 15": "747e37212d758e48e017f711263e3bf71fccd2a8eb72664006981ceed9269b38",
+        "junction Depth Level 13+Depth Level 14": "e1922bf459107e27071c941399867e6ab679a94c536d7437c3f8bf550fa891ed",
+        "junction Depth Level 12+Depth Level 13": "2cfa4b405380750c077420ef23a9cf1f6bff78cb6f4b6eb0bce5dcce5d8b344d",
+        "junction Depth Level 11+Depth Level 12": "8e40a3f36f446c87190e2198c99db297ddaf24aab56a6dd1b611112edc77a1ee",
+        "junction Depth Level 10+Depth Level 11": "1a926a021b72ff3038e74d47c5766cc2b6e8255d73a8acd238e9829342b48c7e",
+        "junction Depth Level 9+Depth Level 10": "db6d4b6afca6edf2a5d77c414825d202bd12af54eff8a81b9842e142c4481a70",
+        "junction Depth Level 8+Depth Level 9": "f30786e838e18f75a26a1366fdebce3f7fa48edd04c846d9f8099cee809405ad",
+        "junction Depth Level 7+Depth Level 8": "958465599acd243d71b2c8531d3f9acaa1ce7bd8854dcccf549b5f2f7e20cf85",
+        "junction Depth Level 6+Depth Level 7": "213d28d1e37e7e48e6e79c3b72f52c2ec67d9041a333e07d7ff3a257bc686f1b",
+        "junction Depth Level 5+Depth Level 6": "01caba63df2e7bd0ac6196e93fc596cc7b5daaeefdcede5b914891654504f260",
+        "junction Depth Level 4+Depth Level 5": "99d7444c1d2290a86418b44b52f0a4359cc2db1f665af11ba29307686992ccf1",
+        "junction Depth Level 3+Depth Level 4": "459123a7b6e33e91f51eb030d37d67bc201266db20bd3c3a49d9980b6aa8b255",
+        "junction Depth Level 2+Depth Level 3": "b81c480ab0b8d9ef12e9637544ae7af15b3671a32c0f4fc4cd6c2467cb015e8f",
+        "junction Depth Level 1+Depth Level 2": "7f9e3f3bade20c4762a7f578b65dc896f642b30dc8a4028677a22294efe3a57d",
+        "junction Depth Root+Depth Level 1": "914c27b828abafadb59bef5c28518f5b9967ad34ce1843168cd477658e00aee0"
+      }
+    }
+  ],
+  "table": [
+    {
+      "render": "home",
+      "stmts": 11,
+      "rows_BEFORE": 29631,
+      "rows_AFTER_IDX": 11407,
+      "rows_AFTER_IDX_ANALYZE": 15
+    },
+    {
+      "render": "point-read (Scale Page 173x)",
+      "stmts": 1,
+      "rows_BEFORE": 2279,
+      "rows_AFTER_IDX": 1,
+      "rows_AFTER_IDX_ANALYZE": 1
+    },
+    {
+      "render": "depth-32 chain (Depth Root)",
+      "stmts": 32,
+      "rows_BEFORE": 2310,
+      "rows_AFTER_IDX": 32,
+      "rows_AFTER_IDX_ANALYZE": 32
+    },
+    {
+      "render": "500-item pointer (Big Pointer)",
+      "stmts": 3,
+      "rows_BEFORE": 2281,
+      "rows_AFTER_IDX": 3,
+      "rows_AFTER_IDX_ANALYZE": 3
+    },
+    {
+      "render": "CQL list (All Scale Page Probe)",
+      "stmts": 103,
+      "rows_BEFORE": 2380,
+      "rows_AFTER_IDX": 103,
+      "rows_AFTER_IDX_ANALYZE": 103
+    },
+    {
+      "render": "denied (Restricted Page 7)",
+      "stmts": 1,
+      "rows_BEFORE": 2279,
+      "rows_AFTER_IDX": 1,
+      "rows_AFTER_IDX_ANALYZE": 1
+    },
+    {
+      "render": "large content (Large Doc 1)",
+      "stmts": 1,
+      "rows_BEFORE": 2279,
+      "rows_AFTER_IDX": 1,
+      "rows_AFTER_IDX_ANALYZE": 1
+    }
+  ],
+  "byteParityPages": 88,
+  "writeAccounting": {
+    "targetedDeck": {
+      "cards": 2279,
+      "ongoingInsertDelta": 4558
+    },
+    "corpusCopy": {
+      "cards": 49829,
+      "refs": 556526,
+      "timings": [
+        {
+          "index": "cards_key_binary_index",
+          "ms": 705,
+          "entries": 49829
+        },
+        {
+          "index": "cards_codename_binary_index",
+          "ms": 46,
+          "entries": 49829
+        }
+      ],
+      "dbstatUsable": true,
+      "copyBytes": 209477632
+    }
+  }
+}

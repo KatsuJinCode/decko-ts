@@ -120,7 +120,9 @@ const DEFAULT_TYPE_ID = 2;
 
 export interface SeedOptions {
   id?: number;
-  /** Optional for junction rows (name lives in the joined side cards). */
+  /** Junction rows carry their corpus name/key too (see seedCard) — the
+   *  corpus v2 dump stores them; only callers seeding a bare junction by
+   *  sides alone omit the name. */
   name?: string;
   key?: string;
   codename?: string | null;
@@ -142,11 +144,27 @@ export interface SeedOptions {
   readRuleClass?: string | null;
 }
 
-/** Direct INSERT (write path is another stream). Simple cards store
- *  name/key columns; junctions store NULL name/key + side ids (the 2020
- *  convention the schema records). The key column is the CANONICAL key
- *  (DeckoName.key - plural stems collapse: "Oracle Basics" ->
- *  "oracle_basic"), exactly what the Ruby write path stores. */
+/** Direct INSERT (write path is another stream). Every row with a known
+ *  name stores its CANONICAL key; junction rows store the key and keep
+ *  name NULL (lead option (b), 2026-09-23, refined by the R4 lane proof):
+ *  the *structure rule universe statement (src/card/rules/structure.ts:82-86)
+ *  composes 2-junction set anchors from the STORED key columns — with
+ *  junction keys forced NULL the seeded universe measured 115 vs the corpus
+ *  truth 139 (24 *structure rule sets unresolved, 17 of them
+ *  type_plus_right). The KEY is stored and the NAME deliberately is not:
+ *  DbLexicon.idToLex (src/card/fetch/lexicon.ts:127-144) branches on
+ *  name presence — a named junction row yields a STRING lex whose cache
+ *  entry the synchronous peekLex id-pair path ("L-<left>-<right>") never
+ *  sees, breaking junction-chain resolution (the R3 records lane restored
+ *  name+key together and regressed exactly the junction-heavy surfaces).
+ *  The canonical key equals the corpus's junction key for every anonymized
+ *  name (key === name verbatim there, probe-verified on all 49,809 named
+ *  rows); it intentionally deviates where the corpus is uncanonical
+ *  ("*type plus right" -> "*type_plu_right") because the canonical spelling
+ *  is what the candidate walk (resolveStructuredContent) looks up. Fetch
+ *  resolution itself is unaffected: compound marks resolve through
+ *  left_id/right_id (src/card/fetch/retrieve.ts:272 + the Lexicon), never
+ *  through the junction row's own key column. */
 export async function seedCard(
   storage: RenderTestStorage,
   opts: SeedOptions,
@@ -154,8 +172,8 @@ export async function seedCard(
   const hasName = typeof opts.name === "string" && opts.name.length > 0;
   const isCompound = hasName && opts.name!.includes("+");
   const nameColumn = isCompound ? null : (opts.name ?? null);
-  const keyColumn = hasName && !isCompound
-    ? (opts.key ?? DeckoName.parse(opts.name!).key)
+  const keyColumn = hasName
+    ? (opts.key ?? DeckoName.parse(opts.name as string).key)
     : null;
   await storage.counting.query(
     `INSERT INTO cards

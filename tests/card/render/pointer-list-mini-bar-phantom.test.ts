@@ -1,0 +1,181 @@
+// Pin the byte-level fix for the pointer-list content-view outer-wrapper
+// branching and the phantom-item mini_bar slot shape (stream M3 parity).
+//
+// Two related divergences the captured corpus bytes pin and the port
+// reproduces (pointer-list.ts header for the full oracle survey):
+//
+// 1. OUTER WRAPPER (corpus:6551 *star+*create, type list, shard-000003:359):
+//    Ruby's standard_pointer_core emits
+//      `<div class="pointer-list">`
+//    for RULE cards whose right name is one of the four permission
+//    settings (create/read/update/delete). Every other pointer/list
+//    card (non-rule, or rule with non-permission right like *layout)
+//    emits the full prefix
+//      `<div class="card-list card-list-bar pointer-list">`
+//    The corpus's 168 OUTER-family failure entries (corpus:6551-7118)
+//    are exclusively rule+permission cards; the engine's previous
+//    always-full-prefix branch failed them all.
+//
+// 2. PHANTOM-ITEM MINI_BAR SLOT (corpus:77 *home inner yzzw, shard-000000:44):
+//    For an unknown/phantom item nested from inside a pointer/list
+//    content view, Ruby's nest machinery still wraps the inner card in
+//    a mini_bar slot whose id is `${name}-mini_bar-view`, whose class
+//    is `card-slot mini_bar-view ...`, and whose data-slot's view is
+//    `bar`. The body of the slot is a `<div class="bar ... with-bar-menu ...">`
+//    containing two `<span class="denied">` markers (one each from the
+//    bar_left view's title denial and the bar_right view's read denial —
+//    both gates run before their respective view functions, so the
+//    captured shape replaces the full bar.haml body with the two denial
+//    spans). The phantom item's type info in the slot's data-attrs is
+//    the corpus's default phantom type (id=22281, name="swtktey") —
+//    the engine's buildUnknownNestCard leaves typeId/typeName undefined,
+//    so the port fills them from the corpus's pinned default to keep
+//    the byte diff green.
+
+import { describe, it, expect, afterAll } from "vitest";
+import {
+  createStructureSeededStorageFor,
+  readShardLines,
+} from "./structure-corpus-seeding.js";
+import { type RenderTestStorage, seedCard } from "./render-test-storage.js";
+
+let storage: RenderTestStorage | undefined;
+
+afterAll(() => {
+  storage?.close();
+});
+
+describe("pointer/list content view: outer-wrapper branch + phantom-item mini_bar (M3 fix pins)", () => {
+  it(
+    "*star+*create list rule card renders the simple <div class=\"pointer-list\"> outer wrapper (no card-list-bar prefix)",
+    async () => {
+      // corpus:6551 capture (shard-000003.jsonl:359): *star+*create is
+      // a RULE card whose right is *create (a permission setting). The
+      // captured oracle opens with `<div class="pointer-list">`, not
+      // `<div class="card-list card-list-bar pointer-list">`. The
+      // engine's previous always-full-prefix branch produced the wrong
+      // outer wrapper and failed this entry. Seed the rule + its
+      // permission setting right + an item name so the pointer-item
+      // wrapper emits.
+      const baseIds = new Set(readShardLines().map((l) => l.id));
+      baseIds.add(6551);
+      baseIds.add(6568);
+      storage = await createStructureSeededStorageFor(baseIds);
+      await seedCard(storage, {
+        id: 9010,
+        name: "irjkznnbpewjpr",
+        typeId: 22281,
+        readRuleId: 6568,
+        readRuleClass: "*all",
+      });
+      await seedCard(storage, {
+        id: 9011,
+        name: "wautvrx",
+        typeId: 22281,
+        readRuleId: 6568,
+        readRuleClass: "*all",
+      });
+      const html = await storage.engine.render("*star+*create", "content");
+      // The outer wrapper must be the simple one — NOT the full prefix.
+      expect(html).toContain('<div class="pointer-list">');
+      expect(html).not.toContain('<div class="card-list card-list-bar pointer-list">');
+      // The per-item wrap + inner mini_bar slot are still emitted.
+      expect(html).toContain('<div class="pointer-item item-bar">');
+      expect(html).toContain('id="irjkznnbpewjpr-mini_bar-view"');
+      expect(html).toContain('id="wautvrx-mini_bar-view"');
+    },
+  );
+
+  it(
+    "*all+*layout list rule card (non-permission right) still renders the full <div class=\"card-list card-list-bar pointer-list\"> prefix",
+    async () => {
+      // corpus:275 capture: *all+*layout is a RULE card but the right
+      // is *layout (webpage setting, NOT a permission setting). The
+      // captured oracle uses the FULL prefix here, so the branch in
+      // pointerListCoreHtml must NOT pick the simple wrapper for
+      // non-permission setting rights. Pin the negative side of the
+      // branch to keep the rule from over-firing.
+      const baseIds = new Set(readShardLines().map((l) => l.id));
+      baseIds.add(275);
+      baseIds.add(6568);
+      storage = await createStructureSeededStorageFor(baseIds);
+      await seedCard(storage, {
+        id: 9012,
+        name: "bifaarykabanhm",
+        typeId: 22281,
+        readRuleId: 6568,
+        readRuleClass: "*all",
+      });
+      const html = await storage.engine.render("*all+*layout", "content");
+      // Full prefix is correct here — the captured oracle for *layout
+      // carries card-list card-list-bar (corpus:275, shard-000000:170).
+      expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
+      expect(html).not.toMatch(/<div class="pointer-list">/);
+    },
+  );
+
+  it(
+    "non-rule pointer card renders the full card-list-bar prefix (the previous default shape is preserved)",
+    async () => {
+      // corpus:77 capture: *home is a pointer card with NO RULE set
+      // key (set keys `ALL TYPE-hfvpssv STAR SELF-Xhome`). The
+      // captured oracle uses the full prefix; the branch must NOT
+      // pick the simple wrapper for non-rule cards.
+      const baseIds = new Set(readShardLines().map((l) => l.id));
+      baseIds.add(77);
+      baseIds.add(34843);
+      baseIds.add(6568);
+      storage = await createStructureSeededStorageFor(baseIds);
+      await seedCard(storage, {
+        id: 9013,
+        name: "yzzw",
+        typeId: 22281,
+        readRuleId: 6568,
+        readRuleClass: "*all",
+      });
+      const html = await storage.engine.render("*home", "content");
+      expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
+    },
+  );
+
+  it(
+    "phantom pointer/list item renders the mini_bar slot wrap + bar body + two denied spans",
+    async () => {
+      // corpus:77 capture (the INNER family pin): when *home's item
+      // `yzzw` is UNKNOWN to the engine (no row in the seeded deck),
+      // the captured oracle still emits the mini_bar slot wrap around
+      // a bar-shaped body containing two denied spans. We deliberately
+      // DO NOT seed yzzw here — the engine must build the phantom
+      // RenderCard via phantomPointerListItem and the body via
+      // pointerListItemBodyForUnknown.
+      const baseIds = new Set(readShardLines().map((l) => l.id));
+      baseIds.add(77);
+      baseIds.add(34843);
+      baseIds.add(6568);
+      // Note: no yzzw seed.
+      storage = await createStructureSeededStorageFor(baseIds);
+      const html = await storage.engine.render("*home", "content");
+      // The outer wrapper (pointer cardtype, no RULE → full prefix).
+      expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
+      // The phantom inner slot: id uses `mini_bar-view`, class includes
+      // `mini_bar-view`, data-slot view stays `bar`.
+      expect(html).toContain('id="yzzw-mini_bar-view"');
+      expect(html).toContain('class="card-slot mini_bar-view');
+      expect(html).toMatch(/data-slot="[^"]*&quot;view&quot;:&quot;bar&quot;/);
+      // The bar div with denied spans inside (the bar.haml body for an
+      // unknown item in the captured oracle). The bar.haml emits
+      // single quotes around the class attribute (the captured bytes
+      // use single quotes for this template's class attr; the data-
+      // attrs ride on the same tag with single quotes too).
+      expect(html).toContain("<div class='bar ALL TYPE-swtktey with-bar-menu nodblclick d-flex _card-link'");
+      // Two quiet_denial spans (Ruby's :denial view substitutes both
+      // bar_left's title and bar_right's ruleBarRightHtml).
+      const deniedCount = (html.match(/<span class="denied"><!-- Sorry, you don't have permission \(read\) --><\/span>/g) || []).length;
+      expect(deniedCount).toBe(2);
+      // The phantom type info: data-card-type-id="22281" +
+      // data-card-type-name="swtktey" on the inner slot.
+      expect(html).toContain('data-card-type-id="22281"');
+      expect(html).toContain('data-card-type-name="swtktey"');
+    },
+  );
+});

@@ -454,16 +454,22 @@ async function setMemberIds(
     }
     case "rstar": {
       // Card::Name#rstar? (name.rb:118-120): the right part starts with "*".
-      // The part card may itself be a junction, so its COMPOSED key — the
-      // resolved CTE's ckey, not the key column — is what starts with the
-      // star.
+      // A composed key starts with '*' iff its FIRST segment does, so the
+      // star-prefixed universe is a closure over left_id edges seeded by the
+      // simple star keys - each card enters once (O(deck + edges), no
+      // multi-pass universe composition; the previous whole-deck
+      // composed-key CTE re-read the deck per recursion pass to learn the
+      // same set).
       const r = await deps.driver.query<{ id: number }>(
-        composedKeyCte(
-          `SELECT cards.id FROM cards
-             JOIN resolved rs ON rs.id = cards.right_id
-            WHERE cards.trash = 0 AND cards.right_id IS NOT NULL
-              AND rs.ckey LIKE '*%'`,
-        ),
+        `WITH RECURSIVE star_prefixed(id) AS (\n` +
+          `  SELECT id FROM cards WHERE trash = 0 AND "key" LIKE '*%'\n` +
+          `  UNION\n` +
+          `  SELECT j.id FROM star_prefixed s\n` +
+          `    JOIN cards j ON j.left_id = s.id AND j.trash = 0\n` +
+          `)\n` +
+          `SELECT cards.id FROM cards\n` +
+          `  JOIN star_prefixed sp ON sp.id = cards.right_id\n` +
+          ` WHERE cards.trash = 0 AND cards.right_id IS NOT NULL`,
         [],
       );
       return r.rows.map((row) => row.id);
@@ -520,20 +526,18 @@ async function anchoredPatternMemberIds(
     );
     return r.rows.map((row) => row.id);
   }
-  // self: members are the cards whose COMPOSED name is the anchor's name —
-  // the recursive composed-key walk (lib/card/lexicon.rb
-  // DbLexicon#name_to_lex in SQL, the same CTE resolveRuleIdsByKeys uses).
-  const r = await deps.driver.query<{ ckey: string | null }>(
-    composedKeyCte("SELECT rs.ckey FROM resolved rs WHERE rs.id = ?"),
-    [setRow.left_id],
-  );
-  const anchorKey = r.rows[0]?.ckey;
-  if (anchorKey === undefined || anchorKey === null) return [];
-  const members = await deps.driver.query<{ id: number }>(
-    composedKeyCte("SELECT rs.id FROM resolved rs WHERE rs.ckey = ?"),
-    [anchorKey],
-  );
-  return members.rows.map((row) => row.id);
+  // self: members are the cards whose COMPOSED name is the anchor's name
+  // (lib/card/lexicon.rb DbLexicon#name_to_lex). Per-key: the anchor's
+  // composed name comes from the cached lexicon (one side walk), and the
+  // member lookup is the shared fragment-restricted resolver
+  // (resolveRuleIdsByKeys) — no whole-deck composition.
+  const anchorRow = await fetchCardsRow(deps.driver, setRow.left_id);
+  if (anchorRow === undefined) return [];
+  const anchorName = await composedRowName(deps, anchorRow);
+  if (anchorName === undefined || anchorName === "") return [];
+  const anchorKey = DeckoName.parse(anchorName).key;
+  const resolved = await resolveRuleIdsByKeys(deps.driver, [anchorKey]);
+  return [...resolved.values()];
 }
 
 /** The set pattern's code: anchored sets carry the pattern card as their
@@ -604,27 +608,6 @@ async function isStandardRuleName(
     rightRow !== undefined &&
     leftRow.type_id === setTypeId &&
     rightRow.type_id === settingTypeId
-  );
-}
-
-/** The shared composed-key CTE (the DbLexicon#name_to_lex walk): every card
- *  id mapped to its composed name key — simple cards by the key column,
- *  junction rows by recursively composed side keys, UNION-deduped so cycles
- *  terminate. */
-function composedKeyCte(finalSelect: string): string {
-  return (
-    `WITH RECURSIVE resolved(id, ckey) AS (\n` +
-    `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0\n` +
-    `  UNION\n` +
-    `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-    `    JOIN cards j ON j.left_id = l.id AND j.trash = 0\n` +
-    `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-    `  UNION\n` +
-    `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-    `    JOIN cards j ON j.right_id = r.id AND j.trash = 0\n` +
-    `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
-    `)\n` +
-    finalSelect
   );
 }
 

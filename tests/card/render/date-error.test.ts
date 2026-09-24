@@ -223,6 +223,48 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     }
   });
 
+  it("rendering :closed and :title of a Date-type card with non-date content does NOT raise (corpus:1135 corpus shape)", async () => {
+    // Corpus arbiter (R4 lazy-parse seam): the capture holds REAL bytes for
+    // corpus:1135's :closed and :title views — Ruby's Date.parse fires only
+    // inside the dispatched content views (:open/:content), never for
+    // :closed/:title. The eager prepare-phase raise raised on every view and
+    // mismatched exactly those two (the 1,066-view capture_error Date
+    // bucket). The raise now lives at the dispatch boundary
+    // (engine.resolveView), view-gated on :open/:content.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      await seedCard(storage, {
+        id: 1135,
+        name: "broken date card",
+        typeId: 17,
+        dbContent: "brcvtwrvz",
+      });
+      const closedHtml = await storage.engine.render("broken_date_card", "closed");
+      expect(closedHtml).toContain("broken_date_card-closed-view");
+      const titleHtml = await storage.engine.render("broken_date_card", "title");
+      expect(typeof titleHtml).toBe("string");
+      // The parsing views still raise at the dispatch boundary.
+      let openCaptured: unknown;
+      try {
+        await storage.engine.render("broken_date_card", "open");
+      } catch (err) {
+        openCaptured = err;
+      }
+      expect((openCaptured as Error)?.constructor.name).toBe("Date::Error");
+      let contentCaptured: unknown;
+      try {
+        await storage.engine.render("broken_date_card", "content");
+      } catch (err) {
+        contentCaptured = err;
+      }
+      expect((contentCaptured as Error)?.constructor.name).toBe("Date::Error");
+    } finally {
+      storage.close();
+    }
+  });
+
   // ----- the corpus-v2 replay sentinel contract ----------------------------
 
   it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:1135 capture recorded", () => {

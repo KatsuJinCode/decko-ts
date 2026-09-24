@@ -1,0 +1,1237 @@
+{
+  "generatedAt": "2026-09-24T02:54:34.950Z",
+  "howToRegenerate": "node benchmarks/cf-scale/adversarial-probes.mjs --local --record",
+  "decks": "deploy/cf-scale-deck/seed.sql + tmp/adversarial-probe-scratch-deck.sql over deploy/migrations/0001-schema.sql",
+  "surface": "deploy/worker.ts under miniflare workerd (deploy/wrangler.toml main)",
+  "limitContext": {
+    "rowsReadDaily": 5000000,
+    "requestsDaily": 100000,
+    "rowsWrittenDaily": 100000,
+    "headroom": 1.2
+  },
+  "batches": [
+    {
+      "batch": "00-control",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 5,
+        "queries": 18,
+        "rowsRead": 82004,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "home-renders",
+          "path": "/",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:card-view": true
+          },
+          "oracle": "Ruby: root page renders Home :open (deploy/worker.ts:400-403).",
+          "note": "targeted deck control"
+        },
+        {
+          "id": "status",
+          "path": "/_status",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:\"ok\": true": true
+          },
+          "oracle": "deploy/worker.ts:319-341 — COUNT(*) health JSON.",
+          "note": "engine + database health"
+        },
+        {
+          "id": "scale-page-open",
+          "path": "/Scale%20Page%201x",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "Multi-word name via %20; key alias space->underscore (src/card/name.ts:97-105 simpleKey).",
+          "note": "the canonical %20 form of an ordinary card"
+        },
+        {
+          "id": "scale-page-json",
+          "path": "/Scale%20Page%201x.json",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:\"key\": \"scale_page_1x\"": true
+          },
+          "oracle": "deploy/worker.ts:261-284 record JSON; row key from the targeted generator convention.",
+          "note": "record JSON control"
+        }
+      ]
+    },
+    {
+      "batch": "01-name-encoding",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 21,
+        "queries": 13,
+        "rowsRead": 708070,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 2
+      },
+      "probes": [
+        {
+          "id": "plus-rewritten-to-space",
+          "path": "/Scale+Page+1x",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "DELIBERATE DIVERGENCE from decko: deploy/worker.ts:233-239 decodeName rewrites '+' to ' ' BEFORE decoding, so the URL plus can never reach the engine as the DeckoName joint ('+'). In card-1.110.0/Decko, /A+B is the junction URL (Card::Name.joint = '+', prototype/lib/cardname.rb JOINT). Junctions are reachable here only via %2B.",
+          "note": "decko would junction-split this; ours renders the simple card"
+        },
+        {
+          "id": "pct20-space",
+          "path": "/Scale%20Page%202x",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 2.": true
+          },
+          "oracle": "same shape as scale-page-open on a second card; kept so remote diffs catch cache-key errors between the two forms",
+          "note": "second ordinary card via %20"
+        },
+        {
+          "id": "pct2b-encoded-plus-is-junction",
+          "path": "/Scale%2BPage",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "MEASURED MECHANISM (finding, the headline of this batch): %2B does NOT survive to the engine — by the time decodeName sees the path the escape is already a literal '+', and its `raw.replace(/\\+/g, ' ')` (deploy/worker.ts:235) rewrites it to a space BEFORE decoding. The engine receives 'Scale Page' (space form), key 'scale_page' — no such row -> 404. Combined with the literal-plus rewrite this means JUNCTION NAMES ARE UNREACHABLE OVER HTTP in every form ('+' -> space; '%2B' -> '+' -> space). In Ruby/decko /A+B IS the junction URL (Card::Name.joint '+', prototype/lib/cardname.rb). Verified by the debug dump of targeted-compound-junction (the not-found message shows the requested name with a space where the joint should be).",
+          "note": "%2B is rewritten to space too — compounds unreachable (finding)"
+        },
+        {
+          "id": "underscore-alias",
+          "path": "/scale_page_1x",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "key aliases: simpleKey collapses case+separators (src/card/name.ts:97-105); Ruby simple_key same (prototype/lib/cardname.rb:106-115).",
+          "note": "lowercase underscore form resolves to the same row"
+        },
+        {
+          "id": "hyphen-alias",
+          "path": "/Scale-Page-1x",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "'-' is not \\p{L}\\p{M}\\p{Nd}\\p{Pc} so it keys as '_' (name.ts:66-67 NOT_OK_FOR_KEY).",
+          "note": "hyphen alias"
+        },
+        {
+          "id": "dot-alias",
+          "path": "/Scale.Page.1x",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "same NOT_OK_FOR_KEY class as hyphen ('.' -> '_').",
+          "note": "dot alias"
+        },
+        {
+          "id": "encoded-underscore",
+          "path": "/Scale%5FPage%5F1x",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "decodeURIComponent then key-alias; identical to the literal underscore form.",
+          "note": "%5F"
+        },
+        {
+          "id": "case-insensitive",
+          "path": "/DEPTH%20ROOT",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Depth level 0": true
+          },
+          "oracle": "key derivation lowercases (underscore guard, name/inflect.ts:172-180); lookups are key-equality (retrieve.ts:257-264).",
+          "note": "all-caps URL of a letter-only name"
+        },
+        {
+          "id": "digit-uppercase-key-divergence",
+          "path": "/Scale%20Page%201X",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "NOT a fetch bug — a deck-seeding artifact this probe pins: underscore() inserts a camel boundary between a digit and a following uppercase ('1X' -> '1_X', inflect.ts:176-178, the ActiveSupport /([a-z\\d])([A-Z])/ rule), so the ENGINE key of 'Scale Page 1X' is 'scale_page_1_x' while targeted-test-deck.mjs:40 seeded the naive key 'scale_page_1x'. Ruby's ActiveSupport underscore inserts the same boundary (activesupport lib/active_support/inflector/methods.rb), so the port is faithful; any name with digit+uppercase is unreachable by URL on a deck seeded with the naive key rule.",
+          "note": "digit+uppercase name — engine key vs seeded key divergence"
+        },
+        {
+          "id": "compound-by-plus-renders-simple",
+          "path": "/Depth+Level+1",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Depth level 1": true
+          },
+          "oracle": "plus->space again: this is the SIMPLE card 'Depth Level 1', not a junction (divergence documented at plus-rewritten-to-space).",
+          "note": "targeted-deck chain member via plus form"
+        },
+        {
+          "id": "pct2b-junction-unknown",
+          "path": "/Depth%2BLevel%2B1",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Depth level 1": true
+          },
+          "oracle": "MEASURED, mechanism solved by the targeted-compound-junction dump: %2B becomes '+' then decodeName rewrites it to a space (deploy/worker.ts:235), so this URL is the SIMPLE card 'Depth Level 1' — which renders, expanding its 32-level chain (~54KB). Not a junction resolution at all; pinned so any future decodeName fix flips this probe visibly.",
+          "note": "%2B form collapses to the simple card 'Depth Level 1' (measured)"
+        },
+        {
+          "id": "targeted-compound-junction",
+          "path": "/Scale%20Page%201x%2BScale%20Page%20501x",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "THE HEADLINE FINDING, pinned: this REAL targeted-deck junction row (dimension 5; left_id/right_id; the engine renders it fine when called directly — verify-targeted-deck.test.ts:69-76) is UNREACHABLE over HTTP: the debug dump shows the not-found message carries the name with a SPACE where the joint belongs ('Scale Page 1x Scale Page 501x'). Same fate for the 50 compound pairs and the chain junction rows. Ruby/decko addresses compounds as /A+B; the port's HTTP surface cannot address them at all. Report, not fix (deploy/ is outside this lane's ownership).",
+          "note": "real junction row 404s over HTTP — compound names unreachable (finding)"
+        },
+        {
+          "id": "targeted-chain-junction",
+          "path": "/Depth%20Root%2BDepth%20Level%201",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "same compound-unreachable mechanism (space-rewrite) for the 32-chain's own junction row.",
+          "note": "chain junction row via %2B — same 404 (finding)"
+        },
+        {
+          "id": "pct2f-slash-in-name-unknown",
+          "path": "/Scale%2FPage",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "%2F decodes to '/' inside the name; DeckoName does not split on '/' (only '+', name.ts:232-234), so this is the simple name 'Scale/Page' — no such card.",
+          "note": "encoded slash inside a name"
+        },
+        {
+          "id": "crafted-slash-name-renders",
+          "path": "/Probe%20Slash%2FName",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe slash name body.": true
+          },
+          "oracle": "'/' is a legal simple-name character (key: slash -> '_'); card crafted in the scratch deck.",
+          "note": "card whose NAME contains a literal slash"
+        },
+        {
+          "id": "id-mark-tilde-9",
+          "path": "/~9",
+          "method": "GET",
+          "costClass": "point",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:id doesn't exist: 9": true
+          },
+          "oracle": "MEASURED (finding): '~9' enters Name.id_from_string! (retrieve.ts:163-177, name.ts:240-253); when the Lexicon does not know id 9 on the worker's fetch path it raises NameNotFoundError 'id doesn't exist: 9' -> 500 error page. Ruby: bad_mark raises Card::Error::NotFound (name.rb:104-106) which decko's controller renders as its not-found page — ours 500s. The row exists (Scale Page 1x = id 9, targeted-test-deck.mjs insertion order), so this is a fetch-path lexicon warming gap, not a missing row.",
+          "note": "~id mark URL — 500 on the deployed surface (measured)"
+        },
+        {
+          "id": "codename-mark",
+          "path": "/:search_type",
+          "method": "GET",
+          "costClass": "point",
+          "status": 500,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "MEASURED (finding): ':search_type' resolves through the codename registry (retrieve.ts:179-188, name.ts:244-252); on the worker fetch path the registry is unwarmed -> CodenameNotFoundError -> 500. The codename EXISTS in the deck (cards.codename 'search_type', targeted seed id 2). Ruby: CodenameNotFound -> not_found_codename view (format/nest/fetch.rb:27-35).",
+          "note": "codename mark URL — 500 on the deployed surface (measured)"
+        },
+        {
+          "id": "double-slash-collapsed",
+          "path": "//Scale%20Page%201x",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "deploy/worker.ts:368 trailing-slash strip only; leading '//' leaves pathname.slice(1) = '/Scale…' — MEASURED behavior recorded; the leading-slash residue makes the name '/Scale Page 1x' (unknown) or renders, depending on WHATWG normalization — that measurement IS the probe.",
+          "note": "leading double slash"
+        },
+        {
+          "id": "trailing-slash",
+          "path": "/Scale%20Page%201x/",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Scale page 1.": true
+          },
+          "oracle": "deploy/worker.ts:352,368 — one trailing-slash strip; '/Home/' and '/Home' are one card.",
+          "note": "trailing slash normalization"
+        },
+        {
+          "id": "dot-segments-normalize-to-home",
+          "path": "/Scale%20Page%201x/..",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "WHATWG URL normalizes '/X/..' to '/' before the worker sees the path — measures whether the probe path survives as '/' (home) or the card.",
+          "note": "dot-segment traversal in the URL parser"
+        }
+      ]
+    },
+    {
+      "batch": "02-unicode-percent",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 4,
+        "queries": 7,
+        "rowsRead": 65244,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "unicode-nfc-name",
+          "path": "/Probe%20Caf%C3%A9%20Card",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe café card body.": true
+          },
+          "oracle": "é is \\p{L}: kept in the key (name.ts:66 NOT_OK_FOR_KEY keeps letters). Row key crafted to engine simpleKey.",
+          "note": "NFC é in name and key"
+        },
+        {
+          "id": "unicode-nfd-name-not-found",
+          "path": "/Probe%20Cafe%CC%81%20Card",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "NFD 'e'+U+0301: U+0301 is \\p{M} (kept), so the decomposed key differs from the NFC key — no Unicode normalization happens in simpleKey (name.ts:97-105 has no normalize()). Ruby cardname simple_key likewise has none.",
+          "note": "same visual name, decomposed — must not resolve"
+        },
+        {
+          "id": "emoji-name",
+          "path": "/Probe%20%F0%9F%9A%80%20Card",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe rocket card body.": true
+          },
+          "oracle": "🚀 is \\p{So}: NOT_OK_FOR_KEY replaces it -> key collapses to probe_card (name.ts:66-67, 97-105).",
+          "note": "emoji in name"
+        },
+        {
+          "id": "malformed-percent-400",
+          "path": "/%E0%A4%A",
+          "method": "GET",
+          "costClass": "point",
+          "harnessSensitive": true,
+          "status": 500,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "HARNESS-SENSITIVE (measured): the 500 is 'TypeError: Invalid URL string' thrown by MINIFLARE'S dispatchFetch client before the worker runs (debug dump) — a local-harness artifact, NOT worker behavior. The worker itself would decodeName-catch the URIError -> 400 (deploy/worker.ts:233-239). The remote diff should treat any divergence here as environment, not engine. Ruby/Rack leaves malformed sequences literal (no throw).",
+          "note": "truncated UTF-8 percent sequence — local 500 is a harness artifact"
+        }
+      ]
+    },
+    {
+      "batch": "03-empty-long-trailing",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 9,
+        "queries": 10,
+        "rowsRead": 97866,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "space-only-name",
+          "path": "/%20",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "name ' ' -> DeckoName rubyStrip -> '' -> key '' -> fetch miss -> 404 (render.ts:220-222 message; deploy/worker.ts:256). Ruby: fetch of a blank mark is nil (format/nest/fetch.rb retrieve_existing 'mark.present?'), page unknown -> 404.",
+          "note": "name that strips to empty"
+        },
+        {
+          "id": "trailing-dot-name",
+          "path": "/Probe%20Trailing%20Dot.",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe trailing dot body.": true
+          },
+          "oracle": "'.' keys as '_' then split(/_+/).filter drops the empty tail (name.ts:97-105) — resolves to the same row as the crafted name WITH the dot.",
+          "note": "trailing dot in name"
+        },
+        {
+          "id": "trailing-dash-name",
+          "path": "/Probe%20Trailing%20Dash-",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe trailing dash body.": true
+          },
+          "oracle": "same drop-the-empty-tail rule for '-'.",
+          "note": "trailing dash in name"
+        },
+        {
+          "id": "existing-name-500-char",
+          "path": "/Probe%20Long%20Name%20aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe long name body.": true
+          },
+          "oracle": "500-char simple name (16-char stem + 484 a's), crafted to exist; key derivation is length-unbounded.",
+          "note": "crafted 500-char name, exists"
+        },
+        {
+          "id": "missing-name-500-char",
+          "path": "/Probe%20Absent%20bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "500-char name (13-char stem + 487 b's) with no row -> 404 (error.rb:23-27).",
+          "note": "500-char name, does not exist"
+        },
+        {
+          "id": "existing-name-500-char-json",
+          "path": "/Probe%20Long%20Name%20aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe long name body.": true
+          },
+          "oracle": ".json suffix route (deploy/worker.ts:407-415).",
+          "note": "500-char name via .json"
+        },
+        {
+          "id": "bare-dot-path",
+          "path": "/.",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:card-view": true
+          },
+          "oracle": "WHATWG normalizes '/.' to '/'; empty path -> Home (deploy/worker.ts:400-403).",
+          "note": "single dot segment"
+        },
+        {
+          "id": "dotdot-path",
+          "path": "/..",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:card-view": true
+          },
+          "oracle": "same dot-segment normalization.",
+          "note": "dot-dot segment"
+        }
+      ]
+    },
+    {
+      "batch": "04-routing-methods",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 8,
+        "queries": 1,
+        "rowsRead": 0,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "view-suffix-not-routed",
+          "path": "/Scale%20Page%201x/open",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:No route for": true
+          },
+          "oracle": "deploy surface has NO view segment (deploy/worker.ts:419-421 — 'no slashes in this surface'); the ROOT worker.js:57-62 DOES route views. Ruby decko routes /name/view. Surface narrowing is deliberate; recorded so the remote diff flags regressions.",
+          "note": "slash-path rejected"
+        },
+        {
+          "id": "post-card-405",
+          "path": "/Scale%20Page%201x",
+          "method": "POST",
+          "costClass": "point",
+          "status": 405,
+          "checks": {
+            "statusOk": true,
+            "contains:method not allowed": true
+          },
+          "oracle": "deploy/worker.ts:396-398.",
+          "note": "POST to card route"
+        },
+        {
+          "id": "get-api-query-405",
+          "path": "/api/query",
+          "method": "GET",
+          "costClass": "point",
+          "status": 405,
+          "checks": {
+            "statusOk": true,
+            "contains:POST a JSON body": true
+          },
+          "oracle": "deploy/worker.ts:389-391 — the /api/query 405 body is the POST hint, not the generic 'method not allowed' (measured).",
+          "note": "GET on POST-only endpoint"
+        },
+        {
+          "id": "post-status-405",
+          "path": "/_status",
+          "method": "POST",
+          "costClass": "point",
+          "status": 405,
+          "checks": {
+            "statusOk": true,
+            "contains:method not allowed": true
+          },
+          "oracle": "deploy/worker.ts:371.",
+          "note": "POST to status"
+        },
+        {
+          "id": "deep-path-404",
+          "path": "/no/route/here",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:No route for": true
+          },
+          "oracle": "deploy/worker.ts:419-421.",
+          "note": "multi-segment path"
+        },
+        {
+          "id": "missing-card-html-404",
+          "path": "/Probe%20Totally%20Missing",
+          "method": "GET",
+          "costClass": "point",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "render throws 'card not found: X' (render.ts:220-222); deploy/worker.ts:256 maps to 404 — CONVERGES with Ruby's 404 (error.rb:23-27).",
+          "note": "ordinary unknown card"
+        },
+        {
+          "id": "json-suffix-empty-name-400",
+          "path": "/.json",
+          "method": "GET",
+          "costClass": "point",
+          "status": 400,
+          "checks": {
+            "statusOk": true,
+            "contains:empty card name": true
+          },
+          "oracle": "deploy/worker.ts:407-414: '.json' with empty stem -> 400.",
+          "note": ".json with no name"
+        }
+      ]
+    },
+    {
+      "batch": "05-denial-nesting",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 7,
+        "queries": 13,
+        "rowsRead": 179942,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "denied-card-denial-span",
+          "path": "/Restricted%20Page%207",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:denied": true,
+            "notContains:Restricted body 7": true
+          },
+          "oracle": "*self read rule denies anonymous; denial view replaces the body (src/card/permissions/; Ruby view/permission.rb altered_view). Body bytes must never leak through the HTML page.",
+          "note": "targeted-deck denied card"
+        },
+        {
+          "id": "denied-card-json-LEAK-CHECK",
+          "path": "/Restricted%20Page%207.json",
+          "method": "GET",
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Restricted body 7": true
+          },
+          "oracle": "KNOWN HOLE (finding, reported not fixed): cardRecordJson (deploy/worker.ts:261-284) fetches by name with NO read-rule check and returns FULL db_content — a denied card's body leaks over the .json route. Ruby: GET of a denied card renders the denial (ok_to_read? fails, error.rb:27-31). This probe ASSERTS THE LEAK so the remote window measures it; if the hole is ever closed, this probe flips and the diff will say so.",
+          "note": ".json route has no permission gate — expected leak"
+        },
+        {
+          "id": "denied-parent-render",
+          "path": "/Probe%20Restricted%20Parent",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:denied": true,
+            "notContains:restricted parent body": true
+          },
+          "oracle": "scratch-deck card with a *self rule no anonymous grant reaches (same wiring as targeted-test-deck.mjs:126-134; render.ts:744-761 canReadByStoredRule).",
+          "note": "crafted denied parent"
+        },
+        {
+          "id": "readable-child-of-denied-parent",
+          "path": "/Probe%20Restricted%20Parent%2BProbe%20Child",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 404,
+          "checks": {
+            "statusOk": true,
+            "contains:Card not found": true
+          },
+          "oracle": "MEASURED — blocked by the compound-unreachable finding, not by permissions: the %2B joint rewrites to a space (deploy/worker.ts:235) so the composed name never reaches the engine (debug dump). The permission QUESTION (does a rule-less composed child of a denied parent render — render.ts:740-743 'rule-less seeds stay allowed'; Ruby rule inheritance oracle-unknown) is answered by the NEXT probe, which reaches the same junction through a nest inside a readable card, bypassing the URL layer entirely.",
+          "note": "denied parent + composed child via URL — 404 (compound-unreachable finding)"
+        },
+        {
+          "id": "readable-child-via-nest",
+          "path": "/Probe%20Nest%20Of%20Junction%20Child",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:junction child body — readable via compo": true
+          },
+          "oracle": "the composed child 'Probe Restricted Parent+Probe Child' reached through {{...}} in a readable card (no URL rewrite in the nest path): renders 200 with the child body, denial NOT inherited — the port's rule-less-allowed semantics (render.ts:740-761). Ruby inheritance behavior not determinable from the prototype overlay (rule resolution needs the permissions mod's live walk) — oracle-unknown, measured behavior pinned.",
+          "note": "composed child via nest — renders, denial not inherited (measured)"
+        },
+        {
+          "id": "nest-of-denied-renders-denial",
+          "path": "/Probe%20Nest%20Of%20Restricted",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:denied": true,
+            "notContains:restricted parent body": true
+          },
+          "oracle": "a readable card nesting a denied card renders the denial span inline, page 200 (format.ts:300-309 viewPermissionDenial; Ruby view/permission.rb:46-50).",
+          "note": "denial propagates inline, not as a page error"
+        }
+      ]
+    },
+    {
+      "batch": "06-cycles-depth",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 12,
+        "queries": 32,
+        "rowsRead": 2072066,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 5
+      },
+      "probes": [
+        {
+          "id": "self-inclusion",
+          "path": "/Probe%20Self%20Loop",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:nest depth exceeded": true
+          },
+          "oracle": "RUBY DIVERGENCE (finding): Ruby raises Card::Error::UserError 'Man, you're too deep.  (Too many levels of nests at a time)' at format depth >= 20 (Card.config.max_depth=20, prototype/lib/cardio/railtie.rb:17; monitor_depth prototype/lib/card/format/error.rb:32-38; invoked from prototype/lib/card/view.rb:86). A NESTED render rescues to an INLINE message (render.rb:115-119 rescue_view -> quiet_error, error.rb:75-85), so Ruby's page is 200 with 20 levels then the message. Ours nests to depth 42 (render.ts:347 maxDepth:42; format.ts:492-494 throw) and the WHOLE PAGE 500s. Termination is by depth counter in both — neither loops forever.",
+          "note": "A includes A — terminates at the depth guard"
+        },
+        {
+          "id": "cycle-two",
+          "path": "/Probe%20Cycle%20A",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:nest depth exceeded": true
+          },
+          "oracle": "same depth-guard termination as self-inclusion; Ruby inline 'too deep' at 20. Prefetch CTE terminates by UNION dedup (prefetch.ts:17,145,191).",
+          "note": "A includes B includes A"
+        },
+        {
+          "id": "cycle-three",
+          "path": "/Probe%20Cycle%20C1",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:nest depth exceeded": true
+          },
+          "oracle": "same class.",
+          "note": "3-cycle C1->C2->C3->C1"
+        },
+        {
+          "id": "pointer-to-self",
+          "path": "/Probe%20Self%20Pointer",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Probe Self Pointer": true
+          },
+          "oracle": "MEASURED: pointer items render through the :bar item view (views.ts pointer path via nestRecord), and :bar does not re-expand core content — so a self-listing pointer TERMINATES at one nesting level instead of recursing. Ruby's pointer item view choice determines the same fork (bar vs content); the termination here is by view shape, not the depth counter.",
+          "note": "pointer card listing itself — bounded by item view (measured)"
+        },
+        {
+          "id": "self-search",
+          "path": "/Probe%20Self%20Search",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:Probe Self Search": true
+          },
+          "oracle": "MEASURED: card_list renders its items as :bar; the search card lists itself once (searchResults memoization, render.ts:1276-1284) and the bar view does not re-run the search — recursion terminates by view shape. (On D1 the match itself fails — REGEXP — so the measured body is the empty/failed-list shape; the check pins whatever the local workerd measured.)",
+          "note": "search card whose query matches itself — bounded (measured)"
+        },
+        {
+          "id": "nest-of-cycle-page-500",
+          "path": "/Probe%20Nest%20Of%20Cycle",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:nest depth exceeded": true
+          },
+          "oracle": "KEY RUBY DIVERGENCE: root card is readable; the CYCLE lives at nest depth 1+. Ruby rescues the depth-20 UserError in the NON-focal subformat and renders the message INLINE — page 200 with readable content then 'Man, you're too deep...' (render.rb:115-119, error.rb:75-85 quiet path). Ours throws out of the root render -> whole page 500.",
+          "note": "readable root, cycle nested inside — inline vs page-failing"
+        },
+        {
+          "id": "depth-20-chain-ok",
+          "path": "/Probe%20Deep%20D20%20Root",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe deep d20 l19 leaf.": true
+          },
+          "oracle": "chain of 20 cards = max format depth 19 < 20: legal in Ruby (max_depth=20) AND in the port (42). Convergence pinned at the Ruby boundary.",
+          "note": "chain depth exactly at Ruby's boundary minus one"
+        },
+        {
+          "id": "depth-21-chain-ok-locally",
+          "path": "/Probe%20Deep%20D21%20Root",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:probe deep d21 l20 leaf.": true
+          },
+          "oracle": "chain of 21 = depth 20 >= Ruby max_depth: RUBY RAISES 'too deep' here; the port renders (guard at 42, render.ts:347). Measured local behavior recorded; divergence cited in the ledger.",
+          "note": "chain one past Ruby's boundary — port still renders"
+        },
+        {
+          "id": "depth-32-targeted-chain",
+          "path": "/Depth%20Root",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "contains:The deepest content of the 32-level chai": true
+          },
+          "oracle": "the SHIPPED targeted deck's own dimension-2 chain renders fine locally (verify-targeted-deck.test.ts:41-44) but is UNRENDERABLE under the Ruby oracle: depth 32 >= max_depth 20 -> UserError. Any Ruby-parity claim about this deck must mention this (render.ts:223 maxDepth comment says 'decko default 42'; the vendored prototype pins 20).",
+          "note": "targeted deck 32-deep chain vs Ruby max 20"
+        },
+        {
+          "id": "depth-44-chain",
+          "path": "/Probe%20Deep%20D44%20Root",
+          "method": "GET",
+          "costClass": "cycle",
+          "status": 500,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "MEASURED ENGINE NONDETERMINISM (finding, same class as nest-of-bad-cql): 500 (nest depth exceeded at 42) on six consecutive battery runs, then 200 with the full 75KB chain rendered on run 7 — the deep-chain nest targets sometimes fail to resolve/prepare (prefetch fallback rounds, MAX_FALLBACK_ROUNDS=25, prefetch.ts:60) so the unknown-nest path renders instead of recursing into the depth guard. The ordering hazard lives in render.ts/prefetch.ts (not this lane's files) — reported. Probe pins the OBSERVED ENVELOPE {200,500}; anything outside it on the remote is a real divergence. Ruby: 44-deep is past max_depth=20 — always the inline too-deep error (deterministic).",
+          "note": "44-deep chain — locally nondeterministic {200,500}"
+        },
+        {
+          "id": "nest-of-missing-unknown-view",
+          "path": "/Probe%20Nest%20Of%20Missing",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "notContains:nest depth exceeded": true,
+            "notContains:Render error": true
+          },
+          "oracle": "unknown NEST target renders the unknown-card view, page 200 (format.ts:476-483 buildUnknownNestCard; Ruby format/nest/fetch.rb new_card 'Card.fetch cardish, new:' — fetch miss does NOT raise).",
+          "note": "nest of a nonexistent card — must NOT error"
+        }
+      ]
+    },
+    {
+      "batch": "07-cql-search-cards",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 9,
+        "queries": 25,
+        "rowsRead": 280663,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 2
+      },
+      "probes": [
+        {
+          "id": "cql-control",
+          "path": "/All%20Scale%20Page%20Probe",
+          "method": "GET",
+          "costClass": "scan",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "FINDING (measured): the search renders EMPTY on the worker — the CQL `match` modifier compiles to SQLite's REGEXP operator (src/cql/sqlite-regexp.ts:5-12), and workerd D1 cannot host the custom UDF, so executeQuery fails at run time; runSearch swallows the failure into [] (render.ts:1332-1334, 'search_error view is wave 3'). Locally under better-sqlite3 the UDF IS registered (registerSqliteRegexpFunction) and the card renders its list — verify-targeted-deck.test.ts:78-81 proves that side. So the corpus-targeted search surface is silently empty on Cloudflare. Check pins the measured workerd shape.",
+          "note": "valid search card — empty on D1 (REGEXP UDF unavailable), renders locally"
+        },
+        {
+          "id": "cql-not-json",
+          "path": "/Probe%20Bad%20CQL%20Not%20Json",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:Invalid JSON search query: this is not j": true
+          },
+          "oracle": "PARITY: card-mod-search-0.20.0 set/abstract/cql_search.rb:29-34 raises Card::Error::BadQuery 'Invalid JSON search query: #{query}' (message byte-pinned in render/errors.ts:25-31); ours raises the same class+message — but at ROOT the Ruby decko error-page status is controller-layer (not in the prototype overlay); ours is a 500 (deploy/worker.ts:254-257).",
+          "note": "malformed CQL JSON inside a search card"
+        },
+        {
+          "id": "cql-empty",
+          "path": "/Probe%20Bad%20CQL%20Empty",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:can't run search with empty content": true
+          },
+          "oracle": "PARITY of message: cql_search.rb:36-38 empty_query_error!. Same root-status caveat as cql-not-json.",
+          "note": "empty search content"
+        },
+        {
+          "id": "cql-unknown-key-swallowed",
+          "path": "/Probe%20CQL%20Unknown%20Key",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "RUBY DIVERGENCE (finding): valid JSON with an unknown CQL key — Ruby's Card::Query raises Card::Error::BadQuery during query build (card-1.110.0 lib/card/query.rb); the port's runSearch CATCHES executeQuery failures and returns [] ('search_error view is wave 3', render.ts:1332-1334) -> empty list, page 200. Ruby: focal BadQuery -> error page. Measured local: 200.",
+          "note": "valid JSON, bogus CQL key — swallowed to empty"
+        },
+        {
+          "id": "cql-limit-zero",
+          "path": "/Probe%20CQL%20Limit%20Zero",
+          "method": "GET",
+          "costClass": "scan",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "limit:0 = UNLIMITED in Ruby ('can be 0 or less to force no limit', cql_search.rb:43-44 comment) — but on the worker the `match` REGEXP failure (see cql-control) empties the result BEFORE the limit matters: measured 200 with a near-empty list. The REAL cost bomb on this surface is /api/query (batch 08), which reaches the scan without the UDF-dependent modifier.",
+          "note": "unlimited search card — emptied by the REGEXP gap on D1"
+        },
+        {
+          "id": "cql-limit-huge",
+          "path": "/Probe%20CQL%20Limit%20Huge",
+          "method": "GET",
+          "costClass": "scan",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "same REGEXP-emptying as cql-limit-zero on the worker; on a UDF-capable runtime this clamps to the match set (2000 items).",
+          "note": "limit 999999 — same failure class on D1"
+        },
+        {
+          "id": "cql-referred-by-cycle",
+          "path": "/Probe%20CQL%20Referred%20By%20Cycle",
+          "method": "GET",
+          "costClass": "scan",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "referred_to_by walks the reference index; the referred card is the self-loop card whose render is fine (only its own page nests). Measures search-over-cyclic-reference cost, not a render cycle.",
+          "note": "search reaching into a cycle member"
+        },
+        {
+          "id": "nest-of-bad-cql-500-vs-inline",
+          "path": "/Probe%20Nest%20Of%20Bad%20CQL",
+          "method": "GET",
+          "costClass": "closure",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "MEASURED ENGINE NONDETERMINISM (finding): identical worker code and deck produced 500 five consecutive battery runs (runs 1-5: whole-page 'Invalid JSON search query' — the BadQuery thrown out of prepareSearches, render.ts:1254-1298) and 200 on run 6 (the nested search card was NOT enriched/typeCode-tagged before the BFS reached it, so no runSearch ran and the nest rendered as unknown; 4.8KB debug dump). The prepare-ordering hazard lives in render.ts (not this lane's file) — reported. This probe pins the OBSERVED ENVELOPE {200,500}; a remote result outside it means the remote engine's ordering differs from every local run. Ruby oracle for comparison: quiet_error rescues the nested BadQuery INLINE at 200 with the message embedded (render.rb:115-119, error.rb:75-85) — a THIRD shape, deterministic.",
+          "note": "readable root nesting a malformed search card — locally nondeterministic {200,500}"
+        }
+      ]
+    },
+    {
+      "batch": "08-cql-api",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 11,
+        "queries": 2,
+        "rowsRead": 4788,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 4
+      },
+      "probes": [
+        {
+          "id": "api-query-ok",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "match": "Scale Page",
+              "limit": 5
+            }
+          },
+          "costClass": "scan",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:CQL execution failed": true
+          },
+          "oracle": "MEASURED (finding): `match` compiles to the REGEXP operator; workerd D1 has no REGEXP UDF (src/cql/sqlite-regexp.ts:5-12 — registration is LocalSqliteDriver-only, and deploy/worker.ts registers nothing) -> run-time 'no such function: REGEXP' -> executeQuery throws a NON-CqlBadQuery error -> apiQuery's fallback 500 'CQL execution failed' (deploy/worker.ts:310-316). Every CQL statement using match/regex is 500 on the deployed surface while working locally.",
+          "note": "bounded match CQL — 500 on D1 (REGEXP UDF unavailable)"
+        },
+        {
+          "id": "api-query-limit-zero-full-scan",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "match": "Scale Page",
+              "limit": 0
+            }
+          },
+          "costClass": "scan",
+          "status": 500,
+          "checks": {
+            "statusOk": true,
+            "contains:CQL execution failed": true
+          },
+          "oracle": "same REGEXP failure gates BEFORE the limit semantics; the unlimited-scan cost bomb is unreachable THROUGH match on D1 — but reachable through restriction-free scans (api-query-no-clause-full-deck, measured 1.88MB response).",
+          "note": "match+limit:0 — same REGEXP 500"
+        },
+        {
+          "id": "api-query-no-clause-full-deck",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "limit": 0
+            }
+          },
+          "costClass": "scan",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "json.rows>=100": true
+          },
+          "oracle": "no restrictions at all: whole non-trashed deck in one response.",
+          "note": "whole-deck scan + full row dump"
+        },
+        {
+          "id": "api-query-count",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "return": "count",
+              "match": "Scale Page"
+            }
+          },
+          "costClass": "scan",
+          "status": 500,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "return:count skips limit/order (execute.ts:126-138) but the match REGEXP failure still 500s (measured).",
+          "note": "count path — REGEXP 500 on D1"
+        },
+        {
+          "id": "api-query-bogus-key-400",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "bogus_attribute": 1
+            }
+          },
+          "costClass": "point",
+          "status": 400,
+          "checks": {
+            "statusOk": true,
+            "json.error~bad CQL": true
+          },
+          "oracle": "CqlBadQuery -> 400 (deploy/worker.ts:310-313). Ruby: Card::Error::BadQuery — the /api/query mapping is ours; Ruby controllers map BadQuery to 400-equivalent (unprocessable) — controller layer not in the overlay.",
+          "note": "bad CQL over the API is rejected, NOT swallowed (contrast cql-unknown-key-swallowed)"
+        },
+        {
+          "id": "api-query-found-by-refused",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": {
+              "found_by": "Probe Self Loop"
+            }
+          },
+          "costClass": "point",
+          "status": 500,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "MEASURED (finding): found_by is refused at generate time (execute.ts:86-93 doc: 'the generator refuses them') but the refusal does NOT surface as CqlBadQuery -> the 400 bad-CQL branch (deploy/worker.ts:310-313) never fires; the client sees 500. A refused-by-design statement is indistinguishable from an engine crash on this surface.",
+          "note": "unported CQL modifier — 500 not 400 (measured)"
+        },
+        {
+          "id": "api-query-string-cql",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": "{\"return\":\"count\"}"
+          },
+          "costClass": "point",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "json.count>=0": true
+          },
+          "oracle": "string-encoded CQL accepted (deploy/worker.ts:294-301).",
+          "note": "JSON-encoded string form"
+        },
+        {
+          "id": "api-query-body-not-json",
+          "path": "/api/query",
+          "method": "POST",
+          "bodyRaw": "this is not json",
+          "costClass": "point",
+          "status": 400,
+          "checks": {
+            "statusOk": true,
+            "contains:not valid JSON": true
+          },
+          "oracle": "deploy/worker.ts:287-291.",
+          "note": "garbage body"
+        },
+        {
+          "id": "api-query-array-rejected",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "cql": []
+          },
+          "costClass": "point",
+          "status": 400,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "arrays rejected (deploy/worker.ts:302-304) — no [[]] nesting bomb.",
+          "note": "array CQL rejected"
+        },
+        {
+          "id": "api-query-missing-cql",
+          "path": "/api/query",
+          "method": "POST",
+          "body": {
+            "query": {}
+          },
+          "costClass": "point",
+          "status": 400,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "deploy/worker.ts:302-304.",
+          "note": "wrong envelope key"
+        }
+      ]
+    },
+    {
+      "batch": "09-large-content",
+      "metricsDelta": {
+        "available": true,
+        "rotated": false,
+        "requests": 3,
+        "queries": 6,
+        "rowsRead": 65243,
+        "rowsReadEstimateRequests": 0,
+        "rowsWritten": 0,
+        "errors": 0
+      },
+      "probes": [
+        {
+          "id": "huge-content-100k",
+          "path": "/Probe%20Huge%20Content",
+          "method": "GET",
+          "costClass": "huge",
+          "status": 200,
+          "checks": {
+            "statusOk": true,
+            "minOccurrences:probe huge content paragraph>=100": true
+          },
+          "oracle": "60KB single-card body (D1 caps a single SQL statement at 100KB, so the crafted card targets 60KB) — point read + full render; rows-read stays point-class, response bytes are the cost.",
+          "note": "huge single-card content"
+        },
+        {
+          "id": "large-doc-16k",
+          "path": "/Large%20Doc%201",
+          "method": "GET",
+          "costClass": "huge",
+          "status": 200,
+          "checks": {
+            "statusOk": true
+          },
+          "oracle": "targeted deck dimension 4 control.",
+          "note": "16KB targeted large card"
+        }
+      ]
+    }
+  ]
+}

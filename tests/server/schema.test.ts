@@ -105,7 +105,13 @@ describe("schema.sqlite.sql vs src/server/schema.ts inventory", () => {
 
   it("declares an index for every index the production MySQL schema carries", () => {
     // Verbatim inventory from db/schema.mysql-reference.sql (KEY / UNIQUE KEY
-    // lines). card_virtuals' swapped names are production truth.
+    // lines). card_virtuals' swapped names are production truth. The two
+    // *_binary_index entries are the ONLY engine-side additions (NOT MySQL
+    // truth): BINARY-collation seek twins of the NOCASE key/codename unique
+    // indexes — the engine's lookups compare BINARY and cannot seek a NOCASE
+    // index, which made every point lookup probe cards_trash_index (whole
+    // deck) on D1. Diagnosis + measurement: db/schema.sqlite.sql cards index
+    // block and tools/cf-cost/measure-render-reads.test.ts.
     const mysqlIndexes: Record<string, string[]> = {
       cards: [
         "cards_key_index",
@@ -119,6 +125,8 @@ describe("schema.sqlite.sql vs src/server/schema.ts inventory", () => {
         "cards_created_at_index",
         "cards_updated_at_index",
         "cards_trash_index",
+        "cards_key_binary_index",
+        "cards_codename_binary_index",
       ],
       card_acts: ["card_acts_actor_id_index", "card_acts_card_id_index", "acts_acted_at_index"],
       card_actions: ["card_actions_card_act_id_index", "card_actions_card_id_index"],

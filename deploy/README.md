@@ -33,8 +33,17 @@ npx wrangler d1 create decko-ts-demo-db
 # 2. apply the schema (self-contained inside deploy/)
 npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0001-schema.sql
 
+# 2b. ALREADY-PROVISIONED databases only (0001 never re-runs for them):
+#     backfill the BINARY key/codename lookup indexes
+npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0002-card-text-binary-lookup-indexes.sql
+
 # 3. load the synthetic demo deck
 npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
+
+# 3b. planner stats — REQUIRED after seed (useless on empty tables). Without
+#     this the SQLite planner probes cards_trash_index (whole deck) for every
+#     " AND trash = 0" predicate instead of seeking the key/codename indexes.
+npx wrangler d1 execute decko-ts-demo-db --remote --command "ANALYZE"
 
 # 4. deploy the Worker (wrangler bundles worker.ts + the engine)
 npx wrangler deploy

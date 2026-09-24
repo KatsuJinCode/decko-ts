@@ -82,20 +82,25 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
       }
     }
 
-    // Structural assertions: depth has zero effect on query count.
+    // Structural assertions (2026-09-23, per-key closure rounds): cold round
+    // trips scale with the CHAIN at slope 1 (one batch per inclusion level
+    // beyond depth 2) - the trade for rows-read dropping from O(deck x
+    // passes) per render to O(page). Ruby's measured truth is depth+3: the
+    // same slope. Statements add exactly one fetch statement per level.
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
-    expect(new Set(rts).size).toBe(1);
-    expect(new Set(sts).size).toBe(1);
-    // 5 round trips: root fetch + closure batch + 3 rule-lookup candidates
-    // (the rule chain walk for *self+*open, *all+*open, etc.). The walk
-    // is per-(card, view) CACHED after first render; this constant reflects
-    // the COLD path. Warm renders below stay at 0.
-    expect(rts[0]).toBe(5);
-    // 11 statements: 1 root + 2 closure-batch walk statements + 3 folded
-    // read-permission statements + 1 folded codename codehash (rule? ids)
-    // + 1 folded structure-rule universe + 3 rule lookups.
-    expect(sts[0]).toBe(11);
+    // Structural shape (2026-09-23, per-key closure rounds): round trips =
+    // 7 + max(0, depth-2) and statements = 11 + max(0, depth-1) - slope 1
+    // per chain LEVEL (one batch per inclusion level), independent of deck
+    // size. Ruby's measured truth is depth+3: the same slope. The trade for
+    // the level-linear cold path is rows-read dropping from O(deck x passes)
+    // per render to O(page); warm renders stay at 0 (asserted below).
+    const expectedRts = (depth: number): number => 7 + Math.max(0, depth - 2);
+    const expectedSts = (depth: number): number => 11 + Math.max(0, depth - 1);
+    for (let i = 0; i < rows.length; i++) {
+      expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
+      expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
+    }
     // Warm cache: zero queries on the second render (the rule cache is hit).
     expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
 
