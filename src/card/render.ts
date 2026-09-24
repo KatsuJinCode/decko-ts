@@ -992,7 +992,27 @@ export class RenderEngine implements RenderEngineLike {
       if (this.deniedVerdicts.has(card.id)) continue;
       const stored = card.record.readRuleId;
       if (stored !== undefined) {
-        this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
+        // Two-pass (the recapture 2026-09-24 fix): the STORED read_rule_id
+        // is the most specific rule the set_read_rule walk picked at save
+        // time. Ruby's live permission_rule_id(:read) is what gates the
+        // ACTUAL view (permissions.rb:142-143 falls back to the live walk
+        // on every uncached path, and rule_id_lookup re-resolves on
+        // read-rule rebuild). When the stored rule doesn't grant the
+        // viewer but the live walk's rule candidates resolve to one that
+        // does (the deck's *all+*read catchall, the canonical
+        // pattern-precedence tail), Ruby's live walk ALLOWS — match it:
+        // consult the live candidates before pinning the denial. The
+        // stored-id fast path still wins when the stored rule grants.
+        if (canReadByStoredRule(stored, state)) {
+          this.deniedVerdicts.set(card.id, false);
+          continue;
+        }
+        const byRule = await canReadByRuleLookup(
+          this.fetcher,
+          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+          state,
+        );
+        this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
         continue;
       }
       const byRule = await canReadByRuleLookup(
