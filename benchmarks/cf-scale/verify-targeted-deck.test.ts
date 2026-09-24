@@ -67,10 +67,10 @@ describe("targeted Cloudflare test deck — every dimension renders locally", ()
   });
 
   it("compound junction renders under its compound name", async () => {
-    const row = (await driver.query("SELECT left_id, right_id FROM cards WHERE db_content LIKE 'Compound body 7:%' LIMIT 1", [])).rows[0];
+    const row = (await driver.query("SELECT left_id, right_id FROM cards WHERE db_content LIKE 'Compound body 7:%' LIMIT 1", [])).rows[0] as { left_id: number; right_id: number };
     expect(row).toBeTruthy();
-    const left = (await driver.query("SELECT name FROM cards WHERE id = ?", [row.left_id])).rows[0];
-    const right = (await driver.query("SELECT name FROM cards WHERE id = ?", [row.right_id])).rows[0];
+    const left = (await driver.query("SELECT name FROM cards WHERE id = ?", [row.left_id])).rows[0] as { name: string };
+    const right = (await driver.query("SELECT name FROM cards WHERE id = ?", [row.right_id])).rows[0] as { name: string };
     const html = await render.render(`${left.name}+${right.name}`, "content");
     expect(html).toContain("Compound body 7");
   });

@@ -225,10 +225,14 @@ function errorPage(status: number, title: string, message: string): Response {
   );
 }
 
-/** decodeURIComponent that 400s on malformed input instead of throwing. */
+/** decodeURIComponent that 400s on malformed input instead of throwing,
+ *  then restores '+' as a space: card URLs carry spaces in both forms
+ *  (Ruby/decko treats /A+B and /A%20B as the same card; caught by the
+ *  targeted Cloudflare test 2026-09-23 — multi-word cards 404'd on the
+ *  '+' form while %20 worked). */
 function decodeName(raw: string): string | undefined {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw.replace(/\+/g, " "));
   } catch {
     return undefined;
   }
