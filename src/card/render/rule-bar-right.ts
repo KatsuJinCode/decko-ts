@@ -123,11 +123,15 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
     }
     return "yes";
   }
-  // Abstract::List overrides :one_line_content for pointer/list cards.
-  // The *all base's compact-mode render_core (rule-bar-right.ts:9-19)
-  // routes through this branch — see pointerListOneLineContent's doc.
+  // Abstract::List overrides :one_line_content for pointer/list cards —
+  // but only rule cards whose right setting is a permission right wrap
+  // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
+  // cards render the literal dbContent (raw oracle: *all+*layout).
   if (isPointerOrListCard(card)) {
-    return pointerListOneLineContent(card);
+    if (isRuleCardWithPermissionRight(card)) {
+      return pointerListOneLineContent(card);
+    }
+    return truncatedCore(card.dbContent);
   }
   return truncatedCore(card.dbContent);
 }
