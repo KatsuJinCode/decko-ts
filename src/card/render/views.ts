@@ -307,6 +307,23 @@ const coreView: ViewFn = (ctx) => {
   return fmt.processContent(fmt.renderRaw());
 };
 
+/** card-mod-toggle-0.20.0 set/type/toggle.rb view :core — the content
+ *  rendered as the localized truthy/falsy string ("yes" / "no"). The raw
+ *  db_content is one of "1", "0", "", "true", "false" (or the booleans
+ *  themselves); Ruby's `format toggle.*` calls Card::Content::Toggle
+ *  (mod-toggle's content/toggle.rb), which maps truthy -> "yes" and
+ *  falsey -> "no". The captured oracle (recapture-raw:*all+*captcha
+ *  content/open/closed) pins "yes" verbatim for a *captcha card whose
+ *  raw db_content is "1" — the integer-to-display path the cluster 4
+ *  map names (boolean-yes-vs-integer-1). */
+export function formatToggleCore(content: string | null | undefined): string {
+  const normalized = (content ?? "").trim().toLowerCase();
+  if (normalized === "0" || normalized === "false" || normalized === "" || normalized === "no") {
+    return "no";
+  }
+  return "yes";
+}
+
 /** card-mod-date-0.20.0 set/type/date.rb:7
  *  `::Date.parse(card.content).strftime "%B %-d, %Y"`.
  *  Throws dateError() if the content is not a parseable date — the
