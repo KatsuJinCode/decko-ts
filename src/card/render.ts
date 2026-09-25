@@ -460,15 +460,17 @@ export class RenderEngine implements RenderEngineLike {
       // `dn+*right+*read`, which hit a different options chain and do NOT
       // raise; the 2-part shape gate below keeps them out).
       !(view === "open" && this.isPermissionRightHost(rootCard)) &&
-      // 2-part-name gate (recapture model list|closed=71 tp / 7 fp):
-      // the 3-part shape `dn+*right+*read` is NOT in the raise class —
-      // the *all+X 2-part shape IS. Belt-and-suspenders with the
-      // permission-right-host exclusion above: the 3-part cases that DO
-      // carry a *read/*create/*update/*delete right (codename "read" etc.
-      // is the right) are permission-right-hosts and would fire the
-      // exclude above for :open; for :closed the 2-part gate keeps them
-      // out as a separate axis.
-      rootCard.name.parts.length === 2
+      // Part-shape gate (recapture 2026-09-24 widening): pointer|open
+      // captures 18 tp / 0 fp INCLUDING 1-part pointers like *home
+      // (corpus:77) and excludes 3-part permission-right hosts
+      // (the permission-right-host exclusion above handles that for :open;
+      // for :closed the 3-part shape gate below keeps them out).
+      // pointer|closed captures 0 tp / 3 tn (1-part pointers do NOT
+      // raise; list|closed tp=71 requires 2-part non-permission-right
+      // shape). So :open allows 1-or-2-part names; :closed requires
+      // 2-part and excludes 3-part.
+      ((view === "open" && rootCard.name.parts.length <= 2) ||
+       (view === "closed" && rootCard.name.parts.length === 2))
     ) {
       const failContent = await this.itemOptionsParseFailure(rootCard, new Set([rootCard.key]));
       if (failContent !== undefined) {
