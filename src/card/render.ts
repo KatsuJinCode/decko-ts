@@ -1003,6 +1003,10 @@ export class RenderEngine implements RenderEngineLike {
         // pattern-precedence tail), Ruby's live walk ALLOWS — match it:
         // consult the live candidates before pinning the denial. The
         // stored-id fast path still wins when the stored rule grants.
+        // STRICT: only the live walk's EXPLICIT grant flips the stored
+        // denial (boolean true). Undefined (no rule resolved) keeps the
+        // stored verdict — the partial-deck / rule-less case must NOT
+        // silently allow a stored denial.
         if (canReadByStoredRule(stored, state)) {
           this.deniedVerdicts.set(card.id, false);
           continue;
@@ -1012,7 +1016,14 @@ export class RenderEngine implements RenderEngineLike {
           { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
           state,
         );
-        this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
+        if (byRule === true) {
+          this.deniedVerdicts.set(card.id, false);
+        } else {
+          // byRule === false: live walk explicitly grants a non-readable
+          // rule (rare; corroborates denial). byRule === undefined: no
+          // rule resolved (partial-deck case); honor the stored verdict.
+          this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
+        }
         continue;
       }
       const byRule = await canReadByRuleLookup(
