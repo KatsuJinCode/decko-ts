@@ -1523,28 +1523,24 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
 
-    // Recent_settings chain: *recent settings+*self+*content options is
-    // the corpus's *content_options rule hanging off the recent_settings
-    // SET (probe 7 + the ask's mechanism citation). Its content is the
-    // "kwnd" sentinel -- parse directly.
-    const recentRuleRecord = await this.fetcher.fetchByName("*recent settings+*self+*content options");
-    if (recentRuleRecord !== undefined && recentRuleRecord.name !== undefined) {
-      const recentRule = await this.enrichAndStore(recentRuleRecord);
-      if (recentRule !== undefined) {
-        const fail = this.ruleCardParseFailure(recentRule);
-        if (fail !== undefined) {
-          this.setHostChainCache.set(host.key, fail);
-          return fail;
-        }
-      }
+    // Host's OWN options_card walk (options_api.rb:47-48). The recent-
+    // settings unconditional check that previously lived here raised on
+    // EVERY set host that didn't fire the per-setting rule walk above,
+    // because the recent_settings card carries bad content globally; the
+    // 1012 handler_raised:Card FP class (recapture: *captcha+*right and
+    // 1011 siblings expected PASS but the engine raised) traced to that.
+    // The right walk is the same options_api.rb pattern itemOptions-
+    // ParseFailure already uses for pointer/list hosts: rule_card walk +
+    // *all fallback. Returns the FIRST parse failure (the chain Ruby
+    // resolves to); the chain Ruby DOES NOT resolve to returns undefined.
+    const optFail = await this.itemOptionsParseFailure(
+      host,
+      new Set([host.key]),
+    );
+    if (optFail !== undefined) {
+      this.setHostChainCache.set(host.key, optFail);
+      return optFail;
     }
-
-    // No fall-through to the host's OWN options_card chain: probe 7
-    // confirmed set hosts consult it but never raise from it, and the
-    // fall-through to *all "fr" would create FPs on corpus:268/273/294/
-    // 300/302/315 (the set-card-views corpus parity pin -- those hosts
-    // render real bytes in the corpus, the *all fallback would falsely
-    // raise).
     this.setHostChainCache.set(host.key, undefined);
     return undefined;
   }
