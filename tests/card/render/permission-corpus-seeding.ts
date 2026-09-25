@@ -99,6 +99,57 @@ export async function createCorpusSeededStorage(ids: Set<number>): Promise<Rende
   }
   for (const rule of ruleRows) ids.add(rule.id);
   for (const id of setCardIds) ids.add(id);
+  // SET-card child-card grant walk (deep-read-rule / read-rule-grant-vs-deny
+  // closure gap fix, 2026-09-25). For every *read rule, resolve its SET card
+  // (left_id), then walk the SET card's CHILD cards (left_id = set_card.id).
+  // Each child's card_references name the GRANT PARTIES that setting rule
+  // grants (e.g. `*all+*create` -> AnyoneSignedIn, `*all+*delete` ->
+  // Administrator, `*all+*read` -> Anyone). Ruby's permissions.rb#read_rule?
+  // walks the SET card's rule children via Card.where(matches_rule) and
+  // unions the grants; the previous closure walked only refs FROM the *read
+  // rule cards (ruleRows), missing the grants named by the SET's other
+  // setting children. Chunked at 500 to stay under
+  // SQLITE_MAX_VARIABLE_NUMBER (default 999).
+  const childCardIds: number[] = [];
+  const childRefs: Array<{
+    referer_id: number;
+    referee_id: number | null;
+    referee_key: string | null;
+  }> = [];
+  if (setCardIds.length > 0) {
+    for (let i = 0; i < setCardIds.length; i += 500) {
+      const chunk = setCardIds.slice(i, i + 500);
+      const children = corpus
+        .prepare(
+          `SELECT id FROM cards WHERE left_id IN (${chunk
+            .map(() => "?")
+            .join(",")}) AND trash = 0`,
+        )
+        .all(...chunk) as Array<{ id: number }>;
+      for (const c of children) childCardIds.push(c.id);
+    }
+    if (childCardIds.length > 0) {
+      for (let i = 0; i < childCardIds.length; i += 500) {
+        const chunk = childCardIds.slice(i, i + 500);
+        const batch = corpus
+          .prepare(
+            `SELECT DISTINCT referer_id, referee_id, referee_key FROM card_references ` +
+              `WHERE referer_id IN (${chunk.map(() => "?").join(",")}) ` +
+              `AND referee_id IS NOT NULL`,
+          )
+          .all(...chunk) as Array<{
+          referer_id: number;
+          referee_id: number | null;
+          referee_key: string | null;
+        }>;
+        for (const r of batch) childRefs.push(r);
+      }
+      for (const c of childCardIds) ids.add(c);
+      for (const r of childRefs) {
+        if (r.referee_id !== null) ids.add(r.referee_id);
+      }
+    }
+  }
 
   const rows = new Map<number, CorpusRow>();
   const fetchRows = (idList: number[]): void => {
