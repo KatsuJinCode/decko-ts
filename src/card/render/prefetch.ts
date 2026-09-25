@@ -41,6 +41,10 @@
 // All fetching is read-only (SELECT); the write path is another stream.
 
 import { DeckoName } from "../name.js";
+import {
+  CodenameNotFoundError,
+  NameNotFoundError,
+} from "../name/errors.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
