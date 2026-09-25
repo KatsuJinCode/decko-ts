@@ -77,8 +77,6 @@ function typeText(card: RenderCard): string {
  *  entries; moves zero pins. The earlier single-item-collapse fix was
  *  WRONG — it would also un-wrap *star+*delete, which the raw oracle
  *  pins as wrapped. */
-
- *  in the round report. */
 function pointerListOneLineContent(card: RenderCard): string {
   const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
   const inner = items.map(pointerListOneLineItem).join("\n");
