@@ -190,6 +190,24 @@ const coreView: ViewFn = (ctx) => {
   // Same pattern format.ts:378 already uses, with the typeName kept as
   // a fallback for fixture decks that name the Search type card "Search".
   if (fmt.card.typeCode === "search_type" || fmt.card.typeName === "Search") {
+    // RULE-CARD EXEMPTION (clusters 8 + 10 — runaway-output-recursion and
+    // search-query-content-vs-literal). A search-type card that is ALSO a
+    // rule (3-part name, right part a setting — "*layout+*right+*content
+    // options", "Family+*right+*content options", …) stores its *content
+    // options rule as a JSON spec; Ruby renders the JSON literally through
+    // the rule's :content view, NOT by executing it as a CQL search.
+    // Without this exemption the engine runs the spec as a search:
+    // `{"type":"person"}` resolves to every Person-typed card in the
+    // deck (Family+*right+*content options:render:open -> 606,393 bytes;
+    // :render:content -> 619,284 bytes vs Ruby's 540/3,645), and the
+    // no-results branch still emits the engine's `<div class="card-list
+    // card-list-bar search-result-list">` wrapper instead of the JSON
+    // literal. Same mechanism as the parse-time exemption in render.ts:
+    // 606 (resolveView) — the engine already skips the BadQuery raise for
+    // rule-shaped search cards; the render dispatch must mirror that.
+    if (fmt.engine.cardIsRule?.(fmt.card) ?? false) {
+      return fmt.renderRaw();
+    }
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
