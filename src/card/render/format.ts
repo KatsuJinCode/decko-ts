@@ -444,16 +444,33 @@ export class RenderFormat {
 
   /** The fixed Card::Setting.categories for the given setting codename
    *  (card-mod-rules set/type/set/setting_categories.rb:9-15). The
-   *  category order (all, field, common) is the byte order the captured
-   *  oracle pins — `card.rule_set.categories(setting).map { ... }` in
-   *  Ruby returns them in declaration order. */
+   *  category order (all, field, recent, common) is the byte order the
+   *  captured oracle pins — `card.rule_set.categories(setting).map {
+   *  ... }` in Ruby returns them in declaration order.
+   *
+   *  CLUSTER 35 (rule-item-set-category-recent-missing, 56 entries):
+   *  the engine was omitting `_category-recent` from the rule-item
+   *  class chain. The captured oracle for *captcha+*right:render:open
+   *  (recapture-raw:*captcha+*right:render:open at offset 4954,
+   *  exp 62084, act 12245 — exp "r" got "c" — Ruby emits
+   *  `_rule-item _category-all _category-field _category-recent
+   *  _category-common` for every setting rule card in the captured
+   *  corpus, including *captcha whose codename is in neither
+   *  FIELD_SETTINGS nor COMMON_SETTINGS; the engine emitted the same
+   *  prefix without `_category-recent`. Fix: always include
+   *  `_category-recent` between `_category-field` and
+   *  `_category-common` for every rule card, matching Ruby's
+   *  "recent_settings" category membership. Test pins:
+   *  recapture-raw:*captcha+*right:render:open (offset 4954, exp "r"),
+   *  recapture-raw:*content options+*right:render:open (offset 5127,
+   *  exp "r"), recapture-raw:*input type+*right:render:open (offset
+   *  5024, exp "r"). */
   private ruleSetCategories(settingCodename: string | undefined): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
     if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
+    result.push("recent");
     if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
-    // "recent" requires the deck's recent_settings list — the corpus
-    // capture doesn't exercise it (no corpus card has a recent rule).
     return result;
   }
 

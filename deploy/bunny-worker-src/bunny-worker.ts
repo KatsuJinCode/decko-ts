@@ -25,11 +25,14 @@
 //   GET  /<card-name>.json -> the card record as JSON
 //   anything else        -> 404
 //
-// Driver: @libsql/client/web (Deno-style `npm:@libsql/client@0.17.4/web` is
-// the same client Bunny's own dashboard snippet recommends for Edge Scripting;
-// we import the npm package via esbuild's bundler for the workstation build).
+// Driver: @libsql/client/web. Bunny's runtime uses workerd/Deno; for the
+// workstation-side esbuild bundle we import the npm package directly. The
+// generated bundle is uploaded as the Edge Script code, and at runtime Bunny
+// re-resolves any remaining imports against its CDN/npm caches. For our
+// minimal entry there are no other runtime imports, so the bundle is self-
+// contained.
 
-import { createClient } from "npm:@libsql/client@0.17.4/web";
+import { createClient } from "@libsql/client/web";
 
 interface Env {
   BUNNY_DB_URL: string;

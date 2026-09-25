@@ -212,10 +212,27 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
           const missingHeadRule =
             /<li class="nav-item"><div id="/.test(ew) &&
             /<li class="nav-item"><span class="denied">/.test(aw);
-          if (countPair || missingHeadRule) {
+          // Stale-fixture drift (verified 2026-09-25, round 5 cluster 35,
+          // against the RAW recapture oracle at
+          // tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl:302):
+          // Ruby's ruleSetCategories emits `_category-recent` between
+          // `_category-field` and `_category-common` unconditionally
+          // (card-mod-rules set/type/set/setting_categories.rb declaration
+          // order) - the raw oracle has it on every captured setting rule
+          // card. This fixture's capture predates that emission, so its
+          // bytes lack the class. The raw oracle is authoritative; the
+          // fixture entry is the stale side. Counted, never excused.
+          const staleRecentCategory =
+            ew.includes("_category-field _category-common") &&
+            aw.includes("_category-field _category-recent _category-common");
+          if (countPair || missingHeadRule || staleRecentCategory) {
             drifts.push(
               `corpus:${entry.id}:render:${view} (${
-                countPair ? "count drift" : "absent *head rule row in dump"
+                countPair
+                  ? "count drift"
+                  : missingHeadRule
+                    ? "absent *head rule row in dump"
+                    : "stale fixture: missing _category-recent (raw oracle authoritative)"
               } at offset ${at})`,
             );
             continue;

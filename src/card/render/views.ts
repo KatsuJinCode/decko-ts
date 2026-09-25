@@ -63,7 +63,28 @@ function slotId(card: RenderCard, view: string): string {
 /** wrap.rb#wrap_classes + slot_attributes: id, class, data (insertion order
  *  - Rails content_tag). `extraClass` carries slot_attr class additions
  *  (the content view's d0-card-content class_up lands via classy extras
- *  instead - see the content view). */
+ *  instead - see the content view).
+ *
+ *  CLUSTER 15 (whitespace-newline-before-div, 262 entries, +discussion
+ *  family): Ruby's wrap helper for the discussion-junction content view
+ *  emits a literal `\n` before the closing `</div>` of the content-view
+ *  slot wrap. The captured oracle for recapture-raw:News Item+discussion
+ *  at tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl:146
+ *  shows the closing sequence `</p>\n</div>\n</div>\n</div>\n</div>\n</div>`
+ *  - 5 closing `</div>`s each preceded by `\n`. Without this newline, the
+ *  engine emits `</p></div>\n</div>\n</div>\n</div>\n</div>` (1 byte
+ *  short). The fix targets the discussion-junction path specifically
+ *  (card.name.rightName?.key === "discussion"): Ruby's discussion set
+ *  module wraps its content view's inner content with the trailing
+ *  newline pattern; non-discussion rich-text cards (corpus:639/640/643/
+ *  1120/19334 etc., the unintended positive pin set) emit `</p></div>`
+ *  INLINE without the newline. The earlier broad "view === content"
+ *  fix added the newline to every content view and broke those pins;
+ *  the discussion-only gate below preserves both sides. Test pin:
+ *  recapture-raw:News Item+discussion:render:open (offset 3187, exp
+ *  3222, act 3221 — `\n` between `</p>` and the content-view slot's
+ *  closing `</div>`); recapture-raw:Not really monothiests+discussion:
+ *  render:open (offset 3490, exp 3525, act 3524). */
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
@@ -79,7 +100,12 @@ function slotWrap(ctx: ViewContext, view: string, inner: string): string {
     "data-slot-id": newSlotId(),
     "data-slot": slotOptionsJson(voo.slotOptions()),
   });
-  return `<div${attrs}>${inner}</div>`;
+  // CLUSTER 15 gate: only discussion-junction cards get the trailing
+  // `\n` before the closing `</div>` of the content-view slot wrap.
+  const isDiscussionJunction =
+    view === "content" && card.name.rightName?.key === "discussion";
+  const trailingNewline = isDiscussionJunction && !inner.endsWith("\n") ? "\n" : "";
+  return `<div${attrs}>${inner}${trailingNewline}</div>`;
 }
 
 /** title.rb html block: show_view?(:title_link, :hide) is hide by default

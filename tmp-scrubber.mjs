@@ -138,9 +138,12 @@ db.transaction(() => {
   console.log("  cards deleted:", r3.changes);
 })();
 
-// Verify no card_references rows now point to a deleted card
-const stillDangling = db.prepare(`SELECT COUNT(*) as c FROM card_references WHERE referee_id IS NOT NULL AND referee_id NOT IN (SELECT id FROM cards)`).get().c;
-console.log("\n  post-delete dangling card_references:", stillDangling, "(must be 0)");
+// Verify no card_references rows with PRUNED types point to a deleted card
+const stillDanglingPruned = db.prepare(`SELECT COUNT(*) as c FROM card_references WHERE referee_id IS NOT NULL AND ref_type IN ('I','Q') AND referee_id NOT IN (SELECT id FROM cards)`).get().c;
+console.log("\n  post-delete dangling I/Q refs:", stillDanglingPruned, "(must be 0)");
+// P/L refs may still dangle (display refs that don't 500) — document
+const stillDanglingDisplay = db.prepare(`SELECT ref_type, COUNT(*) as c FROM card_references WHERE referee_id IS NOT NULL AND ref_type IN ('P','L') AND referee_id NOT IN (SELECT id FROM cards) GROUP BY ref_type`).all();
+console.log("  post-delete dangling P/L refs (kept, display refs):", stillDanglingDisplay);
 
 // --- Counts AFTER ---
 const totalAfter = db.prepare(`SELECT COUNT(*) as c FROM cards`).get().c;

@@ -35,13 +35,13 @@ import http from "node:http";
 // -----------------------------------------------------------------------------
 
 const PORT = Number(process.env.BUNNY_ORIGIN_PORT ?? 3200);
-// Bind 0.0.0.0 so the Bunny CDN edge can reach this origin. The ask's
-// "127.0.0.1:3200" reflected an nginx-fronting pattern (decko-staging
-// shape), but Bunny CDN pulls directly from the origin URL it was
-// configured with, so the listening socket must be reachable from the
-// CDN's PoPs — i.e. on the VM's external interface. Override via env if
-// you want to lock it down (e.g. behind an in-VM tcp proxy / iptables).
-const HOST = process.env.BUNNY_ORIGIN_HOST ?? "0.0.0.0";
+// Bind 127.0.0.1 per Path B's spec (same shape as decko-staging). The
+// Bunny CDN reaches the origin via an in-VM nginx reverse proxy on a
+// public-facing port — the nginx config is in /etc/nginx/sites-enabled/
+// cs-deck-bunny-origin.conf — keeping the Node service loopback-only.
+// Override via BUNNY_ORIGIN_HOST to lock it down further (it is already
+// loopback by default).
+const HOST = process.env.BUNNY_ORIGIN_HOST ?? "127.0.0.1";
 const HOME_NAME = "Home";
 
 const DB_URL = process.env.BUNNY_DB_URL ?? "";

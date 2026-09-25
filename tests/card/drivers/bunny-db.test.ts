@@ -341,7 +341,7 @@ describe("BunnyDbDriver (cross-driver conformance + behavior)", () => {
       }
     });
 
-    it("rejects unsupported parameter types before issuing a request", () => {
+    it("rejects unsupported parameter types before issuing a request", async () => {
       // A mock fetch is supplied so the constructor-validated driver
       // never actually makes a network call. We don't invoke query()
       // because the mock would still need to fake a Hrana response;
