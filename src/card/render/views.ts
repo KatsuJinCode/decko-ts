@@ -883,10 +883,29 @@ const closedView: ViewFn = (ctx) => {
  *  :template_closer to the data-slot hide list when rendered as :open.
  *  Captured oracle bytes for corpus:273/294/300/302/315 (pin:
  *  "set-card open-view hide list") carry
- *  `data-slot="...&quot;hide&quot;:[&quot;template_closer&quot;,&quot;bar_middle&quot;]"`. */
+ *  `data-slot="...&quot;hide&quot;:[&quot;template_closer&quot;,&quot;bar_middle&quot;]"`.
+ *  CLUSTER 11 (news-item-show-options-comment-box, 1 entry): for cards
+ *  whose right side is the discussion junction (rightName.key ===
+ *  "discussion"), card-mod-comment's `set/right/discussion.rb:1-6 view
+ *  :open` flips `voo.show :comment_box` BEFORE super()-ing the base
+ *  open view; the mod loader wires that on the discussion set module,
+ *  but the headless render path used by the recapture verification has
+ *  no mod loader, so the discussion show-equality is open-coded here:
+ *  when `rightName.key === "discussion"`, register comment_box in the
+ *  voo's show list so the data-slot JSON includes it
+ *  (`"&quot;show&quot;:[&quot;open&quot;,&quot;comment_box&quot;]"`).
+ *  Test pin: recapture-raw:News Item+discussion:render:open (offset
+ *  435, exp 3222, act 3173 — missing `,"comment_box"` in the show
+ *  JSON). The vocab here is setViz("show") instead of the comment
+ *  mod's `ctx.voo.show(...)` because Voo's `show()` method is the
+ *  boolean getter (visibility.rb#show?), not a setter; the underlying
+ *  map mutation goes through setViz (visibility.rb#show!). */
 const openView: ViewFn = (ctx) => {
   if (ctx.fmt.card.typeCode === "set") {
     ctx.voo.hide("template_closer");
+  }
+  if (ctx.fmt.card.name.rightName?.key === "discussion") {
+    ctx.voo.setViz("comment_box", "show");
   }
   const inner = accordionBarHtml(ctx, true);
   return slotWrapCommon(ctx.fmt, "open", inner);
