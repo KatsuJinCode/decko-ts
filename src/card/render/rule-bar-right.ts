@@ -110,6 +110,20 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
   if (rightSetting === "*structure") {
     return `${typeText(card)} : ${card.dbContent}`;
   }
+  // Toggle-type cards: the compact-mode one_line_content routes through
+  // the card's content view (card-mod-toggle set/type/toggle.rb), which
+  // renders the truthy/falsy display string ("yes" / "no") rather than
+  // the raw dbContent. Captured oracle for recapture-raw:*all+*captcha
+  // shows `yes` for dbContent "1" (cluster 4 — boolean-yes-vs-integer-1
+  // — closes via this branch; the bar_right path was the last divergence
+  // after the barBottomView body fix).
+  if (card.typeCode === "toggle") {
+    const normalized = (card.dbContent ?? "").trim().toLowerCase();
+    if (normalized === "0" || normalized === "false" || normalized === "" || normalized === "no") {
+      return "no";
+    }
+    return "yes";
+  }
   // Abstract::List overrides :one_line_content for pointer/list cards.
   // The *all base's compact-mode render_core (rule-bar-right.ts:9-19)
   // routes through this branch — see pointerListOneLineContent's doc.
