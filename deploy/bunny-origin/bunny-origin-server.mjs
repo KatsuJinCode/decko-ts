@@ -124,9 +124,19 @@ async function pipeline(statements) {
       throw err;
     }
     const result = entry.response?.result ?? {};
+    const cols = result.cols ?? [];
+    const rows = (result.rows ?? []).map((row) => {
+      const cells = row.map(decodeCell);
+      const obj = {};
+      cols.forEach((c, idx) => {
+        const name = typeof c === "string" ? c : c?.name;
+        if (name) obj[name] = cells[idx] ?? null;
+      });
+      return obj;
+    });
     return {
-      cols: result.cols ?? [],
-      rows: (result.rows ?? []).map((row) => row.map(decodeCell)),
+      cols,
+      rows,
       affectedRowCount: result.affected_row_count ?? 0,
       lastInsertRowId: result.last_insert_rowid ?? null,
     };
