@@ -57,21 +57,27 @@ function typeText(card: RenderCard): string {
  *  corpus:6560 (*star+*delete, type list, dbContent "uflluwkwvaenx") —
  *  the rule's bar-right captured bytes show this exact wrapper shape,
  *  and the regression pins in tests/card/render/nest-item-and-one-line-limit
- *  encode the same shape: every pointer/list-typed rule card's
- *  bar_right wraps in `<div class="pointer-list">…<div class=
+ *  encode the same shape: pointer/list-typed rule cards whose right
+ *  setting is one of the four permission rights (*create/*read/*update/
+ *  *delete) wrap in `<div class="pointer-list">…<div class=
  *  "pointer-item item-link">…</div></div>` regardless of the item
  *  count (single or multi).
  *
- *  CLUSTER 6 (rule-card-content-as-pointer-list, 3 entries in the
- *  recapture-raw shard 0 — `*all+*layout:render:closed/ :render:open
- *  and `*layout+*right+*content options:render:open) records that the
- *  recaptured-raw oracle emits the bar_right as a bare literal text
- *  run for single-item cases (vs the wrapped pointer-list above).
- *  That byte shape contradicts the fixture corpus:6560 pin that the
- *  regression tests are locked against; the regression suite is
- *  authoritative here, so cluster 6 is left to the engine round that
- *  reconciles the recapture oracle with the fixture corpus bytes. The
- *  three cluster-6 entries are reported as deferred-to-engine-round
+ *  CLUSTER 6 RECONCILIATION (2026-09-25, round 4 pin-reconciler): the
+ *  two oracles agree on *star+*delete (fixture corpus:6560 wrapped;
+ *  raw recapture-raw-shard-000003:15 ALSO wrapped, content drift
+ *  "uflluwkwvaenx"→"Administrator" is anonymization only) — and the
+ *  raw oracle emits the bar_right as bare literal text for rule cards
+ *  whose right is NOT a permission right (*all+*layout "Default
+ *  Layout"; *layout+*right+*content options '{"type": "Layout"}' —
+ *  recapture-raw-shard-000000:4,14). The dispatch therefore gates the
+ *  wrapper on isRuleCardWithPermissionRight (pointer-list.ts:129):
+ *  permission-right rule cards wrap, all other pointer/list rule
+ *  cards render truncatedCore literal text. Closes the 3 cluster-6
+ *  entries; moves zero pins. The earlier single-item-collapse fix was
+ *  WRONG — it would also un-wrap *star+*delete, which the raw oracle
+ *  pins as wrapped. */
+
  *  in the round report. */
 function pointerListOneLineContent(card: RenderCard): string {
   const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
