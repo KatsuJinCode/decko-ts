@@ -916,10 +916,36 @@ const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
  *  for pointer/list cards reproduces the captured byte shape. Per-item
  *  slots inside the list still dispatch through renderPointerListItem
  *  and carry `view:"bar"` in their data-slot — the change is strictly
- *  the outer accordion-body wrapper, not the per-item mini_bar slots. */
-const barBottomView: ViewFn = ({ fmt }) => {
-  if (isPointerOrListCard(fmt.card)) {
+ *  the outer accordion-body wrapper, not the per-item mini_bar slots.
+ *
+ *  CLUSTER 5 (rule-card-content-as-literal-text): for rule cards whose
+ *  db_content is a single literal (no items, no template — Number/4,
+ *  Phrase/radio, Toggle/1, etc.), Ruby's open-view accordion body
+ *  contains the literal text DIRECTLY, with NO `<div ...content-view>`
+ *  wrap inside `accordion-body`. The TS engine's contentView wraps the
+ *  core in a slot; for rule cards (cardIsRule) we skip that wrap and
+ *  emit the type-specific core body directly (which is the Toggle
+ *  yes/no path of cluster 4 — boolean-yes-vs-integer-1). Test pins:
+ *  recapture-raw:*table of contents+*right+*default:render:open (offset
+ *  2947, exp 2976, act 3624 — `4` literal vs nested content-view slot);
+ *  recapture-raw:*all+*captcha:render:open (closes the wrap; the body
+ *  becomes `yes` via formatToggleCore). Pointer/list rule cards are
+ *  already handled by the upstream `isPointerOrListCard` branch above. */
+const barBottomView: ViewFn = (ctx) => {
+  const fmt = ctx.fmt;
+  const card = fmt.card;
+  if (isPointerOrListCard(card)) {
     return fmt.renderView("core", { home_view: "content" });
+  }
+  // Rule cards with non-pointer/non-list content: skip the content-view
+  // slot wrap and emit the type-specific core body directly. The core
+  // path already handles Toggle yes/no (formatToggleCore), file/image
+  // empty-string fallthroughs, and the standard literal pass-through;
+  // the skip is strictly the wrapper, not the body content.
+  if (fmt.engine.cardIsRule?.(card) === true) {
+    // Render via the core view so type-specific overrides (Toggle, etc.)
+    // apply uniformly with the rest of the engine.
+    return fmt.renderView("core", { home_view: "core" });
   }
   return fmt.renderView("content", { home_view: "content" });
 };
