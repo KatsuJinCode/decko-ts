@@ -1448,16 +1448,28 @@ export class RenderEngine implements RenderEngineLike {
     }
     if (resolved === undefined && card.name.isCompound) {
       // right_type_options: right part's type is a cardtype -> the by-name
-      // virtual card stops the chain (see itemOptionsParseFailure).
+      // virtual card stops the chain (see itemOptionsParseFailure). The
+      // probe card at rightTypeId is the right's TYPE — its OWN typeCode
+      // is what tells us "is this a cardtype?". Reading the codename of
+      // the right's TYPE (peekNameForId(rightTypeId)) would check whether
+      // THE TYPE has codename "cardtype", which is wrong for type cards
+      // without an assigned codename (the corpus anonymizer creates
+      // cardtype cards with random names; their codename is null but
+      // their own type IS cardtype, type_id === peekId("cardtype")).
+      // The correct check is whether the type card at rightTypeId is
+      // itself a cardtype — i.e. its typeCode, set during enrichment
+      // from peekNameForId(typeCard.type_id), equals "cardtype".
       const rightKey = card.name.rightName?.key;
       const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
       const rightTypeId = right?.record.typeId;
-      if (
-        rightTypeId !== undefined &&
-        this.fetcher.codenames.peekNameForId(rightTypeId) === CARDTYPE_TYPE_CODE
-      ) {
-        this.optionsCardCache.set(card.key, undefined);
-        return undefined;
+      if (rightTypeId !== undefined) {
+        const rightTypeCard = this.renderCards.get(
+          this.fetcher.codenames.peekName(rightTypeId) ?? rightTypeId.toString(),
+        );
+        if (rightTypeCard !== undefined && rightTypeCard.typeCode === CARDTYPE_TYPE_CODE) {
+          this.optionsCardCache.set(card.key, undefined);
+          return undefined;
+        }
       }
     }
     if (resolved === undefined) {
