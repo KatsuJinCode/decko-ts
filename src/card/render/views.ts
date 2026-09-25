@@ -1059,7 +1059,35 @@ const barBottomView: ViewFn = (ctx) => {
     // the per-item mini_bar slots.
     return fmt.renderView("content", { home_view: "content" });
   }
-  if (isRuleCard) {
+  // CLUSTER 9/22/40 (rules-form-vs-content-view-generalized,
+  // rules-form-filter-vs-content-view): for 3-part rule-card composition
+  // junctions X+Y+*type plus right and X+Y+*self (Cardtype+description+
+  // *type plus right at tmp/raw-ground-truth/expected/recapture-raw-
+  // shard-000003.jsonl:6554 — open-view length 68009 vs engine 9627),
+  // Ruby emits a nested `<div id="X-Y-Xtype_plu_right-content-view"
+  // class="card-slot content-view …">` slot wrapping the SET card's
+  // Rules section body, while the engine emits the Rules form directly
+  // (the setRulesCoreHtml return, with no content-view slot around it).
+  // The Ruby dispatch for these cards goes through the TYPE-PLUS-RIGHT
+  // or SELF set module's :core view, which the engine's `if (isRuleCard)
+  // … renderView("core")` branch short-circuits. Fix: for the 3-part
+  // composition junction shape (the "right name is *type plus right or
+  // *self" predicate below), keep the content-view slot wrap by taking
+  // the default `renderView("content", …)` branch — the wrapped content
+  // view then calls coreView again, which dispatches setRulesCoreHtml
+  // for typeCode === "set" (the card IS a Set type) and emits the
+  // captured setKeys including TYPE-set + RIGHT-Xtype_plu_right + the
+  // d0-card-content class_up from the content-view hook. Test pins:
+  // recapture-raw:Cardtype+description+*type plus right:render:open
+  // (offset 2842, exp 68009, act 9627) and
+  // recapture-raw:Item+Contributor+*type plus right:render:open (the
+  // shard-0 cluster 40 sample; exp 65327, act 12131).
+  const rightKey = card.name.rightName?.key;
+  const isRuleCardCompositionJunction =
+    card.name.isCompound &&
+    card.name.parts.length === 3 &&
+    (rightKey === "*type plus right" || rightKey === "*self");
+  if (isRuleCard && !isRuleCardCompositionJunction) {
     // Skip the content-view slot wrap; emit the type-specific core body
     // directly. coreView handles Toggle yes/no (formatToggleCore),
     // Number/Phrase literal pass-through, file/image empty fallback.
