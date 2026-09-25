@@ -1077,7 +1077,9 @@ export class RenderEngine implements RenderEngineLike {
     if (stored !== undefined) {
       // Two-pass — see ensureVerdicts for the rationale (recapture
       // 2026-09-24 fix: live walk after a stored-rule miss so the
-      // pattern-precedence catchall is honored).
+      // pattern-precedence catchall is honored). Strict: only EXPLICIT
+      // live-walk grants flip the stored denial; undefined (no rule
+      // resolved) preserves the stored verdict.
       if (canReadByStoredRule(stored, state)) {
         denied = false;
       } else {
@@ -1092,8 +1094,12 @@ export class RenderEngine implements RenderEngineLike {
               },
               state,
             )
-          : true; // a name-less record has no rule candidates
-        denied = byRule === false; // undefined = rule-less: allowed
+          : false; // a name-less record has no rule candidates
+        if (byRule === true) {
+          denied = false;
+        } else {
+          denied = !canReadByStoredRule(stored, state);
+        }
       }
     } else {
       const byRule = record.name
