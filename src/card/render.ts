@@ -1455,16 +1455,18 @@ export class RenderEngine implements RenderEngineLike {
       const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
       const rightTypeId = right?.record.typeId;
       if (rightTypeId !== undefined) {
-        // The right's TYPE was enriched when the right itself was
-        // enriched (enrichAndStore resolves typeName via the type
-        // record). Its typeCode is peekNameForId(typeRecord.type_id) -
-        // for *right's TYPE swtktey (id 22281, type_id 5) that yields
-        // peekNameForId(5) = "cardtype" -- the right's TYPE IS itself a
-        // cardtype, so right_type_options applies.
-        const rightTypeName = right?.typeName;
-        if (rightTypeName !== undefined) {
-          const rightTypeCard = this.renderCards.get(rightTypeName);
-          if (rightTypeCard !== undefined && rightTypeCard.typeCode === CARDTYPE_TYPE_CODE) {
+        // The right's TYPE card's own typeCode (peekNameForId of its
+        // type_id) tells us "is the right's TYPE itself a cardtype?".
+        // For jzuqht (typeId=5): the right's TYPE is the Cardtype card
+        // (id=5, typeId=5 self-reference), peekNameForId(5) = "cardtype".
+        // For *right's TYPE swtktey (id=22281, typeId=5): peekNameForId(5)
+        // = "cardtype". The probe fetches the right's TYPE record if not
+        // already enriched (zero-query on warm re-renders; the walk's
+        // seen-set guards the recursion in itemOptionsParseFailure).
+        const rightTypeRecord = await this.fetcher.fetchById(rightTypeId);
+        if (rightTypeRecord !== undefined) {
+          const rightTypeEnriched = await this.enrichAndStore(rightTypeRecord);
+          if (rightTypeEnriched.typeCode === CARDTYPE_TYPE_CODE) {
             this.optionsCardCache.set(card.key, undefined);
             return undefined;
           }
