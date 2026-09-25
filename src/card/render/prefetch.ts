@@ -409,7 +409,19 @@ async function driveClosure(
     const sideKeyPairs: { left: string; right: string }[] = [];
     const sideIdPairs: { leftId: number; rightId: number }[] = [];
     for (const nameStr of pending) {
-      const name = DeckoName.parse(nameStr);
+      // Same CodenameNotFoundError / NameNotFoundError tolerance as the
+      // collect() loop and render.ts#cardReferenceKeys: a freshly-evicted
+      // lexicon temp cache can make a name that resolved minutes ago throw a
+      // mark resolution error now. Skip — the ref stays in `pending` only
+      // while its key fits the closure shape; if even the canonical parse
+      // throws on an unusual mark form, drop it from this round's pass.
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(nameStr);
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+        throw err;
+      }
       if (known.has(name.key)) continue; // an earlier round resolved it
       if (!name.isCompound) {
         simpleKeys.push(name.key);
