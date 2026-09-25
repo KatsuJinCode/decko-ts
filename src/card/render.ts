@@ -1454,12 +1454,21 @@ export class RenderEngine implements RenderEngineLike {
       const rightKey = card.name.rightName?.key;
       const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
       const rightTypeId = right?.record.typeId;
-      if (
-        rightTypeId !== undefined &&
-        this.fetcher.codenames.peekNameForId(rightTypeId) === CARDTYPE_TYPE_CODE
-      ) {
-        this.optionsCardCache.set(card.key, undefined);
-        return undefined;
+      if (rightTypeId !== undefined) {
+        // The right's TYPE was enriched when the right itself was
+        // enriched (enrichAndStore resolves typeName via the type
+        // record). Its typeCode is peekNameForId(typeRecord.type_id) -
+        // for *right's TYPE swtktey (id 22281, type_id 5) that yields
+        // peekNameForId(5) = "cardtype" -- the right's TYPE IS itself a
+        // cardtype, so right_type_options applies.
+        const rightTypeName = right?.typeName;
+        if (rightTypeName !== undefined) {
+          const rightTypeCard = this.renderCards.get(rightTypeName);
+          if (rightTypeCard !== undefined && rightTypeCard.typeCode === CARDTYPE_TYPE_CODE) {
+            this.optionsCardCache.set(card.key, undefined);
+            return undefined;
+          }
+        }
       }
     }
     if (resolved === undefined) {
