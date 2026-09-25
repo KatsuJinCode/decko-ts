@@ -23,6 +23,7 @@
 //   divergence is recorded in docs/render-port-notes.md.
 
 import { DeckoName } from "./name.js";
+import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
 import { FetchEngine } from "./fetch.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeQuery } from "../cql/execute.js";
