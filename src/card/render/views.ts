@@ -923,29 +923,43 @@ const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
  *  Phrase/radio, Toggle/1, etc.), Ruby's open-view accordion body
  *  contains the literal text DIRECTLY, with NO `<div ...content-view>`
  *  wrap inside `accordion-body`. The TS engine's contentView wraps the
- *  core in a slot; for rule cards (cardIsRule) we skip that wrap and
- *  emit the type-specific core body directly (which is the Toggle
- *  yes/no path of cluster 4 — boolean-yes-vs-integer-1). Test pins:
+ *  core in a slot; for rule cards we skip that wrap and emit the
+ *  type-specific core body directly (which is also the Toggle yes/no
+ *  path of cluster 4 — boolean-yes-vs-integer-1). Test pins:
  *  recapture-raw:*table of contents+*right+*default:render:open (offset
  *  2947, exp 2976, act 3624 — `4` literal vs nested content-view slot);
  *  recapture-raw:*all+*captcha:render:open (closes the wrap; the body
  *  becomes `yes` via formatToggleCore). Pointer/list rule cards are
- *  already handled by the upstream `isPointerOrListCard` branch above. */
+ *  already handled by the upstream `isPointerOrListCard` branch above.
+ *
+ *  Rule-card detection in this scope uses the enriched setKeys (the
+ *  RULE token is added by the engine's async `computeIsRule`, which
+ *  handles BOTH the 2-part AND the 3-part rule shape — including the
+ *  ones the sync `cardIsRule` hook misses for 3-part names whose left
+ *  trunk is unreachable through the seeded closure). For 3-part names
+ *  the engine's left-closure lookup may still leave setKeys without the
+ *  RULE token; the shape fallback (`name.rightName.key startsWith "*"`)
+ *  catches those so cluster 5's content-view-skip applies uniformly. */
 const barBottomView: ViewFn = (ctx) => {
   const fmt = ctx.fmt;
   const card = fmt.card;
   if (isPointerOrListCard(card)) {
     return fmt.renderView("core", { home_view: "content" });
   }
-  // Rule cards with non-pointer/non-list content: skip the content-view
-  // slot wrap and emit the type-specific core body directly. The core
-  // path already handles Toggle yes/no (formatToggleCore), file/image
-  // empty-string fallthroughs, and the standard literal pass-through;
-  // the skip is strictly the wrapper, not the body content.
-  if (fmt.engine.cardIsRule?.(card) === true) {
-    // Render via the core view so type-specific overrides (Toggle, etc.)
-    // apply uniformly with the rest of the engine.
-    return fmt.renderView("core", { home_view: "core" });
+  // Rule-card detection: setKeys has RULE (for the 2-part rules the
+  // engine's async enrich handles) OR the name is a 3-part compound
+  // whose right starts with "*" (for 3-part rules the sync closure may
+  // have missed).
+  const setKeysHasRule = card.setKeys.split(" ").includes("RULE");
+  const nameShapeSuggestsRule =
+    card.name.isCompound &&
+    card.name.parts.length === 3 &&
+    (card.name.rightName?.key ?? "").startsWith("*");
+  if (setKeysHasRule || nameShapeSuggestsRule) {
+    // Skip the content-view slot wrap; emit the type-specific core body
+    // directly. coreView handles Toggle yes/no (formatToggleCore),
+    // Number/Phrase literal pass-through, file/image empty fallback.
+    return fmt.renderView("core");
   }
   return fmt.renderView("content", { home_view: "content" });
 };
