@@ -1752,14 +1752,27 @@ export class RenderEngine implements RenderEngineLike {
    *  reference text ("*head|core") but the RESOLVED card is the part before
    *  the pipe; keeping the suffix made closureWarm miss every template
    *  reference and forced cold closure walks for cards nesting them
-   *  (26/1000 shard-0 cards cold after prewarm, render-perf harness). */
+   *  (26/1000 shard-0 cards cold after prewarm, render-perf harness).
+   *
+   *  Sync mark resolution tolerates CodenameNotFoundError / NameNotFoundError
+   *  for unresolved codename/id marks: the lexicon temp cache evicts itself
+   *  at 10000 keys (lib/card/cache/temporary.rb#within_key_counts); after
+   *  eviction the sync peek returns undefined and DeckoName.parse throws.
+   *  Treat the ref as unknown (skip it) — the cold path will refill the
+   *  cache, re-walk the closure, and reach a stable closure. */
   private cardReferenceKeys(card: RenderCard): string[] {
     const keys: string[] = [];
     for (const ref of referencedNames(card.dbContent)) {
       if (ref.relative) continue;
       const pipe = ref.name.indexOf("|");
       const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
-      const key = DeckoName.parse(base).key;
+      let key: string;
+      try {
+        key = DeckoName.parse(base).key;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+        throw err;
+      }
       if (key !== "") keys.push(key);
     }
     return keys;
