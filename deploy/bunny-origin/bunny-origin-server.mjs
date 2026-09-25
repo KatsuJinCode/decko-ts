@@ -35,7 +35,13 @@ import http from "node:http";
 // -----------------------------------------------------------------------------
 
 const PORT = Number(process.env.BUNNY_ORIGIN_PORT ?? 3200);
-const HOST = "127.0.0.1"; // per Path B: 127.0.0.1 only; CDN fronts it
+// Bind 0.0.0.0 so the Bunny CDN edge can reach this origin. The ask's
+// "127.0.0.1:3200" reflected an nginx-fronting pattern (decko-staging
+// shape), but Bunny CDN pulls directly from the origin URL it was
+// configured with, so the listening socket must be reachable from the
+// CDN's PoPs — i.e. on the VM's external interface. Override via env if
+// you want to lock it down (e.g. behind an in-VM tcp proxy / iptables).
+const HOST = process.env.BUNNY_ORIGIN_HOST ?? "0.0.0.0";
 const HOME_NAME = "Home";
 
 const DB_URL = process.env.BUNNY_DB_URL ?? "";
