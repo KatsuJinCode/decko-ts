@@ -36,6 +36,21 @@ The per-class-mechanisms.json samples pin three stems:
    through the standard open view (a slot wrap around the engine's
    `*favicon` content).
 
+   **Related variant (cluster 13, favicon-text-content-divergence, 1
+   entry):** `*favicon:render:closed` differs from Ruby by literal text
+   only — Ruby emits `A favicon (or shortcut icon) is a small image us...`
+   while the engine emits `<p><em>Please remember to click ...`. This
+   is the SAME class of capture-environment artifact: the *favicon
+   card has multiple content versions in the corpus (the open view's
+   asset-pipeline reference and the closed view's prose explanation
+   are different db_content values), and the engine's content resolution
+   picks a different one than the dump the Ruby capture recorded. The
+   deck-side engine does not see the same *favicon card content the
+   Ruby capture ran against — exactly the same environment-vs-dump
+   snapshot skew as the credentials-excluded *favicon:render:open
+   case above. Documented here as an exclusion; NOT an engine bug;
+   NOT a parity error.
+
 2. `Andrew Porter:render:open` and `Amanda Marcotte - Newt Gingrichs
    Behavior Is Actually Quite Traditional+discussion:render:open` —
    `Card::Error: couldn't find credentials` for cards that depend on

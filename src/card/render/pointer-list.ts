@@ -108,6 +108,16 @@ const PERMISSION_RIGHT_NAMES: ReadonlySet<string> = new Set([
   "delete",
 ]);
 
+/** Whether a rule-card right SETTING string (the name's right part, e.g.
+ *  "*delete") is one of the four permission settings. Takes the raw
+ *  string rather than a parsed DeckoName so callers holding only
+ *  `rightName.s` (hand-built test fixtures, the rule-bar dispatch)
+ *  gate identically to {@link isRuleCardWithPermissionRight}. */
+export function isPermissionRightSetting(rightSetting: string | undefined): boolean {
+  return rightSetting !== undefined && rightSetting.startsWith("*") &&
+    PERMISSION_RIGHT_NAMES.has(rightSetting.slice(1));
+}
+
 /** Whether a card is a rule card (compound name `<left>+*<right>`)
  *  whose right's bare setting codename is one of the four permission
  *  settings. Pinned by the corpus's OUTER-family failures

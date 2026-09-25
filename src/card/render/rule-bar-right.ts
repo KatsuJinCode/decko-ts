@@ -128,7 +128,7 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
   // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
   // cards render the literal dbContent (raw oracle: *all+*layout).
   if (isPointerOrListCard(card)) {
-    if (isRuleCardWithPermissionRight(card)) {
+    if (isPermissionRightSetting(rightSetting)) {
       return pointerListOneLineContent(card);
     }
     return truncatedCore(card.dbContent);

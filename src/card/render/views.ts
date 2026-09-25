@@ -39,6 +39,7 @@ import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "./format.js";
 import {
   isPointerOrListCard,
+  isRuleCardWithPermissionRight,
   pointerListCoreHtml,
   pointerListItemSlot,
   pointerListItemBodyForUnknown,
