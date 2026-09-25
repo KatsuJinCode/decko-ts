@@ -343,23 +343,7 @@ async function driveClosure(
       if (content === null || content === "") continue;
       for (const ref of referencedNames(content)) {
         if (ref.relative) continue; // context-relative: render-time resolution
-        // Sync mark resolution tolerates CodenameNotFoundError / NameNotFoundError
-        // for unresolved codename/id marks: the lexicon temp cache evicts itself
-        // at 10000 keys (lib/card/cache/temporary.rb#within_key_counts); after
-        // eviction the sync peek returns undefined and DeckoName.parse throws.
-        // Mirror the round-3 cardReferenceKeys catch (render.ts:1773): treat the
-        // ref as a leaf that the closure cannot resolve, leave it out of
-        // `pending` — the cold render path will refill the cache and the next
-        // pass will see whatever did resolve. Adds nothing to a clean prefix
-        // name (CodenameNotFound is reached only via the `^:(\w+)$` and
-        // `^~(\d+)$` mark shapes, never a plain-name parse).
-        let name: DeckoName;
-        try {
-          name = DeckoName.parse(ref.name);
-        } catch (err) {
-          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
-          throw err;
-        }
+        const name = DeckoName.parse(ref.name);
         if (name.s === "" || known.has(name.key)) continue;
         pending.add(name.s);
       }
