@@ -448,19 +448,11 @@ export class RenderEngine implements RenderEngineLike {
     // span before any view body runs (view/permission.rb:46-50), and
     // unknown hosts render the unknown substitution — both skip.
     if (
-      (view === "open" ||
-        (view === "closed" && rootCard.typeCode === "list")) &&
+      view === "open" &&
       (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") &&
       rootCard.unknown !== true &&
       !this.isDenied(rootCard) &&
-      // :open keeps the permission-right-host exclusion (original-corpus
-      // 1,537/1,537 real bytes — fixtures pin bytes, not raises). :closed
-      // does NOT apply the exclusion because the recapture pins 71
-      // permission-right-hosts :closed as CAPTURE_ERROR (the only class
-      // the model distinguishes from the fp 7 — 3-part shapes like
-      // `dn+*right+*read`, which hit a different options chain and do NOT
-      // raise).
-      !(view === "open" && this.isPermissionRightHost(rootCard))
+      !this.isPermissionRightHost(rootCard)
     ) {
       const failContent = await this.itemOptionsParseFailure(rootCard, new Set([rootCard.key]));
       if (failContent !== undefined) {
