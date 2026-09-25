@@ -87,12 +87,29 @@ const totalInDel = db.prepare(`SELECT COUNT(*) as c FROM _del`).get().c;
 console.log("Phase 2 done:", totalInDel, "cards in deletion set after", round-1, "rounds");
 
 // --- Phase 3: dangling card_references where referee_id is in deletion set ---
-const danglingRefs = db.prepare(`SELECT id, ref_type, referer_id, referee_id FROM card_references WHERE referee_id IN (SELECT id FROM _del)`).all();
+// Per ask: "rule/pointer CONTENT references ... pruned only where a dangling reference would 500 a render".
+// Card_references ref_type categorization:
+//   I = Include  -> {{+name}} content inclusion. If target missing, render likely 500s.
+//   Q = Query    -> { ... | name } structured query. Target missing likely 500s in most renderers.
+//   P = Pointer  -> [[name]] in content. Renders as a link; missing target shows as broken link (no 500).
+//   L = Link     -> structural link. Renders as text/link; missing target does not 500.
+// Policy: PRUNE refs where the referee_id points to a deleted card AND ref_type is in (I, Q)
+// (the structural references that would 500 a render). KEEP P and L (display references that
+// render as broken links but do not 500). Document the breakdown for every ref_type.
+const danglingAll = db.prepare(`SELECT id, ref_type, referer_id, referee_id FROM card_references WHERE referee_id IN (SELECT id FROM _del)`).all();
+const danglingByTypeAll = {};
+for (const r of danglingAll) danglingByTypeAll[r.ref_type] = (danglingByTypeAll[r.ref_type]||0)+1;
+const PRUNE_TYPES = new Set(['I', 'Q']); // structural refs that would 500 a render
+const danglingRefs = danglingAll.filter(r => PRUNE_TYPES.has(r.ref_type));
 const danglingByType = {};
 for (const r of danglingRefs) danglingByType[r.ref_type] = (danglingByType[r.ref_type]||0)+1;
+const keptDanglingByType = {};
+for (const r of danglingAll) if (!PRUNE_TYPES.has(r.ref_type)) keptDanglingByType[r.ref_type] = (keptDanglingByType[r.ref_type]||0)+1;
 console.log("\nPhase 3: dangling card_references (referee_id in deletion set)");
-console.log("  total:", danglingRefs.length);
-console.log("  by ref_type:", danglingByType);
+console.log("  total dangling (any ref_type):", danglingAll.length);
+console.log("  by ref_type (all dangling):", danglingByTypeAll);
+console.log("  pruned (I+Q structural):", danglingRefs.length, danglingByType);
+console.log("  kept (P+L display):", danglingAll.length - danglingRefs.length, keptDanglingByType);
 
 // --- Counts by category for the report ---
 const liveDel = db.prepare(`SELECT COUNT(*) as c FROM cards WHERE id IN (SELECT id FROM _del) AND trash=0`).get().c;
