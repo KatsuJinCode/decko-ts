@@ -50,9 +50,14 @@ if (!DB_URL || !DB_TOKEN) {
 }
 
 // Normalize the URL the same way the BunnyDbDriver does: append
-// "/v2/pipeline" if the URL doesn't end with it.
+// "/v2/pipeline" if the URL doesn't end with it. Node fetch (undici)
+// only understands https:/http: — libsql:// from the Bunny dashboard
+// must be rewritten to https:// before fetch() can hit it.
 function pipelineUrl(raw) {
-  const base = String(raw).trim().replace(/\/+$/, "");
+  let s = String(raw).trim();
+  if (s.startsWith("libsql://")) s = `https://${s.slice("libsql://".length)}`;
+  if (s.startsWith("https://libsql://")) s = `https://${s.slice("https://libsql://".length)}`;
+  const base = s.replace(/\/+$/, "");
   return base.endsWith("/v2/pipeline") ? base : `${base}/v2/pipeline`;
 }
 
