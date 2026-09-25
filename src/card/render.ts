@@ -448,7 +448,8 @@ export class RenderEngine implements RenderEngineLike {
     // span before any view body runs (view/permission.rb:46-50), and
     // unknown hosts render the unknown substitution — both skip.
     if (
-      (view === "open" || view === "closed") &&
+      (view === "open" ||
+        (view === "closed" && rootCard.typeCode === "list")) &&
       (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") &&
       rootCard.unknown !== true &&
       !this.isDenied(rootCard) &&
