@@ -62,35 +62,56 @@ export const STRUCTURE_SETTING_NAME = "*structure";
  * cards_right_id index).
  *
  * Match shape: a *structure rule row's RIGHT side IS the *structure setting
- * card, so the universe is found by an indexed right_id lookup — no
- * recursive key composition over the whole deck (the prefetch walk's
- * `resolved` CTE shape measured 5 s/call on rule-dense seeds; this form
- * stays flat). The rule's COMPOSED key (the match key for the candidate
- * walk below) is built from its SET card one junction deep:
- *   - anchorless sets ("*all") are simple rows: the set card's own key;
- *   - anchored sets ("quiz+*type") are junction rows: anchor key + pattern
- *     card key.
- * Rule sets anchored on compound cards ("A+B+*self") would need one more
- * composition level; none exist in the corpus deck (verified: 139/139 rule
- * rows compose at this depth) and the miss is a documented remainder in
- * docs/structure-templates-parity-notes.md.
+ * card, so the universe is found by an indexed right_id lookup — no whole-
+ * deck scan (the prefetch walk's `resolved` CTE shape measured 5 s/call on
+ * rule-dense seeds; this form stays indexed). The rule's COMPOSED key (the
+ * match key for the candidate walk below) is built from its SET card via a
+ * recursive name-composition CTE that walks the left_id/right_id chain to
+ * the leaves:
+ *   - anchorless sets ("*all") are simple rows: composed = stored key;
+ *   - depth-2 anchored sets ("quiz+*type") are 1-junction rows: leaf key +
+ *     pattern card key;
+ *   - depth-3 anchored sets ("Basic+RVW+*type plus right") are 2-junction
+ *     rows: leaf1 key + leaf2 key + pattern card key — exactly the shape
+ *     *type plus right rules take (the rule's set card is a junction whose
+ *     left side is itself a junction of the card's TYPE + the right tag).
+ *
+ * The recursive CTE composes the canonical name from the stored left_id /
+ * right_id chain at every depth; the rule-card join rides the right_id
+ * index. Junction rows in the corpus deck carry key=NULL (only simple
+ * cards carry key), so a flat CASE that walks one or two joins misses the
+ * depth-3 set rows entirely — measured 24/139 *type plus right rules with
+ * composed_key=NULL on the raw corpus, which short-circuits 2,573 card-
+ * engine byte-diffs to db_content (every card governed by a *type plus
+ * right rule). The recursive CTE closes the gap: 139/139 compose.
  */
 export function structureRuleUniverseStatement(): SQLStatement {
   return {
     sql:
+      `WITH RECURSIVE name_walk(id, composed) AS (\n` +
+      `  -- Base case: simple cards (no left, no right) use their stored key\n` +
+      `  SELECT id, COALESCE("key", '')\n` +
+      `  FROM cards\n` +
+      `  WHERE left_id IS NULL AND right_id IS NULL AND trash = 0\n` +
+      `  UNION ALL\n` +
+      `  -- Junction case: compose left-walk + right-key\n` +
+      `  SELECT c.id, COALESCE(w.composed, '') || '+' || COALESCE(r."key", '')\n` +
+      `  FROM cards c\n` +
+      `  JOIN name_walk w ON w.id = c.left_id\n` +
+      `  JOIN cards r ON r.id = c.right_id\n` +
+      `  WHERE c.trash = 0\n` +
+      `)\n` +
       `SELECT\n` +
-      `  (CASE\n` +
-      `     WHEN s."key" IS NOT NULL THEN s."key"\n` +
-      `     WHEN sl."key" IS NOT NULL THEN sl."key" || '+' || p."key"\n` +
-      `     ELSE NULL\n` +
-      `   END) || '+' || st."key" AS composed_key,\n` +
+      `  CASE\n` +
+      `    WHEN n.composed IS NOT NULL AND n.composed <> ''\n` +
+      `      THEN n.composed || '+' || st."key"\n` +
+      `    ELSE NULL\n` +
+      `  END AS composed_key,\n` +
       `  r.db_content AS db_content,\n` +
       `  r.type_id AS rule_type_id\n` +
       `FROM cards r\n` +
       `JOIN cards st ON st.id = r.right_id\n` +
-      `LEFT JOIN cards s ON s.id = r.left_id\n` +
-      `LEFT JOIN cards sl ON sl.id = s.left_id\n` +
-      `LEFT JOIN cards p ON p.id = s.right_id\n` +
+      `JOIN name_walk n ON n.id = r.left_id\n` +
       `WHERE r.trash = 0\n` +
       `  AND r.right_id = (SELECT id FROM cards\n` +
       `                    WHERE ("key" = '${STRUCTURE_SETTING_NAME}' OR name = '${STRUCTURE_SETTING_NAME}')\n` +
