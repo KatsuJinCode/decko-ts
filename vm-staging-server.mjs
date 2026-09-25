@@ -145,7 +145,7 @@ async function primeEngine(engine) {
 // ---------------------------------------------------------------------------
 
 function escapeHtml(text) {
-  return text
+  return String(text)
     .replace(/&/g, "&")
     .replace(/</g, "<")
     .replace(/>/g, ">")
