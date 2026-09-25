@@ -980,9 +980,6 @@ const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
 const barBottomView: ViewFn = (ctx) => {
   const fmt = ctx.fmt;
   const card = fmt.card;
-  if (isPointerOrListCard(card)) {
-    return fmt.renderView("core", { home_view: "content" });
-  }
   // Rule-card detection: setKeys has RULE (for the 2-part rules the
   // engine's async enrich handles) OR the name is a 3-part compound
   // whose right starts with "*" (for 3-part rules the sync closure may
@@ -992,7 +989,44 @@ const barBottomView: ViewFn = (ctx) => {
     card.name.isCompound &&
     card.name.parts.length === 3 &&
     (card.name.rightName?.key ?? "").startsWith("*");
-  if (setKeysHasRule || nameShapeSuggestsRule) {
+  const isRuleCard = setKeysHasRule || nameShapeSuggestsRule;
+  if (isPointerOrListCard(card)) {
+    // CLUSTER 3 (set-card-pointer-list-vs-nested-content, 690 entries):
+    // For non-rule pointer/list cards Ruby wraps the pointer-list in a
+    // content-view slot inside the accordion-body (oracle pin: corpus:77
+    // *home pointer card at fixtures/corpus/shard-000000.jsonl:44 emits
+    // `<div id="Xhome-content-view" class="card-slot content-view …">`
+    // wrapping the `<div class="card-list card-list-bar pointer-list">`;
+    // corpus:792 Brandon WilliamsCraig+Pages list card at
+    // fixtures/corpus/shard-000000.jsonl emits the same content-view
+    // wrap). The previous dispatch unconditionally called `core`
+    // directly for every pointer/list card, omitting the wrap and
+    // matching Ruby only for the rule+permission-right subset
+    // (corpus:6551 *star+*create list rule, shard-000003.jsonl:359 —
+    // the permfix48 pin that the rule-card branch alone still satisfies).
+    // The fix narrows the no-wrap path to rule cards; non-rule
+    // pointer/list cards dispatch through `content` so the slot wrap
+    // reappears. Per-item slots inside the list still dispatch through
+    // renderPointerListItem and carry `view:"bar"` in their data-slot —
+    // the change is strictly the OUTER accordion-body wrapper, not the
+    // per-item mini_bar slots.
+    if (isRuleCard) {
+      // Rule pointer/list: Ruby skips the wrap (corpus:6551 *star+*create
+      // list rule with permission right — Ruby's standard_pointer_core
+      // emits the simple `<div class="pointer-list">` wrapper directly
+      // inside the accordion-body with no content-view slot above it).
+      return fmt.renderView("core", { home_view: "content" });
+    }
+    // Non-rule pointer/list: Ruby wraps the pointer-list in a
+    // content-view slot (corpus:77 *home, corpus:792 Brandon
+    // WilliamsCraig+Pages, and the 690-entry shard-0 cluster). The
+    // `home_view: "content` opt rides into the nested content view's
+    // voo so the inner pointerListCoreHtml emits its trailing \n as
+    // the captured bytes pin (the trailing-newline pin in
+    // pointer-list-trailing-newline.test.ts).
+    return fmt.renderView("content", { home_view: "content" });
+  }
+  if (isRuleCard) {
     // Skip the content-view slot wrap; emit the type-specific core body
     // directly. coreView handles Toggle yes/no (formatToggleCore),
     // Number/Phrase literal pass-through, file/image empty fallback.
