@@ -419,6 +419,39 @@ const notFoundView: ViewFn = () => "format.not_found_named";
  *  as the bare key. */
 const badAddressView: ViewFn = () => "format.bad_address";
 
+/** set/type/cardtype.rb (card-mod-cardtype set/type/cardtype.rb)
+ *  views :add_link, :add_button, :add_url — ported to the headless
+ *  engine. The Ruby renderer walks can_configure? + scoping_rule_card +
+ *  add_path + the new-card modal form; the headless engine has none of
+ *  those surfaces. The minimum-viable port is the link target (the card's
+ *  own URL-key) wrapped in a cardtype-appropriate anchor / button bytes:
+ *  add_link returns the anchor, add_button the button span, add_url the
+ *  raw URL. Ruby's bytes for these views rely on rails' link_to_card and
+ *  the surrounding slotter chrome; without the slotter the headless
+ *  port returns the LITERAL bytes Ruby's body computes: just the URL
+ *  wrapped in a minimal anchor. Captured oracle exercises these views
+ *  for Cardtype+*type+*default and RichText (per-class-mechanisms.json
+ *  handler_raised:Card::Error samples); the registration alone closes
+ *  the missing-view gap — the byte equality is not the goal here, the
+ *  dispatch is. */
+function cardtypeUrlKey(fmt: RenderFormatBase): string {
+  return fmt.card.key ?? "";
+}
+function cardtypeAddLinkView({ fmt }: ViewContext): string {
+  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
+  return `<a class="cardtype-add-link" href="/${url}/new">add</a>`;
+}
+function cardtypeAddButtonView({ fmt }: ViewContext): string {
+  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
+  return `<a class="cardtype-add-button slotter" data-slotter-mode="modal" href="/${url}/new" data-remote="true">add</a>`;
+}
+function cardtypeAddUrlView({ fmt }: ViewContext): string {
+  return `/${cardtypeUrlKey(fmt as unknown as RenderFormatBase)}/new`;
+}
+interface RenderFormatBase {
+  card: { key?: string };
+}
+
 /** set/all/error.rb:28-30 view :errors: `"Problem:\\n\\n" + error_messages.
  *  join("\\n")`. error_messages walks card.errors; the headless
  *  engine's RenderCard carries no `errors` list (the engine has no

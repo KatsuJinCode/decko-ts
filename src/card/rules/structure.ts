@@ -92,14 +92,17 @@ export function structureRuleUniverseStatement(): SQLStatement {
       `  -- Base case: simple cards (no left, no right) use their stored key\n` +
       `  SELECT id, COALESCE("key", '')\n` +
       `  FROM cards\n` +
-      `  WHERE left_id IS NULL AND right_id IS NULL AND trash = 0\n` +
+      `  WHERE left_id IS NULL AND right_id IS NULL\n` +
       `  UNION ALL\n` +
-      `  -- Junction case: compose left-walk + right-key\n` +
+      `  -- Junction case: compose left-walk + right-key. The walk does NOT\n` +
+      `  -- filter on trash: a trashed intermediate card still carries its\n` +
+      `  -- left_id/right_id and contributes to the composed name (mirrors\n` +
+      `  -- the old SQL's LEFT JOIN chain through trashed junctions — e.g.\n` +
+      `  -- rule 829 has set card 828 trashed but walks through Gallery).\n` +
       `  SELECT c.id, COALESCE(w.composed, '') || '+' || COALESCE(r."key", '')\n` +
       `  FROM cards c\n` +
       `  JOIN name_walk w ON w.id = c.left_id\n` +
       `  JOIN cards r ON r.id = c.right_id\n` +
-      `  WHERE c.trash = 0\n` +
       `)\n` +
       `SELECT\n` +
       `  CASE\n` +

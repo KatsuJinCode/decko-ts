@@ -118,9 +118,36 @@ export const DATE_ERROR_CLASS_NAME = "Date::Error";
  *  the parity test is "the same corpus entries raise on both engines",
  *  which this gate satisfies. Empty content is treated as INVALID by both
  *  Ruby Date.parse and our parity check — Date cards with empty content
- *  raise the same error in Ruby, and so do they in the port. */
+ *  raise the same error in Ruby, and so do they in the port.
+ *
+ *  Ruby-compatibility expansion (recapture 2026-09-24): Ruby's Date.parse
+ *  also accepts the compact form `YYYYMMDD` (e.g. "20190319" → 2019-03-19)
+ *  and a few slashed numeric forms ("3/19/2019", "19/3/2019"); JS Date is
+ *  stricter and treats "20190319" as NaN, raising on the recapture's
+ *  20190319:render:content / :open entries (per-class-mechanisms.json
+ *  handler_raised:Date::Error, 5 entries). The pre-checks below catch
+ *  the compact and slashed forms Ruby accepts so the engine's
+ *  prepare-phase raise skips parity with Ruby's accepted inputs. */
 export function isValidDateContent(content: string): boolean {
   if (content === "") return false;
+  // Compact YYYYMMDD — Ruby parses; JS does not.
+  if (/^\d{8}$/.test(content)) {
+    const y = Number(content.slice(0, 4));
+    const m = Number(content.slice(4, 6));
+    const d = Number(content.slice(6, 8));
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return true;
+    return false;
+  }
+  // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
+  // JS accepts only the US-style "M/D/YYYY" reliably.
+  const slashMatch = /^(\d{1,4})\/(\d{1,2})\/(\d{1,4})$/.exec(content);
+  if (slashMatch !== null) {
+    const a = Number(slashMatch[1]);
+    const b = Number(slashMatch[2]);
+    const c = Number(slashMatch[3]);
+    if (a >= 1 && a <= 9999 && b >= 1 && b <= 12 && c >= 1 && c <= 31) return true;
+    return false;
+  }
   const parsed = new Date(content);
   if (Number.isNaN(parsed.getTime())) return false;
   // Date.parse in Ruby accepts many textual formats JS does not, but the

@@ -1020,6 +1020,33 @@ const miniBarView: ViewFn = (ctx) => {
 // registry
 // ---------------------------------------------------------------------------
 
+/** set/all/base.rb:14-16 view :name, perms: :none:
+ *  `name_variant safe_name` -> the literal name. Used by the captured
+ *  recapture on Role+*type+*default (per-class-mechanisms.json
+ *  handler_raised:Card::Error 26 entries -- 'view (name) not supported
+ *  for Role+*type+*default'). The flat-table fallback closes the gap
+ *  when no mod loader is wired. */
+const flatNameView: ViewFn = ({ fmt }) => fmt.card.name.s;
+
+/** set/all/base.rb:27 view :linkname, perms: :none:
+ *  `card.name.url_key`. Same dispatch closure for the
+ *  'view (linkname) not supported for Cardtype+*type+*default' sample. */
+const flatLinknameView: ViewFn = ({ fmt }) => fmt.urlKey();
+
+/** set/type/cardtype.rb view :add_button (card-mod-cardtype's
+ *  add_button). RichText's recapture surfaces 'view (add_button) not
+ *  supported for RichText' -- a button-shaped anchor for "+". The flat
+ *  fallback mirrors the chain-aware cardtypeAddButtonView. */
+const flatAddButtonView: ViewFn = ({ fmt }) =>
+  `<a class="cardtype-add-button slotter" data-slotter-mode="modal" href="/${fmt.card.key ?? ""}/new" data-remote="true">add</a>`;
+
+/** set/type/cardtype.rb view :add_link. */
+const flatAddLinkView: ViewFn = ({ fmt }) =>
+  `<a class="cardtype-add-link" href="/${fmt.card.key ?? ""}/new">add</a>`;
+
+/** set/type/cardtype.rb view :add_url. */
+const flatAddUrlView: ViewFn = ({ fmt }) => `/${fmt.card.key ?? ""}/new`;
+
 /** The html-format view registry (Set::Format.view_method_name dispatch).
  *  Views NOT in this registry raise the unsupported-view UserError. */
 export const HTML_VIEWS: Record<string, ViewFn> = {
@@ -1043,4 +1070,15 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   unknown: unknownView,
   blank: blankView,
   mini_unknown: miniUnknownView,
+  // headless-port fallback views (chain-aware sources live in
+  // card-mod-format.ts under all/base and type/cardtype; the flat
+  // entries below close the missing-view UserError the mod loader
+  // would otherwise surface -- recapture baseline:
+  // handler_raised:Card::Error 26 entries across linkname/add_button/name
+  // for Cardtype+*type+*default, RichText, and Role+*type+*default):
+  name: flatNameView,
+  linkname: flatLinknameView,
+  add_button: flatAddButtonView,
+  add_link: flatAddLinkView,
+  add_url: flatAddUrlView,
 };

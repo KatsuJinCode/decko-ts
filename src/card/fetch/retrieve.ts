@@ -268,8 +268,12 @@ export async function retrieveFromDb(
   }
 
   // id_from_mark (retrieve.rb:43-45): :id marks use the value directly;
-  // :key marks go through Lexicon.id
-  const id = mark.kind === "id" ? mark.id : await lexicon.id(mark.name.key);
+  // :key marks go through Lexicon.id. Pass the DeckoName itself, not
+  // name.key: simple-name lexes (the db/key_lex alias) hold the raw
+  // name string "Organizer(s)" whose canonical key is "organizer_"; passing
+  // name.key "organizer_" re-parses to key "organizer" via
+  // DeckoName.parse, which never matches the seedCard-written "organizer_".
+  const id = mark.kind === "id" ? mark.id : await lexicon.id(mark.name);
   if (id === undefined) return { row: undefined, freshFromDb: false };
   const result = await driver.query<CardsRow>(
     `SELECT * FROM cards WHERE id = ?${trashClause} LIMIT 1`,
