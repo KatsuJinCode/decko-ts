@@ -176,7 +176,15 @@ const stats = {
   },
   phase1: { live: djLive, trashed: djTrashed, total: dj.length },
   phase2: { rounds: roundCounts, totalInDel },
-  phase3: { total: danglingRefs.length, byType: danglingByType },
+  phase3: {
+    danglingAllTotal: danglingAll.length,
+    danglingAllByType: danglingByTypeAll,
+    prunedTotal: danglingRefs.length,
+    prunedByType: danglingByType,
+    keptTotal: danglingAll.length - danglingRefs.length,
+    keptByType: keptDanglingByType,
+    policy: "PRUNE ref_type IN ('I','Q') — structural refs that would 500 a render; KEEP 'P','L' — display refs (broken links, no 500)"
+  },
   breakdown: { liveDel, trashDel, namedDel, anonDel },
   after: {
     total: totalAfter,
