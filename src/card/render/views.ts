@@ -63,7 +63,35 @@ function slotId(card: RenderCard, view: string): string {
 /** wrap.rb#wrap_classes + slot_attributes: id, class, data (insertion order
  *  - Rails content_tag). `extraClass` carries slot_attr class additions
  *  (the content view's d0-card-content class_up lands via classy extras
- *  instead - see the content view). */
+ *  instead - see the content view).
+ *
+ *  CLUSTER 15 (whitespace-newline-before-div, 262 entries): for the
+ *  CONTENT-view slot wrap, Ruby's wrap helper (card-mod-format set/all/
+ *  html/wrap.rb) appends `\n` before its closing `</div>` when the inner
+ *  content does NOT already end with `\n`. The captured oracle for
+ *  +discussion:render:open (recapture-raw:News Item+discussion at
+ *  tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl:146)
+ *  shows the closing sequence `</p>\n</div>\n</div>\n</div>\n</div>\n</div>`
+ *  - each closing `</div>` (including the content-view slot wrap close)
+ *  has `\n` before it, while the OUTERMOST open-view slot's closing
+ *  `</div>` does NOT (the slot wrap of an outer view sits at the top
+ *  of the HAML template, so its closing tag is on the same line as
+ *  the last inner element).
+ *
+ *  The fix targets view === "content" specifically: the outer slots
+ *  (open/closed/titled/bar/mini_bar) all happen to have inner content
+ *  ending with `\n` already (the accordionBarHtml / itemBarHtml / etc.
+ *  emit a trailing `\n` from their own structure), so they don't need
+ *  the slot wrap to add another newline. The content view's inner
+ *  comes from coreView, which can return text like `<p>...</p>` with
+ *  no trailing newline — that's where the missing `\n` was.
+ *
+ *  Test pin: recapture-raw:News Item+discussion:render:open (offset
+ *  3187, exp 3222, act 3221 — `\n` between `</p>` and `</div>`); the
+ *  existing pointer-list-trailing-newline.test.ts pins the equivalent
+ *  trailing-newline contract for the card-list-bar pointer wrapper
+ *  branch (so the rule card+permission-right simple-pointer-list
+ *  branch's no-newline shape at corpus:6551 stays inverted). */
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
@@ -79,7 +107,9 @@ function slotWrap(ctx: ViewContext, view: string, inner: string): string {
     "data-slot-id": newSlotId(),
     "data-slot": slotOptionsJson(voo.slotOptions()),
   });
-  return `<div${attrs}>${inner}</div>`;
+  const trailingNewline =
+    view === "content" && !inner.endsWith("\n") ? "\n" : "";
+  return `<div${attrs}>${inner}${trailingNewline}</div>`;
 }
 
 /** title.rb html block: show_view?(:title_link, :hide) is hide by default
