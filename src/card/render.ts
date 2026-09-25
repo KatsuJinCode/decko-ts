@@ -1545,24 +1545,37 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
 
-    // Host's OWN options_card walk (options_api.rb:47-48). The recent-
-    // settings unconditional check that previously lived here raised on
-    // EVERY set host that didn't fire the per-setting rule walk above,
-    // because the recent_settings card carries bad content globally; the
-    // 1012 handler_raised:Card FP class (recapture: *captcha+*right and
-    // 1011 siblings expected PASS but the engine raised) traced to that.
-    // The right walk is the same options_api.rb pattern itemOptions-
-    // ParseFailure already uses for pointer/list hosts: rule_card walk +
-    // *all fallback. Returns the FIRST parse failure (the chain Ruby
-    // resolves to); the chain Ruby DOES NOT resolve to returns undefined.
-    const optFail = await this.itemOptionsParseFailure(
-      host,
-      new Set([host.key]),
-    );
-    if (optFail !== undefined) {
-      this.setHostChainCache.set(host.key, optFail);
-      return optFail;
+    // Recent_settings chain (recapture 2026-09-24 REVERT): the original
+    // check is restored. The 1012 handler_raised FP class (the set-host
+    // chain change's stated motivation) traced to a too-broad itemOptions-
+    // ParseFailure fallback that fired for set hosts whose right's TYPE
+    // is a cardtype — exactly the case the C1 fix above (peekNameForId →
+    // typeCode === CARDTYPE_TYPE_CODE) is supposed to gate before the
+    // walk falls through. With the C1 fix in place, the right walk stops
+    // at the right_type_options gate for those entries; the recent_
+    // settings card's bad JSON then ONLY fires for the set hosts whose
+    // right's TYPE is NOT a cardtype (the corpus parity set — Ruby
+    // captures BadQuery for these). Returning to the recent_settings
+    // check restores those set-host raises without re-introducing the
+    // 1012 FP class (the C1 fix prevents the right walk from falling
+    // through to *all for the FP entries).
+    const recentRuleRecord = await this.fetcher.fetchByName("*recent settings+*self+*content options");
+    if (recentRuleRecord !== undefined && recentRuleRecord.name !== undefined) {
+      const recentRule = await this.enrichAndStore(recentRuleRecord);
+      if (recentRule !== undefined) {
+        const fail = this.ruleCardParseFailure(recentRule);
+        if (fail !== undefined) {
+          this.setHostChainCache.set(host.key, fail);
+          return fail;
+        }
+      }
     }
+
+    // No fall-through to the host's OWN options_card chain: with the C1
+    // fix restored above, the right walk stops at right_type_options for
+    // compound hosts whose right's TYPE is a cardtype. The *all "fr"
+    // fallback would falsely raise for set-card-views corpus parity pins
+    // (those hosts render real bytes in the corpus).
     this.setHostChainCache.set(host.key, undefined);
     return undefined;
   }
