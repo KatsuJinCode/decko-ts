@@ -124,6 +124,15 @@ export function structureRuleUniverseStatement(): SQLStatement {
  * Map rule-card composed key -> the rule card's db_content (null = the row's
  * NULL content; Ruby: default_content nil -> no structured content). Built
  * from the universe statement's batch result.
+ *
+ * Keys are canonicalized via DeckoName.key (singularize + underscore + space
+ * fold) to match the candidate walk in resolveStructuredContent, which looks
+ * up `DeckoName.parse(candidate).key`. The composed_key from the SQL is the
+ * raw stored-key join ("Date+RVW+*type plus right+*structure") — the
+ * canonical form is "date+rvw+*type_plu_right+*structure". Without this
+ * canonicalization step, every *type plus right rule (and any future rule
+ * whose set-card side has spaces / plurals) misses the candidate-walk
+ * lookup and falls through to db_content.
  */
 export function structureUniverseFromResults(
   result: SQLQueryResult | undefined,
@@ -132,7 +141,9 @@ export function structureUniverseFromResults(
   if (result === undefined) return universe;
   for (const row of result.rows as Array<{ composed_key: string | null; db_content: string | null }>) {
     if (row.composed_key === null) continue;
-    universe.set(row.composed_key, row.db_content);
+    const canonicalKey = DeckoName.parse(row.composed_key).key;
+    if (canonicalKey === "") continue;
+    universe.set(canonicalKey, row.db_content);
   }
   return universe;
 }
@@ -149,6 +160,9 @@ export function structureUniverseFromResults(
  * `assign_type_to?` then re-assigns the same id the template lookup already
  * yielded). Consumed by the fetch layer's virtual-card resolution
  * (src/card/fetch/virtual-cards.ts); real-card rendering never reads it.
+ *
+ * Keys canonicalized identically to structureUniverseFromResults — the
+ * virtual-card lookup uses the same canonical key form.
  */
 export function structureRuleTypesFromResults(
   result: SQLQueryResult | undefined,
@@ -157,7 +171,9 @@ export function structureRuleTypesFromResults(
   if (result === undefined) return types;
   for (const row of result.rows as Array<{ composed_key: string | null; rule_type_id: number | null }>) {
     if (row.composed_key === null || row.rule_type_id === null) continue;
-    types.set(row.composed_key, row.rule_type_id);
+    const canonicalKey = DeckoName.parse(row.composed_key).key;
+    if (canonicalKey === "") continue;
+    types.set(canonicalKey, row.rule_type_id);
   }
   return types;
 }
