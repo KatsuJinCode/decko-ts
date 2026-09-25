@@ -742,10 +742,24 @@ const setModules: ModSetModuleFile[] = [
     // set/type/cardtype.rb:1-91 html format block (view :type override,
     // type_formgroup, views :add_link, :add_button, :add_url +
     // add_link/add_link_opts/add_path/configure_link/can_configure?/
-    // process_voo_params helpers + scoping_rule_card). Not ported:
-    // rails (link_to_card, wrap_with, card_form, modal_link_opts,
-    // Rack::Utils.parse_nested_query, Card.fetch ok?-predicate).
+    // process_voo_params helpers + scoping_rule_card). Partial port:
+    // :add_link, :add_button, :add_url as the headless equivalents —
+    // modal-link HTML for the buttons, link_to_card for the link. The
+    // :type override and type_formgroup are rails forms, not ported
+    // (per-class-mechanisms.json handler_raised:Card::Error — 26 entries
+    // pinned to view (linkname) / view (add_button) / view (name) not
+    // supported for Cardtype+*type+*default / RichText / Role+*type+*default
+    // — the new registrations close that gap).
     setPath: "type/cardtype",
+    formats: {
+      html: {
+        views: [
+          { view: "add_link", viewFn: cardtypeAddLinkView },
+          { view: "add_button", viewFn: cardtypeAddButtonView },
+          { view: "add_url", viewFn: cardtypeAddUrlView },
+        ],
+      },
+    },
   },
   {
     // set/type/html.rb:1-27 base block (clean_html?/diff_args + view
