@@ -354,7 +354,7 @@ describe("BunnyDbDriver (cross-driver conformance + behavior)", () => {
         authToken: "token",
         fetchImpl: noopFetch,
       });
-      expect(() =>
+      await expect(
         driver.query("SELECT ?", [{ nested: "object" }]),
       ).rejects.toThrow(/unsupported parameter type/);
     });
