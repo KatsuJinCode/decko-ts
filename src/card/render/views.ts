@@ -169,6 +169,18 @@ function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): s
 
 const coreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
+  // Toggle-type core view (card-mod-toggle set/type/toggle.rb: `view :core`
+  //   -> the content rendered as "yes" (truthy) or "no" (falsey); the raw
+  //   db_content is one of "1", "0", "", "true", "false". Ruby renders the
+  //   localized string in both the bar-right :one_line_content and the
+  //   accordion body of a rule card's open view; this branch makes the
+  //   port's `core` view match. Pinned by
+  //   recapture-raw:*all+*captcha:render:content / open / closed and
+  //   recapture-raw:*captcha+*right+*default:render:content
+  //   (cluster 4 -- boolean-yes-vs-integer-1).
+  if (fmt.card.typeCode === "toggle" || fmt.card.typeName === "Toggle") {
+    return formatToggleCore(fmt.card.dbContent);
+  }
   // Match by codename (card-mod-search type card's codehash has codename
   // "search_type"); the corpus search cards have type cards whose CARD
   // NAME is random (id=101 -> type_card name="qnzkqz"), so the original
