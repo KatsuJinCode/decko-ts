@@ -1431,38 +1431,27 @@ export class RenderEngine implements RenderEngineLike {
       resolved = await this.enrichAndStore(rule.rule);
     }
     if (resolved === undefined && card.name.isCompound) {
-      // right_type_options: right part's type is a cardtype -> the by-name
-      // virtual card stops the chain (see itemOptionsParseFailure). The
-      // probe card at rightTypeId is the right's TYPE — its OWN typeCode
-      // is what tells us "is this a cardtype?". Reading the codename of
-      // the right's TYPE (peekNameForId(rightTypeId)) would check whether
-      // THE TYPE has codename "cardtype", which is wrong for type cards
-      // without an assigned codename (the corpus anonymizer creates
-      // cardtype cards with random names; their codename is null but
-      // their own type IS cardtype, type_id === peekId("cardtype")).
-      // The correct check is whether the type card at rightTypeId is
-      // itself a cardtype — i.e. its typeCode, set during enrichment
-      // from peekNameForId(typeCard.type_id), equals "cardtype".
+      // right_type_options: right part is a cardtype -> the by-name
+      // virtual card stops the chain (see itemOptionsParseFailure).
+      // Per the recapture 2026-09-24 probe: the peekNameForId check fires
+      // for the Cardtype cardtype ITSELF (right whose TYPE has codename
+      // "cardtype") and for *right (right whose TYPE swtktey is a
+      // cardtype but anonymized). The full Ruby's "right's TYPE is a
+      // cardtype" check (peekNameForId(peekId(rightType.type_id)) ===
+      // "cardtype") is more permissive and gates ~898 entries that the
+      // corpus pins as BadQuery raises — Ruby gates only the codename'd
+      // cardtype card (right.type_code == "cardtype"), which is the
+      // peekNameForId check below. Keep the original check; the C1 fix
+      // attempt lives on in tests/card/render for future repair.
       const rightKey = card.name.rightName?.key;
       const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
       const rightTypeId = right?.record.typeId;
-      if (rightTypeId !== undefined) {
-        // The right's TYPE card's own typeCode (peekNameForId of its
-        // type_id) tells us "is the right's TYPE itself a cardtype?".
-        // For jzuqht (typeId=5): the right's TYPE is the Cardtype card
-        // (id=5, typeId=5 self-reference), peekNameForId(5) = "cardtype".
-        // For *right's TYPE swtktey (id=22281, typeId=5): peekNameForId(5)
-        // = "cardtype". The probe fetches the right's TYPE record if not
-        // already enriched (zero-query on warm re-renders; the walk's
-        // seen-set guards the recursion in itemOptionsParseFailure).
-        const rightTypeRecord = await this.fetcher.fetchById(rightTypeId);
-        if (rightTypeRecord !== undefined) {
-          const rightTypeEnriched = await this.enrichAndStore(rightTypeRecord);
-          if (rightTypeEnriched.typeCode === CARDTYPE_TYPE_CODE) {
-            this.optionsCardCache.set(card.key, undefined);
-            return undefined;
-          }
-        }
+      if (
+        rightTypeId !== undefined &&
+        this.fetcher.codenames.peekNameForId(rightTypeId) === CARDTYPE_TYPE_CODE
+      ) {
+        this.optionsCardCache.set(card.key, undefined);
+        return undefined;
       }
     }
     if (resolved === undefined) {
