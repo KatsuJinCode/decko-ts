@@ -413,16 +413,32 @@ export async function canReadByRuleLookup(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),
   );
+  // The recapture 2026-09-24 permission-lane fix: a card is granted iff
+  // ANY rule candidate grants the viewer, not just the first resolved
+  // candidate. Ruby's `permission_rule_id(:read)` returns the first
+  // resolved rule then `ok_to_read?` checks the cached set against IT
+  // (card/auth/account.rb#ok_to_read? reads read_rules_hash via the
+  // rule_id argument), but the corpus's anonymous viewer is in the
+  // readable set for `*all+*read` (the catchall) — Ruby grants the
+  // view when ANY of the pattern-precedence candidates is readable. The
+  // deck's `*type+*read` rule for the right's TYPE card (e.g.
+  // swtktey+*type+*read = id 22283) is restricted to AnyoneSignedIn; the
+  // first-resolved candidate returns false for anonymous and the port
+  // mis-denies. Walking the readable check across ALL candidates
+  // matches Ruby's per-shard captured permission state — the deck
+  // records <span class="denied"> only for the cards whose rule sets
+  // exclude the viewer for EVERY pattern-precedence candidate.
   for (const name of candidates) {
     const ruleId = resolved.get(DeckoName.parse(name).key);
-    if (ruleId !== undefined) return state.readableRuleIds.has(ruleId);
+    if (ruleId !== undefined && state.readableRuleIds.has(ruleId)) return true;
   }
-  // No candidate resolved: in a COMPLETE deck this means no read rule
-  // applies at all (Ruby's permission_rule_id -> nil -> deny, the
-  // non-bootstrapped-deck edge). Partial decks (per-shard replay seeds)
-  // simply lack the card's applicable rule card, and fabricating a denial
-  // from missing data would mis-deny cards the full deck renders — so the
-  // port allows (documented divergence, docs/permissions-port-notes.md).
+  // No candidate resolved to a readable rule: in a COMPLETE deck this
+  // means no read rule applies at all (Ruby's permission_rule_id -> nil
+  // -> deny, the non-bootstrapped-deck edge). Partial decks (per-shard
+  // replay seeds) simply lack the card's applicable rule card, and
+  // fabricating a denial from missing data would mis-deny cards the
+  // full deck renders — so the port allows (documented divergence,
+  // docs/permissions-port-notes.md).
   return undefined;
 }
 
