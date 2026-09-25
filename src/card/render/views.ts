@@ -941,19 +941,20 @@ const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
 
 /** bar.rb view :bar_bottom -> render :content, home_view: :content.
  *
- *  For pointer/list cardtypes the captured corpus bytes show the
- *  accordion-body containing the `<div class="pointer-list">` directly,
- *  with no intermediate `<div id="X-content-view" class="card-slot
- *  content-view …">` wrap (oracle pin: corpus:6551 *star+*create at
- *  fixtures/corpus/shard-000003.jsonl:359). All other cardtypes'
- *  captured open views carry the content-view wrap inside
- *  accordion-body (e.g. corpus:1 *tkxqkflwgtb at
- *  fixtures/corpus/shard-000000.jsonl). The TS engine's contentView
- *  unconditionally calls slotWrapCommon("content", core); bypassing it
- *  for pointer/list cards reproduces the captured byte shape. Per-item
- *  slots inside the list still dispatch through renderPointerListItem
- *  and carry `view:"bar"` in their data-slot — the change is strictly
- *  the outer accordion-body wrapper, not the per-item mini_bar slots.
+ *  For RULE pointer/list cards (corpus:6551 *star+*create list rule
+ *  with permission right *create, fixtures/corpus/shard-000003.jsonl:
+ *  359) Ruby's captured bytes show the accordion-body containing the
+ *  `<div class="pointer-list">` directly, with no intermediate
+ *  `<div id="X-content-view" class="card-slot content-view …">` wrap.
+ *  All other cardtypes' captured open views (non-rule pointer/list like
+ *  corpus:77 *home and corpus:792 Brandon WilliamsCraig+Pages, plus
+ *  every other cardtype) carry the content-view wrap inside
+ *  accordion-body. The fix (CLUSTER 3, set-card-pointer-list-vs-
+ *  nested-content, 690 entries on shard-0) narrows the no-wrap path
+ *  to rule cards. Per-item slots inside the list still dispatch through
+ *  renderPointerListItem and carry `view:"bar"` in their data-slot —
+ *  the change is strictly the OUTER accordion-body wrapper, not the
+ *  per-item mini_bar slots.
  *
  *  CLUSTER 5 (rule-card-content-as-literal-text): for rule cards whose
  *  db_content is a single literal (no items, no template — Number/4,
@@ -966,8 +967,8 @@ const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
  *  recapture-raw:*table of contents+*right+*default:render:open (offset
  *  2947, exp 2976, act 3624 — `4` literal vs nested content-view slot);
  *  recapture-raw:*all+*captcha:render:open (closes the wrap; the body
- *  becomes `yes` via formatToggleCore). Pointer/list rule cards are
- *  already handled by the upstream `isPointerOrListCard` branch above.
+ *  becomes `yes` via formatToggleCore). Pointer/list rule cards take
+ *  the isRuleCard branch inside the upstream isPointerOrListCard arm.
  *
  *  Rule-card detection in this scope uses the enriched setKeys (the
  *  RULE token is added by the engine's async `computeIsRule`, which
