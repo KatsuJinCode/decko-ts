@@ -26,7 +26,7 @@
 
 import type { RenderCard } from "./format.js";
 import { h } from "./slot-html.js";
-import { isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
+import { isPointerOrListCard, isRuleCardWithPermissionRight, rawItemStrings } from "./pointer-list.js";
 
 /** card-mod-rules bar_view.rb:19-21 calls the bare `truncate` helper, which
  *  resolves to card-mod-format content.rb:43-53 — Rails truncate semantics
