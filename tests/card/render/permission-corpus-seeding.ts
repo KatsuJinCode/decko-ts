@@ -199,6 +199,13 @@ export async function createCorpusSeededStorage(ids: Set<number>): Promise<Rende
   for (const ref of refs) {
     await seedReference(storage, ref.referer_id, ref.referee_id, ref.referee_key);
   }
+  // SET-card child-card grant walk follow-up: seed the child-card references
+  // captured above (childRefs + childCardIds were collected at the same point
+  // as setCardIds were expanded). Same persist path as the rules-as-referers
+  // loop above.
+  for (const ref of childRefs) {
+    await seedReference(storage, ref.referer_id, ref.referee_id, ref.referee_key);
+  }
   return storage;
 }
 

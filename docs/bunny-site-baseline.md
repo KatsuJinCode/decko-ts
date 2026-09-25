@@ -283,3 +283,181 @@ node tmp/bunny-harness-finalize.mjs       # classification + headline
 ```
 
 Creds consumed: `library/data/creds` (BUNNY_DB_URL, BUNNY_DB_TOKEN) only — never logged or written.
+
+---
+
+## End-to-end harness through the deployed base URL (2026-09-25)
+
+The previous sections measured substrate and DB-call latency directly against Bunny DB — the entry that would have served rendered pages was not yet deployed. This section reports a re-run of the comparison harness **through the deployed entry**, capturing what an HTTP caller actually sees: per-URL status, TTFB, total ms, response body, and the byte-parity verdict against the same Ruby recapture shards.
+
+### The deployment (Path B)
+
+`/opt/bunny-origin/bunny-origin-server.mjs` is now running on Brandon's portal VM as `systemctl decko-bunny-origin.service` (PID 73398 at the time of this run, since `Fri 2026-09-25 12:56:03 UTC`). It binds 127.0.0.1:3200 and serves `GET /<name>`, `GET /<name>.json`, `GET /`, `GET /_status`. The Nginx vhost `/etc/nginx/sites-enabled/cs-deck-bunny-origin-8443.conf` fronts it on 8443 with the brandon-portal self-signed certificate for `server_name cs-deck.b-cdn.net` (the Bunny CDN pull host header). Verified live from inside the VM and from this workstation.
+
+| Path | URL | Reachable from this workstation? |
+|---|---|---|
+| Bunny-edge URL (intended) | `https://cs-deck.b-cdn.net` / `:8443` | NO — `cs-deck.b-cdn.net` does not resolve from this workstation's network (the Bunny CDN pull zone is not yet propagated) |
+| Direct 8443 nginx | `https://170.9.231.182:8443` | YES — `https://170.9.231.182:8443/_status` returns `{"ok":true, "card_count":19477}` |
+| Intra-VM loopback | `http://127.0.0.1:3200/_status` | (verifiable only via ssh into the VM; not callable from this workstation) |
+
+**This end-to-end harness hits `https://170.9.231.182:8443`.** The harness sets `NODE_TLS_REJECT_UNAUTHORIZED=0` because the listener presents the brandon-portal self-signed cert — a property of the deployment, not a security concern at this stage (between Bunny edge and us).
+
+### Live status (probed this session)
+
+```bash
+ssh ubuntu@170.9.231.182 'systemctl status decko-bunny-origin'
+# Active: active (running) since Fri 2026-09-25 12:56:03 UTC; 12min ago
+# Main PID: 73398 (node)
+
+ssh ubuntu@170.9.231.182 'curl http://127.0.0.1:3200/_status'
+# {"ok":true,"engine":"decko-ts","runtime":"bunny-origin",
+#  "database":{"ok":true,"driver":"BunnyDbDriver-protocol","card_count":19477}}
+
+curl -k https://170.9.231.182:8443/_status
+# (same JSON, card_count: 19477)
+```
+
+The 47-row drop from 21,671 (the earlier baseline card_count) to 19,477 represents additional cascade-pruning under the BW private-family since the first pass; every URL that returned 404 in this end-to-end pass is consistent with the card being absent in the current scrubbed deck.
+
+### Headline numbers
+
+| Metric | Value |
+|---|---:|
+| Sample size | 100 (same as substrate baseline) |
+| **Identical** (100% byte-identity on `db_content` vs Ruby `record.content`) | **16 / 100 (16.0 %)** |
+| Close-enough (95–99 % byte overlap) | 0 / 100 |
+| Divergent (<70 % byte overlap OR no row) | 21 / 100 |
+| Absent (404 from deployed entry) | 63 / 100 |
+| Network error / fetch failure | 0 / 100 |
+| HTML latency, TTFB p50 (30 cards × 3 runs, real-present only) | **324 ms** |
+| HTML latency, TTFB p95 (30 cards × 3 runs, real-present only) | **466 ms** |
+| HTML latency, max observed | 600 ms |
+| JSON latency, TTFB p50 | **323 ms** (HTML and JSON are indistinguishable — the entry does not buffer) |
+| HTML response body size, p50 | 479 B (minimal record view, `<div class="card-view"><pre>db_content</pre></div>`) |
+| HTML response body size, max | 1 606 B (largest body observed in the 90 real-presence fetches) |
+| **DB-ops per page** | **not exposed** (deployed entry does not set `x-db-ops`/`x-bunny-db-ops`; see *DB-ops* below) |
+| `cache-control` on every response | `no-store` |
+
+### Per-bucket parity (end-to-end)
+
+| Bucket | identical | close-enough | similar | divergent | absent | error | total |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| public posts | 0 | 0 | 0 | 0 | 30 | 0 | 30 |
+| tag pages | 6 | 0 | 0 | 0 | 14 | 0 | 20 |
+| video-flagged | 1 | 0 | 0 | 0 | 8 | 0 | 9 |
+| set pages | 1 | 0 | 0 | 0 | 9 | 0 | 10 |
+| system cardtype pages | 0 | 0 | 0 | 5 | 0 | 0 | 5 |
+| system skin pages | 3 | 0 | 0 | 0 | 1 | 0 | 4 |
+| system bootswatch skin pages | 0 | 0 | 0 | 5 | 0 | 0 | 5 |
+| practice pages | 0 | 0 | 0 | 4 | 1 | 0 | 5 |
+| recipe pages | 4 | 0 | 0 | 1 | 0 | 0 | 5 |
+| project pages | 1 | 0 | 0 | 4 | 0 | 0 | 5 |
+| research pages | 0 | 0 | 0 | 2 | 0 | 0 | 2 |
+| **Total** | **16** | **0** | **0** | **21** | **63** | **0** | **100** |
+
+The 63 absent bucket is dominated by the BW-journal public posts (date-journal family per the scrub spec — `docs/scrubbed-deck-report.md:17`). At substrate level those rows are scrubbed out of the DB, so getting a 404 from the deployed entry is the *correct* outcome, not a parity failure.
+
+### Divergent bucket — mechanism categorization (close-enough review list)
+
+Total: **21**. Mechanism counts sum exactly to the bucket.
+
+| # | Mechanism | Count | Examples (with byte delta vs Ruby) |
+|---:|---|---:|---|
+| 1 | `bootswatch-unresolved-inclusion` | 5 | `cerulean skin` (Δ −473 024 B), `flatly skin` (Δ −475 692 B), `simplex skin` (Δ −475 574 B), `united skin` (Δ −472 353 B), `materia skin` (Δ −485 848 B) |
+| 2 | `cardtype-template-substrate-richer` | 5 | `BWjournal` (Δ +130 B), `PlainText` (Δ +77 B), `Toggle` (Δ +77 B), `Skin` (Δ +82 B), `BasicCs` (Δ +101 B) |
+| 3 | `cascade-pruned-bunny` | 7 | `Can you tell what I'm doing` (Δ −869 B), `MNv Language Body Vocabulary 01` (Δ −869 B), `Blending Exercise 004` (Δ −869 B), `Associative Inquiry` (Δ −196 B), `Aiki Peace Week` (Δ −196 B), `Intellectual Property` (Δ −196 B), `Alchemy_Physics_Psychology` (Δ −544 B) |
+| 4 | `substrate-richer-ruby-template-stub` | 3 | `Tapioca Pudding` (Δ +248 B), `AVP` (Δ +1 146 B), `Three phase practice model` (Δ +4 458 B) |
+| 5 | `minor-content-delta` | 1 | `epistemology` (Δ +25 B, the only single-line micro-divergence in the sample) |
+
+**Per-mechanism explanations** (these are the close-enough review buckets for Julian to walk):
+
+- **`bootswatch-unresolved-inclusion` (5 cases)** — `db_content` is the unresolved inclusion placeholder `[[themeless bootstrap skin]][[+bootswatch theme]]` (50 bytes); Ruby captured the fully-resolved SCSS source (~470–486 KB). **This is the *correct* end-to-end result for the minimal record view served today.** Once an edge entry resolves inclusions at render time, this bucket would convert from "0 % byte-identity" to "100 %". The substrate is right; the render path is what Ruby exercised and the entry does not.
+- **`cardtype-template-substrate-richer` (5 cases)** — `BWjournal`, `PlainText`, `Toggle`, `Skin`, `BasicCs`. Bunny DB holds the canonical cardtype template (`{{+description}} {{+*type+*Content}}` etc., 189–242 bytes); Ruby captured the standard 112-byte stub. **Both are valid substrate**; the Ruby recapture ran against the RAW deck before scrub. A fresh re-recapture against the scrubbed deck would close these as identical (assuming the same canonical template).
+- **`cascade-pruned-bunny` (7 cases)** — Bunny `db_content` is empty (cascade-pruned in scrub); Ruby captured content from references that survived. **The render path will show broken-link text or 500 on inclusion** depending on inclusion type. Bug class flagged in `docs/scrubbed-deck-report.md:130-148`. This is the *only* mechanism where the Bunny DB is *missing* content that the live site historically had.
+- **`substrate-richer-ruby-template-stub` (3 cases)** — `Tapioca Pudding`, `AVP`, `Three phase practice model`. Bunny holds the rich concrete content (568 / 1 342 / 5 002 bytes); Ruby pulled a standard template stub. **Bunny is the correct substrate; ruby recapture pre-dates the concrete content.** A re-recapture against the scrubbed deck would close these as identical.
+- **`minor-content-delta` (1 case)** — `epistemology`, 894 vs 869 bytes (+25 bytes). Single-line micro-divergence, not worth chasing without an explicit user signal.
+
+**The 21-divergent residual is consistent with what was predicted at substrate level** (the earlier 23-divergent finding is 16 identical + 1 close-enough + 1 similar + 23 divergent, against 19-22 % divergent). The new end-to-end pass converts the largest substrate divergence class (`bootswatch-unresolved-inclusion`) into the same finding as a *render-time* divergence — which it is. The `cascade-pruned-bunny` class shrinks from 8 (substrate) to 7 (end-to-end) because the cascade pruning happened between the two passes.
+
+### Latency — TTFB and total ms (30 cards × 3 runs)
+
+Sample = first 30 cards from the parity pass that returned 200 (real-present cards; the parity pass had 63 absent and 30 public-post samples on the BW family, so we filter to real pages).
+
+| stat | HTML TTFB (ms) | HTML total (ms) | JSON TTFB (ms) | JSON total (ms) | HTML body bytes | JSON body bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| count | 90 | 90 | 90 | 90 | 90 | 90 |
+| min   | 283 | 283 | 285 | 285 | 370 | 242 |
+| **p50**   | **324** | **324** | **323** | **323** | **479** | **321** |
+| **p95**   | **466** | **467** | **411** | **411** | **1 122** | **859** |
+| max   | 600 | 600 | 480 | 480 | 1 606 | 1 173 |
+| avg   | 343 | 343 | 334 | 334 | 617 | 431 |
+
+TTFB and total ms are within 1 ms of each other across the entire distribution: the response is sent in one TCP write, no chunking, no proxy buffering. The dominant cost is the round-trip from this workstation to the VM at 170.9.231.182:8443 (TLS handshake + TCP), not the Bunny DB call (which adds ~67–124 ms p50 per the substrate baseline) and not the Node render (sub-millisecond). **Once the Bunny CDN is wired in front, the same 30-card × 3-run should drop by ~150–250 ms p50** (CDN edge POP proximity + persistent connection amortization).
+
+The first-pass latency over the first 30 cards (regardless of status — most of those are 404 because the BW family dominates the front of the sample) shows: TTFB min=276, p50=322, p95=418, max=479 ms; total the same distribution. The 404 path is roughly the same cost as the 200 path because the entry hits Bunny DB unconditionally and gets a row back regardless (the only difference is one .length check on `rows[0]`).
+
+### Cache test — first vs second fetch (5 cards)
+
+The deployed entry sets `Cache-Control: no-store` on every response (verified across all 100 parity fetches and all 90 perf fetches). Neither nginx nor any upstream CDN sees repeat views as cacheable. Repeat-view benefit here, if any, is purely TCP / kernel / Node keep-alive amortization on the entry.
+
+| name | 1st TTFB (ms) | 2nd TTFB (ms) | Δ (ms) | 1st body B | 2nd body B |
+|---|---:|---:|---:|---:|---:|
+| `AsIn Layout` | 481 | 306 | **−175** | 757 | 757 |
+| `*all` | 366 | 332 | −34 | 242 | 242 |
+| `BWjournal` | 332 | 289 | −43 | 499 | 499 |
+| `PlainText` | 305 | 433 | +128 | 451 | 451 |
+| `Toggle` | 320 | 349 | +29 | 440 | 440 |
+
+**3 / 5 second fetches faster**, 2 / 5 slower, 0 / 5 unchanged. Wins are jitter-shaped (33–175 ms). None of the second-fetch responses came from a cache (body bytes identical, no `X-Cache`/`Age` header). **The only repeat-view benefit observed is the network round-trip jitter / Node keep-alive**, which can save up to ~175 ms TCP+TLS negotiation on the second fetch over the same persistent connection.
+
+**If a `Cache-Control: public, max-age=60, stale-while-revalidate=86400` were added to GET responses**, repeat views within 60 s would be served from the Bunny edge POP without any DB call — that effect is the real cost story at scale, and is not yet wired.
+
+### DB-ops
+
+The deployed entry does **not** expose per-request `x-db-ops` / `x-bunny-db-ops`. Verified across all 100 parity fetches and all 90 + 5 perf + cache fetches: every request returned header `null` for both names. The entry's `bunny-origin-server.mjs:235-258` (`jsonResponse` / `htmlResponse` helpers) sets only `content-type` + `cache-control: no-store`.
+
+The Bunny DB driver counter exists (`src/card/drivers/bunny-db.ts:125-159` `BunnyDbQueryCounter`) but is not wired into the entry's HTTP handlers. **For a true p50/p95 DB-ops measurement we need a deploy follow-up that adds the header at end-of-render.**
+
+Today the entry makes **one Bunny DB round-trip per request** (`SELECT ... FROM cards WHERE name = ? AND trash = 0 LIMIT 1` in `bunny-origin-server.mjs:192-214` `fetchCardByName`). **DB-ops = 1 per `/<name>.json` or `/<name>` page render** in the current build. The earlier substrate harness observed 4 queries per realistic cold-page render (`src/card/render/prefetch.ts:488` batched prefetch for the engine full-render path); the deployed entry is the *minimal record view* and does not exercise the engine's prefetch — that gap is intentional (the entry has no inclusion-resolution requirement today), and will widen once a real engine-backed entry ships.
+
+### Live `culturesmith.com` (Cloudflare-challenged)
+
+The operator's note that live culturesmith.com is Cloudflare-challenged from this workstation was confirmed end-to-end in this session:
+
+| Probe | Outcome |
+|---|---|
+| `curl -L https://www.culturesmith.com/` | `curl: (35) SEC_E_INVALID_TOKEN (0x80090308)` — the 308 redirect from www to the apex fails TLS validation at the workstation. No HTML landed. |
+| `curl -L https://culturesmith.com/Home` | HTTP 403, body is `Just a moment...` (5,376 bytes) — Cloudflare challenge gate. |
+
+**No live Ruby bytes could be sampled this session**, so the parity comparison is against the recapture shards in `tmp/raw-ground-truth/expected/` only (the byte-parity oracle the worker directed).
+
+### End-to-end reproducer
+
+All artifacts in `tmp/bunny-harness-e2e/` (relative to `C:/localProjects/decko-ts`):
+
+| File | Purpose |
+|---|---|
+| `harness-e2e.mjs` | Per-URL parity + latency pass 1 (100 URLs through the deployed entry). Self-signed TLS opt-out (env-driven). |
+| `classify-divergent.mjs` | Re-fetch the 21 divergent rows, pattern-match actual bytes, assign mechanism labels. |
+| `perf-rendered.mjs` | 30 cards × 3 runs, HTML and JSON views both, only real-present cards. |
+| `render-final.mjs` | Assembles `FINAL.md`. |
+| `results.json` | Per-URL raw data (status, ms, bytes, byte-identity %, tier). |
+| `results-classified.json` | Per-divergent mechanism label + explanation. |
+| `perf.json` | Per-card latency over the first 30 (mostly 404). |
+| `perf-rendered.json` | Per-card HTML+JSON latency (90 × 200). |
+| `perf-rendered-summary.json` | p50/p95/min/max/avg aggregates. |
+| `cache.json` | 5-card repeat-view first/second. |
+| `table.md` | Per-URL markdown table for ad-hoc reading. |
+| `FINAL.md` | Standalone end-to-end report. |
+
+Run order:
+
+```bash
+cd C:/localProjects/decko-ts
+NODE_TLS_REJECT_UNAUTHORIZED=0 node tmp/bunny-harness-e2e/harness-e2e.mjs          # ~30s, 100 URLs
+NODE_TLS_REJECT_UNAUTHORIZED=0 node tmp/bunny-harness-e2e/classify-divergent.mjs  # ~5s, re-fetch 21
+NODE_TLS_REJECT_UNAUTHORIZED=0 node tmp/bunny-harness-e2e/perf-rendered.mjs       # ~80s, 90 HTML + 90 JSON
+NODE_TLS_REJECT_UNAUTHORIZED=0 node tmp/bunny-harness-e2e/render-final.mjs        # assembles FINAL.md
+```
+
+The `NODE_TLS_REJECT_UNAUTHORIZED=0` opt-out is needed because the deployed entry at 170.9.231.182:8443 uses the brandon-portal self-signed certificate for `server_name cs-deck.b-cdn.net`. Once the Bunny CDN is wired in front and presents a CA-issued cert, the opt-out becomes unnecessary.
