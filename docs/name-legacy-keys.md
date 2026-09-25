@@ -1,7 +1,7 @@
 # Name legacy keys — investigation + decision memo
 
-Date: 2026-09-25
-Status: investigation complete, spike not landed (see "Spike verdict" below).
+Date: 2026-09-25 (updated: spike empirically run, no-go confirmed)
+Status: spike run, hypothesis REJECTED on this corpus, preference NOT landed (see "Section 8 — empirical spike run").
 Files in scope: `src/card/name.ts`, `src/card/fetch/lexicon.ts`,
 `src/card/fetch/codename.ts`, `tests/card/name/`, `tests/card/render/`.
 
