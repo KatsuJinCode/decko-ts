@@ -510,7 +510,22 @@ async function driveClosure(
     seedKeys(newComposed); // junction rows resolve through their composed keys
     collect(closureRows); // their content references join the pending set
     for (const nameStr of [...pending]) {
-      if (known.has(DeckoName.parse(nameStr).key)) pending.delete(nameStr);
+      // Mark-resolution error tolerance (mirror round-3 cardReferenceKeys
+      // catch, render.ts:1773): a name that fails the synchronously-resolved
+      // mark parse is dropped from the closure rather than raised. This is a
+      // safety net only — for a clean run nothing in `pending` is mark-
+      // shaped, so the catch is never entered.
+      let resolvedKey: string;
+      try {
+        resolvedKey = DeckoName.parse(nameStr).key;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          pending.delete(nameStr);
+          continue;
+        }
+        throw err;
+      }
+      if (known.has(resolvedKey)) pending.delete(nameStr);
     }
     // The sides of everything this round composed prime next round (rows
     // already fetched are in seenIds, so only genuinely-unseen sides prime).
