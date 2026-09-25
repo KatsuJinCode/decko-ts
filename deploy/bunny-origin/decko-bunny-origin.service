@@ -1,0 +1,26 @@
+[Unit]
+Description=Bunny CDN origin for the scrubbed Culturesmith deck (BunnyDbDriver path, 127.0.0.1:3200)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/bunny-origin
+# BUNNY_DB_URL/BUNNY_DB_TOKEN come from /etc/default/decko-bunny-origin
+EnvironmentFile=/etc/default/decko-bunny-origin
+ExecStart=/usr/bin/node /opt/bunny-origin/bunny-origin-server.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/bunny-origin
+
+# stdout/stderr go to journalctl -u decko-bunny-origin -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
