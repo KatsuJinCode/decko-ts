@@ -55,9 +55,31 @@ function typeText(card: RenderCard): string {
  *  each item rendered as `<div class="pointer-item item-link"><a
  *  class="wanted-card" href="/NAME">…title…</a></div>`. Pinned by
  *  corpus:6560 (*star+*delete, type list, dbContent "uflluwkwvaenx") —
- *  the rule's bar-right captured bytes show this exact wrapper shape. */
+ *  the rule's bar-right captured bytes show this exact wrapper shape.
+ *
+ *  CLUSTER 6 (rule-card-content-as-pointer-list, 3 entries): for
+ *  pointer/list-typed rule cards with EXACTLY one non-empty item,
+ *  Ruby's captured byte shape (`*all+*layout` with dbContent "Default
+ *  Layout", `*layout+*right+*content options` with dbContent a single
+ *  JSON literal) is the LITERAL text WITHOUT the `<div class=
+ *  "pointer-list">` wrapper. For a single item the wrapping div is
+ *  redundant noise; the captured bar_right shows the item as a bare
+ *  text run inside `<div class="text-muted one-line">`. Test pins:
+ *  recapture-raw:*all+*layout:render:closed (offset 971, exp 2837,
+ *  act 3016); recapture-raw:*all+*layout:render:open (offset 953, exp
+ *  5245, act 5388 — bar_right shows `Default Layout` literal vs the
+ *  wrapped pointer-list); recapture-raw:*layout+*right+*content
+ *  options:render:open (offset 1544, exp 3661, act 4334 — accordion
+ *  body `{"type":"Layout"}` literal vs nested content-view slot). */
 function pointerListOneLineContent(card: RenderCard): string {
   const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
+  if (items.length === 1) {
+    // Single-item collapse: Ruby's one_line_content for a single-item
+    // list skips the pointer-list wrapper. Returning the item verbatim
+    // matches the captured oracle bytes (`*all+*layout` bar_right is
+    // exactly `Default Layout`).
+    return items[0] as string;
+  }
   const inner = items.map(pointerListOneLineItem).join("\n");
   return `<div class="pointer-list">${inner}</div>`;
 }
