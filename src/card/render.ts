@@ -447,6 +447,18 @@ export class RenderEngine implements RenderEngineLike {
     // replay driver uses (cached) makes repeat renders free.
     if (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") {
       await this.enrichPointerListItems(rootCard);
+      // The items enriched above land AFTER both ensureVerdicts passes
+      // (the main pass and the help-rules re-pass), so their card.ids
+      // have no entry in deniedVerdicts and isDenied() returns
+      // gate-open false — the sync render path then renders every item
+      // bar at full body even when the corpus's captured bytes carry
+      // the `<span class="denied">` quiet denial (the pointer/list
+      // item slots are exactly the surface where the corpus pins 229
+      // denied item bodies). Re-run the verdict pass for the newly
+      // enriched items; the skip-if-set guard makes it a no-op for
+      // every card already judged. Same defect class and same fix
+      // shape as the help-rules re-pass above.
+      await this.ensureVerdicts();
     }
     // Set cardtype cards: pre-load rule cards hanging off the set. The
     // prefetch closure walk does NOT chase rule cards hanging off a set

@@ -514,7 +514,24 @@ export class RenderFormat {
       this.buildUnknownNestCard(targetName, this.engine, this.card.typeName);
     const view = normalizeView(nest.options.view ?? this.defaultNestView());
     const viewOpts: Record<string, unknown> = {
-      nest_name: card.name.s, // nest.rb#prepare_view_and_opts! nest_name ||= card.name
+      // nest_name = the AUTHORED reference, verbatim: card-mod-content
+      // lib/card/content/chunk/nest.rb:23 builds the chunk's options with
+      // `@options = interpret_options.merge nest_name: name,
+      // nest_syntax: in_brackets` — `name` there is the authored
+      // reference (relative "+Source Title" stays relative; authored
+      // underscores/casing stay untouched). nest.rb#prepare_view_and_opts!'s
+      // `nest_name ||= card.name` is only the fallback for programmatic
+      // nests that carry no chunk options. Both oracles pin the authored
+      // form: the raw recapture oracle (tmp/raw-ground-truth/expected/
+      // recapture-raw-shard-000005.jsonl id 9625) carries
+      // nest_name "+Source Title" for a `{{+Source Title}}` nest, and the
+      // live wire (tmp/live-wire) carries "+tag"/"+related"/"+Source
+      // Title"/"Su$tainability"/"Conflict_Done_Well+class_schedule" —
+      // authored bytes, not resolved names. The resolved name still drives
+      // data-card-name (the slot's own attribute; id 9625 shows the
+      // absolute form there). card-mod-tabs.ts#chunkRefChunks already
+      // follows this contract for its chunk walk.
+      nest_name: nest.name,
       nest_syntax: nest.syntax,
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),

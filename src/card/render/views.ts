@@ -859,17 +859,24 @@ function inferSettingCodename(rule: RenderCard): string | undefined {
   return rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
 }
 
-/** Render one pointer/list item: a mini_bar slot wrap around the bar
- *  body. For a known card, dispatch the bar view through the engine's
- *  standard nestRecord path (which produces the slot id NAME-bar-view
- *  and class card-slot bar-view); then rewrite the OUTERMOST slot to
- *  use the mini_bar id/class while keeping the data-slot's view="bar"
- *  field. For an unknown/phantom card, build the slot wrap directly via
- *  pointerListItemSlot with the captured oracle's denied-spans body —
- *  Ruby's nest machinery wraps the denied body inside the mini_bar
- *  slot even when the inner card is read-denied (the slot wrap is
- *  built at the nest level, BEFORE the view-permission gate), and the
- *  port reproduces that shape via the helper. */
+/** Render one pointer/list item slot around the bar body. The slot
+ *  shape splits on the item's READ permission, and both oracles agree
+ *  on the split:
+ *   * read-denied item (known-but-denied or unknown/phantom): the
+ *     mini_bar slot wrap with the denied-spans bar body. Corpus v2
+ *     survey: 229/229 pointer-item slots carrying the mini_bar id/class
+ *     wrap a read-DENIED item (recapture-shard-000000 entries 400/755
+ *     et al. — every one a swtktey-typed denied card).
+ *   * readable item: the `bar-view` slot nestRecord produced, with the
+ *     full titled bar body. Corpus v2 pins it for the readable items
+ *     (42 slots, e.g. id 45410 "yol" content view -> items
+ *     awheasxlcszvy-bar-view with data-card-id and the bar-left
+ *     card-title body); the live wire pins the same shape
+ *     (tmp/live-wire/Aikido_Oak_Cliff.html: the Aikido Oak Cliff+related
+ *     list renders `id="aikido_oak_cliff-gallery-bar-view"`
+ *     class="card-slot bar-view ..." with the full bar — never
+ *     mini_bar). The prior unconditional swap produced mini_bar for
+ *     these readable items and failed both oracle families. */
 function renderPointerListItem(fmt: RenderFormat, name: string): string {
   const target = fmt.engine.fetchRenderCard(name);
   if (target === undefined) {
@@ -885,16 +892,45 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
   }
   // Known card: dispatch the bar view through nestRecord so the
   // permission gate, prepare hooks, and bar.haml body all run as in
-  // the standalone item-bar path. The result is a slot whose id ends
-  // in `bar-view`; swap it to `mini_bar-view` for the OUTERMOST slot
-  // only (the pointer-item wrapper is the only enclosing element).
-  const slotHtml = fmt.nestRecord(target, "bar", {
+  // the standalone item-bar path.
+  //
+  // The mini_bar slot shape is READ-DENIAL-gated, not unconditional.
+  // Both oracles agree on the split:
+  //   * corpus v2 (recapture-shard-*): 229/229 pointer-item slots with
+  //     the mini_bar id/class wrap a read-DENIED item (every one carries
+  //     the denied-spans bar body; the items' stored rule is the
+  //     swtktey+*type+*read grant to anyone_signed_in, which the
+  //     capture's Anonymous viewer is not a member of); the corpus's
+  //     READABLE items (42 slots, e.g. id 45410 "yol" content view ->
+  //     items awheasxlcszvy-bar-view with data-card-id and the full
+  //     bar-left card-title body) keep the `bar-view` slot nestRecord
+  //     produced.
+  //   * live wire (tmp/live-wire/Aikido_Oak_Cliff.html): the
+  //     Aikido Oak Cliff+related list renders its readable items as
+  //     `<div id="aikido_oak_cliff-gallery-bar-view" class="card-slot
+  //     bar-view ...">` with the full titled bar — never mini_bar.
+  //
+  // For a denied item the nestRecord dispatch would short-circuit at the
+  // view-permission gate into the BARE quiet-denial span (no slot wrap)
+  // — but Ruby builds the mini_bar slot wrap at the NEST level, BEFORE
+  // the view gate, so the captured shape is slot + bar body + two
+  // denied spans inside. Sidestep the gate exactly like the phantom
+  // path below and build the wrap from the fetched card's real
+  // identity (same builder, non-phantom tokens).
+  if (fmt.engine.isDenied(target)) {
+    const body = pointerListItemBodyForUnknown(name, {
+      setKeys: target.setKeys,
+      typeName: target.typeName,
+      typeId: target.typeId,
+    });
+    return pointerListItemSlot(target, body);
+  }
+  return fmt.nestRecord(target, "bar", {
     nest_name: target.name.s,
     show: ["bar"],
     hide: ["bar_middle"],
     home_view: "bar",
   });
-  return swapBarSlotToMiniBar(slotHtml, name);
 }
 
 /** Swap the OUTERMOST slot id + class suffix from `bar-view` to
