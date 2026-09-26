@@ -28,6 +28,12 @@ import { RenderEngine } from "../src/card/render.js";
 import { executeQuery } from "../src/cql/execute.js";
 import { CqlBadQuery } from "../src/cql/ast.js";
 import { DeckoName } from "../src/card/name.js";
+import { createVirtualCardLookup } from "../src/card/fetch/virtual-cards.js";
+import {
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+  structureRuleTypesFromResults,
+} from "../src/card/rules/structure.js";
 import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
@@ -209,6 +215,19 @@ async function primeCqlNameResolver(
       const name = DeckoName.parse(row.name);
       fetcher.lexicon.write(row.id, name, row.name);
     }
+  }
+  // Virtual-card rule universe (round 8, wikirate-tag-404 family): the
+  // storage factory's responsibility per
+  // src/card/fetch/virtual-cards.ts:44-49. Without this hook, compound
+  // names that resolve only through the structure rule walk return
+  // undefined from `FetchEngine.fetchByName` and the serving path 404s
+  // them even when the live deck has the rule (e.g. Wikirate+*right).
+  {
+    const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+    fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+      contents: structureUniverseFromResults(universeResult),
+      ruleTypeIds: structureRuleTypesFromResults(universeResult),
+    });
   }
   return (nameish: string) => keyToId.get(DeckoName.parse(nameish).key);
 }
