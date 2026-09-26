@@ -389,6 +389,8 @@ export function canReadByStoredRule(
  * the caller treats it as ALLOWED (the documented divergence — Ruby on a
  * rule-less deck denies; matching that would deny every card of every
  * rule-less test deck, which is not the surface any oracle captures).
+ * A COMPLETE deck's walk that resolves NO candidate returns false (fail
+ * closed): see the tail comment on the no-candidate branch.
  */
 export async function canReadByRuleLookup(
   fetcher: FetchEngine,
@@ -417,13 +419,25 @@ export async function canReadByRuleLookup(
     const ruleId = resolved.get(DeckoName.parse(name).key);
     if (ruleId !== undefined) return state.readableRuleIds.has(ruleId);
   }
-  // No candidate resolved: in a COMPLETE deck this means no read rule
-  // applies at all (Ruby's permission_rule_id -> nil -> deny, the
-  // non-bootstrapped-deck edge). Partial decks (per-shard replay seeds)
-  // simply lack the card's applicable rule card, and fabricating a denial
-  // from missing data would mis-deny cards the full deck renders — so the
-  // port allows (documented divergence, docs/permissions-port-notes.md).
-  return undefined;
+  // No candidate resolved. In a COMPLETE deck (hasReadRules &&
+  // hasCatchAllReadRule) this is an unevaluatable rule walk, not an
+  // unruled card: the catch-all is structurally present (hasCatchAllReadRule)
+  // AND among the candidates (the *all pattern applies to every card), so a
+  // miss means the composed-key closure could not resolve the deck's own
+  // rule graph for this card. Ruby's walk cannot resolve here either —
+  // permission_rule_id -> nil -> ok_to_read? denies
+  // (set/all/permissions.rb:139-146 read_rules_hash[nil]) — so the port
+  // FAILS CLOSED (deny). The fail-open this replaces leaked card bodies
+  // through the catch-all whenever a more specific rule candidate could not
+  // be evaluated (trace tenth-item-trace.md bug 3: the *type plus right
+  // read rule of "+Source Content" cards granting "Anyone Signed In" never
+  // reached the verdict; the walk fell through to *all+*read and granted
+  // anonymous).
+  // Partial decks (per-shard replay seeds) simply lack the card's
+  // applicable rule card, and fabricating a denial from missing data would
+  // mis-deny cards the full deck renders — there the port still allows
+  // (documented divergence, docs/permissions-port-notes.md).
+  return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
 }
 
 /**
