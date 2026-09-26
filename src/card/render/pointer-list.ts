@@ -55,6 +55,7 @@
 
 import type { RenderCard } from "./format.js";
 import { DeckoName } from "../name.js";
+import { isNewCard, type CardRecord } from "../fetch/card-record.js";
 import { newSlotId, emitAttrs, h } from "./slot-html.js";
 
 /** The view name passed to nest for each item inside the card-list
@@ -246,10 +247,16 @@ export function pointerListItemSlot(item: RenderCard, inner: string): string {
     .filter((s) => s !== "")
     .join(" ");
   const dataSlotJson = itemDataSlotJson(name.s);
+  // card-mod-format wrap.rb:50-53 #slot_cardname (see views.ts#slotCardname):
+  // an unsaved compound card displays name.url_key. Phantom items are
+  // unsaved by definition (record-less, or a record built new); saved
+  // real items display their stored name verbatim.
+  const unsaved = item.record === undefined || isNewCard(item.record);
+  const cardname = unsaved && name.isCompound ? name.urlKey : name.s;
   const attrs = emitAttrs({
     id: `${safeKey}-${POINTER_LIST_ITEM_SLOT_VIEW}-view`,
     class: classes,
-    "data-card-name": h(name.s),
+    "data-card-name": h(cardname),
     "data-card-type-id": item.typeId === undefined ? undefined : String(item.typeId),
     "data-card-type-name": item.typeName,
     "data-card-link-name": name.urlKey,
@@ -331,7 +338,33 @@ function jsonEscapeAttr(s: string): string {
  *  oracle byte-for-byte. */
 export function phantomPointerListItem(name: string): RenderCard {
   const deckName = DeckoName.parse(name);
+  // The record is a proper unsaved record (Ruby's Card.new on the fetch
+  // miss) so the slot builders' slot_cardname rule reads a real new?
+  // state instead of special-casing a record-less cast.
+  const record: CardRecord = {
+    id: undefined,
+    codename: undefined,
+    leftId: undefined,
+    rightId: undefined,
+    typeId: PHANTOM_TYPE_ID,
+    dbContent: undefined,
+    trash: false,
+    creatorId: undefined,
+    updaterId: undefined,
+    createdAt: undefined,
+    updatedAt: undefined,
+    currentRevisionId: undefined,
+    readRuleClass: undefined,
+    readRuleId: undefined,
+    referencesExpired: undefined,
+    name: deckName,
+    key: deckName.key,
+    isNew: true,
+    fromTrash: false,
+    uncacheable: false,
+  };
   return {
+    record,
     name: deckName,
     key: deckName.key,
     typeName: PHANTOM_TYPE_NAME,

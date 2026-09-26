@@ -35,6 +35,7 @@
 //                     + bar_menu.haml
 
 import { DeckoName } from "../name.js";
+import { isNewCard } from "../fetch/card-record.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
 import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn } from "./format.js";
 import {
@@ -86,6 +87,21 @@ function slotId(card: RenderCard, view: string): string {
  *  3222, act 3221 — `\n` between `</p>` and the content-view slot's
  *  closing `</div>`); recapture-raw:Not really monothiests+discussion:
  *  render:open (offset 3490, exp 3525, act 3524). */
+/** card-mod-format-0.20.0 set/all/html/wrap.rb:50-53 #slot_cardname:
+ *      name = card.name
+ *      name = name.url_key if card.new? && name.compound?
+ *  An UNSAVED COMPOUND card (Ruby new?, our isNewCard on the record —
+ *  buildUnknownNestCard sets isNew: true; fetched real cards are never
+ *  new) DISPLAYS its url_key form: case retained, underscores for
+ *  spaces ("Conflict Done Well+management" renders as
+ *  "Conflict_Done_Well+management"). Saved cards and simple names
+ *  display name.s unchanged. This is display-only — the key/id algebra
+ *  is untouched. */
+function slotCardname(card: RenderCard): string {
+  const name = card.name;
+  return isNewCard(card.record) && name.isCompound ? name.urlKey : name.s;
+}
+
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
@@ -94,7 +110,7 @@ function slotWrap(ctx: ViewContext, view: string, inner: string): string {
     id: slotId(card, view),
     class: classes,
     "data-card-id": card.id === undefined ? undefined : String(card.id),
-    "data-card-name": h(card.name.s),
+    "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
     "data-card-link-name": fmt.urlKey(),
@@ -939,13 +955,20 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
   // the standalone item-bar path. The result is a slot whose id ends
   // in `bar-view`; swap it to `mini_bar-view` for the OUTERMOST slot
   // only (the pointer-item wrapper is the only enclosing element).
+  // The swap target is the RESOLVED card's safeKey — the string
+  // nestRecord built the slot id from. The authored line's safeKey
+  // equals it whenever key normalization made them agree, but the
+  // whole point of key resolution is that they need not
+  // ("+videos" line -> stored "+video" card): matching on the
+  // authored form would silently skip the swap for exactly the
+  // lines this path just resolved.
   const slotHtml = fmt.nestRecord(target, "bar", {
     nest_name: target.name.s,
     show: ["bar"],
     hide: ["bar_middle"],
     home_view: "bar",
   });
-  return swapBarSlotToMiniBar(slotHtml, name);
+  return swapBarSlotToMiniBar(slotHtml, target.name.safeKey);
 }
 
 /** Swap the OUTERMOST slot id + class suffix from `bar-view` to
