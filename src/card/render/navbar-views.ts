@@ -223,3 +223,15 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
   nav_link_in_dropdown: navLinkInDropdownView,
   search_box: searchBoxView,
 };
+
+/** set/self/account_links.rb view :core: wrap_with(:div, id: "logging",
+ *  class: signed_in? ? "logged-in" : "logged-out") { navbar_items.join "\n" }.
+ *  Anonymous: the sign_up + sign_in lis (my_card/sign_out are
+ *  signed_in?-gated with denial :blank — dropped from the compact). */
+export function accountLinksCoreHtml(ctx: ViewContext): string {
+  const links = [
+    `<li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>`,
+    `<li class="nav-item"><a class="nav-link signin-link known-card" href="/*signin">Sign in</a></li>`,
+  ].join("\n");
+  return `<div id="logging" class="logged-out">${links}</div>`;
+}

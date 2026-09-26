@@ -52,7 +52,7 @@ import { ruleBarRightHtml } from "./rule-bar-right.js";
 import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
 import { buildVirtualRuleCard } from "./virtual-rule-card.js";
-import { NAVBAR_VIEWS } from "./navbar-views.js";
+import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -199,6 +199,14 @@ function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): s
 
 const coreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
+  // set/self/account_links.rb view :core (card-mod-layout): the logging
+  // div wrapping the navbar_item_views lis (anonymous: sign_up + sign_in).
+  // The custom layouts nest {{*account links|core}} (PCTS/GBA page-lane
+  // bytes: <div id="logging" class="logged-out"><li ...Sign up...). Set
+  // -scoped in Ruby; keyed by card key here (the flat-registry seam).
+  if (fmt.card.key === "*account_link") {
+    return accountLinksCoreHtml(ctx);
+  }
   // Toggle-type core view (card-mod-toggle set/type/toggle.rb: `view :core`
   //   -> the content rendered as "yes" (truthy) or "no" (falsey); the raw
   //   db_content is one of "1", "0", "", "true", "false". Ruby renders the

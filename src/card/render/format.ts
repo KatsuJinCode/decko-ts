@@ -1042,6 +1042,15 @@ function expandWikiLinks(text: string): string {
       // Escaped wiki-link: drop the backslash, keep the literal brackets.
       return `[[${label !== undefined ? `${target}|${label}` : target}]]`;
     }
+    // Explicit resources (card-mod-content chunk/link.rb:82-85): targets
+    // matching ^(/|https?:|mailto:) render link_to_resource — the
+    // internal-link anchor WITHOUT the card-title span (page-lane PCTS/GBA
+    // nav bytes: <a class="internal-link" href="/">Home</a>).
+    if (/^(\/|https?:|mailto:)/.test(target.trim())) {
+      const href = h(target.trim());
+      const displayText = h((label ?? target).trim());
+      return `<a class="internal-link" href="${href}">${displayText}</a>`;
+    }
     const targetEscaped = h(target.trim());
     const displayText = h((label ?? target).trim());
     return (
