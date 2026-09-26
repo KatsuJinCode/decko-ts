@@ -41,3 +41,7 @@ benchmarks/local-paths.json
 deploy/.wrangler/
 state/
 tools/hygiene/out/
+
+# one-click CF deploy generated artifacts (scripts/deploy/one-click-deck/):
+# fitting-scale seed SQL + local workerd state, rebuilt on demand, never committed
+scripts/deploy/one-click-deck/out/
