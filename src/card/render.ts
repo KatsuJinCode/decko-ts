@@ -439,15 +439,19 @@ export class RenderEngine implements RenderEngineLike {
     if (rootCard === undefined) {
       throw new Error(`render card not prepared: ${name.s}`);
     }
-    // Pointer / List cardtypes: pre-enrich every item the content
+    // Pointer / List cardtypes: pre-enrich every item their content
     // references (the prefetch closure walk does NOT chase plain-text
     // references — only nest-syntax ones — so the items are absent
     // from renderCards when the sync core view tries to fetch them).
-    // One batched pass per render; the second-pass walk the corpus
-    // replay driver uses (cached) makes repeat renders free.
-    if (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") {
-      await this.enrichPointerListItems(rootCard);
-    }
+    // The walk covers EVERY pointer/list card in the prepared closure,
+    // not just the render root: a list nested inside a page (+Pages
+    // inside a Person card) hits the same sync-fetch gap, and the sync
+    // item dispatch (renderPointerListItem) has no await to repair a
+    // miss — prepareItemForRender must run here, in the async prepare
+    // phase. Repeat to a fixpoint: enriched items may themselves be
+    // pointer/list hosts. Termination is structural — enrichAndStore
+    // skips existing keys, so renderCards only grows.
+    await this.enrichPointerListItemsClosure();
     // Set cardtype cards: pre-load rule cards hanging off the set. The
     // prefetch closure walk does NOT chase rule cards hanging off a set
     // — they're reachable only through the rule's left side, which the
@@ -1314,39 +1318,51 @@ export class RenderEngine implements RenderEngineLike {
     // exists for future hooks (e.g. a negative closure map).
   }
 
+  /** Pre-enrich the items of every pointer/list card reachable in the
+   *  render-card map, repeating until the map stops growing (an enriched
+   *  item may itself be a pointer/list host whose items need the same
+   *  pass). Warm renders are a no-op: prepareItemForRender's first check
+   *  is the renderCards cache. The round cap is paranoia — renderCards
+   *  strictly grows, so the fixpoint is reached in at most deck-size
+   *  rounds; the cap keeps a pathological cycle bounded. */
+  private async enrichPointerListItemsClosure(): Promise<void> {
+    const MAX_ROUNDS = RUBY_MAX_DEPTH;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      let grew = false;
+      const hosts = [...this.renderCards.values()].filter(
+        (card) => card.typeCode === "pointer" || card.typeCode === "list",
+      );
+      for (const host of hosts) {
+        const before = this.renderCards.size;
+        await this.enrichPointerListItems(host);
+        if (this.renderCards.size !== before) grew = true;
+      }
+      if (!grew) return;
+    }
+  }
+
   /** Pre-enrich every item name a pointer / list card's db_content
    *  references (card-mod-list set/all/item.rb#raw_item_strings:
-   *  content.to_s.split(/\n+/), each item stripped of [[ / ]]). One
-   *  batched IN-query per cold render (key-based lookup); the engine's
-   *  warm-cache check on subsequent renders makes the pass a no-op. */
+   *  content.to_s.split(/\n+/), each item stripped of [[ / ]]). Each
+   *  missing item resolves through prepareItemForRender — Card.fetch's
+   *  key-based ladder (retrieve.rb), whose Lexicon resolves compound
+   *  names through left_id/right_id (lexicon.rb#name_to_lex). An
+   *  authored line that differs in form from the stored card's name
+   *  ("...+videos" vs stored "...+video", "+Business" vs "business",
+   *  spaced-hyphen vs stored underscores) is key-identical to it, so
+   *  the line resolves to the REAL card and the item renders that
+   *  card's stored display name — the phantom fallback fires only for
+   *  true fetch misses. */
   private async enrichPointerListItems(card: RenderCard): Promise<void> {
     const items = card.dbContent
       .toString()
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
       .filter((s) => s.length > 0);
-    if (items.length === 0) return;
-    const missing: string[] = [];
     for (const name of items) {
-      const key = DeckoName.parse(name).key;
-      if (key === "") continue;
-      if (this.renderCards.has(key)) continue;
-      missing.push(key);
+      if (DeckoName.parse(name).key === "") continue;
+      await this.prepareItemForRender(name);
     }
-    if (missing.length === 0) return;
-    const placeholders = missing.map(() => "?").join(", ");
-    const result = await this.fetcher.driver.query<CardsRow>(
-      `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
-      missing,
-    );
-    for (const row of result.rows) {
-      const record = await composeCardRecord(row, this.fetcher.lexicon);
-      if (record.name === undefined) continue;
-      await this.cacheFetchedRecord(record);
-    }
-    // Items still absent from renderCards are unknown nest targets -
-    // record them so the sync renderView below sees them too (the
-    // unknown-card view is the empty string for the captured surface).
   }
 
   /** Pre-load every rule card whose left_id equals the set card's id,
