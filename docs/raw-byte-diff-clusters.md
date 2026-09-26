@@ -1,40 +1,40 @@
 # Raw ground-truth byte-diff cluster map
 
-Generated: 2026-09-25T14:20:36.708Z
+Generated: 2026-09-26T11:08:27.626Z
 
 ## FULL-RUN MAP (coordinator-fresh verification-aggregate.json)
 
-The full-run map below is grounded in the coordinator-fresh tmp/raw-ground-truth/enumeration/verification-aggregate.json (1489 entries, 633 fail, 550 byte-diff). The 13 shard-0 signatures were extended by hand-sampling ~30 UNTRACED entries per dominant axis (view x ratio band x offset band) and writing predicates for the mechanisms that actually appear in the full-run aggregate.
+The full-run map below is grounded in the coordinator-fresh tmp/raw-ground-truth/enumeration/verification-aggregate.json (1489 entries, 633 fail, 238 byte-diff). The 13 shard-0 signatures were extended by hand-sampling ~30 UNTRACED entries per dominant axis (view x ratio band x offset band) and writing predicates for the mechanisms that actually appear in the full-run aggregate.
 
-- byte-diff total: 550
-- clustered: 436 (79.3% of 550)
-- UNTRACED: 114 (20.7% of 550)
-- Sum check: 436 clustered + 114 UNTRACED = 550
+- byte-diff total: 238
+- clustered: 126 (52.9% of 238)
+- UNTRACED: 112 (47.1% of 238)
+- Sum check: 126 clustered + 112 UNTRACED = 238
 
 | # | Cluster | Owner | Count | One-line mechanism |
 |---|---------|-------|------:|---------------------|
-| 1 | `deep-read-rule-deny-on-self-or-right` | SEEDING | 272 | Engine denies read access where Ruby renders the full card bar at offset 2000-5000 (mid-list, after the permission-denied nav preamble). |
-| 2 | `parens-name-key-normalization` | ENGINE | 55 | DeckoName.toKey normalizes trailing '(s)' to a single trailing underscore instead of Ruby's '_s' underscore, so `Organizer(s)` keys as `organizer_` (engine) vs `organizer_s` (Ruby). |
-| 3 | `read-rule-grant-vs-deny` | SEEDING | 34 | Engine's read-rule evaluation diverges from Ruby's for a few specific rule cards (`*all+*default`, `*all+*content option view`, `*help+*right+*default`, `*sidebar+*self+*default`). |
-| 4 | `known-card-vs-wanted-card-on-rule-set` | ENGINE | 30 | For `X+*type+*create:render:closed` and `X+*type+*delete:render:closed` (HTML/SCSS/Project Cardtype rules), Ruby emits `<a class="known-card" href="/Shark">` (the rule-card set's referent is a known card in Ruby's seed closure) while the engine emits `<a class="wanted-card" href="/Shark">` (same href but a different CSS class — engine treats it as wanted because the seed closure didn't register it as known). |
-| 5 | `tiny-render-type-plus-right-rule-card` | ENGINE | 18 | Engine renders a *type+*right / *right rule card's open/content view as the bare rule-card bar (~10K bytes) while Ruby emits the SET's expanded children list (~60K bytes including _category-all _category-field _category-recent _category-common, four categories). |
-| 6 | `set-card-pointer-list-vs-nested-content` | ENGINE | 9 | Engine renders set cards (left+right where right is a TYPE member slot — `+Pages`, `+Family`, `+Core Project`, `+tags`, etc.) using `<div class="card-list card-list-bar pointer-list">` flat list while Ruby emits each child as a nested `<div id="${name}-${slot}-content-view">` slot. |
-| 7 | `as-in-layout-error-message-divergence` | ENGINE | 4 | For `AsIn Layout` both Ruby and engine raised (CAPTURE_ERROR sentinel), but Ruby raised `Card::Error: couldn't find credentials for bucket` while engine raised `Error: nest depth exceeded (*head)`. |
-| 8 | `structured-content-record-empty` | ENGINE | 3 | For *alerts, *now, *version, *count, etc., Ruby resolves the structured-card content (e.g. |
-| 9 | `double-encoded-apostrophe-in-data-card-name` | ENGINE | 2 | For card names that contain an apostrophe (`Saint Nicholas'`, `I'm`, `Smile! You've`, `Don't`, etc.), Ruby HTML-encodes the apostrophe as `&#39;` in the data-card-name attribute (`data-card-name="Saint Nicholas&#39; Dark Companion+Associates"`), while the engine DOUBLE-encodes the already-encoded entity as `&amp;#39;` (`data-card-name="Saint Nicholas&amp;#39; Dark Companion+Associates"`). |
-| 10 | `rule-card-content-as-literal-text` | VIEW-REGISTRY | 1 | Engine wraps a rule card's stored content (a literal string/number like `Default Layout`, `4`, `0`, `signup_success`) in a content-view slot while Ruby renders the literal text directly after the accordion body. |
-| 11 | `rule-card-content-as-pointer-list` | VIEW-REGISTRY | 1 | Engine treats *all+*layout (and similar rule cards with non-trivial content) as a pointer/list cardtype and wraps the content in `<div class="pointer-list">...` while Ruby renders the literal string `Default Layout` after the accordion body. |
-| 12 | `apostrophe-name-key` | ENGINE | 1 | Engine's name key normalization for an apostrophe diverges from Ruby's: Ruby key `paula_craig_father_s_day` (apostrophe -> `_s`), engine key `paula_craig_father__day` (apostrophe stripped, leaving the underscore from the leading space). |
-| 13 | `favicon-text-content-divergence` | ENGINE | 1 | Engine and Ruby render *favicon:render:closed with different literal text — Ruby emits `A favicon (or shortcut icon) is a small image us...` while engine emits `<p><em>Please remember to click ...`. |
-| 14 | `external-link-vs-raw-url` | VIEW-REGISTRY | 1 | Ruby wraps external URLs in `<a target="_blank" class="external-link" href="https://...">URL</a>` while the engine emits the raw URL text. |
-| 15 | `set-card-associates-pointer-list` | ENGINE | 1 | For `X+Associates:render:open` Ruby emits a nested `<div id="X-associates-content-view">` slot while the engine emits `<div class="card-list card-list-bar pointer-list">...` (the flat pointer-list wrap). |
-| 16 | `apostrophe-name-key-extended` | ENGINE | 1 | Broader version of the existing apostrophe-name-key cluster (C12, which only matched one ID). |
-| 17 | `anonymous-card-name-key-truncation` | ENGINE | 1 | For card names that END with 's' followed by a +*self junction, the engine's name-key normalization drops the trailing 's' (Anonymous -> anonymou, similar pattern for other card names). |
-| 18 | `rules-form-vs-content-view-generalized` | ENGINE | 1 | For `X+Y+*type plus right:render:open` and other 3-part rule-card composition junctions (Cardtype+description+*type plus right, RichText+GBA+*type plus right, Exhibit+Item+*type plus right, Item+Identifier+*type plus right, Item+language+*type plus right, Message+Conversation+*type plus right, Person+Task+*type plus right, Source+Source Content+*type plus right, etc.), Ruby emits a nested `<div id="X-Y-Xtype_plu_right-content-view">` slot while the engine emits `<h4 class="mt-3">Rules</h4><form role="filter"...>`. |
-| 19 | `boolean-yes-vs-integer-1` | VIEW-REGISTRY | 0 | Engine renders the boolean-as-display-value for *all+*captcha content/closed as the integer `1` while Ruby renders the localized string `yes`. |
-| 20 | `runaway-output-recursion` | ENGINE | 0 | Engine render of `Family+*right+*content options` produces 600K+ bytes (vs Ruby's 540-3.6K). |
-| 21 | `search-query-content-vs-literal` | ENGINE | 0 | Engine renders `*layout+*right+*content options:render:content` by interpreting the JSON content spec as a search query and rendering `<div class="search-no-results">` while Ruby renders the JSON literal `{"type": "Layout"}`. |
-| 22 | `news-item-show-options-comment-box` | VIEW-REGISTRY | 0 | Engine's `News Item+discussion:render:open` data-slot has only `["open"]` in the show list while Ruby's has `["open","comment_box"]`. |
+| 1 | `parens-name-key-normalization` | ENGINE | 55 | DeckoName.toKey normalizes trailing '(s)' to a single trailing underscore instead of Ruby's '_s' underscore, so `Organizer(s)` keys as `organizer_` (engine) vs `organizer_s` (Ruby). |
+| 2 | `known-card-vs-wanted-card-on-rule-set` | ENGINE | 30 | For `X+*type+*create:render:closed` and `X+*type+*delete:render:closed` (HTML/SCSS/Project Cardtype rules), Ruby emits `<a class="known-card" href="/Shark">` (the rule-card set's referent is a known card in Ruby's seed closure) while the engine emits `<a class="wanted-card" href="/Shark">` (same href but a different CSS class — engine treats it as wanted because the seed closure didn't register it as known). |
+| 3 | `read-rule-grant-vs-deny` | SEEDING | 12 | Engine's read-rule evaluation diverges from Ruby's for a few specific rule cards (`*all+*default`, `*all+*content option view`, `*help+*right+*default`, `*sidebar+*self+*default`). |
+| 4 | `set-card-pointer-list-vs-nested-content` | ENGINE | 9 | Engine renders set cards (left+right where right is a TYPE member slot — `+Pages`, `+Family`, `+Core Project`, `+tags`, etc.) using `<div class="card-list card-list-bar pointer-list">` flat list while Ruby emits each child as a nested `<div id="${name}-${slot}-content-view">` slot. |
+| 5 | `tiny-render-type-plus-right-rule-card` | ENGINE | 4 | Engine renders a *type+*right / *right rule card's open/content view as the bare rule-card bar (~10K bytes) while Ruby emits the SET's expanded children list (~60K bytes including _category-all _category-field _category-recent _category-common, four categories). |
+| 6 | `structured-content-record-empty` | ENGINE | 3 | For *alerts, *now, *version, *count, etc., Ruby resolves the structured-card content (e.g. |
+| 7 | `as-in-layout-error-message-divergence` | ENGINE | 2 | For `AsIn Layout` both Ruby and engine raised (CAPTURE_ERROR sentinel), but Ruby raised `Card::Error: couldn't find credentials for bucket` while engine raised `Error: nest depth exceeded (*head)`. |
+| 8 | `double-encoded-apostrophe-in-data-card-name` | ENGINE | 2 | For card names that contain an apostrophe (`Saint Nicholas'`, `I'm`, `Smile! You've`, `Don't`, etc.), Ruby HTML-encodes the apostrophe as `&#39;` in the data-card-name attribute (`data-card-name="Saint Nicholas&#39; Dark Companion+Associates"`), while the engine DOUBLE-encodes the already-encoded entity as `&amp;#39;` (`data-card-name="Saint Nicholas&amp;#39; Dark Companion+Associates"`). |
+| 9 | `rule-card-content-as-literal-text` | VIEW-REGISTRY | 1 | Engine wraps a rule card's stored content (a literal string/number like `Default Layout`, `4`, `0`, `signup_success`) in a content-view slot while Ruby renders the literal text directly after the accordion body. |
+| 10 | `rule-card-content-as-pointer-list` | VIEW-REGISTRY | 1 | Engine treats *all+*layout (and similar rule cards with non-trivial content) as a pointer/list cardtype and wraps the content in `<div class="pointer-list">...` while Ruby renders the literal string `Default Layout` after the accordion body. |
+| 11 | `apostrophe-name-key` | ENGINE | 1 | Engine's name key normalization for an apostrophe diverges from Ruby's: Ruby key `paula_craig_father_s_day` (apostrophe -> `_s`), engine key `paula_craig_father__day` (apostrophe stripped, leaving the underscore from the leading space). |
+| 12 | `favicon-text-content-divergence` | ENGINE | 1 | Engine and Ruby render *favicon:render:closed with different literal text — Ruby emits `A favicon (or shortcut icon) is a small image us...` while engine emits `<p><em>Please remember to click ...`. |
+| 13 | `external-link-vs-raw-url` | VIEW-REGISTRY | 1 | Ruby wraps external URLs in `<a target="_blank" class="external-link" href="https://...">URL</a>` while the engine emits the raw URL text. |
+| 14 | `set-card-associates-pointer-list` | ENGINE | 1 | For `X+Associates:render:open` Ruby emits a nested `<div id="X-associates-content-view">` slot while the engine emits `<div class="card-list card-list-bar pointer-list">...` (the flat pointer-list wrap). |
+| 15 | `apostrophe-name-key-extended` | ENGINE | 1 | Broader version of the existing apostrophe-name-key cluster (C12, which only matched one ID). |
+| 16 | `anonymous-card-name-key-truncation` | ENGINE | 1 | For card names that END with 's' followed by a +*self junction, the engine's name-key normalization drops the trailing 's' (Anonymous -> anonymou, similar pattern for other card names). |
+| 17 | `rules-form-vs-content-view-generalized` | ENGINE | 1 | For `X+Y+*type plus right:render:open` and other 3-part rule-card composition junctions (Cardtype+description+*type plus right, RichText+GBA+*type plus right, Exhibit+Item+*type plus right, Item+Identifier+*type plus right, Item+language+*type plus right, Message+Conversation+*type plus right, Person+Task+*type plus right, Source+Source Content+*type plus right, etc.), Ruby emits a nested `<div id="X-Y-Xtype_plu_right-content-view">` slot while the engine emits `<h4 class="mt-3">Rules</h4><form role="filter"...>`. |
+| 18 | `boolean-yes-vs-integer-1` | VIEW-REGISTRY | 0 | Engine renders the boolean-as-display-value for *all+*captcha content/closed as the integer `1` while Ruby renders the localized string `yes`. |
+| 19 | `runaway-output-recursion` | ENGINE | 0 | Engine render of `Family+*right+*content options` produces 600K+ bytes (vs Ruby's 540-3.6K). |
+| 20 | `search-query-content-vs-literal` | ENGINE | 0 | Engine renders `*layout+*right+*content options:render:content` by interpreting the JSON content spec as a search query and rendering `<div class="search-no-results">` while Ruby renders the JSON literal `{"type": "Layout"}`. |
+| 21 | `news-item-show-options-comment-box` | VIEW-REGISTRY | 0 | Engine's `News Item+discussion:render:open` data-slot has only `["open"]` in the show list while Ruby's has `["open","comment_box"]`. |
+| 22 | `deep-read-rule-deny-on-self-or-right` | SEEDING | 0 | Engine denies read access where Ruby renders the full card bar at offset 2000-5000 (mid-list, after the permission-denied nav preamble). |
 | 23 | `whitespace-newline-before-div` | ENGINE | 0 | Ruby's HTML output includes a literal `\n` before the closing `</div>` of the inner-slot wrapper (after the accordion body closes), while engine emits the closing `</div>` directly without the newline. |
 | 24 | `wiki-link-vs-known-card-html-anchor` | VIEW-REGISTRY | 0 | Ruby's renderer emits `<a class="known-card" href="/CardName">card-title</a>` for wiki-link content references while the engine emits the raw `[[CardName]]` literal. |
 | 25 | `invite-links-account-empty-div` | ENGINE | 0 | For Account+*self cards Ruby renders `<div class='invite-links'><div><strong>Name</strong>...</div>` (invite-links panel with the account holder's name) while the engine emits an empty `<div></div>` placeholder OR `<div>\n<div id="X-agree-titled-view">...` (no invite-links panel at all, jumping straight to the agree-titled view). |
@@ -55,8 +55,8 @@ The full-run map below is grounded in the coordinator-fresh tmp/raw-ground-truth
 | 40 | `nest-name-case-mismatch` | ENGINE | 0 | For nested-include renders (e.g. |
 | 41 | `help-text-content-typo` | VIEW-REGISTRY | 0 | For `Item+Format+*type plus right+*help:render:closed|open` and similar `Item+X+*type plus right+*help` rule cards, the help text differs by a few characters: Ruby has `the resource. |
 | 42 | `tooltip-help-text-empty` | VIEW-REGISTRY | 0 | For `*style:render:closed`, `mod: X+*style:render:closed`, `mod: X+*script:render:closed`, `*on update:render:closed`, etc. |
-| - | **UNTRACED** | - | 114 | no mechanism matched. |
-| - | **Total** | - | **550** | sum of byte-diff. |
+| - | **UNTRACED** | - | 112 | no mechanism matched. |
+| - | **Total** | - | **238** | sum of byte-diff. |
 
 ---
 
@@ -64,12 +64,12 @@ The full-run map below is grounded in the coordinator-fresh tmp/raw-ground-truth
 
 ## Inputs read
 
-- `tmp\raw-ground-truth\enumeration\verification-aggregate.json` -- per-entry signature source
+- `tmp\raw-ground-truth\enumeration\verification-aggregate.after.json` -- per-entry signature source
 - `tmp\raw-ground-truth\enumeration\per-class-mechanisms.json` -- full-run baseline
 
 ## Population
 
-- On-disk aggregate: `1489` entries, `633` fail, `550` byte-diff
+- On-disk aggregate: `1489` entries, `633` fail, `238` byte-diff
 - per-class-mechanisms full run: `10274` entries, `6345` fail, byte-diff = `5982` (`2573` card-engine + `3409` render-engine)
 
 ### Note on task-numbers vs on-disk numbers
@@ -81,19 +81,19 @@ The task description references 6,415 pass / 3,859 fail / 3,692 byte-diff. The o
 | # | Cluster | Owner | Count (shard 0) | One-line mechanism |
 |---|---------|-------|-----------------|---------------------|
 | 1 | `parens-name-key-normalization` | ENGINE | 55 | DeckoName.toKey normalizes trailing '(s)' to a single trailing underscore instead of Ruby's '_s' underscore, so `Organizer(s)` keys as `organizer_` (engine) vs `organizer_s` (Ruby). |
-| 2 | `tiny-render-type-plus-right-rule-card` | ENGINE | 18 | Engine renders a *type+*right / *right rule card's open/content view as the bare rule-card bar (~10K bytes) while Ruby emits the SET's expanded children list (~60K bytes including _category-all _category-field _category-recent _category-common, four categories). |
+| 2 | `tiny-render-type-plus-right-rule-card` | ENGINE | 4 | Engine renders a *type+*right / *right rule card's open/content view as the bare rule-card bar (~10K bytes) while Ruby emits the SET's expanded children list (~60K bytes including _category-all _category-field _category-recent _category-common, four categories). |
 | 3 | `set-card-pointer-list-vs-nested-content` | ENGINE | 9 | Engine renders set cards (left+right where right is a TYPE member slot — `+Pages`, `+Family`, `+Core Project`, `+tags`, etc.) using `<div class="card-list card-list-bar pointer-list">` flat list while Ruby emits each child as a nested `<div id="${name}-${slot}-content-view">` slot. |
 | 4 | `boolean-yes-vs-integer-1` | VIEW-REGISTRY | 0 | Engine renders the boolean-as-display-value for *all+*captcha content/closed as the integer `1` while Ruby renders the localized string `yes`. |
 | 5 | `rule-card-content-as-literal-text` | VIEW-REGISTRY | 1 | Engine wraps a rule card's stored content (a literal string/number like `Default Layout`, `4`, `0`, `signup_success`) in a content-view slot while Ruby renders the literal text directly after the accordion body. |
 | 6 | `rule-card-content-as-pointer-list` | VIEW-REGISTRY | 1 | Engine treats *all+*layout (and similar rule cards with non-trivial content) as a pointer/list cardtype and wraps the content in `<div class="pointer-list">...` while Ruby renders the literal string `Default Layout` after the accordion body. |
-| 7 | `read-rule-grant-vs-deny` | SEEDING | 34 | Engine's read-rule evaluation diverges from Ruby's for a few specific rule cards (`*all+*default`, `*all+*content option view`, `*help+*right+*default`, `*sidebar+*self+*default`). |
+| 7 | `read-rule-grant-vs-deny` | SEEDING | 12 | Engine's read-rule evaluation diverges from Ruby's for a few specific rule cards (`*all+*default`, `*all+*content option view`, `*help+*right+*default`, `*sidebar+*self+*default`). |
 | 8 | `runaway-output-recursion` | ENGINE | 0 | Engine render of `Family+*right+*content options` produces 600K+ bytes (vs Ruby's 540-3.6K). |
-| 9 | `as-in-layout-error-message-divergence` | ENGINE | 4 | For `AsIn Layout` both Ruby and engine raised (CAPTURE_ERROR sentinel), but Ruby raised `Card::Error: couldn't find credentials for bucket` while engine raised `Error: nest depth exceeded (*head)`. |
+| 9 | `as-in-layout-error-message-divergence` | ENGINE | 2 | For `AsIn Layout` both Ruby and engine raised (CAPTURE_ERROR sentinel), but Ruby raised `Card::Error: couldn't find credentials for bucket` while engine raised `Error: nest depth exceeded (*head)`. |
 | 10 | `search-query-content-vs-literal` | ENGINE | 0 | Engine renders `*layout+*right+*content options:render:content` by interpreting the JSON content spec as a search query and rendering `<div class="search-no-results">` while Ruby renders the JSON literal `{"type": "Layout"}`. |
 | 11 | `news-item-show-options-comment-box` | VIEW-REGISTRY | 0 | Engine's `News Item+discussion:render:open` data-slot has only `["open"]` in the show list while Ruby's has `["open","comment_box"]`. |
 | 12 | `apostrophe-name-key` | ENGINE | 1 | Engine's name key normalization for an apostrophe diverges from Ruby's: Ruby key `paula_craig_father_s_day` (apostrophe -> `_s`), engine key `paula_craig_father__day` (apostrophe stripped, leaving the underscore from the leading space). |
 | 13 | `favicon-text-content-divergence` | ENGINE | 1 | Engine and Ruby render *favicon:render:closed with different literal text — Ruby emits `A favicon (or shortcut icon) is a small image us...` while engine emits `<p><em>Please remember to click ...`. |
-| 14 | `deep-read-rule-deny-on-self-or-right` | SEEDING | 272 | Engine denies read access where Ruby renders the full card bar at offset 2000-5000 (mid-list, after the permission-denied nav preamble). |
+| 14 | `deep-read-rule-deny-on-self-or-right` | SEEDING | 0 | Engine denies read access where Ruby renders the full card bar at offset 2000-5000 (mid-list, after the permission-denied nav preamble). |
 | 15 | `whitespace-newline-before-div` | ENGINE | 0 | Ruby's HTML output includes a literal `\n` before the closing `</div>` of the inner-slot wrapper (after the accordion body closes), while engine emits the closing `</div>` directly without the newline. |
 | 16 | `wiki-link-vs-known-card-html-anchor` | VIEW-REGISTRY | 0 | Ruby's renderer emits `<a class="known-card" href="/CardName">card-title</a>` for wiki-link content references while the engine emits the raw `[[CardName]]` literal. |
 | 17 | `external-link-vs-raw-url` | VIEW-REGISTRY | 1 | Ruby wraps external URLs in `<a target="_blank" class="external-link" href="https://...">URL</a>` while the engine emits the raw URL text. |
@@ -122,12 +122,12 @@ The task description references 6,415 pass / 3,859 fail / 3,692 byte-diff. The o
 | 40 | `rules-form-vs-content-view-generalized` | ENGINE | 1 | For `X+Y+*type plus right:render:open` and other 3-part rule-card composition junctions (Cardtype+description+*type plus right, RichText+GBA+*type plus right, Exhibit+Item+*type plus right, Item+Identifier+*type plus right, Item+language+*type plus right, Message+Conversation+*type plus right, Person+Task+*type plus right, Source+Source Content+*type plus right, etc.), Ruby emits a nested `<div id="X-Y-Xtype_plu_right-content-view">` slot while the engine emits `<h4 class="mt-3">Rules</h4><form role="filter"...>`. |
 | 41 | `tooltip-help-text-empty` | VIEW-REGISTRY | 0 | For `*style:render:closed`, `mod: X+*style:render:closed`, `mod: X+*script:render:closed`, `*on update:render:closed`, etc. |
 | 42 | `double-encoded-apostrophe-in-data-card-name` | ENGINE | 2 | For card names that contain an apostrophe (`Saint Nicholas'`, `I'm`, `Smile! You've`, `Don't`, etc.), Ruby HTML-encodes the apostrophe as `&#39;` in the data-card-name attribute (`data-card-name="Saint Nicholas&#39; Dark Companion+Associates"`), while the engine DOUBLE-encodes the already-encoded entity as `&amp;#39;` (`data-card-name="Saint Nicholas&amp;#39; Dark Companion+Associates"`). |
-| - | **UNTRACED** | - | 114 | no mechanism matched. |
-| - | **Total** | - | 550 | sum of byte-diff from shard 0. |
+| - | **UNTRACED** | - | 112 | no mechanism matched. |
+| - | **Total** | - | 238 | sum of byte-diff from shard 0. |
 
 ### Sum check
 
-Clustered + UNTRACED = 550 ; byte-diff total = 550 ; diff = 0
+Clustered + UNTRACED = 238 ; byte-diff total = 238 ; diff = 0
 
 ## Per-cluster detail
 
@@ -152,16 +152,15 @@ src/card/name.ts: simpleKey currently strips a trailing '_' if the pre-replace s
 ### 2. `tiny-render-type-plus-right-rule-card`
 
 - **Owner**: ENGINE
-- **Count (shard 0)**: 18
+- **Count (shard 0)**: 4
 - **Mechanism**: Engine renders a *type+*right / *right rule card's open/content view as the bare rule-card bar (~10K bytes) while Ruby emits the SET's expanded children list (~60K bytes including _category-all _category-field _category-recent _category-common, four categories). Engine's rule-card content dispatch is short-circuiting to its own bar view and missing the rule's applied-template expansion (the category list the rule card composes from its content).
 
 **Sample entry ids**:
 
-- `recapture-raw:*captcha+*right:render:content` (offset=4996, exp=59486, act=9664)
-- `recapture-raw:*captcha+*right:render:open` (offset=7566, exp=62084, act=12262)
-- `recapture-raw:*content options+*right:render:content` (offset=5216, exp=67529, act=9954)
-- `recapture-raw:*content options+*right:render:open` (offset=7893, exp=70234, act=12659)
-- `recapture-raw:*help+*right:render:content` (offset=2133, exp=58952, act=15355)
+- `recapture-raw:Cardtype+*type+*default:render:content` (offset=484, exp=2238, act=671)
+- `recapture-raw:Cardtype+*type+*default:render:open` (offset=3008, exp=4784, act=3217)
+- `recapture-raw:Role+*type+*default:render:content` (offset=469, exp=2074, act=583)
+- `recapture-raw:Role+*type+*default:render:open` (offset=2895, exp=4522, act=3031)
 
 **Proposed fix sketch**:
 
@@ -230,16 +229,16 @@ src/card/render/pointer-list.ts#isPointerOrListCard: only treat as pointer/list 
 ### 7. `read-rule-grant-vs-deny`
 
 - **Owner**: SEEDING
-- **Count (shard 0)**: 34
+- **Count (shard 0)**: 12
 - **Mechanism**: Engine's read-rule evaluation diverges from Ruby's for a few specific rule cards (`*all+*default`, `*all+*content option view`, `*help+*right+*default`, `*sidebar+*self+*default`). At offset ~2000-4500 (mid-list) Ruby renders a `<span class="denied">` while engine renders a real `<div id="...-bar-view">` (or vice versa). The seed closure for the *read rule universe is partial — the rule's set card or REFEREE_IDS walk is missing the grants the engine needs to deny. This is a byte-diff signature (not classified as `permission_denied_mismatch` because the verify script's excerpt-match regex misses the truncation pattern at long offsets).
 
 **Sample entry ids**:
 
-- `recapture-raw:*all:render:content` (offset=2023, exp=54734, act=37006)
-- `recapture-raw:*all:render:open` (offset=4192, exp=56828, act=36616)
 - `recapture-raw:Free Aiki Dojo+Pages:render:open` (offset=8264, exp=8386, act=10934)
 - `recapture-raw:Martial Nonviolence+Pages:render:content` (offset=8431, exp=38635, act=65895)
 - `recapture-raw:Martial Nonviolence+Pages:render:open` (offset=11064, exp=41296, act=51553)
+- `recapture-raw:Paula Craig+Pages:render:open` (offset=8018, exp=8140, act=10506)
+- `recapture-raw:ABCglobal+Pages:render:open` (offset=5455, exp=5577, act=8016)
 
 **Seed-side work**:
 
@@ -262,15 +261,13 @@ src/card/render.ts (render entrypoint) + src/card/set-patterns/search.ts: add a 
 ### 9. `as-in-layout-error-message-divergence`
 
 - **Owner**: ENGINE
-- **Count (shard 0)**: 4
+- **Count (shard 0)**: 2
 - **Mechanism**: For `AsIn Layout` both Ruby and engine raised (CAPTURE_ERROR sentinel), but Ruby raised `Card::Error: couldn't find credentials for bucket` while engine raised `Error: nest depth exceeded (*head)`. Different error classes for the same card — engine's nest-depth limit fires before the credential lookup the engine should also have. Classified as `capture_error_still_raised:Card` by the verify script.
 
 **Sample entry ids**:
 
 - `recapture-raw:AsIn Layout:render:content` (offset=15, exp=74, act=49)
 - `recapture-raw:AsIn Layout:render:open` (offset=15, exp=74, act=49)
-- `recapture-raw:AsIn Layout+*self:render:content` (offset=2164, exp=60300, act=12787)
-- `recapture-raw:AsIn Layout+*self:render:open` (offset=4753, exp=62917, act=15404)
 
 **Proposed fix sketch**:
 
@@ -335,16 +332,12 @@ src/card/rules/structure.ts#structuredCardContent + src/card/fetch.ts: verify *f
 ### 14. `deep-read-rule-deny-on-self-or-right`
 
 - **Owner**: SEEDING
-- **Count (shard 0)**: 272
+- **Count (shard 0)**: 0
 - **Mechanism**: Engine denies read access where Ruby renders the full card bar at offset 2000-5000 (mid-list, after the permission-denied nav preamble). The pattern generalizes to ANY junction ending in `*self`, `*right`, `*type`, or just `*X` (single *-prefixed card name) where the seed closure fails to bring the read grants. Ruby's expected HTML contains a `<div id="...-Xdefault-bar-view">` (real card bar, sometimes truncated at `-Xsel` or `-Xtype` in the excerpt) while engine emits a `<span class="denied">` placeholder. Same root cause as cluster 7 (the *read rule universe closure is partial). The diff character is `d` (start of `<div`) on the Ruby side and `s` (start of `<span`) on the engine side, both after the `</span></li>\n<li class="nav-item">` nav preamble.
 
 **Sample entry ids**:
 
-- `recapture-raw:*rstar:render:content` (offset=2038, exp=57019, act=14585)
-- `recapture-raw:*rstar:render:open` (offset=4131, exp=59140, act=16706)
-- `recapture-raw:AiBerk at ASC SumRet2010_group_07+*self:render:content` (offset=2327, exp=66067, act=10588)
-- `recapture-raw:AiBerk at ASC SumRet2010_group_11+*self:render:content` (offset=2327, exp=66067, act=10588)
-- `recapture-raw:AiBerk at ASC SumRet2010_wholegroup_01+*self:render:content` (offset=2362, exp=67362, act=10743)
+_(none in shard 0; mechanism extrapolated from per-class-mechanisms baseline + excerpt patterns)_
 
 **Seed-side work**:
 
@@ -616,7 +609,7 @@ src/card/render/views.ts#coreView: when the rule card is `X+*type+*default` for 
 
 **Sample entry ids**:
 
-- `recapture-raw:Anonymous+*self:render:content` (offset=17, exp=59721, act=9797)
+- `recapture-raw:Anonymous+*self:render:content` (offset=17, exp=59721, act=69734)
 
 **Proposed fix sketch**:
 
@@ -714,7 +707,7 @@ src/card/render/views.ts#closedView + openView: verify the Item cardtype's prope
 
 **Sample entry ids**:
 
-- `recapture-raw:Cardtype+description+*type plus right:render:open` (offset=2842, exp=68009, act=9627)
+- `recapture-raw:Cardtype+description+*type plus right:render:open` (offset=2842, exp=68009, act=76779)
 
 **Proposed fix sketch**:
 
@@ -751,7 +744,7 @@ src/card/render/views.ts#closedView + openView: when emitting data-card-name, do
 
 ## UNTRACED entries
 
-114 entries did not match any defined cluster.
+112 entries did not match any defined cluster.
 
 - `recapture-raw:*all+*layout:render:open` (offset=3272, exp=5245, act=5209)
   ```
@@ -1377,18 +1370,6 @@ src/card/render/views.ts#closedView + openView: when emitting data-card-name, do
     first difference at code-unit offset 3968 (byte offset 3968): expected "," but got "}"
     expected excerpt: ...dle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;type&quot;:&quot;Research&quot;}"><div cl...
   ```
-- `recapture-raw:*all plus:render:content` (offset=2222, exp=57603, act=9312)
-  ```
-  FAIL recapture-raw:*all plus:render:content (render-engine)
-    first difference at code-unit offset 2222 (byte offset 2222): expected " " but got "\""
-    expected excerpt: ...E_PLUS_RIGHT-set-Xdefault SELF-Xall_plu-Xdefault _rule-item _category-all _category-field _categ...
-  ```
-- `recapture-raw:*all plus:render:open` (offset=4349, exp=59758, act=11467)
-  ```
-  FAIL recapture-raw:*all plus:render:open (render-engine)
-    first difference at code-unit offset 4349 (byte offset 4349): expected " " but got "\""
-    expected excerpt: ...E_PLUS_RIGHT-set-Xdefault SELF-Xall_plu-Xdefault _rule-item _category-all _category-field _categ...
-  ```
 - `recapture-raw:*all plus+*delete:render:closed` (offset=1009, exp=2814, act=2924)
   ```
   FAIL recapture-raw:*all plus+*delete:render:closed (render-engine)
@@ -1419,7 +1400,7 @@ src/card/render/views.ts#closedView + openView: when emitting data-card-name, do
     first difference at code-unit offset 65 (byte offset 65): expected "s" but got "+"
     expected excerpt: ..."content":"{\"name\":\"_left\"}","key":"anonymous+*self","left":"Anonymous","name":"Anonymous+*s...
   ```
-- `recapture-raw:Anonymous+*self:render:open` (offset=17, exp=62320, act=12391)
+- `recapture-raw:Anonymous+*self:render:open` (offset=17, exp=62320, act=72328)
   ```
   FAIL recapture-raw:Anonymous+*self:render:open (render-engine)
     first difference at code-unit offset 17 (byte offset 17): expected "s" but got "-"

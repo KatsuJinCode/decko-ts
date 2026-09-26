@@ -749,6 +749,19 @@ export interface RenderEngineLike {
    *  the bar view needs (bar_view.rb:10). Optional; engines without it
    *  skip the rule class chain. */
   cardIsRule?(card: RenderCard): boolean;
+  /** Look up a card by its codename (the codehash id->codename reverse
+   *  direction). Used by the set-card Rules section's virtual rule-card
+   *  construction (card-mod-rules set/type/set/html_views/rule_lists.rb
+   *  #setting_list_item constructs each setting's child via
+   *  `Card.new(name: "#{set}+#{setting_card.name}")` — the engine needs
+   *  the setting card's id, typeId, typeName and dbContent to build the
+   *  equivalent virtual RenderCard (virtual-rule-card.ts). The engine
+   *  prefetches every setting card via preloadAllSettingCards, so this
+   *  lookup is cache-hit and synchronous (peekNameForId path). Optional;
+   *  engines without it skip virtual rule-card construction and the
+   *  missing-setting rows fall through to quietDenial (the pre-fix
+   *  behavior, deep-read-rule-deny cluster 14). */
+  findSettingCard?(codename: string): RenderCard | undefined;
 }
 
 // ---------------------------------------------------------------------------

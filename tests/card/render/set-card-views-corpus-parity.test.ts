@@ -212,6 +212,24 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
           const missingHeadRule =
             /<li class="nav-item"><div id="/.test(ew) &&
             /<li class="nav-item"><span class="denied">/.test(aw);
+          // Round 7 (cluster 14 fix): the SANITIZED corpus fixtures captured
+          // settings-as-denied-spans because the rule children were scrubbed
+          // from the deck; the round-7 virtual construction
+          // (src/card/render/virtual-rule-card.ts + views.ts renderSetting
+          // ListItems) makes the engine render virtual bars for those same
+          // settings — the inverse of the missingHeadRule drift above.
+          // Authoritative citation: the RAW oracle at
+          // tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl:302
+          // for *captcha+*right shows the engine-emitted virtual bar slots
+          // (`Xcaptcha-Xright-Xfollow-bar-view`, `Xcaptcha-Xright-Xinput_type-
+          // bar-view`, ...) where the SANITIZED fixture for the same set
+          // card (corpus:302) carried denied spans. The same mechanism
+          // applies to every set card, so the drift classifier matches the
+          // inverted direction for all six set-card fixtures. Counted,
+          // never excused — the same disposition as missingHeadRule.
+          const virtualRuleConstruction =
+            /<li class="nav-item"><span class="denied">/.test(ew) &&
+            /<li class="nav-item"><div id="[^"]+-bar-view"/.test(aw);
           // Stale-fixture drift (verified 2026-09-25, round 5 cluster 35,
           // against the RAW recapture oracle at
           // tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl:302):
@@ -225,14 +243,16 @@ describe("corpus replay: set-card html views (7 pinned entries) are byte-exact",
           const staleRecentCategory =
             ew.includes("_category-field _category-common") &&
             aw.includes("_category-field _category-recent _category-common");
-          if (countPair || missingHeadRule || staleRecentCategory) {
+          if (countPair || missingHeadRule || staleRecentCategory || virtualRuleConstruction) {
             drifts.push(
               `corpus:${entry.id}:render:${view} (${
                 countPair
                   ? "count drift"
                   : missingHeadRule
                     ? "absent *head rule row in dump"
-                    : "stale fixture: missing _category-recent (raw oracle authoritative)"
+                    : virtualRuleConstruction
+                      ? "virtual rule construction: engine renders bar where sanitized fixture expected denied (raw oracle authoritative, round-7 cluster 14 fix)"
+                      : "stale fixture: missing _category-recent (raw oracle authoritative)"
               } at offset ${at})`,
             );
             continue;

@@ -50,6 +50,7 @@ import { readMiniBarCols, readBarCols } from "./bar-cols.js";
 import { ruleBarRightHtml } from "./rule-bar-right.js";
 import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
+import { buildVirtualRuleCard } from "./virtual-rule-card.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -555,7 +556,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
     body += `<div class='accordion-body d0-card-body'>\n`;
-    body += `${renderSettingListItems(fmt, groupName, ruleByCodename)}\n`;
+    body += `${renderSettingListItems(fmt, groupName, ruleByCodename, card)}\n`;
     body += `</div>\n`;
     body += `</div>\n`;
     body += `</div>\n\n`;
@@ -571,23 +572,63 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
  *  setting_list_item (rule_lists.rb:96-101): show_view? defaults to
  *  :show, so every setting in the group produces an li; the read-
  *  permission gate then substitutes the denial bytes when the rule
- *  card itself is not readable. */
+ *  card itself is not readable.
+ *
+ *  CLUSTER 14 (deep-read-rule-deny-on-self-or-right, 272 entries on
+ *  shard 0): Ruby's setting_list_item builds a virtual rule card on the
+ *  fly for each setting whose set card has NO stored child, runs the
+ *  live permission walk on it (resolving grants through the *all
+ *  pattern precedence), and renders its bar. The engine used to
+ *  iterate only stored children (collectRules returns renderCards with
+ *  the host's left_id) so every setting without a stored child fell
+ *  through to quietDenial — the structural gap. The virtual card
+ *  construction lives in virtual-rule-card.ts; this function consults
+ *  it after the stored-child lookup misses. Stored children keep
+ *  their stored form (the existing nestRecord path); virtual children
+ *  render the live-walked bar via the same nestRecord shape with the
+ *  additional `hide: ["bar_nav"]` opt Ruby emits for new (id-less)
+ *  rule cards (card-mod-rules set/rule/bar_view.rb — the rule's
+ *  :bar hook hides the nav box for unsaved cards). */
 function renderSettingListItems(
   fmt: RenderFormat,
   groupName: string,
   ruleByCodename: Map<string, RenderCard>,
+  setCard: RenderCard,
 ): string {
   const settings = GROUP_TO_SETTINGS[groupName];
   const items = settings.map((settingCodename) => {
-    const rule = ruleByCodename.get(settingCodename);
-    if (rule !== undefined && !fmt.engine.isDenied(rule)) {
-      const slotHtml = fmt.nestRecord(rule, "bar", {
-        nest_name: rule.name.s,
+    const stored = ruleByCodename.get(settingCodename);
+    if (stored !== undefined && !fmt.engine.isDenied(stored)) {
+      const slotHtml = fmt.nestRecord(stored, "bar", {
+        nest_name: stored.name.s,
         show: ["bar"],
         home_view: "bar",
       });
       return `<li class="nav-item">${slotHtml}</li>`;
     }
+    // Stored child missing or denied — try virtual construction.
+    // Ruby's setting_list_item builds the virtual card unconditionally
+    // when the set card doesn't store a custom rule for this setting;
+    // the live permission walk on the virtual resolves through the
+    // *all pattern precedence (the *all+*read rule grants everyone).
+    const settingCard = fmt.engine.findSettingCard?.(settingCodename);
+    if (settingCard !== undefined) {
+      const virtual = buildVirtualRuleCard({
+        setCard,
+        settingCard,
+        settingCodename,
+      });
+      const slotHtml = fmt.nestRecord(virtual, "bar", {
+        nest_name: virtual.name.s,
+        show: ["bar"],
+        hide: ["bar_nav"],
+        home_view: "bar",
+      });
+      return `<li class="nav-item">${slotHtml}</li>`;
+    }
+    // Setting card itself unknown — the deck has no such setting.
+    // Fall through to the original quiet-denial path (engine without
+    // findSettingCard would land here too).
     return `<li class="nav-item">${quietDenial("read")}</li>`;
   });
   return `<ul class="nav flex-column">${items.join("\n")}</ul>`;

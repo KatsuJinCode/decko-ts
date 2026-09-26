@@ -1358,6 +1358,23 @@ export class RenderEngine implements RenderEngineLike {
     return this.fetcher.codenames.peekNameForId(typeId);
   }
 
+  /** Look up a SETTING card by its codename (the 23 settings the
+   *  preloadAllSettingCards walk loads: autoname/default/structure/
+   *  create/read/update/delete/captcha/head/layout/style/script/help/
+   *  input_type/guide/content_options/content_option_view/on_create/
+   *  on_update/on_delete/thanks/follow_fields/follow). Used by the
+   *  set-card Rules section to construct virtual rule cards for settings
+   *  that have no stored child (card-mod-rules rule_lists.rb#setting_list_item;
+   *  the deep-read-rule-deny cluster 14 fix — see virtual-rule-card.ts).
+   *  Walks the render-card map (the settings are preloaded in the cold
+   *  render path; no query). */
+  findSettingCard(codename: string): RenderCard | undefined {
+    for (const card of this.renderCards.values()) {
+      if (card.record.codename === codename) return card;
+    }
+    return undefined;
+  }
+
   // -------------------------------------------------------------------------
   // options-card CQL parse boundary (the capture-sentinel class, chain A)
   // -------------------------------------------------------------------------
