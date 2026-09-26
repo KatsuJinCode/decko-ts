@@ -109,7 +109,10 @@ export class Voo {
       }
     }
     const requested = this.requestedView;
-    if (optional !== undefined && optional !== false && !this.viz.has(requested)) {
+    // null = NO optional render opt (the show_with_page_layout main render —
+    // the page lane's captured slot has no "show" viz). JS default params
+    // apply on undefined, so the page path passes null, not undefined.
+    if (optional !== undefined && optional !== null && optional !== false && !this.viz.has(requested)) {
       this.viz.set(requested, optional === "hide" || optional === false ? "hide" : "show");
     }
   }
@@ -219,6 +222,18 @@ export interface HelpRulesApi {
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
+  /** The page-path production default nest view (default_nest_view /
+   *  Cardio.config.default_html_view = :content — the dual-lane page capture
+   *  pins it; the bare view lane keeps the development default :titled).
+   *  Subformats inherit it (Ruby's config is global to the render). */
+  defaultNestView?: string;
+  /** Production render-error semantics (raise_all_rendering_errors=false):
+   *  errors from NESTED view renders become the quiet
+   *  `render-error alert alert-danger` span instead of propagating
+   *  (format/render.rb wrap_and_render rescue + error.rb rescue_view
+   *  quiet branch). The focal (main) render still raises. Page-path only;
+   *  the bare view lane keeps the development loud behavior. */
+  nestQuietErrors?: boolean;
   /** maximum nest depth — Ruby Card.config.max_depth = 20
    *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
    *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
@@ -243,6 +258,14 @@ export class RenderFormat {
   readonly parent: RenderFormat | undefined;
   readonly isMain: boolean;
   readonly maxDepth: number;
+  /** The page-path default nest view override (see RenderFormatOptions). */
+  readonly defaultNestViewOverride: string | undefined;
+  /** Production nested-error semantics flag (see RenderFormatOptions). */
+  readonly nestQuietErrors: boolean;
+  /** The memoized main-view body (nesting/main.rb main.rendered): set by the
+   *  page renderer after the main render; the {{_main}} nest in the layout
+   *  body emits it wrapped by wrap_main (<div id="main">). */
+  mainNestBody: string | undefined;
   voo: Voo | undefined;
   private depthCache: number | undefined;
 
@@ -255,6 +278,8 @@ export class RenderFormat {
     this.engine = engine;
     this.parent = opts.parent;
     this.isMain = opts.main ?? false;
+    this.defaultNestViewOverride = opts.defaultNestView;
+    this.nestQuietErrors = opts.nestQuietErrors ?? false;
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
   }
 
@@ -519,11 +544,33 @@ export class RenderFormat {
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),
     };
-    const sub = new RenderFormat(card, this.engine, { parent: this, maxDepth: this.maxDepth });
+    const sub = new RenderFormat(card, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      // Page-path config propagates (Ruby's config is render-global): the
+      // production default nest view and the quiet nested-error semantics.
+      defaultNestView: this.defaultNestViewOverride,
+      nestQuietErrors: this.nestQuietErrors,
+    });
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${card.name.s})`);
     }
-    return sub.renderView(view, viewOpts);
+    // Production render-error semantics (error.rb rescue_view quiet branch,
+    // reached through format/render.rb wrap_and_render's rescue): a nested
+    // view's error renders the quiet span instead of propagating. UserError
+    // messages render verbatim (error.rb rendering_error); other errors use
+    // the lib_error_rendering locale line. The focal (main) render never
+    // reaches this catch — it runs on the root format, not through nest().
+    try {
+      return sub.renderView(view, viewOpts);
+    } catch (error) {
+      if (!this.nestQuietErrors) throw error;
+      const msg =
+        error instanceof UnsupportedViewError
+          ? error.message
+          : `Error rendering: ${h(card.name.s)} (${view} view)`;
+      return `<span class="render-error alert alert-danger">${msg}</span>`;
+    }
   }
 
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
@@ -602,19 +649,16 @@ export class RenderFormat {
     return out;
   }
 
-  /** nesting.rb#implicit_nest_view -> default_nest_view (html.rb:17-19 ->
-   *  Cardio.config.default_html_view = :titled, mod/format.rb:2). The raw
-   *  recapture oracle (tmp/raw-ground-truth/expected/recapture-raw-shard-*
-   *  .jsonl, e.g. id 2928 — outer "Ms Paula writing poetry and other
-   *  creations" with bare nest {{Paula Craig+musings}} — the inner slot
-   *  renders id="paula_craig-musing-titled-view" with the d0-card-header
-   *  structure, NOT content-view) confirms Ruby renders bare-nest children
-   *  as titled. The captured fixtures (fixtures/captured/smoke.json
-   *  Oracle Rich+rich_child; fixtures/corpus/shard-000014.jsonl
-   *  corpus:19334 almrctncpf+fsxqechglhqd+fmassslzrfd) are consistent
-   *  with that. */
+  /** nesting.rb#implicit_nest_view -> default_nest_view (html.rb:17-19).
+   *  The bare view lane pins the development railtie default :titled; the
+   *  page path carries the production config (:content) through
+   *  defaultNestViewOverride (see RenderFormatOptions) — the dual-lane
+   *  page capture pins :content for every nest without an explicit view
+   *  (runbook production-equivalent setting 5). The single override line
+   *  below is the whole surface: bare renders are byte-identical to the
+   *  pre-page-lane engine. */
   defaultNestView(): string {
-    return "titled";
+    return this.defaultNestViewOverride ?? "titled";
   }
 
   /**
@@ -629,7 +673,12 @@ export class RenderFormat {
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...opts,
     };
-    const sub = new RenderFormat(target, this.engine, { parent: this, maxDepth: this.maxDepth });
+    const sub = new RenderFormat(target, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      defaultNestView: this.defaultNestViewOverride,
+      nestQuietErrors: this.nestQuietErrors,
+    });
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${this.maxDepth}) at ${target.name.s}`);
     }
@@ -685,6 +734,35 @@ export class RenderFormat {
     const override = resolveContentOverride(this);
     if (override !== undefined) return override;
     return this.card.dbContent;
+  }
+
+  /**
+   * Card::Layout::CardLayout#render — the layout card's content processed
+   * through the PAGE format (process_content, chunk_list: :references).
+   * Identical loop to processContent except the `_main` nest: Ruby's nest
+   * dispatch hits nesting/main.rb#main_nest — wrap_main { main.rendered }
+   * — the memoized main-view body wrapped in <div id="main"> (html/wrap.rb
+   * #wrap_main; no_main_wrap? is false for the page path). Other nests
+   * resolve against the PAGE card (the layout renders in the page's format
+   * context), including `:codename` marks ({{:header|core}} -> *header).
+   */
+  processLayoutContent(content: string): string {
+    const pieces = scanNests(content);
+    let out = "";
+    for (const piece of pieces) {
+      if (piece.kind === "text") {
+        out += expandWikiLinks(piece.text);
+      } else if (piece.nest !== undefined) {
+        if (piece.nest.name === "_main") {
+          // main_nest? -> wrap_main { main.rendered || main_nest_render }
+          const body = this.mainNestBody ?? "";
+          out += `<div id="main">${body}</div>`;
+        } else {
+          out += this.nest(piece.nest);
+        }
+      }
+    }
+    return out;
   }
 
   /** title.rb#standard_title via #title_in_context: the name, HTML-escaped

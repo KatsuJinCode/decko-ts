@@ -48,6 +48,8 @@ import {
   type RenderEngineLike,
   type ViewFn,
 } from "./render/format.js";
+import { renderPageBytes, UnknownLayoutError } from "./render/page.js";
+import type { ViewOverride } from "./rules/apply.js";
 import { HTML_VIEWS, SETTING_GROUPS, GROUP_TO_SETTINGS } from "./render/views.js";
 import {
   ModLoader,
@@ -92,6 +94,7 @@ import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import type { SQLQueryResult } from "../server/driver.js";
 
 export { UnsupportedViewError };
+export { UnknownLayoutError };
 export {
   BadQueryError,
   badQuery,
@@ -578,6 +581,42 @@ export class RenderEngine implements RenderEngineLike {
     }
     if (override !== undefined) return applyViewOverride(baseHtml, override);
     return baseHtml;
+  }
+
+  /**
+   * Render the live page for one card — the html-format show path
+   * (show_with_page_layout: *layout rule resolution, the {{_main|view}}
+   * main render with main! context, the layout body substitution, the
+   * :html_page wrapper, production default_nest_view=:content and quiet
+   * nested-error semantics). The full mechanism port lives in
+   * src/card/render/page.ts; the preparation reuses render() so the bare
+   * and page lanes share one prepare path. Throws UnknownLayoutError (the
+   * captured "unknown layout card" UserError sentinel) for layout names
+   * that resolve to no card/built-in layout.
+   */
+  async renderPage(cardName: string): Promise<string> {
+    return renderPageBytes(this, cardName);
+  }
+
+  /**
+   * The (card, view) view-override rule lookup shared with render() (same
+   * ruleCache; the page renderer applies the same *<view> rule to the main
+   * body bytes it builds with main! context). Additive seam — render()
+   * itself is untouched.
+   */
+  async viewOverrideFor(card: RenderCard, view: string): Promise<ViewOverride | undefined> {
+    const cacheKey = `${card.key}|${view}`;
+    let override = this.ruleCache.get(cacheKey);
+    if (override === undefined && !this.ruleCache.has(cacheKey)) {
+      const rule = await findRule(
+        this.fetcher,
+        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+        `*${view}`,
+      );
+      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
+      this.ruleCache.set(cacheKey, override);
+    }
+    return override;
   }
 
   /**
@@ -1099,6 +1138,20 @@ export class RenderEngine implements RenderEngineLike {
    * hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
+  /**
+   * Public seam for the page renderer's warm-up: re-run the read-permission
+   * verdict pass over every prepared card (the skip-if-set guard inside
+   * ensureVerdicts makes this a no-op for already-judged cards — only
+   * warm-up enrichments made after the main render's pass get judged
+   * here). The layout subtree's denied items (e.g. the *Opportunities
+   * dropdown's read-denied rows) must render the quiet denial span exactly
+   * like the capture; without this refresh a warm-enriched card has no
+   * verdict and renders content instead.
+   */
+  async refreshVerdicts(): Promise<void> {
+    await this.ensureVerdicts();
+  }
+
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;

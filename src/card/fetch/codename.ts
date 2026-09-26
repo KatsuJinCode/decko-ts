@@ -86,6 +86,14 @@ export class DbCodenameRegistry {
     return id === undefined ? undefined : this.codehashValue?.i2c.get(id);
   }
 
+  /** Every codename->id pair from the memoized codehash (empty until the
+   *  hash loads). Unlike peekCodehash (the CARD-cache copy, subject to the
+   *  temporary-cache reset), this reads the registry memo directly — the
+   *  page renderer's mark-resolvability probe enumerates from here. */
+  peekEntries(): Array<[string, number]> {
+    return [...(this.codehashValue?.c2i.entries() ?? [])];
+  }
+
   /** The codehash load as a batch statement, for callers folding it into a
    *  larger batch (the prefetch additionalStatements vehicle) so a cold
    *  render pays no dedicated round trip for codename ids. Feed the

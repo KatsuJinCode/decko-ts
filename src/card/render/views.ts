@@ -36,6 +36,7 @@
 
 import { DeckoName } from "../name.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
+import { UnsupportedViewError } from "./format.js";
 import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn } from "./format.js";
 import {
   isPointerOrListCard,
@@ -51,6 +52,7 @@ import { ruleBarRightHtml } from "./rule-bar-right.js";
 import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
 import { buildVirtualRuleCard } from "./virtual-rule-card.js";
+import { NAVBAR_VIEWS } from "./navbar-views.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -341,7 +343,8 @@ const coreView: ViewFn = (ctx) => {
       fmt.card.dbContent,
       fmt.card.id,
       fmt.card.name.s,
-      fmt.voo?.opts.size,
+      // image.rb determine_image_size: voo.size || default_size (:medium).
+      fmt.voo?.opts.size ?? "medium",
     );
   }
   // The File cardtype's :core (card-mod-carrierwave set/type/file.rb:24-28
@@ -444,34 +447,41 @@ export function formatImageCore(
     trimmed.startsWith("data:") ||
     trimmed.startsWith("mailto:")
   ) {
-    // `<img src="..." alt="">` — alt="" matches Ruby's
-    // image_tag default; the deck's app config can supply an
-    // alt override via a future mod hook.
-    return `<img src="${h(trimmed)}" alt="">`;
+    // image_tag source, alt: card.name — the captured oracle pins the
+    // Rails tag shape `alt` first with the haml-style close on BOTH lanes
+    // (expected-v2 view-lane *favicon :open; page-lane header logo).
+    return `<img alt="${h(cardName ?? "")}" src="${h(trimmed)}" />`;
   }
   // Carrierwave storage: (bucket)/<id>/<action>.<ext> (cloud) and
   // ~<id>/<action>.<ext> (local) and :codename/<mod>.<ext> (coded)
   // are the four file-output shapes the image cardtype renders.
   // Ruby (card-mod-carrierwave set/type/image.rb:30-37 def source)
   // resolves them via contextualize_path; we mirror the resolution
-  // and append the size variant suffix for the `/files/...` form.
-  // Pinned by recapture-raw:Wikirate+image:render:open (oracle
-  // emits <img src="/files/<id>/<action>-medium.<ext>" alt="...">).
-  if (trimmed.startsWith("(") && cardId !== undefined) {
-    // cloud: keep the absolute bucket URL — no size variant
-    return `<img src="${h(trimmed)}" alt="${h(cardName ?? "")}">`;
+  // and append the size variant suffix.
+  // ORACLE SHAPES (expected-v2, both lanes):
+  //   cloud "(my_bucket)/103/3649.jpg" -> absolute fog bucket URL
+  //     "http://s3.amazonaws.com//files/103/3649-<size>.jpg"
+  //     (*favicon :open -> -medium; page header logo size:small -> -small)
+  //   coded ":cerulean_skin+:image/bootstrap.png" -> "/files/:cerulean_skin
+  //     +:image/bootstrap-<size>.png" (colon and joint KEPT — cerulean/cosmo
+  //     skin :open/:closed/:content entries)
+  //   default size :medium (image.rb default_size; voo.size wins when set).
+  if (trimmed.startsWith("(")) {
+    const m = /^\([^()\s]+\)\/(.+)$/.exec(trimmed);
+    if (m === null) return "";
+    const sized = appendSizeVariant(m[1] ?? "", sizeOpt ?? "medium");
+    return `<img alt="${h(cardName ?? "")}" src="${h(`http://s3.amazonaws.com//files/${sized}`)}" />`;
   }
   if (trimmed.startsWith("~")) {
     // local: ~/card_id/action_id.ext -> /files/card_id/action_id(-size).ext
     const path = trimmed.replace(/^~/, "");
-    const sized = appendSizeVariant(path, sizeOpt);
-    return `<img src="/files/${h(sized)}" alt="${h(cardName ?? "")}">`;
+    const sized = appendSizeVariant(path, sizeOpt ?? "medium");
+    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
   }
   if (trimmed.startsWith(":")) {
-    // coded: :codename/mod_name.ext -> /files/codename.mod_name(-size).ext
-    const path = trimmed.replace(/^:/, "").replace(/\//g, ".");
-    const sized = appendSizeVariant(path, sizeOpt);
-    return `<img src="/files/${h(sized)}" alt="${h(cardName ?? "")}">`;
+    // coded: :codename/mod.ext -> /files/:codename/mod(-size).ext
+    const sized = appendSizeVariant(trimmed, sizeOpt ?? "medium");
+    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
   }
   // Non-image source — return empty to match the captured oracle
   // shape for the corpus (and Ruby's behavior for any cardtype-
@@ -1420,6 +1430,18 @@ const flatAddLinkView: ViewFn = ({ fmt }) =>
 /** set/type/cardtype.rb view :add_url. */
 const flatAddUrlView: ViewFn = ({ fmt }) => `/${fmt.card.key ?? ""}/new`;
 
+/** card-mod-format set/self/home.rb view :home_path (perms :none):
+ *  `card_path ""` — the deck-root path. Self-set scoped in Ruby; the flat
+ *  registry scopes by card key here (any other card raises the
+ *  unsupported-view UserError, matching the Ruby missing-method walk).
+ *  Pinned by the *header navbar bytes ({{:home|home_path}} -> "/"). */
+const homePathView: ViewFn = ({ fmt }) => {
+  if (fmt.card.key !== "*home") {
+    throw new UnsupportedViewError("home_path", fmt.card.name.s);
+  }
+  return "/";
+};
+
 /** The html-format view registry (Set::Format.view_method_name dispatch).
  *  Views NOT in this registry raise the unsupported-view UserError. */
 export const HTML_VIEWS: Record<string, ViewFn> = {
@@ -1454,4 +1476,9 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   add_button: flatAddButtonView,
   add_link: flatAddLinkView,
   add_url: flatAddUrlView,
+  home_path: homePathView,
+  // The page-lane navbar family (card-mod-layout navbar_links/nav_item/
+  // nav_link_in_dropdown + card-mod-search search_box) — set-scoped inside
+  // each fn; see src/card/render/navbar-views.ts.
+  ...NAVBAR_VIEWS,
 };
