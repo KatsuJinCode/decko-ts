@@ -128,11 +128,25 @@ export async function renderPageBytes(
   // parse gates, structure universe...) — the identical preparation and
   // (card, view) render the bare path runs. Output discarded; the page pass
   // re-renders through the main! format below from warm maps.
-  await engine.render(record.name.s, mainView);
-
+  //
+  // The raise semantics differ between the lanes: the bare capture ran
+  // development (raise_all_rendering_errors=true — every nested view
+  // error re-raises, the view-lane sentinels), the page capture ran
+  // production (nested errors -> the quiet render-error span). A view-
+  // dispatch raise here (Date::Error, search BadQuery) must NOT fail the
+  // page: the assembly's main! render converts nested raises via
+  // nestQuietErrors. Focal gate raises (pointer/set-host options chains)
+  // only fire for open/content MAIN views (2 corpus pages) — accepted
+  // collateral. A lost root (prepare died before enrichment) rethrows.
+  let prepareError: Error | undefined;
+  try {
+    await engine.render(record.name.s, mainView);
+  } catch (error) {
+    prepareError = error as Error;
+  }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) {
-    throw new Error(`render card not prepared: ${record.name.s}`);
+    throw prepareError ?? new Error(`render card not prepared: ${record.name.s}`);
   }
 
   // The root format: main! context (h1 header, focal gates) + the page-path
