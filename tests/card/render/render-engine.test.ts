@@ -261,8 +261,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // at 0 (the test below).
     expect(roundTripsByDepth).toEqual({ 1: 7, 2: 7, 4: 9, 8: 13 });
     // Statements: the folded engine statements are constant; the rounds add
-    // one fetch statement per level (measured 11/12/14/18).
-    expect(statementsByDepth).toEqual({ 1: 11, 2: 12, 4: 14, 8: 18 });
+    // one fetch statement per level. Round 9 re-pin (+1 across the board,
+    // measured 12/13/15/19): the *default rule universe statement folds
+    // into the cold batch alongside the *structure universe (one batched
+    // round trip for all engine-level state, the #1282 shape) so a
+    // nest-miss child resolves its *default-rule type from memory.
+    expect(statementsByDepth).toEqual({ 1: 12, 2: 13, 4: 15, 8: 19 });
     // depth 8 costs one batch per level (13 round trips vs Ruby's 11
     // queries) while reading O(page) rows instead of the whole deck per
     // render - the trade this round's read-cost decision asked for. The

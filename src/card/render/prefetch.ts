@@ -354,6 +354,41 @@ async function driveClosure(
     }
   };
   collect(scanRows);
+  // Round 9: contextual collection from COMPOSED records. A row-scanned ref
+  // like `{{+image}}` parses as the literal key "+image" (no row carries it),
+  // so every template child / plus-child nest fell out of the closure and the
+  // render's nest fetch missed the cache — the live-wire gap (children of
+  // type+*structure pages rendered as unknown-card empty slots even when the
+  // child rows existed). Ruby absolutizes each reference against the
+  // REFERENCING card at process time (chunk/reference.rb; cited in
+  // nest-syntax.ts's header), so the composed record's name is the context
+  // the closure must mirror. Records whose names did not compose (unresolvable
+  // junction sides) contribute nothing here; their absolute refs still join
+  // through the row-based collect when their rows are scanned. Underscore
+  // refs stay skipped: _left/_main resolve against the render-time format
+  // context, not the name algebra alone.
+  const collectFromRecords = (records: CardRecord[]): void => {
+    for (const record of records) {
+      const content = record.dbContent;
+      if (content === undefined || content === "" || content === null) continue;
+      if (record.name === undefined || record.name.s === "") continue;
+      for (const ref of referencedNames(content)) {
+        if (ref.relative) continue;
+        let name: DeckoName;
+        try {
+          name = DeckoName.parse(ref.name).absoluteName(record.name);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+            continue; // unresolved mark: the render's nest path reports it
+          }
+          throw err;
+        }
+        if (name.s === "" || known.has(name.key)) continue;
+        pending.add(name.s);
+      }
+    }
+  };
+  collectFromRecords(composed);
 
   const additional = ctx.additionalStatements ?? [];
   // Transitive side priming (the old SQL walk's `reached` closure): the
@@ -513,6 +548,15 @@ async function driveClosure(
     const newComposed = await composeAndCache([...sideRows, ...closureRows], ctx, stats);
     seedKeys(newComposed); // junction rows resolve through their composed keys
     collect(closureRows); // their content references join the pending set
+    // Round 9: the composed CLOSURE records join contextually too (side rows
+    // stay unscanned — the reached-semantics note above; only walked rows fed
+    // the frontier). Filter by id: newComposed mixes closure + side records.
+    {
+      const closureIds = new Set(closureRows.map((row) => row.id));
+      collectFromRecords(
+        newComposed.filter((record) => record.id !== undefined && closureIds.has(record.id)),
+      );
+    }
     for (const nameStr of [...pending]) {
       // Mark-resolution error tolerance (mirror round-3 cardReferenceKeys
       // catch, render.ts:1773): a name that fails the synchronously-resolved

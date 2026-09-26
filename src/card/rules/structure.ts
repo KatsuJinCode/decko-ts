@@ -45,6 +45,7 @@
 // 57-59, each joined to the setting name "*structure").
 
 import { DeckoName, type Nameish } from "../name.js";
+import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import type { SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
@@ -86,6 +87,27 @@ export const STRUCTURE_SETTING_NAME = "*structure";
  * right rule). The recursive CTE closes the gap: 139/139 compose.
  */
 export function structureRuleUniverseStatement(): SQLStatement {
+  return ruleUniverseStatementBySetting(STRUCTURE_SETTING_NAME);
+}
+
+/** The setting whose rule universe the *default machinery reads (the
+ *  new-card template: Ruby's new_card_template, card-mod-content
+ *  set/all/templating.rb — a nest-miss child inherits the *default rule
+ *  card's TYPE, mod/core/set/all/type.rb:78-80 type_id_from_template). */
+export const DEFAULT_SETTING_NAME = "*default";
+
+/**
+ * The same universe shape for an ARBITRARY setting. Round 9 folds the
+ * *default universe so a nest-miss child (Ruby's new_card from
+ * format/nest/fetch.rb#new_card) can resolve the *default rule card's
+ * type_id — the live/raw captures pin those children rendering with the
+ * rule's type (raw-oracle 9625 open: the absent "+Discussion" child renders
+ * data-card-type-id=3 RichText from the discussion+*right+*default rule
+ * card's own type). Deliberately the SAME statement shape as the structure
+ * universe (one indexed right_id join + the composed-key CTE) so the
+ * perf contract holds: one statement, folded into the cold batch.
+ */
+export function ruleUniverseStatementBySetting(settingName: string): SQLStatement {
   return {
     sql:
       `WITH RECURSIVE name_walk(id, composed) AS (\n` +
@@ -117,10 +139,16 @@ export function structureRuleUniverseStatement(): SQLStatement {
       `JOIN name_walk n ON n.id = r.left_id\n` +
       `WHERE r.trash = 0\n` +
       `  AND r.right_id = (SELECT id FROM cards\n` +
-      `                    WHERE ("key" = '${STRUCTURE_SETTING_NAME}' OR name = '${STRUCTURE_SETTING_NAME}')\n` +
+      `                    WHERE ("key" = '${settingName}' OR name = '${settingName}')\n` +
       `                      AND trash = 0 ORDER BY id LIMIT 1)`,
     params: [],
   };
+}
+
+/** The *default rule universe: composed rule key -> the rule card's own
+ *  type_id (the new-card type a nest-miss child inherits). */
+export function defaultRuleUniverseStatement(): SQLStatement {
+  return ruleUniverseStatementBySetting(DEFAULT_SETTING_NAME);
 }
 
 /**
@@ -249,12 +277,39 @@ export function structuredCardContent(
  * to stay warm and for nests to find them. Uses the REAL nest parser (the
  * same one the render path and the prefetch verification use) so escaped
  * and commented nests behave identically everywhere.
+ *
+ * `contextName` (round 9): when given, every non-underscore reference is
+ * ABSOLUTIZED against that name before it is returned — the
+ * chunk/reference.rb contract the walkers used to miss for plus-shaped
+ * refs. Ruby absolutizes each reference against the REFERENCING card at
+ * process time (nest-syntax.ts header cites the gem file); a template's
+ * `{{+image}}` therefore names `<instance>+image`, NOT the literal key
+ * "+image" the un-contextualized walk produced (which matched no row,
+ * landed in structureRefMisses, and rendered every template child as the
+ * unknown-card empty slot even when the child row existed — the round-9
+ * live-wire gap). Underscore refs stay skipped: `_left`/`_main` resolve
+ * against the render-time format context, not the name algebra alone.
  */
-export function templateReferenceNames(templateContent: string): string[] {
+export function templateReferenceNames(
+  templateContent: string,
+  contextName?: DeckoName,
+): string[] {
   const names: string[] = [];
   for (const ref of referencedNames(templateContent)) {
     if (ref.relative) continue;
-    if (ref.name !== "") names.push(ref.name);
+    if (ref.name === "") continue;
+    if (contextName === undefined) {
+      names.push(ref.name);
+      continue;
+    }
+    try {
+      names.push(DeckoName.parse(ref.name).absoluteName(contextName).s);
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        continue; // unresolved mark: the render's nest path reports it safely
+      }
+      throw err;
+    }
   }
   return names;
 }

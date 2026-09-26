@@ -28,12 +28,16 @@ import { FetchEngine } from "./fetch.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeQuery } from "../cql/execute.js";
 import { findRule } from "./rules/lookup.js";
+import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
   resolveStructuredContent,
   templateReferenceNames,
+  defaultRuleUniverseStatement,
+  structureRuleTypesFromResults,
+  DEFAULT_SETTING_NAME,
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
 import {
@@ -256,6 +260,23 @@ export class RenderEngine implements RenderEngineLike {
    *  on later renders, so warm renders stay zero-query. Cleared on
    *  resetCaches(). */
   private structureRefMisses = new Set<string>();
+  /** The *default rule universe (composed rule key -> the rule card's own
+   *  type_id) — round 9's new-child template machinery. Ruby resolves a
+   *  nest-miss child (format/nest/fetch.rb#new_card -> Card.fetch new:) to
+   *  the *default rule card's TYPE (mod/core/set/all/type.rb:78-80
+   *  type_id_from_template -> template&.type_id; for a new card the
+   *  template IS the *default rule card, card-mod-content templating.rb
+   *  new_card_template). The raw-oracle pins the rendered shape: absent
+   *  "+Discussion" children carry data-card-type-id=3 (RichText — the
+   *  discussion+*right+*default rule card's type). Rides the same cold
+   *  batch as the structure universe (one statement, +0 round trips).
+   *  Cleared on resetCaches(). */
+  private defaultRuleTypes: Map<string, number> | undefined;
+  /** type_id -> type card NAME for the *default universe's referenced types
+   *  (the data-card-type-name attribute + safeSetKeys TYPE anchor input for
+   *  the new-child card). One batched id query, once per engine. Cleared on
+   *  resetCaches(). */
+  private defaultTypeNameById: Map<number, string> | undefined;
   /** ok_to_<task>? state for the non-read view tasks — loaded once per
    *  engine, on the first render whose ROOT view demands a non-read task
    *  (docs/view-perms-notes.md). Cleared on resetCaches(). */
@@ -312,9 +333,14 @@ export class RenderEngine implements RenderEngineLike {
         ...permissionStatements,
         ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
         // The *structure rule universe (one statement; the structured-content
-        // resolution reads it as pure memory afterwards). Appended LAST: the
-        // permission state parser reads folded results by fixed index.
-        ...(structureCold ? [structureRuleUniverseStatement()] : []),
+        // resolution reads it as pure memory afterwards) + the *default rule
+        // universe (the new-child type source, same statement shape). Both
+        // Appended LAST: the permission state parser reads folded results by
+        // fixed index, and parseStructureContents slices past the permission
+        // + codename statements to find the pair in order.
+        ...(structureCold
+          ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
+          : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
@@ -348,8 +374,11 @@ export class RenderEngine implements RenderEngineLike {
     if (permissionCold) await this.ensureReadPermission(foldedResults);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
-    // accessor; templating.rb#structure).
+    // accessor; templating.rb#structure). On every first-render path this
+    // also parses the *default universe (folded, or the defensive standalone
+    // batch), so the new-child type preload below can run right after.
     await this.applyStructureContent();
+    await this.preloadDefaultTypeNames();
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -685,6 +714,8 @@ export class RenderEngine implements RenderEngineLike {
     this.structureContents = undefined;
     this.structureProcessed.clear();
     this.structureRefMisses.clear();
+    this.defaultRuleTypes = undefined;
+    this.defaultTypeNameById = undefined;
     this.taskState = undefined;
     this.taskVerdicts.clear();
     this.helpRules = undefined;
@@ -697,20 +728,94 @@ export class RenderEngine implements RenderEngineLike {
   // -------------------------------------------------------------------------
 
   /** Parse the folded universe statement result (sliced past the permission
-   *  + codename statements). Falls back to one standalone batch on the
-   *  defensive warm-closure-first-render path (once per engine). */
+   *  + codename statements; the *default universe rides the next slot).
+   *  Falls back to one standalone batch on the defensive warm-closure-first-
+   *  render path (once per engine) fetching BOTH universes. */
   private async parseStructureContents(
     folded: SQLQueryResult[] | undefined,
     structureStatementIndex: number,
   ): Promise<void> {
     if (this.structureContents !== undefined) return;
     let result = folded !== undefined ? folded[structureStatementIndex] : undefined;
-    if (result === undefined) {
+    let defaultResult = folded !== undefined ? folded[structureStatementIndex + 1] : undefined;
+    if (result === undefined || defaultResult === undefined) {
       // No folded batch to read (defensive: a warm-closure first render).
-      const batch = await this.fetcher.driver.batch([structureRuleUniverseStatement()]);
+      const batch = await this.fetcher.driver.batch([
+        structureRuleUniverseStatement(),
+        defaultRuleUniverseStatement(),
+      ]);
       result = batch[0];
+      defaultResult = batch[1];
     }
     this.structureContents = structureUniverseFromResults(result);
+    this.defaultRuleTypes = structureRuleTypesFromResults(defaultResult);
+  }
+
+  /**
+   * The type names the *default universe's referenced type ids point at
+   * (once per engine; one batched id query). These names feed the
+   * new-child card's data-card-type-name attribute and its safeSetKeys
+   * TYPE anchor. Genuinely missing type rows simply stay absent from the
+   * map — newCardDefaultType degrades to the pre-round-9 untyped new-card
+   * shape for those, never throws.
+   */
+  private async preloadDefaultTypeNames(): Promise<void> {
+    if (this.defaultTypeNameById !== undefined) return;
+    const map = new Map<number, string>();
+    const universe = this.defaultRuleTypes;
+    if (universe !== undefined && universe.size > 0) {
+      const ids = [...new Set(universe.values())];
+      const placeholders = ids.map(() => "?").join(", ");
+      const result = await this.fetcher.driver.query<CardsRow>(
+        `SELECT id, name FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+        ids,
+      );
+      for (const row of result.rows as CardsRow[]) {
+        if (row.name !== null && row.name !== undefined && row.name !== "") {
+          map.set(row.id, row.name);
+        }
+      }
+    }
+    this.defaultTypeNameById = map;
+  }
+
+  /**
+   * RenderEngineLike#newCardDefaultType: the *default rule card's type for
+   * a nest-miss child name — the port of Ruby's new-card template type
+   * resolution (type_id_from_template; see the defaultRuleTypes field note).
+   * The candidate walk is the naming algebra only (ruleNamesForCard with a
+   * type-less input: a new card carries no type yet, so type-anchored
+   * candidates are correctly absent and the name-derived *right / *self
+   * candidates decide); the FIRST candidate that exists in the universe
+   * wins (pattern precedence), matching rule_card's first-hit walk.
+   */
+  newCardDefaultType(name: DeckoName): { typeId: number; typeName: string } | undefined {
+    const universe = this.defaultRuleTypes;
+    const names = this.defaultTypeNameById;
+    if (universe === undefined || universe.size === 0 || names === undefined) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined },
+      DEFAULT_SETTING_NAME,
+    );
+    for (const candidate of candidates) {
+      let key: string;
+      try {
+        key = DeckoName.parse(candidate).key;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          continue; // unresolved mark: no *default rule candidate
+        }
+        throw err;
+      }
+      const typeId = universe.get(key);
+      if (typeId === undefined) continue;
+      const typeName = names.get(typeId);
+      // First existing candidate decides (rule/all.rb first-hit); a missing
+      // type row degrades the whole resolution to untyped rather than
+      // walking past the winning rule.
+      return typeName !== undefined ? { typeId, typeName } : undefined;
+    }
+    return undefined;
   }
 
   /**
@@ -765,13 +870,23 @@ export class RenderEngine implements RenderEngineLike {
         // walk the raw dbContent refs. Both branches must run — the template
         // refs are what a *structure rule contributes; the raw refs are the
         // closure the prefetch already walked and the render must answer to.
+        // Round 9: both branches absolutize against THIS card's name (the
+        // chunk/reference.rb referencing-card contract the Ruby port cites
+        // in nest-syntax.ts's header): a template's `{{+image}}` names
+        // `<instance>+image`. Without the context the walk produced the
+        // literal key "+image", which matched no row, fell into
+        // structureRefMisses, and every template child rendered as the
+        // unknown-card empty slot even when its row existed (the round-9
+        // live-wire gap). The prefetch's contextual collect and
+        // closureWarm's cardReferenceKeys absolutize identically, so all
+        // three walkers agree on one key set.
         const contentForRefs = resolved !== undefined
           ? resolved.templateContent
           : card.dbContent;
         if (resolved !== undefined && resolved.templateContent !== card.dbContent) {
           card.dbContent = resolved.templateContent;
         }
-        for (const refName of templateReferenceNames(contentForRefs)) {
+        for (const refName of templateReferenceNames(contentForRefs, card.name)) {
           // Mark-resolution error tolerance (mirror prefetch.ts:525-531 +
           // cardReferenceKeys:1858): a ref whose name is a codename/id
           // mark the codehash can't resolve (e.g. ":members" on a deck
@@ -1917,6 +2032,15 @@ export class RenderEngine implements RenderEngineLike {
    *  reference and forced cold closure walks for cards nesting them
    *  (26/1000 shard-0 cards cold after prewarm, render-perf harness).
    *
+   *  Round 9: every non-underscore ref is ABSOLUTIZED against the card's
+   *  own name (chunk/reference.rb referencing-card contract) — the same
+   *  contextual resolution applyStructureContent's ref walk and the
+   *  prefetch's record collect use. A card's `{{+image}}` checks
+   *  `<card>+image` in the render-card map; the pre-round-9 literal
+   *  "+image" key matched no prepared card, but the walkers' bogus miss
+   *  landed in structureRefMisses so warm detection only stayed stable by
+   *  accident of the shared bogus key.
+   *
    *  Sync mark resolution tolerates CodenameNotFoundError / NameNotFoundError
    *  for unresolved codename/id marks: the lexicon temp cache evicts itself
    *  at 10000 keys (lib/card/cache/temporary.rb#within_key_counts); after
@@ -1931,7 +2055,7 @@ export class RenderEngine implements RenderEngineLike {
       const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
       let key: string;
       try {
-        key = DeckoName.parse(base).key;
+        key = DeckoName.parse(base).absoluteName(card.name).key;
       } catch (err) {
         if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
         throw err;

@@ -123,13 +123,36 @@ describe("templateReferenceNames", () => {
       "Other Card",
     ]);
   });
+
+  it("round 9: with a context name, plus-shaped refs absolutize against the instance", () => {
+    const ctx = DeckoName.parse("Aikido Oak Cliff");
+    // The chunk/reference.rb referencing-card contract: {{+image}} names
+    // <instance>+image — the key the closure walkers must prepare. Before
+    // round 9 the walkers kept the literal "+image", which matched no row
+    // and rendered every template child as the unknown-card empty slot.
+    expect(templateReferenceNames("<p>{{+image|size:large}}</p>", ctx)).toEqual([
+      "Aikido Oak Cliff+image",
+    ]);
+    // Already-absolute refs pass through the name algebra unchanged.
+    expect(templateReferenceNames("{{Some Page}}", ctx)).toEqual(["Some Page"]);
+    // Underscore refs stay render-time (the format context resolves them).
+    expect(templateReferenceNames("{{_left|open}}{{_main}}", ctx)).toEqual([]);
+  });
 });
 
 describe("structureRuleUniverseStatement", () => {
-  it("matches rule rows by the *structure setting card's right_id (flat, indexed)", () => {
+  it("matches rule rows by the *structure setting card's right_id (indexed, composed-key CTE)", () => {
     const statement = structureRuleUniverseStatement();
     expect(statement.sql).toContain("r.right_id = (SELECT id FROM cards");
-    expect(statement.sql).toContain("sl.\"key\" || '+' || p.\"key\"");
+    // Round 9 re-pin: the composed-key side is the RECURSIVE name_walk CTE
+    // (landed for the depth-3 *type plus right universe keys — 24/139 rules
+    // composed NULL under the old flat one-junction CASE) — not the flat
+    // `sl."key" || '+' || p."key"` join this assertion pinned before that
+    // round. The statement body itself is unchanged by round 9; only the
+    // setting name is parameterized now (the same function builds the
+    // *default universe).
+    expect(statement.sql).toContain("WITH RECURSIVE name_walk(id, composed)");
+    expect(statement.sql).toContain("COALESCE(w.composed, '') || '+' || COALESCE(r.\"key\", '')");
     expect(statement.params).toEqual([]);
   });
 });
@@ -232,14 +255,16 @@ describe("RenderEngine structured content", () => {
       const html = await fresh.engine.render("Doc1", "title");
       expect(html).toContain("Doc1"); // sanity
       const cold = fresh.counting.snapshot();
-      // The closure batch = [round-0 fetches, perm x3, codehash, universe]
-      // (the universe statement is FOLDED: +1 statement, +0 round trips).
-      // The remaining round trips are the pre-existing profile — the root
-      // fetchByName + the view-override rule walk (this deck measured
-      // 13 statements / 8 round trips before this stream; 14/8 after the
-      // structure stream; 12/8 since the 2026-09-23 per-key closure rounds
-      // replaced the two whole-deck walk statements with round-0 folds).
-      expect(cold.statements).toBe(12);
+      // The closure batch = [round-0 fetches, perm x3, codehash, universe,
+      // *default universe] (both universe statements are FOLDED: +2
+      // statements, +0 round trips). The remaining round trips are the
+      // pre-existing profile — the root fetchByName + the view-override
+      // rule walk (this deck measured 13 statements / 8 round trips before
+      // this stream; 14/8 after the structure stream; 12/8 since the
+      // 2026-09-23 per-key closure rounds; 13/8 since round 9 folded the
+      // *default universe alongside the *structure universe so nest-miss
+      // children resolve their *default-rule type from memory).
+      expect(cold.statements).toBe(13);
       expect(cold.roundTrips).toBe(8);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();
@@ -266,5 +291,52 @@ describe("RenderEngine structured content", () => {
     // The anchor part keys through the same algorithm the rows store.
     expect(DeckoName.parse("Page+*type+*structure").key).toBe("page+*type+*structure");
     void candidate;
+  });
+
+  it("round 9: a nest-miss child renders the *default rule's type on the open view", async () => {
+    // The new-card template type chain: format/nest/fetch.rb#new_card ->
+    // Card.fetch new: -> type_id_from_template -> template&.type_id, where
+    // the template for a NEW card is the *default rule card (templating.rb
+    // new_card_template). Oracle: raw-ground-truth 9625/13421/14382 render
+    // the absent "+Discussion" child's open-view slot with
+    // data-card-type-id=3 (RichText) from the discussion+*right+*default
+    // rule card's own type.
+    const fresh = await createRenderTestStorage();
+    try {
+      await seedCard(fresh, { id: 100, name: "Page" });
+      // The *default setting card + the *right pattern card + the set
+      // junction "thing+*right" (NULL-key junction rows) + the rule row
+      // "thing+*right+*default" typed Page — the type the new child
+      // inherits.
+      await seedCard(fresh, { id: 102, name: "*default", codename: "default" });
+      await seedCard(fresh, { id: 101, name: "*right", codename: "right" });
+      await seedCard(fresh, { id: 300, name: "thing" });
+      await seedCard(fresh, { id: 303, leftId: 300, rightId: 101 }); // thing+*right
+      await seedCard(fresh, {
+        id: 304,
+        leftId: 303,
+        rightId: 102,
+        typeId: 100, // the rule card's own type = the new-child type
+      });
+      await seedCard(fresh, {
+        id: 305,
+        name: "Thing Host",
+        typeId: 100,
+        dbContent: "<p>{{+thing|open}}</p>",
+      });
+      const html = await fresh.engine.render("Thing Host", "open");
+      // The child slot renders as an open-view with the *default rule's
+      // type attributes (no data-card-id: the child has no row).
+      expect(html).toContain("thing-open-view");
+      expect(html).toContain('data-card-type-id="100"');
+      expect(html).toContain('data-card-type-name="Page"');
+      // The class chain carries the inherited TYPE token (safeSetKeys input).
+      expect(html).toContain("TYPE-page");
+      // ...and the nest resolved contextually: <instance>+thing (round 9's
+      // absolutization), not the literal "+thing".
+      expect(html).toContain('data-card-name="Thing Host+thing"');
+    } finally {
+      fresh.close();
+    }
   });
 });

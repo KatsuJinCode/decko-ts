@@ -185,8 +185,11 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // 3 read-permission + 1 codename codehash (rule? ids) + 1 *structure
       // rule universe (the structured-content stream rides the same batch,
       // appended AFTER the permission statements — the parser reads the
-      // permission results by fixed index 0..2).
-      expect(stats?.additionalResults?.length).toBe(5);
+      // permission results by fixed index 0..2) + 1 *default rule universe
+      // (round 9: the new-child template type rides the same batch — the
+      // *default universe is parsed from the slot right after the
+      // *structure universe).
+      expect(stats?.additionalResults?.length).toBe(6);
     } finally {
       cold.close();
     }

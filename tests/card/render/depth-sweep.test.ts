@@ -98,13 +98,18 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
     // Structural shape (2026-09-23, per-key closure rounds): round trips =
-    // 7 + max(0, depth-2) and statements = 11 + max(0, depth-1) - slope 1
+    // 7 + max(0, depth-2) and statements = 12 + max(0, depth-1) - slope 1
     // per chain LEVEL (one batch per inclusion level), independent of deck
     // size. Ruby's measured truth is depth+3: the same slope. The trade for
     // the level-linear cold path is rows-read dropping from O(deck x passes)
     // per render to O(page); warm renders stay at 0 (asserted below).
+    // Round 9 re-pin (+1 statements): the *default rule universe statement
+    // folds into the cold batch alongside the *structure universe (the #1282
+    // shape - one batched round trip for all engine-level state) so a
+    // nest-miss child resolves its *default-rule type from memory. Round
+    // trips - the billed axis - are unchanged.
     const expectedRts = (depth: number): number => 7 + Math.max(0, depth - 2);
-    const expectedSts = (depth: number): number => 11 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

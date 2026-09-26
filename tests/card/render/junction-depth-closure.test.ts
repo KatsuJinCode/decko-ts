@@ -88,13 +88,16 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(2);
       // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
       // 2 lexicon/enrichment primes (type card by id; the old SQL walk's
-      // type/side priming folded there) + round-0 batch (2 fetch shapes + 5
+      // type/side priming folded there) + round-0 batch (2 fetch shapes + 6
       // folded engine statements: 3 read-permission + codename codehash +
-      // structure universe) + round-1 batch (1 side-id join) + 3 rule-lookup
-      // candidates. Constant in deck size; +1 batch per chain LEVEL.
+      // structure universe + *default universe) + round-1 batch (1 side-id
+      // join) + 3 rule-lookup candidates. Constant in deck size; +1 batch
+      // per chain LEVEL. Round 9 re-pin (+1 statements): the *default rule
+      // universe folds into the same batch so nest-miss children resolve
+      // their *default-rule type from memory.
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(8);
-      expect(snapshot.statements).toBe(14);
+      expect(snapshot.statements).toBe(15);
     } finally {
       storage.close();
     }
@@ -166,11 +169,12 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
       // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
-      // 2 lexicon/enrichment primes + round-0 batch (2 fetch shapes + 5
-      // folded engine statements) + 3 rule-lookup candidates. Constant in
-      // deck size; the depth-3/4 tests show the +1 batch per chain level.
+      // 2 lexicon/enrichment primes + round-0 batch (2 fetch shapes + 6
+      // folded engine statements, the *default universe added round 9) + 3
+      // rule-lookup candidates. Constant in deck size; the depth-3/4 tests
+      // show the +1 batch per chain level. Round 9 re-pin (+1 statements).
       expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(13);
+      expect(snapshot.statements).toBe(14);
     } finally {
       storage.close();
     }
