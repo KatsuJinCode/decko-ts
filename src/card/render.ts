@@ -44,7 +44,7 @@ import {
   type RenderEngineLike,
   type ViewFn,
 } from "./render/format.js";
-import { HTML_VIEWS } from "./render/views.js";
+import { HTML_VIEWS, SETTING_GROUPS, GROUP_TO_SETTINGS } from "./render/views.js";
 import {
   ModLoader,
   getDefaultModLoader,
@@ -64,6 +64,8 @@ import {
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
+import { PATTERN_TABLE } from "./set-patterns/registry.js";
+import type { SettingClassWithRules } from "./render/format.js";
 import {
   readPermissionStatements,
   readPermissionStateFromViewerResults,
@@ -98,6 +100,7 @@ export {
 } from "./render/errors.js";
 export type { RenderCard, PrefetchStats };
 export { HTML_VIEWS };
+export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
@@ -138,6 +141,17 @@ const DATE_TYPE_CODE = "date";
  *  80 real each; :closed/:title = 105 real each (Ruby never parses them);
  *  date likewise (corpus:1135 :open/:content raise, :closed/:title real). */
 const PARSE_DISPATCH_VIEWS = new Set(["open", "content"]);
+
+/** The set of patterns a setting card's children can carry (card-mod-rules
+ *  set/type/setting.rb#set_classes_with_rules + card-mod-rules
+ *  set/type/setting/core.haml:1-12): every rule whose right part is the
+ *  setting's name is bucketed under one of these classes, in this order.
+ *  The *rule / *star / *rstar patterns are excluded — they don't classify
+ *  setting children. The lookup order (PATTERN_TABLE) is preserved so the
+ *  rendered per-pattern groups match Ruby's `klass.to_s` ordering. */
+const SETTING_CLASSES = PATTERN_TABLE.filter(
+  (spec) => spec.code !== "rule" && spec.code !== "star" && spec.code !== "rstar",
+);
 
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
@@ -323,7 +337,7 @@ export class RenderEngine implements RenderEngineLike {
       // The rule ids must be memoized BEFORE enrichment: enrichAndStore
       // computes set keys (the RULE pattern's applies?) synchronously from
       // them. Sliced past the permission statements the batch also carried.
-      if (ruleTypesCold) this.parseRuleTypeIds(foldedResults, permissionStatements.length);
+      if (ruleTypesCold) await this.parseRuleTypeIds(foldedResults, permissionStatements.length);
       this.parseStructureContents(
         foldedResults,
         permissionStatements.length + (ruleTypesCold ? 1 : 0),
@@ -758,7 +772,22 @@ export class RenderEngine implements RenderEngineLike {
           card.dbContent = resolved.templateContent;
         }
         for (const refName of templateReferenceNames(contentForRefs)) {
-          const refKey = DeckoName.parse(refName).key;
+          // Mark-resolution error tolerance (mirror prefetch.ts:525-531 +
+          // cardReferenceKeys:1858): a ref whose name is a codename/id
+          // mark the codehash can't resolve (e.g. ":members" on a deck
+          // whose corpus anonymizer omitted the *members card) would throw
+          // out of DeckoName.parse. Drop the ref instead of failing the
+          // whole structure walk — the unknown-card view path renders it
+          // safely, and the warm closure picks it up on a later round.
+          let refKey: string;
+          try {
+            refKey = DeckoName.parse(refName).key;
+          } catch (err) {
+            if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+              continue;
+            }
+            throw err;
+          }
           if (
             refKey === "" ||
             this.renderCards.has(refKey) ||
@@ -1255,6 +1284,17 @@ export class RenderEngine implements RenderEngineLike {
     // part to its codename. Without these the _category-* class chain
     // is empty (bar_view.rb:10 + editor.rb:54-58).
     await this.preloadAllSettingCards();
+    // Pre-populate read-permission verdicts for every (setCard,
+    // settingCard) pair the sync render path will construct a virtual
+    // for — the engine's setRulesCoreHtml falls through to
+    // views.ts#renderSettingListItems which builds one virtual per
+    // setting that has no stored child, and the view-permission gate
+    // (format.ts:renderView) reads isDenied which reads
+    // deniedVerdictsByKey. Without this pass the gate is open for every
+    // virtual and the engine renders a bar where Ruby renders the
+    // quiet denial span (the round-7 permission_denied_mismatch
+    // residual; see preloadVirtualRuleVerdicts for the full mechanism).
+    await this.preloadVirtualRuleVerdicts(setCard);
   }
 
   /** Load every setting card into renderCards so the rule :bar's
@@ -1279,6 +1319,65 @@ export class RenderEngine implements RenderEngineLike {
       const record = await composeCardRecord(row, this.fetcher.lexicon);
       if (record.name === undefined) continue;
       await this.cacheFetchedRecord(record);
+    }
+  }
+
+  /**
+   * Pre-populate read-permission verdicts for the virtual rule cards the
+   * set-card Rules section renders. The engine constructs each missing-
+   * setting virtual (the engine's setRulesCoreHtml path falls through to
+   * views.ts#renderSettingListItems which builds one virtual per setting
+   * that has no stored child) — Ruby's setting_list_item runs the live
+   * permission walk on the virtual (rule_lists.rb#setting_list_item's
+   * card.ok_to_read?), and the verdict decides between a bar and the
+   * quiet denial span (card-mod-format set/all/html/error.rb:185-189
+   * quiet_denial).
+   *
+   * The sync render path (format.ts#renderView line 315, the view-perm
+   * gate at view-perms.ts#viewPermissionDenial) reads `isDenied` which
+   * pulls from `deniedVerdictsByKey` — without a pre-populated verdict
+   * the virtual card's gate is open and the engine renders a bar where
+   * Ruby renders the denial span (the round-7
+   * permission_denied_mismatch residual).
+   *
+   * This pass mirrors the stored-card verdict path (ensureVerdicts
+   * 958-1020): same canReadByRuleLookup, same deniedVerdictsByKey map,
+   * same keying by canonical name key. NO parallel system. Each
+   * candidate name = `${setCard.name.s}+*${settingCodename}` exactly as
+   * buildVirtualRuleCard produces; the verdict lookup uses the
+   * id-less card shape (id undefined, type from the setting card) so
+   * ruleNamesForCard drops the SELF candidate (pattern/all.rb#patterns'
+   * new-card branch), letting the RSTAR *all+*<setting> candidate win
+   * for the Anonymous corpus viewer (the captured denial surface).
+   *
+   * Idempotent: skip-if-set guard matches ensureVerdicts' skip-if-set
+   * pattern (line 968). Warm renders stay at zero queries — verdicts
+   * already in the map.
+   *
+   * Called from preloadSetRules after preloadAllSettingCards (settings
+   * are cached so findSettingCard is a synchronous render-cards walk).
+   */
+  private async preloadVirtualRuleVerdicts(setCard: RenderCard): Promise<void> {
+    const state = this.readPermission;
+    if (state === undefined) return;
+    for (const groupName of SETTING_GROUPS) {
+      for (const settingCodename of GROUP_TO_SETTINGS[groupName]) {
+        const settingCard = this.findSettingCard(settingCodename);
+        if (settingCard === undefined) continue;
+        const name = DeckoName.parse(`${setCard.name.s}+*${settingCodename}`);
+        if (this.deniedVerdictsByKey.has(name.key)) continue;
+        const byRule = await canReadByRuleLookup(
+          this.fetcher,
+          {
+            name,
+            id: undefined,
+            typeId: settingCard.typeId,
+            typeName: settingCard.typeName,
+          },
+          state,
+        );
+        this.deniedVerdictsByKey.set(name.key, byRule === false);
+      }
     }
   }
 
@@ -1373,6 +1472,48 @@ export class RenderEngine implements RenderEngineLike {
       if (card.record.codename === codename) return card;
     }
     return undefined;
+  }
+
+  /** card-mod-rules set/type/setting.rb#set_classes_with_rules + Ruby's
+   *  `card.rules_for_set_class(klass)`: for a setting-type card (e.g.
+   *  *read), walk every rule whose right part matches this setting and
+   *  bucket by the LEFT pattern class. Each PatternSpec's patternCardName
+   *  (*all, *all plus, *type, *right, *type plus right, *self — in the
+   *  registry's lookup order, the ones a setting's children can carry)
+   *  becomes one bucket; `anchorless` mirrors whether the pattern carries
+   *  an `anchor_name` override (the *all and *all_plus specs don't, so
+   *  Ruby collapses those into a single full-name row; the anchored
+   *  ones iterate per-rule). Used by the setting-card core view
+   *  (setting.rb:39-55 + core.haml:1-12). */
+  setClassesWithRules(host: RenderCard): SettingClassWithRules[] {
+    const out: SettingClassWithRules[] = [];
+    const hostKey = host.key;
+    if (hostKey === "") return out;
+    const settingBuckets = new Map<string, RenderCard[]>();
+    for (const card of this.renderCards.values()) {
+      if (card.id === undefined) continue;
+      if (!card.name.isCompound) continue;
+      if (card.name.rightName?.key !== hostKey) continue;
+      const leftKey = card.name.leftName?.key;
+      if (leftKey === undefined) continue;
+      const bucket = settingBuckets.get(leftKey);
+      if (bucket === undefined) {
+        settingBuckets.set(leftKey, [card]);
+      } else {
+        bucket.push(card);
+      }
+    }
+    for (const klass of SETTING_CLASSES) {
+      const leftKey = klass.patternCardName.toLowerCase();
+      const rules = settingBuckets.get(leftKey);
+      if (rules === undefined || rules.length === 0) continue;
+      out.push({
+        klass,
+        rules,
+        anchorless: klass.anchorName === undefined,
+      });
+    }
+    return out;
   }
 
   // -------------------------------------------------------------------------
@@ -1619,17 +1760,21 @@ export class RenderEngine implements RenderEngineLike {
   /** Parse the folded codehash result (sliced past the permission
    *  statements) into memoized codename ids. Runs once per engine, before
    *  enrichment, so set-key derivation never queries. */
-  private parseRuleTypeIds(
+  private async parseRuleTypeIds(
     folded: SQLQueryResult[] | undefined,
     permissionStatementCount: number,
-  ): void {
+  ): Promise<void> {
     const result = folded !== undefined ? folded[permissionStatementCount] : undefined;
     if (result !== undefined) {
       this.fetcher.codenames.foldCodehashResults(result);
     } else {
       // No folded batch to read (defensive: a warm-closure first render).
-      // One standalone load, still once per engine.
-      void this.fetcher.codenames.ensureLoaded();
+      // One standalone load, still once per engine. Awaited (was `void`)
+      // so the peekId reads below see a populated codehash — the `void`
+      // branch could race with peekId on a warm-closure first render and
+      // leave ruleTypeIds fully undefined, breaking the per-type
+      // down-stream lookup.
+      await this.fetcher.codenames.ensureLoaded();
     }
     this.ruleTypeIds = {
       setting: this.fetcher.codenames.peekId("setting"),

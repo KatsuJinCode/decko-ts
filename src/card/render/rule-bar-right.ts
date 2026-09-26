@@ -128,6 +128,25 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
   // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
   // cards render the literal dbContent (raw oracle: *all+*layout).
   if (isPointerOrListCard(card)) {
+    // card-mod-permissions-0.20.0 set/abstract/permission.rb:98-105
+    // `core_inherit_content`: when a permission rule (right is one of
+    // *create / *read / *update / *delete) carries the magic content
+    // "_left", Ruby renders the bar_right as
+    // `<span class="inherit-perm">Inherit from left card</span>` — the
+    // pointer list of explicit names is replaced with the inheritance
+    // marker (the upstream left card's permission verdict wins). Pinned
+    // at recapture-raw:*read:render:open:_all_plus+Xread where the
+    // bar_right body shows exactly this span. Emitted ahead of the
+    // pointerListOneLineContent branch because that branch would
+    // otherwise render an empty pointer-list wrapper (raw items = []
+    // for dbContent "_left" — that string isn't a comma-separated
+    // item list).
+    if (
+      card.dbContent === "_left" &&
+      isPermissionRightSetting(rightSetting)
+    ) {
+      return `<span class="inherit-perm">Inherit from left card</span>`;
+    }
     if (isPermissionRightSetting(rightSetting)) {
       return pointerListOneLineContent(card);
     }

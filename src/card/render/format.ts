@@ -580,7 +580,16 @@ export class RenderFormat {
   }
 
   /** nesting.rb#implicit_nest_view -> default_nest_view (html.rb:17-19 ->
-   *  Cardio.config.default_html_view = :titled, mod/format.rb:2). */
+   *  Cardio.config.default_html_view = :titled, mod/format.rb:2). The raw
+   *  recapture oracle (tmp/raw-ground-truth/expected/recapture-raw-shard-*
+   *  .jsonl, e.g. id 2928 — outer "Ms Paula writing poetry and other
+   *  creations" with bare nest {{Paula Craig+musings}} — the inner slot
+   *  renders id="paula_craig-musing-titled-view" with the d0-card-header
+   *  structure, NOT content-view) confirms Ruby renders bare-nest children
+   *  as titled. The captured fixtures (fixtures/captured/smoke.json
+   *  Oracle Rich+rich_child; fixtures/corpus/shard-000014.jsonl
+   *  corpus:19334 almrctncpf+fsxqechglhqd+fmassslzrfd) are consistent
+   *  with that. */
   defaultNestView(): string {
     return "titled";
   }
@@ -620,13 +629,22 @@ export class RenderFormat {
 
   /** content.rb#process_content: chunks the content, yields the literals,
    *  processes the references (nests) in place. Literal bytes pass through
-   *  unchanged (Card::Content#to_s). */
+   *  unchanged (Card::Content#to_s).
+   *
+   *  Wiki-link expansion: text pieces are scanned for `[[Target]]` /
+   *  `[[Target|label]]` and rewritten to
+   *  `<a class="known-card" href="/Target"><span class="card-title"
+   *  title="Target">label-or-Target</span></a>` — the origin bridge
+   *  previously injected this shape client-side; the engine now
+   *  emits it directly so the bridge can retire. Pinned by
+   *  recapture-raw:*read:render:content where `[[Anyone]]` and
+   *  `[[Anyone|Anyone Signed In]]` both appear. */
   processContent(content: string): string {
     const pieces = scanNests(content);
     let out = "";
     for (const piece of pieces) {
       if (piece.kind === "text") {
-        out += piece.text;
+        out += expandWikiLinks(piece.text);
       } else if (piece.nest !== undefined) {
         out += this.nest(piece.nest);
       }
@@ -762,6 +780,35 @@ export interface RenderEngineLike {
    *  missing-setting rows fall through to quietDenial (the pre-fix
    *  behavior, deep-read-rule-deny cluster 14). */
   findSettingCard?(codename: string): RenderCard | undefined;
+  /** card-mod-rules set/type/setting.rb#set_classes_with_rules: for a
+   *  setting-type card (e.g. *read, *create, *update), group the rules
+   *  whose right part is this setting by the LEFT pattern class
+   *  (*all / *all_plus / *type / *right / *type_plus_right / *self),
+   *  and mark each group anchorless when its pattern is unanchored
+   *  (the *all and *all_plus classes). Drives the setting card's
+   *  :core view (setting.rb:39-55): for each class with rules, emit
+   *  `<p><h5>${klass.generic_label.downcase}</h5>` followed by the
+   *  per-rule bar nest (or just `rules.first` view `:bar` with
+   *  `show: [:full_name]` for the anchorless cases, where Ruby
+   *  collapses the per-pattern group into a single full-name row).
+   *  Optional; engines without it fall through to the raw-content
+   *  dump (the pre-round-8 shape, the 3,612-line *read oracle ->
+   *  empty content-view gap). */
+  setClassesWithRules?(host: RenderCard): SettingClassWithRules[];
+}
+
+/** One (klass, rules, anchorless) row of the setting-page rule
+ *  classification. The `klass` is the PatternSpec from
+ *  src/card/set-patterns/registry.ts; `rules` is the prepared cards
+ *  whose right part equals the host setting and whose left part is the
+ *  klass's patternCardName (e.g. for *read: rules with rightName "*read"
+ *  and leftName "*all" / "*all plus" / "*type" / "*right" / "*type plus
+ *  right" / "*self"); `anchorless` is true when the pattern ships no
+ *  anchor_name (i.e. it's the *all / *all_plus shape). */
+export interface SettingClassWithRules {
+  klass: import("../set-patterns/registry.js").PatternSpec;
+  rules: RenderCard[];
+  anchorless: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -850,3 +897,34 @@ const COMMON_SETTINGS: ReadonlySet<string> = new Set([
 const FIELD_SETTINGS: ReadonlySet<string> = new Set([
   "default", "help", "input_type", "content_options", "content_option_view",
 ]);
+
+// ---------------------------------------------------------------------------
+// Wiki-link expansion ([[Target]] / [[Target|label]]) — the format/content
+// pass that translates Markdown-style wiki-links into the same known-card
+// anchor shape the origin bridge used to inject client-side. We emit the
+// anchor directly from the engine so the bridge can retire.
+// ---------------------------------------------------------------------------
+
+/** card-mod-format set/all/content/chunk/reference.rb wiki-link pass:
+ *  `[[Target]]` and `[[Target|label]]` both become
+ *  `<a class="known-card" href="/Target"><span class="card-title"
+ *  title="Target">label-or-Target</span></a>`. Backslash escaping
+ *  (`\[\[`) is honored so a literal `[[` survives when the author
+ *  means the markdown brackets and not a card link. */
+const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
+
+function expandWikiLinks(text: string): string {
+  return text.replace(WIKI_LINK_REGEXP, (match, target: string, label: string | undefined) => {
+    if (match.startsWith("\\")) {
+      // Escaped wiki-link: drop the backslash, keep the literal brackets.
+      return `[[${label !== undefined ? `${target}|${label}` : target}]]`;
+    }
+    const targetEscaped = h(target.trim());
+    const displayText = h((label ?? target).trim());
+    return (
+      `<a class="known-card" href="/${targetEscaped}">` +
+      `<span class="card-title" title="${targetEscaped}">${displayText}</span>` +
+      `</a>`
+    );
+  });
+}

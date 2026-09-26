@@ -36,7 +36,7 @@
 
 import { DeckoName } from "../name.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
-import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "./format.js";
+import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn } from "./format.js";
 import {
   isPointerOrListCard,
   isRuleCardWithPermissionRight,
@@ -262,6 +262,22 @@ const coreView: ViewFn = (ctx) => {
     // content view delegates to core, set/type/set.rb + html/views.rb).
     return setRulesCoreHtml(ctx);
   }
+  // card-mod-rules-0.20.0 set/type/setting.rb:39-55 view :core — the
+  // setting cardtype's core opens with the rule_help alert (a nested
+  // *all+<setting> rule_help view), then the
+  // `<h3>All #{card.name.tr "*", ""} rules that apply to</h3>` header,
+  // then per-pattern-class blocks `<p><h5>klass.generic_label.downcase</h5>`
+  // with the rule bar nested inside (collapse to `rules.first` view
+  // `:bar` with `show: [:full_name]` for the anchorless classes — *all
+  // and *all_plus — so the rendered row carries the full left-name,
+  // not the bar_left compact one). Pinned at recapture-raw:*read
+  // :render:open (the 3,612-line rule listings family; cluster
+  // nested-listings in round 8 spec). Without this branch the engine
+  // falls through to `fmt.processContent(fmt.renderRaw())` and emits
+  // an empty content-view — the "empty body, full oracle" gap.
+  if (fmt.card.typeCode === "setting" || fmt.card.typeName === "Setting") {
+    return settingCoreHtml(ctx);
+  }
   // Match by codename (card-mod-date type card's codehash has codename
   // "date"); see coreView Search-gate comment for the parallel. The
   // corpus date cards (id=1135 "evog+*right+*default", etc.) have type
@@ -321,7 +337,12 @@ const coreView: ViewFn = (ctx) => {
   // "image"); keep typeName === "Image" as a fallback for fixture
   // decks that name the image type card conventionally.
   if (fmt.card.typeCode === "image" || fmt.card.typeName === "Image") {
-    return formatImageCore(fmt.card.dbContent);
+    return formatImageCore(
+      fmt.card.dbContent,
+      fmt.card.id,
+      fmt.card.name.s,
+      fmt.voo?.opts.size,
+    );
   }
   // The File cardtype's :core (card-mod-carrierwave set/type/file.rb:24-28
   // view :core + set/type/file/core.haml:1): the content resolves to an
@@ -404,28 +425,74 @@ export function formatDateCore(content: string): string {
  *  image-nested titled-view d0-card-body. Without this helper the
  *  engine emits the raw dbContent as visible text inside the slot
  *  wrapper (the "name-leak" family). */
-export function formatImageCore(content: string | null | undefined): string {
+export function formatImageCore(
+  content: string | null | undefined,
+  cardId?: number,
+  cardName?: string,
+  sizeOpt?: unknown,
+): string {
   if (content === null || content === undefined || content === "") return "";
+  const trimmed = content.trim();
   // Match Ruby's image-source shape: http(s)://, /-rooted path, data:,
   // mailto: (image-source — link to a mail address renders an <img>
   // with src=mailto: in the Ruby cardtype too — uncommon but kept for
   // parity), or an extension-bearing relative path.
   if (
-    content.startsWith("http://") ||
-    content.startsWith("https://") ||
-    content.startsWith("/") ||
-    content.startsWith("data:") ||
-    content.startsWith("mailto:")
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("mailto:")
   ) {
     // `<img src="..." alt="">` — alt="" matches Ruby's
     // image_tag default; the deck's app config can supply an
     // alt override via a future mod hook.
-    return `<img src="${h(content)}" alt="">`;
+    return `<img src="${h(trimmed)}" alt="">`;
+  }
+  // Carrierwave storage: (bucket)/<id>/<action>.<ext> (cloud) and
+  // ~<id>/<action>.<ext> (local) and :codename/<mod>.<ext> (coded)
+  // are the four file-output shapes the image cardtype renders.
+  // Ruby (card-mod-carrierwave set/type/image.rb:30-37 def source)
+  // resolves them via contextualize_path; we mirror the resolution
+  // and append the size variant suffix for the `/files/...` form.
+  // Pinned by recapture-raw:Wikirate+image:render:open (oracle
+  // emits <img src="/files/<id>/<action>-medium.<ext>" alt="...">).
+  if (trimmed.startsWith("(") && cardId !== undefined) {
+    // cloud: keep the absolute bucket URL — no size variant
+    return `<img src="${h(trimmed)}" alt="${h(cardName ?? "")}">`;
+  }
+  if (trimmed.startsWith("~")) {
+    // local: ~/card_id/action_id.ext -> /files/card_id/action_id(-size).ext
+    const path = trimmed.replace(/^~/, "");
+    const sized = appendSizeVariant(path, sizeOpt);
+    return `<img src="/files/${h(sized)}" alt="${h(cardName ?? "")}">`;
+  }
+  if (trimmed.startsWith(":")) {
+    // coded: :codename/mod_name.ext -> /files/codename.mod_name(-size).ext
+    const path = trimmed.replace(/^:/, "").replace(/\//g, ".");
+    const sized = appendSizeVariant(path, sizeOpt);
+    return `<img src="/files/${h(sized)}" alt="${h(cardName ?? "")}">`;
   }
   // Non-image source — return empty to match the captured oracle
   // shape for the corpus (and Ruby's behavior for any cardtype-
   // mismatched content).
   return "";
+}
+
+/** Append the carrierwave variant suffix before the extension.
+ *  card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:88-117
+ *  pins the variant position: `<base>(-<size>).<ext>`. Size defaults
+ *  to "medium" for image renders when :size is unset (matches the
+ *  preview view which forces size=medium, image.rb:18-20 view
+ *  :one_line_content passes size: :icon, and the core view renders
+ *  the original when size is absent — we follow the carrierwave
+ *  default of the original when no size is requested). */
+function appendSizeVariant(path: string, sizeOpt: unknown): string {
+  if (sizeOpt === undefined || sizeOpt === null || sizeOpt === "") return path;
+  const size = String(sizeOpt);
+  const dot = path.lastIndexOf(".");
+  if (dot === -1) return `${path}-${size}`;
+  return `${path.slice(0, dot)}-${size}${path.slice(dot)}`;
 }
 
 /** card-mod-carrierwave set/type/file.rb:24-28 `view :core` +
@@ -491,6 +558,69 @@ function setRulesCoreHtml(ctx: ViewContext): string {
   const rules = collectSetRules(fmt);
   const accordion = renderCategoryAccordion(fmt, card, rules);
   return `<h4 class="mt-3">Rules</h4>\n${settingsFilter}\n${accordion}`;
+}
+
+/** card-mod-rules-0.20.0 set/type/setting.rb:39-55 + set/type/setting/
+ *  core.haml:1-12 view :core — the SETTING cardtype's body: rule_help
+ *  alert + `<h3>All N rules that apply to</h3>` (N = the setting name
+ *  with `*` stripped) + a per-pattern-class block whose `<h5>` carries
+ *  the generic_label.downcase and whose body nests the rule(s) for
+ *  that class. The anchorless classes (*all, *all_plus) collapse to a
+ *  single `rules.first` view `:bar` with `show: [:full_name]` so the
+ *  rendered row carries the full left-name (the bar_right pointer-list
+ *  path stays as it would for an anchored row); the anchored classes
+ *  (*type, *right, *type_plus_right, *self) iterate each rule view
+ *  `:bar`. */
+function settingCoreHtml(ctx: ViewContext): string {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  // Setting name without the leading "*" (setting.rb:42
+  // `card.name.tr("*", "")`) — Ruby's tr strips every asterisk, not
+  // just the prefix; the capture pins "read" / "create" / "update" /
+  // "delete" for the four permission settings, and other settings
+  // (default / structure / autoname) the same way.
+  const settingName = card.name.s.replace(/\*/g, "");
+  let body = "";
+  // Rule-help alert (setting.rb:41-43 nests the *all rule card's
+  // :rule_help view — the ruleHelpView dispatches to setting cards and
+  // nests *all+<setting> for them, card-mod-rules.ts:300-308). The
+  // alert body renders a fetch miss as "" (the unknown-view :rule_help
+  // substitutes :unknown which renders ""), so an absent *all+<setting>
+  // is a silent blank rather than a raise.
+  const ruleHelp = fmt.renderView("rule_help");
+  if (ruleHelp !== "") {
+    body += `${ruleHelp}\n`;
+  }
+  body += `<h3>All ${settingName} rules that apply to</h3>\n`;
+  const classes = fmt.engine.setClassesWithRules?.(card) ?? [];
+  for (const cls of classes) {
+    const heading = cls.klass.genericLabel();
+    body += `<p><h5>${h(heading.toLowerCase())}</h5>`;
+    if (cls.anchorless) {
+      // Anchorless: collapse the per-class group to ONE bar with the
+      // full left name (Ruby: anchorless? rows render once with
+      // show: :full_name; otherwise the per-rule nesting repeats the
+      // generic label for every row, which the oracle never does).
+      const rule = cls.rules[0];
+      if (rule !== undefined) {
+        body += fmt.nestRecord(rule, "bar", {
+          nest_name: rule.name.s,
+          show: ["bar", "full_name"],
+          home_view: "bar",
+        });
+      }
+    } else {
+      for (const rule of cls.rules) {
+        body += fmt.nestRecord(rule, "bar", {
+          nest_name: rule.name.s,
+          show: ["bar"],
+          home_view: "bar",
+        });
+      }
+    }
+    body += `</p>\n`;
+  }
+  return body;
 }
 
 /** setting_filter.rb:9-18 setting_filter + form_tag. The form_tag emits
@@ -641,8 +771,12 @@ function quietDenial(task: string): string {
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
  *  :45-54). Ruby's category_accordion iterates these in order; the captured
  *  oracle pins every group with the set's rules, even those with zero
- *  rules (the "0" count badge). */
-const SETTING_GROUPS: ReadonlyArray<string> = [
+ *  rules (the "0" count badge). Exported for the engine's prepare-phase
+ *  virtual-rule verdict pre-population (render.ts#preloadVirtualRuleVerdicts
+ *  mirrors views.ts#renderSettingListItems' iteration so every (setCard,
+ *  settingCodename) pair the sync view path constructs gets a verdict
+ *  before the view fn reads it). */
+export const SETTING_GROUPS: ReadonlyArray<string> = [
   "templating",
   "permission",
   "webpage",
@@ -704,8 +838,9 @@ const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
  *  set_position, group.rb:101-110). Captured oracle bytes pin this
  *  per-group ordering (corpus:268 templating: autoname, default,
  *  structure — the body interleaves denials and the rule at *default's
- *  position). */
-const GROUP_TO_SETTINGS: Readonly<Record<string, ReadonlyArray<string>>> = {
+ *  position). Exported for the engine's prepare-phase virtual-rule
+ *  verdict pre-population (see SETTING_GROUPS above). */
+export const GROUP_TO_SETTINGS: Readonly<Record<string, ReadonlyArray<string>>> = {
   templating: ["autoname", "default", "structure"],
   permission: ["create", "read", "update", "delete", "captcha"],
   webpage: ["head", "layout", "style", "script"],

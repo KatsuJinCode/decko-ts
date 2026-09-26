@@ -25,6 +25,69 @@ import type { RenderCard } from "./format.js";
 import { DeckoName } from "../name.js";
 import { safeSetKeys } from "./set-keys.js";
 
+/** The canonical rule card TYPE per setting, as Ruby's structure-rule
+ *  walk resolves it (mod/core/set/all/templating.rb#structure +
+ *  #structure_rule_card: the rule card's own type_id is what the *type+
+ *  *default rule template lookup yields for each setting's virtual
+ *  rule card). Round-7's port stamped virtuals with the SETTING CARD's
+ *  type (Setting, id 278) — that's wrong: the SETTING cards are all
+ *  type=Setting universally, but the rule cards that *all+X renders in
+ *  the corpus carry the setting-specific types below (verified against
+ *  recapture-raw-shard-000000.jsonl `Xall-X<setting>-bar-view` slot
+ *  attrs — e.g. *all+*autoname -> id=52 name=Phrase, *all+*captcha ->
+ *  id=51 name=Toggle, *all+*read -> id=47 name=List, etc.).
+ *
+ *  The map covers every setting the SETTING_GROUPS list iterates;
+ *  settings without a corpus *all+X virtual rule entry (default,
+ *  structure, content_options, content_option_view) keep the
+ *  settingCard.typeId fallback in buildVirtualRuleCard (the original
+ *  pre-fix path) — those settings don't surface virtual rule cards on
+ *  the corpus's set pages, so the divergence doesn't surface either.
+ *
+ *  CLUSTER 2 (tiny-render-type-plus-right-rule-card): fixing the
+ *  type_id/type_name divergence above closes this family. The bar-right
+ *  content also picked up the wrong TYPE- class fragment (`TYPE-setting`
+ *  vs the corpus's `TYPE-list`/`TYPE-pointer`/`TYPE-toggle`/...), so
+ *  the `safeSetKeys` call below must read the canonical typeName, not
+ *  the SETTING card's "Setting". */
+const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: string; typeCode: string }> = new Map<string, { typeId: number; typeName: string; typeCode: string }>([
+  // templating
+  ["autoname", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
+  // permission
+  ["create", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["read", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["update", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["delete", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["captcha", { typeId: 51, typeName: "Toggle", typeCode: "toggle" }],
+  // webpage
+  ["head", { typeId: 50, typeName: "HTML", typeCode: "html" }],
+  ["layout", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["style", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["script", { typeId: 47, typeName: "List", typeCode: "list" }],
+  // editing
+  ["help", { typeId: 3, typeName: "RichText", typeCode: "rich_text" }],
+  ["input_type", { typeId: 34843, typeName: "Pointer", typeCode: "pointer" }],
+  ["guide", { typeId: 34753, typeName: "Markdown", typeCode: "markdown" }],
+  // event
+  ["on_create", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["on_update", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["on_delete", { typeId: 47, typeName: "List", typeCode: "list" }],
+  // other
+  ["thanks", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
+  ["follow_fields", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["follow", { typeId: 47, typeName: "List", typeCode: "list" }],
+]);
+
+/** The canonical rule card type for a setting's virtual rule card, or
+ *  undefined when the setting has no corpus-derived entry (default,
+ *  structure, content_options, content_option_view). The caller falls
+ *  back to the SETTING card's type for the latter — the divergence
+ *  only matters for settings whose *all+X virtual surfaces in the
+ *  captured corpus. */
+function ruleTypeForSetting(settingCodename: string): { typeId: number; typeName: string; typeCode: string } | undefined {
+  return RULE_TYPE_BY_SETTING.get(settingCodename);
+}
+
 /** The setting card the virtual child points at - the engine prefetches
  *  every setting (autoname, default, ..., follow) via
  *  preloadAllSettingCards; an absent setting card means the deck has no
@@ -68,15 +131,20 @@ export interface VirtualRuleCardInputs {
  *
  *  Type resolution: the virtual card's TYPE in Ruby's render is resolved
  *  through a structure-rule walk (the rule's `*captcha+*right+*follow+
- *  *type+*default` lookup). The TS engine has no structure-rule walk
- *  for virtual cards; we pass through the SETTING CARD'S type_id as a
- *  best-effort fallback. The byte divergence in data-card-type-id /
- *  data-card-type-name attrs and the bar-right content is the cost of
- *  not implementing the full walk - the structural fix (denied-span ->
- *  real bar) is the round's lever and is independent of the type
- *  resolution. The SETTING card's type is universally `Setting` in the
- *  corpus (id 278), so the divergence is contained to one type_id attr
- *  per virtual slot. */
+ *  *type+*default` lookup). The TS engine resolves the same per-setting
+ *  type via the corpus-derived RULE_TYPE_BY_SETTING map at the top of
+ *  this file (the *all+*<setting> virtual rule bars in
+ *  tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl pin
+ *  id=47/List for permission rules, id=51/Toggle for captcha,
+ *  id=34843/Pointer for input_type, etc.). Settings without a corpus
+ *  entry (default/structure/content_options/content_option_view) fall
+ *  through to the SETTING card's type — those settings don't surface
+ *  virtual rule bars on the corpus's set pages, so the divergence
+ *  doesn't surface there either. CLUSTER 2 (tiny-render-type-plus-right-
+ *  rule-card): the corpus's `data-card-type-id` / `data-card-type-name`
+ *  attrs and the slot's `TYPE-<name>` class fragment both read from
+ *  these values; the pre-fix `Setting`/278 stamp made every virtual
+ *  rule bar mis-type. */
 export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard {
   const { setCard, settingCard, settingCodename } = inputs;
   // set.name.s + "+" + "*" + setting's display codename. The bare
@@ -88,6 +156,20 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // machinery, format.ts#resolveNestName).
   const compoundName = `${setCard.name.s}+*${settingCodename}`;
   const name = DeckoName.parse(compoundName);
+  // Type resolution: the virtual rule card's TYPE in Ruby's render is
+  // resolved through the structure-rule walk (mod/core/set/all/templating
+  // .rb#structure + #structure_rule_card: the *type+*default rule
+  // template lookup yields the rule card's own type_id). The corpus
+  // pins this per setting (RULE_TYPE_BY_SETTING above; verified
+  // against recapture-raw-shard-000000.jsonl). For settings without
+  // a corpus entry (default/structure/content_options/content_option
+  // _view), fall back to the SETTING card's type — the divergence
+  // doesn't surface for those because their *all+X virtual rule bars
+  // don't appear in the captured corpus.
+  const ruleType = ruleTypeForSetting(settingCodename);
+  const typeId = ruleType?.typeId ?? settingCard.typeId;
+  const typeName = ruleType?.typeName ?? settingCard.typeName;
+  const typeCode = ruleType?.typeCode ?? settingCard.typeCode;
   // left/right id wiring: the rule card's record points at the set
   // (left_id) and the setting (right_id). Records use the underlying
   // CardRecord shape so the engine's left-id lookup is consistent with
@@ -99,7 +181,7 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
     codename: undefined,
     leftId: setCard.id,
     rightId: settingCard.id,
-    typeId: settingCard.typeId,
+    typeId,
     dbContent: settingCard.dbContent,
     trash: false,
     creatorId: undefined,
@@ -120,10 +202,14 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // enrichAndStore builds for stored children (the typeId + leftTypeName
   // + isRule triple). The bare RULE token is in the result because the
   // *rule pattern applies (right part is a setting, left part is a set).
+  // The TYPE- fragment is built from typeName (TYPE-<name>), so it MUST
+  // be the canonical per-setting typeName (List/Toggle/Pointer/...) —
+  // not "Setting" — otherwise the slot's class chain reads TYPE-setting
+  // instead of the corpus's TYPE-list/TYPE-toggle/TYPE-pointer/etc.
   const setKeys = safeSetKeys({
     name,
-    typeId: settingCard.typeId,
-    typeName: settingCard.typeName,
+    typeId,
+    typeName,
     leftTypeName: setCard.typeName,
     isRule: true,
   });
@@ -131,9 +217,9 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
     record,
     name,
     key: name.key,
-    typeName: settingCard.typeName,
-    typeId: settingCard.typeId,
-    typeCode: settingCard.typeCode,
+    typeName,
+    typeId,
+    typeCode,
     id: undefined,
     dbContent: settingCard.dbContent,
     setKeys,
