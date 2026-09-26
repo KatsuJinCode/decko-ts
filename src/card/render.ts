@@ -1195,6 +1195,55 @@ export class RenderEngine implements RenderEngineLike {
    * hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
+  /**
+   * The PatternCardInput the read-verdict walk receives. The *type plus
+   * right pattern's anchor composes from the LEFT side's type name
+   * (registry.ts type_plus_right anchorName: `${leftType}+${tag}` — Ruby's
+   * superleft&.type_name), so a compound card's candidate rule names are
+   * only correct when leftTypeName rides along. The pre-fix inputs omitted
+   * it: the anchor fell back to "RichText+<tag>" (the quick_type default)
+   * and the walk skipped past the deck's actual *type plus right read rule
+   * to the *all plus / *all catch-all — the fail-open that leaked
+   * "+Source Content" bodies to anonymous (trace tenth-item-trace.md
+   * bug 3; corpus rule 34568 = "Source+Source Content+*type plus
+   * right+*read" -> "Anyone Signed In").
+   *
+   * leftTypeName resolves from the render-card map first (the prefetch
+   * walk enriched the sides of every closure card — cache hit); an
+   * un-enriched left (a search result's left side arriving through
+   * canReadCard) rides the same fetch+enrich structurePatternInputFor
+   * does. All fetches are cache-first, so warm verdicts stay zero-query.
+   */
+  private async verdictPatternInput(
+    name: DeckoName,
+    id: number | undefined,
+    typeId: number | undefined,
+    typeName: string | undefined,
+  ): Promise<PatternCardInput> {
+    let leftTypeName: string | undefined;
+    if (name.isCompound) {
+      const leftKey = name.leftName?.key;
+      if (leftKey !== undefined) {
+        const leftCard = this.renderCards.get(leftKey);
+        if (leftCard !== undefined) {
+          leftTypeName = leftCard.typeName;
+        } else {
+          const leftRecord = await this.fetcher.fetchByKey(leftKey);
+          if (leftRecord !== undefined) {
+            leftTypeName = (await this.enrichAndStore(leftRecord)).typeName;
+          }
+        }
+      }
+    }
+    return {
+      name,
+      id,
+      typeId,
+      ...(typeName !== undefined ? { typeName } : {}),
+      ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+    };
+  }
+
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;
@@ -1208,7 +1257,7 @@ export class RenderEngine implements RenderEngineLike {
         if (this.deniedVerdictsByKey.has(card.key)) continue;
         const byRule = await canReadByRuleLookup(
           this.fetcher,
-          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+          await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
           state,
         );
         this.deniedVerdictsByKey.set(card.key, byRule === false);
@@ -1238,7 +1287,7 @@ export class RenderEngine implements RenderEngineLike {
         }
         const byRule = await canReadByRuleLookup(
           this.fetcher,
-          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+          await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
           state,
         );
         if (byRule === true) {
@@ -1253,7 +1302,7 @@ export class RenderEngine implements RenderEngineLike {
       }
       const byRule = await canReadByRuleLookup(
         this.fetcher,
-        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+        await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
         state,
       );
       this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
@@ -1311,12 +1360,7 @@ export class RenderEngine implements RenderEngineLike {
         const byRule = record.name
           ? await canReadByRuleLookup(
               this.fetcher,
-              {
-                name: record.name,
-                id: record.id,
-                typeId: record.typeId,
-                ...(typeName !== undefined ? { typeName } : {}),
-              },
+              await this.verdictPatternInput(record.name, record.id, record.typeId, typeName),
               state,
             )
           : false; // a name-less record has no rule candidates
@@ -1330,12 +1374,7 @@ export class RenderEngine implements RenderEngineLike {
       const byRule = record.name
         ? await canReadByRuleLookup(
             this.fetcher,
-            {
-              name: record.name,
-              id: record.id,
-              typeId: record.typeId,
-              ...(typeName !== undefined ? { typeName } : {}),
-            },
+            await this.verdictPatternInput(record.name, record.id, record.typeId, typeName),
             state,
           )
         : true; // a name-less record has no rule candidates (not a real card)
@@ -1579,12 +1618,7 @@ export class RenderEngine implements RenderEngineLike {
         if (this.deniedVerdictsByKey.has(name.key)) continue;
         const byRule = await canReadByRuleLookup(
           this.fetcher,
-          {
-            name,
-            id: undefined,
-            typeId: settingCard.typeId,
-            typeName: settingCard.typeName,
-          },
+          await this.verdictPatternInput(name, undefined, settingCard.typeId, settingCard.typeName),
           state,
         );
         this.deniedVerdictsByKey.set(name.key, byRule === false);
@@ -2377,6 +2411,17 @@ export class RenderEngine implements RenderEngineLike {
     let rows: CardsRow[];
     try {
       const result = await executeQuery(this.fetcher.driver, statement as Record<string, unknown>, {
+        // The viewer's read-permission filter rides the SQL
+        // (implicitConditions' `read_rule_id IN (...)` — cqlPermissionOptions
+        // is the same seam the /api/query path uses, never a parallel
+        // system). This is Ruby's ordering: Card::Query applies the current
+        // user's read rules at the relation level (Where#
+        // permission_conditions) BEFORE limit_and_offset closes the window,
+        // so an unreadable card never occupies a result slot. The pre-fix
+        // permissionless search let a denied card consume slot 2 of the
+        // corpus news listing and pushed readable rank-11 out of the LIMIT 9
+        // window entirely (trace tenth-item-trace.md bug 1).
+        ...(await this.cqlPermissionOptions()),
         parse: {
           // sync resolver over the prefetched id map (module doc)
           resolveCardId: (nameish: string) => this.idsByKey.get(DeckoName.parse(nameish).key),
@@ -2389,7 +2434,23 @@ export class RenderEngine implements RenderEngineLike {
     const items: RenderCard[] = [];
     for (const row of rows) {
       const record = await this.fetcher.fetchById(row.id);
-      if (record === undefined || record.name === undefined) continue;
+      if (record === undefined) continue;
+      // Defense in depth (the listing slot AND the body must both deny):
+      // the SQL filter excludes stored read_rule_id denials, but rows whose
+      // verdict resolves through the live rule walk (read_rule_id-less rows,
+      // rule walk deny) are invisible to it. Re-check through the SAME
+      // verdict machinery the render gate reads (canReadCard memoizes into
+      // deniedVerdicts, so ensureVerdicts' skip-if-set pass never
+      // re-judges). A denied row never becomes an item, so the limit counts
+      // post-filter — no denied placeholder, no backfill gap.
+      if (!(await this.canReadCard(record))) continue;
+      // Render-precondition guard, NOT permission: a row whose junction
+      // name cannot compose (dangling side ids; no real corpus row — the
+      // composition is lexicon-recursive and resolves every real junction)
+      // has no name to render, link, or key a slot with. Ruby never
+      // view-renders a nameless card (fetch returns nil); skipping mirrors
+      // that instead of crashing the listing.
+      if (record.name === undefined) continue;
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
     }
