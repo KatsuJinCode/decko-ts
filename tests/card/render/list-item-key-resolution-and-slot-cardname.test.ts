@@ -137,12 +137,20 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       expect(html).toContain('data-card-name="Host Person+video"');
       expect(html).not.toContain("Host Person+videos");
       // A real card's slot, not the phantom: the phantom's pinned type
-      // (swtktey/22281) must be gone, and the mini_bar slot id carries
-      // the resolved safeKey (swapBarSlotToMiniBar now matches on the
-      // resolved card's safeKey, not the authored line).
+      // (swtktey/22281) must be gone. Merged semantics (lane-deferred):
+      // the item slot shape is READ-DENIAL-gated — a READABLE item keeps
+      // the `bar-view` slot nestRecord produced, with the resolved
+      // card's data-card-id (both oracles: corpus v2 229/229 mini_bar
+      // slots wrap read-DENIED items while readable items keep bar-view;
+      // live Aikido_Oak_Cliff.html likewise). The retired unconditional
+      // swap's safeKey concern survives in the bar-view id: it is built
+      // from the RESOLVED card ("...+video"), never the authored
+      // "+videos" line.
       expect(html).not.toContain("swtktey");
-      expect(html).toContain('id="host_person-video-mini_bar-view"');
-      expect(html).toContain('class="card-slot mini_bar-view');
+      expect(html).toContain(`id="host_person-video-bar-view"`);
+      expect(html).toMatch(/class="card-slot bar-view [^"]*"/);
+      expect(html).not.toContain('id="host_person-video-mini_bar-view"');
+      expect(html).toContain(`data-card-id="${ITEM_JUNCTION_ID}"`);
     },
   );
 
@@ -165,6 +173,20 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
         readRuleId: WIDE_READ_RULE_ID,
         readRuleClass: "*all",
       });
+      // The shared shard universe seeds the deck's `*all+*default html
+      // view` rule (22769) with its ANONYMIZED value ("fnvmwmg" — the
+      // corpus anonymizer tokenized the rule's phrase content, and no
+      // such view exists in any engine registry, so a bare nest would
+      // throw UnsupportedViewError). The production deck's rule value is
+      // "content" — round 10 live-verified on all 12 captured pages
+      // (format.ts#defaultNestView docstring). Pin the production value
+      // so the bare nest resolves the deck rule to the content view
+      // exactly as the live wire does, and the test exercises what it
+      // exists for: the nested host's prepare-phase item pre-enrich.
+      await storage.counting.query(
+        "UPDATE cards SET db_content = 'content' WHERE id = 22769 AND key = '*all+*default_html_view'",
+        [],
+      );
       const html = await storage.engine.render("Person Page", "open");
       expect(html).toContain('data-card-name="Host Person+video"');
       expect(html).not.toContain("Host Person+videos");

@@ -287,16 +287,27 @@ export function pointerListItemSlot(item: RenderCard, inner: string): string {
  *  for the pointer/list path we sidestep that gate by building the slot
  *  wrap directly via pointerListItemSlot and rendering the denied body
  *  here. */
-export function pointerListItemBodyForUnknown(name: string): string {
+export function pointerListItemBodyForUnknown(
+  name: string,
+  identity?: { setKeys?: string; typeName?: string; typeId?: number },
+): string {
+  // Defaults preserve the corpus's phantom-item bytes (every captured
+  // denied pointer/list item is swtktey-typed, PHANTOM_TYPE_* above).
+  // The identity override lets the read-denied KNOWN-item path emit the
+  // fetched card's real set keys / type attrs (the slot + body shapes
+  // are identical; only the identity tokens differ).
+  const setKeys = identity?.setKeys ?? `ALL TYPE-${PHANTOM_TYPE_NAME}`;
+  const typeName = identity?.typeName ?? PHANTOM_TYPE_NAME;
+  const typeId = identity?.typeId ?? PHANTOM_TYPE_ID;
   const safeName = h(name);
   const dataAttrs =
     ` data-card-link-name='${safeName}'` +
     ` data-card-name='${safeName}'` +
-    ` data-card-type-id='${PHANTOM_TYPE_ID}'` +
-    ` data-card-type-name='${PHANTOM_TYPE_NAME}'` +
+    ` data-card-type-id='${typeId}'` +
+    ` data-card-type-name='${h(typeName)}'` +
     ` data-slot-id="RANDOMIZED"`;
   return (
-    `<div class='bar ALL TYPE-${PHANTOM_TYPE_NAME} with-bar-menu nodblclick d-flex _card-link'${dataAttrs}>\n` +
+    `<div class='bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link'${dataAttrs}>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `</div>\n`

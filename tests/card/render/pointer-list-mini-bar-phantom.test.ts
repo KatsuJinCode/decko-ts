@@ -59,21 +59,21 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // wrapper emits.
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(6551);
-      baseIds.add(6568);
+      baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9010,
         name: "irjkznnbpewjpr",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       await seedCard(storage, {
         id: 9011,
         name: "wautvrx",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       const html = await storage.engine.render("*star+*create", "content");
       // The outer wrapper must be the simple one — NOT the full prefix.
@@ -97,14 +97,14 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // branch to keep the rule from over-firing.
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(275);
-      baseIds.add(6568);
+      baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9012,
         name: "bifaarykabanhm",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       const html = await storage.engine.render("*all+*layout", "content");
       // Full prefix is correct here — the captured oracle for *layout
@@ -124,14 +124,14 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(77);
       baseIds.add(34843);
-      baseIds.add(6568);
+      baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9013,
         name: "yzzw",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       const html = await storage.engine.render("*home", "content");
       expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
@@ -151,7 +151,7 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(77);
       baseIds.add(34843);
-      baseIds.add(6568);
+      baseIds.add(22283);
       // Note: no yzzw seed.
       storage = await createStructureSeededStorageFor(baseIds);
       const html = await storage.engine.render("*home", "content");

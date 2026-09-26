@@ -499,6 +499,18 @@ export class RenderEngine implements RenderEngineLike {
     // pointer/list hosts. Termination is structural — enrichAndStore
     // skips existing keys, so renderCards only grows.
     await this.enrichPointerListItemsClosure();
+    // The items enriched above land AFTER both ensureVerdicts passes
+    // (the main pass and the help-rules re-pass), so their card.ids
+    // have no entry in deniedVerdicts and isDenied() returns
+    // gate-open false — the sync render path then renders every item
+    // bar at full body even when the corpus's captured bytes carry
+    // the `<span class="denied">` quiet denial (the pointer/list
+    // item slots are exactly the surface where the corpus pins 229
+    // denied item bodies). Re-run the verdict pass for the newly
+    // enriched items; the skip-if-set guard makes it a no-op for
+    // every card already judged. Same defect class and same fix
+    // shape as the help-rules re-pass above.
+    await this.ensureVerdicts();
     // Set cardtype cards: pre-load rule cards hanging off the set. The
     // prefetch closure walk does NOT chase rule cards hanging off a set
     // — they're reachable only through the rule's left side, which the
@@ -1495,8 +1507,29 @@ export class RenderEngine implements RenderEngineLike {
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
       .filter((s) => s.length > 0);
     for (const name of items) {
-      if (DeckoName.parse(name).key === "") continue;
-      await this.prepareItemForRender(name);
+      // An item line carrying an unresolvable ID/codename mark ("~393")
+      // throws at DeckoName.PARSE time (name.ts#parse resolves id marks
+      // through the name environment's sync peek, and the lexicon temp
+      // cache evicts itself at 10000 keys — after warmLexicon pours the
+      // whole deck through, low ids are gone; name.ts#badMark raises
+      // NameNotFoundError). The capture deck had the card; this render's
+      // sync peek does not. That is a TRUE FETCH MISS: degrade to the
+      // sync path's phantom fallback (the line stays unenriched and
+      // renderPointerListItem's miss branch renders the phantom slot),
+      // never fail the whole render. The GUARD parse is inside the try
+      // for the same reason. Same tolerance shape as the sync mark
+      // resolution and the prefetch closures (CodenameNotFoundError /
+      // NameNotFoundError swallowed, everything else rethrown).
+      try {
+        if (DeckoName.parse(name).key === "") continue;
+        await this.prepareItemForRender(name);
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          this.reportUnknownCard(name);
+          continue;
+        }
+        throw err;
+      }
     }
   }
 

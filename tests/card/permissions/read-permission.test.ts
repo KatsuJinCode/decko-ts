@@ -188,8 +188,10 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // permission results by fixed index 0..2) + 1 *default rule universe
       // (round 9: the new-child template type rides the same batch — the
       // *default universe is parsed from the slot right after the
-      // *structure universe).
-      expect(stats?.additionalResults?.length).toBe(6);
+      // *structure universe) + 1 *default_html_view rule universe (round
+      // 10: the deck's bare-nest default view folds on the same batch,
+      // parsed from the slot after the *default universe).
+      expect(stats?.additionalResults?.length).toBe(7);
     } finally {
       cold.close();
     }

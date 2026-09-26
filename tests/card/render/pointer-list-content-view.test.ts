@@ -74,15 +74,17 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(77);
       baseIds.add(34843);
-      baseIds.add(6568);
+      baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
       // Seed yzzw (the *home pointer's single item). The captured
-      // bytes record yzzw as a card with read permission denied (the
-      // read_rule_id points at *all+*read, rule id=6568, whose
-      // "Role_A1" party the Anonymous viewer is not a member of);
-      // the bar_left / bar_right denied spans fall out of the same
-      // path the engine's read-permission gate already exercises for
-      // the corpus replay (src/card/permissions/view-perms.ts).
+      // bytes record yzzw as a card with read permission denied: the
+      // corpus's swtktey-typed cards carry the swtktey+*type+*read
+      // rule (id 22283, party anyone_signed_in — corpus db
+      // cards.read_rule_id for every type_id 22281 row), which the
+      // Anonymous viewer is not a member of; the bar_left / bar_right
+      // denied spans fall out of the same path the engine's
+      // read-permission gate already exercises for the corpus replay
+      // (src/card/permissions/view-perms.ts).
       // We seed yzzw with an arbitrary id > the shard's max (slot id
       // is name-based, not id-based, so the id never appears in the
       // rendered bytes).
@@ -90,8 +92,8 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
         id: 9000,
         name: "yzzw",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       const html = await storage.engine.render("*home", "content");
       // The card-list wrapper (standard_pointer_core).
@@ -115,14 +117,14 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     async () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(275);
-      baseIds.add(6568);
+      baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9001,
         name: "bifaarykabanhm",
         typeId: 22281,
-        readRuleId: 6568,
-        readRuleClass: "*all",
+        readRuleId: 22283,
+        readRuleClass: "*type",
       });
       const html = await storage.engine.render("*all+*layout", "content");
       // The list cardtype dispatches to the SAME standard_pointer_core
