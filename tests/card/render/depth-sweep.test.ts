@@ -108,8 +108,13 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // shape - one batched round trip for all engine-level state) so a
     // nest-miss child resolves its *default-rule type from memory. Round
     // trips - the billed axis - are unchanged.
+    // Round 10 re-pin (+1 statements, 13 + max(0, depth-1)): the *default
+    // html view universe joins the same cold batch (A-36 — the deck's
+    // default nest view resolves rule-driven; this seeded deck has no such
+    // rule, so the rendered bytes are unchanged and only the folded
+    // statement count moves).
     const expectedRts = (depth: number): number => 7 + Math.max(0, depth - 2);
-    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 13 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

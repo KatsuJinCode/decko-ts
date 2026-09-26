@@ -79,6 +79,7 @@
 //   admin surface has no TS consumer
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { cloudImageUrl } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
 
@@ -174,7 +175,20 @@ const fileCoreView: ViewFn = (ctx) => {
 
 function imageSource(ctx: ViewContext): string {
   const raw = (ctx.fmt.card.dbContent ?? "").trim();
-  if (storageTypeFromContent(raw) === "web") return raw;
+  const type = storageTypeFromContent(raw);
+  if (type === "web") return raw;
+  if (type === "cloud") {
+    // A-30 (R13-4 engine half): resolve the cloud bucket content to the
+    // /files/<id>/<file>-<variant>.<ext> URL the live deck serves, with
+    // the deck's CDN host (engine imageCdnHost) when configured and the
+    // determine_image_size variant appended (full→original, absent→
+    // medium — set/type/image.rb:44-57; live receipts in views.ts
+    // cloudImageUrl). The old verbatim-bucket return leaked a raw
+    // "(my_bucket)/..." src live never emits (and left the raw-bucket
+    // regression the unexplained-defects trace flagged once the engine
+    // started rendering image bodies non-empty).
+    return cloudImageUrl(raw, ctx.voo?.opts.size, ctx.fmt.engine.imageCdnHost);
+  }
   return contextualizePath(raw);
 }
 
@@ -189,7 +203,12 @@ const imageOneLineContentView: ViewFn = (ctx) =>
 /** set/type/image/html_views.rb:5-11 view :core.
  *  set/type/file.rb:34-45 handle_source: blank src short-circuits to ""
  *  (the content-view wrapper renders an empty body, e.g. corpus:79 *logo
- *  with dbContent that does not match any storage prefix). */
+ *  with dbContent that does not match any storage prefix).
+ *  CLOUD content renders the live deck's image_tag byte shape —
+ *  `<img alt="NAME" src="..." />` (alt first: Rails image_tag inserts
+ *  :src into an options hash already carrying :alt; live + oracle
+ *  receipts in views.ts cloudImageUrl). Web/local keep the headless
+ *  shapes their existing pins carry. */
 const imageHtmlCoreView: ViewFn = (ctx) => {
   const src = imageSource(ctx);
   if (src === "") {
@@ -200,6 +219,9 @@ const imageHtmlCoreView: ViewFn = (ctx) => {
     // with_valid_source / invalid_image (html_views.rb:13-23 + 31-34):
     // missing source -> "<!-- invalid image for NAME; source: SOURCE -->"
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
+  }
+  if (storageTypeFromContent((ctx.fmt.card.dbContent ?? "").trim()) === "cloud") {
+    return `<img alt="${h(ctx.fmt.card.name.s)}" src="${h(src)}" />`;
   }
   return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}">`;
 };

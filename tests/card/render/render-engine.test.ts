@@ -266,7 +266,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // into the cold batch alongside the *structure universe (one batched
     // round trip for all engine-level state, the #1282 shape) so a
     // nest-miss child resolves its *default-rule type from memory.
-    expect(statementsByDepth).toEqual({ 1: 12, 2: 13, 4: 15, 8: 19 });
+    // Round 10 re-pin (+1 across the board, measured 13/14/16/20): the
+    // *default html view universe joins the same cold batch (A-36 — the
+    // deck's default nest view resolves rule-driven; this seeded deck has
+    // no such rule, so the fallback :titled renders and only the folded
+    // statement count moves).
+    expect(statementsByDepth).toEqual({ 1: 13, 2: 14, 4: 16, 8: 20 });
     // depth 8 costs one batch per level (13 round trips vs Ruby's 11
     // queries) while reading O(page) rows instead of the whole deck per
     // render - the trade this round's read-cost decision asked for. The

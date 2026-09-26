@@ -94,10 +94,15 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // join) + 3 rule-lookup candidates. Constant in deck size; +1 batch
       // per chain LEVEL. Round 9 re-pin (+1 statements): the *default rule
       // universe folds into the same batch so nest-miss children resolve
-      // their *default-rule type from memory.
+      // their *default-rule type from memory. Round 10 re-pin (+1
+      // statement): the *default html view universe folds into the same
+      // cold batch (A-36 — the deck's default nest view resolves
+      // rule-driven; the seeded deck here carries no such rule, so the
+      // render falls back to the railtie :titled — bytes unchanged, one
+      // folded statement added).
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(8);
-      expect(snapshot.statements).toBe(15);
+      expect(snapshot.statements).toBe(16);
     } finally {
       storage.close();
     }
@@ -173,8 +178,10 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // folded engine statements, the *default universe added round 9) + 3
       // rule-lookup candidates. Constant in deck size; the depth-3/4 tests
       // show the +1 batch per chain level. Round 9 re-pin (+1 statements).
+      // Round 10 re-pin (+1 statement): the *default html view universe
+      // joins the same cold batch (A-36).
       expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(14);
+      expect(snapshot.statements).toBe(15);
     } finally {
       storage.close();
     }

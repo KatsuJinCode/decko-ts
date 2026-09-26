@@ -56,10 +56,10 @@ export type CrudTask = "read" | "create" | "update" | "delete";
 /** What a view's perms directive resolves to (permission.rb:13-15).
  *  - check: false        -> perms: :none (skip_check? short-circuits)
  *  - check: true, CRUD   -> denied_task checks format.ok?(task)
- *  - check: true, method -> denied_task calls format.send(method); no
- *    method-predicate view is ported (none is reachable on the captured
- *    surface), so the gate treats them as passing — the documented
- *    remainder in docs/view-perms-notes.md. */
+ *  - check: true, method -> denied_task calls format.send(method); ported
+ *    method predicates (can_configure?, cardtype.rb:68-70) resolve through
+ *    the gate input's predicateAllowed hook — the unported remainder still
+ *    treats them as passing (docs/view-perms-notes.md). */
 export type ViewPermsResolution =
   | { readonly check: false }
   | { readonly check: true; readonly predicate: false; readonly task: CrudTask }
@@ -128,6 +128,14 @@ const PERMS_NONE = new Set<string>([
  * editing.rb:3 (board) — all :update; new.rb:4,8,19,23 (new,
  * new_in_modal, simple_new, new_fields) — all :create;
  * card-mod-comment set/all/comment.rb:46 (comment_box) — :update.
+ *
+ * configure_button is a METHOD-predicate perms view — the ported one:
+ * card-mod-format set/type/cardtype.rb:61
+ * `view :configure_button, cache: :never, denial: :blank,
+ * perms: :can_configure?` (ruby's denied_task does
+ * `format.send :can_configure?`, permission.rb:61 — cardtype.rb:68-70:
+ * `Card.fetch(card, :type, :structure, new: {}).ok? :update`). The
+ * predicate resolves through ViewPermsGateInput.predicateAllowed.
  */
 const VIEW_PERMS_DIRECTIVES: Record<string, CrudTask | string> = {
   edit: "update",
@@ -143,6 +151,7 @@ const VIEW_PERMS_DIRECTIVES: Record<string, CrudTask | string> = {
   new_in_modal: "create",
   simple_new: "create",
   new_fields: "create",
+  configure_button: "can_configure?",
 };
 
 const CRUD_TASKS: readonly CrudTask[] = ["read", "create", "update", "delete"];
@@ -193,11 +202,17 @@ export function renderOptSkipPerms(renderOpts: Record<string, unknown>): boolean
  *  :menu (card-mod-format set/all/html/menu.rb:8 `denial: :blank`);
  *  the other two all-set ones are non-ported views, listed for the record:
  *  html/head.rb:46 (universal_edit_button), card-mod-comment
- *  set/all/comment.rb:46 (comment_box). Absent = Ruby's :denial view. */
+ *  set/all/comment.rb:46 (comment_box). configure_button joins as a
+ *  SET-scoped one: card-mod-format set/type/cardtype.rb:61
+ *  `denial: :blank` — live serves zero configure strings for the anonymous
+ *  surface (live_News_Item.html is 74KB with no "configure" byte; the
+ *  denied render degrades to EMPTY, not the quiet-denial span). Absent =
+ *  Ruby's :denial view. */
 const DENIAL_VIEW = new Map<string, string>([
   ["menu", "blank"],
   ["universal_edit_button", "blank"],
   ["comment_box", "blank"],
+  ["configure_button", "blank"],
 ]);
 
 /** format/error.rb:27-31 view_for_denial — the replacement view name for a
@@ -252,6 +267,12 @@ export interface ViewPermsGateInput {
    *  (the port's rule-less/partial-deck divergence, same contract as
    *  canReadByRuleLookup in read-rules.ts). */
   readonly taskAllowed: (task: CrudTask) => boolean | undefined;
+  /** permission.rb:61 method predicates — `format.send task` for the
+   *  non-CRUD perms directives. can_configure? (cardtype.rb:68-70) is the
+   *  one ported predicate; the hook returns undefined for predicates it
+   *  cannot verify. Optional: an absent hook leaves every predicate
+   *  view unverified-allowed (the documented remainder). */
+  readonly predicateAllowed?: (predicate: string) => boolean | undefined;
 }
 
 /**
@@ -262,10 +283,11 @@ export interface ViewPermsGateInput {
  *
  * Order per permission.rb:
  *   1. skip_check? (:25-27) — perms :none or the skip_perms option
- *   2. denial (:46-50) — first failing task of view_perms
- *      (a method-predicate task passes: no predicate is ported — the
- *      directive table above carries every one the gems define and none
- *      belongs to a ported view)
+ *   2. denial (:46-50) — first failing task of view_perms (CRUD tasks
+ *      check the precomputed ok_to_<task>? verdicts; METHOD predicates
+ *      resolve through the optional predicateAllowed hook — can_configure?
+ *      is the one ported predicate (cardtype.rb:68-70); an absent hook or
+ *      an unported predicate keeps the documented remainder: allowed)
  *   3. view_for_denial (format/error.rb:27-31) — `denial:`-configured
  *      views render that view instead of :denial; :blank renders "".
  */
@@ -276,11 +298,21 @@ export function viewPermissionDenial(
   const resolution = resolveViewPerms(view);
   if (!resolution.check) return undefined; // permission.rb:26 view_perms == :none
   if (renderOptSkipPerms(input.renderOpts)) return undefined; // :26 skip_perms
-  if (resolution.predicate) return undefined; // :61 format.send task — not ported
-  let task = resolution.task;
-  if (task === "update" && input.isNewCard === true) task = "create"; // format/error.rb:6
-  if (input.taskAllowed(task) !== false) return undefined; // denied_task: only a FAILING task denies
-  const deniedLabel = task; // permission.rb:49 crud? && task — CRUD tasks label the span
+  let deniedLabel: string;
+  if (resolution.predicate) {
+    // permission.rb:61 format.send task — method predicates route through
+    // the gate input's predicateAllowed hook; only a FAILING predicate
+    // denies (denied_task's `find` semantics).
+    if (input.predicateAllowed?.(resolution.task) !== false) return undefined;
+    // permission.rb:49 crud?(task) && task — false for method predicates
+    // (Ruby interpolates it as "").
+    deniedLabel = "";
+  } else {
+    let task = resolution.task;
+    if (task === "update" && input.isNewCard === true) task = "create"; // format/error.rb:6
+    if (input.taskAllowed(task) !== false) return undefined; // denied_task: only a FAILING task denies
+    deniedLabel = task; // permission.rb:49 crud? && task — CRUD tasks label the span
+  }
   if (viewDenialView(view) === "blank") return ""; // view_for_denial -> :blank renders ""
   return quietDenial(deniedLabel);
 }

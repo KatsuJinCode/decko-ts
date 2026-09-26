@@ -20,6 +20,7 @@
 // caching/stubs, edit views, mod-specific view overrides, compact nest mode.
 
 import { DeckoName } from "../name.js";
+import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import type { CardRecord } from "../fetch/card-record.js";
 import {
   scanNests,
@@ -96,6 +97,22 @@ export class Voo {
     this.parent = parent;
     this.requestedView = requestedView;
     this.opts = opts;
+    // view/options/key_lists.rb heir_keys (= keymap[:both] + keymap[:heir])
+    // + voo_api.rb:135-143 inherit_options_from_parent!: a child voo
+    // inherits the parent's value for every heir key it did not set itself
+    // (`@normalized_options[option_key] ||= parent.live_options[option_key]`).
+    // The port carries the one heir key the captured surface provably
+    // consumes: :size (the image variant — Ruby's determine_image_size reads
+    // voo.size at the CORE render, one voo below the nest's content voo; a
+    // size:full nest must render -original through that hop. Live receipt:
+    // Conflict_Done_Well 277091-original.png with data-slot "size":"full";
+    // corpus receipt: Professional Materials {{bar02|size:full}}). The
+    // remaining heir keys (main, home_view, title, variant, joint, items,
+    // ...) stay unported — a documented remainder.
+    if (parent !== undefined && opts["size"] === undefined) {
+      const inherited = parent.opts["size"];
+      if (inherited !== undefined) this.opts["size"] = inherited;
+    }
   }
 
   /** visibility.rb#process_visibility: inherit the parent's viz, then viz the
@@ -314,6 +331,12 @@ export class RenderFormat {
             task === "read"
               ? !this.engine.isDenied(this.card)
               : this.engine.taskAllowed?.(this.card, task),
+          // permission.rb:61 method predicates: can_configure? is the one
+          // ported predicate (cardtype.rb:68-70 — update-ok on the card's
+          // *structure rule card); unported predicates keep the
+          // documented remainder (allowed).
+          predicateAllowed: (predicate: string): boolean | undefined =>
+            predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
         });
         if (denial !== undefined) return denial;
       }
@@ -603,18 +626,27 @@ export class RenderFormat {
   }
 
   /** nesting.rb#implicit_nest_view -> default_nest_view (html.rb:17-19 ->
-   *  Cardio.config.default_html_view = :titled, mod/format.rb:2). The raw
-   *  recapture oracle (tmp/raw-ground-truth/expected/recapture-raw-shard-*
-   *  .jsonl, e.g. id 2928 — outer "Ms Paula writing poetry and other
-   *  creations" with bare nest {{Paula Craig+musings}} — the inner slot
-   *  renders id="paula_craig-musing-titled-view" with the d0-card-header
-   *  structure, NOT content-view) confirms Ruby renders bare-nest children
-   *  as titled. The captured fixtures (fixtures/captured/smoke.json
-   *  Oracle Rich+rich_child; fixtures/corpus/shard-000014.jsonl
-   *  corpus:19334 almrctncpf+fsxqechglhqd+fmassslzrfd) are consistent
-   *  with that. */
+   *  Cardio.config.default_html_view; mod/format.rb:2 pins the RAILTIE
+   *  default :titled).
+   *
+   *  The railtie literal is only the FALLBACK: the deck's
+   *  `*all+*default html view` rule drives the effective config (this
+   *  corpus's rule card 22769 carries db_content "content"), and the live
+   *  wire bytes agree on all 12 captured pages — every bare nest renders a
+   *  content-view (Home, Brandon +bio/+how to contact me, CDW, Wikirate,
+   *  blog Latest News, Recommendations ×32; assumption-audit A-36). The
+   *  bare recapture oracle disagrees (it shows titled for the same nests)
+   *  because the capture bootstrap never applied the deck rule to
+   *  Cardio.config — the same capture-path illusion busted twice before;
+   *  the oracle lacks the deck-rule context and is NOT the byte target
+   *  here. The engine therefore resolves the rule (render.ts folds the
+   *  *default html view universe on the cold render) and falls back to the
+   *  railtie :titled only when no rule exists — rule-driven, not a
+   *  hardcoded literal. Fixtures pinned to the oracle's titled side flip
+   *  with this fix; the flip is the correction (same class as round 8
+   *  lane 3's four expected flips). */
   defaultNestView(): string {
-    return "titled";
+    return this.engine.deckDefaultHtmlView?.() ?? "titled";
   }
 
   /**
@@ -655,24 +687,136 @@ export class RenderFormat {
    *  unchanged (Card::Content#to_s).
    *
    *  Wiki-link expansion: text pieces are scanned for `[[Target]]` /
-   *  `[[Target|label]]` and rewritten to
-   *  `<a class="known-card" href="/Target"><span class="card-title"
-   *  title="Target">label-or-Target</span></a>` — the origin bridge
-   *  previously injected this shape client-side; the engine now
-   *  emits it directly so the bridge can retire. Pinned by
+   *  `[[Target|label]]` and rewritten through expandWikiLinks —
+   *  `<a class="known-card" href="/Url_Key"><span class="card-title"
+   *  title="label">label</span></a>` for card-name targets, the
+   *  internal/external/email-link anchor for explicit targets. Pinned by
    *  recapture-raw:*read:render:content where `[[Anyone]]` and
-   *  `[[Anyone|Anyone Signed In]]` both appear. */
+   *  `[[Anyone|Anyone Signed In]]` both appear.
+   *
+   *  Link-wrapped nests (`[[Target|{{nest}}]]`): the nest scanner SPLITS
+   *  such a link into a text piece ending in `[[Target|`, the nest piece,
+   *  and a text piece carrying `]]` — so no single text piece holds a
+   *  complete link and the plain pass leaks the raw wikitext (20 corpus
+   *  cards; blog + Latest_News). Ruby never splits: the Link chunk
+   *  (link.rb:14 full_re `[[([^\]]+)]]`) matches BEFORE the nest scan and
+   *  re-parses its label as a nested Content (link.rb:113-122 objectify),
+   *  so the expanded nest renders INSIDE the anchor. This pass restores
+   *  that chunk-level shape over the split pieces: an unterminated
+   *  `[[Target|` opener is spanned forward to the first `]]` in a later
+   *  text piece, the pieces between render as the label, and the whole
+   *  goes through renderLinkChunk. Live receipt:
+   *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
+   *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
+   *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
   processContent(content: string): string {
     const pieces = scanNests(content);
     let out = "";
-    for (const piece of pieces) {
-      if (piece.kind === "text") {
-        out += expandWikiLinks(piece.text);
-      } else if (piece.nest !== undefined) {
-        out += this.nest(piece.nest);
+    let i = 0;
+    while (i < pieces.length) {
+      const piece = pieces[i]!;
+      if (piece.kind === "nest") {
+        if (piece.nest !== undefined) out += this.nest(piece.nest);
+        i += 1;
+        continue;
       }
+      const opener = matchLinkWrappedNestOpener(piece.text);
+      if (opener === undefined) {
+        out += expandWikiLinks(piece.text);
+        i += 1;
+        continue;
+      }
+      // The opener's prefix text still runs the plain link pass (it may
+      // carry complete links of its own).
+      out += expandWikiLinks(opener.prefix);
+      let label = "";
+      let tail: string | undefined;
+      let j = i + 1;
+      while (j < pieces.length) {
+        const inner = pieces[j]!;
+        if (inner.kind === "nest") {
+          if (inner.nest !== undefined) label += this.nest(inner.nest);
+          j += 1;
+          continue;
+        }
+        const closeAt = inner.text.indexOf("]]");
+        if (closeAt === -1) {
+          label += expandWikiLinks(inner.text);
+          j += 1;
+          continue;
+        }
+        // First `]]` terminates the link chunk (Ruby's label charset is
+        // [^\]] — a closer cannot appear inside a label).
+        label += expandWikiLinks(inner.text.slice(0, closeAt));
+        tail = inner.text.slice(closeAt + 2);
+        j += 1;
+        break;
+      }
+      if (tail === undefined) {
+        // No closer anywhere: Ruby's chunker would not have matched a Link
+        // either — emit the opener bytes verbatim (the unterminated text
+        // passes through, the pre-span behavior).
+        out += `[[${opener.target}|`;
+        i += 1;
+        continue;
+      }
+      out += this.renderLinkChunk(opener.target, label);
+      out += expandWikiLinks(tail);
+      i = j;
     }
     return out;
+  }
+
+  /**
+   * chunk/link.rb#render_link for one spanned `[[target|label]]` chunk.
+   *
+   * Explicit targets (link.rb:82-84 `^(/|https?:|mailto:)`) render
+   * format.link_to_resource (links.rb html block): anchor class per
+   * resource_type (internal/external/email-link; external adds
+   * target=_blank), href re-rooted for the internal form (clean_resource
+   * strips the leading slash; contextualize_path re-roots it). The label
+   * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
+   * nest label lands inside the anchor expanded. Live receipts:
+   * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
+   * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
+   * account</a>` (live Brandon bio; identical bytes in the recapture
+   * oracle).
+   *
+   * Name targets (link.rb:85-86 + 71-75) render view :link on the target
+   * card (base.rb:37-39 -> link_view -> link_to_card card.name,
+   * _render_title): the known/wanted class rides the target's existence
+   * (links.rb add_known_or_wanted_class) and the title option carries the
+   * rendered label, so the label bytes sit inside the card-title span.
+   */
+  private renderLinkChunk(rawTarget: string, label: string): string {
+    const target = rawTarget.trim();
+    if (/^(\/|https?:|mailto:)/.test(target)) {
+      if (/^https?:/.test(target)) {
+        return `<a class="external-link" href="${h(target)}" target="_blank">${label}</a>`;
+      }
+      if (/^mailto:/.test(target)) {
+        return `<a class="email-link" href="${h(target)}">${label}</a>`;
+      }
+      const href = `/${target.replace(/^\/+/, "")}`;
+      return `<a class="internal-link" href="${h(href)}">${label}</a>`;
+    }
+    const named = this.engine.fetchRenderCard(target);
+    const known = named !== undefined && named.unknown !== true;
+    let href: string;
+    try {
+      href = `/${DeckoName.parse(target).urlKey}`;
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        href = `/${target.replace(/ /g, "_")}`; // unresolved mark: plain underscore form
+      } else {
+        throw err;
+      }
+    }
+    return (
+      `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
+      `<span class="card-title" title="${h(label || target)}">${label}</span>` +
+      `</a>`
+    );
   }
 
   /** base.rb (card-mod-format)#core: process_content(_render_raw); the raw
@@ -832,6 +976,33 @@ export interface RenderEngineLike {
    *  Optional; engines without it build type-less unknown cards (the
    *  pre-round-9 shape). */
   newCardDefaultType?(name: DeckoName): { typeId: number; typeName: string } | undefined;
+  /** The deck's effective default html nest view — the `*all+*default html
+   *  view` rule's content (Cardio.config.default_html_view; html.rb:17-19
+   *  default_nest_view). The engine folds the rule universe on the cold
+   *  render (render.ts) and answers the rule's trimmed db_content here
+   *  (this corpus: "content"). undefined = no rule exists — the format
+   *  falls back to the railtie default :titled (mod/format.rb:2).
+   *  Optional: engines without it always take the fallback. */
+  deckDefaultHtmlView?(): string | undefined;
+  /** card-mod-format set/type/cardtype.rb:68-70 can_configure? —
+   *  `Card.fetch(card, :type, :structure, new: {}).ok? :update`: the
+   *  update-ok verdict on the card's *structure rule card, NOT on the card
+   *  itself. The engine precomputes it in the prepare phase
+   *  (render.ts ensureConfigureVerdict) so the synchronous render gate can
+   *  resolve the predicate (view-perms.ts routes predicate tasks through
+   *  viewPermissionDenial's predicateAllowed hook). undefined =
+   *  unverifiable — the same allow contract as taskAllowed.
+   *  Optional: engines without it leave the predicate unverified-allowed
+   *  (the documented remainder). */
+  canConfigure?(card: RenderCard): boolean | undefined;
+  /** The deck's CDN/asset host for carrierwave cloud images
+   *  (A-30): the endpoint live serves file URLs from —
+   *  e.g. `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`.
+   *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
+   *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
+   *  /files shape renders host-relative. Deck-deployment config (Ruby's
+   *  fog bucket host), never derivable from the corpus. */
+  readonly imageCdnHost?: string | undefined;
 }
 
 /** One (klass, rules, anchorless) row of the setting-page rule
@@ -950,11 +1121,11 @@ const FIELD_SETTINGS: ReadonlySet<string> = new Set([
 // anchor directly from the engine so the bridge can retire.
 // ---------------------------------------------------------------------------
 
-/** card-mod-format set/all/content/chunk/reference.rb wiki-link pass:
- *  `[[Target]]` and `[[Target|label]]` both become
- *  `<a class="known-card" href="/Target"><span class="card-title"
- *  title="Target">label-or-Target</span></a>`. Backslash escaping
- *  (`\[\[`) is honored so a literal `[[` survives when the author
+/** card-mod-format set/all/content/chunk/link.rb wiki-link pass (the plain
+ *  text-piece half; link-wrapped nests span pieces and go through
+ *  RenderFormat#renderLinkChunk instead): `[[Target]]` and
+ *  `[[Target|label]]` become the Link chunk's anchor bytes. Backslash
+ *  escaping (`\[\[`) is honored so a literal `[[` survives when the author
  *  means the markdown brackets and not a card link. */
 const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
 
@@ -964,12 +1135,64 @@ function expandWikiLinks(text: string): string {
       // Escaped wiki-link: drop the backslash, keep the literal brackets.
       return `[[${label !== undefined ? `${target}|${label}` : target}]]`;
     }
-    const targetEscaped = h(target.trim());
-    const displayText = h((label ?? target).trim());
+    // The name branch and the explicit branch share link.rb's split
+    // (renderLinkChunk carries the full citation; A-37: the plain pass
+    // used to run EVERY target through the known-card shape with the raw
+    // spaced target as href — the oracle pins the underscored url_key form
+    // (`href="/Help_Desk" title="Help Desk"`, recapture-raw shard-000000)
+    // and live pins internal-link for explicit targets
+    // (`href="/account/signup">sign-in account`, live Brandon bio), so the
+    // branches resolve here identically to renderLinkChunk.
+    const targetTrimmed = target.trim();
+    if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
+      if (/^https?:/.test(targetTrimmed)) {
+        return `<a class="external-link" href="${h(targetTrimmed)}" target="_blank">${h(
+          (label ?? targetTrimmed).trim(),
+        )}</a>`;
+      }
+      if (/^mailto:/.test(targetTrimmed)) {
+        return `<a class="email-link" href="${h(targetTrimmed)}">${h(
+          (label ?? targetTrimmed).trim(),
+        )}</a>`;
+      }
+      const href = `/${targetTrimmed.replace(/^\/+/, "")}`;
+      return `<a class="internal-link" href="${h(href)}">${h((label ?? targetTrimmed).trim())}</a>`;
+    }
+    let href: string;
+    try {
+      // link_to_card's mark path (links.rb:75-80) — the name's url_key
+      // form: spaces fold to underscores, `$` folds too (live:
+      // /Martial_Nonviolence, /Su_tainability).
+      href = `/${DeckoName.parse(targetTrimmed).urlKey}`;
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        href = `/${targetTrimmed.replace(/ /g, "_")}`;
+      } else {
+        throw err;
+      }
+    }
+    const displayText = (label ?? targetTrimmed).trim();
+    // wrapped_title (title.rb:38-44): the span's title attribute carries
+    // the same bytes as the display text (voo.title — link.rb options:
+    // `title: link_text || fully_stripped name`); oracle pin: title
+    // "Help Desk" display "Help Desk" over href /Help_Desk; live pin:
+    // title/display "contributing to the administration..." over the
+    // underscored href.
     return (
-      `<a class="known-card" href="/${targetEscaped}">` +
-      `<span class="card-title" title="${targetEscaped}">${displayText}</span>` +
+      `<a class="known-card" href="${h(href)}">` +
+      `<span class="card-title" title="${h(displayText)}">${h(displayText)}</span>` +
       `</a>`
     );
   });
+}
+
+/** The link-wrapped-nest opener: an UNTERMINATED `[[Target|` at the end of
+ *  a text piece (the nest scanner split it from its label and `]]`).
+ *  Escaped openers (`\[\[`) don't match; the target charset mirrors the
+ *  wiki-link pass. Returns the piece's prefix (still plain-text) and the
+ *  target for renderLinkChunk. */
+function matchLinkWrappedNestOpener(text: string): { prefix: string; target: string } | undefined {
+  const match = /(?<!\\)\[\[([^\[\]\n|]+)\|$/.exec(text);
+  if (match === null || match.index === undefined) return undefined;
+  return { prefix: text.slice(0, match.index), target: match[1] ?? "" };
 }

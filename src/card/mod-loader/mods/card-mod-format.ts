@@ -121,9 +121,11 @@
 //   registering here would mask the engine's bar_right globally
 //   because the mod loader's flat last-wins table doesn't have a
 //   per-type filter seam)
-// - set/type/cardtype.rb :add_link :add_button :add_url
-//   :configure_link :configure_button: rails (link_to_view, modal_
-//   link, can_configure? fetches, Card.fetch :update check)
+// - set/type/cardtype.rb :add_link :add_button :add_url :configure_button
+//   :configure_link: rails (link_to_view, modal_ link, can_configure?
+//   fetches, Card.fetch :update check). :configure_button REGISTERED
+//   (crash fix + perms/denial parity in view-perms.ts); :configure_link
+//   stays rails-deferred (it is the configure_button body's helper).
 // - set/type/html.rb :input :one_line_content html override
 //   :clean_html? :diff_args: rails (input_type = :text_field, chunk_list)
 // - set/type/json.rb :core html + validate_json: rails + events
@@ -452,6 +454,27 @@ interface RenderFormatBase {
   card: { key?: string };
 }
 
+/** set/type/cardtype.rb:61-63 (card-mod-format-0.20.0)
+ *  `view :configure_button, cache: :never, denial: :blank,
+ *  perms: :can_configure? do configure_link "btn btn-secondary" end`.
+ *  The registration closes the UnsupportedViewError crash on EVERY
+ *  Cardtype-typed page (75 cards; the `Cardtype+*type+*structure` rule
+ *  17770 nests `{{_|configure_button}}`, and `Cardtype+*self+*structure`
+ *  38252 repeats it for the Cardtype card itself — news-item-crash-trace).
+ *  Permission/degradation parity lives in view-perms.ts: the predicate
+ *  (can_configure? = update-ok on <card>+*type+*structure, cardtype.rb
+ *  :68-70) resolves through the engine's canConfigure hook and the denial
+ *  (:blank) renders "" — the anonymous surface's bytes, live pins ZERO
+ *  configure strings on live_News_Item.html. This body only renders when
+ *  the predicate ALLOWS (admin-like viewers); like the add_* stubs above
+ *  it is the headless dispatch form of the rails configure_link (the real
+ *  body needs rails link_to_view + the board path), byte shape modelled
+ *  on the add_button stub. */
+function cardtypeConfigureButtonView({ fmt }: ViewContext): string {
+  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
+  return `<a class="btn btn-secondary cardtype-configure-button slotter" data-slotter-mode="modal" href="/${url}/configure" data-remote="true">configure</a>`;
+}
+
 /** set/all/error.rb:28-30 view :errors: `"Problem:\\n\\n" + error_messages.
  *  join("\\n")`. error_messages walks card.errors; the headless
  *  engine's RenderCard carries no `errors` list (the engine has no
@@ -773,16 +796,21 @@ const setModules: ModSetModuleFile[] = [
   { setPath: "type/basic" },
   {
     // set/type/cardtype.rb:1-91 html format block (view :type override,
-    // type_formgroup, views :add_link, :add_button, :add_url +
-    // add_link/add_link_opts/add_path/configure_link/can_configure?/
-    // process_voo_params helpers + scoping_rule_card). Partial port:
-    // :add_link, :add_button, :add_url as the headless equivalents —
-    // modal-link HTML for the buttons, link_to_card for the link. The
-    // :type override and type_formgroup are rails forms, not ported
-    // (per-class-mechanisms.json handler_raised:Card::Error — 26 entries
-    // pinned to view (linkname) / view (add_button) / view (name) not
-    // supported for Cardtype+*type+*default / RichText / Role+*type+*default
-    // — the new registrations close that gap).
+    // type_formgroup, views :add_link, :add_button, :add_url,
+    // :configure_button + add_link/add_link_opts/add_path/configure_link/
+    // can_configure?/process_voo_params helpers + scoping_rule_card).
+    // Partial port: :add_link, :add_button, :add_url, :configure_button
+    // as the headless equivalents — modal-link HTML for the buttons,
+    // link_to_card for the link. configure_button closes the
+    // UnsupportedViewError crash on every Cardtype-typed page (75 cards
+    // via rule 17770 + the Cardtype card via rule 38252); its perms
+    // predicate (can_configure?) and denial (:blank) live in
+    // view-perms.ts — the anonymous render degrades to "" exactly like
+    // live. The :type override and type_formgroup are rails forms, not
+    // ported (per-class-mechanisms.json handler_raised:Card::Error — 26
+    // entries pinned to view (linkname) / view (add_button) / view (name)
+    // not supported for Cardtype+*type+*default / RichText / Role+*type+
+    // *default — the new registrations close that gap).
     setPath: "type/cardtype",
     formats: {
       html: {
@@ -790,6 +818,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "add_link", viewFn: cardtypeAddLinkView },
           { view: "add_button", viewFn: cardtypeAddButtonView },
           { view: "add_url", viewFn: cardtypeAddUrlView },
+          { view: "configure_button", viewFn: cardtypeConfigureButtonView },
         ],
       },
     },

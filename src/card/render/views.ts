@@ -342,6 +342,7 @@ const coreView: ViewFn = (ctx) => {
       fmt.card.id,
       fmt.card.name.s,
       fmt.voo?.opts.size,
+      fmt.engine.imageCdnHost,
     );
   }
   // The File cardtype's :core (card-mod-carrierwave set/type/file.rb:24-28
@@ -430,6 +431,7 @@ export function formatImageCore(
   cardId?: number,
   cardName?: string,
   sizeOpt?: unknown,
+  cdnAssetHost?: string,
 ): string {
   if (content === null || content === undefined || content === "") return "";
   const trimmed = content.trim();
@@ -455,11 +457,15 @@ export function formatImageCore(
   // Ruby (card-mod-carrierwave set/type/image.rb:30-37 def source)
   // resolves them via contextualize_path; we mirror the resolution
   // and append the size variant suffix for the `/files/...` form.
-  // Pinned by recapture-raw:Wikirate+image:render:open (oracle
-  // emits <img src="/files/<id>/<action>-medium.<ext>" alt="...">).
+  // Pinned by recapture-raw (coded-content images):
+  // <img alt="cerulean skin+Image" src="/files/:cerulean_skin+:image/bootstrap-small.png" />
+  // — alt first, space-slash close (Rails image_tag inserts :src into an
+  // options hash that already carries :alt, so alt wins the byte order).
   if (trimmed.startsWith("(") && cardId !== undefined) {
-    // cloud: keep the absolute bucket URL — no size variant
-    return `<img src="${h(trimmed)}" alt="${h(cardName ?? "")}">`;
+    // cloud: resolve to the /files/<id>/<file>-<variant>.<ext> shape the
+    // live deck serves (receipts + mechanism in cloudImageUrl below).
+    const src = cloudImageUrl(trimmed, sizeOpt, cdnAssetHost);
+    return `<img alt="${h(cardName ?? "")}" src="${h(src)}" />`;
   }
   if (trimmed.startsWith("~")) {
     // local: ~/card_id/action_id.ext -> /files/card_id/action_id(-size).ext
@@ -479,6 +485,47 @@ export function formatImageCore(
   return "";
 }
 
+/** The image variant suffix for a nest's size option, per carrierwave's
+ *  determine_image_size (card-mod-carrierwave-0.20.0 set/type/image.rb
+ *  :44-57): the nest's explicit size wins; `voo.size = :original if
+ *  voo.size == :full` (:56) is the full→original mapping the live deck's
+ *  bytes pin (size:full nests serve -original.png, A-15/R13-4 — 101
+ *  corpus cards); absent size falls to default_size :medium (live: the
+ *  unsized Brandon +image nest serves 60560-medium.jpg). */
+export function imageSizeVariant(sizeOpt: unknown): string {
+  if (sizeOpt === undefined || sizeOpt === null || sizeOpt === "") return "medium";
+  const size = String(sizeOpt);
+  return size === "full" ? "original" : size;
+}
+
+/** The carrierwave CLOUD image URL (the `(bucket)/<id>/<file>.<ext>`
+ *  content shape): resolve to the `/files/<id>/<file>-<variant>.<ext>`
+ *  path the live deck serves, prefixed by the deck's CDN host when the
+ *  engine carries one (imageCdnHost — deck-deployment config, e.g.
+ *  `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`).
+ *
+ *  Live receipts (assumption-audit A-13/A-15/A-30; live-wire bytes):
+ *   <img alt="Brandon WilliamsCraig+Image"
+ *    src="https://…spaces.com/files/431/60560-medium.jpg" />
+ *   <img alt="CDW_…" src="…/files/39355/277091-original.png" />
+ *  — alt attribute first, space-slash self-close (Rails image_tag
+ *  inserts :src into an options hash that already carries :alt, so alt
+ *  wins the byte order; the recapture oracle's coded-content images
+ *  carry the same order). The recapture oracle is NOT a byte target for
+ *  this branch: Ruby raised "couldn't find credentials for bucket
+ *  my_bucket" (CAPTURE_ERROR) for every scrubbed bucket card, so only
+ *  live pins these bytes. */
+export function cloudImageUrl(
+  content: string,
+  sizeOpt: unknown,
+  cdnAssetHost?: string,
+): string {
+  const path = content.trim().replace(/^\([^)]*\)\//, "");
+  const variant = imageSizeVariant(sizeOpt);
+  const dotted = path.replace(/\.(?=[^.]*$)/, `-${variant}.`);
+  return `${cdnAssetHost ?? ""}/files/${dotted}`;
+}
+
 /** Append the carrierwave variant suffix before the extension.
  *  card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:88-117
  *  pins the variant position: `<base>(-<size>).<ext>`. Size defaults
@@ -486,13 +533,17 @@ export function formatImageCore(
  *  preview view which forces size=medium, image.rb:18-20 view
  *  :one_line_content passes size: :icon, and the core view renders
  *  the original when size is absent — we follow the carrierwave
- *  default of the original when no size is requested). */
+ *  default of the original when no size is requested). R13-4: a
+ *  requested size of `full` maps to the `original` variant — Ruby's
+ *  determine_image_size (set/type/image.rb:56 `voo.size = :original
+ *  if voo.size == :full`); the live deck serves 277091-original.png
+ *  for size:full nests (A-15; 101 corpus cards). */
 function appendSizeVariant(path: string, sizeOpt: unknown): string {
   if (sizeOpt === undefined || sizeOpt === null || sizeOpt === "") return path;
-  const size = String(sizeOpt);
   const dot = path.lastIndexOf(".");
-  if (dot === -1) return `${path}-${size}`;
-  return `${path.slice(0, dot)}-${size}${path.slice(dot)}`;
+  const suffix = imageSizeVariant(sizeOpt);
+  if (dot === -1) return `${path}-${suffix}`;
+  return `${path.slice(0, dot)}-${suffix}${path.slice(dot)}`;
 }
 
 /** card-mod-carrierwave set/type/file.rb:24-28 `view :core` +
@@ -1273,6 +1324,20 @@ const barBottomView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 const titledView: ViewFn = ({ fmt, voo }) => {
+  // CLUSTER follow-up (A-33, assumption-audit): card-mod-comment
+  // set/right/discussion.rb:1-6 overrides :open, :open_content, :titled,
+  // :titled_content for right-discussion cards — each runs
+  // `voo.show :comment_box` before super(). The openView twin above
+  // already open-codes it; without the same hook here the engine omits
+  // comment_box from the titled slot's show list. Live receipt
+  // (Conflict_Done_Well.html `+discussion|titled` slot):
+  // show:["titled","comment_box"]. (:open_content/:titled_content are
+  // omitted deliberately: their ported bodies carry no slotOptions wrap,
+  // so a show flag there is unobservable — only :open and :titled emit
+  // slot JSON on this surface.)
+  if (fmt.card.name.rightName?.key === "discussion") {
+    voo.setViz("comment_box", "show");
+  }
   // wrap do [naming { render_header }, render_flash, wrap_body { render_titled_content }] end
   const header = headerHtml({ fmt, voo });
   const core = fmt.renderView("titled_content");

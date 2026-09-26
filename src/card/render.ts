@@ -37,6 +37,7 @@ import {
   templateReferenceNames,
   defaultRuleUniverseStatement,
   structureRuleTypesFromResults,
+  ruleUniverseStatementBySetting,
   DEFAULT_SETTING_NAME,
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
@@ -82,6 +83,7 @@ import {
 } from "./permissions/index.js";
 import {
   allTaskVerdictsForCard,
+  taskVerdictForCard,
   viewTaskPermissionStatements,
   viewTaskStateFromResults,
   type ViewTaskState,
@@ -107,6 +109,13 @@ export { HTML_VIEWS };
 export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
+/** The setting whose deck-global rule carries the effective
+ *  Cardio.config.default_html_view (the html format's default nest view,
+ *  html.rb:17-19; the railtie default :titled is the FALLBACK,
+ *  mod/format.rb:2). The corpus rule card is `*all+*default html view`
+ *  (id 22769, db_content "content") — live wire bytes agree on all 12
+ *  captured pages that bare nests render content-views (A-36). */
+const DEFAULT_HTML_VIEW_SETTING = "*default_html_view";
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
  *  through Abstract::CqlSearch's parse exactly like search-type cards). */
@@ -237,6 +246,10 @@ export class RenderEngine implements RenderEngineLike {
    *  parties (see ReadViewer in src/card/permissions/read-rules.ts). Set
    *  before the first render, or together with resetCaches() after. */
   viewer: ReadViewer = ANONYMOUS_VIEWER;
+  /** The deck's CDN/asset host for carrierwave cloud images (A-30 — see
+   *  RenderEngineLike.imageCdnHost). Host-deployment config; undefined =
+   *  host-relative /files URLs. */
+  imageCdnHost: string | undefined;
   /** Codename ids the rule? predicate compares against (SettingID/SetID/
    *  UserID, resolved from the codename codehash). Folded into the cold
    *  render's closure batch (zero extra round trips); undefined until
@@ -284,6 +297,22 @@ export class RenderEngine implements RenderEngineLike {
   /** card key -> allowed verdicts per write task (the ensureVerdicts
    *  model; undefined entries mean unverifiable). Cleared on resetCaches(). */
   private taskVerdicts = new Map<string, Record<WriteTask, boolean | undefined>>();
+  /** Host card key -> the can_configure? verdict for the Cardtype page
+   *  render (update-ok on `<card>+*type+*structure`, cardtype.rb:68-70).
+   *  Precomputed in the prepare phase (ensureConfigureVerdict) so the
+   *  synchronous configure_button permission gate resolves the predicate
+   *  without queries. Cleared on resetCaches(). */
+  private configureVerdicts = new Map<string, boolean | undefined>();
+  /** The deck's `*all+*default html view` rule content (the effective
+   *  Cardio.config.default_html_view — this corpus's rule card 22769
+   *  carries "content"). Folded with the structure universes on the cold
+   *  render; undefined = no rule (the format falls back to the railtie
+   *  :titled, mod/format.rb:2). Cleared on resetCaches(). */
+  private deckDefaultNestView: string | undefined;
+  /** Whether the deck-default-nest-view fold already ran (distinguishes
+   *  "no rule" from "not parsed yet" so rule-less decks don't re-query on
+   *  every render). Cleared on resetCaches(). */
+  private deckDefaultNestViewParsed = false;
   /** The help-rule resolver (menu popover content) — attached once per
    *  engine by installHelpRules; its deck-wide batch runs once in the
    *  prepare phase. format.ts reads engine.helpRules. Cleared on
@@ -334,12 +363,18 @@ export class RenderEngine implements RenderEngineLike {
         ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
         // The *structure rule universe (one statement; the structured-content
         // resolution reads it as pure memory afterwards) + the *default rule
-        // universe (the new-child type source, same statement shape). Both
-        // Appended LAST: the permission state parser reads folded results by
-        // fixed index, and parseStructureContents slices past the permission
-        // + codename statements to find the pair in order.
+        // universe (the new-child type source, same statement shape) + the
+        // *default html view universe (the deck's default nest view — A-36).
+        // All Appended LAST: the permission state parser reads folded results
+        // by fixed index, and parseStructureContents slices past the
+        // permission + codename statements to find the pair in order (the
+        // html-view universe rides the slot after the *default universe).
         ...(structureCold
-          ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
+          ? [
+              structureRuleUniverseStatement(),
+              defaultRuleUniverseStatement(),
+              ruleUniverseStatementBySetting(DEFAULT_HTML_VIEW_SETTING),
+            ]
           : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
@@ -372,6 +407,14 @@ export class RenderEngine implements RenderEngineLike {
       await this.enrichAndStore(record);
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
+    // The deck's default nest view (A-36): the *all+*default html view rule
+    // rides the same cold batch as the structure universes (statement slot
+    // after the *default universe). Must parse before the first renderView
+    // dispatches a bare nest.
+    await this.parseDeckDefaultNestView(
+      foldedResults,
+      permissionStatements.length + (ruleTypesCold ? 1 : 0) + 2,
+    );
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
     // accessor; templating.rb#structure). On every first-render path this
@@ -415,6 +458,10 @@ export class RenderEngine implements RenderEngineLike {
     // prefetch walk's shape).
     this.populateTypeCodes();
     await this.ensureTaskVerdicts(view);
+    // The configure_button permission predicate (cardtype.rb:68-70) for
+    // cardtype-structure pages: precomputed before the sync render so the
+    // view gate resolves it query-free.
+    await this.ensureConfigureVerdict(record);
     if (this.helpResolver === undefined) {
       this.helpResolver = installHelpRules(this, this.fetcher);
       await this.helpResolver.prepare();
@@ -718,6 +765,9 @@ export class RenderEngine implements RenderEngineLike {
     this.defaultTypeNameById = undefined;
     this.taskState = undefined;
     this.taskVerdicts.clear();
+    this.configureVerdicts.clear();
+    this.deckDefaultNestView = undefined;
+    this.deckDefaultNestViewParsed = false;
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
@@ -749,6 +799,52 @@ export class RenderEngine implements RenderEngineLike {
     }
     this.structureContents = structureUniverseFromResults(result);
     this.defaultRuleTypes = structureRuleTypesFromResults(defaultResult);
+  }
+
+  /**
+   * The deck's default nest view (A-36, format.ts#defaultNestView's
+   * engine half): read the `*all+*default html view` rule out of the
+   * folded universe batch (statement slot structureStatementIndex + 1 —
+   * structure at +0, *default at +1 was parsed by parseStructureContents,
+   * the html-view universe rides +2 absolute). Falls back to one
+   * standalone batch on the defensive warm-closure-first-render path
+   * (once per engine), mirroring parseStructureContents.
+   *
+   * Only the DECK-GLOBAL `*all` rule decides (Cardio.config is process
+   * config, not per-set): the universe map is keyed by composed rule key,
+   * so the lookup is the canonical `*all+*default_html_view` key. Blank or
+   * absent rule content leaves undefined — the format's railtie :titled
+   * fallback.
+   */
+  private async parseDeckDefaultNestView(
+    folded: SQLQueryResult[] | undefined,
+    htmlViewStatementIndex: number,
+  ): Promise<void> {
+    if (this.deckDefaultNestViewParsed) return;
+    let result = folded !== undefined ? folded[htmlViewStatementIndex] : undefined;
+    if (result === undefined) {
+      // No folded batch to read (defensive: a warm-closure first render).
+      const batch = await this.fetcher.driver.batch([
+        ruleUniverseStatementBySetting(DEFAULT_HTML_VIEW_SETTING),
+      ]);
+      result = batch[0];
+    }
+    this.deckDefaultNestViewParsed = true;
+    const universe = structureUniverseFromResults(result);
+    const ruleKey = DeckoName.parse(`*all+${DEFAULT_HTML_VIEW_SETTING}`).key;
+    const content = universe.get(ruleKey);
+    if (content === undefined || content === null) return;
+    const trimmed = content.trim();
+    if (trimmed !== "") this.deckDefaultNestView = trimmed;
+  }
+
+  /**
+   * RenderEngineLike#deckDefaultHtmlView — the folded `*all+*default html
+   * view` rule content (undefined = no rule; the format falls back to the
+   * railtie :titled).
+   */
+  deckDefaultHtmlView(): string | undefined {
+    return this.deckDefaultNestView;
   }
 
   /**
@@ -1511,6 +1607,56 @@ export class RenderEngine implements RenderEngineLike {
   taskAllowed(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined {
     if (this.readPermission?.alwaysOk) return true;
     return this.taskVerdicts.get(card.key)?.[task];
+  }
+
+  /**
+   * RenderEngineLike#canConfigure — the cardtype.rb:68-70 can_configure?
+   * predicate (`Card.fetch(card, :type, :structure, new: {}).ok? :update`):
+   * the update-ok verdict on the card's *structure rule card, precomputed
+   * by ensureConfigureVerdict. undefined = unverifiable (same allow
+   * contract as taskAllowed).
+   */
+  canConfigure(card: RenderCard): boolean | undefined {
+    if (this.readPermission?.alwaysOk) return true;
+    return this.configureVerdicts.get(card.key);
+  }
+
+  /**
+   * Precompute the can_configure? verdict for the render ROOT when its
+   * structured content actually nests configure_button (the
+   * `Cardtype+*type+*structure` rule 17770 / `Cardtype+*self+*structure`
+   * 38252 pages). The verdict is taskVerdictForCard("update") on the
+   * WINNING *structure rule card — Ruby fetches exactly that card
+   * (`Card.fetch(card, :type, :structure)`, the first *structure rule in
+   * pattern precedence = resolveStructuredContent's winner). Memoized per
+   * host key; engines whose viewer is always-ok skip the query.
+   */
+  private async ensureConfigureVerdict(record: CardRecord): Promise<void> {
+    if (this.readPermission === undefined) return;
+    if (this.readPermission.alwaysOk) return;
+    const universe = this.structureContents;
+    if (universe === undefined || universe.size === 0) return;
+    const hostKey = record.key ?? (record.name ? DeckoName.parse(record.name).key : undefined);
+    if (hostKey === undefined || this.configureVerdicts.has(hostKey)) return;
+    const prepared = this.renderCards.get(hostKey);
+    if (prepared === undefined) return;
+    const resolved = resolveStructuredContent(
+      this.structurePatternInputForSync(prepared),
+      universe,
+    );
+    if (resolved === undefined) return;
+    if (!resolved.templateContent.includes("configure_button")) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    const verdict = await taskVerdictForCard(
+      this.fetcher,
+      { name: resolved.ruleName },
+      "update",
+      this.taskState,
+    );
+    this.configureVerdicts.set(hostKey, verdict);
   }
 
   /** Prepares the non-read task verdicts when the requested view needs
