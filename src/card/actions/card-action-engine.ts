@@ -27,7 +27,6 @@
 //   (`@card.expire` in integration_phase's ensure) -> cache/all.rb:17-24.
 //
 // Deliberately NOT built here (later streams, per the port tracker):
-// full permission resolution (only the anonymous gate + canWrite seam),
 // rule-based default content and templates, the ancestor-timestamp id feed
 // (update_ancestor_timestamps), subcard staging beyond side creation /
 // trash-obstacle renames / child deletion cascades.
@@ -36,7 +35,11 @@
 // the update_read_rule / cascade_read_rule machinery): every save that
 // changes type or name fills cards.read_rule_id / read_rule_class, and a
 // saved rule card re-derives its set's members and every card pointing at
-// it. The ok? write/read CHECKS remain the canWrite seam + the read side.
+// it. Write-permission ENFORCEMENT runs here too (assertCanWrite ->
+// saveTaskVerdictForCard, the ok_to_create?/ok_to_update?/ok_to_delete?
+// algebra of view-task-rules.ts against the deck's rule cards and the
+// actor's parties; the anonymous gate stays the sync half) — the canWrite
+// hook is a host-side EXTRA gate on top, never an override.
 // Reference maintenance status: card_references population on
 // create/update (refresh_references_out), cleanup on delete
 // (clear_references), the referee-side backfill (refresh_references_in —
@@ -88,6 +91,20 @@ import {
   type ReadRuleWriteDeps,
 } from "../permissions/set-read-rule.js";
 import {
+  readPermissionStatements,
+  readPermissionStateFromViewerResults,
+  type ReadViewer,
+} from "../permissions/read-rules.js";
+import {
+  saveTaskVerdictForCard,
+  viewTaskPermissionStatements,
+  viewTaskStateFromResults,
+  type ViewTaskState,
+  type WriteTask,
+} from "../permissions/view-task-rules.js";
+import type { PatternCardInput } from "../set-patterns/types.js";
+import { isNewCard } from "../fetch/card-record.js";
+import {
   buildFollowNotifyHook,
   defaultFollowNotifyDeps,
   defaultTransport,
@@ -115,11 +132,11 @@ export interface CardActionEngineOptions {
   now?: () => Date;
   /** card_acts.ip_address capture (director/class_methods.rb:27-29). */
   ipAddress?: string | null;
-  /** The permission seam: the basic anonymous gate always runs; when
-   *  canWrite is provided it is consulted per action with the card record
-   *  (a new-card placeholder for creates). Falsy -> permission-denied.
-   *  The full ok? rule machinery (card-mod-permissions) is a later
-   *  stream. */
+  /** The host-side EXTRA permission gate. The rule-based ok? enforcement
+   *  (saveTaskVerdictForCard — *create/*update/*delete walks with the
+   *  actor's parties) runs first; a provided canWrite is then consulted
+   *  per action with the card record (a new-card placeholder for creates)
+   *  and may deny further. It can never allow a write the rules denied. */
   canWrite?: CanWriteHook;
   /** The save-path integration seam (card-mod-follow notify.rb — the
    *  integration stage runs AFTER expire, phases.rb:33-39). When empty or
@@ -163,6 +180,10 @@ export class CardActionEngine {
   private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
+  /** The write-task permission state (who_can universe + actor parties),
+   *  built lazily on this engine's first gated save — the render side's
+   *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
+  private writeTaskState: ViewTaskState | undefined;
 
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
@@ -235,26 +256,39 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
-    const placeholder = newCardRecord(DeckoName.parse(input.name ?? ""));
+    const name = DeckoName.parse(input.name ?? "");
     this.assertWritable();
-    await this.assertCanWrite(placeholder);
+    // extract_type_id! runs at Card.new time (type.rb:87-96), BEFORE the
+    // validate-stage ok? check — so the permission gate sees the WOULD-BE
+    // type and the *type+*create rule candidates resolve for the card
+    // actually being created.
+    const typeId = await resolveTypeId(this.fetch, { ...input, name });
+    const placeholder = newCardRecord(name, { typeId });
+    await this.assertCanWrite(placeholder, "create");
     const writer = this.newWriter();
-    const result = await this.createInWriter(writer, input, { isActCard: true });
+    const result = await this.createInWriter(writer, input, {
+      isActCard: true,
+      resolvedTypeId: typeId,
+    });
     await this.dispatchSavePathIntegrations(result);
     return result;
   }
 
   /** The create implementation, bound to an existing writer so side
    *  subcards join the caller's act (Ruby: subcards save within the
-   *  supercard's Director run, director/store.rb:37-58). */
+   *  supercard's Director run, director/store.rb:37-58). `resolvedTypeId`
+   *  rides in when the caller already paid resolveTypeId (the gated act
+   *  card); side subcards resolve their own. */
   private async createInWriter(
     writer: ActWriter,
     input: CreateCardInput,
-    opts: { isActCard: boolean },
+    opts: { isActCard: boolean; resolvedTypeId?: number },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
-    const typeId = await resolveTypeId(this.fetch, { ...input, name }); // extract_type_id! + type_id_from_code + default
+    const typeId =
+      opts.resolvedTypeId ??
+      (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
 
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
@@ -422,15 +456,36 @@ export class CardActionEngine {
     this.assertWritable();
     const row = await this.fetchRowById(input.cardId);
     // Card[id] of a missing or trashed card fetches nil (retrieval adds
-    // trash = 0 — fetch/retrieve.rb#retrieval_from_db_query) and update!
-    // on nil fails; revival-from-trash is the CREATE path's job.
+    // trash = 0 — fetch/retrieval_from_db_query) and update! on nil fails;
+    // revival-from-trash is the CREATE path's job.
     if (row === undefined || row.trash === 1) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
     }
+    // extract_type_id! precedence (type.rb:81-92) — resolved BEFORE the ok?
+    // gate, because Ruby evaluates permissions in the validate stage with
+    // the new attributes already assigned: the type-change clause
+    // (ok_to_update? :148-153) needs type_id_changed?, and the *type rule
+    // candidates of a type-changing save read the ASSIGNED type. Undefined
+    // when the save carries no type spec (no spec = no type change).
+    const hasTypeSpec =
+      input.typeId !== undefined ||
+      input.typeCode !== undefined ||
+      input.typeName !== undefined;
+    const resolvedTypeId = hasTypeSpec
+      ? await resolveTypeId(this.fetch, {
+          ...input,
+          name:
+            input.name !== undefined ? DeckoName.parse(input.name) : row.name ?? undefined,
+        })
+      : undefined;
+    const typeChanged = resolvedTypeId !== undefined && resolvedTypeId !== row.type_id;
     const card = await composeCardRecord(row, this.fetch.lexicon);
-    await this.assertCanWrite(card);
+    await this.assertCanWrite(card, "update", {
+      typeChanged,
+      assignedTypeId: typeChanged ? resolvedTypeId : undefined,
+    });
     const writer = this.newWriter();
-    const result = await this.updateInWriter(writer, row, input);
+    const result = await this.updateInWriter(writer, row, input, resolvedTypeId);
     await this.dispatchSavePathIntegrations(result);
     return result;
   }
@@ -439,6 +494,7 @@ export class CardActionEngine {
     writer: ActWriter,
     row: CardsRow,
     input: UpdateCardInput,
+    preResolvedTypeId?: number,
   ): Promise<ActionResult | null> {
     const before = cardFieldStateFromRow(row);
     const after: CardFieldState = { ...before };
@@ -473,12 +529,15 @@ export class CardActionEngine {
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
 
-    // extract_type_id! precedence (type.rb:81-92) — resolved before the
-    // rename-conflict checks, which need the would-be type_id.
+    // extract_type_id! precedence (type.rb:81-92) — already resolved by the
+    // gated act-card path (preResolvedTypeId); side/subcard callers resolve
+    // here. Resolved before the rename-conflict checks, which need the
+    // would-be type_id.
     const resolvedTypeId =
-      input.typeId !== undefined || input.typeCode !== undefined || input.typeName !== undefined
+      preResolvedTypeId ??
+      (input.typeId !== undefined || input.typeCode !== undefined || input.typeName !== undefined
         ? await resolveTypeId(this.fetch, { ...input, name: newName ?? row.name })
-        : undefined;
+        : undefined);
 
     if (nameChanged && newName !== undefined) {
       // validate_renaming (name_events.rb:55-61) — skipped when the change
@@ -716,7 +775,7 @@ export class CardActionEngine {
     }
     if (row.trash === 1) return null; // already trashed: no-op (ActWriter contract)
     const card = await composeCardRecord(row, this.fetch.lexicon);
-    await this.assertCanWrite(card);
+    await this.assertCanWrite(card, "delete"); // ok_to_delete? (permissions.rb:155-157)
     if (row.codename !== null && row.codename !== "") {
       // validate_delete (trash.rb:31-34): "error: system card"
       throw new CardActionError(
@@ -839,19 +898,98 @@ export class CardActionEngine {
     }
   }
 
-  /** The permission seam (async half): the optional canWrite hook. The full
-   *  ok? rule resolution (card-mod-permissions set/all/permissions.rb:37-51,
-   *  event :check_permissions :22-25) is a later stream and replaces this
-   *  hook, not the anonymous gate. */
-  private async assertCanWrite(card: CardRecord): Promise<void> {
-    if (this.canWrite === undefined || this.actor === null) return;
-    const allowed = await this.canWrite(card, this.actor);
-    if (!allowed) {
+  /** The permission gate (async half) — Ruby's event :check_permissions
+   *  (card-mod-permissions set/all/permissions.rb:22-25): the ported
+   *  ok_to_create? / ok_to_update? / ok_to_delete? algebra
+   *  (saveTaskVerdictForCard in view-task-rules.ts) runs INSIDE the engine,
+   *  against the deck's *create/*update/*delete rule cards and the actor's
+   *  own parties. A `false` verdict throws permission-denied (Ruby's
+   *  PermissionDenied); `undefined` (the rule-less-seed divergence) allows.
+   *  The optional canWrite hook then rides ON TOP as a host-side extra
+   *  gate — it can deny what the rules allow, never allow what they deny.
+   *  The anonymous gate above has already rejected null/*anonymous actors
+   *  by the time this runs. */
+  private async assertCanWrite(
+    card: CardRecord,
+    task: WriteTask,
+    opts: { typeChanged?: boolean; assignedTypeId?: number } = {},
+  ): Promise<void> {
+    if (this.actor === null) return; // unreachable: assertWritable ran
+    const pattern = await this.patternInputFor(card, opts.assignedTypeId);
+    const verdict = await saveTaskVerdictForCard(
+      this.fetch,
+      pattern,
+      task,
+      await this.writePermissionState(),
+      { typeChanged: opts.typeChanged },
+    );
+    if (verdict === false) {
       throw new CardActionError(
         "permission-denied",
-        `actor ${this.actor.name} may not write card ${card.name?.s ?? String(card.id)}`,
+        `actor ${this.actor.name} may not ${task} card ${card.name?.s ?? String(card.id)}`,
       );
     }
+    if (this.canWrite !== undefined) {
+      const allowed = await this.canWrite(card, this.actor);
+      if (!allowed) {
+        throw new CardActionError(
+          "permission-denied",
+          `actor ${this.actor.name} may not write card ${card.name?.s ?? String(card.id)}`,
+        );
+      }
+    }
+  }
+
+  /** The write-task permission state: ONE batch for the actor's read
+   *  permission facts (alwaysOk = Auth.always_ok?, parties = fetch_roles +
+   *  self, account_holder.rb:26-28) and ONE for the who_can universe —
+   *  built once per engine on the first gated save, memoized after. */
+  private async writePermissionState(): Promise<ViewTaskState> {
+    if (this.writeTaskState !== undefined) return this.writeTaskState;
+    const viewer: ReadViewer =
+      this.actor !== null && this.actor.name !== ANONYMOUS_ACTOR_NAME
+        ? { signedIn: true, actorId: this.actor.id }
+        : { signedIn: false };
+    const readResults = await this.fetch.driver.batch(readPermissionStatements(viewer));
+    const readState = readPermissionStateFromViewerResults(readResults, viewer);
+    const taskResults = await this.fetch.driver.batch(viewTaskPermissionStatements());
+    this.writeTaskState = viewTaskStateFromResults(taskResults, readState);
+    return this.writeTaskState;
+  }
+
+  /** The PatternCardInput the rule walk receives — the same fields the
+   *  render side's verdictPatternInput supplies (render.ts): name, id,
+   *  typeId (the ASSIGNED type for a type-changing save, matching Ruby's
+   *  validation-time attribute state), the type card's name, and — for
+   *  compound cards, whose *type plus right anchor composes from it — the
+   *  left side's type name. Direct row reads; write-path calls are rare. */
+  private async patternInputFor(
+    card: CardRecord,
+    assignedTypeId: number | undefined,
+  ): Promise<PatternCardInput> {
+    const typeId = assignedTypeId ?? card.typeId;
+    const typeName = typeId !== undefined && typeId !== null ? await this.typeNameOf(typeId) : undefined;
+    let leftTypeName: string | undefined;
+    if (card.leftId !== undefined && card.leftId !== null) {
+      const leftRow = await this.fetchRowById(card.leftId);
+      if (leftRow !== undefined && leftRow.type_id !== null && leftRow.type_id !== undefined) {
+        leftTypeName = await this.typeNameOf(leftRow.type_id);
+      }
+    }
+    return {
+      name: card.name?.s ?? (card.id !== undefined ? `~${card.id}` : ""),
+      id: card.id,
+      isNew: isNewCard(card),
+      typeId,
+      typeName,
+      leftTypeName,
+    };
+  }
+
+  /** The type card's name (type cards are simple cards — cards.name). */
+  private async typeNameOf(typeId: number): Promise<string | undefined> {
+    const row = await this.fetchRowById(typeId);
+    return row?.name ?? undefined;
   }
 
   private newWriter(): ActWriter {
