@@ -57,9 +57,16 @@
 // - type/role link_with_checkbox/configs: rails (card_form,
 //   check_box_tag, all_admin_configs_grouped_by, list_section)
 // - 30 events (validate_email, encrypt_password, reset_password,
-//   signin, signout, generate_token, set_stamper, update_role_cache,
-//   etc.): rails (event machinery, Env.params, Auth, SecureRandom,
-//   Card.cache, validate/store/integrate/finalize phases)
+//   generate_token, set_stamper, update_role_cache, etc.): rails (event
+//   machinery, Env.params, Auth, SecureRandom, Card.cache,
+//   validate/store/integrate/finalize phases). EXCEPTION — the sign-in
+//   event pair ported 2026-09-27 (write-path slice 1) in
+//   src/card/auth/signin.ts, where the session layer lives: :signin +
+//   :signin_success (set/self/signin.rb:12-19, the salted-SHA-1
+//   authenticate ladder of Card::Auth, auth.rb:20-39 — NOT bcrypt) and
+//   :signout (set/self/signin.rb:25-29). The card_write_events here stay
+//   view- and render-shaped; the authenticate events are engine behavior
+//   over the auth store, not views.
 // - lib/card/mod/account.rb (Cardio::Railtie.config password keys +
 //   6 HAML templates): rails (config surface, haml asset pipeline)
 // - assets/script/toggle_visibility.js.coffee + assets/style/account.scss:

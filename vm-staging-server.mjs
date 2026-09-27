@@ -1,12 +1,19 @@
-// vm-staging-server.mjs — read-only Node HTTP staging copy of the decko-ts
+// vm-staging-server.mjs — Node HTTP staging copy of the decko-ts
 // engine, served from /opt/decko-bunny-render on Brandon's portal VM
 // (170.9.231.182) so the owner can click through real pages in a browser
-// while parity work continues. NO write path, NO editing, NO search —
-// pure browse.
+// while parity work continues. Read-only browse PLUS the write-path
+// slice-1 sign-in surface (2026-09-27): no editing, no search. Every
+// anonymous GET byte is unchanged — the sign-in endpoints are additive.
 //
 // Routes (the engine-canonical surface, mirrors deploy/worker.ts):
 //   GET /                 -> render "Home" card page (HTML, full shell)
 //   GET /_status          -> engine + database health JSON
+//   GET /_signin          -> the staging sign-in form page (slice-1,
+//                            Default Layout chrome; live renders the
+//                            *signin card's own form at this route —
+//                            set/self/signin.rb — which the TS engine
+//                            cannot render: the account-mod form views
+//                            are unported rails)
 //   GET /<card-name>      -> render that card page (HTML, full shell)
 //   GET /<card-name>.json -> the card record as JSON
 //   GET /files/~<id>/<rev>.<ext> -> asset bytes from the corpus's File
@@ -14,6 +21,15 @@
 //                                   in the scrubbed corpus — these routes
 //                                   serve what's available so the layout
 //                                   references resolve rather than 404).
+//   POST /_signin         -> slice-1 sign-in: identifier (email or name)
+//                            + password, verified against the corpus's
+//                            real +*account+*password digests (Ruby's
+//                            salted SHA-1, Card::Auth.encrypt
+//                            auth.rb:36-39 — NOT bcrypt); issues a
+//                            session cookie on success
+//   POST /_signout        -> slice-1 sign-out: revokes the presented
+//                            session (card-mod-account's :signout event
+//                            semantics, set/self/signin.rb:25-29)
 //   anything else         -> Decko's full-chrome error pages (live-shape,
 //                             2026-09-26): an unresolved card name gets the
 //                             not_found page (404, Default Layout chrome,
@@ -21,10 +37,25 @@
 //                             raising render gets the deck error page
 //                             (500, "Wild Card! / 500 Server Error").
 //
+// Session surface (slice-1): the presented session token renders GET
+// pages AS THAT ACCOUNT — render.viewer is set from the token
+// (render-viewer-for-session.ts; an unknown/expired/revoked token degrades
+// to the Anonymous viewer exactly like auth/current.rb:58-63). Anonymous
+// requests render through the SAME engine instance as before this slice,
+// untouched. Signed-in requests use a per-actor RenderEngine (the render
+// caches memoize permission state — render.ts's viewer field must be set
+// before an engine's first render). Two engines are kept; a third account
+// evicts the oldest.
+//
 // Boot:
 //   node vm-staging-server.mjs <path-to-corpus.sqlite> [port]
 //
-// Defaults: port 3100, db path arg required.
+// Defaults: port 3100, db path arg required. The corpus file must be
+// WRITABLE for sign-in (the auth layer stores session rows in the same
+// database, auth_sessions table, applied idempotently at boot through
+// runAuthMigrations); read-only corpus files still serve every anonymous
+// GET but /_signin fails loudly at boot. Give the server a writable COPY
+// of the corpus; the read-only GET paths still never write card data.
 //
 // PAGE PATH (r18): pages render through the ENGINE's page entry
 // (dist/src/card/render/page.js renderPageBytes — the show_with_page_layout
@@ -74,6 +105,18 @@ import {
   structureUniverseFromResults,
   structureRuleTypesFromResults,
 } from "./dist/src/card/rules/structure.js";
+// Write-path slice-1: session-backed sign-in. The auth store lives in the
+// same sqlite file (auth_sessions table, runAuthMigrations at boot) and the
+// per-request token picks the render engine whose viewer is that account
+// (RenderEngine.viewer, the seam docs/permission-actors-notes.md wires —
+// the server resolves the actor once per request and sets the viewer at
+// engine construction, before any render).
+import {
+  SessionStore,
+  runAuthMigrations,
+  signinAccount,
+  signoutAccount,
+} from "./dist/src/card/auth/index.js";
 
 // DECK BOOT — inflection initializer, FIRST, before any DeckoName.parse.
 // A Rails deck's config/initializers/inflections.rb runs before any request;
@@ -199,6 +242,26 @@ const driver = new LocalSqliteDriver({ path: dbPath, readonly: true });
 // (registerSqliteRegexpFunction header note: function resolution is at
 // statement-prepare time).
 driver.registerFunction("regexp", sqliteRegexpUdf, { deterministic: true });
+
+// ---------------------------------------------------------------------------
+// Slice-1 auth boot
+// ---------------------------------------------------------------------------
+//
+// The corpus driver above stays READ-ONLY and is the only driver the GET
+// path touches — anonymous bytes cannot change. Session rows live in the
+// SAME sqlite file (SessionStore's lookup joins cards for the live-account
+// check, session-store.ts), so a second RW driver opens it for the auth
+// store only. runAuthMigrations applies db/migrations/*.sql idempotently
+// (CREATE IF NOT EXISTS + bookkeeping); on a read-only FILE this fails
+// loudly at boot — that is the deployment contract: give the server a
+// writable copy of the corpus.
+const authDriver = new LocalSqliteDriver({ path: dbPath, readonly: false });
+// The compiled migrations runner resolves its DEFAULT directory relative to
+// dist (it is a source/test surface; the deploy stream applies D1
+// migrations its own way) — this Node origin passes its own repo-root
+// db/migrations explicitly.
+await runAuthMigrations(authDriver, { migrationsDir: path.join(HERE, "db", "migrations") });
+const sessions = new SessionStore({ driver: authDriver });
 
 const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 const render = new RenderEngine(fetcher);
@@ -1555,7 +1618,13 @@ function applyServedEnvironmentDeltas(engineHtml) {
   return body;
 }
 
-async function renderCardPage(cardName) {
+// renderEngine defaults to the module's anonymous engine — every
+// pre-slice caller is byte-identical. Signed-in requests pass the actor's
+// engine (engineForActor below) so the page renders under that account's
+// read rules (render.ts viewer seam; permission state memoizes per engine,
+// which is why actors get their own instance instead of a shared mutable
+// viewer field).
+async function renderCardPage(cardName, renderEngine = render) {
   try {
     // r18: the ENGINE assembles the page — the show_with_page_layout port
     // (per-card *layout rule, main! render, layout-body processing through
@@ -1566,7 +1635,7 @@ async function renderCardPage(cardName) {
     // bytes natively (and has, since the page-lane + nitpicks + searchctx
     // + R16/R17 lanes). Only the served-environment deltas above are
     // applied to the engine's output.
-    const engineHtml = await renderPageBytes(render, cardName);
+    const engineHtml = await renderPageBytes(renderEngine, cardName);
     const body = applyServedEnvironmentDeltas(engineHtml);
     return {
       status: 200,
@@ -1602,14 +1671,14 @@ async function renderCardPage(cardName) {
   }
 }
 
-async function cardRecordJson(cardName) {
+async function cardRecordJson(cardName, renderEngine = render) {
   const record = await fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
   }
   const typeRecord =
     record.typeId !== undefined ? await fetcher.fetchById(record.typeId) : undefined;
-  const readable = await render.canReadCard(record, typeRecord?.name?.s);
+  const readable = await renderEngine.canReadCard(record, typeRecord?.name?.s);
   if (!readable) {
     return jsonResponse(403, { error: "permission denied", name: cardName });
   }
@@ -1671,6 +1740,213 @@ async function status() {
 // their honest `X-Decko-Asset-Note` flag so a missing deploy is
 // observable, not silent.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Slice-1 session surface: cookie helpers, per-actor render engines,
+// POST /_signin, POST /_signout, and the GET sign-in form page.
+// ---------------------------------------------------------------------------
+
+const SESSION_COOKIE_NAME = "decko_ts_session";
+// Mirrors SessionStore's DEFAULT_SESSION_TTL_SECONDS (48h) so the cookie
+// and the server-side row expire together. Ruby's expiry is app config
+// (token_expiry) — this is a port decision, not a ported number.
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 48;
+// The render caches memoize permission state per engine (render.ts viewer
+// field docs: set BEFORE the first render), so each signed-in account gets
+// its own RenderEngine over the shared FetchEngine (fetch is
+// permission-blind: read rules ride the card records). Two accounts are
+// kept warm; a third evicts the oldest (insertion order).
+const MAX_SIGNED_IN_ENGINES = 2;
+const signedInEngines = new Map();
+
+function engineForActor(actorId) {
+  let engine = signedInEngines.get(actorId);
+  if (engine === undefined) {
+    engine = new RenderEngine(fetcher);
+    engine.imageCdnHost = SPACES_HOST;
+    engine.viewer = { signedIn: true, actorId };
+    if (signedInEngines.size >= MAX_SIGNED_IN_ENGINES) {
+      signedInEngines.delete(signedInEngines.keys().next().value);
+    }
+    signedInEngines.set(actorId, engine);
+  }
+  return engine;
+}
+
+function readSessionCookie(cookieHeader) {
+  if (typeof cookieHeader !== "string" || cookieHeader === "") return null;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === SESSION_COOKIE_NAME) {
+      const value = part.slice(eq + 1).trim();
+      return value === "" ? null : value;
+    }
+  }
+  return null;
+}
+
+function sessionCookieHeader(token) {
+  return (
+    `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; ` +
+    `Max-Age=${SESSION_COOKIE_MAX_AGE}`
+  );
+}
+
+function clearedSessionCookieHeader() {
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+// jsonResponse with a header extension (Set-Cookie rides every auth
+// response; the base three headers stay byte-identical).
+function authJsonResponse(status, body, extraHeaders) {
+  const base = jsonResponse(status, body);
+  return { ...base, headers: { ...base.headers, ...extraHeaders } };
+}
+
+function readRequestBody(req, limitBytes = 65536) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
+    req.on("data", (chunk) => {
+      total += chunk.length;
+      if (total > limitBytes) {
+        reject(new Error("request body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+// Accept JSON ({identifier, password}) or form-urlencoded (what the
+// sign-in form page posts). Both field names are the staging surface's
+// own; Ruby's *signin form posts email/password under Rails' update
+// grammar, which this origin does not implement.
+function parseSigninBody(raw, contentTypeHeader) {
+  const contentType = String(contentTypeHeader ?? "").split(";")[0].trim().toLowerCase();
+  if (contentType === "application/json" || (contentType === "" && raw.trimStart().startsWith("{"))) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed === null || typeof parsed !== "object") return null;
+      return {
+        identifier: typeof parsed.identifier === "string" ? parsed.identifier
+          : typeof parsed.email === "string" ? parsed.email : "",
+        password: typeof parsed.password === "string" ? parsed.password : "",
+      };
+    } catch {
+      return null;
+    }
+  }
+  if (contentType === "application/x-www-form-urlencoded" || contentType === "") {
+    const params = new URLSearchParams(raw);
+    const identifier = params.get("identifier") ?? params.get("email") ?? "";
+    const password = params.get("password") ?? "";
+    return { identifier, password };
+  }
+  return null;
+}
+
+// POST /_signin — the :signin event over HTTP (set/self/signin.rb:12-15):
+// authenticate against the corpus's real +*account+*password digest
+// (Card::Auth.encrypt, salted SHA-1), issue the session on success.
+async function handleSignin(req) {
+  let raw;
+  try {
+    raw = await readRequestBody(req);
+  } catch (error) {
+    return jsonResponse(400, {
+      ok: false,
+      error: `unreadable request body: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  }
+  const parsed = parseSigninBody(raw, req.headers["content-type"]);
+  if (parsed === null) {
+    return jsonResponse(400, {
+      ok: false,
+      error: "unsupported content type — send application/json or form-urlencoded with identifier + password",
+    });
+  }
+  const outcome = await signinAccount(driver, sessions, parsed.identifier, parsed.password);
+  if (!outcome.ok) {
+    // Ruby's ladder surfaces the i18n message with a failure status; the
+    // staging surface maps that to 401 Unauthorized.
+    return jsonResponse(401, { ok: false, error: outcome.message });
+  }
+  return authJsonResponse(
+    200,
+    { ok: true, name: outcome.actor.name },
+    { "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+  );
+}
+
+// POST /_signout — the :signout event (set/self/signin.rb:25-29):
+// Auth.signin AnonymousID + Env.reset_session. The port's state change is
+// the auth_sessions row deletion; idempotent like Ruby's (signing out
+// Anonymous is a no-op success).
+async function handleSignout(req) {
+  const token = readSessionCookie(req.headers.cookie);
+  const revoked = await signoutAccount(sessions, token);
+  return authJsonResponse(200, { ok: true, revoked }, { "Set-Cookie": clearedSessionCookieHeader() });
+}
+
+// The sign-in form page: live renders the *signin card's OWN form at this
+// route (set/self/signin.rb format :html core view — card_form +
+// email/password fields); the TS engine cannot render it (the account-mod
+// form views are unported rails, card-mod-account.ts header), so the
+// staging surface serves this minimal honest form posting to /_signin.
+// Chrome = the deck's Default Layout, the same shell the error pages use.
+function buildSigninSlotHtml() {
+  return (
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h1 class="d0-card-header-title">` +
+    `<span class="card-title" title="Sign In">Sign In</span></h1></div>\n` +
+    `\n` +
+    `<div class="d0-card-body card-body card-text">\n` +
+    `<form action="/_signin" method="post" class="signin-form">\n` +
+    `<div class="form-group">\n` +
+    `<label for="signin_identifier">Email or name</label>\n` +
+    `<input type="text" name="identifier" id="signin_identifier" class="form-control" autocomplete="username" />\n` +
+    `</div>\n` +
+    `<div class="form-group">\n` +
+    `<label for="signin_password">Password</label>\n` +
+    `<input type="password" name="password" id="signin_password" class="form-control" autocomplete="current-password" />\n` +
+    `</div>\n` +
+    `<button type="submit" class="btn btn-primary">Sign in</button>\n` +
+    `</form>\n` +
+    `<!-- decko-ts staging slice-1: live renders the *signin card's own form at this route (set/self/signin.rb, rails); this staging form posts to /_signin. -->\n` +
+    `</div></div>`
+  );
+}
+
+async function renderSigninPage() {
+  const boot = await ensureBootValues();
+  const layout = await resolveDefaultLayout();
+  const body = applyServedEnvironmentDeltas(
+    await wrapWithLayout("*signin", buildSigninSlotHtml(), layout, {
+      titleText: `Sign In - ${boot.siteTitle}`,
+    }),
+  );
+  return {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Connection": "close",
+      "Keep-Alive": "timeout=0",
+    },
+    body,
+  };
+}
+
+// The sign-in routes. /​*signin is LIVE's route shape (the nav's Sign in
+// link points there, byte-matched to the live captures); /_signin is the
+// staging-slice alias named alongside the POST endpoints.
+const SIGNIN_PAGE_PATHS = new Set(["/_signin", "/*signin", "/*signin/titled"]);
+
 const FILES_PATTERN = /^\/files\/~(\d+)\/(\d+)\.([a-z0-9]+)$/i;
 
 async function handleAssetFile(pathname) {
@@ -1791,24 +2067,42 @@ async function handleAssetFile(pathname) {
   };
 }
 
+// The sign-in POST endpoints (the staging-slice names).
+const SIGNIN_POST_PATHS = new Set(["/_signin", "/_signout"]);
+
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
 
-  if (req.method !== "GET") {
-    const body = jsonResponse(405, { error: "method not allowed" });
-    res.writeHead(body.status, body.headers).end(body.body);
-    console.log(
-      `[vm-staging] ${req.method} ${pathname} -> ${body.status} (${Date.now() - startedAt}ms)`,
-    );
-    return;
+  // Slice-1: resolve the session cookie ONCE per request, before any
+  // render. A request with no cookie takes the exact pre-slice path (the
+  // shared anonymous engine). A cookie that fails to resolve — unknown,
+  // expired, revoked, dead account card — renders as Anonymous
+  // (auth/current.rb:58-63, never an error and never a half-privileged
+  // state). lookupSession is one indexed SELECT and never throws.
+  let actor = null;
+  if (req.method === "GET") {
+    const sessionToken = readSessionCookie(req.headers.cookie);
+    if (sessionToken !== null) {
+      actor = await sessions.lookupSession(sessionToken);
+    }
   }
+  const requestEngine = actor !== null ? engineForActor(actor.id) : render;
 
   let response;
   try {
-    if (pathname === "/_status") {
+    if (
+      req.method !== "GET" &&
+      !(req.method === "POST" && SIGNIN_POST_PATHS.has(pathname))
+    ) {
+      response = jsonResponse(405, { error: "method not allowed" });
+    } else if (req.method === "POST" && pathname === "/_signin") {
+      response = await handleSignin(req);
+    } else if (req.method === "POST" && pathname === "/_signout") {
+      response = await handleSignout(req);
+    } else if (pathname === "/_status") {
       response = await status();
     } else if (pathname === "/") {
       response = await renderCardPage(HOME_CARD_NAME);
@@ -1829,14 +2123,18 @@ const server = http.createServer(async (req, res) => {
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
       } else {
-        response = await cardRecordJson(name);
+        response = await cardRecordJson(name, requestEngine);
       }
+    } else if (SIGNIN_PAGE_PATHS.has(pathname)) {
+      // Live renders the *signin card's own sign-in form at /*signin
+      // (set/self/signin.rb); the staging form is the honest stand-in.
+      response = await renderSigninPage();
     } else if (!pathname.slice(1).includes("/")) {
       const name = decodeName(pathname.slice(1));
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
       } else {
-        response = await renderCardPage(name);
+        response = await renderCardPage(name, requestEngine);
       }
     } else {
       response = htmlResponse(
