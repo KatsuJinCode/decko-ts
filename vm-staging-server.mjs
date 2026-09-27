@@ -2054,7 +2054,12 @@ async function renderNavbarLinks(boot) {
       // (The newline before it comes from the trailing child's own \n —
       // live bytes: `…divider"></div>\n<span class="denied">`.)
       parts.push(`<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`);
-      parts.push(`</div></li></li>\n`);
+      // Item separator is the content's own "\r\n" (*main menu db_content is
+      // "[[*Opportunities|Opportunities]]\r\n[[*search|Changes]]"; live serves
+      // "…</div></li></li>\r\n<li class=\"nav-item\">…Changes" — live-fresh
+      // 404/500 captures, 2026-09-27). A plain "\n" here was the last whole-
+      // page byte delta on every served page.
+      parts.push(`</div></li></li>\r\n`);
     } else {
       // Flat link: any non-Pointer target becomes a nav-link.
       const hrefKey = item.target.replace(/ /g, "_").replace(/\$/g, "_");
@@ -2282,7 +2287,12 @@ async function renderFooterContent() {
   // that would invite "correcting" this constant to the oracle's value.
   // Do not: the live bytes are the contract here.
   const version = "0.19.1";
-  const svg = creditImage.length > 0 ? creditImage : "";
+  // The corpus's *credit_image db_content ends "</svg>\n" (trailing newline
+  // the import carried; live's served bytes have a single "\n" between the
+  // SVG close and the decko.org link — live-fresh captures, 2026-09-27:
+  // "</svg>\n<a href=…"). Strip the content's trailing newline so the
+  // template's own "\n" supplies the one live serves.
+  const svg = (creditImage.length > 0 ? creditImage : "").replace(/\n$/, "");
   const body =
     `<div class="d-flex justify-content-center align-items-center">\n` +
     `  ${svg}\n` +
@@ -2297,7 +2307,12 @@ async function renderFooterContent() {
     home_view: "content",
   };
   return (
-    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot).replace(/"/g, "&quot;"))}">${body}</div>`
+    // Single escape only: escapeHtml turns each `"` into `&quot;` — the live
+    // byte form (live-fresh error captures, 2026-09-27). The previous
+    // `.replace(/"/g, "&quot;")` before escapeHtml double-escaped the `&`
+    // (`&amp;quot;`), +4 bytes per quote — +80 bytes on every served page,
+    // the entire net whole-page delta vs live's error pages.
+    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot))}">${body}</div>`
   );
 }
 
@@ -2501,7 +2516,11 @@ async function substituteHeaderTokens(headerHtml, boot) {
     /\{\{:search\|search_box\}\}/g,
     `<div class='d0-search-box'>\n` +
       `<form role="search" class="search-box-form" action="/*search" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="text" name="query[keyword]" id="query_keyword" class="_search-box search-box form-control w-100" autocomplete="off" data-completepath="/*search/search_box_complete.json" placeholder="Search" /></form>\n` +
-      `</div>`,
+      // Live's search_box view closes with its own newline (live bytes:
+      // "</form>\n</div>\n</div>\n        <ul" — the second </div> is the
+      // *header wrapper's); without it the two closes join and the served
+      // page carries "</div></div>\n" where live has "</div>\n</div>\n".
+      `</div>\n`,
   );
   // 6) Account links: Sign up / Sign in <ul> matching the oracle shape
   // (oracle:80-Home.html:75-76).
