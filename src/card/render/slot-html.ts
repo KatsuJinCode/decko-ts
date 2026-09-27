@@ -85,6 +85,11 @@ const SLOT_KEYS: readonly string[] = [
   "params",
   // none (minus skip_perms)
   "main_view", "layout",
+  // wrap.rb:68-71 name_context_slot_option appends name_context AFTER
+  // voo.slot_options (outside the slot_keys slice), so the captured bytes
+  // always show it last ("...&quot;home_view&quot;:...,&quot;name_context&quot;
+  // :&quot;aikido_2&quot;}"). Tail position here reproduces those bytes.
+  "name_context",
 ];
 
 /** voo.slot_options JSON in the captured byte shape: keys in slot_keys

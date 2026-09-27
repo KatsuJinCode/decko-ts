@@ -251,27 +251,36 @@ async function applyMainViewOverride(
  *  finite warmed set); enrichment via prepareItemForRender, then one
  *  verdict refresh so the warm subtree denies exactly like the capture.
  *  Names resolve exactly like the format does: DeckoName marks (:codename)
- *  through the name environment, relative names against the page card. */
+ *  through the name environment, RELATIVE names against the REFERENCING
+ *  card (format.ts resolveNestName's context is the card whose content
+ *  nests the reference: layout-level nests resolve against the page card,
+ *  a warmed card's own content refs against that card). Resolving every
+ *  hop against the page name warmed spurious names ("*credit"'s +image
+ *  warmed as "Aikido Oak Cliff+image"), the real sync nest fetch missed
+ *  the prepared-card map, and the cold page's footer rendered the nest
+ *  empty - the junction row (*credit+*image) stores a NULL key column, so
+ *  its name resolves only through the prepared/temp-cache path the
+ *  reference-context walk actually primes. */
 async function warmUpLayoutNests(
   engine: RenderEngine,
   layoutContent: string,
   pageName: string,
 ): Promise<void> {
   const warmed = new Set<string>();
-  const queue: string[] = [];
+  const queue: Array<{ name: string; context: string }> = [];
   for (const piece of scanNests(layoutContent)) {
     if (piece.kind === "nest" && piece.nest !== undefined && piece.nest.name !== "_main") {
-      queue.push(piece.nest.name);
+      queue.push({ name: piece.nest.name, context: pageName });
     }
   }
   while (queue.length > 0) {
     await ensureCodenameMarksResolvable(engine);
     const batch = queue.splice(0, queue.length);
-    for (const raw of batch) {
+    for (const { name: raw, context } of batch) {
       let resolved: string;
       try {
         const parsed = DeckoName.parse(raw);
-        resolved = parsed.isAbsolute ? parsed.s : parsed.absoluteName(DeckoName.parse(pageName)).s;
+        resolved = parsed.isAbsolute ? parsed.s : parsed.absoluteName(DeckoName.parse(context)).s;
       } catch {
         continue; // unresolved mark: the real nest render reports it
       }
@@ -287,7 +296,7 @@ async function warmUpLayoutNests(
         card = fetchPrepared(engine, resolved);
         if (card === undefined) continue;
       }
-      enqueueWarmDeps(card, queue);
+      enqueueWarmDeps(card, queue, resolved);
     }
   }
   await engine.refreshVerdicts();
@@ -305,21 +314,23 @@ function fetchPrepared(engine: RenderEngine, name: string) {
 }
 
 /** The next warm-up generation: nest references, [[link]] targets (the
- *  navbar chunk walk nests link targets), and pointer/list item names. */
+ *  navbar chunk walk nests link targets), and pointer/list item names.
+ *  Every pushed name keeps the REFERENCING card as its resolution context. */
 function enqueueWarmDeps(
   card: { dbContent: string; typeCode?: string },
-  queue: string[],
+  queue: Array<{ name: string; context: string }>,
+  referencingName: string,
 ): void {
   for (const ref of referencedNames(card.dbContent)) {
-    queue.push(ref.name);
+    queue.push({ name: ref.name, context: referencingName });
   }
   for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
     const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
-    if (target !== "") queue.push(target);
+    if (target !== "") queue.push({ name: target, context: referencingName });
   }
   if (card.typeCode === "pointer" || card.typeCode === "list") {
     for (const item of card.dbContent.split(/\n+/).map((s) => s.replace(/\[\[|\]\]/g, "").trim())) {
-      if (item !== "") queue.push(item);
+      if (item !== "") queue.push({ name: item, context: referencingName });
     }
   }
 }

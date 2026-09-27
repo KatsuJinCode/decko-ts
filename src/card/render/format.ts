@@ -278,6 +278,12 @@ export class RenderFormat {
   mainNestBody: string | undefined;
   voo: Voo | undefined;
   private depthCache: number | undefined;
+  /** context_names.rb @initial_context_names - the parent-derived context,
+   *  lazy-memoized on first access (see initialContextNames). */
+  private initialContextNamesCache: string[] | undefined;
+  /** context_names.rb @context_names - the working list addNameContext
+   *  mutates (see contextNames). */
+  private contextNamesCache: string[] | undefined;
 
   constructor(
     card: RenderCard,
@@ -298,6 +304,57 @@ export class RenderFormat {
       this.depthCache = this.parent === undefined ? 0 : this.parent.depth + 1;
     }
     return this.depthCache;
+  }
+
+  /**
+   * context_names.rb#initial_context_names - the parent format's working
+   * context filtered to the parts of THIS card's name
+   * (relevant_context_names: `yield.select { |n| part_keys.include? n.key }`).
+   * A page's direct body nests inherit the page card's key; a nest whose
+   * name does not contain that part (simple cards, other-page junctions)
+   * filters it out. Lazy like Ruby: the parent's working list is read at
+   * THIS format's first context access, so children rendered after the
+   * parent's titled header (addNameContext) see the added parts, exactly
+   * Ruby's lazy memoization through format ancestry.
+   *
+   * This is the list the slot JSON's name_context carries (wrap.rb:68-79
+   * name_context_slot_option emits initial_context_names, pre-add).
+   */
+  get initialContextNames(): readonly string[] {
+    if (this.initialContextNamesCache === undefined) {
+      const inherited = this.parent?.contextNames ?? [];
+      const partKeys = this.card.name.partKeys;
+      this.initialContextNamesCache = inherited.filter((key) => partKeys.includes(key));
+    }
+    return this.initialContextNamesCache;
+  }
+
+  /**
+   * context_names.rb#context_names - the working list. Lazy-initializes to
+   * initialContextNames (relevant_context_names over the parent's working
+   * list; the params branch context_names_from_params is the AJAX-slot
+   * surface, unported - page renders carry no slot_opts params).
+   */
+  get contextNames(): readonly string[] {
+    if (this.contextNamesCache === undefined) {
+      this.contextNamesCache = [...this.initialContextNames];
+    }
+    return this.contextNamesCache;
+  }
+
+  /**
+   * context_names.rb#add_name_context (default name): append this card's
+   * own part keys to the working context. Called by the :titled view AFTER
+   * its header renders (html/views.rb:59 `naming { render_header }` -
+   * naming yields first, so the titled card's own title renders in the
+   * pre-context and stays full while its body nests relativize).
+   */
+  addNameContext(): void {
+    const list = this.contextNamesCache ?? [...this.initialContextNames];
+    this.contextNamesCache = list;
+    for (const key of this.card.name.partKeys) {
+      if (!list.includes(key)) list.push(key);
+    }
   }
 
   /** The format rendering the page root (context card for relative names). */
@@ -928,11 +985,16 @@ export class RenderFormat {
     return out;
   }
 
-  /** title.rb#standard_title via #title_in_context: the name, HTML-escaped
-   *  (the html-format title is the escaped name; voo.title overrides are
-   *  wave-3). */
+  /** title.rb#standard_title via #title_in_context (context_names.rb:49-55):
+   *  the card name relativized against the format's context names
+   *  (`title.from(*context_names)` - DeckoName#from strips the leading
+   *  parts the context supplies and round-trip-verifies the compression),
+   *  HTML-escaped (the html-format override h()s the result). In the page's
+   *  own context a junction slot ("Aikido 2+management" under the Aikido 2
+   *  page) displays as the relative "+management"; the same card rendered
+   *  out of context keeps the full name. voo.title overrides are wave-3. */
   standardTitle(): string {
-    return h(this.card.name.s);
+    return h(this.card.name.from(...this.contextNames));
   }
 
   /** name/all.rb#url_key via DeckoName. */

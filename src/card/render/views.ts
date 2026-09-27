@@ -39,7 +39,7 @@ import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { UnsupportedViewError } from "./format.js";
-import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn } from "./format.js";
+import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
   isPointerOrListCard,
   isRuleCardWithPermissionRight,
@@ -105,6 +105,29 @@ function slotCardname(card: RenderCard): string {
   return isNewCard(card.record) && name.isCompound ? name.urlKey : name.s;
 }
 
+/** wrap.rb:63-71 #slot_options + #name_context_slot_option: the voo's slot
+ *  options, then the format's INITIAL context names (parent-derived, part-
+ *  filtered - context_names.rb:22-29 initial_context_names) appended as a
+ *  comma-joined key list when non-empty. Ruby appends AFTER voo.slot_options
+ *  (bypassing the slot_keys slice), so the JSON key lands last; SLOT_KEYS
+ *  carries "name_context" in tail position for the same bytes.
+ *
+ *  Emission is gated on KNOWN cards from the live bytes: every wanted slot
+ *  in the captures (live_Aikido_2.html +management mini_bar, the no-id
+ *  slots on Latest_News/Conflict_Done_Well) lacks name_context while the
+ *  known slots under the same frame carry it - Ruby's unknown-card nest
+ *  format does not inherit the page's name context. The part filter drops
+ *  the rest (Latest_News items "X+pdf" don't contain the latest_news part;
+ *  live pins zero name_context on that page). */
+function slotOptionsWithNameContext(fmt: RenderFormat, voo: Voo): string {
+  const slotOptions = voo.slotOptions();
+  if (fmt.card.unknown !== true) {
+    const initial = fmt.initialContextNames;
+    if (initial.length > 0) slotOptions["name_context"] = initial.join(",");
+  }
+  return slotOptionsJson(slotOptions);
+}
+
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
@@ -118,7 +141,7 @@ function slotWrap(ctx: ViewContext, view: string, inner: string): string {
     "data-card-type-name": card.typeName,
     "data-card-link-name": fmt.urlKey(),
     "data-slot-id": newSlotId(),
-    "data-slot": slotOptionsJson(voo.slotOptions()),
+    "data-slot": slotOptionsWithNameContext(fmt, voo),
   });
   // CLUSTER 15 gate: only discussion-junction cards get the trailing
   // `\n` before the closing `</div>` of the content-view slot wrap.
@@ -1751,7 +1774,14 @@ const titledView: ViewFn = ({ fmt, voo }) => {
     voo.setViz("comment_box", "show");
   }
   // wrap do [naming { render_header }, render_flash, wrap_body { render_titled_content }] end
+  // naming { render_header } (context_names.rb:7-13) yields the header
+  // FIRST, then adds the card's own name parts to the format's working
+  // context - the titled card's own title renders in the pre-context
+  // (full name) while every nest inside its body relativizes against the
+  // added parts (live: /Aikido_2's +management bar and +overview header
+  // render "+management"/"+overview" under the Aikido 2 page).
   const header = headerHtml({ fmt, voo });
+  fmt.addNameContext();
   const core = fmt.renderView("titled_content");
   const bodyClasses = ["d0-card-body", "d0-card-content", fmt.card.setKeys].join(" ");
   const inner =
