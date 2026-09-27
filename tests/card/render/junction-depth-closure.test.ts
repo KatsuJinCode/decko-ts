@@ -86,25 +86,26 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // simple sides + the depth-2 junction (side-key pair join), round 1
       // joins the depth-3 junction by its sides' resolved ids.
       expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(2);
-      // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
-      // 2 lexicon/enrichment primes (type card by id; the old SQL walk's
-      // type/side priming folded there) + round-0 batch (2 fetch shapes + 6
-      // folded engine statements: 3 read-permission + codename codehash +
-      // structure universe + *default universe) + round-1 batch (1 side-id
-      // join) + 3 rule-lookup candidates. Constant in deck size; +1 batch
-      // per chain LEVEL. Round 9 re-pin (+1 statements): the *default rule
-      // universe folds into the same batch so nest-miss children resolve
-      // their *default-rule type from memory. Round 10 re-pin (+1
-      // statement): the *default html view universe folds into the same
-      // cold batch (A-36 — the deck's default nest view resolves
-      // rule-driven; the seeded deck here carries no such rule, so the
-      // render falls back to the railtie :titled — bytes unchanged, one
-      // folded statement added).
+      // Measured shape (2026-09-27 cold-query lane re-pin): 1 root fetch +
+      // the PRELUDE batch (src/card/render/prefetch.ts: the root's side
+      // priming, the root's TYPE row (enrichment fold), the root's
+      // set-pattern anchor priming (the rule walk's *self/*type/*all
+      // lex_to_id point queries became cache entries), and the folded
+      // engine statements: 3 read-permission + codename codehash +
+      // structure universe + *default universe. R17 (A-36) rides through
+      // the prelude in merge pass 9 prep: default_nest_view is process
+      // config (html.rb:17-19), never a deck rule, so render.ts's fold
+      // composition no longer appends the *default html view universe
+      // statement - one fewer prelude statement than the cold-query lane's
+      // own tree measured) + round-0 batch (fetch shapes only) + round-1 batch (1
+      // side-id join). The rule-lookup candidates cost ZERO point queries
+      // since the prelude primes their anchors. Constant in deck size;
+      // +1 batch per chain LEVEL. (2026-09-23..09-26 shape was 8 round
+      // trips: root + 2 enrich primes + round 0 + round 1 + 3 rule-lookup
+      // candidates.)
       const snapshot = storage.counting.snapshot();
-      expect(snapshot.roundTrips).toBe(8);
-      // R17: was 16 - the *default html view universe statement left the cold
-      // fold (A-36 correction: process config, not a deck rule).
-      expect(snapshot.statements).toBe(15);
+      expect(snapshot.roundTrips).toBe(4);
+      expect(snapshot.statements).toBe(12);
     } finally {
       storage.close();
     }
@@ -175,18 +176,22 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
-      // Measured shape (2026-09-23, per-key closure rounds): 1 root fetch +
-      // 2 lexicon/enrichment primes + round-0 batch (2 fetch shapes + 6
-      // folded engine statements, the *default universe added round 9) + 3
-      // rule-lookup candidates. Constant in deck size; the depth-3/4 tests
-      // show the +1 batch per chain level. Round 9 re-pin (+1 statements).
-      // Round 10 re-pin (+1 statement): the *default html view universe
-      // Round 10 re-pin (+1 statement): the *default html view universe
-      // joined the same cold batch (A-36). R17: it left the fold again -
-      // default_nest_view is process config (html.rb:17-19), not a deck
-      // rule - statements back to the round-9 count.
-      expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(14);
+      // Measured shape (2026-09-27 cold-query lane re-pin, integrated with
+      // R17's A-36 correction in merge pass 9 prep): 1 root fetch +
+      // the PRELUDE batch (side priming + TYPE row fold + set-pattern
+      // anchor priming + the folded engine statements) + the round-0 batch
+      // (fetch shapes only). The rule-lookup candidates cost ZERO point
+      // queries since the prelude primes their anchors. Constant in deck
+      // size; the depth-3/4 tests show the +1 batch per chain level.
+      // R17 (A-36) rides through the prelude: default_nest_view is process
+      // config (html.rb:17-19), never a deck rule, so render.ts's fold
+      // composition no longer appends the *default html view universe
+      // statement - one fewer prelude statement than the cold-query lane's
+      // own tree measured (13 -> 12). (The 2026-09-23..09-26 shape was
+      // 7 round trips / 15 statements: root + 2 enrich primes + round 0 +
+      // 3 rule-lookup candidates.)
+      expect(snapshot.roundTrips).toBe(3);
+      expect(snapshot.statements).toBe(11);
     } finally {
       storage.close();
     }

@@ -90,34 +90,38 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
       }
     }
 
-    // Structural assertions (2026-09-23, per-key closure rounds): cold round
-    // trips scale with the CHAIN at slope 1 (one batch per inclusion level
-    // beyond depth 2) - the trade for rows-read dropping from O(deck x
-    // passes) per render to O(page). Ruby's measured truth is depth+3: the
-    // same slope. Statements add exactly one fetch statement per level.
+    // Structural assertions: cold round trips scale with the CHAIN at slope
+    // 1 (one batch per unfetched inclusion level) - the trade for rows-read
+    // dropping from O(deck x passes) per render to O(page). Ruby's measured
+    // truth is depth+3; the TS curve is level-linear BELOW it (see the
+    // re-pin note below). Statements add exactly one fetch statement per
+    // level.
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
-    // Structural shape (2026-09-23, per-key closure rounds): round trips =
-    // 7 + max(0, depth-2) and statements = 12 + max(0, depth-1) - slope 1
-    // per chain LEVEL (one batch per inclusion level), independent of deck
-    // size. Ruby's measured truth is depth+3: the same slope. The trade for
-    // the level-linear cold path is rows-read dropping from O(deck x passes)
-    // per render to O(page); warm renders stay at 0 (asserted below).
-    // Round 9 re-pin (+1 statements): the *default rule universe statement
-    // folds into the cold batch alongside the *structure universe (the #1282
-    // shape - one batched round trip for all engine-level state) so a
-    // nest-miss child resolves its *default-rule type from memory. Round
-    // trips - the billed axis - are unchanged.
-    // Round 10 re-pin (+1 statements, 13 + max(0, depth-1)): the *default
-    // html view universe joins the same cold batch (A-36 — the deck's
-    // default nest view resolves rule-driven; this seeded deck has no such
-    // rule, so the rendered bytes are unchanged and only the folded
-    // statement count moves).
-    const expectedRts = (depth: number): number => 7 + Math.max(0, depth - 2);
-    // R17: base 12 - the *default html view universe statement left the cold
-    // fold (the A-36 correction: default_nest_view is process config,
-    // html.rb:17-19, never a deck rule; the fold slot was dead).
-    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
+    // Structural shape (2026-09-27 cold-query lane re-pin, integrated with
+    // R17's A-36 correction in merge pass 9 prep): round trips =
+    // 2 + max(0, depth-1) and statements = 9 + max(0, depth-1) - slope 1
+    // per chain LEVEL (one batch per unfetched inclusion level), independent
+    // of deck size. The two fixed round trips: the root fetch + the PRELUDE
+    // batch (src/card/render/prefetch.ts prefetchInclusionClosure: the root's
+    // side priming, the root's TYPE row (enrichment fold - the two enrich
+    // point round trips became cache hits), the root's set-pattern anchor
+    // priming (the rule walk's *self/*type/*all lex_to_id point queries
+    // became cache entries), and the engine's permission/codename/structure
+    // folds LAST). Ruby's measured truth is depth+3 - the TS curve is now
+    // BELOW it by 2 at every depth (2026-09-23..2026-09-26 shape was
+    // 7 + max(0, depth-2): level-linear but 2-3 ABOVE Ruby; the trade for
+    // the level-linear cold path remains rows-read dropping from
+    // O(deck x passes) per render to O(page)). Warm renders stay at 0
+    // (asserted below).
+    // R17 (A-36) rides through the prelude: default_nest_view is process
+    // config (html.rb:17-19), never a deck rule, so render.ts's fold
+    // composition no longer appends the *default html view universe
+    // statement - the prelude carries one fewer statement than the
+    // cold-query lane's own tree measured (10 -> 9 base). Round trips -
+    // the billed axis - are unchanged.
+    const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 9 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
