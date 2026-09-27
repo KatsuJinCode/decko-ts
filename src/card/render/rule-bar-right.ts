@@ -24,7 +24,8 @@
 // structure-governed (checked 2026-09-22), so dbContent == raw for every
 // pinned case; a future stream seeding governed rule cards owes the split.
 
-import type { RenderCard } from "./format.js";
+import type { RenderCard, RenderEngineLike } from "./format.js";
+import { DeckoName } from "../name.js";
 import { h } from "./slot-html.js";
 import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
 
@@ -77,22 +78,48 @@ function typeText(card: RenderCard): string {
  *  entries; moves zero pins. The earlier single-item-collapse fix was
  *  WRONG — it would also un-wrap *star+*delete, which the raw oracle
  *  pins as wrapped. */
-function pointerListOneLineContent(card: RenderCard): string {
+function pointerListOneLineContent(
+  card: RenderCard,
+  engine?: RenderEngineLike,
+): string {
   const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
-  const inner = items.map(pointerListOneLineItem).join("\n");
+  const inner = items.map((name) => pointerListOneLineItem(name, engine)).join("\n");
   return `<div class="pointer-list">${inner}</div>`;
 }
 
-/** One compact-mode pointer/list item: a wanted-card link with the
- *  card-title span. Ruby's link view classifies unknown nest targets
- *  with `wanted-card` (links.rb#add_known_or_wanted_class); the
- *  rule-bar-right compact rendering emits the same class for every
- *  item (the captured corpus:6560 item is unseeded, hence wanted). */
-function pointerListOneLineItem(name: string): string {
+/** One compact-mode pointer/list item: a card link with the card-title
+ *  span. Ruby's chain (card-mod-list set/abstract/01_list/html_views.rb
+ *  :one_line_content -> pointer_items(view: :link) -> listing -> nest_item
+ *  view :link; card-mod-format set/all/base.rb:35-44 link_view):
+ *
+ *     opts[:known] = card.known?
+ *     link_to_card card.name, _render_title, opts
+ *
+ *  `add_known_or_wanted_class` (links.rb:140-143) emits `known-card` when
+ *  `Card.known?(name)` (states.rb:65 fetch(mark).present?) and
+ *  `wanted-card` otherwise; the href comes from `path(mark: name)` — the
+ *  link NAME's url_key form (spaces -> underscores, case retained;
+ *  cardname variants.rb #url_key). The anchor text is the item card's
+ *  :title view (wrapped_title: `card-title` span, joint "+"s wrapped in
+ *  bare spans).
+ *
+ *  The engine resolves the item through the fetch ladder (fetchRenderCard,
+ *  the port of Card.fetch — the same seam the pointer/list core view
+ *  reads items through, whose closure walk the render prepare phase runs
+ *  to fixpoint over pointer/list hosts). Without an engine (bare-function
+ *  tests), the item cannot be verified -> the unclassified wanted-card
+ *  shape, byte-identical to the pre-lane behavior. */
+function pointerListOneLineItem(name: string, engine?: RenderEngineLike): string {
+  const resolved = engine?.fetchRenderCard?.(name);
+  const known = resolved !== undefined;
+  const display = known ? resolved.name : DeckoName.parse(name);
+  const titleAttr = h(display.s);
+  const inner = titleAttr.split("+").join("<span>+</span>");
+  const cls = known ? "known-card" : "wanted-card";
   return (
     `<div class="pointer-item item-link">` +
-    `<a class="wanted-card" href="/${h(name)}">` +
-    `<span class="card-title" title="${h(name)}">${name}</span>` +
+    `<a class="${cls}" href="/${h(display.urlKey)}">` +
+    `<span class="card-title" title="${titleAttr}">${inner}</span>` +
     `</a>` +
     `</div>`
   );
@@ -101,7 +128,11 @@ function pointerListOneLineItem(name: string): string {
 /** The one-line inner content for a persisted rule card, per the dispatch
  *  above. `rightSetting` is the card name's right part (the rule's setting
  *  name, e.g. "*default"); undefined for simple names (not rule cards). */
-function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined): string {
+function ruleOneLineContent(
+  card: RenderCard,
+  rightSetting: string | undefined,
+  engine?: RenderEngineLike,
+): string {
   if (rightSetting === "*default") {
     const raw = card.dbContent;
     return `${typeText(card)} : ${raw === "" ? "<em>empty</em>" : raw}`;
@@ -148,7 +179,7 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
       return `<span class="inherit-perm">Inherit from left card</span>`;
     }
     if (isPermissionRightSetting(rightSetting)) {
-      return pointerListOneLineContent(card);
+      return pointerListOneLineContent(card, engine);
     }
     return truncatedCore(card.dbContent);
   }
@@ -156,10 +187,14 @@ function ruleOneLineContent(card: RenderCard, rightSetting: string | undefined):
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —
- *  the *all bar_right stays empty, bar.rb:28's bar_right default). */
-export function ruleBarRightHtml(card: RenderCard): string {
+ *  the *all bar_right stays empty, bar.rb:28's bar_right default).
+ *  `engine` is the render-path engine when the caller has one (the view
+ *  dispatch always does; bare-function tests may omit it). It resolves
+ *  each one-line pointer item's knownness (Card.known?) — see
+ *  pointerListOneLineItem. */
+export function ruleBarRightHtml(card: RenderCard, engine?: RenderEngineLike): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";
   const rightSetting = card.name.rightName?.s;
-  return `<div class="text-muted one-line">${ruleOneLineContent(card, rightSetting)}</div>`;
+  return `<div class="text-muted one-line">${ruleOneLineContent(card, rightSetting, engine)}</div>`;
 }
