@@ -1,0 +1,21 @@
+# LOCAL DEMO ONLY (deliverable-metrics 2026-09-26): copy of wrangler.oneclick.toml
+# with the ORIGINAL placeholder database_id that was in effect when the local
+# workerd D1 state under out/local-state was provisioned (reprovision3.log,
+# 79,858 seed rows, card_count 6241). The live wrangler.oneclick.toml was
+# re-pointed to the real remote id by a --execute run, and wrangler dev booted
+# with it opens a DIFFERENT (empty) local sqlite — mechanism: miniflare keys the
+# local D1 file per database_id, so changing the id orphans the populated file.
+# This copy boots against the populated local state. Read-only use; do not
+# regenerate or point any remote command at this file.
+
+name = "decko-one-click-demo"
+main = "../../../deploy/worker.ts"
+compatibility_date = "2026-09-01"
+
+[alias]
+"node:crypto" = "../../../deploy/shims/node-crypto-shim.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-one-click-db"
+database_id = "00000000-0000-0000-0000-000000000001"

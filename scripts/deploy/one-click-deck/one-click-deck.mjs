@@ -270,8 +270,12 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
       writesRows: 0,
       executeOnly: false,
       describe: () =>
-        `NONE BY DESIGN: the engine stores everything in D1; this deploy binds no R2, no KV, ` +
-        `no [assets] directory (deploy/README.md "Storage budget"). 0 resources, 0 rows.`,
+        `STATIC ASSETS via the wrangler [assets] directory ` +
+        `(scripts/deploy/one-click-deck/demo-static-assets/, uploaded together ` +
+        `with the worker bundle in step 6): all-style.css + all-script.js ` +
+        `(the SassC+Uglifier-compiled skin, sha256-matched to the render VM's ` +
+        `oracle-assets), decko-config.js, robots.txt. The assets layer serves ` +
+        `them before the worker runs: 0 D1 rows read or written.`,
       remoteCommands: () => [],
     },
     {
@@ -374,6 +378,12 @@ function ensureConfig({ args, databaseId }) {
 # No nodejs_compat: the worker graph is Web-standard-only; the one Node import
 # in the engine graph (node:crypto) is replaced at bundle time by the [alias]
 # shim (same shape as deploy/wrangler.toml).
+#
+# [assets] ships the compiled skin (all-style.css + all-script.js, sha256-
+# matched to the render VM's oracle-assets) plus decko-config.js and
+# robots.txt. The assets layer serves them BEFORE the worker runs, so asset
+# requests cost zero D1 reads and zero D1 writes; crawler traffic is turned
+# away by robots.txt instead of burning the read budget.
 
 name = "${args.workerName}"
 main = "${rel(WORKER_TS)}"
@@ -381,6 +391,9 @@ compatibility_date = "2026-09-01"
 
 [alias]
 "node:crypto" = "${rel(CRYPTO_SHIM)}"
+
+[assets]
+directory = "demo-static-assets"
 
 [[d1_databases]]
 binding = "DB"
@@ -526,7 +539,9 @@ async function executeMode({ args, plan, ledger, steps, remoteFiles }) {
   // 6: deploy
   runWrangler(["deploy", "--config", relToRepo(CONFIG_TOML)], { cwd: REPO, label: "worker deploy" });
 
-  // 7: assets — none by design (printed in the step table)
+  // 7: assets — the [assets] directory (demo-static-assets/) rode along with
+  // the step-6 upload; the assets layer serves /assets/* and /robots.txt
+  // before the worker runs.
 
   // 8: verify (reads only)
   const sub = await cfApi("GET", `/accounts/${args.accountId}/workers/subdomain`, args.token);

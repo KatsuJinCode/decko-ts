@@ -18,6 +18,11 @@
 //   GET  /_status        -> engine + database health JSON
 //   GET  /__metrics      -> per-isolate request/SQL/D1-rows aggregate
 //
+// Static assets (/assets/*, /robots.txt) never reach this file: the wrangler
+// [assets] directory configured in wrangler.oneclick.toml serves them from
+// the assets layer before the worker is invoked (read-path demo: zero D1
+// traffic for assets). Card pages link them via PAGE_HEAD_TAGS below.
+//
 // Deploy recipe: deploy/README.md. Architecture + compatibility notes:
 // docs/deploy-notes.md.
 
@@ -239,6 +244,30 @@ async function primeCqlNameResolver(
 const HOME_CARD_NAME = "Home";
 const OPEN_VIEW = "open";
 
+/** The static-asset head tags, in the same order and shape a real decko page
+ *  serves (receipt: brandonDojoTech/tmp/live-wire/Home.html head section):
+ *  viewport meta, the Material Icons font stylesheet, the compiled decko skin
+ *  stylesheet, then the script tags — jQuery + jquery-ujs from the same CDNs
+ *  the live page uses (the compiled all-script.js BUNDLES jquery-ui and
+ *  bootstrap but NOT jQuery itself; without jQuery loaded first, jquery-ui's
+ *  factory throws and nothing after it in the bundle registers), the compiled
+ *  decko JS bundle next, the per-deck config after it. `defer` preserves
+ *  document execution order, so the config assignments land after decko.js
+ *  has defined the global — the same effective order as the live page's
+ *  inline config block, without blocking first paint. The files ride the
+ *  wrangler [assets] directory
+ *  (scripts/deploy/one-click-deck/demo-static-assets/): the assets layer
+ *  serves them before the worker runs, so each asset request costs zero D1
+ *  reads and zero D1 writes. */
+const PAGE_HEAD_TAGS =
+  `<meta content="width=device-width, initial-scale=1.0" name="viewport">` +
+  `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css">` +
+  `<link media="all" rel="stylesheet" type="text/css" href="/assets/all-style.css">` +
+  `<script src="https://code.jquery.com/jquery-3.5.1.min.js" defer crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="></script>` +
+  `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" defer crossorigin="anonymous" integrity="sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==" referrerpolicy="no-referrer"></script>` +
+  `<script src="/assets/all-script.js" defer></script>` +
+  `<script src="/assets/decko-config.js" defer></script>`;
+
 function htmlResponse(status: number, body: string): Response {
   return new Response(body, {
     status,
@@ -299,11 +328,27 @@ function decodeName(raw: string): string | undefined {
 async function renderCardPage(deck: Deck, cardName: string): Promise<Response> {
   try {
     const view = await deck.render.render(cardName, OPEN_VIEW);
+    // Body wrapper = the live decko page shell (receipt:
+    // brandonDojoTech/tmp/live-wire/Home.html line 81): everything visible
+    // rides inside <article class="container flex-shrink-0" role="main"> —
+    // the decko page gutter. Without it, anything the shell emits as a
+    // direct body child (here the record-JSON/status menu line) sits at
+    // x=0: Bootstrap's reboot zeroes body margin, and the card slot's
+    // ~24px inset comes from its OWN internal paddings (accordion-body /
+    // d0-card-header), not from any page container — so a bare body-level
+    // <p> renders flush against the viewport edge, visually clipped
+    // between the card's bottom border and the background. The menu line
+    // is a shell affordance, not a card-menu, so it rides the same
+    // guttered container as the card (live shape: nothing user-visible is
+    // bare in the body). The .card-view div stays the test hook.
     return htmlResponse(
       200,
-      `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(cardName)} — decko-ts</title></head>` +
-        `<body><div class="card-view" data-card="${escapeHtml(cardName)}" data-view="${OPEN_VIEW}">${view}</div>` +
-        `<p><a href="/${encodeURIComponent(cardName)}.json">record JSON</a> · <a href="/_status">status</a></p></body></html>`,
+      `<!doctype html><html class="h-100"><head><meta charset="utf-8"><title>${escapeHtml(cardName)} — decko-ts</title>${PAGE_HEAD_TAGS}</head>` +
+        `<body class="d-flex flex-column h-100">` +
+        `<article class="container flex-shrink-0" role="main"><div id="main">` +
+        `<div class="card-view" data-card="${escapeHtml(cardName)}" data-view="${OPEN_VIEW}">${view}</div>` +
+        `<p><a href="/${encodeURIComponent(cardName)}.json">record JSON</a> · <a href="/_status">status</a></p>` +
+        `</div></article></body></html>`,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
