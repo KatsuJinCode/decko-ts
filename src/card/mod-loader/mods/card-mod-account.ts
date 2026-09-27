@@ -40,8 +40,10 @@
 // NOT ported (honest remainder, with one-word reasons):
 // - signin core/edit/edit_buttons/open/title/reset_password_success:
 //   rails (forms, nest_mode, card_form, haml :core)
-// - signup new/new_buttons/content_formgroups/core: rails (card_form,
-//   multi_card_editor, haml :core, settings :title mutations)
+// - signup new/new_buttons/content_formgroups: rails (card_form,
+//   multi_card_editor). :core IS ported (R17 — the invite-links haml
+//   core, see signupCoreView; set/type/signup/core.haml +
+//   views.rb:30-33 + helpers).
 // - right/account closure/verify_url/reset_password_url/token_expiry:
 //   rails (Auth::Token.encode, card_url, path, haml :closure,
 //   ok?-predicate perms directives)
@@ -64,6 +66,8 @@
 //   rails (coffee/scss asset pipeline)
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { h } from "../../render/slot-html.js";
+import { isNewCard } from "../../fetch/card-record.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
@@ -156,6 +160,132 @@ const userEmailRawView: ViewFn = ({ fmt }: ViewContext) => {
   if (card.id === undefined) return ""; // virtual (new? = unsaved)
   return card.dbContent;
 };
+
+/** set/type/signup/core.haml + set/type/signup/views.rb:30-33 view :core,
+ *  template: :haml (R17 port — was listed under "rails" because of the haml
+ *  template; the template is two statements over @lines/@body and renders
+ *  pure static HTML around the processed body):
+ *
+ *  ```
+ *  - unless card.new_card? # necessary?
+ *    .invite-links
+ *      = lines.map { |h| "<div>#{h}</div>" }.join "\n"
+ *      = body
+ *  ```
+ *  with `@lines = [signup_line] + account_lines` (views.rb:31) and
+ *  `@body = process_content _render_raw` (views.rb:32).
+ *
+ *  signup_line (views.rb:35-37):
+ *  `["<strong>#{safe_name}</strong>", ("was" if invited?),
+ *  "signed up on #{format_date card.created_at}"].compact.join " "` —
+ *  invited? = !self_signup? (views.rb:39-41) and self_signup? =
+ *  `card.creator_id == AnonymousID` (views.rb:43-45): self-signed-up
+ *  cards (the corpus's 53 of 55 live Sign up cards, creator_id 15 =
+ *  Anonymous) read "signed up on"; the 2 admin-created ones
+ *  (Tesfaye Tekelu, Marc Sacks, creator 393) read "was signed up on".
+ *  format_date (card-1.110.0 lib/card/format/content.rb:29-41) localizes
+ *  with :card_date_seconds = `'%B %e, %Y %H:%M:%S'` (en.yml:30) — %e is
+ *  the SPACE-padded day ("November 18, 2023 16:24:47"; the captured
+ *  bytes show the raw DB datetime string '2023-11-18 16:24:47'
+ *  verbatim, so the port formats the SQL string literally, no TZ math).
+ *
+ *  account_lines (views.rb:54-61): `card.account? ? verification_lines :
+ *  [t(:account_missing_account)]`; verification_lines =
+ *  `[verification_sent_line, verification_link_line].compact`. For the
+ *  captured corpus (viewer Anonymous — the engine's signed-out state):
+ *  verification_sent_line needs `account.email_card.ok?(:read)` — the
+ *  +account+email child is Administrator-read, denied for Anonymous ->
+ *  nil; verification_link_line needs non-empty verification_links, and
+ *  all three links (approve_with_token/approve_without_token/deny) are
+ *  gated on can_approve?/ok?(:delete) — all false signed-out -> nil.
+ *  So verification_lines = [] for every captured card (pinned: all 55
+ *  signup expected bytes carry exactly ONE lines-div, the signup_line).
+ *  The port computes sent_line through the engine's prepared read verdict
+ *  (engine.isDenied on the fetched +account+email card; an unfetchable
+ *  card is unreadable) and leaves the three link lines unported (their
+ *  gates need the signed-in approve/delete task verdicts; the corpus
+ *  never exercises them signed-in). The missing-account branch emits the
+ *  en.yml:18 literal "ERROR: signup card missing account".
+ *
+ *  DISPATCH (both routes call THIS function): the verifier/probe render
+ *  path never binds a mod loader, so — matching the account_links core
+ *  pattern — views.ts#coreView base-dispatches it by typeCode ("signup",
+ *  the type card's codename) with the typeName fallback, and the mod
+ *  manifest registers the same function under the type set for loaded-
+ *  loader compositions.
+ */
+export const signupCoreHtml = (ctx: ViewContext): string => {
+  const { fmt } = ctx;
+  const engine = fmt.engine;
+  const card = fmt.card;
+  // `- unless card.new_card?` — new cards render nothing (unknown/
+  //  nest-miss cards are the engine's new-card shapes; fetched real
+  //  cards are never new).
+  if (card.unknown === true || isNewCard(card.record)) return "";
+  const createdAt = card.record.createdAt;
+  const creatorId = card.record.creatorId;
+  // Ruby AnonymousID = Card["Anonymous"].id (the codename card; the
+  // corpus names it "Anonymous" — prepare-phase enriched, render.ts).
+  const anonymousId = engine.fetchRenderCard("Anonymous")?.id;
+  const invited = creatorId !== undefined && anonymousId !== undefined && creatorId !== anonymousId;
+  // safe_name: the html-escaped name (Rails' html_safe wrapper).
+  const signupLine =
+    `<strong>${h(card.name.s)}</strong>` +
+    (invited ? " was" : "") +
+    ` signed up on ${formatCardDateSeconds(createdAt)}`;
+  const accountLines = signupAccountLines(ctx);
+  const body = fmt.processContent(fmt.renderRaw());
+  // HAML line discipline: each template statement's bytes end with a
+  // newline — the body line and the closing </div> carry a trailing "\n"
+  // (the content view's slot wrap close then lands AFTER the final
+  // newline; expected tail "...\n</div>\n</div>\n</div>").
+  return (
+    `<div class='invite-links'>\n` +
+    [signupLine, ...accountLines].map((line) => `<div>${line}</div>`).join("\n") +
+    `\n${body}` +
+    `\n</div>\n`
+  );
+};
+
+/** views.rb:54-61 account_lines (see signupCoreView). */
+function signupAccountLines(ctx: ViewContext): string[] {
+  const { fmt } = ctx;
+  const engine = fmt.engine;
+  // The trait fetch composes the STAR name: card.account -> "ronald joseph
+  // +*account" (right 100 = *account; oracle probe
+  // r17-junction-fetch-probe.rb — Card.fetch("ronald joseph+account") is
+  // nil and the tag card "account" does not exist). The prepare phase
+  // enriches both children for the signup root (render.ts).
+  const account = engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  if (account === undefined || account.unknown === true) {
+    return ["ERROR: signup card missing account"];
+  }
+  const email = engine.fetchRenderCard(`${fmt.card.name.s}+*account+*email`);
+  const sent =
+    email !== undefined && email.unknown !== true && !engine.isDenied(email)
+      ? `A verification email has been sent to ${h(email.dbContent)}`
+      : undefined;
+  // verification_link_line: empty verification_links -> nil (all three
+  // link gates are signed-out false; see the signupCoreView doc).
+  return sent === undefined ? [] : [sent];
+}
+
+/** en locale card_date_seconds: '%B %e, %Y %H:%M:%S' (%e = space-padded
+ *  day-of-month). The SQL datetime string 'YYYY-MM-DD HH:MM:SS' is split
+ *  literally — the capture proves no timezone shift (ronald joseph:
+ *  DB '2023-11-18 16:24:47' -> "November 18, 2023 16:24:47"). */
+function formatCardDateSeconds(sql: string | undefined): string {
+  if (sql === undefined || sql === "") return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(sql);
+  if (m === null) return "";
+  const month = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ][Number(m[2]) - 1];
+  if (month === undefined) return "";
+  const day = String(Number(m[3])).padStart(2, " ");
+  return `${month} ${day}, ${m[1]} ${m[4]}:${m[5]}:${m[6]}`;
+}
 
 // ---------------------------------------------------------------------------
 // the manifest
@@ -254,10 +384,21 @@ const setModules: ModSetModuleFile[] = [
   },
   { setPath: "type/signup" },
   {
-    // set/type/signup/views.rb:1-99 format :html do block - :new,
-    // :content_formgroups, :new_buttons, :core + helpers. Not ported:
-    // rails.
-    setPath: "type/signup/views",
+    // The SAME set as the gem's set/type/signup.rb + set/type/signup/
+    // views.rb (the type predates the safe-key spelling: the gem dir is
+    // "signup", the card set-key token is "sign_up"). The chain walker
+    // resolves the card's set-key token TYPE-sign_up through set-keys-to-
+    // modules.ts camelize("sign_up") -> "SignUp", so the view must
+    // register under the TWO-segment shortname "Type::SignUp" (setPath
+    // "type/sign_up") — "Type::Signup" and "Type::SignUp::Views" are
+    // shortnames no token ever resolves to. Ported (R17): :core
+    // (core.haml: the invite-links div + signup_line + processed raw
+    // body; see signupCoreView). Not ported: rails (:new,
+    // :content_formgroups, :new_buttons - card_form, multi_card_editor).
+    setPath: "type/sign_up",
+    formats: {
+      html: { views: [{ view: "core", viewFn: (ctx) => signupCoreHtml(ctx) }] },
+    },
   },
   {
     // set/type/user.rb:7-48 format :html do block - view :setup

@@ -102,7 +102,9 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // folded statement added).
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(8);
-      expect(snapshot.statements).toBe(16);
+      // R17: was 16 - the *default html view universe statement left the cold
+      // fold (A-36 correction: process config, not a deck rule).
+      expect(snapshot.statements).toBe(15);
     } finally {
       storage.close();
     }
@@ -179,9 +181,12 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // rule-lookup candidates. Constant in deck size; the depth-3/4 tests
       // show the +1 batch per chain level. Round 9 re-pin (+1 statements).
       // Round 10 re-pin (+1 statement): the *default html view universe
-      // joins the same cold batch (A-36).
+      // Round 10 re-pin (+1 statement): the *default html view universe
+      // joined the same cold batch (A-36). R17: it left the fold again -
+      // default_nest_view is process config (html.rb:17-19), not a deck
+      // rule - statements back to the round-9 count.
       expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(15);
+      expect(snapshot.statements).toBe(14);
     } finally {
       storage.close();
     }

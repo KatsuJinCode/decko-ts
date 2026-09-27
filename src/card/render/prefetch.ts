@@ -113,6 +113,11 @@ interface RawRow {
    *  and blanked the override bytes. */
   createdAt: string | null;
   updatedAt: string | null;
+  /** cards.creator_id - the Sign up core's invited?/self_signup? input
+   *  (card-mod-account set/type/signup/views.rb:39-45 compares against
+   *  AnonymousID); R17 rides it through like the date columns above
+   *  (the hardcoded 0 zeroed every prewarmed record's creator). */
+  creatorId: number | null;
 }
 
 function toRawRow(row: CardsRow): RawRow {
@@ -130,6 +135,7 @@ function toRawRow(row: CardsRow): RawRow {
     readRuleClass: row.read_rule_class ?? null,
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
+    creatorId: row.creator_id ?? null,
   };
 }
 
@@ -181,6 +187,7 @@ function recordToRawRow(record: CardRecord): RawRow {
     readRuleClass: record.readRuleClass ?? null,
     createdAt: record.createdAt ?? null,
     updatedAt: record.updatedAt ?? null,
+    creatorId: record.creatorId ?? null,
   };
 }
 
@@ -287,7 +294,7 @@ function rowToCardsRow(row: RawRow): CardsRow {
     current_revision_id: null,
     created_at: row.createdAt ?? "",
     updated_at: row.updatedAt ?? "",
-    creator_id: 0,
+    creator_id: row.creatorId ?? 0,
     updater_id: 0,
     read_rule_class: row.readRuleClass,
     read_rule_id: row.readRuleId,
