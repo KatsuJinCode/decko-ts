@@ -25,10 +25,15 @@
 //    Spans cannot nest braces (Chunk::Nest full_re [^{}]*), so the JS span
 //    scan reproduces the chunker's spans exactly (nest-syntax.ts is the
 //    semantic authority).
-// 2. One driver.batch round trip for the FIRST round: the render engine's
-//    permission/codename/structure statements fold into it, so a cold render
-//    still pays ONE round trip for the engine-level state (the #1282 fold);
-//    each further closure level is one batched round trip of its own. On the
+// 2. The PRELUDE BATCH (2026-09-27 cold-query lane; before this, the folds
+//    rode closure round 0): one driver.batch round trip before composition
+//    carrying the root's side priming, the root's TYPE row (the enrichment
+//    fold - enrichAndStore's type-name resolution stopped being two point
+//    round trips), the root's set-pattern anchor names (the lex_to_id priming
+//    that keeps the render's rule-lookup candidate walk at zero point
+//    queries), and the render engine's permission/codename/structure folds
+//    LAST. A cold render's fixed cost is the root fetch + this ONE round
+//    trip; each closure level is one batched round trip of its own. On the
 //    edge drivers a batch is literally one HTTP request; LocalSqliteDriver
 //    wraps each batch in one transaction.
 // 3. JS verification at every level: the REAL parser (nest-syntax.ts)
@@ -49,6 +54,7 @@ import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../serv
 import type { CardsRow } from "../../server/schema.js";
 import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
 import type { DbLexicon } from "../fetch/lexicon.js";
+import { concretePatternsForCard } from "../set-patterns/card-patterns.js";
 import { referencedNames } from "./nest-syntax.js";
 
 /** Safety bound for the closure rounds (BFS over levels). Deliberately
@@ -65,13 +71,13 @@ export interface PrefetchStats {
   batches: number;
   /** individual SQL statements issued (batch statements count one each). */
   statements: number;
-  /** closure rounds run (per-level batches; one minimum on a cold closure,
-   *  since the engine-level folds ride round 0's batch). */
+  /** closure rounds run (per-level batches after the prelude; zero minimum -
+   *  a root with no references runs no closure round at all). */
   fallbackRounds: number;
   /** cards composed into the fetch cache. */
   cards: number;
   /** Results of `additionalStatements` (present only when they were
-   *  supplied and the first round's batch actually ran). The permissions
+   *  supplied and the prelude batch actually ran). The permissions
    *  stream folds its read-rule resolution in here so the cold render stays
    *  ONE round trip for the engine-level state (decko-commons/decko#1282
    *  shape). */
@@ -141,10 +147,10 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
-  /** Independent statements carried in the SAME batch as the first closure
-   *  round (their results come back on stats.additionalResults). Must not
-   *  depend on the closure's output — they execute alongside it in one
-   *  round trip. */
+  /** Independent statements carried in the PRELUDE batch (the one round trip
+   *  before any composition; their results come back on
+   *  stats.additionalResults). Must not depend on the closure's output —
+   *  they execute alongside the prelude folds in one round trip. */
   additionalStatements?: SQLStatement[];
 }
 
@@ -152,6 +158,35 @@ export interface PrefetchContext {
  * Ensure the fetch cache holds every card the render of `root` can touch
  * through {{inclusion}} references (plus the type/side cards composition
  * needs). Returns the query-cost stats.
+ *
+ * The cold render's fixed cost is TWO round trips (2026-09-27 cold-query
+ * lane): the root fetch (the caller's fetchByName) plus THIS prelude batch -
+ * one driver.batch carrying, in order:
+ *
+ *   1. the root's side priming (moved out of closure round 0 - same
+ *      statement, same "composed + enriched but not content-scanned"
+ *      reached semantics),
+ *   2. the root's type row (`SELECT * FROM cards WHERE id = ? AND trash =
+ *      0`) - the enrichment fold. enrichAndStore resolves the type NAME
+ *      through retrieveFromCacheById -> Lexicon.name -> idToLex and then
+ *      fetchById; on a cold engine both were point round trips. Composing
+ *      the row here (composeAndCache -> lexicon.write -> cacheRecord)
+ *      turns both into cache hits,
+ *   3. the set-pattern anchor priming: the PATTERN CARD names of the
+ *      root's concrete patterns ("*self", "*type", "*all", ...) - exactly
+ *      the names the render's rule walk (rules/lookup.ts findRule
+ *      candidates "<set>+<setting>") resolves through Lexicon.id. One
+ *      keyed statement; the rows prime lex_to_id entries (including the
+ *      negative entries a miss caches), so candidate resolution issues no
+ *      point queries,
+ *   4. ctx.additionalStatements (the engine's permission / codename /
+ *      structure folds) LAST - their results ride
+ *      stats.additionalResults in order, the contract
+ *      parseRuleTypeIds/parseStructureContents slice by fixed index.
+ *
+ * The closure rounds then cost one round trip per unfetched inclusion
+ * level. Warm closures short-circuit before this runs (the renderer's
+ * closureWarm gate) and stay at zero queries.
  */
 export async function prefetchInclusionClosure(
   root: CardRecord,
@@ -161,8 +196,102 @@ export async function prefetchInclusionClosure(
   if (root.name === undefined || root.key === undefined) return stats;
 
   const rootRow = recordToRawRow(root);
+
+  // --- prelude statements (see the doc comment above) ---
+  const preludeStatements: SQLStatement[] = [];
+  const seenIds = new Set<number>([rootRow.id]);
+  const rootSideIds = nextSideIds([rootRow], seenIds);
+
+  let sidePrimeSlot = -1;
+  if (rootSideIds.length > 0) {
+    const placeholders = rootSideIds.map(() => "?").join(", ");
+    preludeStatements.push({
+      sql: `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+      params: rootSideIds,
+    });
+    sidePrimeSlot = preludeStatements.length - 1;
+  }
+
+  let typeRowSlot = -1;
+  const rootTypeId = root.typeId;
+  if (typeof rootTypeId === "number" && Number.isSafeInteger(rootTypeId) && rootTypeId > 0) {
+    preludeStatements.push({
+      sql: `SELECT * FROM cards WHERE id = ? AND trash = 0`,
+      params: [rootTypeId],
+    });
+    typeRowSlot = preludeStatements.length - 1;
+  }
+
+  /** The root's pattern card names - the anchor parts of every rule
+   *  candidate the render's findRule walk will resolve by name. */
+  let anchorNames: string[] = [];
+  let anchorSlot = -1;
+  let anchorEntries: { key: string; id: number | undefined }[] = [];
+  try {
+    anchorNames = [
+      ...new Set(concretePatternsForCard(root).map((pattern) => pattern.patternCardName)),
+    ];
+  } catch {
+    // The pattern registry needs the name environment for some specs; a
+    // registry failure must not break the prefetch - the rule walk then
+    // resolves anchors through the ordinary (per-key) path.
+    anchorNames = [];
+  }
+  if (anchorNames.length > 0) {
+    const placeholders = anchorNames.map(() => "?").join(", ");
+    preludeStatements.push({
+      sql: `SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+      params: anchorNames.map((name) => DeckoName.parse(name).key),
+    });
+    anchorSlot = preludeStatements.length - 1;
+  }
+
+  const preludeSideRows: RawRow[] = [];
+  const preludeTypeRows: RawRow[] = [];
+  const additional = ctx.additionalStatements ?? [];
+  let additionalResults: SQLQueryResult[] | undefined;
+  if (preludeStatements.length > 0 || additional.length > 0) {
+    const batch = await ctx.driver.batch([...preludeStatements, ...additional]);
+    stats.batches += 1;
+    stats.statements += preludeStatements.length + additional.length;
+    if (additional.length > 0) {
+      additionalResults = batch.slice(preludeStatements.length);
+    }
+    batch.slice(0, preludeStatements.length).forEach((result, i) => {
+      const rows = (result.rows as CardsRow[]) ?? [];
+      if (i === sidePrimeSlot) preludeSideRows.push(...rows.map(toRawRow));
+      else if (i === typeRowSlot) preludeTypeRows.push(...rows.map(toRawRow));
+      else if (i === anchorSlot) {
+        // Prime lex_to_id for every anchor name: the found id, or the
+        // negative entry the lexicon's own cacheFetch would cache.
+        const byKey = new Map<string, number>();
+        for (const row of rows) {
+          if (typeof row.key === "string" && typeof row.id === "number") {
+            byKey.set(row.key, row.id);
+          }
+        }
+        anchorEntries = anchorNames.map((name) => ({
+          key: name,
+          id: byKey.get(DeckoName.parse(name).key),
+        }));
+      }
+    });
+    if (anchorEntries.length > 0) ctx.lexicon.primeIdsByKey(anchorEntries);
+  }
+
+  // Compose + cache the prelude rows BEFORE the root composition, so the
+  // root's enrichment (type-name resolution) reads them from cache. Side
+  // rows join the closure's seed set (the reached semantics: composed +
+  // enriched, content unscanned); the type row is composed + cached but
+  // deliberately NOT closure-seeded - the pre-existing path fetched it
+  // through the enrichment ladder, outside the closure's known set.
+  const preludeSideComposed =
+    preludeSideRows.length > 0 ? await composeAndCache(preludeSideRows, ctx, stats) : [];
+  if (preludeTypeRows.length > 0) await composeAndCache(preludeTypeRows, ctx, stats);
+
   const composed = await composeAndCache([rootRow], ctx, stats);
-  await driveClosure([rootRow], composed, ctx, stats);
+  stats.additionalResults = additionalResults;
+  await driveClosure([rootRow], [...composed, ...preludeSideComposed], ctx, stats);
   return stats;
 }
 
@@ -312,10 +441,10 @@ function rowToCardsRow(row: RawRow): CardsRow {
  * UNIQUE (left_id, right_id) pair). Depth-2 pairs keep the direct side-key
  * join (one round); a depth-N chain takes O(N) rounds.
  *
- * `ctx.additionalStatements` (the render engine's permission / codename /
- * structure folds) rides the FIRST round's batch: a cold render keeps the
- * one-round-trip engine-state fold, and their results come back on
- * stats.additionalResults in order.
+ * The engine's permission / codename / structure folds and the root's side
+ * priming no longer ride round 0 - they run in the caller's PRELUDE batch
+ * (prefetchInclusionClosure), so round 0 carries only fetch shapes. Their
+ * results still reach the caller through stats.additionalResults.
  */
 async function driveClosure(
   scanRows: RawRow[],
@@ -390,38 +519,21 @@ async function driveClosure(
   };
   collectFromRecords(composed);
 
-  const additional = ctx.additionalStatements ?? [];
   // Transitive side priming (the old SQL walk's `reached` closure): the
   // synchronous render path reads SIDE cards from the enriched render-card
   // map (isRuleCard / ruleCandidateNames / computeIsRuleSync), so every
   // junction row's side rows must be composed into renderCards too - not
-  // just into the fetch cache. The ids ride each round's batch (round 0
-  // primes the root's sides; round N primes the sides of the rows the
-  // previous round fetched). Primed side rows are composed + enriched but
-  // their content is NOT scanned for references (exactly the old reached
-  // semantics: only walked rows fed the frontier).
+  // just into the fetch cache. The ids ride each round's batch (the ROOT's
+  // sides primed in the caller's prelude batch; round N primes the sides of
+  // the rows the previous round fetched). Primed side rows are composed +
+  // enriched but their content is NOT scanned for references (exactly the
+  // old reached semantics: only walked rows fed the frontier).
   const seenIds = new Set<number>();
   for (const row of scanRows) seenIds.add(row.id);
-  const nextSideIds = (rows: RawRow[]): number[] => {
-    const ids: number[] = [];
-    for (const row of rows) {
-      for (const sideId of [row.leftId, row.rightId]) {
-        if (sideId === null || sideId === undefined || seenIds.has(sideId)) continue;
-        seenIds.add(sideId);
-        ids.push(sideId);
-      }
-    }
-    return ids;
-  };
-  let sideIdsToPrime = nextSideIds(scanRows);
+  let sideIdsToPrime: number[] = [];
 
   for (let round = 0; round < MAX_CLOSURE_ROUNDS; round++) {
-    const firstRound = round === 0;
-    if (
-      pending.size === 0 &&
-      sideIdsToPrime.length === 0 &&
-      !(firstRound && additional.length > 0)
-    ) {
+    if (pending.size === 0 && sideIdsToPrime.length === 0) {
       return;
     }
     const simpleKeys: string[] = [];
@@ -514,7 +626,6 @@ async function driveClosure(
 
     let closureRows: RawRow[] = [];
     let sideRows: RawRow[] = [];
-    let additionalResults: SQLQueryResult[] | undefined;
     const splitResults = (results: SQLQueryResult[]): void => {
       results.forEach((result, i) => {
         const rows = collectors[i]!(result.rows as CardsRow[]);
@@ -522,27 +633,21 @@ async function driveClosure(
         else closureRows.push(...rows);
       });
     };
-    if (firstRound && additional.length > 0) {
-      // ONE batched round trip: the round's fetches + the engine's folds.
-      const batch = await ctx.driver.batch([...statements, ...additional]);
-      stats.batches += 1;
-      stats.statements += statements.length + additional.length;
-      additionalResults = batch.slice(statements.length);
-      splitResults(batch.slice(0, statements.length));
-    } else {
-      // One batched round trip for the level (single transaction locally;
-      // one HTTP request per round on the edge drivers).
-      const batch = await ctx.driver.batch(statements);
-      stats.batches += 1;
-      stats.statements += statements.length;
-      splitResults(batch);
+    if (statements.length === 0) {
+      // Every pending name was already resolved while building the round's
+      // statements: nothing left to fetch, no round trip to spend.
+      return;
     }
+    // One batched round trip for the level (single transaction locally;
+    // one HTTP request per round on the edge drivers).
+    const batch = await ctx.driver.batch(statements);
+    stats.batches += 1;
+    stats.statements += statements.length;
+    splitResults(batch);
     stats.fallbackRounds += 1;
 
     if (closureRows.length === 0 && sideRows.length === 0) {
-      // Unknown names: stop, render decides. (First round with folds only:
-      // the additionalResults were still delivered above.)
-      stats.additionalResults = additionalResults;
+      // Unknown names: stop, render decides.
       return;
     }
     const newComposed = await composeAndCache([...sideRows, ...closureRows], ctx, stats);
@@ -578,9 +683,20 @@ async function driveClosure(
     // The sides of everything this round composed prime next round (rows
     // already fetched are in seenIds, so only genuinely-unseen sides prime).
     for (const row of [...sideRows, ...closureRows]) seenIds.add(row.id);
-    sideIdsToPrime = nextSideIds([...sideRows, ...closureRows]);
-    if (firstRound && additionalResults !== undefined) {
-      stats.additionalResults = additionalResults;
+    sideIdsToPrime = nextSideIds([...sideRows, ...closureRows], seenIds);
+  }
+}
+
+/** The not-yet-seen side ids of `rows` (the transitive side-priming
+ *  frontier). Mutates `seenIds` with every id it returns. */
+function nextSideIds(rows: RawRow[], seenIds: Set<number>): number[] {
+  const ids: number[] = [];
+  for (const row of rows) {
+    for (const sideId of [row.leftId, row.rightId]) {
+      if (sideId === null || sideId === undefined || seenIds.has(sideId)) continue;
+      seenIds.add(sideId);
+      ids.push(sideId);
     }
   }
+  return ids;
 }
