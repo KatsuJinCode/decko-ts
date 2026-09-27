@@ -37,7 +37,6 @@ import {
   templateReferenceNames,
   defaultRuleUniverseStatement,
   structureRuleTypesFromResults,
-  ruleUniverseStatementBySetting,
   DEFAULT_SETTING_NAME,
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
@@ -69,7 +68,7 @@ import {
   type PrefetchStats,
 } from "./render/prefetch.js";
 import { safeSetKeys } from "./render/set-keys.js";
-import { referencedNames } from "./render/nest-syntax.js";
+import { referencedNames, scanNests } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
 import { PATTERN_TABLE } from "./set-patterns/registry.js";
 import type { SettingClassWithRules } from "./render/format.js";
@@ -112,13 +111,6 @@ export { HTML_VIEWS };
 export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
-/** The setting whose deck-global rule carries the effective
- *  Cardio.config.default_html_view (the html format's default nest view,
- *  html.rb:17-19; the railtie default :titled is the FALLBACK,
- *  mod/format.rb:2). The corpus rule card is `*all+*default html view`
- *  (id 22769, db_content "content") — live wire bytes agree on all 12
- *  captured pages that bare nests render content-views (A-36). */
-const DEFAULT_HTML_VIEW_SETTING = "*default_html_view";
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
  *  through Abstract::CqlSearch's parse exactly like search-type cards). */
@@ -332,17 +324,19 @@ export class RenderEngine implements RenderEngineLike {
     string,
     { typeName: string; typeId: number } | undefined
   >();
-  /** The deck's `*all+*default html view` rule content (the effective
-   *  Cardio.config.default_html_view — this corpus's rule card 22769
-   *  carries "content"). Folded with the structure universes on the cold
-   *  render; undefined = no rule (the format falls back to the railtie
-   *  :titled, mod/format.rb:2). Cleared on resetCaches(). */
-  private deckDefaultNestView: string | undefined;
-  private deckDefaultNestViewInvalidLogged = false;
-  /** Whether the deck-default-nest-view fold already ran (distinguishes
-   *  "no rule" from "not parsed yet" so rule-less decks don't re-query on
-   *  every render). Cleared on resetCaches(). */
-  private deckDefaultNestViewParsed = false;
+  /** The modeled `Cardio.config.default_html_view` render lane (R17, A-36
+   *  correction): "content" while a PAGE render is active — the production
+   *  config value the page capture applies
+   *  (capture-dual-lane-page-and-view.rb:255, runbook production-equivalent
+   *  setting #5) — "titled" otherwise, the railtie default
+   *  (card-mod-format lib/card/mod/format.rb:2) under which the BARE render
+   *  capture (lane V, the old-capture dev boot) ran. Ruby reads process
+   *  config per call (html.rb:17-19), never a deck rule; the corpus's
+   *  `*all+*default html view` rule card 22769 is dead in 0.20.0. The flag
+   *  is byte-safe across interleaved renders because resolveView memoizes
+   *  VIEW FUNCTIONS, never rendered bytes. Not cached: the flag toggles per
+   *  render lane. */
+  private pageConfigActive = false;
   /** The help-rule resolver (menu popover content) — attached once per
    *  engine by installHelpRules; its deck-wide batch runs once in the
    *  prepare phase. format.ts reads engine.helpRules. Cleared on
@@ -393,18 +387,16 @@ export class RenderEngine implements RenderEngineLike {
         ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
         // The *structure rule universe (one statement; the structured-content
         // resolution reads it as pure memory afterwards) + the *default rule
-        // universe (the new-child type source, same statement shape) + the
-        // *default html view universe (the deck's default nest view — A-36).
-        // All Appended LAST: the permission state parser reads folded results
+        // universe (the new-child type source, same statement shape).
+        // Appended LAST: the permission state parser reads folded results
         // by fixed index, and parseStructureContents slices past the
-        // permission + codename statements to find the pair in order (the
-        // html-view universe rides the slot after the *default universe).
+        // permission + codename statements to find the pair in order.
+        // (R17 removed the *default html view universe that rode slot +2:
+        // Ruby's default_nest_view reads process CONFIG — html.rb:17-19 —
+        // never a deck rule; the engine models it as the pageConfigActive
+        // lane flag instead.)
         ...(structureCold
-          ? [
-              structureRuleUniverseStatement(),
-              defaultRuleUniverseStatement(),
-              ruleUniverseStatementBySetting(DEFAULT_HTML_VIEW_SETTING),
-            ]
+          ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
           : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
@@ -437,14 +429,6 @@ export class RenderEngine implements RenderEngineLike {
       await this.enrichAndStore(record);
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
-    // The deck's default nest view (A-36): the *all+*default html view rule
-    // rides the same cold batch as the structure universes (statement slot
-    // after the *default universe). Must parse before the first renderView
-    // dispatches a bare nest.
-    await this.parseDeckDefaultNestView(
-      foldedResults,
-      permissionStatements.length + (ruleTypesCold ? 1 : 0) + 2,
-    );
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
     // accessor; templating.rb#structure). On every first-render path this
@@ -529,6 +513,48 @@ export class RenderEngine implements RenderEngineLike {
     // pointer/list hosts. Termination is structural — enrichAndStore
     // skips existing keys, so renderCards only grows.
     await this.enrichPointerListItemsClosure();
+    // R17 (signup core): the Sign up cardtype's core view reads the
+    // +account junction child synchronously (account_holder.rb:11-13
+    // `account? = account.real?`) and its +*email child for the
+    // verification_sent_line (views.rb:63-67). The trait fetch composes
+    // the STAR name — oracle probe r17-junction-fetch-probe.rb:
+    // card.account -> id 46002 name "ronald joseph+*account" (right 100 =
+    // *account), Card.fetch("ronald joseph+account") is nil, and the tag
+    // card "account" does not exist. Neither child is reachable from the
+    // reference closure (the signup content names only its template
+    // nests), so they enrich here, in the async prepare phase — the same
+    // sync-fetch gap the pointer-item walk closes. Both calls tolerate
+    // fetch misses (a card without +account stays absent; the core's
+    // missing-account branch renders).
+    if (rootCard.typeCode === "signup") {
+      // views.rb:43-45 self_signup? compares creator_id against AnonymousID
+      // ("was signed up on" vs "signed up on") — the *anonymous codename
+      // card must be warm for the sync view's map read.
+      await this.prepareItemForRender("Anonymous");
+      await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+      await this.prepareItemForRender(`${rootCard.name.s}+*account+*email`);
+      // The enriched children landed AFTER both ensureVerdicts passes, so
+      // deniedVerdicts has no entry for their ids and isDenied() would
+      // return gate-open false for the +*email child — the verification
+      // email would LEAK (Ruby's ok?(:read) denies Anonymous; the oracle
+      // carries zero verification lines). Re-run the verdict pass; the
+      // skip-if-set guard makes it a no-op for every card already judged
+      // (the same defect class and fix shape as the pointer-item and
+      // help-rules re-passes above).
+      await this.ensureVerdicts();
+    }
+    // R17 (unknown-nest typing): an explicit `| type:X ` nest opt names the
+    // NEW card's type when the target is missing (nest/fetch.rb:47-48
+    // new_card_args) — but buildUnknownNestCard resolves the type card
+    // SYNCHRONOUSLY from the warm map, and the type card ("Toggle", the
+    // +agree nest opt of every Sign up card; corpus-wide the only two
+    // type-opt shapes are `+agree | type:Toggle` ×94 and
+    // `*signup+*subject|type:Phrase` ×1) is referenced by an OPT, never by
+    // content, so the reference closure never prepares it. Walk the
+    // prepared closure once per render and enrich every distinct type-opt
+    // target that is not warm yet. Cheap: the content quick-skip
+    // (includes "type:") precedes the chunk scan.
+    await this.enrichNestTypeOptTargets();
     // The items enriched above land AFTER both ensureVerdicts passes
     // (the main pass and the help-rules re-pass), so their card.ids
     // have no entry in deniedVerdicts and isDenied() returns
@@ -868,9 +894,6 @@ export class RenderEngine implements RenderEngineLike {
     this.taskVerdicts.clear();
     this.configureVerdicts.clear();
     this.itemTypeNameByHostKey.clear();
-    this.deckDefaultNestView = undefined;
-    this.deckDefaultNestViewParsed = false;
-    this.deckDefaultNestViewInvalidLogged = false;
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
@@ -905,82 +928,37 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * The deck's default nest view (A-36, format.ts#defaultNestView's
-   * engine half): read the `*all+*default html view` rule out of the
-   * folded universe batch (statement slot structureStatementIndex + 1 —
-   * structure at +0, *default at +1 was parsed by parseStructureContents,
-   * the html-view universe rides +2 absolute). Falls back to one
-   * standalone batch on the defensive warm-closure-first-render path
-   * (once per engine), mirroring parseStructureContents.
-   *
-   * Only the DECK-GLOBAL `*all` rule decides (Cardio.config is process
-   * config, not per-set): the universe map is keyed by composed rule key,
-   * so the lookup is the canonical `*all+*default_html_view` key. Blank or
-   * absent rule content leaves undefined — the format's railtie :titled
-   * fallback.
+   * RenderEngineLike#defaultHtmlViewConfig — the modeled
+   * `Cardio.config.default_html_view` for the CURRENT render lane (R17
+   * A-36 correction; see the pageConfigActive field doc and
+   * format.ts#defaultNestView): "content" while a page render is active
+   * (the production config, capture-dual-lane-page-and-view.rb:255),
+   * "titled" otherwise (the railtie default, mod/format.rb:2, under which
+   * the bare-render capture ran — probe-pinned by
+   * r17-nest-default-view-probe.rb: Cardio.config.default_html_view ==
+   * :titled at boot, implicit nests render titled-view).
    */
-  private async parseDeckDefaultNestView(
-    folded: SQLQueryResult[] | undefined,
-    htmlViewStatementIndex: number,
-  ): Promise<void> {
-    if (this.deckDefaultNestViewParsed) return;
-    let result = folded !== undefined ? folded[htmlViewStatementIndex] : undefined;
-    if (result === undefined) {
-      // No folded batch to read (defensive: a warm-closure first render).
-      const batch = await this.fetcher.driver.batch([
-        ruleUniverseStatementBySetting(DEFAULT_HTML_VIEW_SETTING),
-      ]);
-      result = batch[0];
-    }
-    this.deckDefaultNestViewParsed = true;
-    const universe = structureUniverseFromResults(result);
-    const ruleKey = DeckoName.parse(`*all+${DEFAULT_HTML_VIEW_SETTING}`).key;
-    const content = universe.get(ruleKey);
-    if (content === undefined || content === null) return;
-    const trimmed = content.trim();
-    if (trimmed !== "") this.deckDefaultNestView = trimmed;
+  defaultHtmlViewConfig(): string {
+    return this.pageConfigActive ? "content" : "titled";
   }
 
   /**
-   * RenderEngineLike#deckDefaultHtmlView — the folded `*all+*default html
-   * view` rule content (undefined = no rule or a rule value that names no
-   * registered view; the format falls back to the railtie :titled).
-   *
-   * The validity gate is the loud-log mechanism (merge pass 2): a parsed
-   * rule value that names NO view in HTML_VIEWS must never flow into a
-   * nest as a view name (every such nest would raise UnsupportedViewError,
-   * or worse render garbage-quiet). Known instance: the anonymized corpus
-   * DBs carry rule card 22769 (*all+*default html view) content "fnvmwmg"
-   * — the anonymizer tokenized the production value "content" (verified
-   * across every on-disk corpus copy, see brandonDojoTech
-   * tmp/wrong-goal-hunt/merge-pass-2.md). Logged once per engine.
+   * Run `fn` with the PAGE lane's process config active
+   * (pageConfigActive = true, restored in finally): the page capture
+   * wraps `fmt.show(nil, {})` in the production config values —
+   * default_html_view :content among them — while every bare render runs
+   * under the railtie defaults. Restores the prior flag (nesting-safe:
+   * a page render's inner prepare render must NOT clear the flag a page
+   * render set).
    */
-  deckDefaultHtmlView(): string | undefined {
-    const value = this.deckDefaultNestView;
-    if (value === undefined) return undefined;
-    if (HTML_VIEWS[value] !== undefined) return value;
-    if (!this.deckDefaultNestViewInvalidLogged) {
-      this.deckDefaultNestViewInvalidLogged = true;
-      console.error(
-        `[decko-engine] *all+*default html view rule value "${value}" names no registered view; using the railtie default "titled"`,
-      );
+  async runWithPageConfig<T>(fn: () => Promise<T>): Promise<T> {
+    const prior = this.pageConfigActive;
+    this.pageConfigActive = true;
+    try {
+      return await fn();
+    } finally {
+      this.pageConfigActive = prior;
     }
-    return undefined;
-  }
-
-  /**
-   * Async seam for the page renderer (renderPageBytes): guarantee the
-   * *all+*default html view fold has run BEFORE the sync accessor is read
-   * (the fold rides the cold render's batched universe read; the page path
-   * needs the value to pick the main view before any render). Uses the
-   * same defensive standalone batch the warm-closure-first-render path
-   * uses. Returns the VALIDATED rule value (undefined = railtie :titled).
-   */
-  async ensureDeckDefaultHtmlView(): Promise<string | undefined> {
-    if (!this.deckDefaultNestViewParsed) {
-      await this.parseDeckDefaultNestView(undefined, 0);
-    }
-    return this.deckDefaultHtmlView();
   }
 
   /**
@@ -1584,6 +1562,37 @@ export class RenderEngine implements RenderEngineLike {
    *  with no stores since the last closure pass has nothing new to walk —
    *  the closure skips its whole deck-sized filter sweep. */
   private renderCardsGrewSinceClosure = false;
+
+  /** Type-opt nest targets already enriched this engine lifetime (the
+   *  corpus carries exactly two distinct type-opt shapes, so the set is
+   *  bounded; the sync unknown-nest builder reads the warm map). */
+  private nestTypeOptTargetsDone = new Set<string>();
+
+  /** R17 (unknown-nest typing): enrich every `| type:X ` nest-opt target
+   *  the prepared closure's contents name but the reference closure never
+   *  reached (an OPT value is not a reference). buildUnknownNestCard
+   *  resolves the type card synchronously (nest/fetch.rb:47-48
+   *  new_card_args — `args[:type] = view_opts[:type]`), so the target must
+   *  be warm before the first nest miss renders. Processed hosts are
+   *  skipped per engine lifetime (the deck is static; a re-walk could only
+   *  re-parse the same chunks). */
+  private async enrichNestTypeOptTargets(): Promise<void> {
+    const need = new Set<string>();
+    for (const card of this.renderCards.values()) {
+      const content = card.dbContent;
+      if (content === undefined || content === "" || !content.includes("type:")) continue;
+      for (const piece of scanNests(content)) {
+        if (piece.kind !== "nest" || piece.nest === undefined) continue;
+        const t = piece.nest.options.extra["type"];
+        if (typeof t !== "string" || t === "" || this.nestTypeOptTargetsDone.has(t)) continue;
+        if (this.fetchRenderCard(t) === undefined) need.add(t);
+      }
+    }
+    for (const name of need) {
+      this.nestTypeOptTargetsDone.add(name);
+      await this.prepareItemForRender(name);
+    }
+  }
 
   /** Pre-enrich the items of every pointer/list card reachable in the
    *  render-card map, repeating until the map stops growing (an enriched

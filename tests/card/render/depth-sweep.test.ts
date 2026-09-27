@@ -114,7 +114,10 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // rule, so the rendered bytes are unchanged and only the folded
     // statement count moves).
     const expectedRts = (depth: number): number => 7 + Math.max(0, depth - 2);
-    const expectedSts = (depth: number): number => 13 + Math.max(0, depth - 1);
+    // R17: base 12 - the *default html view universe statement left the cold
+    // fold (the A-36 correction: default_nest_view is process config,
+    // html.rb:17-19, never a deck rule; the fold slot was dead).
+    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

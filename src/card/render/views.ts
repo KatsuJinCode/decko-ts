@@ -55,10 +55,18 @@ import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
 import { buildVirtualRuleCard } from "./virtual-rule-card.js";
 import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
+import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
 // ---------------------------------------------------------------------------
+
+/** The card gem's VERSION (card-1.110.0/VERSION = "0.20.0") — what
+ *  `Cardio::Version.release` answers (card-1.110.0/lib/cardio/version.rb:10-12
+ *  reads the VERSION file next to lib/). The *version code card's content
+ *  accessor (mod/core set/self/version.rb:6-8) returns it; see the coreView
+ *  version branch for the footer chain that pins the bytes. */
+const CARD_GEM_VERSION = "0.20.0";
 
 /** wrap.rb#slot_id. */
 function slotId(card: RenderCard, view: string): string {
@@ -130,6 +138,7 @@ function slotOptionsWithNameContext(fmt: RenderFormat, voo: Voo): string {
 
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
+  if (view === "mini_bar" && fmt.card.name.s.includes("working doc")) console.error("R17DEBUG minibar", fmt.card.name.s, "id:", String(fmt.card.id), "keys:", fmt.card.setKeys.slice(0, 90));
   const card = fmt.card;
   const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
   const attrs = emitAttrs({
@@ -239,6 +248,24 @@ function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): s
 
 const coreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
+  // set/self/version.rb (card-1.110.0 mod/core): `def content;
+  // Cardio::Version.release; end` — the *version code card's content
+  // accessor returns the card gem's VERSION file ("0.20.0"), and the basic
+  // core view renders it through process_content (no-op for a bare semver
+  // string). The page footer pins it: *credit (codename credit, card-mod-
+  // format data/real.yml:58-66) carries content
+  // `{{+:image|core}}\n<a href="http://decko.org">Decko v{{:version|core}}</a>`
+  // and *footer nests `{{:credit|core}}`, so every captured page ends
+  // `<a href="http://decko.org">Decko v0.20.0</a>` (699/737 page-lane
+  // failures in the R17 sample aggregate: engine emitted the bare
+  // "Decko v" because the corpus row stores content "" — the Ruby method
+  // override never materializes in the DB column).
+  // ok_to_read? is also hardcoded true (version.rb:3-4) — the read gate
+  // never denies this card in Ruby; the engine's prepared verdict agrees
+  // for the corpus's Anyone-read state, so no gate branch is needed here.
+  if (fmt.card.record.codename === "version") {
+    return CARD_GEM_VERSION;
+  }
   // set/self/account_links.rb view :core (card-mod-layout): the logging
   // div wrapping the navbar_item_views lis (anonymous: sign_up + sign_in).
   // The custom layouts nest {{*account links|core}} (PCTS/GBA page-lane
@@ -246,6 +273,17 @@ const coreView: ViewFn = (ctx) => {
   // -scoped in Ruby; keyed by card key here (the flat-registry seam).
   if (fmt.card.key === "*account_link") {
     return accountLinksCoreHtml(ctx);
+  }
+  // set/type/signup core (card-mod-account, set/type/signup/core.haml +
+  // views.rb:30-33): the invite-links div — signup_line ("signed up on
+  // DATE") + account_lines over the processed raw body. Dispatched by
+  // typeCode (the type card's codename is "signup"; typeName kept as the
+  // fixture-deck fallback, mirroring the toggle gate). The full mechanism
+  // + the anonymous-viewer reduction lives in card-mod-account.ts#
+  // signupCoreHtml; the base branch is the dispatch the loader-less
+  // verifier/probe path exercises (the account_links core pattern).
+  if (fmt.card.typeCode === "signup" || fmt.card.typeName === "Sign up") {
+    return signupCoreHtml(ctx);
   }
   // Toggle-type core view (card-mod-toggle set/type/toggle.rb: `view :core`
   //   -> the content rendered as "yes" (truthy) or "no" (falsey); the raw
@@ -1536,7 +1574,13 @@ function prepareBar(ctx: ViewContext): void {
   // prototype's winning stored rule; stored card → itself). The memo is
   // filled by the engine's preloadVirtualRuleVerdicts. Undefined (never
   // preloaded) hides like the pre-R16 behavior (id-less ⇒ no existing).
-  if (fmt.card.id === undefined) {
+  // R17 scope correction: bar_view.rb is the SET/RULE bar module — the
+  // hide belongs to RULE bars only (right side a Setting). Non-rule
+  // unknown bars (the mini_bar substitution of absent items — RVW open's
+  // working_doc_02..09, Stossel open's items) keep bar_nav visible: the
+  // captured slot JSON pins hide ["bar_middle"] WITHOUT bar_nav on every
+  // one of them.
+  if (fmt.card.id === undefined && (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)) {
     const existing = fmt.engine.hasExistingRuleFor?.(fmt.card.key);
     if (existing !== true) voo.hide("bar_nav");
   }
@@ -1841,7 +1885,12 @@ function itemBarHtml(ctx: ViewContext): string {
   const dataAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
     "data-card-link-name": url,
-    "data-card-name": h(card.name.s),
+    // slot_cardname (wrap.rb:50-53) — the SAME rule the slot wrap applies
+    // (views.ts slotCardname): an UNSAVED COMPOUND card displays its
+    // url_key form. The bar body's HAML attrs are bound to the same
+    // helper; the R17 unknown-item bars pin it
+    // (data-card-name='RVW+working_doc_02').
+    "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
     "data-slot-id": newSlotId(),

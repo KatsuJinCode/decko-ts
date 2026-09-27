@@ -728,7 +728,32 @@ export class RenderFormat {
     // referencing (parent) card's type - the child IS a field of this card.
     const card =
       target ??
-      this.buildUnknownNestCard(targetName, this.engine, this.card.typeName);
+      this.buildUnknownNestCard(
+        targetName,
+        this.engine,
+        this.card.typeName,
+        nest.options.extra["type"],
+      );
+    // fetch.rb:47-48 new_card_args (R17): `args[:type] = view_opts[:type]`
+    // — an explicit `| type:X ` opt names the NEW card's type. An ID-LESS
+    // target is the fetcher's fabricated new-card record (the FetchEngine
+    // emulates Card.fetch new: {} on a miss, including the *default
+    // template's type) and cannot know the nest's opt — re-type it here
+    // when the type card resolves warm (explicit opts beat the template,
+    // Card.new precedence). Pinned: ronald joseph content/open (shard 40)
+    // nests `{{+agree | type:Toggle }}` — the oracle slot carries
+    // data-card-type-id="51" data-card-type-name="Toggle", the
+    // TYPE-toggle ... TYPE_PLUS_RIGHT-sign_up-agree set-key chain, and the
+    // toggle core body "no"; the engine pinned RichText (the template's
+    // type) and an empty rich-text body.
+    const nestTypeOpt = nest.options.extra["type"];
+    const effectiveCard =
+      target !== undefined &&
+      target.id === undefined &&
+      target.record.isNew === true &&
+      !(this.engine.cardMatchesRuleSet?.(target) ?? false)
+        ? this.withNewCardContext(target, typeof nestTypeOpt === "string" ? nestTypeOpt : undefined)
+        : card;
     const view = normalizeView(nest.options.view ?? this.defaultNestView());
     const viewOpts: Record<string, unknown> = {
       // nest_name = the AUTHORED reference, verbatim: card-mod-content
@@ -755,21 +780,21 @@ export class RenderFormat {
       // through the codename interpretation at prepare time
       // (chunk/nest.rb:23 + the `:` codename config), so the resolved
       // card's name is what lands in the slot JSON.
-      nest_name: nest.name.startsWith(":") ? (card.name?.s ?? nest.name) : nest.name,
+      nest_name: nest.name.startsWith(":") ? (effectiveCard.name?.s ?? nest.name) : nest.name,
       nest_syntax: nest.syntax,
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),
     };
-    const sub = new RenderFormat(card, this.engine, {
+    const sub = new RenderFormat(effectiveCard, this.engine, {
       parent: this,
       maxDepth: this.maxDepth,
       // Page-path config propagates (Ruby's config is render-global): the
       // quiet nested-error semantics. The default nest view needs no
-      // threading — every format reads the same engine rule (validated).
+      // threading — the lane config is engine state (defaultNestView).
       nestQuietErrors: this.nestQuietErrors,
     });
     if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${card.name.s})`);
+      throw new Error(`nest depth exceeded (${effectiveCard.name.s})`);
     }
     // Production render-error semantics (error.rb rescue_view quiet branch,
     // reached through format/render.rb wrap_and_render's rescue): a nested
@@ -789,6 +814,69 @@ export class RenderFormat {
     }
   }
 
+  /** fetch.rb:38-49 new_card_args (R17): shape a FABRICATED new-card
+   *  record (the FetchEngine's Card.fetch new: {} emulation — id-less,
+   *  *default-template typed) the way the nest fetch would:
+   *  `args[:type] = view_opts[:type]` — an explicit `| type:X ` opt names
+   *  the new card's TYPE (the type card must resolve warm;
+   *  enrichNestTypeOptTargets pre-warms the corpus's two shapes; Card.fetch
+   *  new: {} does NOT apply the *default template CONTENT — the fabricated
+   *  record carries the template bytes and the toggle core of a truthy
+   *  template would render "yes" where the oracle renders "no" for the
+   *  empty new card); and `.merge(new_supercard_args)` — the new card is
+   *  created AS A SUBCARD of the context card, so its set-pattern chain
+   *  carries TYPE_PLUS_RIGHT-<supercard type>-<tag> (the safeSetKeys
+   *  rebuild with leftTypeName; the fabricated record's own set keys are
+   *  parentless). Pins: ronald joseph +agree (data-card-type-id="51",
+   *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
+   *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
+   *  fabricated shape pinned rich_text). */
+  private withNewCardContext(target: RenderCard, nestTypeOpt?: string): RenderCard {
+    const explicitType =
+      nestTypeOpt !== undefined ? this.engine.fetchRenderCard(nestTypeOpt) : undefined;
+    const typeId = explicitType !== undefined && explicitType.id !== undefined ? explicitType.id : target.typeId;
+    const typeName =
+      explicitType !== undefined && explicitType.id !== undefined
+        ? explicitType.name.s // the TYPE CARD's name; its .typeName is the cardtype of the cardtype
+        : target.typeName;
+    const typeCode =
+      explicitType !== undefined && explicitType.id !== undefined
+        ? (explicitType.record.codename ?? undefined)
+        : target.typeCode;
+    const debugKeys = safeSetKeys({
+        name: target.name,
+        typeId,
+        typeName,
+        leftTypeName: this.leftTypeNameFor(target.name),
+        isNew: true,
+      });
+    return {
+      ...target,
+      dbContent: "",
+      typeId,
+      typeName,
+      typeCode,
+      setKeys: debugKeys,
+    };
+  }
+
+  /** The TYPE_PLUS_RIGHT anchor for a NEW compound card: Ruby's pattern
+   *  reads the LEFT SIDE's type off the NAME ALGEBRA (superleft.type_name),
+   *  not off the nesting format's context card — the RVW open view nests
+   *  "RVW+working doc 02" items from INSIDE "RVW+File Storage Area"
+   *  (RichText-typed) and the captured slot chain still reads
+   *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
+   *  warm map; an unprepared left falls back to the context card's type
+   *  (the pre-R17 shape, still correct when context == left, the common
+   *  field-nest case). */
+  private leftTypeNameFor(name: DeckoName): string | undefined {
+    if (!name.isCompound) return this.card.typeName;
+    const leftName = name.leftName?.s;
+    if (leftName === undefined) return this.card.typeName;
+    const left = this.engine.fetchRenderCard(leftName);
+    return left !== undefined && left.id !== undefined ? left.typeName : this.card.typeName;
+  }
+
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
    *  -> new_card_args): name = the resolved reference, supercard = the
    *  context card (unmodeled - no write path reads it here), no id/
@@ -806,9 +894,24 @@ export class RenderFormat {
     targetName: string,
     engine: RenderEngineLike,
     leftTypeName?: string,
+    nestTypeOpt?: string,
   ): RenderCard {
     const name = DeckoName.parse(targetName);
-    const defaulted = engine.newCardDefaultType?.(name);
+    // fetch.rb:47-48 new_card_args: `args[:type] = view_opts[:type] if
+    // view_opts[:type]` — an explicit `| type:X ` nest opt names the new
+    // card's type CARD (Card.fetch name, new: { type: X }; the explicit
+    // opt wins over the *default template chain, Card.new's template
+    // precedence). R17 evidence: ronald joseph content/open (shard 40)
+    // nests `{{+agree | type:Toggle }}` — no +agree row exists in the
+    // corpus, and the oracle's +agree slot carries data-card-type-id="51"
+    // data-card-type-name="Toggle" with the TYPE-toggle set-key chain,
+    // i.e. the new card is TYPED BY THE OPT, not the *default rule.
+    const explicitType =
+      nestTypeOpt !== undefined ? engine.fetchRenderCard(nestTypeOpt) : undefined;
+    const defaulted =
+      explicitType !== undefined && explicitType.id !== undefined
+        ? { typeId: explicitType.id, typeName: explicitType.typeName }
+        : engine.newCardDefaultType?.(name);
     const record: CardRecord = {
       id: undefined,
       codename: undefined,
@@ -845,7 +948,11 @@ export class RenderFormat {
         name,
         typeId: defaulted?.typeId,
         typeName: defaulted?.typeName,
-        leftTypeName,
+        // R17: the TYPE_PLUS_RIGHT anchor reads the LEFT SIDE's type off
+        // the NAME ALGEBRA (superleft.type_name), not the nesting format's
+        // context card — see leftTypeNameFor (RVW open's mini_bar items:
+        // TYPE_PLUS_RIGHT-list-working_doc_NN with RVW List-typed).
+        leftTypeName: this.leftTypeNameFor(name),
         isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
       }),
       unknown: true,
@@ -863,6 +970,9 @@ export class RenderFormat {
     if (options.show !== undefined) out["show"] = options.show;
     if (options.hide !== undefined) out["hide"] = options.hide;
     if (options.extra["unknown"] !== undefined) out["unknown"] = options.extra["unknown"];
+    // The type opt rides the slot JSON too (the +agree oracle pin:
+    // "nest_syntax":"+agree | type:Toggle ",...,"type":"Toggle"}).
+    if (options.extra["type"] !== undefined) out["type"] = options.extra["type"];
     return out;
   }
 
@@ -872,29 +982,35 @@ export class RenderFormat {
    *
    *  The railtie literal is only the FALLBACK: the deck's
    *  `*all+*default html view` rule drives the effective config, and the
-   *  live wire bytes agree on all 12 captured pages — every bare nest
-   *  renders a content-view (Home, Brandon +bio/+how to contact me, CDW,
-   *  Wikirate, blog Latest News, Recommendations ×32; assumption-audit
-   *  A-36). The bare recapture oracle disagrees (it shows titled for the
-   *  same nests) because the capture bootstrap never applied the deck rule
-   *  to Cardio.config — the same capture-path illusion busted twice
-   *  before; the oracle lacks the deck-rule context and is NOT the byte
-   *  target here. The engine resolves the rule (render.ts folds the
-   *  *default html view universe on the cold render) and VALIDATES it: a
-   *  value naming no registered view logs loudly and reads as undefined
-   *  (render.ts#deckDefaultHtmlView — the anonymized corpus DBs carry rule
-   *  card 22769 = "fnvmwmg", an anonymizer token, never renderable as a
-   *  view), falling back to the railtie :titled. Rule-driven, not a
-   *  hardcoded literal. Fixtures pinned to the oracle's titled side flip
-   *  with this fix; the flip is the correction (same class as round 8
-   *  lane 3's four expected flips).
-   *
-   *  (Merge pass 2: the layout lane's defaultNestViewOverride split — bare
-   *  lane titled / page lane hardcoded :content — was superseded by this
-   *  rule-driven form; page.ts reads the same validated rule through
-   *  engine.ensureDeckDefaultHtmlView.) */
+   *  MECHANISM (R17 correction — the A-36 rule-driven form was a
+   *  mis-mechanism, busted by the R17 oracle probe
+   *  tmp/raw-ground-truth/scripts/r17-nest-default-view-probe.rb): Ruby's
+   *  html default_nest_view reads PROCESS CONFIG, never a deck rule —
+   *  card-mod-format set/all/html.rb:17-19 `def default_nest_view;
+   *  Cardio.config.default_html_view; end`. The pinned oracle's two capture
+   *  environments carry DIFFERENT config values, and both are byte targets:
+   *   - lane V (bare `card.format.render(view)`, the old-capture dev boot):
+   *     no override -> the railtie default :titled
+   *     (card-mod-format lib/card/mod/format.rb:2). Probe evidence:
+   *     Cardio.config.default_html_view == :titled at boot; implicit nests
+   *     render titled-view (ronald joseph +agree, Colleagues +associations,
+   *     Source +Source Title). The decks's `*all+*default html view` rule
+   *     card (22769, content "content") is DEAD in 0.20.0 — no code reads
+   *     it; the earlier "live wire agrees content" justification conflated
+   *     the production deck's CONFIG with a deck rule.
+   *   - lane P (the page render): the capture applies the production config
+   *     `Cardio.config.default_html_view = :content`
+   *     (capture-dual-lane-page-and-view.rb:255, the runbook's five
+   *     production-equivalent settings #5) — implicit nests render
+   *     content-view.
+   *  The engine models the process config per render lane:
+   *  engine.defaultHtmlViewConfig() returns "content" while a page render
+   *  is active (render.ts pageConfigActive) and "titled" otherwise. The
+   *  202 explicit `view:` nests (skin +Image -> `nest image_card,
+   *  view: :content, size: :large`, bootswatch_skin/core.haml:18) are
+   *  unaffected — only the implicit resolution changes. */
   defaultNestView(): string {
-    return this.engine.deckDefaultHtmlView?.() ?? "titled";
+    return this.engine.defaultHtmlViewConfig?.() ?? "titled";
   }
 
   /**
@@ -904,18 +1020,33 @@ export class RenderFormat {
    * for its :bar items.
    */
   nestRecord(target: RenderCard, view: string, opts: Record<string, unknown> = {}): string {
+    // R17 (new_card_args supercard merge): an ID-LESS NEW target is the
+    // FetchEngine's fabricated new-card record — its set-pattern chain
+    // lacks the supercard context, so rebuild it with THIS card as the
+    // parent (same shaping nest() applies; item.rb nest_item's path).
+    // The isNew gate excludes VIRTUAL cards (id-less code-backed records —
+    // the R16 virtual rule cards) whose dbContent and set keys are their
+    // OWN, never a fabricated template's: the rule-set membership check
+    // (right side a Setting) keeps every virtual rule card's isRule-enriched
+    // set keys and rule content intact.
+    const shaped =
+      target.id === undefined &&
+      target.record.isNew === true &&
+      !(this.engine.cardMatchesRuleSet?.(target) ?? false)
+        ? this.withNewCardContext(target)
+        : target;
     const viewOpts: Record<string, unknown> = {
-      nest_name: target.name.s, // nest.rb#prepare_view_and_opts!
+      nest_name: shaped.name.s, // nest.rb#prepare_view_and_opts!
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...opts,
     };
-    const sub = new RenderFormat(target, this.engine, {
+    const sub = new RenderFormat(shaped, this.engine, {
       parent: this,
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
     if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${this.maxDepth}) at ${target.name.s}`);
+      throw new Error(`nest depth exceeded (${this.maxDepth}) at ${shaped.name.s}`);
     }
     return sub.renderView(view, viewOpts);
   }
@@ -974,13 +1105,13 @@ export class RenderFormat {
       }
       const opener = matchLinkWrappedNestOpener(piece.text);
       if (opener === undefined) {
-        out += expandWikiLinks(piece.text);
+        out += expandContentLinks(piece.text, this.engine);
         i += 1;
         continue;
       }
       // The opener's prefix text still runs the plain link pass (it may
       // carry complete links of its own).
-      out += expandWikiLinks(opener.prefix);
+      out += expandContentLinks(opener.prefix, this.engine);
       let label = "";
       let tail: string | undefined;
       let j = i + 1;
@@ -993,7 +1124,7 @@ export class RenderFormat {
         }
         const closeAt = inner.text.indexOf("]]");
         if (closeAt === -1) {
-          label += expandWikiLinks(inner.text);
+          label += expandContentLinks(inner.text, this.engine);
           j += 1;
           continue;
         }
@@ -1013,7 +1144,7 @@ export class RenderFormat {
         continue;
       }
       out += this.renderLinkChunk(opener.target, label);
-      out += expandWikiLinks(tail);
+      out += expandContentLinks(tail, this.engine);
       i = j;
     }
     return out;
@@ -1098,7 +1229,7 @@ export class RenderFormat {
     let out = "";
     for (const piece of pieces) {
       if (piece.kind === "text") {
-        out += expandWikiLinks(piece.text);
+        out += expandContentLinks(piece.text, this.engine);
       } else if (piece.nest !== undefined) {
         if (piece.nest.name === "_main") {
           // main_nest? -> wrap_main { main.rendered || main_nest_render }
@@ -1292,14 +1423,14 @@ export interface RenderEngineLike {
    *  phase (render.ts resolveHostItemTypeName); undefined = no item type.
    *  Optional; engines without it emit the pre-lane type-less item slots. */
   hostItemTypeName?(card: RenderCard): { typeName: string; typeId: number } | undefined;
-  /** The deck's effective default html nest view — the `*all+*default html
-   *  view` rule's content (Cardio.config.default_html_view; html.rb:17-19
-   *  default_nest_view). The engine folds the rule universe on the cold
-   *  render (render.ts) and answers the rule's trimmed db_content here
-   *  (this corpus: "content"). undefined = no rule exists — the format
-   *  falls back to the railtie default :titled (mod/format.rb:2).
-   *  Optional: engines without it always take the fallback. */
-  deckDefaultHtmlView?(): string | undefined;
+  /** The effective `Cardio.config.default_html_view` (html.rb:17-19
+   *  default_nest_view) for the CURRENT render lane: "content" while a
+   *  page render is active (the production config the page capture
+   *  applies, capture-dual-lane-page-and-view.rb:255), "titled" otherwise
+   *  (the railtie default, mod/format.rb:2 — the bare-render capture
+   *  boot). See RenderFormat.defaultNestView for the full mechanism.
+   *  Optional: engines without it take the railtie "titled" fallback. */
+  defaultHtmlViewConfig?(): string;
   /** card-mod-format set/type/cardtype.rb:68-70 can_configure? —
    *  `Card.fetch(card, :type, :structure, new: {}).ok? :update`: the
    *  update-ok verdict on the card's *structure rule card, NOT on the card
@@ -1465,7 +1596,155 @@ const RECENT_SETTINGS: ReadonlySet<string> = new Set([
  *  means the markdown brackets and not a card link. */
 const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
 
-function expandWikiLinks(text: string): string {
+// card-mod-content lib/card/content/chunk/uri.rb -- the THREE URI chunk
+// classes (Uri / HostUri / EmailUri) ride the DEFAULT chunk list
+// (card-1.110.0 lib/card/content/chunk.rb:84-86: `%i[Uri HostUri EmailUri
+// EscapedLiteral Nest Link]`), so bare URLs and host.tld names in content
+// autolink through link_to_resource (card-mod-format set/all/links.rb
+// html block: target="_blank" for external-link + the resource_type
+// class). The parser (content/parser.rb) consumes the EARLIEST chunk
+// match first, so a wiki-link span that starts before a URI swallows it
+// (the URI inside [[...]] never chunks) -- the combined scanner below
+// walks positions and handles whichever class matches first.
+// REJECTED_PREFIX_RE context (uri.rb:30-32 + context_ok? :53-56): the two
+// chars before the match must not end !, ": ", ', or ](. Trailing
+// punctuation (uri.rb:66-73): a final `, . ) ! ? :` chops off the match
+// and re-attaches AFTER the anchor; a remaining trailing dot strips.
+// `(?:&nbsp;)+` runs vanish from the match. Observed-form guard
+// (corpus-wide): the expected bytes carry ZERO autolinks inside an
+// existing HTML tag (0 `href="...<a` manglings across all 48 view-lane
+// shards), so the scanner skips matches between < and >.
+const URI_SCHEME_REGEXP =
+  /(?:irc|http|https|ftp|ssh|git|sftp|file|ldap|ldaps|mailto):[^\s<>"']*/g;
+const URI_HOST_REGEXP =
+  /(?:[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?\.)+(?:aero|biz|com|coop|edu|gov|info|int|mil|museum|name|net|org|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cf|cd|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|fi|fj|fk|fm|fo|fr|fx|ga|gb|gd|ge|gf|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|in|io|iq|ir|is|it|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nt|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|pt|pw|py|qa|re|ro|ru|rw|sa|sb|sc|sd|se|sg|sh|sj|sk|sl|sm|sn|so|sr|st|su|sv|sy|sz|tc|td|tf|tg|th|tj|tk|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zr|zw|eu)/g;
+const URI_EMAIL_REGEXP =
+  /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?(?:\.[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?)+/g;
+const URI_REJECTED_PREFIX = /(?:!|": "|'|]\()/;
+const URI_TRAILING_PUNCTUATION = new Set([",", ".", ")", "!", "?", ":"]);
+
+interface UriMatch {
+  start: number;
+  end: number;
+  /** the anchor href (resource) -- http:// prepended for bare hosts. */
+  href: string;
+  /** the anchor text (link_text -- scheme stripped for host/email forms). */
+  text: string;
+  /** links.rb resource_type -> the class; "external-link" adds target. */
+  resourceType: string;
+}
+
+/** The next URI-class match at/after `from`, or undefined. Returns the
+ *  earliest of the three classes (parser.rb position order; Uri before
+ *  HostUri before EmailUri at ties -- the register_list order). */
+function findUriMatch(text: string, from: number): UriMatch | undefined {
+  let best: UriMatch | undefined;
+  const consider = (m: UriMatch): void => {
+    if (m.end <= m.start) return;
+    if (best === undefined || m.start < best.start) best = m;
+  };
+  const classes: Array<[RegExp, string]> = [
+    [URI_SCHEME_REGEXP, "scheme"],
+    [URI_HOST_REGEXP, "host"],
+    [URI_EMAIL_REGEXP, "email"],
+  ];
+  for (const [regexp, kind] of classes) {
+    regexp.lastIndex = from;
+    let m: RegExpExecArray | null;
+    while ((m = regexp.exec(text)) !== null) {
+      const start = m.index;
+      // context_ok? (uri.rb:53-56): the two preceding chars.
+      if (start >= 2 && URI_REJECTED_PREFIX.test(text.slice(start - 2, start))) {
+        continue;
+      }
+      // inside an HTML tag: since the last '<' (before start) no '>' came.
+      const lastOpen = text.lastIndexOf("<", start - 1);
+      if (lastOpen !== -1 && text.lastIndexOf(">", start - 1) < lastOpen) {
+        continue;
+      }
+      let chunk = m[0];
+      let end = start + chunk.length;
+      const lastChar = chunk.slice(-1);
+      if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
+        chunk = chunk.slice(0, -1);
+        end -= 1;
+      }
+      chunk = chunk.replace(/\.$/, "");
+      chunk = chunk.replace(/(?:&nbsp;)+/g, "");
+      if (chunk === "") continue;
+      if (kind === "scheme") {
+        const scheme = chunk.slice(0, chunk.indexOf(":"));
+        const resourceType =
+          /^https?:/.test(chunk)
+            ? "external-link"
+            : /^mailto:/.test(chunk)
+              ? "email-link"
+              : `${scheme}-link`;
+        consider({ start, end, href: chunk, text: chunk, resourceType });
+      } else if (kind === "host") {
+        consider({
+          start,
+          end,
+          href: `http://${chunk}`,
+          text: chunk,
+          resourceType: "external-link",
+        });
+      } else {
+        consider({
+          start,
+          end,
+          href: `mailto:${chunk}`,
+          text: chunk,
+          resourceType: "email-link",
+        });
+      }
+      break; // earliest match of this class found
+    }
+    regexp.lastIndex = 0;
+  }
+  return best;
+}
+
+/** The combined link expander the processContent literal pieces run (the
+ *  DEFAULT chunk list's position-order walk): whichever of the wiki Link
+ *  chunk and the three URI chunk classes matches FIRST wins its span.
+ *  expandWikiLinks keeps the whole-text replace shape; this wrapper walks
+ *  positions so a URI before a [[wiki link]] autolinks without the wiki
+ *  pass eating it (and vice versa -- the Ruby parser consumes spans in
+ *  position order, single pass). */
+function expandContentLinks(text: string, engine?: RenderEngineLike): string {
+  if (!/[:.@]/.test(text)) return expandWikiLinks(text, engine);
+  let out = "";
+  let pos = 0;
+  for (;;) {
+    const rest = text.slice(pos);
+    const uri = findUriMatch(text, pos);
+    WIKI_LINK_REGEXP.lastIndex = 0;
+    const wiki = WIKI_LINK_REGEXP.exec(rest);
+    const wikiStart = wiki === null ? Infinity : pos + wiki.index;
+    if (uri === undefined && wiki === null) {
+      out += rest;
+      break;
+    }
+    if (uri !== undefined && uri.start <= wikiStart) {
+      out += text.slice(pos, uri.start);
+      const target = uri.resourceType === "external-link" ? ` target="_blank"` : "";
+      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${h(uri.text)}</a>`;
+      pos = uri.end;
+      continue;
+    }
+    // wiki link first: emit everything up to and including the wiki
+    // chunk's expansion, resume after it (the URI scan skips the span).
+    WIKI_LINK_REGEXP.lastIndex = 0;
+    const wikiGlobal = WIKI_LINK_REGEXP.exec(rest);
+    out += text.slice(pos, wikiStart);
+    out += expandWikiLinks(wikiGlobal![0], engine);
+    pos = wikiStart + wikiGlobal![0].length;
+  }
+  return out;
+}
+
+function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
   return text.replace(WIKI_LINK_REGEXP, (match, target: string, label: string | undefined) => {
     if (match.startsWith("\\")) {
       // Escaped wiki-link: drop the backslash, keep the literal brackets.
@@ -1513,6 +1792,15 @@ function expandWikiLinks(text: string): string {
       }
     }
     const displayText = (label ?? targetTrimmed).trim();
+    // add_known_or_wanted_class (links.rb:135-140): known = Card.known?(name)
+    // = real? — the engine's warm render-card map answers it (a prepared
+    // real/virtual record = known; a fetch miss = wanted). Oracle pin:
+    // sabrina mejias content, `[[People Green]]` renders WANTED-card (the
+    // corpus has no such row; the R17 probe shows the warm-map answer
+    // byte-matches). The earlier hardcoded known-card was the pre-R17
+    // shape (every name link claimed known).
+    const namedLink = engine?.fetchRenderCard(targetTrimmed);
+    const known = namedLink !== undefined && namedLink.unknown !== true;
     // wrapped_title (title.rb:38-44): the span's title attribute carries
     // the same bytes as the display text (voo.title — link.rb options:
     // `title: link_text || fully_stripped name`); oracle pin: title
@@ -1520,7 +1808,7 @@ function expandWikiLinks(text: string): string {
     // title/display "contributing to the administration..." over the
     // underscored href.
     return (
-      `<a class="known-card" href="${h(href)}">` +
+      `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
       `<span class="card-title" title="${h(displayText)}">${h(displayText)}</span>` +
       `</a>`
     );

@@ -189,9 +189,11 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // (round 9: the new-child template type rides the same batch — the
       // *default universe is parsed from the slot right after the
       // *structure universe) + 1 *default_html_view rule universe (round
-      // 10: the deck's bare-nest default view folds on the same batch,
-      // parsed from the slot after the *default universe).
-      expect(stats?.additionalResults?.length).toBe(7);
+      // 10: the deck's bare-nest default view folded on the same batch.
+      // R17: one fewer - the *default html view universe left the fold
+      // (A-36 correction: default_nest_view is process config,
+      // html.rb:17-19, never a deck rule).
+      expect(stats?.additionalResults?.length).toBe(6);
     } finally {
       cold.close();
     }

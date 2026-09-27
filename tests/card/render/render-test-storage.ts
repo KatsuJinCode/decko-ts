@@ -142,6 +142,16 @@ export interface SeedOptions {
   readRuleId?: number | null;
   /** cards.read_rule_class (the set pattern tag, e.g. "*type"). */
   readRuleClass?: string | null;
+  /** cards.created_at — the corpus row's literal SQL datetime. R17: the
+   *  Sign up core view renders "signed up on #{format_date card.created_at}"
+   *  from this column (card-mod-account set/type/signup/views.rb:35-37), so
+   *  the raw-corpus seeding passes the corpus value through; unset keeps
+   *  the historical seed default (2026-09-19 00:00:00.000). */
+  createdAt?: string;
+  /** cards.creator_id — the self_signup?/invited? input
+   *  (views.rb:39-45 compares against AnonymousID). Unset keeps the
+   *  historical seed default (1). */
+  creatorId?: number;
 }
 
 /** Direct INSERT (write path is another stream). Every row with a known
@@ -189,9 +199,15 @@ export async function seedCard(
       opts.leftId ?? null,
       opts.rightId ?? null,
       null,
+      // created_at: the corpus row's literal SQL datetime when provided
+      // (the Sign up core renders "signed up on #{format_date
+      // card.created_at}" from this column); the historical seed default
+      // otherwise.
+      opts.createdAt ?? "2026-09-19 00:00:00.000",
       "2026-09-19 00:00:00.000",
-      "2026-09-19 00:00:00.000",
-      1,
+      // creator_id: the invited?/self_signup? input (views.rb:39-45
+      // compares against AnonymousID); historical default otherwise.
+      opts.creatorId ?? 1,
       1,
       opts.readRuleClass ?? null,
       opts.readRuleId ?? null,

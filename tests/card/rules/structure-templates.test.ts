@@ -265,9 +265,10 @@ describe("RenderEngine structured content", () => {
       // rounds; 13/8 since round 9 folded the *default universe alongside
       // the *structure universe so nest-miss children resolve their
       // *default-rule type from memory; 14/8 since round 10 folded the
-      // *default_html_view universe — the deck's bare-nest default view —
-      // onto the same batch).
-      expect(cold.statements).toBe(14);
+      // *default_html_view universe onto the same batch. R17: 13/8 - that
+      // universe left the fold (A-36 correction: default_nest_view is
+      // process config, html.rb:17-19, never a deck rule).
+      expect(cold.statements).toBe(13);
       expect(cold.roundTrips).toBe(8);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();

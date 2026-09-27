@@ -55,15 +55,16 @@ import type { RenderEngine } from "../render.js";
  *  (runbook production-equivalent setting 4; Env.origin with no request). */
 const DECK_ORIGIN = "https://culturesmith.com";
 
-/** The production `Cardio.config.default_html_view` is RESOLVED, not
- *  hardcoded here (merge pass 2): the engine folds the deck's
- *  `*all+*default html view` rule (render.ts parseDeckDefaultNestView) and
- *  validates it (an unregistered value — the anonymized corpus DBs carry
- *  rule 22769 = "fnvmwmg", an anonymizer token — logs loudly and falls
- *  back to the railtie :titled). renderPageBytes reads it through
- *  engine.ensureDeckDefaultHtmlView before the main-view pick. The
- *  lane-era hardcoded "content" was the production rule's VALUE, valid
- *  only for a DB that carries the real rule. */
+/** The production `Cardio.config.default_html_view`: :content (runbook
+ *  production-equivalent setting 5; the page capture applies it via
+ *  capture-dual-lane-page-and-view.rb:255 and every live-wire page renders
+ *  implicit child nests as content-views). R17: this is PROCESS CONFIG the
+ *  capture flips around the page render — modeled by
+ *  engine.runWithPageConfig wrapping renderPageBytes, so
+ *  RenderFormat.defaultNestView reads "content" for every nest inside the
+ *  page and "titled" for bare renders (the railtie default, the lane-V
+ *  capture boot). The main-view fallback below reads the same config
+ *  through the engine accessor. */
 
 /** The carrierwave cloud attachment URL the capture's fog storage config
  *  produced: endpoint + empty bucket + files_web_path ("files") + id/action.
@@ -114,6 +115,18 @@ export async function renderPageBytes(
   engine: RenderEngine,
   cardName: string,
 ): Promise<string> {
+  // The page capture wraps `fmt.show(nil, {})` in the production config
+  // (capture-dual-lane-page-and-view.rb:255-258: default_html_view = :content
+  // among them). The engine models that with the pageConfigActive flag:
+  // every nest resolved inside this call (including the prepare render's)
+  // reads "content"; bare renders keep the railtie "titled".
+  return engine.runWithPageConfig(() => renderPageBytesWithPageConfig(engine, cardName));
+}
+
+async function renderPageBytesWithPageConfig(
+  engine: RenderEngine,
+  cardName: string,
+): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
   const record = await engine.fetcher.fetchByName(cardName);
@@ -123,12 +136,11 @@ export async function renderPageBytes(
   const layout = await resolvePageLayout(engine, record);
 
   // Layout.main_nest_opts: the {{_main|view}} chunk names the main view;
-  // render_with_layout falls back to default_page_view (= default_nest_view,
-  // production :content) when the layout carries no view. The fallback is
-  // the deck's RESOLVED rule value (validated; railtie :titled when absent
-  // or unregistered) — the fold is guaranteed via the async seam because
-  // no cold render has run yet at this point.
-  const mainView = layout.mainViewRaw ?? (await engine.ensureDeckDefaultHtmlView()) ?? "titled";
+  // render_with_layout falls back to default_page_view (= default_nest_view
+  // = Cardio.config.default_html_view, :content in production) when the
+  // layout carries no view. The page lane's config is active here, so the
+  // accessor answers "content".
+  const mainView = layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
 
   // The main render + the full prepare sequence (permission state, search
   // parse gates, structure universe...) — the identical preparation and
@@ -157,8 +169,8 @@ export async function renderPageBytes(
 
   // The root format: main! context (h1 header, focal gates) + production
   // quiet-error semantics for nested views. The default nest view needs no
-  // override — RenderFormat.defaultNestView reads the same engine rule
-  // (validated) the main-view pick above used.
+  // override — RenderFormat.defaultNestView reads the page-active engine
+  // config the main-view pick above used.
   const rootFormat = new RenderFormat(rootCard, engine, {
     main: true,
     nestQuietErrors: true,
