@@ -27,7 +27,9 @@
 //    both gates run before their respective view functions, so the
 //    captured shape replaces the full bar.haml body with the two denial
 //    spans). The phantom item's type info in the slot's data-attrs is
-//    the corpus's default phantom type (id=22281, name="swtktey") —
+//    the corpus's default phantom type (id=22281, name="BasicCs",
+//    class chip basic_c — merge pass 2 corrected the earlier "swtktey"
+//    pin, which matched no oracle bytes) —
 //    the engine's buildUnknownNestCard leaves typeId/typeName undefined,
 //    so the port fills them from the corpus's pinned default to keep
 //    the byte diff green.
@@ -167,15 +169,21 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // single quotes around the class attribute (the captured bytes
       // use single quotes for this template's class attr; the data-
       // attrs ride on the same tag with single quotes too).
-      expect(html).toContain("<div class='bar ALL TYPE-swtktey with-bar-menu nodblclick d-flex _card-link'");
+      // Merge pass 2 flip: the captured chip is the BasicCs type's KEY
+      // form `basic_c` — the previous "swtktey" pin matched no oracle
+      // bytes (expected-v2 census: "swtktey" occurs zero times; 248/256
+      // denied mini_bar bodies carry BasicCs/22281).
+      expect(html).toContain("<div class='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'");
       // Two quiet_denial spans (Ruby's :denial view substitutes both
       // bar_left's title and bar_right's ruleBarRightHtml).
       const deniedCount = (html.match(/<span class="denied"><!-- Sorry, you don't have permission \(read\) --><\/span>/g) || []).length;
       expect(deniedCount).toBe(2);
       // The phantom type info: data-card-type-id="22281" +
-      // data-card-type-name="swtktey" on the inner slot.
+      // data-card-type-name="BasicCs" on the inner slot (oracle: cards
+      // row 22281 is the BasicCs type card; "swtktey" never appears in
+      // the expected-v2 view lane).
       expect(html).toContain('data-card-type-id="22281"');
-      expect(html).toContain('data-card-type-name="swtktey"');
+      expect(html).toContain('data-card-type-name="BasicCs"');
     },
   );
 });

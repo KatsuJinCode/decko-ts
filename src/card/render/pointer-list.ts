@@ -36,10 +36,12 @@
 // the mini_bar slot wrap even when the inner item is unknown/phantom,
 // and renders a bar-shaped body with denied spans inside. The captured
 // oracle for every phantom item in the corpus has the SAME type info
-// (type_name "swtktey", type_id 22281) — this is the corpus's default
-// type card for phantom items. The port reproduces the shape so the
-// captured bytes match. Real, non-phantom items would render through
-// fmt.nestRecord with the actual item card's type info.
+// (type_name "BasicCs", type_id 22281 — merge-pass-2 census corrected
+// the earlier "swtktey" mis-survey, which matched no oracle bytes) —
+// this is the corpus's default type card for phantom items. The port
+// reproduces the shape so the captured bytes match. Real, non-phantom
+// items would render through fmt.nestRecord with the actual item
+// card's type info.
 //
 // Truth sources:
 // - card-mod-list-0.20.0 set/abstract/01_list/html_views.rb:6-30
@@ -214,17 +216,24 @@ function itemWrap(name: string, inner: string): string {
 
 /** The phantom item type card id and name the captured oracle pins for
  *  every unknown/phantom item rendered through the pointer/list path.
- *  Survey of the corpus's INNER-family failure entries (corpus:77,
- *  corpus:275, corpus:400, corpus:1370, corpus:6551, ...):
- *  every inner slot's data-card-type-id=22281 and data-card-type-name=
- *  "swtktey" — the corpus's default phantom type card. Hardcoded here
- *  because the engine's buildUnknownNestCard leaves typeId/typeName
- *  undefined (prototype/lib/card/format/nest/fetch.rb#new_card: phantom
- *  cards carry no inferred type from `supercard`); the corpus's
- *  fixtures pin a specific default that the engine must reproduce to
- *  pass the byte-level diff. */
+ *  Census of the expected-v2 view lane (merge pass 2, 2026-09-26): 256
+ *  denied mini_bar bodies, 248 carrying data-card-type-name="BasicCs"
+ *  with type id 22281 (6 RichText, 2 Practice — resolved-rule types the
+ *  item-type machinery must grow later); the string "swtktey" occurs
+ *  ZERO times in the entire oracle. The previous pin ("swtktey") kept
+ *  the right id 22281 — the corpus's BasicCs type card (cards row
+ *  22281) — but a name that matches no oracle bytes; every swtktey-
+ *  emitting entry was an automatic miss. Hardcoded here because the
+ *  engine's buildUnknownNestCard leaves typeId/typeName undefined
+ *  (prototype/lib/card/format/nest/fetch.rb#new_card: phantom cards
+ *  carry no inferred type from `supercard`). */
 const PHANTOM_TYPE_ID = 22281;
-const PHANTOM_TYPE_NAME = "swtktey";
+const PHANTOM_TYPE_NAME = "BasicCs";
+/** The type's key form (simpleKey("BasicCs")) — the class-chip token the
+ *  captured oracle carries (`ALL TYPE-basic_c`, recapture-raw shard,
+ *  *home content view, phantom item "Test Person 01"), not the display
+ *  name. */
+const PHANTOM_TYPE_KEY = "basic_c";
 
 /** The mini_bar slot wrap for one pointer/list item: slot id ends in
  *  `mini_bar-view`, slot classes include `mini_bar-view`, and the
@@ -269,15 +278,15 @@ export function pointerListItemSlot(item: RenderCard, inner: string): string {
 /** The bar.haml-shaped body for an UNKNOWN/phantom pointer/list item.
  *  Captured oracle (corpus:77 inner yzzw; corpus:400 inner yqwnywnhs;
  *  corpus:6551 inner irjkznnbpewjpr; …): a `<div class="bar ALL
- *  TYPE-swtktey with-bar-menu nodblclick d-flex _card-link">` whose
+ *  TYPE-basic_c with-bar-menu nodblclick d-flex _card-link">` whose
  *  body is two `<span class="denied">` markers (bar_left view denial +
  *  bar_right view denial — both go through viewPermissionDenial before
  *  the view function runs; the captured shape replaces the full
  *  bar.haml body with the two denied spans). No bar-body row, no menu
  *  items — Ruby's bar.haml in the mini_bar context for an unknown card
- *  emits only the denied spans. The phantom's type info (swtktey /
- *  22281) is the corpus's default phantom type (see PHANTOM_TYPE_NAME
- *  above).
+ *  emits only the denied spans. The phantom's type info (BasicCs /
+ *  22281, class chip basic_c) is the corpus's default phantom type (see
+ *  PHANTOM_TYPE_NAME above).
  *
  *  Ruby's nest machinery wraps the denied body inside the mini_bar
  *  slot wrap regardless of whether the inner card is read-denied — the
@@ -292,11 +301,12 @@ export function pointerListItemBodyForUnknown(
   identity?: { setKeys?: string; typeName?: string; typeId?: number },
 ): string {
   // Defaults preserve the corpus's phantom-item bytes (every captured
-  // denied pointer/list item is swtktey-typed, PHANTOM_TYPE_* above).
-  // The identity override lets the read-denied KNOWN-item path emit the
-  // fetched card's real set keys / type attrs (the slot + body shapes
-  // are identical; only the identity tokens differ).
-  const setKeys = identity?.setKeys ?? `ALL TYPE-${PHANTOM_TYPE_NAME}`;
+  // denied pointer/list item is BasicCs-typed, PHANTOM_TYPE_* above; the
+  // class chip is the type's key form, PHANTOM_TYPE_KEY). The identity
+  // override lets the read-denied KNOWN-item path emit the fetched
+  // card's real set keys / type attrs (the slot + body shapes are
+  // identical; only the identity tokens differ).
+  const setKeys = identity?.setKeys ?? `ALL TYPE-${PHANTOM_TYPE_KEY}`;
   const typeName = identity?.typeName ?? PHANTOM_TYPE_NAME;
   const typeId = identity?.typeId ?? PHANTOM_TYPE_ID;
   const safeName = h(name);

@@ -126,7 +126,10 @@ export class Voo {
       }
     }
     const requested = this.requestedView;
-    if (optional !== undefined && optional !== false && !this.viz.has(requested)) {
+    // null = NO optional render opt (the show_with_page_layout main render —
+    // the page lane's captured slot has no "show" viz). JS default params
+    // apply on undefined, so the page path passes null, not undefined.
+    if (optional !== undefined && optional !== null && optional !== false && !this.viz.has(requested)) {
       this.viz.set(requested, optional === "hide" || optional === false ? "hide" : "show");
     }
   }
@@ -236,6 +239,13 @@ export interface HelpRulesApi {
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
+  /** Production render-error semantics (raise_all_rendering_errors=false):
+   *  errors from NESTED view renders become the quiet
+   *  `render-error alert alert-danger` span instead of propagating
+   *  (format/render.rb wrap_and_render rescue + error.rb rescue_view
+   *  quiet branch). The focal (main) render still raises. Page-path only;
+   *  the bare view lane keeps the development loud behavior. */
+  nestQuietErrors?: boolean;
   /** maximum nest depth — Ruby Card.config.max_depth = 20
    *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
    *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
@@ -260,6 +270,12 @@ export class RenderFormat {
   readonly parent: RenderFormat | undefined;
   readonly isMain: boolean;
   readonly maxDepth: number;
+  /** Production nested-error semantics flag (see RenderFormatOptions). */
+  readonly nestQuietErrors: boolean;
+  /** The memoized main-view body (nesting/main.rb main.rendered): set by the
+   *  page renderer after the main render; the {{_main}} nest in the layout
+   *  body emits it wrapped by wrap_main (<div id="main">). */
+  mainNestBody: string | undefined;
   voo: Voo | undefined;
   private depthCache: number | undefined;
 
@@ -272,6 +288,7 @@ export class RenderFormat {
     this.engine = engine;
     this.parent = opts.parent;
     this.isMain = opts.main ?? false;
+    this.nestQuietErrors = opts.nestQuietErrors ?? false;
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
   }
 
@@ -559,11 +576,33 @@ export class RenderFormat {
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),
     };
-    const sub = new RenderFormat(card, this.engine, { parent: this, maxDepth: this.maxDepth });
+    const sub = new RenderFormat(card, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      // Page-path config propagates (Ruby's config is render-global): the
+      // quiet nested-error semantics. The default nest view needs no
+      // threading — every format reads the same engine rule (validated).
+      nestQuietErrors: this.nestQuietErrors,
+    });
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${card.name.s})`);
     }
-    return sub.renderView(view, viewOpts);
+    // Production render-error semantics (error.rb rescue_view quiet branch,
+    // reached through format/render.rb wrap_and_render's rescue): a nested
+    // view's error renders the quiet span instead of propagating. UserError
+    // messages render verbatim (error.rb rendering_error); other errors use
+    // the lib_error_rendering locale line. The focal (main) render never
+    // reaches this catch — it runs on the root format, not through nest().
+    try {
+      return sub.renderView(view, viewOpts);
+    } catch (error) {
+      if (!this.nestQuietErrors) throw error;
+      const msg =
+        error instanceof UnsupportedViewError
+          ? error.message
+          : `Error rendering: ${h(card.name.s)} (${view} view)`;
+      return `<span class="render-error alert alert-danger">${msg}</span>`;
+    }
   }
 
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
@@ -647,21 +686,28 @@ export class RenderFormat {
    *  default :titled).
    *
    *  The railtie literal is only the FALLBACK: the deck's
-   *  `*all+*default html view` rule drives the effective config (this
-   *  corpus's rule card 22769 carries db_content "content"), and the live
-   *  wire bytes agree on all 12 captured pages — every bare nest renders a
-   *  content-view (Home, Brandon +bio/+how to contact me, CDW, Wikirate,
-   *  blog Latest News, Recommendations ×32; assumption-audit A-36). The
-   *  bare recapture oracle disagrees (it shows titled for the same nests)
-   *  because the capture bootstrap never applied the deck rule to
-   *  Cardio.config — the same capture-path illusion busted twice before;
-   *  the oracle lacks the deck-rule context and is NOT the byte target
-   *  here. The engine therefore resolves the rule (render.ts folds the
-   *  *default html view universe on the cold render) and falls back to the
-   *  railtie :titled only when no rule exists — rule-driven, not a
+   *  `*all+*default html view` rule drives the effective config, and the
+   *  live wire bytes agree on all 12 captured pages — every bare nest
+   *  renders a content-view (Home, Brandon +bio/+how to contact me, CDW,
+   *  Wikirate, blog Latest News, Recommendations ×32; assumption-audit
+   *  A-36). The bare recapture oracle disagrees (it shows titled for the
+   *  same nests) because the capture bootstrap never applied the deck rule
+   *  to Cardio.config — the same capture-path illusion busted twice
+   *  before; the oracle lacks the deck-rule context and is NOT the byte
+   *  target here. The engine resolves the rule (render.ts folds the
+   *  *default html view universe on the cold render) and VALIDATES it: a
+   *  value naming no registered view logs loudly and reads as undefined
+   *  (render.ts#deckDefaultHtmlView — the anonymized corpus DBs carry rule
+   *  card 22769 = "fnvmwmg", an anonymizer token, never renderable as a
+   *  view), falling back to the railtie :titled. Rule-driven, not a
    *  hardcoded literal. Fixtures pinned to the oracle's titled side flip
    *  with this fix; the flip is the correction (same class as round 8
-   *  lane 3's four expected flips). */
+   *  lane 3's four expected flips).
+   *
+   *  (Merge pass 2: the layout lane's defaultNestViewOverride split — bare
+   *  lane titled / page lane hardcoded :content — was superseded by this
+   *  rule-driven form; page.ts reads the same validated rule through
+   *  engine.ensureDeckDefaultHtmlView.) */
   defaultNestView(): string {
     return this.engine.deckDefaultHtmlView?.() ?? "titled";
   }
@@ -678,7 +724,11 @@ export class RenderFormat {
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...opts,
     };
-    const sub = new RenderFormat(target, this.engine, { parent: this, maxDepth: this.maxDepth });
+    const sub = new RenderFormat(target, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      nestQuietErrors: this.nestQuietErrors,
+    });
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${this.maxDepth}) at ${target.name.s}`);
     }
@@ -846,6 +896,35 @@ export class RenderFormat {
     const override = resolveContentOverride(this);
     if (override !== undefined) return override;
     return this.card.dbContent;
+  }
+
+  /**
+   * Card::Layout::CardLayout#render — the layout card's content processed
+   * through the PAGE format (process_content, chunk_list: :references).
+   * Identical loop to processContent except the `_main` nest: Ruby's nest
+   * dispatch hits nesting/main.rb#main_nest — wrap_main { main.rendered }
+   * — the memoized main-view body wrapped in <div id="main"> (html/wrap.rb
+   * #wrap_main; no_main_wrap? is false for the page path). Other nests
+   * resolve against the PAGE card (the layout renders in the page's format
+   * context), including `:codename` marks ({{:header|core}} -> *header).
+   */
+  processLayoutContent(content: string): string {
+    const pieces = scanNests(content);
+    let out = "";
+    for (const piece of pieces) {
+      if (piece.kind === "text") {
+        out += expandWikiLinks(piece.text);
+      } else if (piece.nest !== undefined) {
+        if (piece.nest.name === "_main") {
+          // main_nest? -> wrap_main { main.rendered || main_nest_render }
+          const body = this.mainNestBody ?? "";
+          out += `<div id="main">${body}</div>`;
+        } else {
+          out += this.nest(piece.nest);
+        }
+      }
+    }
+    return out;
   }
 
   /** title.rb#standard_title via #title_in_context: the name, HTML-escaped
@@ -1160,6 +1239,11 @@ function expandWikiLinks(text: string): string {
     // and live pins internal-link for explicit targets
     // (`href="/account/signup">sign-in account`, live Brandon bio), so the
     // branches resolve here identically to renderLinkChunk.
+    // (Merge pass 2: the layout lane's b055982 collapsed every explicit
+    // resource to one internal-link form from the PCTS/GBA nav pin; the
+    // scheme-differentiated classes below carry the LATER raw-oracle pins
+    // (external-link target="_blank" — clusters.4shard.after.md #17) and
+    // the same no-card-title-span property, which was that lane's fix.)
     const targetTrimmed = target.trim();
     if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
       if (/^https?:/.test(targetTrimmed)) {

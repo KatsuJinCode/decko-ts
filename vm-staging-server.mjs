@@ -166,6 +166,12 @@ driver.registerFunction("regexp", sqliteRegexpUdf, { deterministic: true });
 
 const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 const render = new RenderEngine(fetcher);
+// Round-10 engineFix gap 1, wired at merge pass 2: the engine's
+// imageCdnHost is host-deployment config (RenderEngineLike.imageCdnHost;
+// undefined = host-relative /files URLs). The live deck serves carrierwave
+// cloud attachments from the .cdn. Spaces subdomain — SPACES_HOST above
+// (live Home.html receipt: src="…cdn…/files/27689/135167-large.jpg").
+render.imageCdnHost = SPACES_HOST;
 
 // Sync name-environment adapters (mark strings like "~9", ":search_type"
 // resolve through engine.peekLexiconId etc., which read warm caches only;

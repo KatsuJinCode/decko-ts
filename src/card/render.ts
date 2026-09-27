@@ -49,6 +49,8 @@ import {
   type RenderEngineLike,
   type ViewFn,
 } from "./render/format.js";
+import { renderPageBytes, UnknownLayoutError } from "./render/page.js";
+import type { ViewOverride } from "./rules/apply.js";
 import { HTML_VIEWS, SETTING_GROUPS, GROUP_TO_SETTINGS } from "./render/views.js";
 import {
   ModLoader,
@@ -94,6 +96,7 @@ import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import type { SQLQueryResult } from "../server/driver.js";
 
 export { UnsupportedViewError };
+export { UnknownLayoutError };
 export {
   BadQueryError,
   badQuery,
@@ -309,6 +312,7 @@ export class RenderEngine implements RenderEngineLike {
    *  render; undefined = no rule (the format falls back to the railtie
    *  :titled, mod/format.rb:2). Cleared on resetCaches(). */
   private deckDefaultNestView: string | undefined;
+  private deckDefaultNestViewInvalidLogged = false;
   /** Whether the deck-default-nest-view fold already ran (distinguishes
    *  "no rule" from "not parsed yet" so rule-less decks don't re-query on
    *  every render). Cleared on resetCaches(). */
@@ -644,6 +648,42 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
+   * Render the live page for one card — the html-format show path
+   * (show_with_page_layout: *layout rule resolution, the {{_main|view}}
+   * main render with main! context, the layout body substitution, the
+   * :html_page wrapper, production default_nest_view=:content and quiet
+   * nested-error semantics). The full mechanism port lives in
+   * src/card/render/page.ts; the preparation reuses render() so the bare
+   * and page lanes share one prepare path. Throws UnknownLayoutError (the
+   * captured "unknown layout card" UserError sentinel) for layout names
+   * that resolve to no card/built-in layout.
+   */
+  async renderPage(cardName: string): Promise<string> {
+    return renderPageBytes(this, cardName);
+  }
+
+  /**
+   * The (card, view) view-override rule lookup shared with render() (same
+   * ruleCache; the page renderer applies the same *<view> rule to the main
+   * body bytes it builds with main! context). Additive seam — render()
+   * itself is untouched.
+   */
+  async viewOverrideFor(card: RenderCard, view: string): Promise<ViewOverride | undefined> {
+    const cacheKey = `${card.key}|${view}`;
+    let override = this.ruleCache.get(cacheKey);
+    if (override === undefined && !this.ruleCache.has(cacheKey)) {
+      const rule = await findRule(
+        this.fetcher,
+        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
+        `*${view}`,
+      );
+      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
+      this.ruleCache.set(cacheKey, override);
+    }
+    return override;
+  }
+
+  /**
    * Chain-aware view dispatch (the new seam): resolve (card, view, format)
    * through the per-card MRO chain (set/format.rb:146-150 +
    * format.rb:62-68) when a mod loader is wired up; fall back to the
@@ -784,6 +824,7 @@ export class RenderEngine implements RenderEngineLike {
     this.configureVerdicts.clear();
     this.deckDefaultNestView = undefined;
     this.deckDefaultNestViewParsed = false;
+    this.deckDefaultNestViewInvalidLogged = false;
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
@@ -856,11 +897,44 @@ export class RenderEngine implements RenderEngineLike {
 
   /**
    * RenderEngineLike#deckDefaultHtmlView — the folded `*all+*default html
-   * view` rule content (undefined = no rule; the format falls back to the
-   * railtie :titled).
+   * view` rule content (undefined = no rule or a rule value that names no
+   * registered view; the format falls back to the railtie :titled).
+   *
+   * The validity gate is the loud-log mechanism (merge pass 2): a parsed
+   * rule value that names NO view in HTML_VIEWS must never flow into a
+   * nest as a view name (every such nest would raise UnsupportedViewError,
+   * or worse render garbage-quiet). Known instance: the anonymized corpus
+   * DBs carry rule card 22769 (*all+*default html view) content "fnvmwmg"
+   * — the anonymizer tokenized the production value "content" (verified
+   * across every on-disk corpus copy, see brandonDojoTech
+   * tmp/wrong-goal-hunt/merge-pass-2.md). Logged once per engine.
    */
   deckDefaultHtmlView(): string | undefined {
-    return this.deckDefaultNestView;
+    const value = this.deckDefaultNestView;
+    if (value === undefined) return undefined;
+    if (HTML_VIEWS[value] !== undefined) return value;
+    if (!this.deckDefaultNestViewInvalidLogged) {
+      this.deckDefaultNestViewInvalidLogged = true;
+      console.error(
+        `[decko-engine] *all+*default html view rule value "${value}" names no registered view; using the railtie default "titled"`,
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * Async seam for the page renderer (renderPageBytes): guarantee the
+   * *all+*default html view fold has run BEFORE the sync accessor is read
+   * (the fold rides the cold render's batched universe read; the page path
+   * needs the value to pick the main view before any render). Uses the
+   * same defensive standalone batch the warm-closure-first-render path
+   * uses. Returns the VALIDATED rule value (undefined = railtie :titled).
+   */
+  async ensureDeckDefaultHtmlView(): Promise<string | undefined> {
+    if (!this.deckDefaultNestViewParsed) {
+      await this.parseDeckDefaultNestView(undefined, 0);
+    }
+    return this.deckDefaultHtmlView();
   }
 
   /**
@@ -1204,14 +1278,6 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Verdicts for every card the render can touch — the sync render path
-   * reads only this map. Stored read_rule_id cards resolve purely
-   * (permissions.rb:142-143); cards without one fall back to the live rule
-   * walk (permission_rule_id, permissions.rb:55-61) — bounded by the
-   * hasReadRules gate, so rule-less seeds cost zero queries and stay
-   * allowed (the documented divergence).
-   */
-  /**
    * The PatternCardInput the read-verdict walk receives. The *type plus
    * right pattern's anchor composes from the LEFT side's type name
    * (registry.ts type_plus_right anchorName: `${leftType}+${tag}` — Ruby's
@@ -1260,6 +1326,28 @@ export class RenderEngine implements RenderEngineLike {
     };
   }
 
+  /**
+   * Public seam for the page renderer's warm-up: re-run the read-permission
+   * verdict pass over every prepared card (the skip-if-set guard inside
+   * ensureVerdicts makes this a no-op for already-judged cards — only
+   * warm-up enrichments made after the main render's pass get judged
+   * here). The layout subtree's denied items (e.g. the *Opportunities
+   * dropdown's read-denied rows) must render the quiet denial span exactly
+   * like the capture; without this refresh a warm-enriched card has no
+   * verdict and renders content instead.
+   */
+  async refreshVerdicts(): Promise<void> {
+    await this.ensureVerdicts();
+  }
+
+  /**
+   * Verdicts for every card the render can touch — the sync render path
+   * reads only this map. Stored read_rule_id cards resolve purely
+   * (permissions.rb:142-143); cards without one fall back to the live rule
+   * walk (permission_rule_id, permissions.rb:55-61) — bounded by the
+   * hasReadRules gate, so rule-less seeds cost zero queries and stay
+   * allowed (the documented divergence).
+   */
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;

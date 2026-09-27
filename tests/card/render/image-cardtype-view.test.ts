@@ -53,6 +53,15 @@ import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 // ---------------------------------------------------------------------------
 
 describe("formatImageCore — Ruby's image cardtype :core body", () => {
+  // 2026-09-26 page-lane correction (layout-resolver lane): Rails
+  // image_tag(source, alt: card.name) emits the tag alt-first with the
+  // haml-style close — pinned by the expected-v2 capture on BOTH lanes
+  // (view-lane *favicon :open: `<img alt="*favicon"
+  // src="http://s3.amazonaws.com//files/103/3649-medium.jpg" />`;
+  // page-lane header logo: `<img alt="*logo" src="...3643-small.jpg" />`).
+  // The old src-first alt="" shape matched no oracle bytes — the fixture
+  // flip is the correction, not a regression (both lanes previously
+  // failed these entries with the old shape).
   it.each([
     ["http://example.com/foo.png", "http://example.com/foo.png"],
     ["https://example.com/foo.png", "https://example.com/foo.png"],
@@ -60,9 +69,9 @@ describe("formatImageCore — Ruby's image cardtype :core body", () => {
     ["data:image/png;base64,iVBOR", "data:image/png;base64,iVBOR"],
     ["mailto:foo@example.com", "mailto:foo@example.com"],
   ])(
-    "URL-shaped content '%s' renders <img src=\"%s\" alt=\"\">",
+    "URL-shaped content '%s' renders <img alt=\"\" src=\"%s\" />",
     (input, expected) => {
-      expect(formatImageCore(input)).toBe(`<img src="${expected}" alt="">`);
+      expect(formatImageCore(input)).toBe(`<img alt="" src="${expected}" />`);
     },
   );
 
@@ -248,10 +257,11 @@ describe("Image-type card :content view — empty inner for non-URL content", ()
     }
   });
 
-  it("real image source renders <img src=\"...\" alt=\"\"> inside the slot", async () => {
+  it("real image source renders <img alt=\"...\" src=\"...\" /> inside the slot", async () => {
     // Outside the corpus: real image URLs must render the <img> tag.
     // The image cardtype's :core body is the image_tag call with the
-    // card's content as src.
+    // card's content as src. 2026-09-26: oracle shape (alt-first, haml
+    // close) — see the page-lane correction note on the it.each above.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -268,7 +278,7 @@ describe("Image-type card :content view — empty inner for non-URL content", ()
         dbContent: "/files/sample.png",
       });
       const html = await storage.engine.render("real image", "content");
-      expect(html).toContain('<img src="/files/sample.png" alt="">');
+      expect(html).toContain('<img alt="real image" src="/files/sample.png" />');
     } finally {
       storage.close();
     }
