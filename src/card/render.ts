@@ -1361,9 +1361,19 @@ export class RenderEngine implements RenderEngineLike {
    * hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
+  /** renderCards.size at the moment the full judgment loop last completed.
+   *  The loop judges EVERY card in the map (already-judged cards hit the
+   *  has-checks and continue), the map only grows, and verdicts are never
+   *  invalidated — so an unchanged size means every card is judged and
+   *  the whole deck-sized sweep can be skipped. On the 47k-row prewarmed
+   *  corpus this turns the per-render re-passes (render.ts:453/498/529)
+   *  into one integer compare on a fully warm engine. */
+  private verdictsJudgedAtMapSize = -1;
+
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;
+    if (this.verdictsJudgedAtMapSize === this.renderCards.size) return;
     for (const card of this.renderCards.values()) {
       if (card.id === undefined) {
         // The virtual cards (states.rb#virtual?): no row, no id — the read
@@ -1403,6 +1413,7 @@ export class RenderEngine implements RenderEngineLike {
       );
       this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
     }
+    this.verdictsJudgedAtMapSize = this.renderCards.size;
   }
 
   /** Populate the typeCode field on every prepared render card. The
@@ -1527,14 +1538,41 @@ export class RenderEngine implements RenderEngineLike {
     // exists for future hooks (e.g. a negative closure map).
   }
 
+  /** Hosts whose pointer/list enrichment has COMPLETED (every item line
+   *  either resolved into renderCards or is a true fetch miss — the deck
+   *  is static per engine lifetime, so a processed host can never present
+   *  a new line and a miss re-checked on a later render resolves nothing
+   *  new; reportUnknownCard is a documented no-op, so re-walking only
+   *  re-parses). Keyed by host key, mirroring itemTypeNameByHostKey. */
+  private pointerListHostsDone = new Set<string>();
+
+  /** Set by enrichAndStore on every NEW render card, consumed by
+   *  enrichPointerListItemsClosure: renderCards only grows, so a render
+   *  with no stores since the last closure pass has nothing new to walk —
+   *  the closure skips its whole deck-sized filter sweep. */
+  private renderCardsGrewSinceClosure = false;
+
   /** Pre-enrich the items of every pointer/list card reachable in the
    *  render-card map, repeating until the map stops growing (an enriched
    *  item may itself be a pointer/list host whose items need the same
-   *  pass). Warm renders are a no-op: prepareItemForRender's first check
-   *  is the renderCards cache. The round cap is paranoia — renderCards
-   *  strictly grows, so the fixpoint is reached in at most deck-size
-   *  rounds; the cap keeps a pathological cycle bounded. */
+   *  pass). Each host is processed exactly once per engine lifetime: the
+   *  deck is static, so a later render's closure round must skip done
+   *  hosts — without the skip, every render re-split every deck host's
+   *  entire dbContent and re-ran DeckoName.parse on every item line (the
+   *  prewarm enriches all ~47k records into renderCards, so the "every
+   *  host" set is the deck's whole pointer/list/search population, and
+   *  the per-render re-walk measured 5 -> 23ms median per warm entry on
+   *  the corpus harness; the per-item renderCards cache check made the
+   *  lines cheap but never the parsing). The round cap is paranoia —
+   *  renderCards strictly grows, so the fixpoint is reached in at most
+   *  deck-size rounds; the cap keeps a pathological cycle bounded. */
   private async enrichPointerListItemsClosure(): Promise<void> {
+    // renderCards only grows: no store since the last pass means no new
+    // host and no un-walked card — the sweep below would re-visit every
+    // deck card only to Set.has-skip each one. Consume the flag here so
+    // the pass runs once after whatever stored new cards.
+    if (!this.renderCardsGrewSinceClosure) return;
+    this.renderCardsGrewSinceClosure = false;
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let grew = false;
@@ -1543,17 +1581,22 @@ export class RenderEngine implements RenderEngineLike {
       // determine_item_view_options_type chain (card-mod-search
       // 0_search/views.rb:132-136), so the items' slot JSON carries the
       // search's own cql :type (cql_search.rb:14-19 item_type_id).
-      const hosts = [...this.renderCards.values()].filter(
-        (card) =>
-          card.typeCode === "pointer" ||
-          card.typeCode === "list" ||
-          card.typeCode === "search_type" ||
-          card.typeName === "Search",
-      );
-      for (const host of hosts) {
+      // Iterate the map directly (no intermediate array): the prewarmed
+      // map holds the whole deck, and this filter runs every render.
+      for (const card of this.renderCards.values()) {
+        if (
+          card.typeCode !== "pointer" &&
+          card.typeCode !== "list" &&
+          card.typeCode !== "search_type" &&
+          card.typeName !== "Search"
+        ) {
+          continue;
+        }
+        if (this.pointerListHostsDone.has(card.key)) continue;
         const before = this.renderCards.size;
-        await this.enrichPointerListItems(host);
-        await this.resolveHostItemTypeName(host);
+        await this.enrichPointerListItems(card);
+        await this.resolveHostItemTypeName(card);
+        this.pointerListHostsDone.add(card.key);
         if (this.renderCards.size !== before) grew = true;
       }
       if (!grew) return;
@@ -2592,6 +2635,7 @@ export class RenderEngine implements RenderEngineLike {
     };
     this.renderCards.set(key, card);
     if (record.id !== undefined) this.idsByKey.set(key, record.id);
+    this.renderCardsGrewSinceClosure = true;
     return card;
   }
 
