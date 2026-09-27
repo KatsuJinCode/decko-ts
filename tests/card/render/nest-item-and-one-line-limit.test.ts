@@ -64,9 +64,16 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     expect(ruleBarRightHtml(base(content))).toContain(content);
   });
 
-  it("content over the limit truncates at 60 with the ellipsis", () => {
+  it("content over the limit truncates Rails-style: 57 chars + ... (total 60)", () => {
+    // Rails truncate omits the omission from the budget: the TOTAL length
+    // is `length` (60), so 60 chars stay untruncated and 61 become
+    // 57 + "..." (card-mod-format content.rb:43-53 Rails truncate
+    // semantics; the tails-lane oracle pin AAM+*self+*guide truncates at
+    // 58 visible chars of stripped markdown text — "…in the full" — the
+    // 57-byte text budget).
     const html = ruleBarRightHtml(base("b".repeat(61)));
-    expect(html).toContain("b".repeat(60) + "...");
+    expect(html).toContain("b".repeat(57) + "...");
+    expect(html).not.toContain("b".repeat(58));
     expect(html).not.toContain("b".repeat(61));
   });
 });

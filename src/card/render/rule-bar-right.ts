@@ -31,16 +31,30 @@ import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from ".
 
 /** card-mod-rules bar_view.rb:19-21 calls the bare `truncate` helper, which
  *  resolves to card-mod-format content.rb:43-53 — Rails truncate semantics
- *  (omission "..." only when longer) but with `one_line_character_limit` =
- *  voo.size || ONE_LINE_CHARACTER_LIMIT = 60 (content.rb:1), NOT Rails' 50
- *  default. No captured oracle pins these bytes (verified 2026-09-22), so
- *  the limit is gem-cited. */
+ *  (the TOTAL length including the omission is `length`; omission "..." only
+ *  when longer) with `one_line_character_limit` = voo.size ||
+ *  ONE_LINE_CHARACTER_LIMIT = 60 (content.rb:1), NOT Rails' 50 default. */
 const ONE_LINE_CHARACTER_LIMIT = 60;
 function truncatedCore(content: string): string {
   if (content.length > ONE_LINE_CHARACTER_LIMIT) {
-    return `${content.slice(0, ONE_LINE_CHARACTER_LIMIT)}...`;
+    return `${content.slice(0, ONE_LINE_CHARACTER_LIMIT - 3)}...`;
   }
   return content;
+}
+
+/** Rails strip_tags for the one-line path: remove markup tags, keep the
+ *  text. The rule-module's :one_line_content view body calls the METHOD
+ *  one_line_content, whose base definition (card-mod-format-0.20.0
+ *  set/all/content.rb:47-49) is
+ *  `truncate strip_tags(render_core), length: one_line_character_limit`
+ *  — the stored RichText markup (`<p><em>…</em></p>`) never reaches the
+ *  one-line bytes. Pinned by the oracle: AAM+*self+*help bar-right
+ *  renders `Please remember to click "Submit" after uploading.` (plain,
+ *  untruncated) where the raw-markup form produced
+ *  `<p><em>Please remember to click "Submit" after uploading.</e...`
+ *  (recapture-raw-shard-000003, AAM+*self:content offset 34173). */
+function stripHtmlTags(content: string): string {
+  return content.replace(/<[^>]*>/g, "");
 }
 
 /** The :type view's text — the type card's name (render_type). */
@@ -132,6 +146,7 @@ function ruleOneLineContent(
   card: RenderCard,
   rightSetting: string | undefined,
   engine?: RenderEngineLike,
+  renderCoreText?: (card: RenderCard) => string,
 ): string {
   if (rightSetting === "*default") {
     const raw = card.dbContent;
@@ -139,6 +154,17 @@ function ruleOneLineContent(
   }
   if (rightSetting === "*structure") {
     return `${typeText(card)} : ${card.dbContent}`;
+  }
+  if (rightSetting === "*head") {
+    // card-mod-layout-0.20.0 set/right/head.rb:11-13 — the right/*head set
+    // overrides :one_line_content with `raw_one_line_content` (card-mod-
+    // format set/all/content.rb:43-45: truncate strip_tags(render_raw)) —
+    // the RAW stored bytes, nests UNPROCESSED (render_raw, not render_core).
+    // The right-set declaration beats the rule module's (the rule pattern
+    // is the generic right-side set; right/head is that set for *head).
+    // Pinned by the oracle: AAM+*self+*head (HTML-typed, content
+    // "{{:head|core}}") bar-right renders the literal nest string.
+    return truncatedCore(stripHtmlTags(card.dbContent));
   }
   // Toggle-type cards: the compact-mode one_line_content routes through
   // the card's content view (card-mod-toggle set/type/toggle.rb), which
@@ -157,7 +183,7 @@ function ruleOneLineContent(
   // Abstract::List overrides :one_line_content for pointer/list cards —
   // but only rule cards whose right setting is a permission right wrap
   // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
-  // cards render the literal dbContent (raw oracle: *all+*layout).
+  // cards take the Abstract::List METHOD path (below).
   if (isPointerOrListCard(card)) {
     // card-mod-permissions-0.20.0 set/abstract/permission.rb:98-105
     // `core_inherit_content`: when a permission rule (right is one of
@@ -176,14 +202,55 @@ function ruleOneLineContent(
       card.dbContent === "_left" &&
       isPermissionRightSetting(rightSetting)
     ) {
+      // core_inherit_content (permission.rb:100-105): the set-context
+      // branches — in_context_of_self_set? (permission.rb:107-110, the
+      // set_context's tag is *self) renders the LINKS form
+      // ("Inherit ( party, party )", permission.rb:114-120) whose who_can
+      // walk RESCUES to bare "Inherit" (permission.rb:121); any other set
+      // context renders "Inherit from left card". The engine has no who_can
+      // party walk, so the self-set context always lands on the rescue form
+      // — the exact bytes the capture pinned (the Anonymous viewer's walk
+      // raised at capture time the same way).
+      const setContext = card.name.trunkName;
+      const setContextTag = setContext?.tagName?.key;
+      if (setContextTag === "*self" || setContextTag === "self") {
+        return `<span class="inherit-perm">Inherit</span>`;
+      }
       return `<span class="inherit-perm">Inherit from left card</span>`;
     }
     if (isPermissionRightSetting(rightSetting)) {
       return pointerListOneLineContent(card, engine);
     }
+    // Non-permission pointer/list rule cards ride the Abstract::List
+    // METHOD one_line_content (card-mod-list-0.20.0 set/abstract/
+    // 01_list/html_views.rb:99-105): count == 1 -> card.first_name —
+    // the single item string, byte-identical to the literal dbContent
+    // the pre-lane pins carry (*all+*layout "Default Layout") — while
+    // count != 1 -> short_content (card-mod-format-0.20.0 set/all/html/
+    // views.rb:92-100) -> short_content_items: "#{count} #{'item'.
+    // pluralize count}" — the compact "N items" one-line. Pinned by the
+    // oracle: AAM+*self+*script (List, count 16) bar-right renders
+    // `16 items` (recapture-raw-shard-000003, AAM+*self:content offset
+    // 31086), and the gem probe tails-one-line-dispatch-probe.rb
+    // reproduced both forms against the capture deck (*all+*create
+    // count 1 -> the single-item anchor form is the PERMISSION module's
+    // view, *all+*script count 16 -> "16 items").
+    const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
+    if (items.length > 1) {
+      return `${items.length} items`;
+    }
+    // count == 1 -> first_name: the raw single item string (a NAME —
+    // no strip_tags on this branch).
     return truncatedCore(card.dbContent);
   }
-  return truncatedCore(card.dbContent);
+  // Non-list rule cards (RichText help/guide contents, HTML, …): the
+  // base method path truncate(strip_tags(render_core)) — render_core is
+  // the card's OWN core view (mod-dispatched: Markdown cards kramdown to
+  // HTML first, RichText processed content), so the injected core render
+  // (views.ts barRightView) is the faithful input; without it (bare
+  // tests) the raw dbContent stands in.
+  const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
+  return truncatedCore(stripHtmlTags(coreText));
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —
@@ -191,8 +258,16 @@ function ruleOneLineContent(
  *  `engine` is the render-path engine when the caller has one (the view
  *  dispatch always does; bare-function tests may omit it). It resolves
  *  each one-line pointer item's knownness (Card.known?) — see
- *  pointerListOneLineItem. */
-export function ruleBarRightHtml(card: RenderCard, engine?: RenderEngineLike): string {
+ *  pointerListOneLineItem. `renderCoreText` (injected by views.ts
+ *  barRightView — importing the view dispatch here would close an import
+ *  cycle) renders a card's UNWRAPPED core-view body (Ruby render_core,
+ *  mod-dispatched: Markdown kramdown, RichText processed content) for
+ *  the base one-line method path. */
+export function ruleBarRightHtml(
+  card: RenderCard,
+  engine?: RenderEngineLike,
+  renderCoreText?: (card: RenderCard) => string,
+): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";
   // R16: bar_right for rule cards is rule_short_content (bar_view.rb:39-44):
@@ -213,7 +288,7 @@ export function ruleBarRightHtml(card: RenderCard, engine?: RenderEngineLike): s
   const existing = card.id === undefined ? engine?.existingRuleFor?.(card.key) : undefined;
   if (existing !== undefined) oneLineCard = existing;
   const rightSetting = oneLineCard.name.rightName?.s;
-  const inner = ruleOneLineContent(oneLineCard, rightSetting, engine);
+  const inner = ruleOneLineContent(oneLineCard, rightSetting, engine, renderCoreText);
   // The nested existing rule's own view gate: a read-denied existing rule
   // (e.g. *all+*default, stored read rule "Anyone Signed In") renders the
   // quiet denial span instead of its one-line content
