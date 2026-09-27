@@ -107,11 +107,26 @@ export class Voo {
     // size:full nest must render -original through that hop. Live receipt:
     // Conflict_Done_Well 277091-original.png with data-slot "size":"full";
     // corpus receipt: Professional Materials {{bar02|size:full}}). The
-    // remaining heir keys (main, home_view, title, variant, joint, items,
-    // ...) stay unported — a documented remainder.
+    // remaining heir keys (main, home_view, title, variant, joint, ...)
+    // stay unported — a documented remainder.
     if (parent !== undefined && opts["size"] === undefined) {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
+    }
+    // R18: :items is an heir key too (view/options/key_lists.rb
+    // keymap[:both]); inherit_options_from_parent! flows it down the voo
+    // chain. The consumer is the search card_list TWO voos below the nest:
+    // nest(opts.items={view:X}) -> core/content voo -> renderView("card_list")
+    // (views.ts coreView search branch) whose fresh voo must still answer
+    // item_view_options[:view] (item.rb:157-162) — without the inheritance
+    // every internally-dispatched card_list rendered the html
+    // default_item_view :bar regardless of the nest's `item:<view>` opt
+    // (blog/Latest_News `Latest news item|item:titled` served bar items).
+    // Collection nests without an item opt carry items === undefined and
+    // inherit nothing; a view body that SETS its own items overrides.
+    if (parent !== undefined && opts["items"] === undefined) {
+      const inheritedItems = parent.opts["items"];
+      if (inheritedItems !== undefined) this.opts["items"] = inheritedItems;
     }
   }
 
@@ -855,13 +870,22 @@ export class RenderFormat {
   /** nest.rb#prepare_view_and_opts! - nest_name/nest_syntax are added
    *  separately above; the remaining shark options ride into the voo.
    *  `unknown` rides too: view/permission.rb:42 reads the voo's :unknown
-   *  option (the nest's `unknown:` takes precedence over view configs). */
+   *  option (the nest's `unknown:` takes precedence over view configs).
+   *  R18: `items` rides too — nest-syntax.ts folds the `item:<view>` opt
+   *  into options[:items][:view] exactly like nest.rb:54-57, but the hash
+   *  never reached the voo, so item_view_options (item.rb:157-162) could
+   *  not answer and every collection list hardcoded the html
+   *  default_item_view :bar. The search card_list consumes it (the
+   *  `Latest news item|item:titled` nest renders titled items) and the
+   *  slot JSON carries it (live blog receipt: "items":{"view":"titled"}
+   *  after home_view — audit A-25). */
   private nestOptionEntries(options: NestOptions): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     if (options.title !== undefined) out["title"] = options.title;
     if (options.size !== undefined) out["size"] = options.size;
     if (options.show !== undefined) out["show"] = options.show;
     if (options.hide !== undefined) out["hide"] = options.hide;
+    if (options.items !== undefined) out["items"] = options.items;
     if (options.extra["unknown"] !== undefined) out["unknown"] = options.extra["unknown"];
     return out;
   }

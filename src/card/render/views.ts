@@ -1447,9 +1447,25 @@ export function swapBarSlotToMiniBar(html: string, name: string): string {
 }
 
 const cardListView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
+  const { fmt, voo } = ctx;
   const items = fmt.engine.executeSearch(fmt);
   if (items.length === 0) return fmt.renderView("no_search_results");
+  // item_view_options[:view] (item.rb:157-162): the nest's folded
+  // `item:<view>` opt (voo items.view, threaded by format.ts
+  // nestOptionEntries) names the item view; absent, html's
+  // default_item_view :bar applies (0_search/views.rb:130-136). The
+  // wrapper classes parameterize on the same view both in Ruby
+  // (search_views.rb:110 "card-list card-list-#{item_view_options[:view]}
+  // search-result-list"; views.rb:130-136 "item-#{item_view}") and in the
+  // live bytes (blog/Latest_News: card-list-titled + item-titled ×9 for
+  // `Latest news item|item:titled`; the bar form is the fixture-pinned
+  // default).
+  const itemsOpt: unknown = voo?.opts["items"];
+  const itemView =
+    itemsOpt !== null && typeof itemsOpt === "object" &&
+    typeof (itemsOpt as { view?: unknown }).view === "string"
+      ? (itemsOpt as { view: string }).view
+      : "bar";
   // The SEARCH host's own item_type_name rides the item nest exactly like
   // the pointer/list path: card_list_item -> nest_item (card-mod-search
   // 0_search/views.rb:132-136) -> item_view_options ->
@@ -1459,15 +1475,15 @@ const cardListView: ViewFn = (ctx) => {
   const rendered = items.map((item) => {
     // collection item.rb#nest_item: options = voo.items + (size: voo.size);
     // view ||= implicit_item_view (html default_item_view = :bar).
-    const html = fmt.nestRecord(item, "bar", {
+    const html = fmt.nestRecord(item, itemView, {
       size: null,
       ...(hostItemType !== undefined ? { type: hostItemType.typeName } : {}),
     });
-    return `<div class="search-result-item item-bar">${html}</div>`;
+    return `<div class="search-result-item item-${itemView}">${html}</div>`;
   });
   // trailing newline: the captured card_list closes its list div on its own
   // line (fixture byte-pinned)
-  return `<div class="card-list card-list-bar search-result-list">${rendered.join("\n")}</div>\n`;
+  return `<div class="card-list card-list-${itemView} search-result-list">${rendered.join("\n")}</div>\n`;
 };
 
 const noSearchResultsView: ViewFn = () => `<div class="search-no-results"></div>`;
