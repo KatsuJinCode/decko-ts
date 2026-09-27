@@ -138,7 +138,6 @@ function slotOptionsWithNameContext(fmt: RenderFormat, voo: Voo): string {
 
 function slotWrap(ctx: ViewContext, view: string, inner: string): string {
   const { fmt, voo } = ctx;
-  if (view === "mini_bar" && fmt.card.name.s.includes("working doc")) console.error("R17DEBUG minibar", fmt.card.name.s, "id:", String(fmt.card.id), "keys:", fmt.card.setKeys.slice(0, 90));
   const card = fmt.card;
   const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
   const attrs = emitAttrs({
