@@ -91,6 +91,14 @@ describe("render integration: mini-bar cols setting", () => {
     await seedCard(storage, { id: 12, name: "User", codename: "user", typeId: 5 });
     // the *thanks setting card + a non-rule leaf
     await seedCard(storage, { id: 20, name: "*thanks", codename: "thanks", typeId: SETTING_TYPE_ID });
+    // 2026-09-27 pass-9 gate: *type must exist BEFORE the first render on
+    // this engine. The cold render's prelude primes lex_to_id for every
+    // set-pattern anchor card (*self, *type, *all) and caches absences as
+    // negative entries ("a stored nil is a hit", cache.rb#fetch); a card
+    // seeded only later stays invisible to name resolution. The col-6
+    // test's compound root kfnvyby+*type+*thanks resolves its *type part
+    // through that primed entry.
+    await seedCard(storage, { id: 21, name: "*type", codename: "type", typeId: SETTING_TYPE_ID });
     await seedCard(storage, { id: 30, name: "Basic Card", typeId: BASIC_TYPE_ID });
   }, 60_000);
 
@@ -109,9 +117,10 @@ describe("render integration: mini-bar cols setting", () => {
   it("renders col-6 / col-6 for a *rule-pattern card (kfnvyby+*type+*thanks shape)", async () => {
     const s = storage!;
     // Seed the shape from corpus:67: a *thanks setting card (already id=20),
-    // a *type card, a *type-plus-right set card kfnvyby+*type, and the
-    // rule card kfnvyby+*type+*thanks.
-    await seedCard(storage!, { id: 21, name: "*type", codename: "type", typeId: SETTING_TYPE_ID });
+    // a *type card (id=21 — seeded in beforeAll, above the first render:
+    // the cold prelude's anchor priming caches *type's absence otherwise),
+    // a *type-plus-right set card kfnvyby+*type, and the rule card
+    // kfnvyby+*type+*thanks.
     await seedCard(storage!, { id: 31, name: "kfnvyby", typeId: BASIC_TYPE_ID });
     await seedCard(storage!, { id: 32, leftId: 31, rightId: 21, typeId: SET_TYPE_ID }); // kfnvyby+*type
     await seedCard(storage!, {
