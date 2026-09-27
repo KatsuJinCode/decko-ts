@@ -370,6 +370,18 @@ export function canReadByStoredRule(
   return state.readableRuleIds.has(readRuleId);
 }
 
+/** The winning read rule's content shape that DELEGATES the verdict to the
+ *  card's LEFT: permissions.rb:54
+ *  `rule(action).match?(/^\[?\[?_left\]?\]?$/)` — the bare reference and its
+ *  single/double-bracket forms, Ruby line anchors (^/$ match at \n). The
+ *  corpus rule `*all plus+*read` carries exactly "_left\n". */
+const LEFT_DELEGATION_CONTENT = /^\[?\[?_left\]?\]?$/m;
+
+/** Recursion cap for the delegation walk: each hop consumes one name part
+ *  (the left chain strictly shrinks), so this is paranoia, not the
+ *  termination argument. */
+const LEFT_DELEGATION_MAX_DEPTH = 16;
+
 /**
  * The live-computation fallback for a card row without a stored
  * read_rule_id — permission_rule_id(:read) (set/all/permissions.rb:55-61):
@@ -390,12 +402,21 @@ export function canReadByStoredRule(
  * rule-less deck denies; matching that would deny every card of every
  * rule-less test deck, which is not the surface any oracle captures).
  * A COMPLETE deck's walk that resolves NO candidate returns false (fail
- * closed): see the tail comment on the no-candidate branch.
+ * closed): see the tail.
  */
 export async function canReadByRuleLookup(
   fetcher: FetchEngine,
   card: PatternCardInput,
   state: ReadPermissionState,
+): Promise<boolean | undefined> {
+  return canReadByRuleLookupDepth(fetcher, card, state, 0);
+}
+
+async function canReadByRuleLookupDepth(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ReadPermissionState,
+  depth: number,
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
   if (!state.hasReadRules || !state.hasCatchAllReadRule) return undefined;
@@ -411,13 +432,36 @@ export async function canReadByRuleLookup(
     card.id === undefined ? { ...card, isNew: true } : card,
     READ_SETTING_NAME,
   );
-  const resolved = await resolveRuleIdsByKeys(
+  // WITH content: the delegation check reads the winning rule's text
+  // (permissions.rb:54 `rule(action)`); the extra join rides the same
+  // statement, no second round trip.
+  const resolved = await resolveRuleRowsByKeys(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),
+    true,
   );
+  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
   for (const name of candidates) {
-    const ruleId = resolved.get(DeckoName.parse(name).key);
-    if (ruleId !== undefined) return state.readableRuleIds.has(ruleId);
+    const key = DeckoName.parse(name).key;
+    const rule = resolved.get(key);
+    if (rule === undefined) continue;
+    // permissions.rb:52-58 permission_rule_id: a COMPOUND card whose winning
+    // rule's content is the _left reference resolves through the LEFT card's
+    // own permission walk (left_permission_rule_id :66-72). Without this the
+    // walk evaluates viewer membership in the DELEGATING rule's grants — a
+    // _left rule names no party, so every id-less compound child under it
+    // (the structured/missing children: PCTS+legacy class) denied where
+    // Ruby's delegation reaches the left card's own rule (the corpus
+    // `*all plus+*read -> _left` chain ends at *all+*read = Anyone).
+    if (
+      depth < LEFT_DELEGATION_MAX_DEPTH &&
+      cardName !== undefined &&
+      cardName.isCompound &&
+      LEFT_DELEGATION_CONTENT.test(rule.content ?? "")
+    ) {
+      return readThroughLeftCard(fetcher, cardName, state, depth);
+    }
+    return state.readableRuleIds.has(rule.id);
   }
   // No candidate resolved. In a COMPLETE deck (hasReadRules &&
   // hasCatchAllReadRule) this is an unevaluatable rule walk, not an
@@ -438,6 +482,58 @@ export async function canReadByRuleLookup(
   // mis-deny cards the full deck renders — there the port still allows
   // (documented divergence, docs/permissions-port-notes.md).
   return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
+}
+
+/** permissions.rb:66-72 left_permission_rule_id:
+ *  `lcard = left_or_new(skip_virtual: true, skip_modules: true);
+ *  lcard.permission_rule_id action`. The skip_virtual fetch is what keeps
+ *  the delegation off the virtual-card hook (a missing left is a NEW left,
+ *  not a virtual one). The new-left branch carries name only — Ruby's new
+ *  card has no type yet, so its walk runs type-less (the *type candidates
+ *  are correctly absent from a type-less walk). */
+async function readThroughLeftCard(
+  fetcher: FetchEngine,
+  name: DeckoName,
+  state: ReadPermissionState,
+  depth: number,
+): Promise<boolean | undefined> {
+  const leftName = name.leftName;
+  const leftKey = leftName?.key;
+  if (leftName === undefined || leftKey === undefined || leftKey === "") {
+    return canReadByRuleLookupDepth(fetcher, { name, id: undefined }, state, depth + 1);
+  }
+  const left = await fetcher.fetchByKey(leftKey, { skipVirtual: true });
+  if (left === undefined) {
+    return canReadByRuleLookupDepth(fetcher, { name: leftName, id: undefined }, state, depth + 1);
+  }
+  const input: PatternCardInput = {
+    name: left.name ?? leftName,
+    id: left.id,
+    ...(left.typeId !== undefined ? { typeId: left.typeId } : {}),
+  };
+  // The left's *type candidates anchor on the type card's NAME
+  // (type.rb:34-36 type_name). One cache-first fetch.
+  if (left.typeId !== undefined) {
+    const typeCard = await fetcher.fetchById(left.typeId);
+    if (typeCard?.name !== undefined && typeCard.name !== null) input.typeName = typeCard.name;
+  }
+  // The left's *type plus right candidates anchor on ITS left's type
+  // (pattern 08_type_plus_right.rb left_type: superleft&.type_name) — the
+  // same one-level resolution verdictPatternInput does for nest children.
+  const leftInputName = DeckoName.parse(input.name);
+  if (leftInputName.isCompound) {
+    const leftLeftKey = leftInputName.leftName?.key;
+    if (leftLeftKey !== undefined && leftLeftKey !== "") {
+      const leftLeft = await fetcher.fetchByKey(leftLeftKey, { skipVirtual: true });
+      if (leftLeft !== undefined && leftLeft.typeId !== undefined) {
+        const leftLeftType = await fetcher.fetchById(leftLeft.typeId);
+        if (leftLeftType?.name !== undefined && leftLeftType.name !== null) {
+          input.leftTypeName = leftLeftType.name;
+        }
+      }
+    }
+  }
+  return canReadByRuleLookupDepth(fetcher, input, state, depth + 1);
 }
 
 /**
@@ -471,6 +567,31 @@ export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
   keys: string[],
 ): Promise<Map<string, number>> {
+  const rows = await resolveRuleRowsByKeys(driver, keys, false);
+  const out = new Map<string, number>();
+  for (const [key, row] of rows) out.set(key, row.id);
+  return out;
+}
+
+/** One resolved rule candidate: the rule card's id and (when requested) its
+ *  db content — the content is what the _left delegation inspects. */
+export interface ResolvedRuleRow {
+  id: number;
+  /** cards.content of the rule card (null = NULL column). */
+  content: string | null;
+}
+
+/**
+ * The same target-driven composed-key resolution as resolveRuleIdsByKeys,
+ * with the rule card's CONTENT column carried through the final join when
+ * `withContent` is set (the id-only projection keeps the hot callers'
+ * statement byte-identical — the join only exists on the delegation path).
+ */
+export async function resolveRuleRowsByKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+): Promise<Map<string, ResolvedRuleRow>> {
   if (keys.length === 0) return new Map();
   const fragments = new Set<string>();
   for (const key of keys) {
@@ -490,7 +611,12 @@ export async function resolveRuleIdsByKeys(
   // full trash=0 scan instead of the per-fragment key seek and the
   // per-row left_id/right_id seeks (the no-ANALYZE planner trap). Seek
   // terms keep their index paths; + is a value no-op.
-const result = await driver.query<{ ckey: string; id: number }>(
+  const finalSelect = withContent
+    ? `SELECT rs.ckey, rs.id, rc.db_content AS content FROM resolved rs\n` +
+      `  JOIN cards rc ON rc.id = rs.id\n` +
+      `  WHERE rs.ckey IN (${keyParams})`
+    : `SELECT rs.ckey, rs.id, NULL AS content FROM resolved rs WHERE rs.ckey IN (${keyParams})`;
+  const result = await driver.query<{ ckey: string; id: number; content: string | null }>(
     `WITH RECURSIVE resolved(id, ckey) AS (\n` +
       `  SELECT id, "key" FROM cards WHERE "key" COLLATE NOCASE IN (${fragParams}) AND +trash = 0\n` +
       `  UNION\n` +
@@ -504,10 +630,12 @@ const result = await driver.query<{ ckey: string; id: number }>(
       `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
       `   WHERE (l."key" || '+' || r.ckey) IN (${fragParams})\n` +
       `)\n` +
-      `SELECT rs.ckey, rs.id FROM resolved rs WHERE rs.ckey IN (${keyParams})`,
+      finalSelect,
     [...fragList, ...fragList, ...fragList, ...keys],
   );
-  const out = new Map<string, number>();
-  for (const row of result.rows) out.set(row.ckey, row.id);
+  const out = new Map<string, ResolvedRuleRow>();
+  for (const row of result.rows) {
+    out.set(row.ckey, withContent ? { id: row.id, content: row.content } : { id: row.id, content: null });
+  }
   return out;
 }
