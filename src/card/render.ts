@@ -1372,38 +1372,17 @@ export class RenderEngine implements RenderEngineLike {
       if (this.deniedVerdicts.has(card.id)) continue;
       const stored = card.record.readRuleId;
       if (stored !== undefined) {
-        // Two-pass (the recapture 2026-09-24 fix): the STORED read_rule_id
-        // is the most specific rule the set_read_rule walk picked at save
-        // time. Ruby's live permission_rule_id(:read) is what gates the
-        // ACTUAL view (permissions.rb:142-143 falls back to the live walk
-        // on every uncached path, and rule_id_lookup re-resolves on
-        // read-rule rebuild). When the stored rule doesn't grant the
-        // viewer but the live walk's rule candidates resolve to one that
-        // does (the deck's *all+*read catchall, the canonical
-        // pattern-precedence tail), Ruby's live walk ALLOWS — match it:
-        // consult the live candidates before pinning the denial. The
-        // stored-id fast path still wins when the stored rule grants.
-        // STRICT: only the live walk's EXPLICIT grant flips the stored
-        // denial (boolean true). Undefined (no rule resolved) keeps the
-        // stored verdict — the partial-deck / rule-less case must NOT
-        // silently allow a stored denial.
-        if (canReadByStoredRule(stored, state)) {
-          this.deniedVerdicts.set(card.id, false);
-          continue;
-        }
-        const byRule = await canReadByRuleLookup(
-          this.fetcher,
-          await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
-          state,
-        );
-        if (byRule === true) {
-          this.deniedVerdicts.set(card.id, false);
-        } else {
-          // byRule === false: live walk explicitly grants a non-readable
-          // rule (rare; corroborates denial). byRule === undefined: no
-          // rule resolved (partial-deck case); honor the stored verdict.
-          this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
-        }
+        // The STORED read_rule_id is the verdict input, full stop. Ruby's
+        // ok_to_read? (set/all/permissions.rb:139-146) is
+        // `self.read_rule_id ||= permission_rule_id :read; return true if
+        // Auth.as_card.read_rules_hash[read_rule_id]` — the `||=` keeps the
+        // stored value whenever one exists, so the live candidate walk runs
+        // ONLY for cards without a stored id. (The previous two-pass here
+        // consulted the live walk on a stored denial and flipped to allow
+        // when a more-general candidate granted — a permissiveness Ruby
+        // does not have, and one whose verdict memoized per engine id, so
+        // an early entry's flip poisoned every later render of the card.)
+        this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
         continue;
       }
       const byRule = await canReadByRuleLookup(
@@ -1455,27 +1434,9 @@ export class RenderEngine implements RenderEngineLike {
     let denied: boolean;
     const stored = record.readRuleId;
     if (stored !== undefined) {
-      // Two-pass — see ensureVerdicts for the rationale (recapture
-      // 2026-09-24 fix: live walk after a stored-rule miss so the
-      // pattern-precedence catchall is honored). Strict: only EXPLICIT
-      // live-walk grants flip the stored denial; undefined (no rule
-      // resolved) preserves the stored verdict.
-      if (canReadByStoredRule(stored, state)) {
-        denied = false;
-      } else {
-        const byRule = record.name
-          ? await canReadByRuleLookup(
-              this.fetcher,
-              await this.verdictPatternInput(record.name, record.id, record.typeId, typeName),
-              state,
-            )
-          : false; // a name-less record has no rule candidates
-        if (byRule === true) {
-          denied = false;
-        } else {
-          denied = !canReadByStoredRule(stored, state);
-        }
-      }
+      // The stored read_rule_id is final (permissions.rb:139-146 — the
+      // `||=` keeps the stored value; see ensureVerdicts).
+      denied = !canReadByStoredRule(stored, state);
     } else {
       const byRule = record.name
         ? await canReadByRuleLookup(
