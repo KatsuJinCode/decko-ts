@@ -250,35 +250,42 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       }
     }
 
-    // The claim (2026-09-23, per-key closure rounds): round trips scale with
-    // the CHAIN (one batch per inclusion level beyond the first), not with
-    // the DECK - the trade for rows-read dropping from O(deck x passes) per
+    // The claim (2026-09-27 cold-query lane re-pin): round trips scale with
+    // the CHAIN (one batch per unfetched inclusion level), not with the
+    // DECK - the trade for rows-read dropping from O(deck x passes) per
     // render to O(page). Ruby's measured truth for the same chains is
-    // depth+3: 4/5/7/11 - the same slope, one batch per level.
-    // The 7 base round trips: root + 2 lexicon/enrichment primes + round-0
-    // batch (fetches + 5 folded engine statements) + 3 rule-lookup
-    // candidates. The walk is CACHED after first render - warm renders stay
+    // depth+3: 4/5/7/11. The TS curve is now depth+1 - BELOW Ruby by 2 at
+    // every depth. The 2 fixed round trips: the root fetch + the PRELUDE
+    // batch (src/card/render/prefetch.ts: the root's side priming, the
+    // root's TYPE row - the enrichment fold, the root's set-pattern anchor
+    // priming - the rule walk's *self/*type/*all lex_to_id point queries
+    // became cache entries - and the folded engine statements). The
+    // 2026-09-23..09-26 shape was 7 + max(0, depth-2) (root + 2 enrich
+    // primes + round 0 + 3 rule-lookup candidates): level-linear but ABOVE
+    // Ruby. The walk is CACHED after first render - warm renders stay
     // at 0 (the test below).
-    expect(roundTripsByDepth).toEqual({ 1: 7, 2: 7, 4: 9, 8: 13 });
+    expect(roundTripsByDepth).toEqual({ 1: 2, 2: 3, 4: 5, 8: 9 });
     // Statements: the folded engine statements are constant; the rounds add
-    // one fetch statement per level. Round 9 re-pin (+1 across the board,
-    // measured 12/13/15/19): the *default rule universe statement folds
-    // into the cold batch alongside the *structure universe (one batched
-    // round trip for all engine-level state, the #1282 shape) so a
-    // nest-miss child resolves its *default-rule type from memory.
-    // Round 10 re-pin (+1 across the board, measured 13/14/16/20): the
-    // *default html view universe joins the same cold batch (A-36 — the
-    // deck's default nest view resolves rule-driven; this seeded deck has
-    // no such rule, so the fallback :titled renders and only the folded
-    // statement count moves).
-    expect(statementsByDepth).toEqual({ 1: 12, 2: 13, 4: 15, 8: 19 }); // R17: -1 each - the A-36 html-view universe left the cold fold
-    // depth 8 costs one batch per level (13 round trips vs Ruby's 11
-    // queries) while reading O(page) rows instead of the whole deck per
-    // render - the trade this round's read-cost decision asked for. The
-    // statement count (18) exceeds Ruby's 11 queries, but statements inside
-    // a batch are folded prepare work riding ONE round trip, not round
-    // trips - the D1-billed axis stays the round-trip count above.
-    expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8] + 2);
+    // one fetch statement per level. Round 9 folded the *default rule
+    // universe alongside the *structure universe so a nest-miss child
+    // resolves its *default-rule type from memory; round 10 folded the
+    // *default html view universe onto the same batch (A-36). The
+    // cold-query lane moved the folds into the prelude batch and added the
+    // type-row + anchor-priming folds (measured 10/11/13/17 on its own
+    // tree). R17's A-36 correction rides through the prelude in merge
+    // pass 9 prep: default_nest_view is process config (html.rb:17-19),
+    // never a deck rule, so render.ts's fold composition no longer
+    // appends the *default html view universe statement - one fewer
+    // prelude statement at every depth (9/10/12/16 here).
+    expect(statementsByDepth).toEqual({ 1: 9, 2: 10, 4: 12, 8: 16 });
+    // depth 8 costs one batch per level (9 round trips) while reading
+    // O(page) rows instead of the whole deck per render - the trade this
+    // round's read-cost decision asked for - and lands BELOW Ruby's 11
+    // queries (pinned: TS <= Ruby at every measured depth, the M3 gate).
+    // Statements inside a batch are folded prepare work riding ONE round
+    // trip, not round trips - the D1-billed axis stays the round-trip
+    // count above.
+    expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8]);
   });
 
   it("renders a warm closure with ZERO queries", async () => {

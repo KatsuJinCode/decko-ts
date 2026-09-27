@@ -116,6 +116,20 @@ export class DbLexicon {
     this.cache.write(cacheKey(lex), id);
   }
 
+  /** Prime lex_to_id entries from a batched key lookup (the cold render's
+   *  prelude batch: the set-pattern anchor names the render's rule walk
+   *  resolves). Writes EXACTLY what lexToId's cacheFetch would write for
+   *  the same keys - positive ids and the negative (undefined) entries a
+   *  miss caches too (cache.rb#fetch: "a stored nil is a hit") - so the
+   *  later name->id resolutions stay zero-query without changing what they
+   *  resolve to. The `key` strings are card names; the cache key is the
+   *  canonical key, the same transform lexToId applies. */
+  primeIdsByKey(entries: ReadonlyArray<{ key: string; id: number | undefined }>): void {
+    for (const entry of entries) {
+      this.cache.write(cacheKey(entry.key), entry.id);
+    }
+  }
+
   /** lexicon.rb#delete - used by the write path (act integration). */
   deleteFor(id: number | undefined, lexBeforeAct: Lex | undefined): void {
     if (id !== undefined) this.cache.delete(String(id));

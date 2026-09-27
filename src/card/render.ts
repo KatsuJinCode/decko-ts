@@ -266,6 +266,21 @@ export class RenderEngine implements RenderEngineLike {
    *  populated only for settings whose virtual card actually renders.
    *  Cleared on resetCaches(). */
   private existingRuleCards: Map<string, RenderCard> | undefined;
+  /** Set-card ids whose rule environment preloadSetRules has fully
+   *  populated since the last resetCaches(): stored rule children
+   *  enriched, *all setting cards loaded, per-setting virtual verdicts
+   *  and existing-rule memos populated. The deck is static and every
+   *  pass inside the preload is skip-if-present, so re-running them on
+   *  a warm render of the same set card only re-does identical work —
+   *  the dead renderCards map scan, the left_id SQL query, the child
+   *  re-enrichment and the full setting-group loop that made warm
+   *  set-card renders ~2x the pass-5 warm medians. Keyed by card id
+   *  (R16's corrected test: stored children carry
+   *  record.leftId === setCard.id, not a name-key match), so the first
+   *  render of each set card always runs the full preload and every
+   *  later warm render skips it. Cleared on resetCaches() so a
+   *  whole-engine reset re-preloads exactly as the first render does. */
+  private setRulePreloadDoneIds: Set<number> | undefined;
   /** *structure rule templates by rule-card composed key -> the rule card's
    *  db_content (null = NULL content). The bulk universe rides the cold
    *  render's closure batch (one statement, zero extra round trips — the
@@ -884,6 +899,7 @@ export class RenderEngine implements RenderEngineLike {
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
     this.existingRuleCards = undefined;
+    this.setRulePreloadDoneIds = undefined;
     this.ruleTypeIds = undefined;
     this.structureContents = undefined;
     this.structureProcessed.clear();
@@ -1853,22 +1869,15 @@ export class RenderEngine implements RenderEngineLike {
    *  class chain. */
   private async preloadSetRules(setCard: RenderCard): Promise<void> {
     if (setCard.id === undefined) return;
-    // Skip if already warm (the walk above already populated the map).
-    // R16: the warm test is the STORED child left_id (record.leftId), not
-    // the name-resolved idsByKey lookup — the latter matched ANY compound
-    // card whose left NAME is the set card's name, including the id-less
-    // view-override lookup artifacts (e.g. Person+*type+by_name), and
-    // skipped the whole preload for exactly the sets whose rules-editor
-    // setting list needed it (existingRuleKeys + virtual verdicts never
-    // populated; the sync render then bar-rendered every denied rule
-    // item). Stored children carry id + record.leftId === setCard.id.
-    let haveAny = false;
-    for (const card of this.renderCards.values()) {
-      if (card.id !== undefined && card.record.leftId === setCard.id) {
-        haveAny = true;
-        break;
-      }
-    }
+    // Warm skip: this set card's rule environment is already fully
+    // populated (see setRulePreloadDoneIds). The first render of each
+    // set card always runs the whole preload below — the R16 warm-test
+    // correction (stored child record.leftId === setCard.id, not the
+    // name-key match that skipped the preload for exactly the sets
+    // whose rules-editor setting list needed it) is subsumed by the
+    // memo: nothing is skipped until one full preload has completed
+    // for this id.
+    if (this.setRulePreloadDoneIds?.has(setCard.id) === true) return;
     const result = await this.fetcher.driver.query<CardsRow>(
       `SELECT * FROM cards WHERE left_id = ? AND trash = 0 ` +
       `ORDER BY db_content, name`,
@@ -1919,6 +1928,10 @@ export class RenderEngine implements RenderEngineLike {
     // quiet denial span (the round-7 permission_denied_mismatch
     // residual; see preloadVirtualRuleVerdicts for the full mechanism).
     await this.preloadVirtualRuleVerdicts(setCard);
+    // Marked only after every pass above completed, so an aborted
+    // preload retries in full on the next render of this set card.
+    if (this.setRulePreloadDoneIds === undefined) this.setRulePreloadDoneIds = new Set();
+    this.setRulePreloadDoneIds.add(setCard.id);
   }
 
   /** Load every setting card into renderCards so the rule :bar's

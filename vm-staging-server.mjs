@@ -1,13 +1,13 @@
 // vm-staging-server.mjs — read-only Node HTTP staging copy of the decko-ts
-// engine, served from /opt/decko-staging on Brandon's portal VM
+// engine, served from /opt/decko-bunny-render on Brandon's portal VM
 // (170.9.231.182) so the owner can click through real pages in a browser
 // while parity work continues. NO write path, NO editing, NO search —
 // pure browse.
 //
 // Routes (the engine-canonical surface, mirrors deploy/worker.ts):
-//   GET /                 -> render "Home" card, :open view (HTML, full shell)
+//   GET /                 -> render "Home" card page (HTML, full shell)
 //   GET /_status          -> engine + database health JSON
-//   GET /<card-name>      -> render that card, :open view (HTML, full shell)
+//   GET /<card-name>      -> render that card page (HTML, full shell)
 //   GET /<card-name>.json -> the card record as JSON
 //   GET /files/~<id>/<rev>.<ext> -> asset bytes from the corpus's File
 //                                   cards (compiled CSS/JS bytes are NOT
@@ -26,12 +26,25 @@
 //
 // Defaults: port 3100, db path arg required.
 //
-// Why this shape: the worker entrypoint (deploy/worker.ts) shows the
-// canonical request->render call shape against the same engine — this file
-// is the Node-port of that surface, plus the 404 path the worker only
-// takes via the render()'s thrown Error("card not found: ...").
+// PAGE PATH (r18): pages render through the ENGINE's page entry
+// (dist/src/card/render/page.js renderPageBytes — the show_with_page_layout
+// port: per-card *layout rule walk, main! render, layout-body processing,
+// html_page head). The round-9/10 origin-side byte-surgery bridges
+// (stripOpenViewWrapper, convertOuterToTitledShape,
+// convertNestedTitledViewsToContentView, postProcessImageCards,
+// postProcessWikiLinks, postProcessSearchCards) are RETIRED — every engine
+// page-lane fix (sentinels, nitpicks context chain, searchctx, R16 bars,
+// the R18 item:titled heir-key fix) reaches the wire the moment it lands
+// in the engine. What this file still owns is the SERVED ENVIRONMENT
+// (applyServedEnvironmentDeltas): the live-receipted deltas between the
+// engine's pinned capture environment and the served deck — the Spaces
+// asset host (audit A-1), the live CSS revision (A-2), the CDN script
+// integrity attributes (A-4), the "Decko v0.19.1" footer pin (the corpus's
+// *version db_content is empty; live prints 0.19.1), and the trailing
+// newline after </html>. Error pages keep the literal-substitution shell
+// (wrapWithLayout) — the not_found shape is byte-pinned from live.
 //
-// Shell: the page wraps the rendered card view through the deck's
+// Shell context: the page wraps the rendered card view through the deck's
 // "Default Layout" (id 22747, codename `default_layout`). The layout body
 // is `<header>...</header> <article ...>{{_main|titled}}</article>
 // <footer>...</footer>`; the *header and *footer setting cards carry the
@@ -55,6 +68,7 @@ import { ORACLE_DECK_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflec
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
+import { renderPageBytes } from "./dist/src/card/render/page.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -117,9 +131,9 @@ const sharedStore = {
 // non-cdn host form was derived from a 2026-09-25 200-OK curl receipt, not
 // from the live page bytes — the live bytes never name that host.
 const SPACES_HOST = "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
-// Default size suffix the live deck emits for image cards without an explicit
-// size option (matches the deck's :content default for image cards).
-const DEFAULT_IMAGE_SIZE = "medium";
+// (r18: DEFAULT_IMAGE_SIZE retired with the origin image passes — image
+// size variants resolve inside the engine's image views via the nest's
+// size option / imageCdnHost.)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -415,30 +429,6 @@ const fileCardsById = new Map();
   }
 }
 
-// Search-card name/id maps (round 9, blog + Latest_News re-render path).
-// The bridge that re-emits search-result-list bytes (postProcessSearchCards
-// below) needs to look up card ids by stored name (the CQL executor
-// hands back row ids; we need the names to re-render each result with
-// the engine's titled view, and we also need a name→id map to feed
-// executeQuery's sync resolver for nested references inside CQL).
-const nameKeyToId = new Map();
-const idToStoredName = new Map();
-{
-  const { rows } = await driver.query(
-    "SELECT id, name FROM cards WHERE trash = 0",
-    [],
-  );
-  for (const row of rows) {
-    if (typeof row.name !== "string" || row.name.length === 0) continue;
-    const norm = row.name
-      .replace(/[_ ]/g, " ")
-      .replace(/\?$/, "")
-      .toLowerCase();
-    if (!nameKeyToId.has(norm)) nameKeyToId.set(norm, Number(row.id));
-    idToStoredName.set(Number(row.id), row.name);
-  }
-}
-
 // Map deck-card id 38274 (slate skin customized) so the main-CSS route
 // can serve its SCSS source. The bucket URL itself is the public-facing
 // surface, but for the local origin we surface the source.
@@ -450,22 +440,6 @@ function escapeHtml(text) {
     .replace(/</g, "\u0026lt;")
     .replace(/>/g, "\u0026gt;")
     .replace(/"/g, "\u0026quot;");
-}
-
-// Rails String#underscore (activesupport), the transform Ruby applies
-// when deriving class-name/CSS tokens and name keys: CamelCase and
-// camelCase boundaries get an underscore, dashes/spaces fold to "_",
-// the result is lowercased. "Brandon WilliamsCraig" ->
-// "brandon_williams_craig" (the SELF- token form live emits); used as
-// the fallback when the engine slot class carries no TYPE-/SELF-
-// token to copy.
-function rubyUnderscore(s) {
-  return String(s)
-    .replace(/::/g, "/")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-    .replace(/([a-z\d])([A-Z])/g, "$1_$2")
-    .replace(/[-\s]+/g, "_")
-    .toLowerCase();
 }
 
 function htmlResponse(status, body, title = "decko-ts staging") {
@@ -819,1155 +793,6 @@ async function resolveCardStoredName(slugName) {
 }
 
 // ---------------------------------------------------------------------------
-// Image URL derivation
-// ---------------------------------------------------------------------------
-//
-// Image cards store their attachment reference in db_content with the
-// shape `(my_bucket)/<cardId>/<fileId>.<ext>` (e.g. card 79 = "(my_bucket)
-// /79/3643.jpg", card 27689 = "(my_bucket)/27689/135167.jpg"). The live
-// URL the deck emits is
-// `<host>/files/<cardId>/<fileId>-<size>.<ext>` where <size> comes from
-// the nest-syntax `;size:<small|medium|large>`. The size suffix is the
-// only variant; the rest of the URL is fixed from the corpus record.
-//
-// A-15 (round 10, assumption audit): live maps `size:full` to the
-// `-original` carrierwave variant, not `-full` and not the medium
-// fallback — Conflict_Done_Well.html `files/39355/277091-original.png`
-// and Brandon_WilliamsCraig.html `files/3522/19336-original.png`, both
-// in slots whose data-slot carries `"size":"full"`. The mapping lives
-// here so every caller shares it.
-function imageUrlFromCard(cardRow, size = DEFAULT_IMAGE_SIZE) {
-  const content = cardRow?.db_content;
-  if (typeof content !== "string") return undefined;
-  const m = /^\(my_bucket\)\/(\d+)\/(\d+)\.([a-z0-9]+)$/.exec(content.trim());
-  if (m === null) return undefined;
-  const [, cardId, fileId, ext] = m;
-  const variant = size === "full" ? "original" : size;
-  return `${SPACES_HOST}/files/${cardId}/${fileId}-${variant}.${ext}`;
-}
-
-// Size options accepted from a slot's data-slot JSON: the known
-// carrierwave variants plus `full` (mapped to -original above). The
-// previous whitelist /^(small|medium|large)$/ rejected "full" and
-// silently fell back to medium — the CDW +Image wrong-variant defect.
-const IMAGE_SIZE_RE = /^(small|medium|large|full)$/;
-
-// ---------------------------------------------------------------------------
-// Image-card slot post-processor (pass 1: empty bodies)
-// ---------------------------------------------------------------------------
-//
-// The deck's image cardtype renders an empty body when the db_content is
-// not a recognized image source URL — the captured oracle shows
-// `<div class="d0-card-body d0-card-content ALL TYPE-image SELF-…"></div>`
-// with no inner `<img>` (oracle:80-Home.html:121 for CDWCDWimage02).
-// The corpus's image card db_content is `(my_bucket)/<id>/<fileId>.jpg`,
-// which the engine's image-source shape check rejects (no http/path/data/
-// mailto prefix), so the slot div renders empty.
-// (Audit A-13: this engine behavior no longer holds for the `(`-prefix
-// branch of the current views.ts — see rewriteBucketImageSrcs below for
-// the pass that handles the engine's verbatim bucket output.)
-//
-// Resolve each empty image-card div by reading the data-card-id
-// attribute, looking up the card's db_content, and emitting the
-// <img> tag with the Spaces-hosted URL. The alt text matches the
-// card-name (the slot div carries data-card-name); the size suffix
-// comes from the slot's data-slot "size" attribute when present,
-// falling back to DEFAULT_IMAGE_SIZE.
-// Two-pass image post-processor (round 10 structure).
-//
-// Pass 1 (fillEmptyImageBodies): the older compensating device — fills
-// EMPTY `d0-card-body … TYPE-image` divs with the Spaces-hosted <img>.
-//
-// Pass 2 (rewriteBucketImageSrcs, audit A-13): the CURRENT engine no
-// longer renders image cards empty — views.ts's `(`-prefix branch emits
-// the bucket reference verbatim, `<img src="(my_bucket)/<id>/<file>.<ext>"
-// alt="…">` — so pass 1's precondition (empty body) never fires and the
-// raw `(my_bucket)` path leaks to the page as a broken URL. Live never
-// emits that host; every content image resolves to
-// `<SPACES_HOST>/files/<cardId>/<fileId>-<variant>.<ext>` with
-// alt-then-src attribute order and a ` />` close (Brandon page:
-// `<img alt="Brandon WilliamsCraig+Image"
-// src="…cdn…/files/431/60560-medium.jpg" />`). Pass 2 rewrites the
-// engine's bucket img tags in place, keeping the engine's alt (already
-// the stored-name form) and reading the size variant from the
-// enclosing slot's data-slot JSON ("size" key, falling back to a
-// `size:<v>` option in nest_syntax, then DEFAULT_IMAGE_SIZE).
-async function postProcessImageCards(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  html = await fillEmptyImageBodies(html);
-  html = rewriteBucketImageSrcs(html);
-  return html;
-}
-
-async function fillEmptyImageBodies(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  // Match image-card slot divs with empty bodies. The class signature
-  // is "d0-card-body d0-card-content … TYPE-image SELF-…", and the body
-  // is empty between the open and close tags. The data-card-id attribute
-  // lives on the OUTER slot div (the parent that wraps both header and
-  // body); the inner d0-card-body div has no id of its own. Pull the
-  // id from the surrounding context.
-  const re = /(<div\b[^>]*class="d0-card-body[^"]*TYPE-image[^"]*"[^>]*>)\s*(<\/div>)/g;
-  const ids = [];
-  const slots = [];
-  const matches = [...html.matchAll(re)];
-  for (const m of matches) {
-    const matchIdx = m.index ?? 0;
-    const openTag = m[1];
-    // Walk backward from the match to find the enclosing slot div
-    // (the parent of d0-card-body). Look for the nearest preceding
-    // <div …data-card-id="N"…> tag.
-    const before = html.slice(0, matchIdx);
-    const idMatch = /data-card-id="(\d+)"/g;
-    let lastId = null;
-    let mm;
-    while ((mm = idMatch.exec(before)) !== null) {
-      lastId = Number(mm[1]);
-    }
-    ids.push(lastId);
-    // Pull data-slot from the same parent.
-    let slotJson = "";
-    const slotMatch = /data-slot="([^"]*)"/g;
-    let sm;
-    while ((sm = slotMatch.exec(before)) !== null) {
-      slotJson = sm[1];
-    }
-    slots.push(slotJson);
-  }
-  if (ids.length === 0) return html;
-  // Build a single batched lookup for all distinct card ids (the image
-  // card itself, plus the parent / right pointer rows we may need to
-  // compose the alt text from when the stored name is NULL on a
-  // junction row).
-  const distinct = [...new Set(ids.filter((x) => x !== null))];
-  const rowMap = new Map();
-  if (distinct.length > 0) {
-    const placeholders = distinct.map(() => "?").join(",");
-    let cardRows;
-    try {
-      cardRows = (
-        await driver.query(
-          `SELECT id, name, db_content, left_id, right_id FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
-          distinct,
-        )
-      ).rows;
-    } catch {
-      cardRows = [];
-    }
-    for (const r of cardRows) rowMap.set(Number(r.id), r);
-    // Pull extra ids we may need to compose junction names. Walk the
-    // junction rows and pull left_id / right_id, batch them into one
-    // extra query so the sync replace callback below can read them.
-    const extraIds = new Set();
-    for (const r of cardRows) {
-      if (r.left_id !== null && r.left_id !== undefined) extraIds.add(Number(r.left_id));
-      if (r.right_id !== null && r.right_id !== undefined) extraIds.add(Number(r.right_id));
-    }
-    extraIds.delete(Number.NaN);
-    if (extraIds.size > 0) {
-      try {
-        const extraPlaceholders = [...extraIds].map(() => "?").join(",");
-        const { rows } = await driver.query(
-          `SELECT id, name FROM cards WHERE id IN (${extraPlaceholders}) AND trash = 0`,
-          [...extraIds],
-        );
-        for (const r of rows) {
-          // Don't overwrite a card-row already in rowMap; we only need
-          // the name here for junction-name composition.
-          if (!rowMap.has(Number(r.id))) {
-            rowMap.set(Number(r.id), { id: Number(r.id), name: r.name });
-          }
-        }
-      } catch {}
-    }
-  }
-  let i = 0;
-  return html.replace(re, (whole, openTag) => {
-    const id = ids[i];
-    const slotJson = slots[i];
-    i++;
-    if (id === null) return whole;
-    const row = rowMap.get(id);
-    if (row === undefined) return whole;
-    let size = DEFAULT_IMAGE_SIZE;
-    if (typeof slotJson === "string" && slotJson.length > 0) {
-      try {
-        const slot = JSON.parse(slotJson.replace(/&quot;/g, '"'));
-        if (typeof slot.size === "string" && IMAGE_SIZE_RE.test(slot.size)) {
-          size = slot.size;
-        }
-      } catch {}
-    }
-    const url = imageUrlFromCard(row, size);
-    if (url === undefined) return whole;
-    // The live capture emits the alt from the card's stored name. Image
-    // cards are typically junctions (left_id = host card id, right_id =
-    // image right pointer id); the corpus stores the junction name as
-    // NULL on the junction row, but the composed junction name
-    // ("<host>+Image") is what the live alt text carries. Compose the
-    // junction name from left_id + right_id when the stored name is
-    // empty so the alt matches the live bytes.
-    // A-14 (round 10): the parts keep their STORED spelling — live
-    // Brandon page: alt="Brandon WilliamsCraig+Image" (spaces
-    // preserved). The previous underscore-substitution
-    // ("Brandon_WilliamsCraig+Image") came from a wrong target; the
-    // underscored form only appears when the stored name itself
-    // carries underscores (live Home: alt="CDWCDWimage02").
-    let alt = "";
-    if (typeof row.name === "string" && row.name.length > 0) {
-      alt = row.name;
-    } else if (row.left_id !== null && row.right_id !== null) {
-      const leftRow = rowMap.get(Number(row.left_id));
-      const rightRow = rowMap.get(Number(row.right_id));
-      const leftName = (leftRow?.name ?? idToStoredName.get(Number(row.left_id)) ?? "").toString();
-      const rightName = (rightRow?.name ?? idToStoredName.get(Number(row.right_id)) ?? "").toString();
-      if (leftName && rightName) alt = `${leftName}+${rightName}`;
-    }
-    return `${openTag}<img alt="${escapeHtml(alt)}" src="${escapeHtml(url)}" /></div>`;
-  });
-}
-
-// A-13 pass 2: rewrite the engine's verbatim bucket img tags
-// (`<img src="(my_bucket)/<id>/<file>.<ext>" alt="…">`) to the live
-// byte shape (`<img alt="…" src="<SPACES_HOST>/files/<id>/<file>-<variant>.<ext>" />`).
-// The engine's alt is kept verbatim (it already carries the stored
-// junction name, spaces preserved — A-14). Size comes from the nearest
-// preceding slot's data-slot JSON.
-function rewriteBucketImageSrcs(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  const imgRe = /<img\s+src="\(my_bucket\)\/(\d+)\/(\d+)\.([a-z0-9]+)"\s+alt="([^"]*)">/g;
-  return html.replace(imgRe, (whole, cardId, fileId, ext, alt, offset) => {
-    // Nearest preceding data-slot JSON carries the nest's size option.
-    const before = html.slice(0, offset);
-    let slotJson = "";
-    const slotMatch = /data-slot="([^"]*)"/g;
-    let sm;
-    while ((sm = slotMatch.exec(before)) !== null) {
-      slotJson = sm[1];
-    }
-    let size = DEFAULT_IMAGE_SIZE;
-    if (slotJson.length > 0) {
-      try {
-        const slot = JSON.parse(slotJson.replace(/&quot;/g, '"'));
-        if (slot !== null && typeof slot === "object") {
-          if (typeof slot.size === "string" && IMAGE_SIZE_RE.test(slot.size)) {
-            size = slot.size;
-          } else if (typeof slot.nest_syntax === "string") {
-            const pipe = slot.nest_syntax.indexOf("|");
-            if (pipe !== -1) {
-              for (const opt of slot.nest_syntax.slice(pipe + 1).split(";")) {
-                const t = opt.trim();
-                if (t.startsWith("size:") && IMAGE_SIZE_RE.test(t.slice(5))) {
-                  size = t.slice(5);
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-    }
-    const url = imageUrlFromCard(
-      { db_content: `(my_bucket)/${cardId}/${fileId}.${ext}` },
-      size,
-    );
-    if (url === undefined) return whole;
-    return `<img alt="${alt}" src="${escapeHtml(url)}" />`;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Wiki-link expansion
-// ---------------------------------------------------------------------------
-//
-// The deck's RichText cardtype leaves `[[Target]]` and `[[Target|label]]`
-// as literal text when no `<a class="known-card" href="/Target">` markup
-// surrounds the token. The oracle shows those tokens already expanded
-// to `<a class="known-card" href="/Target"><span class="card-title"
-// title="Target">label-or-Target</span></a>` (oracle:80-Home.html:114
-// for [[Conflict_Done_Well]], [[Make_Contact]], etc.; oracle:453-BW.html
-// for the simple BW render).
-//
-// Walk the rendered HTML and expand any remaining `[[…]]` tokens that
-// aren't already inside an <a>. The href URL-encodes Target with
-// underscores for spaces (the deck's Card::Name#to_url_key behavior) and
-// the visible text is the label when present, otherwise the target.
-//
-// Avoid re-processing content inside existing anchors, <code>, <pre>,
-// and tag attributes by tokenizing outside those contexts.
-function postProcessWikiLinks(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  // Match [[Target|label]] or [[Target]] where Target and label do not
-  // contain brackets. Restrict targets to characters that appear in real
-  // card names plus the deck's joint marker.
-  const wikiRe = /\[\[([^\]\[|]+?)(?:\|([^\]\[]+?))?\]\]/g;
-  return html.replace(wikiRe, (whole, target, label, offset) => {
-    if (isInsideAnchorOrTag(html, offset)) return whole;
-    const t = String(target).trim();
-    if (t.length === 0) return whole;
-    // Card::Name#to_url_key: replace spaces with underscore.
-    const hrefKey = t.replace(/ /g, "_");
-    const visible = String(label ?? t).trim();
-    return `<a class="known-card" href="/${escapeHtml(hrefKey)}"><span class="card-title" title="${escapeHtml(t)}">${escapeHtml(visible)}</span></a>`;
-  });
-}
-
-// Walk backward from `offset` to find the most recent <a …> opener and
-// </a> closer; if an opener exists without a matching closer, the token
-// is inside an anchor and the caller should leave it alone. Also short-
-// circuit if the token sits inside a <code>/<pre>/tag attribute.
-function isInsideAnchorOrTag(html, offset) {
-  // Quick check: if the immediately preceding non-whitespace character
-  // is inside an unclosed <a …> tag, leave it. Cheap approximation
-  // works for the deck's actual nesting in the captured oracle.
-  const before = html.slice(0, offset);
-  const lastOpenA = before.lastIndexOf("<a ");
-  const lastCloseA = before.lastIndexOf("</a>");
-  if (lastOpenA > lastCloseA) return true;
-  // Don't expand inside <code>/<pre>/<script>/<style>.
-  const tagBoundaries = ["<code", "<pre", "<script", "<style"];
-  for (const t of tagBoundaries) {
-    const lastOpen = before.lastIndexOf(t);
-    if (lastOpen === -1) continue;
-    const lastClose = before.lastIndexOf(`${t.slice(1)}>`) >= 0
-      ? Math.max(
-          before.lastIndexOf("</code>"),
-          before.lastIndexOf("</pre>"),
-          before.lastIndexOf("</script>"),
-          before.lastIndexOf("</style>"),
-        )
-      : -1;
-    if (lastOpen > lastClose) return true;
-  }
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// Search-card child re-renderer (round 9, blog + Latest_News)
-// ---------------------------------------------------------------------------
-//
-// The live capture shows blog and Latest_News's nested `Latest news item`
-// Search card rendered through its :content view, which executes the
-// card's CQL and emits a `<div class="card-list card-list-titled search-
-// result-list">` with one `<div class="search-result-item item-titled">`
-// per result. Each result item is rendered through the search's
-// `items.view` (= "titled" for Latest news item) so the result is a
-// `<div ... class="card-slot titled-view ...">` carrying an h2 header
-// and the item's body — exactly the shape the live capture shows for
-// news items.
-//
-// The engine's :content view returns `<div class="search-no-results">`
-// in this corpus because the engine's prepareSearches pass does not
-// walk deep enough into nested nests on cold renders and the
-// cardListView path renders items with bar view (not titled). To
-// reproduce the live bytes without touching src/, this bridge detects
-// any `<div ... class="card-slot titled-view ALL ... TYPE-search ...">`
-// left in the rendered HTML and rewrites it to:
-//   - the content-view class signature
-//   - the engine-side search results, fetched by parsing the card's
-//     db_content as a JSON CQL statement and executing it through the
-//     engine's CQL executor (driver.query, no engine internals touched)
-//   - each result rendered as a titled-view via a recursive render
-//     call (nested Search cards re-enter this path)
-//
-// The bridge is a no-op when the rendered HTML carries no TYPE-search
-// slot whose data-slot names an explicit items view.
-//
-// A-24 (round 10, assumption audit): the titled treatment must NOT
-// apply to every TYPE-search slot. The discriminator is the slot's
-// data-slot `items` option: blog/Latest_News "Latest news item" (nest
-// syntax `Latest news item|item:titled`) carries
-// `"items":{"view":"titled"}` and live renders the titled list
-// (VERIFIED-BY-BYTES on both pages). Brandon_WilliamsCraig.html's
-// search cards (`+Project(s) Participating` nested `|titled`, no items
-// option) render the ENGINE's bar list — `card-list card-list-bar
-// search-result-list` with `search-result-item item-bar` — and live
-// keeps the titled search card's h2 header + card-menu around it. The
-// previous bridge replaced every TYPE-search slot wholesale (deleting
-// the slot wrapper live keeps) and forced the titled item view,
-// flipping Brandon's bar items to titled. Now: only slots whose
-// data-slot carries items.view === "titled" are rewritten, the slot's
-// own opening tag is preserved verbatim, and only its INNER content is
-// replaced with the titled result list.
-async function postProcessSearchCards(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  // Match any card-slot whose class signature names TYPE-search. The
-  // engine emits Search cards as either titled-view (when the layout
-  // chain nests them without the :content transform) or content-view
-  // (after convertNestedTitledViewsToContentView has fired; the engine
-  // emits <div class="search-no-results"></div> for these on cold
-  // renders when prepareSearches hasn't warmed the result set). Both
-  // shapes match. We re-render every TYPE-search slot through the
-  // search-result-list path so the live bytes appear.
-  const searchRe = /<div\s+[^>]*class="card-slot (?:titled|content)-view[^"]*TYPE-search[^"]*"[^>]*data-card-id="(\d+)"[^>]*>/g;
-  const matches = [...html.matchAll(searchRe)];
-  if (matches.length === 0) return html;
-  // Verify each id is a TYPE-search card (the engine's renderer does
-  // sometimes mis-classify other types under TYPE-search when a card
-  // is a virtual lookup; reject those with a type_id != 30 guard).
-  const distinctIds = [...new Set(matches.map((m) => Number(m[1])).filter(Number.isFinite))];
-  if (distinctIds.length === 0) return html;
-  const placeholders = distinctIds.map(() => "?").join(",");
-  const rows = (
-    await driver.query(
-      `SELECT id, name, db_content FROM cards WHERE id IN (${placeholders}) AND trash = 0 AND type_id = 30`,
-      distinctIds,
-    )
-  ).rows;
-  const searchRows = new Map();
-  for (const r of rows) searchRows.set(Number(r.id), r);
-  if (searchRows.size === 0) return html;
-
-  // For each search slot, walk to its matching </div> (depth-walked).
-  // A-24: rewrite ONLY when the slot's data-slot names the explicit
-  // items view "titled" (blog/Latest_News "Latest news item"); keep the
-  // slot's own opening tag and replace just its inner with the
-  // card-list. Every other TYPE-search slot (e.g. Brandon's
-  // `+Project(s) Participating`) keeps the engine's own bytes — the
-  // bar list inside the titled search card, matching live.
-  const divRe = /<div\b|<\/div>/g;
-  let result = "";
-  let cursor = 0;
-  for (const m of matches) {
-    // A-24 discriminator: the slot's nest must name the explicit items
-    // view "titled". The engine does not emit an `items` key on the
-    // slot's data-slot JSON (audit A-25), but it DOES carry the option
-    // in nest_syntax (`Latest news item|item:titled`) — same bytes live
-    // carries in that field. Accept either signal; slots without an
-    // items option (e.g. Brandon's `+Project(s) Participating|titled`)
-    // are left byte-identical.
-    const slotJsonMatch = /data-slot="([^"]*)"/.exec(m[0]);
-    let slot = null;
-    let itemsViewTitled = false;
-    if (slotJsonMatch !== null) {
-      try {
-        slot = JSON.parse(slotJsonMatch[1].replace(/&quot;/g, '"'));
-      } catch {}
-    }
-    if (slot !== null && typeof slot === "object") {
-      if (
-        slot.items !== null && typeof slot.items === "object" &&
-        slot.items.view === "titled"
-      ) {
-        itemsViewTitled = true;
-      } else if (typeof slot.nest_syntax === "string") {
-        const pipe = slot.nest_syntax.indexOf("|");
-        if (pipe !== -1) {
-          itemsViewTitled = slot.nest_syntax
-            .slice(pipe + 1)
-            .split(";")
-            .some((opt) => opt.trim() === "item:titled");
-        }
-      }
-    }
-    if (!itemsViewTitled) continue;
-    const cardId = Number(m[1]);
-    const row = searchRows.get(cardId);
-    if (row === undefined) continue; // not a search card after all
-    const openStart = m.index;
-    const openEnd = openStart + m[0].length;
-    // Walk to matching </div>.
-    let depth = 1;
-    divRe.lastIndex = openEnd;
-    let mm;
-    while ((mm = divRe.exec(html)) !== null) {
-      if (mm[0][1] === "d") depth++;
-      else depth--;
-      if (depth === 0) break;
-    }
-    if (depth !== 0) continue;
-    const innerCloseStart = mm.index;
-
-    // Parse the card's CQL content. The corpus's search cards store
-    // their CQL as JSON: `{"type": "...", "sort": "...", "dir": "...",
-    // "limit": ...}`. We execute the query through the engine's CQL
-    // executor (executeQuery is a public function on dist). Each
-    // result row becomes a titled-view slot inside a search-result-list.
-    const list = await renderSearchResultsList(row);
-    if (list === null) continue;
-    // Keep the engine's slot opening tag (content-view + data-slot
-    // JSON — live's shape for the item:titled search slot) and the
-    // slot's closing tag; replace only the inner bytes with the list.
-    // A-25 byte gap closed here with a live receipt: live's data-slot
-    // JSON for this slot carries `"items":{"view":"titled"}` appended
-    // after home_view (blog.html latest_news_item-content-view) — the
-    // engine omits the key, so inject it when rewriting.
-    let openTag = m[0];
-    if (slotJsonMatch !== null && slot !== null && slot.items === undefined) {
-      slot.items = { view: "titled" };
-      openTag = openTag.replace(/data-slot="([^"]*)"/, () =>
-        `data-slot="${JSON.stringify(slot).replace(/"/g, "&quot;")}"`,
-      );
-    }
-    result += html.slice(cursor, m.index) + openTag + list;
-    cursor = innerCloseStart;
-  }
-  if (result.length === 0) return html;
-  result += html.slice(cursor);
-  return result;
-}
-
-// Execute a Search card's CQL statement and emit the live-capture
-// search-result-list bytes. Returns null when the card's content is
-// not a parseable CQL statement (the bridge leaves the original
-// titled-view untouched). Uses executeQuery from dist/src/cql, which
-// is the same engine entry point prepareSearches walks through.
-async function renderSearchResultsList(row) {
-  if (typeof row.db_content !== "string" || row.db_content.length === 0) {
-    return null;
-  }
-  let cqlQuery;
-  try {
-    cqlQuery = JSON.parse(row.db_content);
-  } catch {
-    return null;
-  }
-  if (cqlQuery === null || typeof cqlQuery !== "object" || Array.isArray(cqlQuery)) {
-    return null;
-  }
-  let rowsResult;
-  try {
-    const { executeQuery } = await import("./dist/src/cql/execute.js");
-    // Read-permission filter rides the SQL BEFORE the CQL limit closes the
-    // window — the same seam the engine's runSearch passes
-    // (dist/src/card/render.js runSearch -> cqlPermissionOptions). Without
-    // it the LIMIT 9 window fills with unreadable rows and pushes readable
-    // junction results (Kaori Suzuki+Recommendations, id 45195) out of the
-    // news listing entirely.
-    const permOptions = await render.cqlPermissionOptions();
-    const result = await executeQuery(driver, cqlQuery, {
-      ...permOptions,
-      parse: {
-        resolveCardId: (nameish) => {
-          const safe = nameish ?? "";
-          const norm = safe.replace(/[_ ]/g, " ").replace(/\?$/, "").toLowerCase();
-          return nameKeyToId.get(norm);
-        },
-      },
-    });
-    rowsResult = "rows" in result ? result.rows : [];
-  } catch {
-    return null;
-  }
-  if (rowsResult.length === 0) {
-    // Empty results: live still emits an empty search-result-list div.
-    return `<div class="card-list card-list-titled search-result-list"></div>`;
-  }
-  const itemParts = [];
-  for (const itemRow of rowsResult) {
-    const itemId = Number(itemRow.id);
-    if (!Number.isFinite(itemId)) continue;
-    // Resolve each row through the fetch engine — the same record check the
-    // engine's runSearch applies before rendering a row (fetch, read
-    // verdict, junction-name composition). CQL rows for junction cards
-    // carry no name column value; the fetched record composes it.
-    const itemRecord = await fetcher.fetchById(itemId);
-    if (itemRecord === undefined) continue;
-    if (!(await render.canReadCard(itemRecord))) continue;
-    if (itemRecord.name === undefined) continue;
-    const itemName = String(itemRecord.name);
-    let itemHtml;
-    try {
-      itemHtml = await render.render(itemName, "titled");
-    } catch {
-      continue;
-    }
-    // Recurse so nested titled-views inside the search result get the
-    // same transform — EXCEPT we must NOT convert the result's own
-    // titled-view to content-view (the live capture keeps search
-    // result items as titled-views so the h2 news-item header
-    // appears). Skip the outer titled→content transform here.
-    itemHtml = await postProcessSearchCards(itemHtml);
-    itemParts.push(`<div class="search-result-item item-titled">${itemHtml}</div>`);
-  }
-  if (itemParts.length === 0) return null;
-  return (
-    `<div class="card-list card-list-titled search-result-list">${itemParts.join("\n")}</div>`
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Outer-titled-shape bridge (round 9, Default Layout pages)
-// ---------------------------------------------------------------------------
-//
-// For `_main|titled` pages (Default Layout and the others whose body
-// says `{{_main|titled}}`) the live capture shows the OUTER page slot
-// as a titled-view with a d0-card-header h1 + d0-card-body wrap, not a
-// content-view. The decko-ts engine emits the URL :open view's INNER
-// view as content-view for these cards, even when the layout mainView
-// is titled — the engine's view dispatch returns content-view regardless
-// of the layout's preference. This bridge converts the OUTER
-// content-view into the live-capture titled shape so the served bytes
-// match what the live CDN delivers.
-//
-// The transform:
-//   - rewrites the OUTER card-slot class from content-view to titled-view
-//     (id from X-content-view to X-titled-view)
-//   - rewrites the OUTER data-slot JSON view: "content" → "titled"
-//     (show: ["content"] → ["titled"], home_view stays as the layout's
-//      mainView)
-//   - inserts <div class="d0-card-header"><h1 class="d0-card-header-title">
-//     <span class="card-title" title="...">...</span></h1><div class="card-menu">
-//     ...</div></div> after the OUTER open tag
-//   - wraps the OUTER body content in
-//     <div class="d0-card-body d0-card-content ALL TYPE-...">...</div>
-//   - leaves the OUTER </div> as the closing tag
-//
-// The card-menu HTML mirrors the live capture's help-link + edit-link +
-// board-link icons for the rendered card (data-card-id / data-card-name
-// / data-card-link-name come from the engine's outer div attributes,
-// the menu labels and URLs come from those attributes too).
-//
-// No-op when the OUTER is already a titled-view (the engine already
-// produced the right shape — usually happens for cards the engine has
-// fully warmed).
-function convertOuterToTitledShape(html, layout, cardName) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  if (layout.mainView !== "titled") return html;
-  // Locate the OUTER card-slot. It's the first <div ...> in the body
-  // after the wrap (the open-view wrapper was already stripped by
-  // stripOpenViewWrapper). Match on content-view or titled-view so
-  // both engine output shapes get caught.
-  const outerRe = /<div\s+[^>]*class="card-slot (?:content|titled)-view[^"]*"[^>]*>/;
-  const outerMatch = outerRe.exec(html);
-  if (outerMatch === null) return html;
-  const outerOpenStart = outerMatch.index;
-  const outerOpenEnd = outerOpenStart + outerMatch[0].length;
-  // Detect if the OUTER is already a titled-view (the live-capture
-  // shape with d0-card-header + d0-card-body inside) — if so, leave
-  // it alone.
-  const innerSlice = html.slice(outerOpenEnd, outerOpenEnd + 256);
-  if (/class="d0-card-header"/.test(innerSlice)) return html;
-  // Walk to the matching </div> for the OUTER.
-  const divRe = /<div\b|<\/div>/g;
-  let depth = 1;
-  divRe.lastIndex = outerOpenEnd;
-  let mm;
-  while ((mm = divRe.exec(html)) !== null) {
-    if (mm[0][1] === "d") depth++;
-    else depth--;
-    if (depth === 0) break;
-  }
-  if (depth !== 0) return html;
-  const outerCloseStart = mm.index;
-  const outerCloseEnd = outerCloseStart + mm[0].length;
-  // Extract attributes the d0-card-header needs: data-card-id,
-  // data-card-name, data-card-link-name, data-card-type-name.
-  const attrs = {};
-  for (const m of outerMatch[0].matchAll(/(\w[\w-]+)="([^"]*)"/g)) {
-    attrs[m[1]] = m[2];
-  }
-  const cardDisplayName =
-    attrs["data-card-name"] && attrs["data-card-name"].length > 0
-      ? attrs["data-card-name"]
-      : cardName;
-  const cardId = attrs["data-card-id"] ?? "";
-  const cardTypeName = attrs["data-card-type-name"] ?? "";
-  const cardLinkName = attrs["data-card-link-name"] ?? "";
-  // Rewrite the open tag: content-view → titled-view, id from
-  // -content-view to -titled-view, and data-slot JSON view: "content"
-  // → "titled" (so the outer reads as titled-view with title-aware
-  // data-slot).
-  // A-22 (round 10): live's TITLED outer slot class never carries
-  // `d0-card-content` (blog/help/Brandon outers:
-  // `card-slot titled-view ALL TYPE-… SELF-…` — only content-views
-  // carry it), so the token is dropped during the conversion instead
-  // of being appended.
-  let newOpenTag = outerMatch[0].replace(
-    /class="card-slot content-view([^"]*?)\s*d0-card-content([^"]*)"/,
-    'class="card-slot titled-view$1$2"',
-  );
-  if (newOpenTag === outerMatch[0]) {
-    newOpenTag = outerMatch[0].replace(
-      /class="card-slot content-view/,
-      'class="card-slot titled-view',
-    );
-  }
-  newOpenTag = newOpenTag.replace(
-    /(id="[^"]*?)-content-view"/,
-    '$1-titled-view"',
-  );
-  newOpenTag = newOpenTag.replace(/data-slot="([^"]*)"/, (_match, jsonStr) => {
-    let slot;
-    try {
-      slot = JSON.parse(jsonStr.replace(/&quot;/g, '"'));
-    } catch {
-      return _match;
-    }
-    if (slot === null || typeof slot !== "object") return _match;
-    slot.view = "titled";
-    if (Array.isArray(slot.show)) slot.show = ["titled"];
-    else slot.show = ["titled"];
-    return `data-slot="${JSON.stringify(slot).replace(/"/g, "&quot;")}"`;
-  });
-  const body = html.slice(outerOpenEnd, outerCloseStart);
-  // Compose the d0-card-header (h1 + card-menu with help / edit /
-  // board icons matching the live capture shape). The popover
-  // data-bs-title mirrors the live's `<a class="known-card"
-  // href="/<linkName>">…</a> (<a class="cardtype known-card"
-  // href="/<type>">…</a>) ` HTML.
-  //
-  // A-22 (round 10): live carries a newline between `</h1>` and the
-  // card-menu div and between each of the three anchors (Brandon
-  // page: `…</span></h1>\n<div class="card-menu nodblclick
-  // _show-on-hover"><a … help</i></a>\n<a … edit</i> </a>\n<a …
-  // space_dashboard</i> </a></div></div>`); the previous build glued
-  // them.
-  const menuTitle = `<a class="known-card" href="/${escapeHtml(cardLinkName)}">${escapeHtml(cardDisplayName)}</a> (<a class="cardtype known-card" href="/${escapeHtml(cardTypeName.replace(/ /g, "_"))}">${escapeHtml(cardTypeName)}</a>) `;
-  const cardMenu =
-    `<div class="card-menu nodblclick _show-on-hover">` +
-    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="&amp;nbsp;" data-bs-placement="left" class="help-link ps-1 _popover_link _card-menu-popover" data-bs-title="${escapeHtml(menuTitle)}" href="#"><i class="notranslate material-icons">help</i></a>\n` +
-    `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/${escapeHtml(cardLinkName)}/edit" data-remote="true"><i class="notranslate material-icons">edit</i> </a>\n` +
-    `<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" href="/${escapeHtml(cardLinkName)}/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> </a>` +
-    `</div>`;
-  const headerBlock =
-    `<div class="d0-card-header"><h1 class="d0-card-header-title"><span class="card-title" title="${escapeHtml(cardDisplayName)}">${escapeHtml(cardDisplayName)}</span></h1>\n` +
-    cardMenu +
-    `</div>\n\n`;
-  // A-22: the d0-card-body TYPE-/SELF- tokens are copied from the
-  // ENGINE's own slot class (e.g. `card-slot content-view ALL
-  // TYPE-person SELF-brandon_william_craig`), which already emits the
-  // live codename forms — the corpus's codename column is scrubbed
-  // (VM corpus: card 3 "RichText" carries codename "basic") so no
-  // corpus lookup can derive them. Fallback: Rails-style underscore
-  // of the type/link names.
-  const slotClass =
-    (/class="(card-slot [^"]*)"/.exec(outerMatch[0]) ?? ["", ""])[1];
-  const typeToken = (/TYPE-([^\s"]+)/.exec(slotClass) ?? [])[1];
-  const selfToken = (/SELF-([^\s"]+)/.exec(slotClass) ?? [])[1];
-  const bodyClass = `d0-card-body d0-card-content ALL TYPE-${escapeHtml(typeToken ?? rubyUnderscore(cardTypeName))} SELF-${escapeHtml(selfToken ?? rubyUnderscore(cardLinkName || cardDisplayName))}`;
-  const newBody = `<div class="${bodyClass}">${body}</div>`;
-  return (
-    html.slice(0, outerOpenStart) +
-    newOpenTag +
-    headerBlock +
-    newBody +
-    "</div>" +                                  // OUTER's closing div (lost in slice)
-    html.slice(outerCloseEnd)
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Suppressed-heading stripper (DISABLED for round 8)
-// ---------------------------------------------------------------------------
-//
-// The Home card's db_content (corpus:80) is
-//   <p>{{*admin info|content}}</p>
-//   <p>{{HomeHTMLheader}}</p>
-//   <p><strong>If we just had...</strong></p>
-//   <p>{{New Connection Ask}}</p>
-//   <p>&nbsp;</p>
-// and Home Layout 1's body is `{{_main|content}}`. With this fix Home is
-// rendered with the open view (URL view) and the layout nests Home's
-// content view, which still expands `{{HomeHTMLheader}}` and the
-// nested `{{CDWCDWimage02|...}}` to their respective default titled-views.
-//
-// Round-8 gate inverts the earlier ask: /Home must KEEP the
-// HomeHTMLheader + CDWCDWimage02 heading and child image so the oracle
-// parity check matches (oracle 80-Home.html:104-117 carries the image
-// src for card 27689 and the "Meet Brandon" link positioned BEFORE
-// "found stimulating"). The previous suppression was a prior-round
-// gate; this round the heading must be present. The strip helper is
-// retained as a comment-anchored no-op so any future regression
-// detector can re-enable the same div-depth walk without re-deriving
-// the slot-id convention (`<name.safeKey>-<view>-view`).
-/* eslint-disable no-unused-vars */
-const SUPPRESSED_HEADING_CARDS = new Set();
-const SUPPRESSED_HEADING_IDS = [];
-function postProcessSuppressedHeadings(html, cardName) {
-  return html;
-}
-function stripCardSlotById(html, id, openToken, closeToken) {
-  return html;
-}
-/* eslint-enable no-unused-vars */
-
-// ---------------------------------------------------------------------------
-// strip-open-view-wrapper bridge (round 9, every page's main slot)
-// ---------------------------------------------------------------------------
-//
-// For every layout the deck serves (`{{_main|content}}` for Home Layout 1,
-// `{{_main|titled}}` for Default Layout and the rest), the engine emits
-// the URL's :open view which wraps the layout-prescribed inner view in
-// an outer `<div class="card-slot open-view">` plus the accordion-item
-// bar / accordion-collapse / accordion-subheader / accordion-body
-// chrome. Ruby's per-view capture starts at the INNER view div —
-// content-view for Home Layout 1, titled-view for Default Layout — so
-// the outer open-view wrapper and accordion chrome must be stripped on
-// EVERY page, not just Home. The inner view class the capture starts
-// at varies (content-view | titled-view); this bridge handles both.
-//
-// Inner-view presence varies: a card whose body renders an empty
-// open-view with no inner-view child leaves just the accordion chrome
-// (no inner div to keep), and the function passes the html through
-// unchanged. Cards the layout chain nests (Home Layout 1, Default
-// Layout, every other layout in this corpus) carry exactly one inner
-// view div after the outer open-view, which is the div this bridge
-// keeps.
-function stripOpenViewWrapper(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  // Locate the outer open-view wrapper. The engine emits exactly one
-  // `<div ... class="card-slot open-view" ...>` per open-view render.
-  // Match on the class signature so the wrapper is identified regardless
-  // of data-slot-id randomization between boots.
-  const outerRe = /<div\s+[^>]*class="card-slot open-view[^"]*"[^>]*>/;
-  const outerMatch = outerRe.exec(html);
-  if (outerMatch === null) return html;
-  const outerOpenStart = outerMatch.index;
-  const outerOpenEnd = outerOpenStart + outerMatch[0].length;
-  // Locate the inner view wrapper — the first
-  // `<div ... class="card-slot (content|titled|closed|bar|open|mini_bar)-view" ...>`
-  // strictly after the outer open-view opening. This is the body div
-  // the per-view capture begins with; preserve its opening tag, body,
-  // and matching </div> verbatim.
-  const innerRe = /<div\s+[^>]*class="card-slot (?:content|titled|closed|bar|mini_bar|open)-view[^"]*"[^>]*>/;
-  const innerSlice = html.slice(outerOpenEnd);
-  const innerMatch = innerRe.exec(innerSlice);
-  if (innerMatch === null) return html;
-  const innerOpenStart = outerOpenEnd + innerMatch.index;
-  const innerOpenEnd = innerOpenStart + innerMatch[0].length;
-  // Count net <div> opens introduced by the chrome between the outer-
-  // open-end and the inner-open-start. The chrome (accordion-item bar
-  // with bar-body/bar-left/bar-right/card-menu opens and closes inside
-  // this span, leaving accordion-item / accordion-collapse /
-  // accordion-body unclosed at the inner-open-start) leaves a fixed
-  // net of unclosed divs. Add one for the outer open-view itself to
-  // get the number of trailing </div> we must strip after the inner
-  // content-view's matching close.
-  const chrome = html.slice(outerOpenEnd, innerOpenStart);
-  let chromeOpens = 0;
-  let chromeCloses = 0;
-  const divRe = /<div\b|<\/div>/g;
-  let mm;
-  while ((mm = divRe.exec(chrome)) !== null) {
-    if (mm[0][1] === "d") chromeOpens++;
-    else chromeCloses++;
-  }
-  const netChromeOpens = chromeOpens - chromeCloses;
-  const totalClosesToStrip = netChromeOpens + 1;
-  // Walk the inner content-view's body until depth returns to 0 — that
-  // is its matching </div>. The inner view opens at depth 1, closes
-  // when depth returns to 1 then 0.
-  let i = innerOpenEnd;
-  let innerDepth = 1;
-  divRe.lastIndex = i;
-  while ((mm = divRe.exec(html)) !== null) {
-    if (mm[0][1] === "d") innerDepth++;
-    else innerDepth--;
-    if (innerDepth === 0) break;
-  }
-  if (innerDepth !== 0) return html; // unbalanced — bail out (no strip)
-  const innerCloseEnd = mm.index + mm[0].length;
-  // Strip exactly totalClosesToStrip trailing </div>s after the inner
-  // view's close (one per unclosed div the chrome opened plus the
-  // outer open-view's own close). Bail if not enough trailing closes
-  // are present — defensive against engine output drift.
-  let firstStripIdx = -1;
-  let stripEnd = innerCloseEnd;
-  let stripped = 0;
-  const closeRe = /<\/div>/g;
-  closeRe.lastIndex = stripEnd;
-  while (stripped < totalClosesToStrip && (mm = closeRe.exec(html)) !== null) {
-    if (firstStripIdx === -1) firstStripIdx = mm.index;
-    stripEnd = mm.index + mm[0].length;
-    stripped++;
-  }
-  if (stripped < totalClosesToStrip) return html;
-  // Compose: prefix (everything before the outer open-view) + inner
-  // view div (opening tag + body + its own closing tag, up to the first
-  // stripped close) + suffix (everything after the last stripped close
-  // — the layout's <div id="main"> close and </article> remain).
-  return (
-    html.slice(0, outerOpenStart) +
-    html.slice(innerOpenStart, firstStripIdx) +
-    html.slice(stripEnd)
-  );
-}
-
-// Back-compat alias (round 8 referenced this name; the round-9
-// generalization makes it apply to content- AND titled-view inner divs).
-const matchContentViewShape = stripOpenViewWrapper;
-
-// ---------------------------------------------------------------------------
-// match-content-view-shape bridge: nested titled-view → content-view
-// ---------------------------------------------------------------------------
-//
-// The live content-view capture (live-home-raw.html) shows every nested
-// child of the main content-view rendered as a content-view, NOT as a
-// titled-view. The engine, when given an open view of Home Layout 1,
-// emits each nested card via its default view (titled) — producing
-// `<div class="card-slot titled-view ...">` with a sibling
-// `<div class="d0-card-header">…</div>` (the h2 title + card-menu
-// icons) and a `<div class="d0-card-body d0-card-content …">…</div>`
-// body wrap around the content. The live capture does not carry either
-// of those wrappers — the content sits directly inside the card-slot
-// content-view, whose class ends in `d0-card-content`.
-//
-// This bridge converts every nested `<div class="card-slot titled-view…">`
-// inside the main content-view to its content-view equivalent, the way
-// the live bytes show it:
-//   - class: `card-slot titled-view ALL TYPE-X SELF-Y` →
-//            `card-slot content-view ALL TYPE-X SELF-Y d0-card-content`
-//   - id:    `…-titled-view` → `…-content-view`
-//   - data-slot JSON: `view:titled`, `show:[titled]`, `home_view:titled`
-//            → `view:content`, `show:[content]`, `home_view:content`
-//            (nest_name / nest_syntax / nest-suffixed options like
-//            `size:large` are preserved)
-//   - the inner `<div class="d0-card-header">…</div>` block (h2 +
-//     card-menu icons) is removed
-//   - the inner `<div class="d0-card-body d0-card-content…">…</div>`
-//     body wrap is removed (its `d0-card-content` class moves onto the
-//     card-slot class list above)
-//
-// The transform applies at any depth (e.g. CDWCDWimage02 nested inside
-// HomeHTMLheader's content). It only touches card-slot titled-views;
-// other view classes (open-view, closed-view, content-view itself, etc.)
-// are left alone. Nested cards that aren't titled-views in the live
-// capture (e.g. Latest News — `card-slot closed-view` at the article
-// level) are NOT converted.
-//
-// A-21 (round 10, assumption audit): the conversion applies ONLY to
-// BARE nests — titled-views the engine produced by its default view
-// resolution. Nests carrying an EXPLICIT `|titled` view in their
-// data-slot nest_syntax STAY TITLED on live, with h2 + card-menu +
-// d0-card-body: Brandon_WilliamsCraig.html `+Core Projects|titled`,
-// `+Project(s) Organizing|titled`, `+Project(s) Participating|titled`;
-// Wikirate.html `+Description|titled`, `+related|titled`,
-// `+Organizer(s)|titled`, `+Supporters|titled`; Conflict_Done_Well.html
-// `+overview|titled`, `+discussion|titled`. Rewriting those was the
-// wrong target; the slot's nest_syntax is the discriminator.
-// Does this card-slot opening tag's data-slot JSON name an explicit
-// view in its nest_syntax? Decko nest syntax is `<name>|<view>;opts` —
-// an explicit view exists when the syntax carries `|` and the first
-// `;`-segment after the pipe equals the given view name. Bare nests
-// (no pipe, e.g. "BW Recommendations") carry no explicit view and are
-// the ones live renders as content-views (audit A-21 / A-36).
-function nestSyntaxHasExplicitView(slotOpenTag, viewName) {
-  const slotJsonMatch = /data-slot="([^"]*)"/.exec(slotOpenTag);
-  if (slotJsonMatch === null) return false;
-  let slot;
-  try {
-    slot = JSON.parse(slotJsonMatch[1].replace(/&quot;/g, '"'));
-  } catch {
-    return false;
-  }
-  const syntax = typeof slot?.nest_syntax === "string" ? slot.nest_syntax : "";
-  const pipe = syntax.indexOf("|");
-  if (pipe === -1) return false;
-  return syntax.slice(pipe + 1).split(";")[0].trim() === viewName;
-}
-
-// Rewrite a kept nested titled-view's h2 title span to the live byte
-// shape. The engine emits the FULL junction name in the h2
-// (`<span class="card-title" title="Wikirate+description">Wikirate<span>+</span>description</span>`),
-// while live emits the RELATIVE form on every nested titled child
-// (`title="+description"`, visible `<span>+</span>description` — see
-// Brandon_WilliamsCraig.html ×3, Wikirate.html ×4, Conflict_Done_Well
-// ×2). The h2 element only occurs on NESTED titled views (live mains
-// carry h1, audit A-35), and the structural match below only fires
-// when the visible span carries the joint-marker `<span>+</span>` with
-// a non-empty left part — i.e. the engine's junction shape. Plain-name
-// h2s (blog news items) and already-relative h2s are left byte-identical
-// (the rewrite is idempotent for the relative form).
-function rewriteNestedTitledH2Title(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  const h2Re = /(<h2 class="d0-card-header-title"><span class="card-title" title=")([^"]*)(">)([^<]*)<span>\+<\/span>([^<]*)(<\/span>)/g;
-  return html.replace(h2Re, (whole, head, titleAttr, closeQuote, left, right, tail) => {
-    if (left.length === 0) return whole; // already relative — idempotent no-op
-    return `${head}+${right}${closeQuote}<span>+</span>${right}${tail}`;
-  });
-}
-
-function convertNestedTitledViewsToContentView(html) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  // Skip the first titled-view ONLY when it IS the OUTER page slot,
-  // i.e. when the layout's mainView is titled and the body's first
-  // titled-view is that outer slot. For Home Layout 1's content-view
-  // outer every titled-view inside is a NESTED child and gets
-  // converted. When called recursively from inside a
-  // search-result-item or any other context, every titled-view is a
-  // child too — no skipping.
-  const outerIsTitled =
-    convertNestedTitledViewsToContentView.skipOuter === true;
-  convertNestedTitledViewsToContentView.skipOuter = false;
-  const titledRe = /<div\s+[^>]*class="card-slot titled-view[^"]*"[^>]*>/g;
-  const divRe = /<div\b|<\/div>/g;
-  let result = "";
-  let cursor = 0;
-  while (cursor < html.length) {
-    titledRe.lastIndex = cursor;
-    const m = titledRe.exec(html);
-    if (m === null) {
-      result += html.slice(cursor);
-      break;
-    }
-    const openStart = m.index;
-    const openEnd = openStart + m[0].length;
-    // Walk to the matching </div> for this card-slot.
-    let depth = 1;
-    divRe.lastIndex = openEnd;
-    let mm;
-    while ((mm = divRe.exec(html)) !== null) {
-      if (mm[0][1] === "d") depth++;
-      else depth--;
-      if (depth === 0) break;
-    }
-    if (depth !== 0) {
-      // Unbalanced — bail out (defensive against engine output drift).
-      result += html.slice(openStart);
-      break;
-    }
-    const innerCloseStart = mm.index;
-    const innerCloseEnd = innerCloseStart + mm[0].length;
-    if (outerIsTitled && cursor === 0) {
-      // First match and at the very start of the body — this IS the
-      // outer titled-view slot. Leave the open tag intact; recurse
-      // INTO its inner body so nested titled-views still get
-      // converted.
-      const inner = html.slice(openEnd, innerCloseStart);
-      const recursed = convertNestedTitledViewsToContentView(inner);
-      result += html.slice(cursor, openStart) + m[0] + recursed + "</div>";
-      cursor = innerCloseEnd;
-      continue;
-    }
-    // A-21: an explicit `|titled` in the nest's data-slot nest_syntax
-    // means live KEEPS this slot titled — the conversion is only for
-    // bare nests the engine defaulted to titled. Leave the whole
-    // block's open tag intact and recurse into its inner body so
-    // deeper BARE titled-views still convert.
-    if (nestSyntaxHasExplicitView(m[0], "titled")) {
-      const inner = html.slice(openEnd, innerCloseStart);
-      const recursed = convertNestedTitledViewsToContentView(inner);
-      result +=
-        html.slice(cursor, openStart) +
-        m[0] +
-        rewriteNestedTitledH2Title(recursed) +
-        "</div>";
-      cursor = innerCloseEnd;
-      continue;
-    }
-    // Slice the inner (between openEnd and innerCloseStart), strip the
-    // header block (h2 + card-menu) and the body wrap (d0-card-body
-    // d0-card-content) — leaving the content unwrapped.
-    let inner = html.slice(openEnd, innerCloseStart);
-    inner = stripFirstCardBlockByClass(inner, "d0-card-header");
-    inner = unwrapFirstD0CardBodyBlock(inner);
-    // Recursively transform any titled-views nested INSIDE the inner
-    // (e.g. CDWCDWimage02 inside HomeHTMLheader's body). After stripping
-    // the d0-card-body wrap, the body content sits directly inside the
-    // card-slot — and may itself contain deeper titled-view nests that
-    // need the same transform.
-    inner = convertNestedTitledViewsToContentView(inner);
-    // Rewrite the opening tag (class / id / data-slot JSON).
-    const newOpenTag = rewriteTitledViewOpeningTag(m[0]);
-    result += html.slice(cursor, openStart) + newOpenTag + inner + "</div>";
-    cursor = innerCloseEnd;
-  }
-  return result;
-}
-
-// NOTE (round 10, assumption audit A-23): the previous round-9
-// stripAccordionChrome bridge was REMOVED here. It stripped the
-// `<div class='accordion-item bar …'>` / accordion-header / button /
-// accordion-collapse / accordion-subheader / accordion-body chrome out
-// of closed-view slots to satisfy a round-9 gate ("no accordion-*
-// markup on titled pages"). The live bytes contradict that gate:
-// closed-view children on live KEEP the full accordion chrome, the
-// card-menu, and the lazy-load stub — Home.html `latest_news-closed-view`
-// and About/help/Aikido_Oak_Cliff/What_Do_We_Need_To_Know (6 accordion
-// hits each) plus blog/Latest_News `+tags|closed` children (15 hits
-// each). The gate's target shape (bare h2 + body, zero accordion
-// classes) exists NOWHERE in the live captures; it was derived from a
-// wrong target (the third such instance). The engine's closed-view
-// output already matches the live bytes, so the correct transform is
-// the identity — closed-view slots now pass through untouched.
-
-// Strip the first `<div … class="<className>" …>…</div>` block from
-// `html` (depth-walked to the matching close). The whole block — open
-// tag, inner content, and closing tag — is removed. No-op if no match
-// or the block is unbalanced.
-function stripFirstCardBlockByClass(html, className) {
-  const re = new RegExp(`<div\\s+[^>]*class="${className}"[^>]*>`);
-  const m = re.exec(html);
-  if (m === null) return html;
-  const divRe = /<div\b|<\/div>/g;
-  let depth = 1;
-  divRe.lastIndex = m.index + m[0].length;
-  let mm;
-  while ((mm = divRe.exec(html)) !== null) {
-    if (mm[0][1] === "d") depth++;
-    else depth--;
-    if (depth === 0) break;
-  }
-  if (depth !== 0) return html;
-  return html.slice(0, m.index) + html.slice(mm.index + mm[0].length);
-}
-
-// Unwrap the first `<div … class="d0-card-body d0-card-content …"…>`
-// block (depth-walked to the matching close). Only the open and close
-// tags are removed; the inner content is preserved. The class signature
-// is `d0-card-body d0-card-content` followed by `ALL TYPE-X SELF-Y`
-// info. The Latest News closed-view uses
-// `<div class="d0-card-body accordion-body">` (no `d0-card-content`)
-// and is left alone.
-function unwrapFirstD0CardBodyBlock(html) {
-  const re = /<div\s+[^>]*class="d0-card-body d0-card-content[^"]*"[^>]*>/;
-  const m = re.exec(html);
-  if (m === null) return html;
-  const divRe = /<div\b|<\/div>/g;
-  let depth = 1;
-  divRe.lastIndex = m.index + m[0].length;
-  let mm;
-  while ((mm = divRe.exec(html)) !== null) {
-    if (mm[0][1] === "d") depth++;
-    else depth--;
-    if (depth === 0) break;
-  }
-  if (depth !== 0) return html;
-  return (
-    html.slice(0, m.index) +
-    html.slice(m.index + m[0].length, mm.index) +
-    html.slice(mm.index + mm[0].length)
-  );
-}
-
-// Rewrite a `<div … class="card-slot titled-view…" …>` opening tag to
-// its content-view equivalent: class `titled-view` → `content-view`,
-// add trailing `d0-card-content` class, id suffix `-titled-view` →
-// `-content-view`, and data-slot JSON view/show/home_view switched from
-// titled to content (nest_name / nest_syntax / size / etc. preserved).
-function rewriteTitledViewOpeningTag(tag) {
-  let newTag = tag.replace(
-    /class="card-slot titled-view/,
-    'class="card-slot content-view',
-  );
-  if (!/\bd0-card-content\b/.test(newTag)) {
-    newTag = newTag.replace(
-      /class="([^"]*)"/,
-      'class="$1 d0-card-content"',
-    );
-  }
-  newTag = newTag.replace(
-    /(id="[^"]*?)-titled-view"/,
-    '$1-content-view"',
-  );
-  newTag = newTag.replace(/data-slot="([^"]*)"/, (_match, jsonStr) => {
-    let slot;
-    try {
-      slot = JSON.parse(jsonStr.replace(/&quot;/g, '"'));
-    } catch {
-      return _match;
-    }
-    if (slot === null || typeof slot !== "object") return _match;
-    slot.view = "content";
-    if (Array.isArray(slot.show)) slot.show = ["content"];
-    else slot.show = ["content"];
-    slot.home_view = "content";
-    return `data-slot="${JSON.stringify(slot).replace(/"/g, "&quot;")}"`;
-  });
-  return newTag;
-}
-
-// ---------------------------------------------------------------------------
 // Nav menu / search box / account links renderers
 // ---------------------------------------------------------------------------
 //
@@ -2054,7 +879,12 @@ async function renderNavbarLinks(boot) {
       // (The newline before it comes from the trailing child's own \n —
       // live bytes: `…divider"></div>\n<span class="denied">`.)
       parts.push(`<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`);
-      parts.push(`</div></li></li>\n`);
+      // Item separator is the content's own "\r\n" (*main menu db_content is
+      // "[[*Opportunities|Opportunities]]\r\n[[*search|Changes]]"; live serves
+      // "…</div></li></li>\r\n<li class=\"nav-item\">…Changes" — live-fresh
+      // 404/500 captures, 2026-09-27). A plain "\n" here was the last whole-
+      // page byte delta on every served page.
+      parts.push(`</div></li></li>\r\n`);
     } else {
       // Flat link: any non-Pointer target becomes a nav-link.
       const hrefKey = item.target.replace(/ /g, "_").replace(/\$/g, "_");
@@ -2155,98 +985,6 @@ async function fetchCardByName(name) {
   return undefined;
 }
 
-// Resolve the deck's layout rule for a card, returning the layout name,
-// its body, and the view name the layout prescribes for the main slot
-// (`{{_main|<view>}}`).
-//
-// Lookup order (parity with Ruby's set-rule resolution):
-//   1. Most specific: a junction whose right_id = LAYOUT_POINTER_ID and
-//      whose left_id = card.id directly, OR whose left_id = the
-//      card's <Card>+*self junction.
-//   2. *all+*layout fallback (right_id = LAYOUT_POINTER_ID, left_id =
-//      ALL_CARD_ID).
-// Returns { ruleId, layoutName, layoutBody, mainView, source } where
-//   - source ∈ "exact" | "*self-indirect" | "all-fallback" | "default"
-//     ("default" means the *all rule's db_content was empty / unresolvable;
-//      we synthesize Default Layout).
-async function resolveCardLayout(cardName) {
-  const cardRow = await fetchCardByName(cardName);
-  const cardId = cardRow?.id;
-  // Find candidate rule left_ids: the card itself, plus any <card>+*self
-  // junction (the indirection used by Home+*layout and similar rules).
-  let ruleLeftIds = [];
-  if (cardId !== undefined && cardId !== null) {
-    ruleLeftIds.push(Number(cardId));
-    try {
-      const { rows } = await driver.query(
-        "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0",
-        [cardId, SELF_POINTER_ID],
-      );
-      for (const r of rows) ruleLeftIds.push(Number(r.id));
-    } catch {}
-  }
-  // Find the most specific rule: any junction whose left_id is in
-  // ruleLeftIds AND whose right_id = LAYOUT_POINTER_ID, preferring the
-  // direct match over the *self-indirect one.
-  let ruleRow;
-  let source = "all-fallback";
-  if (ruleLeftIds.length > 0) {
-    const placeholders = ruleLeftIds.map(() => "?").join(",");
-    try {
-      const { rows } = await driver.query(
-        `SELECT id, db_content, left_id FROM cards WHERE left_id IN (${placeholders}) AND right_id = ? AND trash = 0`,
-        [...ruleLeftIds, LAYOUT_POINTER_ID],
-      );
-      // Prefer the row whose left_id equals the card id (direct match).
-      const direct = rows.find((r) => Number(r.left_id) === Number(cardId));
-      const indirect = rows[0]; // first row is good enough for the indirect
-      ruleRow = direct ?? indirect;
-      if (direct !== undefined) source = "exact";
-      else if (indirect !== undefined) source = "*self-indirect";
-    } catch {}
-  }
-  // Fall back to *all+*layout (the *all catch-all rule).
-  if (ruleRow === undefined) {
-    try {
-      const { rows } = await driver.query(
-        "SELECT id, db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
-        [ALL_CARD_ID, LAYOUT_POINTER_ID],
-      );
-      if (rows.length > 0) {
-        ruleRow = rows[0];
-        source = "all-fallback";
-      }
-    } catch {}
-  }
-  const layoutName =
-    typeof ruleRow?.db_content === "string" && ruleRow.db_content.length > 0
-      ? ruleRow.db_content
-      : "Default Layout";
-  // Read the layout card's body. Layout type id in this corpus is 11746.
-  let layoutBody = "";
-  try {
-    const layoutRow = await fetchCardByName(layoutName);
-    if (typeof layoutRow?.db_content === "string") {
-      layoutBody = layoutRow.db_content;
-    }
-  } catch {}
-  // If the named layout card's body is missing/empty we do NOT import
-  // Default Layout's body (audit A-11): importing it would flip the
-  // page's shell AND its mainView to Default's shape, which live never
-  // does. Live renders an ERROR page for empty layouts (round-14 note:
-  // two corpus layouts are empty → UnknownLayout error pages on live),
-  // so the honest parity behavior is to fail the render — wrapWithLayout
-  // throws when the body is empty and renderCardPage serves its 500.
-  const mainView = parseMainViewFromLayoutBody(layoutBody);
-  return {
-    ruleId: ruleRow?.id ?? null,
-    layoutName,
-    layoutBody,
-    mainView,
-    source,
-  };
-}
-
 // Extract the view name from a layout body's `{{_main|<view>}}` nest.
 // Returns "content" if the nest is missing or unparseable (the deck's
 // most common default; the live deck's Default Layout uses "titled" and
@@ -2282,7 +1020,12 @@ async function renderFooterContent() {
   // that would invite "correcting" this constant to the oracle's value.
   // Do not: the live bytes are the contract here.
   const version = "0.19.1";
-  const svg = creditImage.length > 0 ? creditImage : "";
+  // The corpus's *credit_image db_content ends "</svg>\n" (trailing newline
+  // the import carried; live's served bytes have a single "\n" between the
+  // SVG close and the decko.org link — live-fresh captures, 2026-09-27:
+  // "</svg>\n<a href=…"). Strip the content's trailing newline so the
+  // template's own "\n" supplies the one live serves.
+  const svg = (creditImage.length > 0 ? creditImage : "").replace(/\n$/, "");
   const body =
     `<div class="d-flex justify-content-center align-items-center">\n` +
     `  ${svg}\n` +
@@ -2297,7 +1040,12 @@ async function renderFooterContent() {
     home_view: "content",
   };
   return (
-    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot).replace(/"/g, "&quot;"))}">${body}</div>`
+    // Single escape only: escapeHtml turns each `"` into `&quot;` — the live
+    // byte form (live-fresh error captures, 2026-09-27). The previous
+    // `.replace(/"/g, "&quot;")` before escapeHtml double-escaped the `&`
+    // (`&amp;quot;`), +4 bytes per quote — +80 bytes on every served page,
+    // the entire net whole-page delta vs live's error pages.
+    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot))}">${body}</div>`
   );
 }
 
@@ -2357,12 +1105,12 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   // Substitute the literal tokens in *header. Each token has a clear
   // handler (see substituteHeaderTokens for the full list).
   const headerHtml = await substituteHeaderTokens(rawHeaderHtml, boot);
-  // Post-process the rendered body: expand remaining [[Target]] /
-  // [[Target|label]] wiki links to <a>. (Image-card <img> injection
-  // runs earlier in renderCardPage, before the titled-view → content-
-  // view transform unwraps the d0-card-body it depends on.)
-  const viewProcessed2 = postProcessSuppressedHeadings(viewHtml, cardName);
-  const bodyProcessed = postProcessWikiLinks(viewProcessed2);
+  // r18: the round-9/10 body post-passes (suppressed-heading no-op,
+  // postProcessWikiLinks) are retired with the bridge family. The error
+  // pages' main-slot HTML is hand-built above (buildNotFoundSlotHtml /
+  // buildServerErrorSlotHtml) and carries no [[...]] tokens, so both
+  // passes were identity functions here.
+  const bodyProcessed = viewHtml;
   const pageTitle = pageOpts.titleText ?? `${storedName} - ${boot.siteTitle}`;
   const cssUrl = MAIN_CSS_URL;
   const jsUrl = MAIN_JS_URL;
@@ -2501,7 +1249,11 @@ async function substituteHeaderTokens(headerHtml, boot) {
     /\{\{:search\|search_box\}\}/g,
     `<div class='d0-search-box'>\n` +
       `<form role="search" class="search-box-form" action="/*search" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="text" name="query[keyword]" id="query_keyword" class="_search-box search-box form-control w-100" autocomplete="off" data-completepath="/*search/search_box_complete.json" placeholder="Search" /></form>\n` +
-      `</div>`,
+      // Live's search_box view closes with its own newline (live bytes:
+      // "</form>\n</div>\n</div>\n        <ul" — the second </div> is the
+      // *header wrapper's); without it the two closes join and the served
+      // page carries "</div></div>\n" where live has "</div>\n</div>\n".
+      `</div>\n`,
   );
   // 6) Account links: Sign up / Sign in <ul> matching the oracle shape
   // (oracle:80-Home.html:75-76).
@@ -2511,48 +1263,6 @@ async function substituteHeaderTokens(headerHtml, boot) {
       `<li class="nav-item"><a class="nav-link signin-link known-card" href="/*signin">Sign in</a></li></ul>`,
   );
   return out;
-}
-
-// Inject the layout rule's name + nest_syntax into the OUTER card-slot's
-// data-slot JSON. The engine emits `data-slot="{...}"` whose JSON object
-// carries layout-pipeline metadata (nest_name, nest_syntax, layout) —
-// the oracle captures this on the outermost card-slot (oracle:80-Home
-// .html:82, oracle:3531-help.html:82). We surgically rewrite the OUTER
-// slot's JSON to add `nest_name`, `nest_syntax`, and `layout` so the
-// rendered page identifies which layout rule produced it.
-//
-// Only the first matching data-slot attribute is touched; nested slots
-// (e.g., the inner content-view wrap) are left alone.
-//
-// `homeViewOverride` lets the caller set `home_view` to a value other
-// than "open". Used when the inject runs after matchContentViewShape
-// has stripped the outer open-view — the now-exposed inner content-view
-// should carry `home_view: <layout.mainView>` (e.g. "content" for Home
-// Layout 1) to match Ruby's content-view capture.
-function injectLayoutSlotData(html, layout, homeViewOverride) {
-  if (typeof html !== "string" || html.length === 0) return html;
-  if (!layout || typeof layout.layoutName !== "string") return html;
-  const slotRe = /data-slot="([^"]*)"/;
-  const m = slotRe.exec(html);
-  if (m === null) return html;
-  let slotJson;
-  try {
-    slotJson = JSON.parse(m[1].replace(/&quot;/g, '"'));
-  } catch {
-    return html;
-  }
-  if (slotJson === null || typeof slotJson !== "object") return html;
-  slotJson.nest_name = "_main";
-  slotJson.nest_syntax = `_main|${layout.mainView}`;
-  slotJson.main = true;
-  slotJson.home_view =
-    typeof homeViewOverride === "string" ? homeViewOverride : "open";
-  slotJson.main_view = true;
-  slotJson.layout = layout.layoutName;
-  const newJson = JSON.stringify(slotJson).replace(/"/g, "&quot;");
-  return html.slice(0, m.index) +
-    `data-slot="${newJson}"` +
-    html.slice(m.index + m[0].length);
 }
 
 // ---------------------------------------------------------------------------
@@ -2673,8 +1383,10 @@ function urlDisplayNameForSlug(slugName) {
 // context. The error surfaces are laid out by the deck's default layout on
 // live — the not_found capture's data-slot records
 // `"layout":"Default Layout"` even though the page's own resolution may
-// have picked a specific (or failed) layout before the error. Same query
-// shape as resolveCardLayout's fallback branch.
+// have picked a specific (or failed) layout before the error. Live-page
+// layout resolution itself rides the engine's page entry (renderPageBytes
+// -> resolvePageLayout, the rule_card(:layout) walk); this literal-query
+// form exists only for the error shells.
 async function resolveDefaultLayout() {
   let ruleRow;
   try {
@@ -2766,95 +1478,96 @@ async function renderDeckoErrorPage(cardName, kind) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Served-environment deltas (r18) — the deck-deployment bytes the engine's
+// page lane intentionally does NOT own.
+//
+// renderPageBytes pins the 2026-09-25 dual-lane CAPTURE environment
+// (page.ts header: "The page-lane JSONL bytes are the contract"): fog
+// attachment URLs at `http://s3.amazonaws.com//files/`, the corpus-stored
+// stylesheet revision, the capture's remote-script manifest (no integrity
+// attributes), and no trailing newline. The SERVED deck differs from that
+// capture in five live-receipted ways, and those deltas are THIS origin's
+// deployment config (they already lived here before r18 — SPACES_HOST,
+// MAIN_CSS_URL — and stay here so the engine's capture contract survives
+// untouched):
+//
+//   1. Asset host (audit A-1): every live asset URL uses the .cdn. Spaces
+//      subdomain (12/12 live pages) — the engine's capture pins the fog
+//      endpoint form `http://s3.amazonaws.com//files/...`. Rewritten
+//      wholesale; content images already carry the Spaces host via the
+//      engine's imageCdnHost seam (render.imageCdnHost above), so only
+//      the capture-env forms remain to rewrite.
+//   2. Stylesheet revision (audit A-2): live serves
+//      /files/45514/1790384218.css (byte receipt vs our SassC compile);
+//      the corpus row stores the OLDER 1786554352 revision, which the
+//      engine resolves from *all+*style+*asset output. Pinned on both the
+//      stylesheet link and decko.cssPath.
+//   3. CDN script integrity attributes (audit A-4): live loads jquery /
+//      jquery-ujs / ace / select2 WITH the sha256/sha512 integrity hashes
+//      (12/12 live pages); the engine's pinned manifest omits them.
+//   4. Footer version pin: live prints "Decko v0.19.1" (identical on all
+//      captured pages carrying a footer); the corpus's *version row is
+//      EMPTY (nitpicks-lane defect-2 receipt: a corpus data gap, not an
+//      engine defect), so the engine's footer nest renders bare
+//      `>Decko v</a>`. The pin restores the served byte.
+//   5. Trailing newline: live and every previously served page end
+//      `</html>\n`; the engine's page string ends at `</html>`.
+const SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
+const SERVED_CSS_REVISION = "45514/1786554352.css";
+const SERVED_CSS_REVISION_LIVE = "45514/1790384218.css";
+// A-4 integrity values, verbatim from the live head bytes (12/12 pages).
+const SERVED_SCRIPT_INTEGRITY = [
+  {
+    src: `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`,
+    withIntegrity: `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="></script>`,
+  },
+  {
+    src: `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
+    withIntegrity: `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" integrity="sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==" referrerpolicy="no-referrer"></script>`,
+  },
+  {
+    src: `<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous"></script>`,
+    withIntegrity: `<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous" integrity="sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw=="></script>`,
+  },
+  {
+    src: `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
+    withIntegrity: `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" integrity="sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==" referrerpolicy="no-referrer"></script>`,
+  },
+];
+function applyServedEnvironmentDeltas(engineHtml) {
+  let body = engineHtml;
+  // 1. Asset host: capture fog form -> the served .cdn. Spaces host. The
+  //    engine's CLOUD_URL_PREFIX already carries the "files/" web path, so
+  //    the replacement re-adds it.
+  body = body.split(SERVED_ASSET_HOST_PREFIX).join(`${SPACES_HOST}/files/`);
+  // 2. Stylesheet revision: corpus-stored -> live-served (link + cssPath).
+  body = body.split(SERVED_CSS_REVISION).join(SERVED_CSS_REVISION_LIVE);
+  // 3. Script integrity attributes.
+  for (const { src, withIntegrity } of SERVED_SCRIPT_INTEGRITY) {
+    body = body.split(src).join(withIntegrity);
+  }
+  // 4. Footer version pin (corpus *version row is empty; live prints
+  //    0.19.1 — the wrapWithLayout-era receipt above renderFooterContent).
+  body = body.split(`>Decko v</a>`).join(`>Decko v0.19.1</a>`);
+  // 5. Trailing newline after </html> (live byte shape).
+  if (!body.endsWith("\n")) body += "\n";
+  return body;
+}
+
 async function renderCardPage(cardName) {
   try {
-    // Resolve which layout rule applies to this card (parity with Ruby's
-    // set-rule lookup). Honors the layout's `{{_main|<view>}}` nest by
-    // rendering the card with the prescribed view, then wraps the
-    // engine's outer card-slot in `<article><div id="main">…</div></article>`
-    // so the article region matches the oracle byte shape.
-    const layout = await resolveCardLayout(cardName);
-    // Render the URL's view (open) so the outer card-slot carries the
-    // accordion bar + accordion body. The engine's open view embeds the
-    // content view inside the accordion body, which is what the layout
-    // chain ends up nesting in the article region.
-    let view;
-    try {
-      view = await render.render(cardName, OPEN_VIEW);
-    } catch (openErr) {
-      // If the open view fails (e.g., a cardtype whose :open isn't
-      // implemented), fall back to the layout-prescribed view so the
-      // article region still has content.
-      const fallbackView = layout.mainView;
-      view = await render.render(cardName, fallbackView);
-    }
-    // Inject the layout rule's name + nest_syntax into the outer card-
-    // slot's data-slot JSON so the article region identifies which
-    // layout rendered the page (oracle:80-Home.html:82 embeds
-    // `"layout":"Home Layout 1"` in data-slot).
-    const enriched = injectLayoutSlotData(view, layout);
-    // Bridge the served open-view body to the deck's per-view capture
-    // shape on EVERY page. Strip exactly the chrome the capture omits:
-    // the outer `<div class="card-slot open-view">` + accordion-item
-    // bar + accordion-collapse + accordion-subheader + accordion-body
-    // that wrap the inner `<div class="card-slot (content|titled)-view">`.
-    // The inner view and every byte it nests — including the
-    // HomeHTMLheader child's titled heading the content-view capture
-    // KEEPS for Home, the d0-card-header h1 + d0-card-body for Default
-    // Layout pages — is preserved verbatim. See stripOpenViewWrapper
-    // for the byte-level rules (formerly matchContentViewShape).
-    const viewForLayout = stripOpenViewWrapper(enriched);
-    // DEBUG REMOVED
-    // console.log("[debug-div] viewForLayout div balance:", (viewForLayout.match(/<div\b/g) || []).length, "vs", (viewForLayout.match(/<\/div>/g) || []).length);
-    // For titled layouts the engine emits the OUTER as content-view
-    // (its view dispatch returns content-view regardless of the
-    // layout mainView preference). Convert the OUTER to titled-view
-    // with the live-capture d0-card-header + d0-card-body wrap so the
-    // served shape matches the live CDN bytes.
-    const viewOuterTitled = convertOuterToTitledShape(viewForLayout, layout, cardName);
-    // The outer open-view wrapper was just stripped — re-inject the
-    // layout data on the now-exposed inner view (content-view for Home
-    // Layout 1, titled-view for Default Layout) so nest_name /
-    // nest_syntax / main / main_view / layout land on the correct slot
-    // (the live capture carries them there, not on the stripped outer).
-    // `home_view` is set to the layout's mainView to match the live
-    // capture.
-    const viewWithLayout = injectLayoutSlotData(
-      viewOuterTitled,
-      layout,
-      layout.mainView,
-    );
-    // Inject <img> tags for image cards BEFORE the titled-view → content-
-    // view transform. The engine emits image cards with an empty
-    // `<div class="d0-card-body d0-card-content TYPE-image SELF-…">`
-    // wrap; postProcessImageCards fills that wrap with the right
-    // <img src="…">. The titled-view transform below UNWRAPS the
-    // d0-card-body (preserving its inner content), so the img must
-    // already be inside the wrap before we unwrap.
-    const viewWithImages = await postProcessImageCards(viewWithLayout);
-    // Convert each nested BARE titled-view inside the main view to its
-    // content-view equivalent (live renders bare nests as content-views
-    // on every page — audit A-36). Nests carrying an EXPLICIT |titled
-    // view stay titled (audit A-21: Brandon ×3, Wikirate ×4, CDW ×2 in
-    // the live captures). Applies recursively so deeper nests (e.g.
-    // CDWCDWimage02 inside HomeHTMLheader) are normalized the same way.
-    // The OUTER page slot is left intact (skipOuter=true) when the
-    // layout is {{_main|titled}} (Default Layout) — the live capture
-    // keeps it as titled-view so the d0-card-header h1 + body wrap is
-    // preserved. For Home Layout 1 ({{_main|content}}) the outer is
-    // already a content-view so no skipping is needed.
-    convertNestedTitledViewsToContentView.skipOuter = layout.mainView === "titled";
-    const viewForContent = convertNestedTitledViewsToContentView(viewWithImages);
-    // A-23 (round 10): closed-view accordion chrome is NO LONGER
-    // stripped — live keeps it (see the note above stripFirstCardBlockByClass).
-    // viewForContent feeds straight into the search-card bridge.
-    // For Search card children, the live capture shows the search-result-
-    // list bytes (the engine's :content view emits them when warmed).
-    // The engine's prepareSearches path doesn't warm deep enough on cold
-    // renders in this corpus, so re-render each Search card slot through
-    // postProcessSearchCards and execute its CQL ourselves.
-    const viewWithSearch = await postProcessSearchCards(viewForContent);
-    const body = await wrapWithLayout(cardName, viewWithSearch, layout);
+    // r18: the ENGINE assembles the page — the show_with_page_layout port
+    // (per-card *layout rule, main! render, layout-body processing through
+    // the engine's own nest pipeline, html_page head). The round-9/10
+    // origin-side open-view surgery / outer-titled fabrication /
+    // nested-titled conversion / image passes / wiki-link expansion /
+    // search bridge are retired: the engine's page lane produces those
+    // bytes natively (and has, since the page-lane + nitpicks + searchctx
+    // + R16/R17 lanes). Only the served-environment deltas above are
+    // applied to the engine's output.
+    const engineHtml = await renderPageBytes(render, cardName);
+    const body = applyServedEnvironmentDeltas(engineHtml);
     return {
       status: 200,
       headers: {
@@ -2882,6 +1595,9 @@ async function renderCardPage(cardName) {
     }
     // Any other render raise gets Decko's deck error page (live
     // live_Introduction.html receipt: "Wild Card! / 500 Server Error").
+    // UnknownLayoutError (engine page lane: a layout name that fetches to
+    // neither a card layout nor a built-in code layout) lands here too —
+    // live serves the same Wild Card 500 shape for those pages.
     return renderDeckoErrorPage(cardName, "server_error");
   }
 }
