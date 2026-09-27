@@ -178,12 +178,26 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // bar_left's title and bar_right's ruleBarRightHtml).
       const deniedCount = (html.match(/<span class="denied"><!-- Sorry, you don't have permission \(read\) --><\/span>/g) || []).length;
       expect(deniedCount).toBe(2);
-      // The phantom type info: data-card-type-id="22281" +
-      // data-card-type-name="BasicCs" on the inner slot (oracle: cards
-      // row 22281 is the BasicCs type card; "swtktey" never appears in
-      // the expected-v2 view lane).
+      // The phantom type info: data-card-type-id="22281" on the inner
+      // slot (oracle: cards row 22281 is the deck's default type card;
+      // "swtktey" never appears in the expected-v2 view lane).
       expect(html).toContain('data-card-type-id="22281"');
-      expect(html).toContain('data-card-type-name="BasicCs"');
+      // SLOTJSON-TYPE LANE FLIP (evidence-labeled): the phantom's type
+      // attrs now resolve through the MECHANISM instead of the retired
+      // BasicCs constant — new_unknown_item_args (item.rb:245-248) falls
+      // to the *default template walk (type.rb:78-80 type_id_from_template,
+      // the engine's newCardDefaultType), which resolves *all+*default's
+      // type card 22281 and emits THIS DECK'S NAME for it. The raw oracle
+      // deck names that row "BasicCs" (the raw expected-v2 bytes pin
+      // BasicCs — the verifier world emits exactly that); this fixture
+      // corpus anonymized the same row to "swtktey", so the
+      // fixture-rendered slot attr carries the deck's own name. The BODY
+      // defaults below keep the raw-pinned constant tokens (the body
+      // builder's shape constants are raw-oracle pins, not deck reads).
+      expect(html).toContain('data-card-type-name="swtktey"');
+      // The body's raw-pinned constant identity (single-quoted attrs).
+      expect(html).toContain("data-card-type-id='22281'");
+      expect(html).toContain("data-card-type-name='BasicCs'");
     },
   );
 });

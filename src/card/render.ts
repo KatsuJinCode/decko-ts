@@ -306,6 +306,18 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronous configure_button permission gate resolves the predicate
    *  without queries. Cleared on resetCaches(). */
   private configureVerdicts = new Map<string, boolean | undefined>();
+  /** Host card key -> the resolved item type for the card's rendered item
+   *  slots ({typeName, typeId}), or undefined once resolved-and-nil. The
+   *  port of Ruby's item-type chain (card-mod-collection set/all/item.rb
+   *  item_type_id/name -> set/abstract/items.rb:5-11 options_card walk ->
+   *  card-mod-search cql_search.rb:14-19 cql :type), resolved once per host
+   *  in the prepare phase (resolveHostItemTypeName) and read synchronously
+   *  by the item-slot emitters (views.ts renderPointerListItem /
+   *  cardListView). Cleared on resetCaches(). */
+  private itemTypeNameByHostKey = new Map<
+    string,
+    { typeName: string; typeId: number } | undefined
+  >();
   /** The deck's `*all+*default html view` rule content (the effective
    *  Cardio.config.default_html_view — this corpus's rule card 22769
    *  carries "content"). Folded with the structure universes on the cold
@@ -822,6 +834,7 @@ export class RenderEngine implements RenderEngineLike {
     this.taskState = undefined;
     this.taskVerdicts.clear();
     this.configureVerdicts.clear();
+    this.itemTypeNameByHostKey.clear();
     this.deckDefaultNestView = undefined;
     this.deckDefaultNestViewParsed = false;
     this.deckDefaultNestViewInvalidLogged = false;
@@ -1564,16 +1577,165 @@ export class RenderEngine implements RenderEngineLike {
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let grew = false;
+      // Search-type cards join the walk as hosts: their :card_list items
+      // nest through the same nest_item -> item_view_options ->
+      // determine_item_view_options_type chain (card-mod-search
+      // 0_search/views.rb:132-136), so the items' slot JSON carries the
+      // search's own cql :type (cql_search.rb:14-19 item_type_id).
       const hosts = [...this.renderCards.values()].filter(
-        (card) => card.typeCode === "pointer" || card.typeCode === "list",
+        (card) =>
+          card.typeCode === "pointer" ||
+          card.typeCode === "list" ||
+          card.typeCode === "search_type" ||
+          card.typeName === "Search",
       );
       for (const host of hosts) {
         const before = this.renderCards.size;
         await this.enrichPointerListItems(host);
+        await this.resolveHostItemTypeName(host);
         if (this.renderCards.size !== before) grew = true;
       }
       if (!grew) return;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // item type resolution (card-mod-collection item.rb + set/abstract/items.rb
+  // + card-mod-search cql_search.rb + card-mod-layout options_api.rb)
+  // -------------------------------------------------------------------------
+
+  /** RenderEngineLike#hostItemTypeName — the sync read side of the item-type
+   *  chain, resolved per host in the prepare phase (enrichPointerListItems
+   *  Closure). undefined = resolved-and-nil or not a host card. */
+  hostItemTypeName(
+    card: RenderCard,
+  ): { typeName: string; typeId: number } | undefined {
+    return this.itemTypeNameByHostKey.get(card.key);
+  }
+
+  /**
+   * The host's item_type_name (card-mod-collection set/all/item.rb:94-96
+   * `item_type_name` = `no_item_type_recursion { item_type_id&.cardname }`),
+   * resolved once per host into itemTypeNameByHostKey. The walk:
+   *
+   * 1. Search-typed host: cql_search.rb:14-19 — the cql content's :type
+   *    value -> the type card (plausible_type? = String/Symbol/Integer,
+   *    never "_left", cql_search.rb:76-78).
+   * 2. Pointer/list host: set/abstract/items.rb:5-11 — the options card's
+   *    item_type_id, where options_card (card-mod-layout
+   *    set/abstract/items/options_api.rb) = `rule_card(:content_options) ||
+   *    right_type_options || Card[:all]`. The corpus's *content options
+   *    rules are Search-typed JSON specs (`{"type": "person"}` — rule rows
+   *    410/498/501 et al.), so the recursion lands in branch 1.
+   * 3. Everything else (and the *all fallback, a non-list card): the
+   *    generic item_type_id (item.rb:90-92) returns nil through
+   *    no_item_type_recursion (item.rb:221-225) — the port short-circuits
+   *    to nil. right_type_options (right is a Cardtype) has no engine
+   *    virtual `R+type+by_name` card to fetch — nil here, documented
+   *    residual.
+   */
+  private async resolveHostItemTypeName(host: RenderCard): Promise<void> {
+    if (this.itemTypeNameByHostKey.has(host.key)) return;
+    // Pre-seed the key so a cycle in the options-card walk terminates (the
+    // port of Ruby's no_item_type_recursion per-card @item_type_lookup).
+    this.itemTypeNameByHostKey.set(host.key, undefined);
+    let resolved: { typeName: string; typeId: number } | undefined;
+    try {
+      resolved = await this.itemTypeIdOf(host, new Set([host.key]));
+    } catch (err) {
+      // The cql parse of the options card's content raises BadQuery in
+      // Ruby. At this PREPARE seam the view is not known yet — the corpus
+      // contract (options-card-cql-parse-boundary.test.ts) keeps the
+      // render-time raise view-conditional (:open only, permitted host),
+      // so the closure degrades to no-item-type and lets the boundary
+      // machinery own the raise. The raw deck's option specs are valid
+      // JSON (the *all fallback content is "{}"), so this branch is the
+      // fixture-anonymization artifact, not raw-deck behavior.
+      if (err instanceof Error && err.message.startsWith("Invalid JSON search query")) {
+        return;
+      }
+      throw err;
+    }
+    if (resolved !== undefined) {
+      this.itemTypeNameByHostKey.set(host.key, resolved);
+    }
+  }
+
+  /** One step of the item-type walk (resolveHostItemTypeName's doc).
+   *  Search AND Set hosts resolve through the cql parse (card-mod-rules
+   *  set/type/set.rb includes Abstract::Search — SET_TYPE_CODE's note);
+   *  pointer/list recurse into their options card; everything else (and
+   *  the *all fallback, a Set-typed card whose db_content is no JSON spec)
+   *  resolves nil like Ruby's no_item_type_recursion guard. */
+  private async itemTypeIdOf(
+    card: RenderCard,
+    visiting: Set<string>,
+  ): Promise<{ typeName: string; typeId: number } | undefined> {
+    // cql_search.rb:14-19 (Search/Set sets; overrides Abstract::Items for
+    // those cardtypes — the corpus's options rules resolve here).
+    if (
+      card.typeCode === SEARCH_TYPE_CODE ||
+      card.typeCode === SET_TYPE_CODE ||
+      card.typeName === "Search"
+    ) {
+      return this.cqlItemTypeId(card);
+    }
+    // set/abstract/items.rb:5-11 (Pointer/List sets include Abstract::Items).
+    if (card.typeCode === "pointer" || card.typeCode === "list") {
+      const opt = await this.resolveOptionsCard(card);
+      if (opt === undefined) return undefined;
+      if (opt.key === card.key || visiting.has(opt.key)) return undefined;
+      visiting.add(opt.key);
+      return this.itemTypeIdOf(opt, visiting);
+    }
+    // item.rb:90-96 generic def: no_item_type_recursion makes the
+    // item_type_id <-> item_type_name pair return nil off the collection
+    // sets. right_type_options' virtual `R+type+by_name` card has no engine
+    // port (resolveOptionsCard documents the stop) — nil, same as Ruby.
+    return undefined;
+  }
+
+  /** cql_search.rb:14-19 item_type_id + :76-78 plausible_type?:
+   *  `type = cql_hash[:type]; type = type&.card_id if plausible_type? type;
+   *  type if type.is_a? Integer`. cql_content parses the db_content JSON
+   *  (parse_json_cql — a non-JSON content raises BadQuery, which the render's
+   *  quiet-error semantics degrade like Ruby's rescue_view). The value is a
+   *  type CARD NAME (or an integer id); `String#card_id` is the Lexicon
+   *  lookup (name_variants.rb:32-34, nil-safe), and the emitted name is the
+   *  type card's own display name (`item_type_id&.cardname`). */
+  private async cqlItemTypeId(
+    card: RenderCard,
+  ): Promise<{ typeName: string; typeId: number } | undefined> {
+    const content = card.dbContent?.toString();
+    if (content === undefined || content.trim() === "") return undefined;
+    let query: unknown;
+    try {
+      query = JSON.parse(content);
+    } catch {
+      throw new Error(`Invalid JSON search query: ${content}`);
+    }
+    if (query === null || typeof query !== "object" || Array.isArray(query)) {
+      return undefined;
+    }
+    const type = (query as Record<string, unknown>)["type"];
+    if (typeof type === "number") {
+      if (!Number.isInteger(type)) return undefined;
+      return this.typeNameForTypeId(type);
+    }
+    if (typeof type !== "string" || type === "" || type === "_left") return undefined;
+    const typeCard = await this.fetcher.fetchByName(type);
+    if (typeCard?.id === undefined || typeCard.name === undefined) return undefined;
+    return { typeName: typeCard.name.s, typeId: typeCard.id };
+  }
+
+  /** The type card's display name for an integer cql :type value
+   *  (`type&.cardname` on the id; nil when the row is missing). */
+  private async typeNameForTypeId(
+    id: number,
+  ): Promise<{ typeName: string; typeId: number } | undefined> {
+    const typeCard = await this.fetcher.fetchById(id);
+    if (typeCard?.name === undefined) return undefined;
+    return { typeName: typeCard.name.s, typeId: id };
   }
 
   /** Pre-enrich every item name a pointer / list card's db_content
