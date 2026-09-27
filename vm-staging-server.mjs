@@ -14,7 +14,12 @@
 //                                   in the scrubbed corpus — these routes
 //                                   serve what's available so the layout
 //                                   references resolve rather than 404).
-//   anything else         -> 404 with the engine's unknown-card bytes
+//   anything else         -> Decko's full-chrome error pages (live-shape,
+//                             2026-09-26): an unresolved card name gets the
+//                             not_found page (404, Default Layout chrome,
+//                             "Not Found" frame, noindex head meta); a
+//                             raising render gets the deck error page
+//                             (500, "Wild Card! / 500 Server Error").
 //
 // Boot:
 //   node vm-staging-server.mjs <path-to-corpus.sqlite> [port]
@@ -47,6 +52,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 import { DeckoName } from "./dist/src/card/name.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
+import { newSlotId } from "./dist/src/card/render/slot-html.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -1305,7 +1311,15 @@ async function renderSearchResultsList(row) {
   let rowsResult;
   try {
     const { executeQuery } = await import("./dist/src/cql/execute.js");
+    // Read-permission filter rides the SQL BEFORE the CQL limit closes the
+    // window — the same seam the engine's runSearch passes
+    // (dist/src/card/render.js runSearch -> cqlPermissionOptions). Without
+    // it the LIMIT 9 window fills with unreadable rows and pushes readable
+    // junction results (Kaori Suzuki+Recommendations, id 45195) out of the
+    // news listing entirely.
+    const permOptions = await render.cqlPermissionOptions();
     const result = await executeQuery(driver, cqlQuery, {
+      ...permOptions,
       parse: {
         resolveCardId: (nameish) => {
           const safe = nameish ?? "";
@@ -1326,11 +1340,15 @@ async function renderSearchResultsList(row) {
   for (const itemRow of rowsResult) {
     const itemId = Number(itemRow.id);
     if (!Number.isFinite(itemId)) continue;
-    const itemName =
-      typeof itemRow.name === "string" && itemRow.name.length > 0
-        ? itemRow.name
-        : idToStoredName.get(itemId);
-    if (itemName === undefined) continue;
+    // Resolve each row through the fetch engine — the same record check the
+    // engine's runSearch applies before rendering a row (fetch, read
+    // verdict, junction-name composition). CQL rows for junction cards
+    // carry no name column value; the fetched record composes it.
+    const itemRecord = await fetcher.fetchById(itemId);
+    if (itemRecord === undefined) continue;
+    if (!(await render.canReadCard(itemRecord))) continue;
+    if (itemRecord.name === undefined) continue;
+    const itemName = String(itemRecord.name);
     let itemHtml;
     try {
       itemHtml = await render.render(itemName, "titled");
@@ -2292,7 +2310,19 @@ async function renderFooterContent() {
 // header/nav/footer (live Recommendations.html). The outer card-slot
 // nesting follows the layout's mainView exactly as before (open view's
 // inner view = content for Home Layout 1, titled for Default Layout).
-async function wrapWithLayout(cardName, viewHtml, layout) {
+// `pageOpts` (optional, error-page lane only — the 12 good pages never pass
+// it, and the defaults keep their bytes identical):
+//   headExtraLine — a complete extra <head> line (with its trailing "\n")
+//     emitted between the viewport meta and the blank line before the
+//     favicon link. Live's not_found page inserts
+//     `<meta content='noindex' name='robots'>` there (live_Community_Building
+//     .html head vs live_Introduction.html head: the noindex line is the
+//     only head delta between the two error shapes).
+//   titleText — the full "<name> - <site title>" string. Error pages for
+//     names with no stored card row carry the URL display form
+//     ("Community Building - Culturesmith"), which resolveCardStoredName
+//     cannot produce (it returns the raw slug on a miss).
+async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   const boot = await ensureBootValues();
   // Resolve the page title from cards.name so the title casing matches
   // the deck's stored name (e.g. /Basic -> "basic", /help -> "Help").
@@ -2317,7 +2347,7 @@ async function wrapWithLayout(cardName, viewHtml, layout) {
   // view transform unwraps the d0-card-body it depends on.)
   const viewProcessed2 = postProcessSuppressedHeadings(viewHtml, cardName);
   const bodyProcessed = postProcessWikiLinks(viewProcessed2);
-  const pageTitle = `${storedName} - ${boot.siteTitle}`;
+  const pageTitle = pageOpts.titleText ?? `${storedName} - ${boot.siteTitle}`;
   const cssUrl = MAIN_CSS_URL;
   const jsUrl = MAIN_JS_URL;
   // A-6/A-11 (round 10): the page SHELL is built from the resolved
@@ -2384,6 +2414,7 @@ async function wrapWithLayout(cardName, viewHtml, layout) {
     `          <title>${escapeHtml(pageTitle)}</title>\n` +
     `<meta charset='UTF-8'>\n` +
     `<meta content='width=device-width, initial-scale=1.0' name='viewport'>\n` +
+    (pageOpts.headExtraLine ?? "") +
     `\n` +
     `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n` +
     `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +
@@ -2508,6 +2539,217 @@ function injectLayoutSlotData(html, layout, homeViewOverride) {
     html.slice(m.index + m[0].length);
 }
 
+// ---------------------------------------------------------------------------
+// Decko error pages (live error-surface parity, 2026-09-26)
+// ---------------------------------------------------------------------------
+//
+// Live serves two full-chrome Decko error surfaces and the bare stubs this
+// server used to emit for them read as a different site. Both shapes are
+// built from the live captures, not reconstructed from Decko source:
+//
+//   not_found  — for a requested name with no card row. Live receipt:
+//   tmp/wrong-goal-hunt/captures/live_Community_Building.html (2026-09-26,
+//   13,715B): Default Layout chrome + main slot
+//   `<div id="<key>-not_found-view" class="card-slot not_found-view ALL
+//   TYPE-basic_c" …>` with h1 "Not Found" and "Could not find <Name>.
+//   Please sign in or sign up to create it.", plus
+//   `<meta content='noindex' name='robots'>` in the head and the title
+//   "<Name> - Culturesmith" in the URL display form (underscores become
+//   spaces). Decko mechanism: format/error.rb page_view_for_unknown →
+//   :not_found with root.error_status = 404 (prototype/lib/card/format/
+//   error.rb:49-55), so the response status stays 404.
+//
+//   server_error — for a page whose render raises (non fetch miss). Live
+//   receipt: captures/live_Introduction.html (2026-09-26, 12,784B):
+//   Default Layout chrome + `<div class='border border-danger text-center
+//   p-3'>` with h1 "Wild Card!", h2 "500 Server Error", h4 "Yuck, sorry
+//   about that." — Decko's deck error page. No noindex meta. Status 500.
+//
+// The not-found card's type constants (id 22281, name "BasicCs", class
+// token "basic_c") are pinned from the live bytes, not derived: the type a
+// fresh Decko card gets comes from the *all+*default rule, and the scrubbed
+// corpus's copy of that rule is empty (cards.id 28, db_content "" — same
+// scrub policy that emptied *all+*layout's neighbors). The live bytes are
+// the contract, the same policy as the "Decko v0.19.1" footer pin.
+const NOT_FOUND_DEFAULT_TYPE = {
+  id: "22281",
+  name: "BasicCs",
+  classToken: "basic_c",
+};
+
+// The not_found outer slot's data-slot JSON: exactly what a Default Layout
+// page's main slot carries (the layout nests {{_main|titled}}; the view
+// redirect to not_found changes only the slot's id/class, not the nest
+// options live records). Key order matches SLOT_KEYS order on live.
+function notFoundSlotOptionsJson() {
+  return JSON.stringify({
+    view: "titled",
+    nest_name: "_main",
+    nest_syntax: "_main|titled",
+    hide: ["menu", "help"],
+    main: true,
+    home_view: "titled",
+    main_view: true,
+    layout: "Default Layout",
+  });
+}
+
+// The main-slot bytes for the not_found page: the live capture's slot div,
+// verbatim except the per-name fields (id prefix, data-card-name, em, url
+// key) and the per-request slot id (SecureRandom hex, normalized in every
+// replay comparison). escapeHtml turns the JSON's `"` into `&quot;`
+// (single-escaped, the live byte form; the footer's `&amp;quot;` shape is a
+// pre-existing page-wide delta this must not copy).
+function buildNotFoundSlotHtml(displayName, nameKey, urlKey) {
+  const slotJson = notFoundSlotOptionsJson();
+  return (
+    `<div id="${escapeHtml(`${nameKey}-not_found-view`)}" ` +
+    `class="card-slot not_found-view ALL TYPE-${NOT_FOUND_DEFAULT_TYPE.classToken}" ` +
+    `data-card-name="${escapeHtml(displayName)}" ` +
+    `data-card-type-id="${NOT_FOUND_DEFAULT_TYPE.id}" ` +
+    `data-card-type-name="${NOT_FOUND_DEFAULT_TYPE.name}" ` +
+    `data-card-link-name="${escapeHtml(urlKey)}" ` +
+    `data-slot-id="${newSlotId()}" ` +
+    `data-slot="${escapeHtml(slotJson)}">` +
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h1 class="d0-card-header-title">` +
+    `<span class="card-title" title="Not Found">Not Found</span></h1></div>\n` +
+    `\n` +
+    `<div class="d0-card-body card-body card-text"><h2>\n` +
+    `Could not find\n` +
+    `<em>\n` +
+    `${escapeHtml(displayName)}\n` +
+    `</em>\n` +
+    `</h2>\n` +
+    `\n` +
+    `<div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+    `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to create it.</div>` +
+    `</div></div></div>`
+  );
+}
+
+// The main-slot bytes for the server-error page: Decko's deck error block,
+// byte-verbatim from live_Introduction.html (article region). No card-slot
+// wrap, no name interpolation inside the block — the requested name shows
+// only in the <title>.
+function buildServerErrorSlotHtml() {
+  return (
+    `<div class='border border-danger text-center p-3'>\n` +
+    `<h1>Wild Card!</h1>\n` +
+    `<h2 class='alert-danger'>500 Server Error</h2>\n` +
+    `<h4 class='p-3'>\n` +
+    `Yuck, sorry about that.\n` +
+    `</h4>\n` +
+    `</div>\n`
+  );
+}
+
+// URL display form for a name with no stored card row: Decko's URL
+// semantics fold "_" to " " (live receipt: /Community_Building renders
+// "Community Building" in the title, data-card-name, and em). Only for
+// error pages — existing cards always display their stored name.
+function urlDisplayNameForSlug(slugName) {
+  return slugName.replace(/_/g, " ");
+}
+
+// Resolve *all+*layout (the deck-wide Default Layout rule) without a card
+// context. The error surfaces are laid out by the deck's default layout on
+// live — the not_found capture's data-slot records
+// `"layout":"Default Layout"` even though the page's own resolution may
+// have picked a specific (or failed) layout before the error. Same query
+// shape as resolveCardLayout's fallback branch.
+async function resolveDefaultLayout() {
+  let ruleRow;
+  try {
+    const { rows } = await driver.query(
+      "SELECT id, db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [ALL_CARD_ID, LAYOUT_POINTER_ID],
+    );
+    ruleRow = rows[0];
+  } catch {}
+  const layoutName =
+    typeof ruleRow?.db_content === "string" && ruleRow.db_content.length > 0
+      ? ruleRow.db_content
+      : "Default Layout";
+  let layoutBody = "";
+  try {
+    const layoutRow = await fetchCardByName(layoutName);
+    if (typeof layoutRow?.db_content === "string") {
+      layoutBody = layoutRow.db_content;
+    }
+  } catch {}
+  if (typeof layoutBody !== "string" || layoutBody.length === 0) {
+    throw new Error(
+      `default layout "${layoutName}" has no body in the corpus; cannot build the error page chrome`,
+    );
+  }
+  return {
+    ruleId: ruleRow?.id ?? null,
+    layoutName,
+    layoutBody,
+    mainView: parseMainViewFromLayoutBody(layoutBody),
+    source: "all-fallback",
+  };
+}
+
+// Build and return one of the two live error shapes. Any failure inside the
+// builder falls back to the previous minimal stubs so the server's error
+// path can never 500 a second time into the handler.
+async function renderDeckoErrorPage(cardName, kind) {
+  try {
+    const layout = await resolveDefaultLayout();
+    const isNotFound = kind === "not_found";
+    const displayName = urlDisplayNameForSlug(cardName);
+    const boot = await ensureBootValues();
+    let viewHtml;
+    let pageOpts;
+    if (isNotFound) {
+      const parsed = DeckoName.parse(displayName);
+      viewHtml = buildNotFoundSlotHtml(displayName, parsed.key, parsed.urlKey);
+      pageOpts = {
+        headExtraLine: `<meta content='noindex' name='robots'>\n`,
+        titleText: `${displayName} - ${boot.siteTitle}`,
+      };
+    } else {
+      // Existing-card render failures keep the stored-name title the same
+      // way the good pages do (live's /Introduction error page titles
+      // "Introduction - Culturesmith").
+      viewHtml = buildServerErrorSlotHtml();
+      pageOpts = {};
+    }
+    const body = await wrapWithLayout(cardName, viewHtml, layout, pageOpts);
+    return {
+      status: isNotFound ? 404 : 500,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Connection": "close",
+        "Keep-Alive": "timeout=0",
+      },
+      body,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(
+      `[vm-staging] error page build failed for ${cardName} (${kind}): ${message}; serving minimal stub`,
+    );
+    if (kind === "not_found") {
+      return htmlResponse(
+        404,
+        `<h1>Card not found</h1><pre>${escapeHtml(`card not found: ${cardName}`)}</pre>` +
+          `<p><a href="/">Home</a> · <a href="/_status">status</a></p>`,
+        "Card not found",
+      );
+    }
+    return htmlResponse(
+      500,
+      `<h1>Render error</h1><pre>${escapeHtml(message)}</pre>`,
+      "Render error",
+    );
+  }
+}
+
 async function renderCardPage(cardName) {
   try {
     // Resolve which layout rule applies to this card (parity with Ruby's
@@ -2617,18 +2859,14 @@ async function renderCardPage(cardName) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/^card not found: /.test(message)) {
-      return htmlResponse(
-        404,
-        `<h1>Card not found</h1><pre>${escapeHtml(message)}</pre>` +
-          `<p><a href="/">Home</a> · <a href="/_status">status</a></p>`,
-        "Card not found",
-      );
+      // Live serves Decko's full-chrome not_found page for unresolved names
+      // (live_Community_Building.html receipt) — not a bare stub. Status
+      // stays 404 (format/error.rb page_status_for_unknown).
+      return renderDeckoErrorPage(cardName, "not_found");
     }
-    return htmlResponse(
-      500,
-      `<h1>Render error</h1><pre>${escapeHtml(message)}</pre>`,
-      "Render error",
-    );
+    // Any other render raise gets Decko's deck error page (live
+    // live_Introduction.html receipt: "Wild Card! / 500 Server Error").
+    return renderDeckoErrorPage(cardName, "server_error");
   }
 }
 
