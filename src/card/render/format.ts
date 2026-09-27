@@ -28,7 +28,7 @@ import {
   type ParsedNest,
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
-import { h } from "./slot-html.js";
+import { h, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, type CrudTask } from "../permissions/view-perms.js";
 import { resolveContentOverride } from "./content-overrides.js";
 
@@ -376,7 +376,22 @@ export class RenderFormat {
           predicateAllowed: (predicate: string): boolean | undefined =>
             predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
         });
-        if (denial !== undefined) return denial;
+        if (denial !== undefined) {
+          // R16 batch 2: error.rb:27-31 view_for_denial substitutes the
+          // configured denial VIEW (:denial), and html/error.rb:75-77
+          // `view :denial do focal? ? loud_denial : quiet_denial end` —
+          // the FOCAL (main, root) denial is the LOUD denial frame,
+          // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
+          // view still in the data-slot JSON (the 2,835-page oracle class:
+          // Azzia Zur, BW 20100614, ...). Non-main formats keep the quiet
+          // span (the bare view lane's pinned pointer-item surface; the
+          // view-lane capture recorded no per-view bytes for fully denied
+          // cards, so nothing graded changes there).
+          if (this.isMain) {
+            return this.mainLoudDenialHtml(voo);
+          }
+          return denial;
+        }
       }
       this.runBeforeHook(effective, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
@@ -402,6 +417,57 @@ export class RenderFormat {
     } finally {
       this.voo = previous;
     }
+  }
+
+  /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
+   *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
+   *  oracle class (Azzia Zur / BW 20100614 / Martial Nonviolence Public
+   *  Module 01 page captures):
+   *
+   *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
+   *  wrap_with(:div, loud_denial_message)] }`; with_frame additionally
+   *  hides :help — the hides land in the slot JSON's hide list while the
+   *  data-slot `view` field keeps the REQUESTED view (the wrap is emitted
+   *  with view "denial" for the id/class only).
+   *
+   *  loud_denial_message, Anonymous branch (error.rb:215-222
+   *  sign_in_or_up_links(to_do_unauthorized_task)): "Please sign in or
+   *  sign up to read this." (format_denied_task: "to %{denied_task} this"
+   *  with the read task). The signed-in branch ("You need permission to
+   *  read this") is a documented remainder — the captured corpus viewer
+   *  is always Anonymous.
+   *
+   *  Slot wrap: id `<safe-key>-denial-view`, class `card-slot
+   *  denial-view <set-keys>`, data attrs from the real card, data-slot
+   *  from the ORIGINAL main-nest opts (identical to the readable main
+   *  render's slot JSON except the id/class view and the hide list). */
+  private mainLoudDenialHtml(voo: Voo): string {
+    voo.hide("menu");
+    voo.hide("help");
+    const card = this.card;
+    const name = card.name.s;
+    const titleInner = h(name).split("+").join("<span>+</span>");
+    const header =
+      `<div class="d0-card-header card-header">` +
+      `<h1 class="d0-card-header-title">` +
+      `<span class="card-title" title="${h(name)}">${titleInner}</span></h1></div>`;
+    const message =
+      `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`;
+    const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
+    const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
+    const attrs = emitAttrs({
+      id: `${card.name.safeKey}-denial-view`,
+      class: voo.classy(["card-slot", "denial-view", card.setKeys]),
+      "data-card-id": card.id === undefined ? undefined : String(card.id),
+      "data-card-name": h(card.name.s),
+      "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
+      "data-card-type-name": card.typeName,
+      "data-card-link-name": this.urlKey(),
+      "data-slot-id": newSlotId(),
+      "data-slot": slotOptionsJson(voo.slotOptions()),
+    });
+    return `<div${attrs}>${frame}</div>`;
   }
 
   /**
@@ -625,7 +691,14 @@ export class RenderFormat {
       // data-card-name (the slot's own attribute; id 9625 shows the
       // absolute form there). card-mod-tabs.ts#chunkRefChunks already
       // follows this contract for its chunk walk.
-      nest_name: nest.name,
+      // R16: codename marks (`{{:footer}}`) resolve in the nest_name — the
+      // page-lane oracle pins `nest_name: "*footer"` for the Default
+      // Layout's `{{:footer|content}}` chunk while relative/authored forms
+      // stay verbatim ("+Source Title", id 9625). Ruby's chunk name passes
+      // through the codename interpretation at prepare time
+      // (chunk/nest.rb:23 + the `:` codename config), so the resolved
+      // card's name is what lands in the slot JSON.
+      nest_name: nest.name.startsWith(":") ? (card.name?.s ?? nest.name) : nest.name,
       nest_syntax: nest.syntax,
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),

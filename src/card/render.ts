@@ -2538,25 +2538,33 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  /** R16: set/rule SET membership — the port of the set/rule pattern
-   *  (card-mod-rules: the rule set is every card whose RIGHT part is a
-   *  Setting-type card). Gates the rule-bar behaviors: bar_view.rb:10's
-   *  `_rule-item` class_up + category classes, bar_view.rb:2-3's
-   *  three-column bar_cols (5,4,3) with bar_middle kept, and the
-   *  bar_menu's new-card create/edit label split. Unlike cardIsRule (the
-   *  rule? predicate — standard_rule? ALSO requires the left part to be
-   *  a Set), the rule SET only constrains the right part, which is why
-   *  the 2-part virtual `*all+*autoname` renders as a rule item in the
-   *  oracle. */
+  /** R16: set/rule SET membership — the port of set_pattern/06_rule.rb
+   *  (`pattern_applies? card -> card.rule?`, lib/card/rule/all.rb:32-40):
+   *  standard_rule? = the right part is a Setting AND the left part is a
+   *  Set — NO part-count limit (the 2-part `*all+*autoname` and the 3-part
+   *  `*captcha+*right+*autoname` are both rule cards). Gates the rule-bar
+   *  behaviors: bar_view.rb:10's `_rule-item` class_up + category classes,
+   *  bar_view.rb:2-3's three-column bar_cols (5,4,3) with bar_middle kept,
+   *  and the bar_menu's new-card create/edit label split. The corpus's
+   *  `mod: format+*style` (left "mod: format" is Mod-typed, NOT a Set) is
+   *  NOT a rule card — the oracle pins its bar WITHOUT `_rule-item`
+   *  (dual-lane-view:style: mods:render:open). */
   cardMatchesRuleSet(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
-    if (ids === undefined || ids.setting === undefined) return false;
+    if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
+      return false;
+    }
     if (!card.name.isCompound) return false;
     const rightKey = card.name.rightName?.key;
-    if (rightKey === undefined) return false;
+    const leftKey = card.name.leftName?.key;
+    if (rightKey === undefined || leftKey === undefined) return false;
     const rightRecord = this.renderCards.get(rightKey);
-    if (rightRecord === undefined) return false;
-    return rightRecord.record.typeId === ids.setting;
+    const leftRecord = this.renderCards.get(leftKey);
+    if (rightRecord === undefined || leftRecord === undefined) return false;
+    return (
+      rightRecord.record.typeId === ids.setting &&
+      leftRecord.record.typeId === ids.set
+    );
   }
 
   cardIsRule(card: RenderCard): boolean {
