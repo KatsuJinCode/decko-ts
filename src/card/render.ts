@@ -1567,18 +1567,32 @@ export class RenderEngine implements RenderEngineLike {
    *  corpus carries exactly two distinct type-opt shapes, so the set is
    *  bounded; the sync unknown-nest builder reads the warm map). */
   private nestTypeOptTargetsDone = new Set<string>();
+  /** Cards whose dbContent the type-opt sweep already scanned (keyed like
+   *  pointerListHostsDone). The deck is static per engine lifetime — a
+   *  re-scan could only re-parse the same chunks — and the unguarded
+   *  47k-record map walk per render measured as a verifier-grading
+   *  slowdown (R17 first run: grading phase never completed). */
+  private nestTypeOptScanned = new Set<string>();
+  /** renderCards.size at the last type-opt sweep: new stores are the only
+   *  thing that can add an unscanned host, so an unchanged size skips the
+   *  whole walk (the enrichPointerListItemsClosure grew-flag shape). */
+  private nestTypeOptLastSize = -1;
 
   /** R17 (unknown-nest typing): enrich every `| type:X ` nest-opt target
    *  the prepared closure's contents name but the reference closure never
    *  reached (an OPT value is not a reference). buildUnknownNestCard
    *  resolves the type card synchronously (nest/fetch.rb:47-48
    *  new_card_args — `args[:type] = view_opts[:type]`), so the target must
-   *  be warm before the first nest miss renders. Processed hosts are
-   *  skipped per engine lifetime (the deck is static; a re-walk could only
-   *  re-parse the same chunks). */
+   *  be warm before the first nest miss renders. Skips entirely while the
+   *  render-card map has not grown since the last sweep, and per card via
+   *  nestTypeOptScanned. */
   private async enrichNestTypeOptTargets(): Promise<void> {
+    if (this.renderCards.size === this.nestTypeOptLastSize) return;
+    this.nestTypeOptLastSize = this.renderCards.size;
     const need = new Set<string>();
     for (const card of this.renderCards.values()) {
+      if (this.nestTypeOptScanned.has(card.key)) continue;
+      this.nestTypeOptScanned.add(card.key);
       const content = card.dbContent;
       if (content === undefined || content === "" || !content.includes("type:")) continue;
       for (const piece of scanNests(content)) {
