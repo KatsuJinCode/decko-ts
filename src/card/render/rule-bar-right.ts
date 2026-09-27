@@ -195,6 +195,31 @@ function ruleOneLineContent(
 export function ruleBarRightHtml(card: RenderCard, engine?: RenderEngineLike): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";
-  const rightSetting = card.name.rightName?.s;
-  return `<div class="text-muted one-line">${ruleOneLineContent(card, rightSetting, engine)}</div>`;
+  // R16: bar_right for rule cards is rule_short_content (bar_view.rb:39-44):
+  // `nest existing_rule_card, view: :one_line_content, set_context: ...` —
+  // the EXISTING rule's one-line content through the existing rule's OWN
+  // read verdict (the nest's view gate), not the virtual's own content.
+  // existing_rule_card (editor.rb:119-131): the card itself for stored
+  // rows; for virtual rule cards the prototype's winning stored rule (the
+  // engine memoizes the walk; explicitly false = none → one_line_content's
+  // `return render_mini_unknown unless existing_rule_card` renders a blank
+  // bar-right — the oracle's *all+*autoname bar pins `bar-right …>\n\n</div>`
+  // with no one-line div at all). undefined (engine absent or the setting
+  // never preloaded) keeps the pre-R16 own-content behavior.
+  let oneLineCard = card;
+  if (card.id === undefined && engine?.hasExistingRuleFor?.(card.key) === false) {
+    return "";
+  }
+  const existing = card.id === undefined ? engine?.existingRuleFor?.(card.key) : undefined;
+  if (existing !== undefined) oneLineCard = existing;
+  const rightSetting = oneLineCard.name.rightName?.s;
+  const inner = ruleOneLineContent(oneLineCard, rightSetting, engine);
+  // The nested existing rule's own view gate: a read-denied existing rule
+  // (e.g. *all+*default, stored read rule "Anyone Signed In") renders the
+  // quiet denial span instead of its one-line content
+  // (view/permission.rb:19-23 altered_view on the nest).
+  if (engine?.isDenied(oneLineCard) === true) {
+    return `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`;
+  }
+  return `<div class="text-muted one-line">${inner}</div>`;
 }

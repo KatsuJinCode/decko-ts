@@ -818,11 +818,12 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
  *  through to quietDenial — the structural gap. The virtual card
  *  construction lives in virtual-rule-card.ts; this function consults
  *  it after the stored-child lookup misses. Stored children keep
- *  their stored form (the existing nestRecord path); virtual children
- *  render the live-walked bar via the same nestRecord shape with the
- *  additional `hide: ["bar_nav"]` opt Ruby emits for new (id-less)
- *  rule cards (card-mod-rules set/rule/bar_view.rb — the rule's
- *  :bar hook hides the nav box for unsaved cards). */
+ *  their stored form (nestRecord renders the stored card through its
+ *  view gate, which emits the quiet span when its stored read rule
+ *  denies — Ruby's `card.fetch setting, new: {}` semantics, R16).
+ *  Virtual children render the live-walked bar; the bar's own hook
+ *  (prepareBar, bar_view.rb:11) hides the nav box for unsaved cards
+ *  whose prototype carries no existing rule. */
 function renderSettingListItems(
   fmt: RenderFormat,
   settings: ReadonlyArray<string>,
@@ -831,7 +832,19 @@ function renderSettingListItems(
 ): string {
   const items = settings.map((settingCodename) => {
     const stored = ruleByCodename.get(settingCodename);
-    if (stored !== undefined && !fmt.engine.isDenied(stored)) {
+    if (stored !== undefined) {
+      // R16: Ruby's setting_list_item is
+      //   rule_card = card.fetch setting, new: {}
+      //   nest(rule_card, opts.merge(view: view))
+      // `card.fetch` returns the STORED rule card whenever one exists —
+      // the `new: {}` applies only on a fetch MISS. The nest's view gate
+      // (view/permission.rb:19-23 altered_view) then decides bar vs quiet
+      // denial from THAT card's verdict, so a denied stored rule card
+      // renders the quiet span — it must NOT fall through to a virtual
+      // (whose more general read walk would allow and render a bar the
+      // oracle never pins). The stored verdicts live in deniedVerdicts
+      // (id-keyed), filled by the ensureVerdicts pass that runs right
+      // after preloadSetRules in the prepare pipeline.
       const slotHtml = fmt.nestRecord(stored, "bar", {
         nest_name: stored.name.s,
         show: ["bar"],
@@ -839,11 +852,11 @@ function renderSettingListItems(
       });
       return `<li class="nav-item">${slotHtml}</li>`;
     }
-    // Stored child missing or denied — try virtual construction.
-    // Ruby's setting_list_item builds the virtual card unconditionally
-    // when the set card doesn't store a custom rule for this setting;
-    // the live permission walk on the virtual resolves through the
-    // *all pattern precedence (the *all+*read rule grants everyone).
+    // Stored child missing — virtual construction.
+    // Ruby's setting_list_item builds the virtual card via `new: {}`
+    // exactly when the fetch misses; the live permission walk on the
+    // virtual resolves through the *all pattern precedence (the
+    // *all+*read rule grants everyone).
     const settingCard = fmt.engine.findSettingCard?.(settingCodename);
     if (settingCard !== undefined) {
       const virtual = buildVirtualRuleCard({
@@ -854,7 +867,6 @@ function renderSettingListItems(
       const slotHtml = fmt.nestRecord(virtual, "bar", {
         nest_name: virtual.name.s,
         show: ["bar"],
-        hide: ["bar_nav"],
         home_view: "bar",
       });
       return `<li class="nav-item">${slotHtml}</li>`;
@@ -1474,7 +1486,11 @@ const linkView: ViewFn = ({ fmt, voo }) => {
  *   hidden. */
 function prepareBar(ctx: ViewContext): void {
   const { fmt, voo } = ctx;
-  const isRule = fmt.engine.cardIsRule?.(fmt.card) ?? false;
+  // R16: the rule-bar detection is set/rule SET membership (right part is
+  // a Setting), not the 3-part rule? predicate — bar_view.rb's set covers
+  // the 2-part virtual rule shape (`*all+*autoname`) and its bar_cols
+  // 5,4,3 three-column layout (bar_view.rb:2-3) applies to it.
+  const isRule = fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false;
   const isRuleBar = isRule && ctx.voo.requestedView === "bar";
   const cols = readBarCols(fmt.card);
   // Always: 2-col default for bar-left/bar-right.
@@ -1490,6 +1506,16 @@ function prepareBar(ctx: ViewContext): void {
   } else {
     voo.classUp("bar-middle", "d-none d-md-flex");
     voo.hide("bar_middle");
+  }
+  // R16: bar_view.rb:11 `voo.hide :bar_nav unless existing_rule_card` —
+  // the bar nav hides exactly when no stored rule exists for the virtual
+  // (find_existing_rule_card, editor.rb:119-131: new card → the
+  // prototype's winning stored rule; stored card → itself). The memo is
+  // filled by the engine's preloadVirtualRuleVerdicts. Undefined (never
+  // preloaded) hides like the pre-R16 behavior (id-less ⇒ no existing).
+  if (fmt.card.id === undefined) {
+    const existing = fmt.engine.hasExistingRuleFor?.(fmt.card.key);
+    if (existing !== true) voo.hide("bar_nav");
   }
 }
 
@@ -1790,7 +1816,7 @@ function itemBarHtml(ctx: ViewContext): string {
     "data-card-type-name": card.typeName,
     "data-slot-id": newSlotId(),
   });
-  const menu = itemBarMenuHtml(url);
+  const menu = itemBarMenuHtml(url, card.id === undefined);
   return (
     `<div class='${voo.classy("bar")} nodblclick d-flex _card-link'${dataAttrs}>\n` +
     `${barBodyHtml(ctx)}\n` +
@@ -1799,16 +1825,21 @@ function itemBarHtml(ctx: ViewContext): string {
   );
 }
 
-/** bar_menu.haml with bar.rb#bar_menu_items. */
-function itemBarMenuHtml(url: string): string {
+/** bar_menu.haml with bar.rb#bar_menu_items. R16: the edit link's label is
+ *  `card.new? ? "create" : "edit"` (bar.rb:70) and the page link's anchor
+ *  class is the known/wanted split (links.rb add_known_or_wanted_class —
+ *  a new/id-less card is not known, so the oracle pins `wanted-card` on
+ *  virtual rule-card menus, e.g. *all+*autoname). Stored cards keep the
+ *  pinned known-card/"edit" bytes. */
+function itemBarMenuHtml(url: string, isNew = false): string {
   const fullPage =
-    `<a class="full-page-link known-card" href="/${h(url)}">${icon("open_in_full")} page</a>`;
+    `<a class="full-page-link ${isNew ? "wanted-card" : "known-card"}" href="/${h(url)}">${icon("open_in_full")} page</a>`;
   const modal =
     `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl"` +
     ` class="_modal-page-link slotter" href="/${h(url)}?layout=modal" data-remote="true">${icon("fullscreen")} modal</a>`;
   const edit =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom"` +
-    ` data-slotter-mode="modal" data-modal-class="modal-lg" href="/${h(url)}/edit" data-remote="true">${icon("edit")} edit</a>`;
+    ` data-slotter-mode="modal" data-modal-class="modal-lg" href="/${h(url)}/edit" data-remote="true">${icon("edit")} ${isNew ? "create" : "edit"}</a>`;
   const board =
     `<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom"` +
     ` data-slotter-mode="modal-replace" href="/${h(url)}/board" data-remote="true">${icon("space_dashboard")} advanced</a>`;

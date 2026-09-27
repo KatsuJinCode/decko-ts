@@ -118,12 +118,33 @@ export class Voo {
   /** visibility.rb#process_visibility: inherit the parent's viz, then viz the
    *  requested view. The `optional: :show` render arg
    *  (method_delegation.rb#render_args -> optional_render_opt default) makes
-   *  every delegated sub-render visible by default. */
+   *  every delegated sub-render visible by default.
+   *  R16: the nest opts' own show/hide lists viz into the map (Ruby lines
+   *  75-92: `process_visibility_options live_options` — hide processed
+   *  before show, both DELETED from the options so slot_options' final
+   *  merge re-derives them from the viz alone). Without this, a view body
+   *  that adds its own hide (bar.rb's prepare_bar → bar_middle) REPLACED
+   *  the nest's hide list in the emitted slot JSON instead of joining it
+   *  (bar_view.rb:11's bar_nav hide vanished from *all+*autoname's
+   *  data-slot). */
   processVisibility(optional: unknown): void {
     if (this.parent !== undefined) {
       for (const [view, setting] of this.parent.viz) {
         if (!this.viz.has(view)) this.viz.set(view, setting); // reverse_merge!
       }
+    }
+    // visibility.rb:87-92 process_visibility_options — the nest opts' own
+    // show/hide lists viz first (hide before show), both removed from the
+    // live options.
+    const optHide = this.opts["hide"];
+    const optShow = this.opts["show"];
+    if (optHide !== undefined) {
+      delete this.opts["hide"];
+      for (const view of normalizeVisibilityList(optHide)) this.viz.set(view, "hide");
+    }
+    if (optShow !== undefined) {
+      delete this.opts["show"];
+      for (const view of normalizeVisibilityList(optShow)) this.viz.set(view, "show");
     }
     const requested = this.requestedView;
     // null = NO optional render opt (the show_with_page_layout main render —
@@ -430,7 +451,11 @@ export class RenderFormat {
       // html/views.rb#prepare_content_slot
       voo.classUp("card-slot", "d0-card-content");
     } else if (view === "bar") {
-      if (this.cardIsRule()) {
+      // R16: the gate is set/rule SET membership (the card's right part is
+      // a Setting), not the rule? predicate — bar_view.rb's set covers the
+      // 2-part rule shape (`*all+*autoname`) exactly like the 3-part
+      // preference shape, and the oracle pins `_rule-item` on both.
+      if (this.engine.cardMatchesRuleSet?.(this.card) ?? false) {
         // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
         const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
@@ -505,11 +530,40 @@ export class RenderFormat {
    *  recapture-raw:*content options+*right:render:open (offset 5127,
    *  exp "r"), recapture-raw:*input type+*right:render:open (offset
    *  5024, exp "r"). */
+  /** The Card::Setting categories for the given setting codename — the
+   *  faithful port of card-mod-rules set/type/set/setting_categories.rb:9-15
+   *  `categories(setting)`:
+   *      result = [:all]
+   *      result += %i[field recent common].select { |cat|
+   *        category_settings(cat)&.include? setting }
+   *  with the category memberships:
+   *  - field_related_settings = field_settings (setting_categories.rb:52-54:
+   *    default, help, input_type, content_options, content_option_view)
+   *  - recent_settings = Card[:recent_settings].item_cards — the *recent
+   *    settings CARD's pointer items (corpus row 23808, content
+   *    "*read *structure *script *content options *input type *default
+   *    *layout *help *thanks *update *guide *head *follow *style
+   *    *content option view *create *follow fields *delete *captcha
+   *    *table of contents *comment" — note AUTONAME and the on_* event
+   *    settings are NOT members, which is why the oracle's *all+*autoname
+   *    bar pins `_category-all` alone); the `& visible_setting_codenames`
+   *    intersection is implicit (only visible settings render here)
+   *  - COMMON_SETTINGS = create, read, update, delete, structure, default,
+   *    guide (setting_categories.rb:8)
+   *
+   *  R16 correction of the CLUSTER 35 "always include _category-recent"
+   *  overfix: recent is a MEMBERSHIP list, not a constant — the blanket
+   *  push made every autoname/on_* bar carry `_category-recent` the oracle
+   *  never emits (the *captcha+*right:render:content byte-diff family:
+   *  exp `_category-all" data-card-name=...` got `_category-all
+   *  _category-recent" ...`). CLUSTER 35's original three pins re-verified:
+   *  their settings (captcha et al.) ARE recent members, so those pins
+   *  keep their bytes under the membership form. */
   private ruleSetCategories(settingCodename: string | undefined): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
     if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
-    result.push("recent");
+    if (RECENT_SETTINGS.has(settingCodename)) result.push("recent");
     if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
     return result;
   }
@@ -1031,6 +1085,22 @@ export interface RenderEngineLike {
    *  the bar view needs (bar_view.rb:10). Optional; engines without it
    *  skip the rule class chain. */
   cardIsRule?(card: RenderCard): boolean;
+  /** R16: set/rule SET membership — the card's right part is a Setting
+   *  (no left-type/3-part requirement; see RenderEngine#cardMatchesRuleSet).
+   *  Gates the rule-bar behaviors (bar_view.rb:2-11): _rule-item classes,
+   *  three-column bar cols, and the bar_nav hide split. Optional; engines
+   *  without it fall back to the rule? predicate shape via cardIsRule. */
+  cardMatchesRuleSet?(card: RenderCard): boolean;
+  /** R16: the find_existing_rule_card memo for virtual rule cards
+   *  (editor.rb:119-131). True = a stored rule exists for this virtual's
+   *  (set, setting); false = none; undefined = not preloaded. Consumed by
+   *  prepareBar's `voo.hide :bar_nav unless existing_rule_card` and the
+   *  one-line-content mini_unknown gate in rule-bar-right. */
+  hasExistingRuleFor?(key: string): boolean | undefined;
+  /** R16: the resolved existing-rule CARD for a virtual rule card — the
+   *  one-line content nest target of rule_short_content (bar_view.rb:39-44).
+   *  Undefined = no existing rule (or not preloaded). */
+  existingRuleFor?(key: string): RenderCard | undefined;
   /** Look up a card by its codename (the codehash id->codename reverse
    *  direction). Used by the set-card Rules section's virtual rule-card
    *  construction (card-mod-rules set/type/set/html_views/rule_lists.rb
@@ -1208,6 +1278,13 @@ function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
 }
 
+/** View.normalize_list (visibility.rb:89) — a visibility option value is
+ *  one view name or an array of them. */
+function normalizeVisibilityList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  return typeof value === "string" ? [value] : [];
+}
+
 // ---------------------------------------------------------------------------
 // Card::Setting category membership (card-mod-rules set/type/set/
 // setting_categories.rb:6-7): the per-category setting lists that drive
@@ -1223,6 +1300,19 @@ const COMMON_SETTINGS: ReadonlySet<string> = new Set([
 /** card-mod-rules set/type/set/setting_categories.rb:7 FIELD_SETTINGS. */
 const FIELD_SETTINGS: ReadonlySet<string> = new Set([
   "default", "help", "input_type", "content_options", "content_option_view",
+]);
+
+/** R16: recent_settings — card-mod-rules setting_categories.rb:43-45
+ *  `Card[:recent_settings].item_cards` ∩ visible settings. The *recent
+ *  settings card is corpus row 23808 (content cited on ruleSetCategories);
+ *  its items minus the two non-corpus names are the membership here.
+ *  Missing from this list (and therefore category-less beyond `all`):
+ *  autoname, on_create, on_update, on_delete. */
+const RECENT_SETTINGS: ReadonlySet<string> = new Set([
+  "read", "structure", "script", "content_options", "input_type", "default",
+  "layout", "help", "thanks", "update", "guide", "head", "follow", "style",
+  "content_option_view", "create", "follow_fields", "delete", "captcha",
+  "table_of_contents", "comment",
 ]);
 
 // ---------------------------------------------------------------------------
