@@ -662,6 +662,7 @@ export class RenderFormat {
         typeId: defaulted?.typeId,
         typeName: defaulted?.typeName,
         leftTypeName,
+        isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
       }),
       unknown: true,
     };

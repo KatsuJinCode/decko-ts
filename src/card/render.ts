@@ -2575,7 +2575,20 @@ export class RenderEngine implements RenderEngineLike {
       typeCode,
       id: record.id,
       dbContent: cardContent(record),
-      setKeys: safeSetKeys({ name, typeId, typeName, leftTypeName, isRule }),
+      // pattern/all.rb#patterns: a NEW card's safe_set_keys drops the SELF
+      // token. record.isNew is false for every stored row (byte-neutral
+      // there) and true for the fetch placeholders — the virtual-card hits
+      // (the structured/missing children: PCTS+legacy class) whose captured
+      // slots read "ALL ALL_PLUS TYPE-<t> RIGHT-<r> TYPE_PLUS_RIGHT-<l>-<r>"
+      // with no SELF.
+      setKeys: safeSetKeys({
+        name,
+        typeId,
+        typeName,
+        leftTypeName,
+        isRule,
+        ...(record.isNew ? { isNew: true } : {}),
+      }),
     };
     this.renderCards.set(key, card);
     if (record.id !== undefined) this.idsByKey.set(key, record.id);

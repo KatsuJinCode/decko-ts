@@ -218,6 +218,7 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
     typeName,
     leftTypeName: setCard.typeName,
     isRule: true,
+    isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
   });
   return {
     record,
