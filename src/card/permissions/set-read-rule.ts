@@ -150,16 +150,40 @@ export async function deriveReadRuleRecord(
   return { readRuleId, readRuleClass };
 }
 
+/**
+ * The read-side port of `permission_rule_id(:read)` (permissions.rb:55-61) —
+ * the effective rule id a viewer's read verdict checks, `_left` delegation
+ * included: a compound card whose first applicable read rule's content is
+ * "_left" (or "[[_left]]") reads through its left card's permission rule,
+ * recursively. `deriveReadRuleRecord` wraps this plus the class derivation
+ * for the write path; the read path (canReadByRuleLookup) needs only the id,
+ * so the class queries stay off the render-hot path.
+ *
+ * Null when no rule resolves (the rule-less-seed case; the caller decides
+ * the divergence posture).
+ */
+export async function effectiveReadRuleId(
+  deps: ReadRuleWriteDeps,
+  card: ReadRuleCardInput,
+): Promise<number | null> {
+  const direct = await firstApplicableReadRule(deps, card);
+  if (direct === undefined) return null;
+  return permissionRuleId(deps, card, direct);
+}
+
 /** permission_rule_id (permissions.rb:55-61): compound cards whose
  *  applicable rule says "_left" read through their left card; everything
- *  else reads through the rule card the walk found. */
+ *  else reads through the rule card the walk found. `compound?` in Ruby is
+ *  NAME-based (name.parts.length > 1), not id-based — the read side calls
+ *  this for virtual cards whose ids do not exist yet, so the name decides
+ *  (for stored junction rows both agree: the row's left_id/right_id are set
+ *  exactly when the composed name is compound). */
 async function permissionRuleId(
   deps: ReadRuleWriteDeps,
   card: ReadRuleCardInput,
   direct: DirectRuleCard,
 ): Promise<number | null> {
-  const compound =
-    (card.leftId ?? null) !== null && (card.rightId ?? null) !== null;
+  const compound = DeckoName.parse(card.name).isCompound;
   if (compound && direct.content !== null && LEFT_RULE_CONTENT.test(direct.content)) {
     return leftPermissionRuleId(deps, card);
   }

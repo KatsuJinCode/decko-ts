@@ -56,27 +56,18 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // captured oracle opens with `<div class="pointer-list">`, not
       // `<div class="card-list card-list-bar pointer-list">`. The
       // engine's previous always-full-prefix branch produced the wrong
-      // outer wrapper and failed this entry. Seed the rule + its
-      // permission setting right + an item name so the pointer-item
-      // wrapper emits.
+      // outer wrapper and failed this entry. The items (irjkznnbpewjpr,
+      // wautvrx) have NO rows in the corpus db (verified directly) — do
+      // NOT seed them: the oracle's mini_bar slots came from the
+      // UNKNOWN-card path (bar.rb:9 `unknown: :mini_bar` on a fetch
+      // miss), which the phantom path below covers. Seeding them as real
+      // denied rows routed the render through the readable-card denial
+      // shape, which the dual-lane raw oracle renders as the bare quiet
+      // span instead (538 bare spans, zero mini wraps for real items).
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(6551);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 9010,
-        name: "irjkznnbpewjpr",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
-      await seedCard(storage, {
-        id: 9011,
-        name: "wautvrx",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
       const html = await storage.engine.render("*star+*create", "content");
       // The outer wrapper must be the simple one — NOT the full prefix.
       expect(html).toContain('<div class="pointer-list">');
@@ -101,13 +92,8 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       baseIds.add(275);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 9012,
-        name: "bifaarykabanhm",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
+      // bifaarykabanhm has NO row in the corpus db (verified directly) —
+      // the phantom path renders its mini_bar slot; no seed.
       const html = await storage.engine.render("*all+*layout", "content");
       // Full prefix is correct here — the captured oracle for *layout
       // carries card-list card-list-bar (corpus:275, shard-000000:170).
@@ -128,13 +114,8 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       baseIds.add(34843);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 9013,
-        name: "yzzw",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
+      // yzzw has NO row in the corpus db (verified directly) — same
+      // absent-item shape as the phantom test below; no seed.
       const html = await storage.engine.render("*home", "content");
       expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
     },

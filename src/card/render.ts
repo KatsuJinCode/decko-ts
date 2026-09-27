@@ -51,7 +51,7 @@ import {
 } from "./render/format.js";
 import { renderPageBytes, UnknownLayoutError } from "./render/page.js";
 import type { ViewOverride } from "./rules/apply.js";
-import { HTML_VIEWS, SETTING_GROUPS, GROUP_TO_SETTINGS } from "./render/views.js";
+import { HTML_VIEWS, SETTING_GROUPS, visibleGroupSettings } from "./render/views.js";
 import {
   ModLoader,
   getDefaultModLoader,
@@ -523,6 +523,8 @@ export class RenderEngine implements RenderEngineLike {
     // cards synchronously from the render-card map.
     if (rootCard.typeCode === "set") {
       await this.preloadSetRules(rootCard);
+    } else {
+      console.error(`[permdebug] preloadSetRules skipped root=${rootCard.name?.s} typeCode=${rootCard.typeCode}`);
     }
     // THE OPTIONS-CARD CQL PARSE BOUNDARY (the host's own item-view options
     // chain — one of the firing paths of the capture-sentinel class; oracle
@@ -1649,22 +1651,34 @@ export class RenderEngine implements RenderEngineLike {
       `ORDER BY db_content, name`,
       [setCard.id],
     );
-    if (result.rows.length === 0) return;
-    // Side cards first: enrich the rule's right (the setting) so junctions
-    // compose from the map, mirroring prefetch.ts's sides-before-junctions.
-    const rightIds = new Set<number>();
-    for (const row of result.rows) {
-      if (row.right_id !== null && row.right_id !== undefined) rightIds.add(row.right_id);
-    }
-    for (const rid of rightIds) {
-      const existing = await this.fetcher.fetchById(rid);
-      if (existing === undefined || existing.name === undefined) continue;
-      await this.cacheFetchedRecord(existing);
-    }
-    for (const row of result.rows) {
-      const record = await composeCardRecord(row, this.fetcher.lexicon);
-      if (record.name === undefined) continue;
-      await this.cacheFetchedRecord(record);
+    // Child-rule enrichment only fires when stored rule children exist. The
+    // settings preload + the virtual-rule-card verdict preload below run for
+    // EVERY set-card render: the Rules section's setting list builds a
+    // VIRTUAL rule card per setting without a stored child (the common case
+    // — most sets store no rules), and both the bar's category classes and
+    // its read-verdict depend on these passes. The previous early return on
+    // `rows.length === 0` skipped them for exactly the sets with no stored
+    // rules, leaving findSettingCard empty and every virtual's read gate
+    // closed — the engine rendered 21 quiet-denial spans where Ruby renders
+    // 20 rule bars + 1 denial (*sidebar+*self content view, the dominant
+    // permission_denied_mismatch signature).
+    if (result.rows.length > 0) {
+      // Side cards first: enrich the rule's right (the setting) so junctions
+      // compose from the map, mirroring prefetch.ts's sides-before-junctions.
+      const rightIds = new Set<number>();
+      for (const row of result.rows) {
+        if (row.right_id !== null && row.right_id !== undefined) rightIds.add(row.right_id);
+      }
+      for (const rid of rightIds) {
+        const existing = await this.fetcher.fetchById(rid);
+        if (existing === undefined || existing.name === undefined) continue;
+        await this.cacheFetchedRecord(existing);
+      }
+      for (const row of result.rows) {
+        const record = await composeCardRecord(row, this.fetcher.lexicon);
+        if (record.name === undefined) continue;
+        await this.cacheFetchedRecord(record);
+      }
     }
     // Load the *all 23 settings cards (autoname, default, structure, create,
     // read, ...) so the before(:bar) hook can resolve each rule's right
@@ -1748,7 +1762,7 @@ export class RenderEngine implements RenderEngineLike {
     const state = this.readPermission;
     if (state === undefined) return;
     for (const groupName of SETTING_GROUPS) {
-      for (const settingCodename of GROUP_TO_SETTINGS[groupName]) {
+      for (const settingCodename of visibleGroupSettings(groupName)) {
         const settingCard = this.findSettingCard(settingCodename);
         if (settingCard === undefined) continue;
         const name = DeckoName.parse(`${setCard.name.s}+*${settingCodename}`);

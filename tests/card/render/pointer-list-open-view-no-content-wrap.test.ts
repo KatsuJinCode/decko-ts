@@ -66,25 +66,18 @@ describe("pointer/list open-view accordion-body omits the content-view slot wrap
     async () => {
       // corpus:6551 *star+*create (the family anchor). Seed the card +
       // its type card + its read rule (mirror the pointer-list-trailing-
-      // newline.test.ts seeding shape for the same family).
+      // newline.test.ts seeding shape for the same family). The items
+      // (irjkznnbpewjpr, wautvrx) have NO rows in the corpus db (verified
+      // directly) — do NOT seed them: the oracle's mini_bar slots came
+      // from the UNKNOWN-card path (bar.rb:9 `unknown: :mini_bar` on a
+      // fetch miss), which the phantom path covers. Seeding them as real
+      // denied rows routed the render through the readable-card denial
+      // shape, which the dual-lane raw oracle renders as the bare quiet
+      // span instead.
       const baseIds = new Set(readShardLines().map((l) => l.id));
       baseIds.add(6551);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 9010,
-        name: "irjkznnbpewjpr",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
-      await seedCard(storage, {
-        id: 9011,
-        name: "wautvrx",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
       const html = await storage.engine.render("*star+*create", "open");
       // Sanity: the outer open-view slot is present (the test render must
       // produce a recognizable open view, not a closed stub).

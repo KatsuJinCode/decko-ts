@@ -76,25 +76,18 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
       baseIds.add(34843);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      // Seed yzzw (the *home pointer's single item). The captured
-      // bytes record yzzw as a card with read permission denied: the
-      // corpus's swtktey-typed cards carry the swtktey+*type+*read
-      // rule (id 22283, party anyone_signed_in — corpus db
-      // cards.read_rule_id for every type_id 22281 row), which the
-      // Anonymous viewer is not a member of; the bar_left / bar_right
-      // denied spans fall out of the same path the engine's
-      // read-permission gate already exercises for the corpus replay
-      // (src/card/permissions/view-perms.ts).
-      // We seed yzzw with an arbitrary id > the shard's max (slot id
-      // is name-based, not id-based, so the id never appears in the
-      // rendered bytes).
-      await seedCard(storage, {
-        id: 9000,
-        name: "yzzw",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
+      // Seed NOTHING for yzzw (the *home pointer's single item): the
+      // corpus's yzzw has NO row (verified directly against the corpus
+      // db), so the oracle's mini_bar slot came from the UNKNOWN-card
+      // path — bar.rb:9 `view :bar, unknown: :mini_bar` on a fetch miss.
+      // The mini_bar body's two quiet-denial spans fall out of the
+      // phantom path the engine already exercises for absent items
+      // (pointer-list.ts phantomPointerListItem). Seeding yzzw as a real
+      // denied row here made the engine route through the readable-card
+      // denial shape instead — which the dual-lane raw oracle renders as
+      // the BARE quiet span (538 bare-span denied real items, zero
+      // mini_bar wraps), a shape pinned in
+      // tests/card/permissions/read-rule-left-delegation.test.ts.
       const html = await storage.engine.render("*home", "content");
       // The card-list wrapper (standard_pointer_core).
       expect(html).toContain('<div class="card-list card-list-bar pointer-list">');
@@ -119,13 +112,8 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
       baseIds.add(275);
       baseIds.add(22283);
       storage = await createStructureSeededStorageFor(baseIds);
-      await seedCard(storage, {
-        id: 9001,
-        name: "bifaarykabanhm",
-        typeId: 22281,
-        readRuleId: 22283,
-        readRuleClass: "*type",
-      });
+      // bifaarykabanhm has NO row in the corpus db (verified directly) —
+      // same absent-item mini_bar path as yzzw above; no seed.
       const html = await storage.engine.render("*all+*layout", "content");
       // The list cardtype dispatches to the SAME standard_pointer_core
       // path (card-mod-list set/type/list.rb `include_set Abstract::List`

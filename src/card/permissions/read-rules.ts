@@ -35,15 +35,11 @@
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
-import { DeckoName } from "../name.js";
-import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
+import { effectiveReadRuleId } from "./set-read-rule.js";
 
 /** Codename of the setting card the read rules hang off (*read). */
 const READ_CODENAME = "read";
-/** The setting CARD NAME the live rule walk joins to set names
- *  (ruleNamesForCard joins set + setting names: "Basic+*type" + "*read"). */
-const READ_SETTING_NAME = "*read";
 /** Codename of the set type card (the SQL's sets.type_id = SetID filter). */
 const SET_CODENAME = "set";
 /** Codename of the party every deck grants through the *all+*read rule. */
@@ -372,16 +368,22 @@ export function canReadByStoredRule(
 
 /**
  * The live-computation fallback for a card row without a stored
- * read_rule_id — permission_rule_id(:read) (set/all/permissions.rb:55-61):
- * walk the card's candidate rule names in pattern precedence and take the
- * first that exists, then run the same readable-set check.
+ * read_rule_id — permission_rule_id(:read) (set/all/permissions.rb:55-61)
+ * through effectiveReadRuleId (set-read-rule.ts): walk the card's candidate
+ * rule names in pattern precedence, take the first that exists, then apply
+ * the `_left` rule-content delegation (a compound card whose winning read
+ * rule says "_left" reads through its left card's permission rule,
+ * recursively — permissions.rb:56-71). The delegation is load-bearing on
+ * this corpus: `*all plus+*read` = "_left", so EVERY compound card's
+ * first-precedence candidate delegates (virtual rule cards under a set
+ * included — the setting list the set card's :content view renders);
+ * skipping it resolved the walk at "*all plus+*read" and keyed the verdict
+ * off that rule's own referenced party ("_left" names the left card), which
+ * denies exactly the cards Ruby allows.
  *
- * Candidate resolution goes through the composed-key closure (the
- * DbLexicon.nameToLex SQL the prefetch walk uses) rather than the fetch
- * engine's name ladder: rule names are junctions by construction
- * ("Basic+*type+*read"), and the closure resolves NULL-key junction rows at
- * ANY depth in one statement. One query per fallback card, memoized by the
- * caller's verdict cache.
+ * The final verdict runs the same readable-set check the stored path does
+ * (readableRuleIds.has(effectiveRuleId) — read_rules_hash[read_rule_id],
+ * permissions.rb:143).
  *
  * Returns undefined when the deck carries NO read rule cards at all
  * (`hasReadRules: false`): every real deck bootstraps *all+*read
@@ -407,18 +409,15 @@ export async function canReadByRuleLookup(
   // (2026-09-23 recapture deck, diagnose-capture-error probes):
   // `Card.fetch("<virtual junction>").permission_rule_id(:read)` answers the
   // `*all plus+*read` rule, skipping an existing `<name>+*self+*read` rule.
-  const candidates = ruleNamesForCard(
-    card.id === undefined ? { ...card, isNew: true } : card,
-    READ_SETTING_NAME,
+  const ruleId = await effectiveReadRuleId(
+    { driver: fetcher.driver, fetch: fetcher },
+    {
+      name: card.name == null ? "" : card.name.toString(),
+      typeId: card.typeId ?? null,
+      isNew: card.id === undefined ? true : (card.isNew ?? false),
+    },
   );
-  const resolved = await resolveRuleIdsByKeys(
-    fetcher.driver,
-    candidates.map((name) => DeckoName.parse(name).key),
-  );
-  for (const name of candidates) {
-    const ruleId = resolved.get(DeckoName.parse(name).key);
-    if (ruleId !== undefined) return state.readableRuleIds.has(ruleId);
-  }
+  if (ruleId !== null) return state.readableRuleIds.has(ruleId);
   // No candidate resolved. In a COMPLETE deck (hasReadRules &&
   // hasCatchAllReadRule) this is an unevaluatable rule walk, not an
   // unruled card: the catch-all is structurally present (hasCatchAllReadRule)

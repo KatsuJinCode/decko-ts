@@ -780,7 +780,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     body += `<div class='accordion-item _setting-group'>\n`;
     body += `<h2 class='accordion-header nodblclick w-100'>\n`;
     body += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
-    body += `${groupName} <span class="_count badge bg-secondary ms-3">${SETTING_GROUP_COUNTS[groupName]}</span>\n`;
+    body += `${groupName} <span class="_count badge bg-secondary ms-3">${visibleGroupSettings(groupName).length}</span>\n`;
     body += `</button>\n`;
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
@@ -824,7 +824,7 @@ function renderSettingListItems(
   ruleByCodename: Map<string, RenderCard>,
   setCard: RenderCard,
 ): string {
-  const settings = GROUP_TO_SETTINGS[groupName];
+  const settings = visibleGroupSettings(groupName);
   const items = settings.map((settingCodename) => {
     const stored = ruleByCodename.get(settingCodename);
     if (stored !== undefined && !fmt.engine.isDenied(stored)) {
@@ -884,33 +884,6 @@ export const SETTING_GROUPS: ReadonlyArray<string> = [
   "other",
 ];
 
-/** Number of SETTINGS in each group (not rules). Ruby's
- *  card-mod-rules set/type/set/html_views/rule_lists.rb:49-59
- *  category_accordion_item: `list.size` is the number of settings the
- *  group contains (visible_settings(group).size), regardless of
- *  whether the set has rules for them — the captured oracle's
- *  count badge is 3/5/4/5/3/3 (the per-group setting count) for every
- *  set card. The actual rule rows in the accordion body are a subset
- *  (some rules are denied; some settings have no rule for this set).
- *
- *  Counts derived from the setting_opts declarations in the card-mod-*
- *  set/self/*.rb files:
- *    - templating: 3 (autoname, default, structure)
- *    - permission: 5 (create, read, update, delete, captcha)
- *    - webpage:    4 (head, layout, style, script)
- *    - editing:    5 (help, input_type, guide, content_options, content_option_view)
- *    - event:      3 (on_create, on_update, on_delete)
- *    - other:      3 (thanks, follow_fields, follow)
- */
-const SETTING_GROUP_COUNTS: Readonly<Record<string, number>> = {
-  templating: 3,
-  permission: 5,
-  webpage: 4,
-  editing: 5,
-  event: 3,
-  other: 3,
-};
-
 /** Map from setting codename -> group key. Mirrors the setting_opts
  *  group: declarations in the card-mod-* set/self/*.rb files (the only
  *  source of group membership Ruby has at runtime). */
@@ -934,19 +907,74 @@ const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
  *  category_accordion iterates settings within a group in their
  *  registration position order (Card::Setting.groups[group] holds an
  *  Array — register_setting inserts at the requested position with
- *  set_position, group.rb:101-110). Captured oracle bytes pin this
- *  per-group ordering (corpus:268 templating: autoname, default,
- *  structure — the body interleaves denials and the rule at *default's
- *  position). Exported for the engine's prepare-phase virtual-rule
+ *  set_position, setting.rb:101-110).
+ *
+ *  Positions from the setting_opts declarations (card-mod-* set/self/*.rb):
+ *  - templating: default pos 2 (card-mod-content set/self/default.rb:1),
+ *    structure pos 2 (card-mod-content set/self/structure.rb:1 — INSERTED
+ *    before default at the occupied slot, setting.rb:105-106: load order
+ *    default.rb -> structure.rb within the mod makes structure second at
+ *    index 1), autoname pos 4 (card core set/self/autoname.rb:1) ->
+ *    [structure, default, autoname]. The captured oracle pins exactly this
+ *    order on *sidebar+*self's content view (expected lis: denied
+ *    *structure bar slot, *default, *autoname) — the earlier
+ *    [autoname, default, structure] reading misread a denial span as an
+ *    ordering anchor.
+ *  - permission: create 1, read 2, update 3, delete 4, captcha append.
+ *  - webpage: head 1, layout 3, style append, script 5 — script's
+ *    insertion at the occupied tail slot puts it AFTER style (observed
+ *    oracle order [head, layout, style, script]).
+ *  - editing: help 1, input_type append, guide 3, content_options 5,
+ *    content_option_view 6.
+ *  - event: on_create 1, on_update 2, on_delete 3.
+ *  - other: thanks 3, follow_fields 5, follow 7.
+ *  Exported for the engine's prepare-phase virtual-rule
  *  verdict pre-population (see SETTING_GROUPS above). */
 export const GROUP_TO_SETTINGS: Readonly<Record<string, ReadonlyArray<string>>> = {
-  templating: ["autoname", "default", "structure"],
+  templating: ["structure", "default", "autoname"],
   permission: ["create", "read", "update", "delete", "captcha"],
   webpage: ["head", "layout", "style", "script"],
   editing: ["help", "input_type", "guide", "content_options", "content_option_view"],
   event: ["on_create", "on_update", "on_delete"],
   other: ["thanks", "follow_fields", "follow"],
 };
+
+/** Settings Ruby's visible_settings filters OUT of every set card's
+ *  setting list in the captured oracle's mod set.
+ *
+ *  Mechanism (card-mod-rules set/type/set.rb:77-86 visible_settings):
+ *  each group setting must pass `applies_to_cardtype(prototype.type_id)`
+ *  (card-1.110.0 lib/card/setting.rb:74-77) = restricted_to_type includes
+ *  the prototype type AND the setting's `applies` lambda passes.
+ *  content_options and content_option_view (the only restricted settings
+ *  in the loaded mods — card-mod-list set/self/content_options.rb:2 and
+ *  set/self/content_option_view.rb:2, restricted_to_type list/pointer/
+ *  session) additionally gate on `prototype.rule_card(:input_type)
+ *  .supports_content_options?` / `supports_content_option_view?` — and
+ *  those predicates are FALSE for every card in this mod set
+ *  (card-mod-list set/all/supports_content_options.rb:8-15 defines the
+ *  all-set defaults false; grep over the loaded gems finds no overriding
+ *  set module). The lambdas are therefore constant-false for every
+ *  prototype and both settings render for NO set card: the oracle pins
+ *  3 editing lis (help, input_type, guide — badge "3") on *sidebar+*self.
+ *  Kept as a named filter (not a table deletion) so a future mod port
+ *  that overrides the predicates extends this one place. */
+const SETTING_NEVER_VISIBLE: ReadonlySet<string> = new Set([
+  "content_options",
+  "content_option_view",
+]);
+
+/** The group's visible settings for one set card — Ruby's
+ *  visible_settings(group) collapsed to the deck-wide filter above (the
+ *  restricted_to_type arm is subsumed: the applies predicate excludes
+ *  these settings for EVERY prototype, list/pointer prototypes included).
+ *  The list length feeds the accordion's count badge
+ *  (rule_lists.rb:58 count_badge(list.size)). */
+export function visibleGroupSettings(groupName: string): ReadonlyArray<string> {
+  return GROUP_TO_SETTINGS[groupName].filter(
+    (codename) => !SETTING_NEVER_VISIBLE.has(codename),
+  );
+}
 
 /** The right part's setting codename (without the leading "*"). The
  *  card-mod-rules card.type_card setting card has codename = the bare
@@ -1012,41 +1040,24 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
   // permission gate, prepare hooks, and bar.haml body all run as in
   // the standalone item-bar path.
   //
-  // The mini_bar slot shape is READ-DENIAL-gated, not unconditional.
-  // Both oracles agree on the split:
-  //   * corpus v2 (recapture-shard-*): 229/229 pointer-item slots with
-  //     the mini_bar id/class wrap a read-DENIED item (every one carries
-  //     the denied-spans bar body; the items' stored rule is the
-  //     swtktey+*type+*read grant to anyone_signed_in, which the
-  //     capture's Anonymous viewer is not a member of); the corpus's
-  //     READABLE items (42 slots, e.g. id 45410 "yol" content view ->
-  //     items awheasxlcszvy-bar-view with data-card-id and the full
-  //     bar-left card-title body) keep the `bar-view` slot nestRecord
-  //     produced.
-  //   * live wire (tmp/live-wire/Aikido_Oak_Cliff.html): the
-  //     Aikido Oak Cliff+related list renders its readable items as
-  //     `<div id="aikido_oak_cliff-gallery-bar-view" class="card-slot
-  //     bar-view ...">` with the full titled bar — never mini_bar.
-  //
-  // For a denied item the nestRecord dispatch would short-circuit at the
-  // view-permission gate into the BARE quiet-denial span (no slot wrap)
-  // — but Ruby builds the mini_bar slot wrap at the NEST level, BEFORE
-  // the view gate, so the captured shape is slot + bar body + two
-  // denied spans inside. Sidestep the gate exactly like the phantom
-  // path below and build the wrap from the fetched card's real
-  // identity (same builder, non-phantom tokens). The slot identity
-  // comes from the RESOLVED card (pointerListItemSlot reads the card),
-  // which is the concern the retired unconditional swap's safeKey
-  // argument carried — the swap itself is gone: readable items keep
-  // the bar-view slot per both oracles.
-  if (fmt.engine.isDenied(target)) {
-    const body = pointerListItemBodyForUnknown(name, {
-      setKeys: target.setKeys,
-      typeName: target.typeName,
-      typeId: target.typeId,
-    });
-    return pointerListItemSlot(target, body);
-  }
+  // The read-denied KNOWN item renders the BARE quiet-denial span: the
+  // nested :bar render short-circuits at the view-permission gate into
+  // the span (no slot wrap), leaving exactly
+  // `<div class="pointer-item item-bar"><span class="denied">...`.
+  // expected-v2 census: 538 bare-span denied items (every one a REAL
+  // cards row — e.g. "ABCglobal 20100722 Iris Nick Leon Brandon" under
+  // "Center for Embodied Change+Pages" open) vs 270 mini_bar slots
+  // carrying denial bodies — and EVERY one of those 270 is an
+  // ABSENT-ROW item the phantom path above already covers (Test Person
+  // 01 / Aikido as Peace Practice, the anonymizer-renamed BasicCs
+  // family). Ruby's bar view declares `unknown: :mini_bar`
+  // (card-mod-bar_and_box set/all/bar.rb:9) — the mini_bar slot is the
+  // UNKNOWN-card substitution, never the readable-card denial shape;
+  // the readable-card denial is altered_view's span substitution
+  // (view/permission.rb:19-23). The prior explicit mini_bar wrap for
+  // denied KNOWN items was the anonymized-corpus shape (where the
+  // anonymizer renamed rows and every denied item was a fetch miss)
+  // and byte-mismatched every real-denied item in this corpus.
   return fmt.nestRecord(target, "bar", {
     nest_name: target.name.s,
     show: ["bar"],
