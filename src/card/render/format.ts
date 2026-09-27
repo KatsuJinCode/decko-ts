@@ -1072,6 +1072,20 @@ export interface RenderEngineLike {
    *  Optional; engines without it build type-less unknown cards (the
    *  pre-round-9 shape). */
   newCardDefaultType?(name: DeckoName): { typeId: number; typeName: string } | undefined;
+  /** card-mod-collection set/all/item.rb:149-162 — the HOST card's
+   *  item_type_name for its rendered item slots. Ruby's nest_item ->
+   *  item_view_options -> determine_item_view_options_type folds
+   *  `options[:type] = card.item_type_name` into EVERY item nest (the
+   *  slot JSON's `"type"` field rides voo.slot_options), and
+   *  new_unknown_item_args (item.rb:245-248) types unknown items with the
+   *  same value at fetch. The chain: Search/Set-typed hosts read their own
+   *  cql :type (card-mod-search cql_search.rb:14-19); pointer/list hosts
+   *  walk the options card (set/abstract/items.rb:5-11 + card-mod-layout
+   *  options_api.rb options_card = rule_card(:content_options) ||
+   *  right_type_options || Card[:all]). Resolved per host in the prepare
+   *  phase (render.ts resolveHostItemTypeName); undefined = no item type.
+   *  Optional; engines without it emit the pre-lane type-less item slots. */
+  hostItemTypeName?(card: RenderCard): { typeName: string; typeId: number } | undefined;
   /** The deck's effective default html nest view — the `*all+*default html
    *  view` rule's content (Cardio.config.default_html_view; html.rb:17-19
    *  default_nest_view). The engine folds the rule universe on the cold

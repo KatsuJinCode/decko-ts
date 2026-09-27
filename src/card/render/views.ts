@@ -1005,6 +1005,16 @@ function inferSettingCodename(rule: RenderCard): string | undefined {
  *     mini_bar). The prior unconditional swap produced mini_bar for
  *     these readable items and failed both oracle families. */
 function renderPointerListItem(fmt: RenderFormat, name: string): string {
+  // The HOST's item_type_name (card-mod-collection item.rb:149-162
+  // determine_item_view_options_type): every item nest carries
+  // `options[:type] = card.item_type_name` when the host resolves one, so
+  // the item slot's data-slot JSON gains `"type"` (voo.slot_options) and
+  // unknown items are constructed typed (new_unknown_item_args,
+  // item.rb:245-248). Resolved per host in the prepare phase; undefined =
+  // the host has no item type (the type-less JSON the pre-lane bytes
+  // pinned).
+  const hostItemType = fmt.engine.hostItemTypeName?.(fmt.card);
+  const slotTypeName = hostItemType?.typeName;
   // fetchRenderCard parses the item line (DeckoName.parse) — an item line
   // carrying an ID/codename mark whose id the name environment's sync peek
   // cannot resolve (the lexicon temp cache evicts itself at 10000 keys;
@@ -1019,9 +1029,9 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
       err instanceof CodenameNotFoundError ||
       err instanceof NameNotFoundError
     ) {
-      const phantom = phantomPointerListItem(name);
+      const phantom = phantomPointerListItem(name, phantomIdentity(fmt, name, hostItemType));
       const body = pointerListItemBodyForUnknown(name);
-      return pointerListItemSlot(phantom, body);
+      return pointerListItemSlot(phantom, body, slotTypeName);
     }
     throw err;
   }
@@ -1029,12 +1039,14 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
     // Phantom item: the captured oracle (corpus:77 inner yzzw, and
     // every phantom across the corpus) renders a full mini_bar slot
     // wrap with the bar-shaped body containing two denied spans.
-    // The TS engine's buildUnknownNestCard leaves typeId/typeName
-    // undefined; phantomPointerListItem fills those with the corpus's
-    // pinned phantom type (swtktey/22281) so the byte diff matches.
-    const phantom = phantomPointerListItem(name);
+    // The identity chain is new_unknown_item_args' host item type
+    // (item.rb:245-248) falling to the *default template walk
+    // (type.rb:78-80 type_id_from_template — the engine's
+    // newCardDefaultType, which lands on the corpus's *all+*default
+    // 22281 BasicCs), then the corpus's BasicCs pin.
+    const phantom = phantomPointerListItem(name, phantomIdentity(fmt, name, hostItemType));
     const body = pointerListItemBodyForUnknown(name);
-    return pointerListItemSlot(phantom, body);
+    return pointerListItemSlot(phantom, body, slotTypeName);
   }
   // Known card: dispatch the bar view through nestRecord so the
   // permission gate, prepare hooks, and bar.haml body all run as in
@@ -1058,12 +1070,47 @@ function renderPointerListItem(fmt: RenderFormat, name: string): string {
   // denied KNOWN items was the anonymized-corpus shape (where the
   // anonymizer renamed rows and every denied item was a fetch miss)
   // and byte-mismatched every real-denied item in this corpus.
+  //
+  // The slot-type opt (determine_item_view_options_type,
+  // card-mod-collection item.rb:149-162) folds at the NEST level,
+  // before any view gate runs, so it rides the readable item's
+  // nestRecord opts below; the denied KNOWN item's bare span emits no
+  // slot wrap at all (the census above) — no slot JSON, no type field.
+  // The type opt's slot-JSON surface is the readable and phantom item
+  // paths, which carry it above and below (merge pass 3: the
+  // slotjson-type lane's threading retained on both slot-emitting
+  // branches; the denied-branch wrap it threaded is retired by the
+  // permission lane's census).
   return fmt.nestRecord(target, "bar", {
     nest_name: target.name.s,
     show: ["bar"],
     hide: ["bar_middle"],
     home_view: "bar",
+    ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
   });
+}
+
+/** The unknown-item identity chain (new_unknown_item_args, item.rb:245-248
+ *  `itype = args[:type] || item_type_name`, falling through Card.new's
+ *  ensure_type_id to the *default template walk — type.rb:78-80
+ *  type_id_from_template, the engine's newCardDefaultType — and finally the
+ *  corpus's *all+*default 22281 BasicCs pin inside phantomPointerListItem).
+ *  The host's resolved item type wins when it resolves one; undefined
+ *  otherwise. */
+function phantomIdentity(
+  fmt: RenderFormat,
+  name: string,
+  hostItemType: { typeName: string; typeId: number } | undefined,
+): { typeName: string; typeId: number } | undefined {
+  if (hostItemType !== undefined) return hostItemType;
+  try {
+    return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return undefined;
+    }
+    throw err;
+  }
 }
 
 /** Swap the OUTERMOST slot id + class suffix from `bar-view` to
@@ -1130,10 +1177,19 @@ const cardListView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const items = fmt.engine.executeSearch(fmt);
   if (items.length === 0) return fmt.renderView("no_search_results");
+  // The SEARCH host's own item_type_name rides the item nest exactly like
+  // the pointer/list path: card_list_item -> nest_item (card-mod-search
+  // 0_search/views.rb:132-136) -> item_view_options ->
+  // determine_item_view_options_type (item.rb:157-162). The cql :type
+  // value (cql_search.rb:14-19) lands in each item slot's data-slot JSON.
+  const hostItemType = fmt.engine.hostItemTypeName?.(fmt.card);
   const rendered = items.map((item) => {
     // collection item.rb#nest_item: options = voo.items + (size: voo.size);
     // view ||= implicit_item_view (html default_item_view = :bar).
-    const html = fmt.nestRecord(item, "bar", { size: null });
+    const html = fmt.nestRecord(item, "bar", {
+      size: null,
+      ...(hostItemType !== undefined ? { type: hostItemType.typeName } : {}),
+    });
     return `<div class="search-result-item item-bar">${html}</div>`;
   });
   // trailing newline: the captured card_list closes its list div on its own

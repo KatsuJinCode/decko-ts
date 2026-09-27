@@ -240,6 +240,12 @@ const PHANTOM_TYPE_KEY = "basic_c";
  *  data-slot's `view` field is `bar` (matches the captured corpus
  *  bytes for every pointer/list content-item slot).
  *
+ *  `slotTypeName` is the HOST's item_type_name (card-mod-collection
+ *  item.rb:157-162 determine_item_view_options_type folds
+ *  `options[:type] = card.item_type_name` into the item nest; the value
+ *  rides voo.slot_options into the slot JSON). undefined = no host item
+ *  type — the type-less JSON the pre-lane bytes pinned.
+ *
  *  Why not slotWrap + itemBarView? slotWrap uses one view name for
  *  both the slot id AND the data-slot's view field (both come from
  *  the same `view` argument); the captured bytes need them to
@@ -248,14 +254,18 @@ const PHANTOM_TYPE_KEY = "basic_c";
  *  pinned bytes (the inner bar.haml body is provided by the caller —
  *  for known cards via fmt.nestRecord; for unknown cards via the
  *  phantom body below). */
-export function pointerListItemSlot(item: RenderCard, inner: string): string {
+export function pointerListItemSlot(
+  item: RenderCard,
+  inner: string,
+  slotTypeName?: string,
+): string {
   const name = item.name;
   const setKeys = item.setKeys;
   const safeKey = name.safeKey;
   const classes = ["card-slot", `${POINTER_LIST_ITEM_SLOT_VIEW}-view`, setKeys]
     .filter((s) => s !== "")
     .join(" ");
-  const dataSlotJson = itemDataSlotJson(name.s);
+  const dataSlotJson = itemDataSlotJson(name.s, slotTypeName);
   // card-mod-format wrap.rb:50-53 #slot_cardname (see views.ts#slotCardname):
   // an unsaved compound card displays name.url_key. Phantom items are
   // unsaved by definition (record-less, or a record built new); saved
@@ -327,20 +337,22 @@ export function pointerListItemBodyForUnknown(
 /** The data-slot JSON for an item rendered through the pointer/list path.
  *  Keys must appear in the slot-html.ts#SLOT_KEYS order so the captured
  *  byte shape matches (the corpus's slot-html.ts ordering: view, then
- *  nest_name, then show, then hide, then home_view). */
-function itemDataSlotJson(nestName: string): string {
+ *  nest_name, then show, then hide, then home_view, then the host's
+ *  item `type` — keymap "both" order, item.rb:157-162's type value). */
+function itemDataSlotJson(nestName: string, typeName?: string): string {
   // slot-html.ts#htmlEscapeExceptQuotes: only & ' > < need escaping for
   // single-quote contexts; the captured bytes use double quotes outside,
   // so a " inside the JSON body would need to be escaped there — the
   // JSON keys here are literal ASCII with no embedded quotes, so the
   // single-pass escape is enough.
-  const ordered = {
+  const ordered: Record<string, unknown> = {
     view: POINTER_LIST_ITEM_VIEW,
     nest_name: nestName,
     show: [POINTER_LIST_ITEM_VIEW],
     hide: ["bar_middle"],
     home_view: POINTER_LIST_ITEM_VIEW,
   };
+  if (typeName !== undefined) ordered["type"] = typeName;
   return jsonEscapeAttr(JSON.stringify(ordered));
 }
 
@@ -354,11 +366,28 @@ function jsonEscapeAttr(s: string): string {
 
 /** Re-export the type so callers can build a phantom RenderCard when
  *  fetchRenderCard returns undefined for a pointer/list item name. The
- *  phantom card carries the corpus's default phantom type so the
- *  emitted slot wrap's data-card-type-* attrs match the captured
- *  oracle byte-for-byte. */
-export function phantomPointerListItem(name: string): RenderCard {
+ *  phantom card carries the item type its HOST resolves (item.rb:245-248
+ *  new_unknown_item_args: `itype = args[:type] || item_type_name; itype ?
+ *  { type: itype } : {}` — the typed identity argument below) so the
+ *  emitted slot wrap's data-card-type-* attrs match the captured oracle
+ *  byte-for-byte; the corpus's *all+*default template (22281 BasicCs) is
+ *  the no-host-rule fallback the same way Ruby's ensure_type_id template
+ *  walk lands there for every untyped new card. */
+export function phantomPointerListItem(
+  name: string,
+  typed?: { typeName: string; typeId: number },
+): RenderCard {
   const deckName = DeckoName.parse(name);
+  const typeName = typed?.typeName ?? PHANTOM_TYPE_NAME;
+  const typeId = typed?.typeId ?? PHANTOM_TYPE_ID;
+  // Typed identities carry the type's KEY form in the class chain — the
+  // captured oracle pins `card-slot mini_bar-view ALL TYPE-place` for the
+  // rule-typed unknown items (Free Aiki Dojo+Central Places, shard-000024:
+  // "The Flight Deck" et al.). The no-identity fallback keeps the corpus's
+  // BasicCs pin bytes exactly (merge pass 2's class B survey).
+  const setKeys = typed !== undefined
+    ? `ALL TYPE-${DeckoName.parse(typed.typeName).key}`
+    : `ALL TYPE-${PHANTOM_TYPE_NAME}`;
   // The record is a proper unsaved record (Ruby's Card.new on the fetch
   // miss) so the slot builders' slot_cardname rule reads a real new?
   // state instead of special-casing a record-less cast.
@@ -367,7 +396,7 @@ export function phantomPointerListItem(name: string): RenderCard {
     codename: undefined,
     leftId: undefined,
     rightId: undefined,
-    typeId: PHANTOM_TYPE_ID,
+    typeId,
     dbContent: undefined,
     trash: false,
     creatorId: undefined,
@@ -388,11 +417,11 @@ export function phantomPointerListItem(name: string): RenderCard {
     record,
     name: deckName,
     key: deckName.key,
-    typeName: PHANTOM_TYPE_NAME,
-    typeId: PHANTOM_TYPE_ID,
+    typeName,
+    typeId,
     id: undefined,
     dbContent: "",
-    setKeys: `ALL TYPE-${PHANTOM_TYPE_NAME}`,
+    setKeys,
     unknown: true,
   } as RenderCard;
 }
