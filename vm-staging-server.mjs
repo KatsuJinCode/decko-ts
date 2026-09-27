@@ -50,6 +50,8 @@ import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
 import { DeckoName } from "./dist/src/card/name.js";
+import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
+import { ORACLE_DECK_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
@@ -58,6 +60,20 @@ import {
   structureUniverseFromResults,
   structureRuleTypesFromResults,
 } from "./dist/src/card/rules/structure.js";
+
+// DECK BOOT — inflection initializer, FIRST, before any DeckoName.parse.
+// A Rails deck's config/initializers/inflections.rb runs before any request;
+// this is that moment. The deployed deck keys names under a non-default
+// inflection table (uncountables s / this / anonymous — recovered from the
+// stored corpus keys, see src/card/name/oracle-deck-inflections.ts). Without
+// this call the engine computes `participant_` where the corpus stores
+// `participant_s` ("Participant(s)"), the CQL name resolver falls back to
+// Ruby's -999 sentinel, and every plus-join on those junctions ("+Project(s)
+// Participating" sections, "+Participant(s)" children) returns zero rows
+// (2026-09-25 staging "0 results" defect 1). applyDeckInflections also drops
+// the DeckoName parse cache, so the keys primed below (primeEngine's
+// keyToId / idToName maps) are computed under the deck table.
+applyDeckInflections(ORACLE_DECK_INFLECTIONS);
 
 // ---------------------------------------------------------------------------
 // Lexicon / codename cache backing store (origin-side round 8 wiring)

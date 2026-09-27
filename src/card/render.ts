@@ -2708,8 +2708,35 @@ export class RenderEngine implements RenderEngineLike {
         // window entirely (trace tenth-item-trace.md bug 1).
         ...(await this.cqlPermissionOptions()),
         parse: {
-          // sync resolver over the prefetched id map (module doc)
-          resolveCardId: (nameish: string) => this.idsByKey.get(DeckoName.parse(nameish).key),
+          // The search runs in the search card's OWN name context (Ruby:
+          // card-mod-search set/abstract/cql_search.rb passes `context: name`
+          // to Card::Query — the same name the card was fetched under, so a
+          // virtual *type plus right search nested on a host card carries the
+          // HOST-specific junction name and `_left` absolutizes to the host).
+          // Without it, root.context defaults to "" (AbstractQuery#context,
+          // parser.ts opts.context ?? "") and every relative reference in the
+          // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
+          // against the blank context to the unresolvable-name sentinel — the
+          // query returns zero rows even with every name key resolvable
+          // (2026-09-25 Brandon_WilliamsCraig +Project(s) Participating "0
+          // results" defect 2; ParseOptions.context, src/cql/ast.ts).
+          context: card.name.s,
+          // sync resolver over the prefetched id map (module doc), falling
+          // back to the deck lexicon — Ruby answers every CQL name->id
+          // through Card::Lexicon (lib/card/query/value.rb#id_from_val ->
+          // Card::Lexicon.id), whose deck-boot warm covers cards the render
+          // walk never enriched: a search statement's own name arguments
+          // ("Participant(s)", the "project" type) are not nest references,
+          // so nothing in the page walk fetches them and idsByKey alone
+          // misses them (staging "0 results" defect 1's second half).
+          // peekId is the warm-cache sync mirror (src/card/fetch/lexicon.ts);
+          // origins prime it at boot (vm-staging-server primeEngine step 3,
+          // worker primeCqlNameResolver). Unknown names still return
+          // undefined -> the parser's -999 sentinel, exactly as Ruby.
+          resolveCardId: (nameish: string) => {
+            const key = DeckoName.parse(nameish).key;
+            return this.idsByKey.get(key) ?? this.fetcher.lexicon.peekId(nameish);
+          },
         },
       });
       rows = "rows" in result ? result.rows : [];
