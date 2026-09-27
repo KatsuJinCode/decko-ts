@@ -154,6 +154,12 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // "*captcha+*right+*follow" — the canonical compound form the engine
   // parses through DeckoName.parse (the engine's normal card-name
   // machinery, format.ts#resolveNestName).
+  //
+  // NOTE (2026-09-26 rules-editor lane): for settings whose stored deck
+  // name carries spaces ("*input type") the codename join ("*input_type")
+  // is key-identical and url_key-identical to the stored-name join, so
+  // slot ids and the slot_cardname attrs match the oracle either way;
+  // verified before leaving the codename form in place.
   const compoundName = `${setCard.name.s}+*${settingCodename}`;
   const name = DeckoName.parse(compoundName);
   // Type resolution: the virtual rule card's TYPE in Ruby's render is

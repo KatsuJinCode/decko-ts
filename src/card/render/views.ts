@@ -735,7 +735,10 @@ function collectSetRules(fmt: RenderFormat): RenderCard[] {
 }
 
 
-/** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape. */
+/** rule_lists.rb:40-47 category_accordion + :accordion_bar_list shape.
+ *  category_accordion_item (rule_lists.rb:83-90): the group's badge is
+ *  `list.size` — the number of VISIBLE settings in the group (each mapped
+ *  through setting_list_item), so the count is per-set, not static. */
 function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: RenderCard[]): string {
   const ruleByCodename = new Map<string, RenderCard>();
   for (const rule of rules) {
@@ -745,16 +748,17 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
   const safeKey = card.name.safeKey;
   let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
   for (const groupName of SETTING_GROUPS) {
+    const settings = visibleSettingsForGroup(fmt, card, groupName);
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     body += `<div class='accordion-item _setting-group'>\n`;
     body += `<h2 class='accordion-header nodblclick w-100'>\n`;
     body += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
-    body += `${groupName} <span class="_count badge bg-secondary ms-3">${SETTING_GROUP_COUNTS[groupName]}</span>\n`;
+    body += `${groupName} <span class="_count badge bg-secondary ms-3">${settings.length}</span>\n`;
     body += `</button>\n`;
     body += `</h2>\n`;
     body += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
     body += `<div class='accordion-body d0-card-body'>\n`;
-    body += `${renderSettingListItems(fmt, groupName, ruleByCodename, card)}\n`;
+    body += `${renderSettingListItems(fmt, settings, ruleByCodename, card)}\n`;
     body += `</div>\n`;
     body += `</div>\n`;
     body += `</div>\n\n`;
@@ -770,7 +774,8 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
  *  setting_list_item (rule_lists.rb:96-101): show_view? defaults to
  *  :show, so every setting in the group produces an li; the read-
  *  permission gate then substitutes the denial bytes when the rule
- *  card itself is not readable.
+ *  card itself is not readable. `settings` is the group's visible list
+ *  (visibleSettingsForGroup — the restricted_to_type gate applied).
  *
  *  CLUSTER 14 (deep-read-rule-deny-on-self-or-right, 272 entries on
  *  shard 0): Ruby's setting_list_item builds a virtual rule card on the
@@ -789,11 +794,10 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
  *  :bar hook hides the nav box for unsaved cards). */
 function renderSettingListItems(
   fmt: RenderFormat,
-  groupName: string,
+  settings: ReadonlyArray<string>,
   ruleByCodename: Map<string, RenderCard>,
   setCard: RenderCard,
 ): string {
-  const settings = GROUP_TO_SETTINGS[groupName];
   const items = settings.map((settingCodename) => {
     const stored = ruleByCodename.get(settingCodename);
     if (stored !== undefined && !fmt.engine.isDenied(stored)) {
@@ -836,6 +840,239 @@ function quietDenial(task: string): string {
   return `<span class="denied"><!-- Sorry, you don't have permission (${task}) --></span>`;
 }
 
+// ---------------------------------------------------------------------------
+// visible settings: the restricted_to_type gate (setting_categories.rb)
+// ---------------------------------------------------------------------------
+
+/** card-mod-rules set/type/set.rb:73-81 visible_settings: the group's
+ *  registered settings minus those whose setting module declared
+ *  `restricted_to_type:` when the set's PROTOTYPE type is outside the
+ *  restriction (`applies_to_cardtype`, card-1.110.0 lib/card/setting.rb
+ *  :78-81: `!restricted_to_type || restricted_to_type.include?(type_id)`).
+ *  The `applies:` lambda gate is NOT evaluated on this path
+ *  (visible_settings calls applies_to_cardtype with ONE argument, so
+ *  applies_to_prototype? never fires). A nil/unknown prototype type
+ *  rejects every restricted setting (include?(nil) is false in Ruby). */
+function visibleSettingsForGroup(
+  fmt: RenderFormat,
+  setCard: RenderCard,
+  groupName: string,
+): ReadonlyArray<string> {
+  const settings = GROUP_TO_SETTINGS[groupName];
+  const engine = fmt.engine;
+  if (engine.peekCodenameById === undefined) return settings;
+  const prototypeCode = setPrototypeTypeCode(fmt, setCard);
+  return settings.filter((codename) => {
+    const restricted = SETTING_RESTRICTED_TO_TYPE.get(codename);
+    if (restricted === undefined) return true;
+    return prototypeCode !== undefined && restricted.includes(prototypeCode);
+  });
+}
+
+/** Settings that declared `restricted_to_type:` in their setting_opts
+ *  (the only two across the loaded mods — grep over card-1.110.0/mod +
+ *  card-mod-* 2026-09-26). Values are the permitted type CODES
+ *  (card-mod-list set/self/content_options.rb:2 and
+ *  set/self/content_option_view.rb:2: `%i[list pointer session]`). */
+const SETTING_RESTRICTED_TO_TYPE: ReadonlyMap<string, readonly string[]> = new Map([
+  ["content_options", ["list", "pointer", "session"]],
+  ["content_option_view", ["list", "pointer", "session"]],
+]);
+
+/** Prototype type per set pattern — the port of the prototype chain the
+ *  restriction reads (`set.rb:77-81 visible_settings` ->
+ *  `prototype.type_id`; `prototype` = set.rb:87-92
+ *  `Card.fetch prototype_args(anchor_name), new: prototype_args`).
+ *
+ *  - SELF (set_pattern/09_self.rb `{name: anchor}`): the anchor card is
+ *    REAL — its stored type. Unseeded anchor falls through to the
+ *    template chain (the set's own *default rule card's type —
+ *    templating.rb new_card_template `rule_card(:default)`).
+ *  - TYPE (03_type.rb `{type: anchor}`): the explicit type wins
+ *    (type.rb normalize_type_attributes) — the prototype's type IS the
+ *    anchor cardtype card's id.
+ *  - RIGHT (07_right.rb `{name: "*dummy+#{anchor}"}`): a new compound
+ *    card; ensure_type (type.rb:63-79) tries `type_id_from_code` FIRST —
+ *    the static `assign_type` registration for the card's first
+ *    type-assigning pattern module, here `right::<setting_codename>`
+ *    (lib/card/set/pattern/all.rb:74-82 walks patterns with
+ *    `assigns_type: true`, which the right pattern declares) — THEN
+ *    `type_id_from_template` (the set's *default rule card's type).
+ *  - TYPE_PLUS_RIGHT (08_type_plus_right.rb): a `+<right>` part under a
+ *    typed supercard; the template chain reads the set's own *default
+ *    rule card's type (the TPR static assignments
+ *    type_plus_right::<type>::<right> precede it — only three exist
+ *    across the mods).
+ *  - ALL / RSTAR / ALL_PLUS: prototype_args give a nameless or
+ *    `*dummy`-named new card: type_id_from_code has no matching
+ *    assignment, and type_id_from_template is `name && template&.type_id`
+ *    (nil for the nameless *all prototype; no *dummy template rows) —
+ *    undefined, so every restricted setting is rejected.
+ *
+ *  Oracle-verified (2026-09-26, expected-v2): *all pins editing badge 3
+ *  (structure/default/autoname only); `*home+*self` (prototype *home,
+ *  stored Pointer) and `*create+*right` (assignment right::create=list)
+ *  pin editing badge 5; the raw oracle's virtual `Exhibit+Item+*type
+ *  plus right+*autoname` bar carries data-card-type-name Phrase
+ *  (assignment right::autoname) and `...+*create` carries List
+ *  (assignment right::create) — the assignment layer visible directly in
+ *  the captured bytes. */
+function setPrototypeTypeCode(fmt: RenderFormat, setCard: RenderCard): string | undefined {
+  const engine = fmt.engine;
+  /** Card::Codename[id] — the registry lookup is generic id -> codename
+   *  (peekCodenameById reads peekNameForId; the param name reflects its
+   *  dominant type-id use). */
+  const codenameOf = (card: RenderCard | undefined): string | undefined =>
+    card?.id !== undefined ? engine.peekCodenameById?.(card.id) : undefined;
+  const defaultRuleTypeCode = (): string | undefined => {
+    const rule = engine.collectRules?.(setCard).find((candidate) => {
+      const rightKey = candidate.name.rightName?.key;
+      return rightKey === "default" || rightKey === "*default";
+    });
+    if (rule === undefined || rule.typeId === undefined) return undefined;
+    return engine.peekCodenameById?.(rule.typeId);
+  };
+  /** The set card's own pattern code: the RIGHT part's codename
+   *  (*self / *right / *type / *type plus right) for anchored sets, the
+   *  card's own codename for the anchorless *all / *rstar / *all plus
+   *  set cards (set.rb subclass_for_set resolves the represented pattern
+   *  from the same tag codename). */
+  const rightName = setCard.name.rightName;
+  const patternCode =
+    rightName !== undefined
+      ? codenameOf(engine.fetchRenderCard?.(rightName.s))
+      : codenameOf(setCard);
+  switch (patternCode) {
+    // Anchorless patterns: prototype_args give a nameless or *dummy-named
+    // new card — no type assignment applies and the template lookup has
+    // no name to walk (type_id_from_template = `name && template&.type_id`
+    // is nil for the nameless *all prototype) -> undefined rejects every
+    // restricted setting.
+    case "all":
+    case "rstar":
+    case "all_plus":
+      return undefined;
+    // 09_self.rb prototype_args {name: anchor}: the anchor card is REAL —
+    // its stored type wins; an unseeded anchor falls through to the
+    // template chain (the set's own *default rule card's type —
+    // templating.rb new_card_template rule_card(:default)).
+    case "self": {
+      const anchorName = setCard.name.leftName?.s ?? setCard.name.s;
+      const real = engine.fetchRenderCard?.(anchorName);
+      if (real !== undefined && real.typeId !== undefined) {
+        return engine.peekCodenameById?.(real.typeId);
+      }
+      return defaultRuleTypeCode();
+    }
+    // 03_type.rb prototype_args {type: anchor}: the explicit type wins
+    // (type.rb normalize_type_attributes) — the prototype's type id IS
+    // the anchor cardtype card's id.
+    case "type": {
+      const anchorName = setCard.name.leftName?.s;
+      if (anchorName === undefined) return undefined;
+      const typeCard = engine.fetchRenderCard?.(anchorName);
+      if (typeCard?.id === undefined) return undefined;
+      return engine.peekCodenameById?.(typeCard.id);
+    }
+    // 07_right.rb prototype_args {name: "*dummy+#{anchor}"}: a new
+    // compound card; ensure_type (type.rb:63-79) tries type_id_from_code
+    // FIRST — the static assign_type registration for the card's first
+    // type-assigning pattern module, here right::<setting_codename>
+    // (lib/card/set/pattern/all.rb:74-82 walks patterns carrying
+    // `assigns_type: true`, which the right pattern declares) — THEN
+    // type_id_from_template (the set's own *default rule card's type).
+    case "right": {
+      const anchorName = setCard.name.leftName?.s;
+      const anchorCard =
+        anchorName !== undefined ? engine.fetchRenderCard?.(anchorName) : undefined;
+      const anchorCodename = codenameOf(anchorCard);
+      if (anchorCodename !== undefined) {
+        const assigned = RIGHT_SETTING_TYPE_ASSIGNMENT[anchorCodename];
+        if (assigned !== undefined) return assigned;
+      }
+      return defaultRuleTypeCode();
+    }
+    // 08_type_plus_right.rb: a `+<right>` part under a typed supercard;
+    // type_id_from_code reads type_plus_right::<type>::<right> (only
+    // three assignments exist across the mods), then the template chain
+    // reads the set's own *default rule card's type.
+    case "type_plus_right": {
+      const leftName = setCard.name.leftName;
+      const typeName = leftName?.leftName?.s;
+      const anchorRightName = leftName?.rightName?.s;
+      if (typeName !== undefined && anchorRightName !== undefined) {
+        const typeCodename = codenameOf(engine.fetchRenderCard?.(typeName));
+        const rightCodename = codenameOf(engine.fetchRenderCard?.(anchorRightName));
+        if (typeCodename !== undefined && rightCodename !== undefined) {
+          const assigned = TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT[`${typeCodename}::${rightCodename}`];
+          if (assigned !== undefined) return assigned;
+        }
+      }
+      return defaultRuleTypeCode();
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** card-1.110.0 Type.assignment for right-pattern module keys — every
+ *  `assign_type` declaration in set/right/*.rb across the loaded mods
+ *  (grep 2026-09-26; lib/card/set/advanced_api.rb:5-7 registers
+ *  Type.assignment[module_key]). Keys are the LEFT (setting) card's
+ *  codename; values the assigned type code. */
+const RIGHT_SETTING_TYPE_ASSIGNMENT: Readonly<Record<string, string>> = {
+  autoname: "phrase",
+  email: "phrase",
+  password: "phrase",
+  roles: "search_type",
+  salt: "phrase",
+  status: "phrase",
+  when_created: "phrase",
+  when_last_edited: "phrase",
+  input_type: "pointer",
+  thanks: "phrase",
+  bcc: "list",
+  cc: "list",
+  from: "list",
+  subject: "phrase",
+  text_message: "plain_text",
+  to: "list",
+  contextual_class: "list",
+  disappear: "toggle",
+  follow: "list",
+  follow_fields: "list",
+  following: "list",
+  message: "phrase",
+  head: "html",
+  on_create: "list",
+  on_delete: "list",
+  on_update: "list",
+  enabled_roles: "session",
+  layout: "pointer",
+  content_option_view: "phrase",
+  content_options: "list",
+  create: "list",
+  delete: "list",
+  read: "list",
+  update: "list",
+  captcha: "toggle",
+  right: "set",
+  self: "set",
+  type: "set",
+  type_plus_right: "set",
+  count: "search_type",
+};
+
+/** type_plus_right::<type>::<right> assignments — the complete set across
+ *  the mods (card-mod-account set/type_plus_right/role/members.rb:3 list;
+ *  card-mod-rules set/type_plus_right/set/setting.rb:1 list;
+ *  card-mod-style set/type_plus_right/set/style.rb:3 pointer). */
+const TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT: Readonly<Record<string, string>> = {
+  "role::members": "list",
+  "set::setting": "list",
+  "set::style": "pointer",
+};
+
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
  *  :45-54). Ruby's category_accordion iterates these in order; the captured
  *  oracle pins every group with the set's rules, even those with zero
@@ -852,33 +1089,6 @@ export const SETTING_GROUPS: ReadonlyArray<string> = [
   "event",
   "other",
 ];
-
-/** Number of SETTINGS in each group (not rules). Ruby's
- *  card-mod-rules set/type/set/html_views/rule_lists.rb:49-59
- *  category_accordion_item: `list.size` is the number of settings the
- *  group contains (visible_settings(group).size), regardless of
- *  whether the set has rules for them — the captured oracle's
- *  count badge is 3/5/4/5/3/3 (the per-group setting count) for every
- *  set card. The actual rule rows in the accordion body are a subset
- *  (some rules are denied; some settings have no rule for this set).
- *
- *  Counts derived from the setting_opts declarations in the card-mod-*
- *  set/self/*.rb files:
- *    - templating: 3 (autoname, default, structure)
- *    - permission: 5 (create, read, update, delete, captcha)
- *    - webpage:    4 (head, layout, style, script)
- *    - editing:    5 (help, input_type, guide, content_options, content_option_view)
- *    - event:      3 (on_create, on_update, on_delete)
- *    - other:      3 (thanks, follow_fields, follow)
- */
-const SETTING_GROUP_COUNTS: Readonly<Record<string, number>> = {
-  templating: 3,
-  permission: 5,
-  webpage: 4,
-  editing: 5,
-  event: 3,
-  other: 3,
-};
 
 /** Map from setting codename -> group key. Mirrors the setting_opts
  *  group: declarations in the card-mod-* set/self/*.rb files (the only
@@ -901,15 +1111,30 @@ const SETTING_TO_GROUP: ReadonlyMap<string, string> = new Map<string, string>([
 
 /** Group -> ordered list of settings in that group. The Ruby
  *  category_accordion iterates settings within a group in their
- *  registration position order (Card::Setting.groups[group] holds an
- *  Array — register_setting inserts at the requested position with
- *  set_position, group.rb:101-110). Captured oracle bytes pin this
- *  per-group ordering (corpus:268 templating: autoname, default,
- *  structure — the body interleaves denials and the rule at *default's
- *  position). Exported for the engine's prepare-phase virtual-rule
- *  verdict pre-population (see SETTING_GROUPS above). */
+ *  registration-position order (Card::Setting.groups[group];
+ *  register_setting's set_position inserts at the declared `position:`
+ *  as mods load, setting.rb:101-110).
+ *
+ *  ORACLE-PINNED order (expected-v2, 2026-09-26; consistent across all
+ *  844 captured set pages in both oracles):
+ *  - templating [structure, default, autoname]: registrations autoname
+ *    position 4 (core mod, loads first -> sparse [nil,nil,nil,autoname]),
+ *    then default position 2 (fills slot 2), then structure position 2
+ *    (slot 2 occupied -> insert BEFORE default) — autonome LAST. Raw
+ *    oracle *all:content lis: [DENIED, DENIED, *all+*autoname];
+ *    fixture corpus shard-000000:119 (*input type+*right): [DENIED,
+ *    ...+*default, DENIED, ...] — default SECOND in both.
+ *  - webpage [head, layout, style, script] (positions 1, 3, -, 5);
+ *  - permission [create, read, update, delete, captcha] (1, 2, 3, 4, -);
+ *  - editing [help, input_type, guide, content_options,
+ *    content_option_view] (1, -, 3, 5, 6);
+ *  - event [on_create, on_update, on_delete] (1, 2, 3);
+ *  - other [thanks, follow_fields, follow] (3, 5, 7 with nil holes
+ *    compacted).
+ *  Exported for the engine's prepare-phase virtual-rule verdict
+ *  pre-population (see SETTING_GROUPS above). */
 export const GROUP_TO_SETTINGS: Readonly<Record<string, ReadonlyArray<string>>> = {
-  templating: ["autoname", "default", "structure"],
+  templating: ["structure", "default", "autoname"],
   permission: ["create", "read", "update", "delete", "captcha"],
   webpage: ["head", "layout", "style", "script"],
   editing: ["help", "input_type", "guide", "content_options", "content_option_view"],
@@ -1267,7 +1492,7 @@ const barLeftView: ViewFn = ({ fmt }) => fmt.renderView("title");
 const barMiddleView: ViewFn = () => "";
 // Rule cards nest their own :one_line_content (card-mod-rules set/rule/
 // bar_view.rb:36-37); the *all bar_right stays empty for everything else.
-const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card);
+const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card, fmt.engine);
 
 /** bar.rb view :bar_bottom -> render :content, home_view: :content.
  *
