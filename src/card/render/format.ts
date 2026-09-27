@@ -28,7 +28,7 @@ import {
   type ParsedNest,
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
-import { h } from "./slot-html.js";
+import { h, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, type CrudTask } from "../permissions/view-perms.js";
 import { resolveContentOverride } from "./content-overrides.js";
 
@@ -118,12 +118,33 @@ export class Voo {
   /** visibility.rb#process_visibility: inherit the parent's viz, then viz the
    *  requested view. The `optional: :show` render arg
    *  (method_delegation.rb#render_args -> optional_render_opt default) makes
-   *  every delegated sub-render visible by default. */
+   *  every delegated sub-render visible by default.
+   *  R16: the nest opts' own show/hide lists viz into the map (Ruby lines
+   *  75-92: `process_visibility_options live_options` — hide processed
+   *  before show, both DELETED from the options so slot_options' final
+   *  merge re-derives them from the viz alone). Without this, a view body
+   *  that adds its own hide (bar.rb's prepare_bar → bar_middle) REPLACED
+   *  the nest's hide list in the emitted slot JSON instead of joining it
+   *  (bar_view.rb:11's bar_nav hide vanished from *all+*autoname's
+   *  data-slot). */
   processVisibility(optional: unknown): void {
     if (this.parent !== undefined) {
       for (const [view, setting] of this.parent.viz) {
         if (!this.viz.has(view)) this.viz.set(view, setting); // reverse_merge!
       }
+    }
+    // visibility.rb:87-92 process_visibility_options — the nest opts' own
+    // show/hide lists viz first (hide before show), both removed from the
+    // live options.
+    const optHide = this.opts["hide"];
+    const optShow = this.opts["show"];
+    if (optHide !== undefined) {
+      delete this.opts["hide"];
+      for (const view of normalizeVisibilityList(optHide)) this.viz.set(view, "hide");
+    }
+    if (optShow !== undefined) {
+      delete this.opts["show"];
+      for (const view of normalizeVisibilityList(optShow)) this.viz.set(view, "show");
     }
     const requested = this.requestedView;
     // null = NO optional render opt (the show_with_page_layout main render —
@@ -412,7 +433,22 @@ export class RenderFormat {
           predicateAllowed: (predicate: string): boolean | undefined =>
             predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
         });
-        if (denial !== undefined) return denial;
+        if (denial !== undefined) {
+          // R16 batch 2: error.rb:27-31 view_for_denial substitutes the
+          // configured denial VIEW (:denial), and html/error.rb:75-77
+          // `view :denial do focal? ? loud_denial : quiet_denial end` —
+          // the FOCAL (main, root) denial is the LOUD denial frame,
+          // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
+          // view still in the data-slot JSON (the 2,835-page oracle class:
+          // Azzia Zur, BW 20100614, ...). Non-main formats keep the quiet
+          // span (the bare view lane's pinned pointer-item surface; the
+          // view-lane capture recorded no per-view bytes for fully denied
+          // cards, so nothing graded changes there).
+          if (this.isMain) {
+            return this.mainLoudDenialHtml(voo);
+          }
+          return denial;
+        }
       }
       this.runBeforeHook(effective, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
@@ -438,6 +474,57 @@ export class RenderFormat {
     } finally {
       this.voo = previous;
     }
+  }
+
+  /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
+   *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
+   *  oracle class (Azzia Zur / BW 20100614 / Martial Nonviolence Public
+   *  Module 01 page captures):
+   *
+   *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
+   *  wrap_with(:div, loud_denial_message)] }`; with_frame additionally
+   *  hides :help — the hides land in the slot JSON's hide list while the
+   *  data-slot `view` field keeps the REQUESTED view (the wrap is emitted
+   *  with view "denial" for the id/class only).
+   *
+   *  loud_denial_message, Anonymous branch (error.rb:215-222
+   *  sign_in_or_up_links(to_do_unauthorized_task)): "Please sign in or
+   *  sign up to read this." (format_denied_task: "to %{denied_task} this"
+   *  with the read task). The signed-in branch ("You need permission to
+   *  read this") is a documented remainder — the captured corpus viewer
+   *  is always Anonymous.
+   *
+   *  Slot wrap: id `<safe-key>-denial-view`, class `card-slot
+   *  denial-view <set-keys>`, data attrs from the real card, data-slot
+   *  from the ORIGINAL main-nest opts (identical to the readable main
+   *  render's slot JSON except the id/class view and the hide list). */
+  private mainLoudDenialHtml(voo: Voo): string {
+    voo.hide("menu");
+    voo.hide("help");
+    const card = this.card;
+    const name = card.name.s;
+    const titleInner = h(name).split("+").join("<span>+</span>");
+    const header =
+      `<div class="d0-card-header card-header">` +
+      `<h1 class="d0-card-header-title">` +
+      `<span class="card-title" title="${h(name)}">${titleInner}</span></h1></div>`;
+    const message =
+      `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`;
+    const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
+    const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
+    const attrs = emitAttrs({
+      id: `${card.name.safeKey}-denial-view`,
+      class: voo.classy(["card-slot", "denial-view", card.setKeys]),
+      "data-card-id": card.id === undefined ? undefined : String(card.id),
+      "data-card-name": h(card.name.s),
+      "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
+      "data-card-type-name": card.typeName,
+      "data-card-link-name": this.urlKey(),
+      "data-slot-id": newSlotId(),
+      "data-slot": slotOptionsJson(voo.slotOptions()),
+    });
+    return `<div${attrs}>${frame}</div>`;
   }
 
   /**
@@ -487,7 +574,11 @@ export class RenderFormat {
       // html/views.rb#prepare_content_slot
       voo.classUp("card-slot", "d0-card-content");
     } else if (view === "bar") {
-      if (this.cardIsRule()) {
+      // R16: the gate is set/rule SET membership (the card's right part is
+      // a Setting), not the rule? predicate — bar_view.rb's set covers the
+      // 2-part rule shape (`*all+*autoname`) exactly like the 3-part
+      // preference shape, and the oracle pins `_rule-item` on both.
+      if (this.engine.cardMatchesRuleSet?.(this.card) ?? false) {
         // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
         const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
@@ -562,11 +653,40 @@ export class RenderFormat {
    *  recapture-raw:*content options+*right:render:open (offset 5127,
    *  exp "r"), recapture-raw:*input type+*right:render:open (offset
    *  5024, exp "r"). */
+  /** The Card::Setting categories for the given setting codename — the
+   *  faithful port of card-mod-rules set/type/set/setting_categories.rb:9-15
+   *  `categories(setting)`:
+   *      result = [:all]
+   *      result += %i[field recent common].select { |cat|
+   *        category_settings(cat)&.include? setting }
+   *  with the category memberships:
+   *  - field_related_settings = field_settings (setting_categories.rb:52-54:
+   *    default, help, input_type, content_options, content_option_view)
+   *  - recent_settings = Card[:recent_settings].item_cards — the *recent
+   *    settings CARD's pointer items (corpus row 23808, content
+   *    "*read *structure *script *content options *input type *default
+   *    *layout *help *thanks *update *guide *head *follow *style
+   *    *content option view *create *follow fields *delete *captcha
+   *    *table of contents *comment" — note AUTONAME and the on_* event
+   *    settings are NOT members, which is why the oracle's *all+*autoname
+   *    bar pins `_category-all` alone); the `& visible_setting_codenames`
+   *    intersection is implicit (only visible settings render here)
+   *  - COMMON_SETTINGS = create, read, update, delete, structure, default,
+   *    guide (setting_categories.rb:8)
+   *
+   *  R16 correction of the CLUSTER 35 "always include _category-recent"
+   *  overfix: recent is a MEMBERSHIP list, not a constant — the blanket
+   *  push made every autoname/on_* bar carry `_category-recent` the oracle
+   *  never emits (the *captcha+*right:render:content byte-diff family:
+   *  exp `_category-all" data-card-name=...` got `_category-all
+   *  _category-recent" ...`). CLUSTER 35's original three pins re-verified:
+   *  their settings (captcha et al.) ARE recent members, so those pins
+   *  keep their bytes under the membership form. */
   private ruleSetCategories(settingCodename: string | undefined): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
     if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
-    result.push("recent");
+    if (RECENT_SETTINGS.has(settingCodename)) result.push("recent");
     if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
     return result;
   }
@@ -628,7 +748,14 @@ export class RenderFormat {
       // data-card-name (the slot's own attribute; id 9625 shows the
       // absolute form there). card-mod-tabs.ts#chunkRefChunks already
       // follows this contract for its chunk walk.
-      nest_name: nest.name,
+      // R16: codename marks (`{{:footer}}`) resolve in the nest_name — the
+      // page-lane oracle pins `nest_name: "*footer"` for the Default
+      // Layout's `{{:footer|content}}` chunk while relative/authored forms
+      // stay verbatim ("+Source Title", id 9625). Ruby's chunk name passes
+      // through the codename interpretation at prepare time
+      // (chunk/nest.rb:23 + the `:` codename config), so the resolved
+      // card's name is what lands in the slot JSON.
+      nest_name: nest.name.startsWith(":") ? (card.name?.s ?? nest.name) : nest.name,
       nest_syntax: nest.syntax,
       ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
       ...this.nestOptionEntries(nest.options),
@@ -1093,6 +1220,22 @@ export interface RenderEngineLike {
    *  the bar view needs (bar_view.rb:10). Optional; engines without it
    *  skip the rule class chain. */
   cardIsRule?(card: RenderCard): boolean;
+  /** R16: set/rule SET membership — the card's right part is a Setting
+   *  (no left-type/3-part requirement; see RenderEngine#cardMatchesRuleSet).
+   *  Gates the rule-bar behaviors (bar_view.rb:2-11): _rule-item classes,
+   *  three-column bar cols, and the bar_nav hide split. Optional; engines
+   *  without it fall back to the rule? predicate shape via cardIsRule. */
+  cardMatchesRuleSet?(card: RenderCard): boolean;
+  /** R16: the find_existing_rule_card memo for virtual rule cards
+   *  (editor.rb:119-131). True = a stored rule exists for this virtual's
+   *  (set, setting); false = none; undefined = not preloaded. Consumed by
+   *  prepareBar's `voo.hide :bar_nav unless existing_rule_card` and the
+   *  one-line-content mini_unknown gate in rule-bar-right. */
+  hasExistingRuleFor?(key: string): boolean | undefined;
+  /** R16: the resolved existing-rule CARD for a virtual rule card — the
+   *  one-line content nest target of rule_short_content (bar_view.rb:39-44).
+   *  Undefined = no existing rule (or not preloaded). */
+  existingRuleFor?(key: string): RenderCard | undefined;
   /** Look up a card by its codename (the codehash id->codename reverse
    *  direction). Used by the set-card Rules section's virtual rule-card
    *  construction (card-mod-rules set/type/set/html_views/rule_lists.rb
@@ -1270,6 +1413,13 @@ function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
 }
 
+/** View.normalize_list (visibility.rb:89) — a visibility option value is
+ *  one view name or an array of them. */
+function normalizeVisibilityList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  return typeof value === "string" ? [value] : [];
+}
+
 // ---------------------------------------------------------------------------
 // Card::Setting category membership (card-mod-rules set/type/set/
 // setting_categories.rb:6-7): the per-category setting lists that drive
@@ -1285,6 +1435,19 @@ const COMMON_SETTINGS: ReadonlySet<string> = new Set([
 /** card-mod-rules set/type/set/setting_categories.rb:7 FIELD_SETTINGS. */
 const FIELD_SETTINGS: ReadonlySet<string> = new Set([
   "default", "help", "input_type", "content_options", "content_option_view",
+]);
+
+/** R16: recent_settings — card-mod-rules setting_categories.rb:43-45
+ *  `Card[:recent_settings].item_cards` ∩ visible settings. The *recent
+ *  settings card is corpus row 23808 (content cited on ruleSetCategories);
+ *  its items minus the two non-corpus names are the membership here.
+ *  Missing from this list (and therefore category-less beyond `all`):
+ *  autoname, on_create, on_update, on_delete. */
+const RECENT_SETTINGS: ReadonlySet<string> = new Set([
+  "read", "structure", "script", "content_options", "input_type", "default",
+  "layout", "help", "thanks", "update", "guide", "head", "follow", "style",
+  "content_option_view", "create", "follow_fields", "delete", "captcha",
+  "table_of_contents", "comment",
 ]);
 
 // ---------------------------------------------------------------------------

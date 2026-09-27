@@ -44,6 +44,13 @@ import { safeSetKeys } from "./set-keys.js";
  *  pre-fix path) — those settings don't surface virtual rule cards on
  *  the corpus's set pages, so the divergence doesn't surface either.
  *
+ *  (R16 update: the re-measure above REPLACED that fallback story for
+ *  default/content_options/content_option_view — their virtual bars DO
+ *  surface corpus-wide (60-2,397 samples) and now carry corpus-pinned
+ *  entries. Only *structure still falls back: it is denied at RIGHT
+ *  precedence for the Anonymous viewer (*structure+*right+*read =
+ *  "Anyone Signed In", rule 22417), so its bar never renders.)
+ *
  *  CLUSTER 2 (tiny-render-type-plus-right-rule-card): fixing the
  *  type_id/type_name divergence above closes this family. The bar-right
  *  content also picked up the wrong TYPE- class fragment (`TYPE-setting`
@@ -53,6 +60,28 @@ import { safeSetKeys } from "./set-keys.js";
 const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: string; typeCode: string }> = new Map<string, { typeId: number; typeName: string; typeCode: string }>([
   // templating
   ["autoname", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
+  // R16 residual lane (2026-09-27), corpus-wide re-measure: the oracle's
+  // VIRTUAL rule-bar type per setting is unanimous across every set page in
+  // both lanes (2,397-2,529 id-less bars per setting, ZERO variance —
+  // aggregated over all 48 expected-v2 shards). The type is the ensure_type
+  // chain outcome (mod/core/set/all/type.rb:58-80 ensure_type_id:
+  // type_id_from_code — each_type_assigning_module_key over the card's own
+  // type-assigning patterns, e.g. card-mod-layout set/right/layout.rb
+  // `assign_type :pointer`, card-mod-style set/type_plus_right/set/style.rb
+  // `assign_type :pointer` — then type_id_from_template, card-mod-content
+  // set/all/templating.rb:57-73 new_card_template). The four corrections
+  // below replace values the round-7 map inferred from the wrong probe (the
+  // *all+X stored rows and the setting cards themselves):
+  //   *default  2397×RichText (was Setting fallback — no entry)
+  //   *guide    2487×RichText (was Markdown 34753)
+  //   *layout   2478×Pointer  (was List 47)
+  //   *style    2529×Pointer  (was List 47)
+  // and the two additions cover settings the restriction gate lets through
+  // on list/pointer-prototype sets (SETTING_RESTRICTED_TO_TYPE) whose
+  // virtual bars the oracle pins (they had no entry — Setting fallback):
+  //   *content_options       60×List
+  //   *content_option_view   96×Phrase
+  ["default", { typeId: 3, typeName: "RichText", typeCode: "rich_text" }],
   // permission
   ["create", { typeId: 47, typeName: "List", typeCode: "list" }],
   ["read", { typeId: 47, typeName: "List", typeCode: "list" }],
@@ -61,13 +90,15 @@ const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: stri
   ["captcha", { typeId: 51, typeName: "Toggle", typeCode: "toggle" }],
   // webpage
   ["head", { typeId: 50, typeName: "HTML", typeCode: "html" }],
-  ["layout", { typeId: 47, typeName: "List", typeCode: "list" }],
-  ["style", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["layout", { typeId: 34843, typeName: "Pointer", typeCode: "pointer" }],
+  ["style", { typeId: 34843, typeName: "Pointer", typeCode: "pointer" }],
   ["script", { typeId: 47, typeName: "List", typeCode: "list" }],
   // editing
   ["help", { typeId: 3, typeName: "RichText", typeCode: "rich_text" }],
   ["input_type", { typeId: 34843, typeName: "Pointer", typeCode: "pointer" }],
-  ["guide", { typeId: 34753, typeName: "Markdown", typeCode: "markdown" }],
+  ["guide", { typeId: 3, typeName: "RichText", typeCode: "rich_text" }],
+  ["content_options", { typeId: 47, typeName: "List", typeCode: "list" }],
+  ["content_option_view", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
   // event
   ["on_create", { typeId: 47, typeName: "List", typeCode: "list" }],
   ["on_update", { typeId: 47, typeName: "List", typeCode: "list" }],

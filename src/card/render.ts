@@ -260,6 +260,20 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
+  /** R16: existing-rule resolution for VIRTUAL rule cards — the port of
+   *  card-mod-rules set/rule/editor.rb:119-131 find_existing_rule_card
+   *  (`new_card? ? existing_rule_from_prototype : self`): for a rule card
+   *  with no stored row, `existing_rule_card` is the prototype's winning
+   *  stored rule for the same setting. The prototype's candidate walk and
+   *  the SET card's own walk land on the same first-existing stored rule
+   *  for every anchored/anchorless set in this corpus (the prototype's
+   *  extra SELF candidate never stores a row for the *dummy/nameless
+   *  members), so the resolution runs from the set card's pattern input
+   *  during preloadVirtualRuleVerdicts and the sync bar renderer reads
+   *  the memo. Keys are virtual rule-card keys ("set+*setting");
+   *  populated only for settings whose virtual card actually renders.
+   *  Cleared on resetCaches(). */
+  private existingRuleCards: Map<string, RenderCard> | undefined;
   /** *structure rule templates by rule-card composed key -> the rule card's
    *  db_content (null = NULL content). The bulk universe rides the cold
    *  render's closure batch (one statement, zero extra round trips — the
@@ -535,6 +549,24 @@ export class RenderEngine implements RenderEngineLike {
     // cards synchronously from the render-card map.
     if (rootCard.typeCode === "set") {
       await this.preloadSetRules(rootCard);
+      // R16: the stored rule children preloadSetRules just cached
+      // (composeCardRecord carries their stored read_rule_id) landed
+      // AFTER the last verdict pass above, so deniedVerdicts has no
+      // entry for their ids and isDenied() returned gate-open false —
+      // the setting list rendered a BAR for every stored rule card whose
+      // stored read rule denies (e.g. *all+*default, read_rule_id 22283 =
+      // "BasicCs+*type+*read" → "Anyone Signed In" → Anonymous denied;
+      // the oracle pins the quiet span, the engine pinned the bar).
+      // The children are List/Pointer-typed rule cards whose ITEMS (the
+      // rule's grant parties, e.g. "Anyone Signed In" inside *all+*read)
+      // also only reach renderCards through the enrichment walk — without
+      // it the bar-right one-line renders them wanted-card instead of
+      // known-card (links.rb add_known_or_wanted_class). Re-run BOTH
+      // passes; both are no-ops (skip-if-set) for cards already handled.
+      // Same defect class and same fix shape as the help-rules and
+      // pointer-item re-passes above.
+      await this.enrichPointerListItemsClosure();
+      await this.ensureVerdicts();
     }
     // THE OPTIONS-CARD CQL PARSE BOUNDARY (the host's own item-view options
     // chain — one of the firing paths of the capture-sentinel class; oracle
@@ -825,6 +857,7 @@ export class RenderEngine implements RenderEngineLike {
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
+    this.existingRuleCards = undefined;
     this.ruleTypeIds = undefined;
     this.structureContents = undefined;
     this.structureProcessed.clear();
@@ -1798,18 +1831,21 @@ export class RenderEngine implements RenderEngineLike {
   private async preloadSetRules(setCard: RenderCard): Promise<void> {
     if (setCard.id === undefined) return;
     // Skip if already warm (the walk above already populated the map).
+    // R16: the warm test is the STORED child left_id (record.leftId), not
+    // the name-resolved idsByKey lookup — the latter matched ANY compound
+    // card whose left NAME is the set card's name, including the id-less
+    // view-override lookup artifacts (e.g. Person+*type+by_name), and
+    // skipped the whole preload for exactly the sets whose rules-editor
+    // setting list needed it (existingRuleKeys + virtual verdicts never
+    // populated; the sync render then bar-rendered every denied rule
+    // item). Stored children carry id + record.leftId === setCard.id.
     let haveAny = false;
     for (const card of this.renderCards.values()) {
-      if (!card.name.isCompound) continue;
-      const leftKey = card.name.leftName?.key;
-      if (leftKey === undefined) continue;
-      const leftId = this.idsByKey.get(leftKey);
-      if (leftId === setCard.id) {
+      if (card.id !== undefined && card.record.leftId === setCard.id) {
         haveAny = true;
         break;
       }
     }
-    if (haveAny) return;
     const result = await this.fetcher.driver.query<CardsRow>(
       `SELECT * FROM cards WHERE left_id = ? AND trash = 0 ` +
       `ORDER BY db_content, name`,
@@ -1925,6 +1961,7 @@ export class RenderEngine implements RenderEngineLike {
   private async preloadVirtualRuleVerdicts(setCard: RenderCard): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;
+    if (this.existingRuleCards === undefined) this.existingRuleCards = new Map();
     for (const groupName of SETTING_GROUPS) {
       for (const settingCodename of visibleGroupSettings(groupName)) {
         const settingCard = this.findSettingCard(settingCodename);
@@ -1937,6 +1974,28 @@ export class RenderEngine implements RenderEngineLike {
           state,
         );
         this.deniedVerdictsByKey.set(name.key, byRule === false);
+        // R16: find_existing_rule_card for the virtual (editor.rb:126-130
+        // existing_rule_from_prototype → set_prototype.rule_card(setting) —
+        // the first EXISTING stored rule in the prototype's candidate walk).
+        // The set card's own pattern walk lands on the same stored rule for
+        // this corpus (documented on existingRuleKeys); memoized so the sync
+        // bar renderer (views.ts prepareBar's `voo.hide :bar_nav unless
+        // existing_rule_card` + the one-line-content gate in rule-bar-right)
+        // stays query-free.
+        if (!this.existingRuleCards.has(name.key)) {
+          const protoInput = await this.prototypePatternInput(setCard);
+          if (protoInput !== undefined) {
+            const rule = await findRule(
+              this.fetcher,
+              protoInput,
+              settingCard.name?.s ?? `*${settingCodename}`,
+            );
+            if (rule !== undefined && rule.rule.name !== undefined) {
+              const ruleCard = await this.enrichAndStore(rule.rule);
+              if (ruleCard !== undefined) this.existingRuleCards.set(name.key, ruleCard);
+            }
+          }
+        }
       }
     }
   }
@@ -2408,6 +2467,149 @@ export class RenderEngine implements RenderEngineLike {
    *  names; routing 3-part names straight into it (the previous shape)
    *  dropped the RULE set key for names like "SET+*right+SETTING" that
    *  Ruby classifies via standard_rule?. */
+  /** R16: the existing_rule_card memo for virtual rule cards — the sync
+   *  half of the preloadVirtualRuleVerdicts resolution (editor.rb:119-131).
+   *  True = a stored rule exists for this virtual's (set, setting); false =
+   *  the prototype walk found none (Ruby's `voo.hide :bar_nav unless
+   *  existing_rule_card` + the one-line mini_unknown gate read this).
+   *  Undefined = the setting was never preloaded for this set card. */
+  hasExistingRuleFor(key: string): boolean | undefined {
+    if (this.existingRuleCards === undefined) return undefined;
+    return this.existingRuleCards.has(key);
+  }
+
+  /** R16: the resolved existing-rule CARD for a virtual rule card — the
+   *  bar_right one-line content nests THIS card's :one_line_content through
+   *  its own read verdict (rule_short_content, bar_view.rb:39-44), not the
+   *  virtual's own. Undefined = no existing rule (or not preloaded). */
+  existingRuleFor(key: string): RenderCard | undefined {
+    return this.existingRuleCards?.get(key);
+  }
+
+  /** R16: the PROTOTYPE pattern input for a set card — the port of
+   *  set_prototype (set.rb:87-92 `Card.fetch prototype_args(anchor_name),
+   *  new: prototype_args`) consumed by the existing-rule resolution above
+   *  (editor.rb:126-130 existing_rule_from_prototype). Per pattern:
+   *  - SELF: the anchor REAL card (prototype_args {name: anchor}) — its
+   *    own candidate walk, SELF pattern included (isNew false).
+   *  - TYPE: prototype_args {type: anchor} — a NAMELESS new card of the
+   *    anchor type; only the TYPE + ALL candidates apply (blank name).
+   *  - RIGHT: prototype_args {name: "*dummy+anchor"} — a new compound
+   *    whose type rides the template chain (newCardDefaultType).
+   *  - TYPE_PLUS_RIGHT: prototype_args {name: "*dummy+right"} typed by
+   *    the set's anchor type card.
+   *  - ALL/RSTAR/ALL_PLUS: nameless/untyped — only the ALL candidate
+   *    applies.
+   *  The undefined input (unknown pattern) skips the resolution; the
+   *  renderer treats it as no-existing-rule (documented remainder). */
+  private async prototypePatternInput(setCard: RenderCard): Promise<PatternCardInput | undefined> {
+    const rightName = setCard.name.rightName;
+    const codenameOf = async (name: string | undefined): Promise<string | undefined> => {
+      if (name === undefined) return undefined;
+      let card = this.fetchRenderCard(name);
+      if (card === undefined) {
+        const record = await this.fetcher.fetchByName(name);
+        if (record !== undefined) card = await this.enrichAndStore(record);
+      }
+      const id = card?.id;
+      return id !== undefined ? this.peekCodenameById(id) : undefined;
+    };
+    const patternCode =
+      rightName !== undefined ? await codenameOf(rightName.s) : await codenameOf(setCard.name.s);
+    const anchorName = setCard.name.leftName?.s;
+    const fetchAnchor = async (): Promise<RenderCard | undefined> => {
+      if (anchorName === undefined) return undefined;
+      let real = this.fetchRenderCard(anchorName);
+      if (real === undefined) {
+        const record = await this.fetcher.fetchByName(anchorName);
+        if (record !== undefined) real = await this.enrichAndStore(record);
+      }
+      return real;
+    };
+    switch (patternCode) {
+      case "all":
+      case "rstar":
+      case "all_plus":
+        return { name: DeckoName.parse(""), id: undefined, typeId: undefined, isNew: true };
+      case "self": {
+        const real = await fetchAnchor();
+        if (real !== undefined && real.id !== undefined) {
+          return { name: real.name, id: real.id, typeId: real.typeId, typeName: real.typeName, isNew: false };
+        }
+        return anchorName !== undefined
+          ? { name: DeckoName.parse(anchorName), id: undefined, typeId: undefined, isNew: true }
+          : undefined;
+      }
+      case "type": {
+        const typeCard = await fetchAnchor();
+        if (typeCard === undefined || typeCard.id === undefined) {
+          return { name: DeckoName.parse(""), id: undefined, typeId: undefined, isNew: true };
+        }
+        return {
+          name: DeckoName.parse(""),
+          id: undefined,
+          typeId: typeCard.id,
+          typeName: typeCard.name,
+          isNew: true,
+        };
+      }
+      case "right": {
+        if (anchorName === undefined) return undefined;
+        const parsed = DeckoName.parse(`*dummy+${anchorName}`);
+        return {
+          name: parsed,
+          id: undefined,
+          typeId: this.newCardDefaultType(parsed)?.typeId,
+          isNew: true,
+        };
+      }
+      case "type_plus_right": {
+        const leftName = setCard.name.leftName;
+        const rightPart = leftName?.rightName?.s;
+        const typeName = leftName?.leftName?.s;
+        if (rightPart === undefined || typeName === undefined) return undefined;
+        const parsed = DeckoName.parse(`*dummy+${rightPart}`);
+        let typeCard = this.fetchRenderCard(typeName);
+        if (typeCard === undefined) {
+          const record = await this.fetcher.fetchByName(typeName);
+          if (record !== undefined) typeCard = await this.enrichAndStore(record);
+        }
+        return { name: parsed, id: undefined, typeId: typeCard?.id, isNew: true };
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  /** R16: set/rule SET membership — the port of set_pattern/06_rule.rb
+   *  (`pattern_applies? card -> card.rule?`, lib/card/rule/all.rb:32-40):
+   *  standard_rule? = the right part is a Setting AND the left part is a
+   *  Set — NO part-count limit (the 2-part `*all+*autoname` and the 3-part
+   *  `*captcha+*right+*autoname` are both rule cards). Gates the rule-bar
+   *  behaviors: bar_view.rb:10's `_rule-item` class_up + category classes,
+   *  bar_view.rb:2-3's three-column bar_cols (5,4,3) with bar_middle kept,
+   *  and the bar_menu's new-card create/edit label split. The corpus's
+   *  `mod: format+*style` (left "mod: format" is Mod-typed, NOT a Set) is
+   *  NOT a rule card — the oracle pins its bar WITHOUT `_rule-item`
+   *  (dual-lane-view:style: mods:render:open). */
+  cardMatchesRuleSet(card: RenderCard): boolean {
+    const ids = this.ruleTypeIds;
+    if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
+      return false;
+    }
+    if (!card.name.isCompound) return false;
+    const rightKey = card.name.rightName?.key;
+    const leftKey = card.name.leftName?.key;
+    if (rightKey === undefined || leftKey === undefined) return false;
+    const rightRecord = this.renderCards.get(rightKey);
+    const leftRecord = this.renderCards.get(leftKey);
+    if (rightRecord === undefined || leftRecord === undefined) return false;
+    return (
+      rightRecord.record.typeId === ids.setting &&
+      leftRecord.record.typeId === ids.set
+    );
+  }
+
   cardIsRule(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
     if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
