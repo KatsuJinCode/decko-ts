@@ -17,6 +17,7 @@
  */
 
 import {
+  onDeckInflectionsChanged,
   pluralize,
   regexpQuote,
   rubyCapitalize,
@@ -110,6 +111,16 @@ export class DeckoName {
 
   /** Cardname cache (lib/cardname/class_methods.rb#cache). */
   private static cache = new Map<string, DeckoName>();
+
+  // A deck-inflection config change (applyDeckInflections /
+  // resetDeckInflections in ./name/inflect.ts) invalidates every memoized
+  // key, exactly as a Rails inflections initializer precedes any name
+  // resolution at deck boot.
+  static {
+    onDeckInflectionsChanged(() => {
+      DeckoName.cache.clear();
+    });
+  }
 
   /** Process-wide banned characters (Cardname.banned_array, default []). */
   static bannedCharacters: readonly string[] = [];

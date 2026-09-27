@@ -12,6 +12,11 @@
  * FIRST matching rule (Ruby `sub!` returns truthy on any match, even a no-op
  * replacement, so a no-op match still stops the scan - e.g. pluralize("gas")
  * == "gas" via /s$/i -> "s").
+ *
+ * These defaults are the GEM-standard baseline. A deck may run its own
+ * amended tables (Rails config/initializers/inflections.rb) - see
+ * applyDeckInflections / resetDeckInflections below; deck amendments are data
+ * supplied at deck-boot time, never baked into these constants.
  */
 
 interface InflectionRule {
@@ -24,11 +29,52 @@ function rules(pairs: readonly (readonly [RegExp, string])[]): InflectionRule[] 
 }
 
 /**
+ * DECK INFLECTION CONFIG SEAM (deck data, not engine code).
+ *
+ * The cardname gem computes card keys through ActiveSupport::Inflector, whose
+ * rule tables are PROCESS-GLOBAL STATE that each Rails/Decko deck may amend at
+ * boot from its own config (config/initializers/inflections.rb). Two decks
+ * can therefore store different keys for the same name. The engine ships the
+ * DEFAULT English tables below; a deck's own amendments are DECK DATA supplied
+ * at deck-boot time (the moment fixtures/corpora are seeded), never hardcoded
+ * in src/.
+ *
+ * `applyDeckInflections` mirrors the additive semantics of a Rails inflections
+ * block: `uncountable` words are APPENDED to the default uncountables,
+ * `singular`/`plural` rule pairs are PREPENDED to the default rules (later
+ * definitions win, matching Inflections#singular/#plural prepend order).
+ * `resetDeckInflections` restores the gem defaults. Both clear the DeckoName
+ * parse cache (registered by name.ts) so no stale keys survive a config
+ * change - the same reason a Rails initializer runs before any request.
+ */
+export interface DeckInflectionConfig {
+  /** Inflections#uncountable: words never inflected (matched \\b<word>$ per
+   * word part, case-insensitive - Uncountables#to_regex). */
+  uncountables?: readonly string[];
+  /** Inflections#singular: [regexp, replacement] pairs, definition order. */
+  singular?: readonly (readonly [RegExp, string])[];
+  /** Inflections#plural: [regexp, replacement] pairs, definition order. */
+  plural?: readonly (readonly [RegExp, string])[];
+}
+
+type DeckInflectionsListener = () => void;
+const deckInflectionsListeners: DeckInflectionsListener[] = [];
+
+/** Registered by src/card/name.ts so a config change drops memoized keys. */
+export function onDeckInflectionsChanged(listener: DeckInflectionsListener): void {
+  deckInflectionsListeners.push(listener);
+}
+
+function notifyDeckInflectionsChanged(): void {
+  for (const listener of deckInflectionsListeners) listener();
+}
+
+/**
  * Singularization rules, scan order. Transcribed from
  * activesupport-7.2.3.2 lib/active_support/inflections.rb (singular + irregular
  * entries), reversed for prepend semantics.
  */
-const SINGULAR_RULES: readonly InflectionRule[] = rules([
+const DEFAULT_SINGULAR_RULES: readonly InflectionRule[] = rules([
   // irregular-derived, reverse definition order (zombie, move, sex, child, man, person).
   // Ruby's Inflections#irregular generates /(s0)srest$/i -> '\1' + srest and
   // /(p0)prest$/i -> '\1' + prest (no ^ anchor), each irregular contributing its
@@ -80,7 +126,7 @@ const SINGULAR_RULES: readonly InflectionRule[] = rules([
  * activesupport-7.2.3.2 lib/active_support/inflections.rb (plural + irregular
  * entries), reversed for prepend semantics.
  */
-const PLURAL_RULES: readonly InflectionRule[] = rules([
+const DEFAULT_PLURAL_RULES: readonly InflectionRule[] = rules([
   // irregular-derived, reverse definition order (same generation scheme as above)
   [/(z)ombies$/i, "$1ombies"],
   [/(z)ombie$/i, "$1ombies"],
@@ -122,7 +168,7 @@ const PLURAL_RULES: readonly InflectionRule[] = rules([
  * Default EN uncountables from lib/active_support/inflections.rb.
  * Ruby matches each with /\b<word>\Z/i (Uncountables#to_regex).
  */
-const UNCOUNTABLE_REGEXES: readonly RegExp[] = [
+const DEFAULT_UNCOUNTABLE_WORDS: readonly string[] = [
   "equipment",
   "information",
   "rice",
@@ -133,11 +179,57 @@ const UNCOUNTABLE_REGEXES: readonly RegExp[] = [
   "sheep",
   "jeans",
   "police",
-].map((word) => new RegExp(`\\b${word}$`, "i"));
+];
+
+/** Current effective tables: gem defaults amended by deck data (see
+ * applyDeckInflections). Immutable snapshots; swapped wholesale on change. */
+interface InflectionState {
+  singularRules: readonly InflectionRule[];
+  pluralRules: readonly InflectionRule[];
+  uncountableRegexes: readonly RegExp[];
+}
+
+function buildUncountableRegexes(words: readonly string[]): readonly RegExp[] {
+  return words.map((word) => new RegExp(`\\b${word}$`, "i"));
+}
+
+let inflectionState: InflectionState = {
+  singularRules: DEFAULT_SINGULAR_RULES,
+  pluralRules: DEFAULT_PLURAL_RULES,
+  uncountableRegexes: buildUncountableRegexes(DEFAULT_UNCOUNTABLE_WORDS),
+};
+
+/** Amend the process-global inflection tables with DECK DATA (Rails
+ * inflections-block semantics: deck uncountables append, deck rules prepend
+ * over the defaults, later definitions winning). Call once at deck-boot /
+ * corpus-seed time, before any name is parsed. */
+export function applyDeckInflections(config: DeckInflectionConfig): void {
+  const deckSingular = config.singular ? rules(config.singular).reverse() : [];
+  const deckPlural = config.plural ? rules(config.plural).reverse() : [];
+  const uncountableWords = config.uncountables
+    ? [...DEFAULT_UNCOUNTABLE_WORDS, ...config.uncountables]
+    : DEFAULT_UNCOUNTABLE_WORDS;
+  inflectionState = {
+    singularRules: [...deckSingular, ...DEFAULT_SINGULAR_RULES],
+    pluralRules: [...deckPlural, ...DEFAULT_PLURAL_RULES],
+    uncountableRegexes: buildUncountableRegexes(uncountableWords),
+  };
+  notifyDeckInflectionsChanged();
+}
+
+/** Restore the gem's standard (default English) inflection tables. */
+export function resetDeckInflections(): void {
+  inflectionState = {
+    singularRules: DEFAULT_SINGULAR_RULES,
+    pluralRules: DEFAULT_PLURAL_RULES,
+    uncountableRegexes: buildUncountableRegexes(DEFAULT_UNCOUNTABLE_WORDS),
+  };
+  notifyDeckInflectionsChanged();
+}
 
 /** ActiveSupport::Inflector::Inflections::Uncountables#uncountable? */
 function uncountable(word: string): boolean {
-  return UNCOUNTABLE_REGEXES.some((re) => re.test(word));
+  return inflectionState.uncountableRegexes.some((re) => re.test(word));
 }
 
 /** ActiveSupport::Inflector#apply_inflections */
@@ -152,14 +244,14 @@ function applyInflections(word: string, rulesInScanOrder: readonly InflectionRul
   return word;
 }
 
-/** ActiveSupport::Inflector#singularize (default :en inflections) */
+/** ActiveSupport::Inflector#singularize (current deck inflections) */
 export function singularize(word: string): string {
-  return applyInflections(word, SINGULAR_RULES);
+  return applyInflections(word, inflectionState.singularRules);
 }
 
-/** ActiveSupport::Inflector#pluralize (default :en inflections) */
+/** ActiveSupport::Inflector#pluralize (current deck inflections) */
 export function pluralize(word: string): string {
-  return applyInflections(word, PLURAL_RULES);
+  return applyInflections(word, inflectionState.pluralRules);
 }
 
 /**
