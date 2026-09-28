@@ -38,8 +38,8 @@ import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson } from "./slot-html.js";
-import { UnsupportedViewError } from "./format.js";
-import type { RenderCard, RenderFormat, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
+import { UnsupportedViewError, RenderFormat } from "./format.js";
+import type { RenderCard, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
   isPointerOrListCard,
   isRuleCardWithPermissionRight,
@@ -55,6 +55,7 @@ import { highlight, langForTypeCode } from "./code-highlighting/index.js";
 import { dateError } from "./errors.js";
 import { buildVirtualRuleCard } from "./virtual-rule-card.js";
 import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
+import { kramdownToStashedHtml } from "./kramdown.js";
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 
 // ---------------------------------------------------------------------------
@@ -746,7 +747,18 @@ function settingCoreHtml(ctx: ViewContext): string {
   // alert body renders a fetch miss as "" (the unknown-view :rule_help
   // substitutes :unknown which renders ""), so an absent *all+<setting>
   // is a silent blank rather than a raise.
-  const ruleHelp = fmt.renderView("rule_help");
+  // alert body renders a fetch miss as "" (the unknown-view :rule_help
+  // substitutes :unknown which renders ""), so an absent *all+<setting>
+  // is a silent blank rather than a raise. The same tolerance applies when
+  // the rule_help VIEW itself is unregistered (bare render paths without
+  // the mod registry — e.g. the rule-bar one-line's core render): Ruby's
+  // mod-loaded deck resolves it, the bare path renders the blank branch.
+  let ruleHelp = "";
+  try {
+    ruleHelp = fmt.renderView("rule_help");
+  } catch (error) {
+    if (!(error instanceof UnsupportedViewError)) throw error;
+  }
   if (ruleHelp !== "") {
     body += `${ruleHelp}\n`;
   }
@@ -1711,7 +1723,49 @@ const barLeftView: ViewFn = ({ fmt }) => fmt.renderView("title");
 const barMiddleView: ViewFn = () => "";
 // Rule cards nest their own :one_line_content (card-mod-rules set/rule/
 // bar_view.rb:36-37); the *all bar_right stays empty for everything else.
-const barRightView: ViewFn = ({ fmt }) => ruleBarRightHtml(fmt.card, fmt.engine);
+// The injected renderCoreText renders a card's UNWRAPPED core-view body in
+// its own format (Ruby render_core — the base one_line_content METHOD calls
+// `truncate strip_tags(render_core)`, card-mod-format set/all/content.rb:
+// 47-49; mod-dispatched, so a Markdown rule card kramdowns first). The
+// view dispatch lives in THIS module — importing it from rule-bar-right
+// would close a views -> rule-bar-right -> views cycle — hence the callback.
+const barRightView: ViewFn = ({ fmt }) =>
+  ruleBarRightHtml(fmt.card, fmt.engine, (card) => {
+    const sub = new RenderFormat(card, fmt.engine, {
+      parent: fmt,
+      maxDepth: fmt.maxDepth,
+      // Ruby's render_core inside one_line_content renders nested content
+      // with standard non-main error semantics (quiet spans); a raise here
+      // would abort a one-line whose visible bytes are the first 60 text
+      // characters of the stripped core.
+      nestQuietErrors: true,
+    });
+    // Markdown-typed cores take the kramdown path (markdown.rb:6-13, the
+    // Type::Markdown set-module core override). The chain dispatcher
+    // resolves that override only when a mod loader is wired; boots
+    // without one (the ground-truth verifier) fall back to the base core
+    // and would render the markdown SOURCE. The conversion itself is
+    // loader-independent (render/kramdown.ts), so dispatch by type here —
+    // the same gate markdownCoreView applies (typeName !== "Markdown"
+    // falls through to the base core below).
+    if (card.typeName === "Markdown") {
+      try {
+        return sub.processContent(kramdownToStashedHtml(card.dbContent ?? ""));
+      } catch (error) {
+        if (error instanceof UnsupportedViewError) return card.dbContent ?? "";
+        throw error;
+      }
+    }
+    try {
+      return sub.renderView("core");
+    } catch (error) {
+      // A core whose nested content needs a view the bare path does not
+      // register (e.g. a *guide body reaching an unregistered view):
+      // fall back to the stored bytes there; everything else rethrows.
+      if (error instanceof UnsupportedViewError) return card.dbContent;
+      throw error;
+    }
+  });
 
 /** bar.rb view :bar_bottom -> render :content, home_view: :content.
  *

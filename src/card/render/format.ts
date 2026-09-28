@@ -677,11 +677,18 @@ export class RenderFormat {
     // is "*default" in this port); the codename is the bare form (no "*").
     const bare = rightKey.startsWith("*") ? rightKey.slice(1) : rightKey;
     // Look up the right card via the fetcher's prepared map (cached).
-    // Try the bare key first; fall back to the original rightKey for
-    // setting cards whose canonical key preserves the leading "*".
+    // STARRED KEY FIRST: for a rule name the right part IS the *setting
+    // card, whose canonical key keeps the star — the bare form can
+    // collide with an UNRELATED card that merely shares the key (the
+    // "layout" key resolves the Layout CARDTYPE once the shared prepared
+    // map covers it, codename layout_type, and the rule item then loses
+    // _category-recent). Which cards sit in the prepared map depends on
+    // what earlier entries in the same process prefetched, so the
+    // bare-first order was also a cross-entry nondeterminism. The bare
+    // fallback stays for star-less right parts.
     const right =
-      this.engine.fetchRenderCard(bare) ??
-      this.engine.fetchRenderCard(rightKey);
+      this.engine.fetchRenderCard(rightKey) ??
+      this.engine.fetchRenderCard(bare);
     if (right === undefined) return undefined;
     return right.record.codename ?? bare;
   }

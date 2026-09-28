@@ -178,20 +178,23 @@ export interface VirtualRuleCardInputs {
  *  rule bar mis-type. */
 export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard {
   const { setCard, settingCard, settingCodename } = inputs;
-  // set.name.s + "+" + "*" + setting's display codename. The bare
-  // "*<codename>" form mirrors Ruby's Card.new construction: Ruby's
-  // setting_list_item joins the set name with the SETTING CARD'S NAME
-  // (which is "*<codename>" with the leading *), so the result is
-  // "*captcha+*right+*follow" — the canonical compound form the engine
-  // parses through DeckoName.parse (the engine's normal card-name
-  // machinery, format.ts#resolveNestName).
-  //
-  // NOTE (2026-09-26 rules-editor lane): for settings whose stored deck
-  // name carries spaces ("*input type") the codename join ("*input_type")
-  // is key-identical and url_key-identical to the stored-name join, so
-  // slot ids and the slot_cardname attrs match the oracle either way;
-  // verified before leaving the codename form in place.
-  const compoundName = `${setCard.name.s}+*${settingCodename}`;
+  // set.name.s + "+" + the SETTING CARD'S OWN NAME. Ruby's
+  // setting_list_item joins the set name with the setting card's stored
+  // name (which carries the leading "*" and the STORED DISPLAY form),
+  // so the result for the input-type setting is "AAM+*self+*input type"
+  // — the space form the oracle pins in the bar's display positions
+  // (data-slot nest_name + card-title; the url_key/id attrs stay
+  // underscore forms because they are key derivations). The codename
+  // join the 2026-09-26 rules-editor lane left in place is key-identical
+  // (so all key/url-key lookups are unaffected) but NOT display-identical:
+  // recapture-raw-shard-000003 AAM+*self:content offset 36177 pins
+  // `nest_name":"AAM+*self+*input type"` + `title="AAM+*self+*input
+  // type"` where the codename form emitted "*input_type".
+  const settingNamePart =
+    settingCard.name?.s !== undefined && settingCard.name.s.startsWith("*")
+      ? settingCard.name.s
+      : `*${settingCodename}`;
+  const compoundName = `${setCard.name.s}+${settingNamePart}`;
   const name = DeckoName.parse(compoundName);
   // Type resolution: the virtual rule card's TYPE in Ruby's render is
   // resolved through the structure-rule walk (mod/core/set/all/templating
