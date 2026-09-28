@@ -152,6 +152,12 @@ export interface SeedOptions {
    *  (views.rb:39-45 compares against AnonymousID). Unset keeps the
    *  historical seed default (1). */
   creatorId?: number;
+  /** cards.current_revision_id — the card's last action id. The edit-form
+   *  surface renders it in the conflict tracker hidden field
+   *  (card.last_action_id, card-mod-edit set/all/form.rb:27-31); unset
+   *  keeps the NULL default (the edit-form oracle capture normalizes the
+   *  value anyway - it is seed state, not form semantics). */
+  currentRevisionId?: number;
 }
 
 /** Direct INSERT (write path is another stream). Every row with a known
@@ -198,7 +204,7 @@ export async function seedCard(
       opts.codename ?? null,
       opts.leftId ?? null,
       opts.rightId ?? null,
-      null,
+      opts.currentRevisionId ?? null,
       // created_at: the corpus row's literal SQL datetime when provided
       // (the Sign up core renders "signed up on #{format_date
       // card.created_at}" from this column); the historical seed default
