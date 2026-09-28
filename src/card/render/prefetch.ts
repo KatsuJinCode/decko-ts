@@ -455,6 +455,111 @@ function rowToCardsRow(row: RawRow): CardsRow {
 }
 
 /**
+ * The chunked-search-prefetch composer: compose + cache REAL cards rows
+ * (the `SELECT *` shape readCardRowsByIdChunked returns) for the whole-set
+ * search read path (render.ts#runSearch's transport-chunked adoption).
+ *
+ * Field fidelity is the point: unlike the closure rounds above (whose
+ * RawRow round trip synthesizes a documented subset and is byte-pinned by
+ * the corpus batteries), this composer passes the real row straight into
+ * composeCardRecord — updater_id, current_revision_id, references_expired
+ * and every other column ride through — so a record the chunked prefetch
+ * writes into the fetch cache is VALUE-IDENTICAL to the record the per-row
+ * point-read ladder would have composed for the same id. That is the
+ * result-identity invariant the search adoption depends on: same rows,
+ * same order, same bytes.
+ *
+ * Composition order mirrors composeAndCache: sides before junctions over a
+ * multi-pass walk of the row map, so every junction name resolves within
+ * the batch (sides an earlier call already composed resolve through the
+ * warmed lexicon, zero queries); each composed row then primes the lexicon
+ * (Lexicon#write — both directions) exactly as the closure path does, and
+ * the composed record goes through ctx.cacheRecord (fetch cache + enrich).
+ */
+export async function composeAndCacheSqlRows(
+  rows: CardsRow[],
+  ctx: PrefetchContext,
+): Promise<CardRecord[]> {
+  const byId = new Map<number, CardsRow>();
+  for (const row of rows) byId.set(row.id, row);
+
+  const names = new Map<number, DeckoName>();
+  let pending = [...byId.values()];
+  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
+    const still: CardsRow[] = [];
+    for (const row of pending) {
+      const composed = await tryComposeSqlRowName(row, names, byId, ctx);
+      if (composed !== undefined) names.set(row.id, composed);
+      else still.push(row);
+    }
+    if (still.length === pending.length) break; // unresolvable sides stay
+    pending = still;
+  }
+
+  const composedRecords: CardRecord[] = [];
+  for (const row of byId.values()) {
+    const name = names.get(row.id);
+    if (name === undefined) continue;
+    if (row.name !== null && row.name !== undefined) {
+      ctx.lexicon.write(row.id, name, row.name); // simple lex: the name string
+    } else if (row.left_id !== null && row.left_id !== undefined && row.right_id !== null && row.right_id !== undefined) {
+      ctx.lexicon.write(row.id, name, [row.left_id, row.right_id]); // compound lex
+    }
+  }
+
+  for (const row of byId.values()) {
+    const name = names.get(row.id);
+    if (name === undefined) continue;
+    const record = await composeCardRecord(row, ctx.lexicon); // the REAL row
+    await ctx.cacheRecord(record);
+    composedRecords.push(record);
+  }
+  return composedRecords;
+}
+
+/** tryComposeName over a real cards row: simple rows parse their name
+ *  column; junction rows compose from their sides. A side present in THIS
+ *  call's row set (byId) resolves ONLY from the local composed map —
+ *  returning undefined defers the junction to the next pass instead of
+ *  querying the lexicon for a row the batch already carries (the whole-set
+ *  read fetched every side; a lexicon point query here would reintroduce
+ *  exactly the per-row round trips the chunked read removed). Sides NOT in
+ *  the row set keep the closure path's fallback: the lexicon's warm cache,
+ *  then a real read (cached on first miss). */
+async function tryComposeSqlRowName(
+  row: CardsRow,
+  names: Map<number, DeckoName>,
+  byId: Map<number, CardsRow>,
+  ctx: PrefetchContext,
+): Promise<DeckoName | undefined> {
+  if (row.name !== null && row.name !== undefined) return DeckoName.parse(row.name);
+  if (row.left_id === null || row.left_id === undefined) return undefined;
+  if (row.right_id === null || row.right_id === undefined) return undefined;
+  const left = await sqlRowSideName(row.left_id, names, byId, ctx);
+  if (left === undefined) return undefined;
+  const right = await sqlRowSideName(row.right_id, names, byId, ctx);
+  if (right === undefined) return undefined;
+  return DeckoName.parse(`${left.s}+${right.s}`);
+}
+
+async function sqlRowSideName(
+  id: number,
+  names: Map<number, DeckoName>,
+  byId: Map<number, CardsRow>,
+  ctx: PrefetchContext,
+): Promise<DeckoName | undefined> {
+  const local = names.get(id);
+  if (local !== undefined) return local;
+  if (byId.has(id)) return undefined; // in the row set: resolve on a later pass, never query
+  try {
+    const viaLexicon = await ctx.lexicon.name(id);
+    return viaLexicon !== undefined && viaLexicon.s !== "" ? viaLexicon : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * The closure driver: BFS over inclusion levels. Every round collects the
  * not-yet-known reference targets from everything fetched so far (the REAL
  * parser - the semantic authority), fetches them in ONE batched round trip,

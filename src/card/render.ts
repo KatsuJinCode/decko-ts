@@ -64,14 +64,17 @@ import {
   BAD_QUERY_CLASS_NAME,
 } from "./render/errors.js";
 import {
+  composeAndCacheSqlRows,
   prefetchInclusionClosure,
   prefetchWarmupClosure,
+  type PrefetchContext,
   type PrefetchStats,
   type WarmupCard,
   type WarmupRef,
   type WarmupScan,
   type WarmupStats,
 } from "./render/prefetch.js";
+import { readCardRowsByIdChunked } from "../server/chunked-row-reads.js";
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames, scanNests } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
@@ -3020,6 +3023,7 @@ export class RenderEngine implements RenderEngineLike {
       return [];
     }
     let rows: CardsRow[];
+    let records: Map<number, CardRecord>;
     try {
       const result = await executeQuery(this.fetcher.driver, statement as Record<string, unknown>, {
         // The viewer's read-permission filter rides the SQL
@@ -3066,12 +3070,36 @@ export class RenderEngine implements RenderEngineLike {
         },
       });
       rows = "rows" in result ? result.rows : [];
+    // Transport chunking (the lane-coldquery batching pattern generalized to
+    // the search read path): every result row used to cost its own
+    // fetchById point query here — the whole-deck probe measured 12,475
+    // driver round trips for one 6,233-item page render, far past the
+    // Workers free tier's 50-per-invocation subrequest cap. The rows now
+    // ride readCardRowsByIdChunked (IN-list statements of 50 ids, grouped
+    // into driver.batch calls of 20 statements — one subrequest per batch:
+    // 7 batches for the probe) and compose + cache through the SAME
+    // compose/enrich ladder the per-row fetch used (composeAndCacheSqlRows
+    // keeps the real `SELECT *` field fidelity, so the composed record is
+    // value-identical to the record the point-read ladder composed — same
+    // rows, same order, same bytes). The loop below walks the CQL result in
+    // order and consumes the composed records directly: its per-item
+    // fetchById was removed with the chunked read itself (the lexicon
+    // temporary cache's own Ruby-mirrored 10k-key reset wipes primed
+    // entries mid-prefetch, so even primed lexicon entries could not serve
+    // 6,233 per-item cache lookups — the records are already composed, and
+    // re-fetching each would only re-query). canReadCard/enrichAndStore
+    // semantics are unchanged.
+    records = await this.prefetchSearchResultRows(rows);
     } catch {
       return []; // search_error view is wave 3
     }
     const items: RenderCard[] = [];
     for (const row of rows) {
-      const record = await this.fetcher.fetchById(row.id);
+      // The transport-chunked prefetch composed every result row (from the
+      // identical row bytes the per-row point reads used to return); a row
+      // absent from the map had no non-trashed cards row — the exact case
+      // the old fetchById returned undefined for.
+      const record = records.get(row.id);
       if (record === undefined) continue;
       // Defense in depth (the listing slot AND the body must both deny):
       // the SQL filter excludes stored read_rule_id denials, but rows whose
@@ -3093,5 +3121,51 @@ export class RenderEngine implements RenderEngineLike {
       items.push(enriched);
     }
     return items;
+  }
+
+  /** The search read path's transport-chunked prefetch (see the runSearch
+   *  call site for the mechanism + baseline numbers). Collects the id set
+   *  the result walk can touch — each CQL row's card, its TYPE row (the
+   *  enrichment's typeRecord fetch), and junction SIDE rows (name
+   *  composition + enrichAndStore's left-card fetch) — reads them all
+   *  through readCardRowsByIdChunked, and composes + caches the fetched
+   *  rows through the shared ladder (fetch cache via cacheFetchedRecord,
+   *  which also enriches into renderCards). Returns the composed records
+   *  keyed by id: the runSearch loop consumes them directly (same values
+   *  the old per-row fetchById composed, from the identical row bytes) so
+   *  the walk costs zero per-item queries even when the lexicon
+   *  temporary cache's Ruby-mirrored 10k-key reset — which fires at
+   *  whole-deck scale DURING the priming writes — wipes the primed
+   *  lexicon entries behind it. Rows with no non-trashed cards row
+   *  (trashed/absent ids) are absent from the map, the exact case the
+   *  point-read ladder answered undefined. */
+  private async prefetchSearchResultRows(rows: CardsRow[]): Promise<Map<number, CardRecord>> {
+    const records = new Map<number, CardRecord>();
+    if (rows.length === 0) return records;
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    const pushId = (id: number | null | undefined): void => {
+      if (id === null || id === undefined || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    };
+    for (const row of rows) {
+      pushId(row.id);
+      pushId(row.type_id);
+      pushId(row.left_id);
+      pushId(row.right_id);
+    }
+    const fetched = await readCardRowsByIdChunked(this.fetcher.driver, ids);
+    if (fetched.length === 0) return records;
+    const ctx: PrefetchContext = {
+      driver: this.fetcher.driver,
+      lexicon: this.fetcher.lexicon,
+      cacheRecord: (record) => this.cacheFetchedRecord(record),
+    };
+    const composed = await composeAndCacheSqlRows(fetched, ctx);
+    for (const record of composed) {
+      if (record.id !== undefined) records.set(record.id, record);
+    }
+    return records;
   }
 }
