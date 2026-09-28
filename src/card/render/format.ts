@@ -185,9 +185,36 @@ export class Voo {
     for (const view of list) this.viz.set(view, setting);
   }
 
-  /** visibility.rb#hide (the voo.hide :bar_middle idiom in bar.rb). */
+  /** visibility.rb#viz (visibility.rb:71-79) - the NON-force write:
+   *  `next if !force && viz_hash[view]` - the FIRST write on a view wins.
+   *  This is Ruby's `voo.show x` / `voo.hide x` setter semantics (plain
+   *  show/hide delegate here without force; only the ! variants and
+   *  process_visibility_options force). The forms lane depends on the
+   *  exact order: edit_content.rb's :edit_form view body runs
+   *  `voo.show :edit_type_row` first, then the edit_form METHOD runs
+   *  `voo.hide :edit_type_row` - a no-op under first-write-wins, which is
+   *  why the captured data-slot lists edit_type_row under "show"
+   *  (fixtures/captured/edit-forms.json). */
+  private vizWrite(views: string | string[], setting: "show" | "hide"): void {
+    const list = Array.isArray(views) ? views : [views];
+    for (const view of list) {
+      if (this.viz.has(view)) continue;
+      this.viz.set(view, setting);
+    }
+  }
+
+  /** visibility.rb#show (the SETTER form - `voo.show :help` in
+   *  edit_content.rb's :edit body). The query form is show() above
+   *  (Ruby's show?). */
+  showViz(views: string | string[]): void {
+    this.vizWrite(views, "show");
+  }
+
+  /** visibility.rb#hide (the SETTER form - first write wins; see vizWrite).
+   *  The voo.hide :bar_middle idiom (bar.rb) and the :edit body's
+   *  `voo.hide :save_button` ride here. */
   hide(views: string | string[]): void {
-    this.setViz(views, "hide");
+    this.vizWrite(views, "hide");
   }
 
   /** view/options/voo_api.rb#slot_options: normalized options + visibility,
@@ -397,6 +424,20 @@ export class RenderFormat {
   get contextFormat(): RenderFormat {
     return this.parent ?? this;
   }
+
+  /** content.rb:60-70 id_counter + unique_id: the element-id counter is
+   *  owned by the format-chain ROOT (every subformat delegates:
+   *  `return @parent.id_counter if @parent`), incremented once per call;
+   *  the id is "<this card's safe_key>-<n>" (content.rb:69). The editors
+   *  consume it - tinymce_editor_input's `id: unique_id` (the captured
+   *  edit form's `id="oracle_basic-1"`). */
+  uniqueId(): string {
+    const root = this.parent ?? this;
+    root.idCounter = (root.idCounter ?? 0) + 1;
+    return `${this.card.name.safeKey}-${root.idCounter}`;
+  }
+
+  private idCounter: number | undefined;
 
   // -------------------------------------------------------------------------
   // render.rb#render!

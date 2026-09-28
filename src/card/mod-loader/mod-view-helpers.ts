@@ -24,11 +24,25 @@ function slotId(card: ViewContext["fmt"]["card"], view: string): string {
  * Attribute order and shapes match the core slotWrap exactly: id, class
  * (card-slot, <view>-view, set keys + classy extras), the data attributes in
  * wrap_data order, and the JSON-escaped data-slot payload.
+ *
+ * `extraClasses` carries the wrap-call class arg appended AFTER the classy
+ * list (Ruby `wrap true, class: :row` in edit_inline.rb#edit_row renders
+ * "... SELF-x d-flex form-group row" - class_up extras, then the wrap arg).
  */
-export function modSlotWrap(ctx: ViewContext, view: string, inner: string): string {
+export function modSlotWrap(
+  ctx: ViewContext,
+  view: string,
+  inner: string,
+  extraClasses = "",
+): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
-  const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
+  const classes = [
+    voo.classy(["card-slot", `${view}-view`, card.setKeys]),
+    extraClasses,
+  ]
+    .filter((s) => s !== "")
+    .join(" ");
   const attrs = emitAttrs({
     id: slotId(card, view),
     class: classes,
