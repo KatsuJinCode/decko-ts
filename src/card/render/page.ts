@@ -46,6 +46,7 @@ import { DeckoName } from "../name.js";
 import { findRule } from "../rules/lookup.js";
 import { applyViewOverride } from "../rules/apply.js";
 import { scanNests, referencedNames } from "./nest-syntax.js";
+import type { WarmupRef, WarmupScan } from "./prefetch.js";
 import { RenderFormat } from "./format.js";
 import type { RenderCard } from "./format.js";
 import { h } from "./slot-html.js";
@@ -257,94 +258,84 @@ async function applyMainViewOverride(
 // ---------------------------------------------------------------------------
 
 /** Prepare every card the layout body can dispatch on: the layout's nest
- *  targets, their content references and [[link]] targets, and pointer/list
+ *  targets, their content references, [[link]] targets, and pointer/list
  *  items (plain-text item lists the closure walk never chases — the
- *  *Opportunities dropdown items). Worklist to a fixpoint (bounded by the
- *  finite warmed set); enrichment via prepareItemForRender, then one
- *  verdict refresh so the warm subtree denies exactly like the capture.
- *  Names resolve exactly like the format does: DeckoName marks (:codename)
- *  through the name environment, RELATIVE names against the REFERENCING
- *  card (format.ts resolveNestName's context is the card whose content
- *  nests the reference: layout-level nests resolve against the page card,
- *  a warmed card's own content refs against that card). Resolving every
- *  hop against the page name warmed spurious names ("*credit"'s +image
- *  warmed as "Aikido Oak Cliff+image"), the real sync nest fetch missed
- *  the prepared-card map, and the cold page's footer rendered the nest
- *  empty - the junction row (*credit+*image) stores a NULL key column, so
- *  its name resolves only through the prepared/temp-cache path the
- *  reference-context walk actually primes. */
+ *  *Opportunities dropdown items). Enrichment lands in the prepared-card
+ *  map, then one verdict refresh so the warm subtree denies exactly like
+ *  the capture. Names resolve exactly like the format does: DeckoName
+ *  marks (:codename) through the name environment, RELATIVE names against
+ *  the REFERENCING card (format.ts resolveNestName's context is the card
+ *  whose content nests the reference: layout-level nests resolve against
+ *  the page card, a warmed card's own content refs against that card).
+ *  Resolving every hop against the page name warmed spurious names
+ *  ("*credit"'s +image warmed as "Aikido Oak Cliff+image"), the real sync
+ *  nest fetch missed the prepared-card map, and the cold page's footer
+ *  rendered the nest empty - the junction row (*credit+*image) stores a
+ *  NULL key column, so its name resolves only through the prepared/
+ *  temp-cache path the reference-context walk actually primes.
+ *
+ *  BOUNDED + BATCHED (the cold-render burst fix — this chase used to walk
+ *  nest refs, link targets, AND pointer items transitively to a fixpoint
+ *  through one point-query ladder per name, preparing the whole
+ *  navbar-connected site at ~5,900-7,300 driver round trips per cold
+ *  render): the reference CLASSES are unchanged — every class still
+ *  expands to the same fixpoint the baseline reached, because what renders
+ *  is not decidable from content syntax ([[target|label]] is an
+ *  existence-only anchor in ordinary content but a real nest through the
+ *  navbar chunk walk; a pointer item renders as a full bar) — the burst is
+ *  killed by BATCHING instead: prefetch.ts resolves the closure in
+ *  reference-BFS rounds, ONE driver.batch per round (round trips scale
+ *  with reference DEPTH, not card count), 90-param chunking for the edge
+ *  driver's statement ceiling, and the per-name ladder fallback only for
+ *  names with no fetched row (placeholder/virtual semantics preserved
+ *  byte-exact). Completeness is unchanged: every card the sync render
+ *  reads from the prepared map is prepared before the render starts —
+ *  pinned by the page-layout-warmup regressions and the Aikido Oak Cliff
+ *  14-slot ordered comparison. */
 async function warmUpLayoutNests(
   engine: RenderEngine,
   layoutContent: string,
   pageName: string,
 ): Promise<void> {
-  const warmed = new Set<string>();
-  const queue: Array<{ name: string; context: string }> = [];
+  const seeds: WarmupRef[] = [];
   for (const piece of scanNests(layoutContent)) {
     if (piece.kind === "nest" && piece.nest !== undefined && piece.nest.name !== "_main") {
-      queue.push({ name: piece.nest.name, context: pageName });
+      seeds.push({ name: piece.nest.name, context: pageName });
     }
   }
-  while (queue.length > 0) {
-    await ensureCodenameMarksResolvable(engine);
-    const batch = queue.splice(0, queue.length);
-    for (const { name: raw, context } of batch) {
-      let resolved: string;
-      try {
-        const parsed = DeckoName.parse(raw);
-        resolved = parsed.isAbsolute ? parsed.s : parsed.absoluteName(DeckoName.parse(context)).s;
-      } catch {
-        continue; // unresolved mark: the real nest render reports it
-      }
-      if (warmed.has(resolved)) continue;
-      warmed.add(resolved);
-      let card = fetchPrepared(engine, resolved);
-      if (card === undefined) {
-        try {
-          await engine.prepareItemForRender(resolved);
-        } catch {
-          continue; // unresolvable: the real nest renders the substitution
-        }
-        card = fetchPrepared(engine, resolved);
-        if (card === undefined) continue;
-      }
-      enqueueWarmDeps(card, queue, resolved);
-    }
-  }
+  await engine.warmupLayoutReferences(seeds, scanWarmDeps, () =>
+    ensureCodenameMarksResolvable(engine),
+  );
   await engine.refreshVerdicts();
 }
 
-/** fetchRenderCard with the cold-mark parse neutralized (the sync mark
- *  resolution throws CodenameNotFoundError when the temporary-cache reset
- *  has wiped a lexicon entry; ensureCodenameMarksResolvable re-primes). */
-function fetchPrepared(engine: RenderEngine, name: string) {
-  try {
-    return engine.fetchRenderCard(name);
-  } catch {
-    return undefined;
-  }
-}
-
-/** The next warm-up generation: nest references, [[link]] targets (the
- *  navbar chunk walk nests link targets), and pointer/list item names.
- *  Every pushed name keeps the REFERENCING card as its resolution context. */
-function enqueueWarmDeps(
-  card: { dbContent: string; typeCode?: string },
-  queue: Array<{ name: string; context: string }>,
-  referencingName: string,
-): void {
+/** The reference classes one warmed card contributes (prefetch.ts
+ *  WarmupScan): nest refs and pointer/list items are SPINE (they render
+ *  inside the page, so their own refs are read at sync-render time),
+ *  [[link]] targets are LEAF (renderLinkChunk's known/wanted class reads
+ *  only their existence off the prepared map; a link target never renders
+ *  in this page). Every pushed name keeps the REFERENCING card as its
+ *  resolution context. */
+function scanWarmDeps(card: {
+  name: DeckoName;
+  dbContent: string;
+  typeCode: string | undefined;
+}): WarmupScan {
+  const refs: WarmupRef[] = [];
+  const context = card.name.s;
   for (const ref of referencedNames(card.dbContent)) {
-    queue.push({ name: ref.name, context: referencingName });
+    refs.push({ name: ref.name, context });
   }
   for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
     const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
-    if (target !== "") queue.push({ name: target, context: referencingName });
+    if (target !== "") refs.push({ name: target, context });
   }
   if (card.typeCode === "pointer" || card.typeCode === "list") {
     for (const item of card.dbContent.split(/\n+/).map((s) => s.replace(/\[\[|\]\]/g, "").trim())) {
-      if (item !== "") queue.push({ name: item, context: referencingName });
+      if (item !== "") refs.push({ name: item, context });
     }
   }
+  return { refs };
 }
 
 /** Re-prime the lexicon entries the layout body's `:codename` marks resolve

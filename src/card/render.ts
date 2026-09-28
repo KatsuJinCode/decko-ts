@@ -65,7 +65,12 @@ import {
 } from "./render/errors.js";
 import {
   prefetchInclusionClosure,
+  prefetchWarmupClosure,
   type PrefetchStats,
+  type WarmupCard,
+  type WarmupRef,
+  type WarmupScan,
+  type WarmupStats,
 } from "./render/prefetch.js";
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames, scanNests } from "./render/nest-syntax.js";
@@ -1547,6 +1552,45 @@ export class RenderEngine implements RenderEngineLike {
     // without caching because each unknown-card render is its own
     // self-contained buildUnknownNestCard call. The interface
     // exists for future hooks (e.g. a negative closure map).
+  }
+
+  /** Stats of the last warmupLayoutReferences call (probe/verification
+   *  surface — round trips, statements, rounds, fallbacks). */
+  lastWarmupStats: WarmupStats | undefined;
+
+  /** The page lane's layout warm-up chase, bounded + batched (see
+   *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
+   *  references (spine: nest targets + pointer/list items, which render
+   *  and expand; leaf: [[link]] targets, which are existence-reads only)
+   *  resolve in ONE driver.batch per reference-BFS round instead of one
+   *  point-query ladder per name. Seeds are {name, context} pairs resolved
+   *  exactly like the format does (absolute, or relative against the
+   *  referencing card). */
+  async warmupLayoutReferences(
+    seeds: WarmupRef[],
+    scan: (card: WarmupCard) => WarmupScan,
+    onRound?: () => Promise<void>,
+  ): Promise<WarmupStats> {
+    const stats = await prefetchWarmupClosure(
+      seeds,
+      {
+        driver: this.fetcher.driver,
+        lexicon: this.fetcher.lexicon,
+        cacheRecord: (cached) => this.cacheFetchedRecord(cached).then(() => undefined),
+        getCard: (key) => this.renderCards.get(key),
+        ...(this.fetcher.virtualCardLookup !== undefined
+          ? {
+              virtualLookup: async (abs: string) =>
+                this.fetcher.virtualCardLookup?.(DeckoName.parse(abs)),
+            }
+          : {}),
+        prepareFallback: async (name) => (await this.prepareItemForRender(name)) ?? undefined,
+        ...(onRound !== undefined ? { onRound } : {}),
+      },
+      scan,
+    );
+    this.lastWarmupStats = stats;
+    return stats;
   }
 
   /** Hosts whose pointer/list enrichment has COMPLETED (every item line
