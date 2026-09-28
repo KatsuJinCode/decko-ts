@@ -40,3 +40,19 @@ export {
   sha256Hex,
   tokensEqual,
 } from "./session-token.js";
+export {
+  authenticateAccount,
+  encryptAccountPassword,
+  resolveAccountCodenameIds,
+  rubyStrip,
+  sha1Hex,
+  signinAccount,
+  signoutAccount,
+  verifyAccountPassword,
+  type AccountCodenameIds,
+  type AuthenticatedAccount,
+  type SigninFailure,
+  type SigninFailureReason,
+  type SigninOutcome,
+  type SigninSuccess,
+} from "./signin.js";
