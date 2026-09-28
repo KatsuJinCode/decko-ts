@@ -52,9 +52,10 @@ import {
 } from "../name/errors.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
-import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
+import { composeCardRecord, newCardRecord, type CardRecord } from "../fetch/card-record.js";
 import type { DbLexicon } from "../fetch/lexicon.js";
 import { concretePatternsForCard } from "../set-patterns/card-patterns.js";
+import type { VirtualCardResolution } from "../fetch/virtual-cards.js";
 import { referencedNames } from "./nest-syntax.js";
 
 /** Safety bound for the closure rounds (BFS over levels). Deliberately
@@ -65,6 +66,25 @@ import { referencedNames } from "./nest-syntax.js";
  *  whether the fallback rounds gave up first (the battery's depth-44
  *  nondeterminism, {200,500} at maxDepth 42 — collapsed by the alignment). */
 const MAX_CLOSURE_ROUNDS = 25;
+
+/** Safety bound for the layout warm-up's batched reference rounds (see
+ *  prefetchWarmupClosure). Round trips scale with ROUNDS, not cards, so the
+ *  cap bounds the blocking chase while the batch carries the volume; rounds
+ *  beyond it degrade to the per-name ladder fallback instead of truncating
+ *  the prepared set (byte parity over speed on a deck that deep). */
+const MAX_WARMUP_ROUNDS = 60;
+
+/** Bound parameters per statement. Cloudflare D1 caps a statement at 100
+ *  bound parameters; 90 leaves headroom. LocalSqliteDriver has no limit, so
+ *  chunking is purely a portability guard (extra chunk statements ride the
+ *  SAME driver.batch — still one round trip). */
+const WARMUP_CHUNK = 90;
+
+function chunkParams<T>(items: T[], perStatement: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += perStatement) out.push(items.slice(i, i + perStatement));
+  return out;
+}
 
 export interface PrefetchStats {
   /** driver.batch round trips issued. */
@@ -706,4 +726,460 @@ function nextSideIds(rows: RawRow[], seenIds: Set<number>): number[] {
     }
   }
   return ids;
+}
+
+// ---------------------------------------------------------------------------
+// layout warm-up closure — the page lane's bounded + batched chase
+// (prefetch.ts#driveClosure's statement shapes over the warm-up's reference
+// classes; see warmup-lane.md and page.ts warmUpLayoutNests)
+// ---------------------------------------------------------------------------
+
+/** One chased reference: a raw name plus the REFERENCING card it resolves
+ *  against (format.ts resolveNestName semantics — layout-level refs resolve
+ *  against the page card, a warmed card's own content refs against that
+ *  card). */
+export interface WarmupRef {
+  name: string;
+  context: string;
+}
+
+/** The references one scanned card's content contributes. Every class
+ *  expands: which references render is NOT decidable from content syntax
+ *  alone (a [[link]] is an existence-only anchor in ordinary content but a
+ *  real NEST through the navbar chunk walk — navbar-views.ts
+ *  navbarLinksView turns [[target|label]] into nav_item nests whose targets
+ *  render, and a pointer item renders as a full bar) — so the chase keeps
+ *  the baseline fixpoint classes and takes its bound from BATCHING (round
+ *  trips scale with reference-BFS depth, not card count) plus the round
+ *  cap, never from dropping a reference class. */
+export interface WarmupScan {
+  refs: WarmupRef[];
+}
+
+/** Structural view of a prepared render card (RenderCard satisfies it). */
+export interface WarmupCard {
+  key: string;
+  id: number | undefined;
+  name: DeckoName;
+  dbContent: string;
+  typeCode: string | undefined;
+}
+
+export interface WarmupClosureContext extends PrefetchContext {
+  /** Prepared-map read (the render-card map): undefined when this key has
+   *  no prepared card. */
+  getCard: (key: string) => WarmupCard | undefined;
+  /** The injected states.rb#virtual? hook (FetchEngine.virtualCardLookup):
+   *  for a compound name whose pair join found no row, the baseline ladder's
+   *  fetch returns a VIRTUAL record when a *structure rule applies — run
+   *  here directly (in-memory over the loaded universe, no queries) so the
+   *  prepared-map state matches the ladder without paying its per-name
+   *  cache-write/reset churn. Undefined when the fetcher has no hook (the
+   *  baseline then stored nothing for these names either). */
+  virtualLookup?: (name: string) => Promise<VirtualCardResolution | undefined>;
+  /** Per-name ladder fallback — the CAP safety net only: names still live
+   *  when the round cap hits degrade to the exact baseline ladder path
+   *  instead of truncating the prepared set (byte parity over speed). */
+  prepareFallback: (name: string) => Promise<WarmupCard | undefined>;
+  /** Re-prime the lexicon entries :codename marks resolve through (the
+   *  temporary cache wipes primed entries as renders write — page.ts
+   *  ensureCodenameMarksResolvable). Runs once per round, matching the
+   *  baseline chase's per-batch cadence. */
+  onRound?: () => Promise<void>;
+}
+
+export interface WarmupStats {
+  /** driver.batch round trips issued. */
+  batches: number;
+  /** individual SQL statements issued (chunked IN-lists count one each). */
+  statements: number;
+  /** reference-BFS rounds (each round at most one batch). */
+  rounds: number;
+  /** rows composed into the fetch cache + render-card map. */
+  cards: number;
+  /** cap-degradation ladder fallbacks (0 on decks that converge in rounds). */
+  fallbacks: number;
+}
+
+/**
+ * Resolve the page lane's warm-up reference closure in BATCHED rounds:
+ * every round drains names already prepared, collects the reference classes
+ * from newly scanned cards, and fetches everything unresolved in ONE
+ * driver.batch (key IN-lists / side-key joins / side-id pair joins / side
+ * priming — the driveClosure shapes, chunked to the D1 parameter ceiling).
+ * Round trips therefore scale with reference DEPTH, not card count — the
+ * cold-render burst the lane exists to fix.
+ *
+ * Side cards of junction rows are composed + enriched but never scanned
+ * (exactly the driveClosure reached-semantics — and the baseline chase,
+ * whose enqueueWarmDeps ran only for the chased name itself, never for the
+ * left record enrichAndStore recursed into).
+ *
+ * NEGATIVE names (no row) leave the queue the round they go negative: the
+ * baseline ladder stored NOTHING for a fetch miss (results.rb new_result_card
+ * returns undefined — isKnownCard is real?, the placeholder has no id) —
+ * a simple negative costs one key query, a compound negative one pair join
+ * or one missing-part lookup, and no prepared-map state. A compound negative
+ * that a *structure rule would resolve as a VIRTUAL card goes through
+ * ctx.virtualLookup directly (in-memory; the ladder's cache-write/reset
+ * churn per negative name is exactly the burst this lane removes).
+ */
+export async function prefetchWarmupClosure(
+  seeds: WarmupRef[],
+  ctx: WarmupClosureContext,
+  scan: (card: WarmupCard) => WarmupScan,
+): Promise<WarmupStats> {
+  const stats: WarmupStats = { batches: 0, statements: 0, rounds: 0, cards: 0, fallbacks: 0 };
+  const foldStats: PrefetchStats = { batches: 0, statements: 0, fallbackRounds: 0, cards: 0 };
+
+  /** Keys sent to SQL or through the cap fallback at least once. */
+  const checked = new Set<string>();
+  /** Negative names (no row): the baseline stored nothing for them — they
+   *  leave the queue permanently. Guards re-collection from later refs. */
+  const dead = new Set<string>();
+  /** Keys whose content refs this call already collected (each card scans
+   *  once per warm-up call — the baseline `warmed` set). */
+  const scanned = new Set<string>();
+  /** Compound dead names whose virtual? resolution has not run yet. */
+  const virtualCheckQueue: string[] = [];
+
+  interface Entry {
+    abs: string;
+  }
+  /** Keyed by canonical key. */
+  const pending = new Map<string, Entry>();
+  const pushRef = (ref: WarmupRef): void => {
+    const abs = resolveWarmName(ref.name, ref.context);
+    if (abs === undefined) return; // unresolved mark: the real nest renders it
+    let key: string;
+    try {
+      key = DeckoName.parse(abs).key;
+    } catch {
+      return;
+    }
+    if (dead.has(key) || pending.has(key)) return;
+    pending.set(key, { abs });
+  };
+  for (const seed of seeds) pushRef(seed);
+
+  /** Drop a negative name from the chase; compound names queue for the
+   *  in-memory virtual? walk (a *structure rule makes the ladder return a
+   *  virtual record — nothing is stored when it does not apply). */
+  const markDead = (key: string): void => {
+    const entry = pending.get(key);
+    if (entry === undefined) return;
+    pending.delete(key);
+    dead.add(key);
+    virtualCheckQueue.push(entry.abs);
+  };
+
+  const scanCard = (card: WarmupCard): void => {
+    if (scanned.has(card.key)) return;
+    scanned.add(card.key);
+    for (const ref of scan(card).refs) pushRef(ref);
+  };
+
+  /** Run the queued virtual? walks; a hit constructs the same record the
+   *  ladder's new_result_card would return (placeholder + rule type +
+   *  template content), caches + enriches it, and scans its refs. */
+  const drainVirtualChecks = async (): Promise<number> => {
+    const queue = virtualCheckQueue.splice(0, virtualCheckQueue.length);
+    if (ctx.virtualLookup === undefined) return 0; // no hook: nothing stored, like the ladder
+    let landed = 0;
+    for (const abs of queue) {
+      let resolution: VirtualCardResolution | undefined;
+      try {
+        resolution = await ctx.virtualLookup(abs);
+      } catch {
+        resolution = undefined; // the baseline ladder's catch-and-continue
+      }
+      if (resolution === undefined) continue;
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(abs);
+      } catch {
+        continue;
+      }
+      const record = newCardRecord(name);
+      if (resolution.typeId !== undefined && record.typeId === undefined) {
+        record.typeId = resolution.typeId;
+      }
+      record.dbContent = resolution.templateContent;
+      await ctx.cacheRecord(record);
+      const card = ctx.getCard(name.key);
+      if (card !== undefined) {
+        scanCard(card);
+        landed += 1;
+      }
+    }
+    return landed;
+  };
+
+  /** CAP safety net: live names still unresolved degrade to the exact
+   *  baseline per-name ladder (byte parity over speed). */
+  const capFallbackSweep = async (): Promise<void> => {
+    for (const [key, entry] of [...pending]) {
+      if (ctx.getCard(key) !== undefined) continue; // drained next iteration
+      pending.delete(key);
+      checked.add(key);
+      stats.fallbacks += 1;
+      const card = await ctx.prepareFallback(entry.abs);
+      if (card !== undefined) scanCard(card);
+    }
+  };
+
+  /** Junction side ids primed for composition + the sync side reads
+   *  (driveClosure's side priming: enriched into the map, never scanned). */
+  const seenSideIds = new Set<number>();
+  let sideIdsToPrime: number[] = [];
+
+  while (true) {
+    // 1. Drain: names already prepared leave the queue and scan.
+    for (const [key] of [...pending]) {
+      const card = ctx.getCard(key);
+      if (card === undefined) continue;
+      pending.delete(key);
+      scanCard(card);
+    }
+    if (pending.size === 0 && virtualCheckQueue.length === 0) break;
+
+    // 2. Collect the round's fetch shapes from unresolved, unchecked names.
+    const simpleKeys: string[] = [];
+    const sideKeyPairs: { left: string; right: string; entryKey: string }[] = [];
+    const sideIdPairs: { leftId: number; rightId: number; entryKey: string }[] = [];
+    const deadJunctions: string[] = [];
+    for (const [key, entry] of pending) {
+      if (checked.has(key)) continue;
+      if (ctx.getCard(key) !== undefined) continue; // prepared: next drain scans it
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(entry.abs);
+      } catch {
+        checked.add(key);
+        markDead(key);
+        continue;
+      }
+      if (!name.isCompound) {
+        simpleKeys.push(name.key);
+        checked.add(key);
+        continue;
+      }
+      const left = name.leftName;
+      const right = name.rightName;
+      if (left === undefined || right === undefined) {
+        checked.add(key);
+        markDead(key);
+        continue;
+      }
+      const leftCard = ctx.getCard(left.key);
+      const rightCard = ctx.getCard(right.key);
+      if (
+        leftCard !== undefined &&
+        leftCard.id !== undefined &&
+        rightCard !== undefined &&
+        rightCard.id !== undefined
+      ) {
+        // both sides' rows are cached: join the junction row by the UNIQUE
+        // (left_id, right_id) pair
+        sideIdPairs.push({ leftId: leftCard.id, rightId: rightCard.id, entryKey: key });
+      } else if (
+        (leftCard === undefined && dead.has(left.key)) ||
+        (rightCard === undefined && dead.has(right.key))
+      ) {
+        // a side already went negative: the ladder's name_to_lex could never
+        // form this lex — dead (virtual? walk still runs on the name)
+        checked.add(key);
+        deadJunctions.push(key);
+      } else if (!left.isCompound && !right.isCompound) {
+        // depth-2 pair: direct side-key join; the sides themselves ride the
+        // same round's simple-key statements so the junction composes
+        sideKeyPairs.push({ left: left.key, right: right.key, entryKey: key });
+        if (
+          leftCard === undefined &&
+          !checked.has(left.key) &&
+          !dead.has(left.key) &&
+          !pending.has(left.key)
+        ) {
+          simpleKeys.push(left.key);
+        }
+        if (
+          rightCard === undefined &&
+          !checked.has(right.key) &&
+          !dead.has(right.key) &&
+          !pending.has(right.key)
+        ) {
+          simpleKeys.push(right.key);
+        }
+      } else {
+        // a compound side is not yet resolved: resolve the sides first
+        // (resolution-only entries: composed, never scanned); simple sides
+        // ride this round's simple-key statements
+        if (
+          leftCard === undefined &&
+          !left.isCompound &&
+          !checked.has(left.key) &&
+          !dead.has(left.key) &&
+          !pending.has(left.key)
+        ) {
+          simpleKeys.push(left.key);
+        }
+        if (
+          rightCard === undefined &&
+          !right.isCompound &&
+          !checked.has(right.key) &&
+          !dead.has(right.key) &&
+          !pending.has(right.key)
+        ) {
+          simpleKeys.push(right.key);
+        }
+        if (
+          leftCard === undefined &&
+          left.isCompound &&
+          !checked.has(left.key) &&
+          !dead.has(left.key) &&
+          !pending.has(left.key)
+        ) {
+          pending.set(left.key, { abs: left.s });
+        }
+        if (
+          rightCard === undefined &&
+          right.isCompound &&
+          !checked.has(right.key) &&
+          !dead.has(right.key) &&
+          !pending.has(right.key)
+        ) {
+          pending.set(right.key, { abs: right.s });
+        }
+      }
+    }
+    for (const key of deadJunctions) markDead(key);
+
+    const statements: SQLStatement[] = [];
+    const collectors: ((rows: CardsRow[]) => void)[] = [];
+    const closureRows: RawRow[] = [];
+    const sideRows: RawRow[] = [];
+    const sidePairKeys: string[][] = [];
+    for (const group of chunkParams(simpleKeys, WARMUP_CHUNK)) {
+      const placeholders = group.map(() => "?").join(", ");
+      statements.push({
+        sql: 'SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (' + placeholders + ") AND trash = 0",
+        params: group,
+      });
+      collectors.push((rows) => {
+        closureRows.push(...rows.map(toRawRow));
+      });
+    }
+    for (const group of chunkParams(sideKeyPairs, WARMUP_CHUNK / 2)) {
+      const leftKeys = group.map((pair) => pair.left);
+      const rightKeys = group.map((pair) => pair.right);
+      const placeholdersL = leftKeys.map(() => "?").join(", ");
+      const placeholdersR = rightKeys.map(() => "?").join(", ");
+      statements.push({
+        sql:
+          "SELECT DISTINCT j.* FROM cards j\n" +
+          '  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (' + placeholdersL + ")\n" +
+          '  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (' + placeholdersR + ")\n" +
+          " WHERE j.trash = 0",
+        params: [...leftKeys, ...rightKeys],
+      });
+      sidePairKeys.push(group.map((pair) => pair.entryKey));
+      collectors.push((rows) => {
+        closureRows.push(...rows.map(toRawRow));
+      });
+    }
+    for (const group of chunkParams(sideIdPairs, WARMUP_CHUNK / 2)) {
+      const tuple = group.map(() => "(j.left_id = ? AND j.right_id = ?)").join(" OR ");
+      const params = group.flatMap((pair) => [pair.leftId, pair.rightId]);
+      statements.push({
+        sql: "SELECT j.* FROM cards j WHERE j.trash = 0 AND (" + tuple + ")",
+        params,
+      });
+      sidePairKeys.push(group.map((pair) => pair.entryKey));
+      collectors.push((rows) => {
+        closureRows.push(...rows.map(toRawRow));
+      });
+    }
+    for (const group of chunkParams(sideIdsToPrime, WARMUP_CHUNK)) {
+      const placeholders = group.map(() => "?").join(", ");
+      statements.push({
+        sql: "SELECT * FROM cards WHERE id IN (" + placeholders + ") AND trash = 0",
+        params: group,
+      });
+      collectors.push((rows) => {
+        sideRows.push(...rows.map(toRawRow));
+      });
+    }
+
+    // 3. Nothing fetchable: run the queued virtual? walks; if they land
+    //    nothing either, the chase is at its fixpoint.
+    if (statements.length === 0) {
+      const landed = await drainVirtualChecks();
+      if (landed === 0) break;
+      continue;
+    }
+
+    if (stats.rounds >= MAX_WARMUP_ROUNDS) {
+      // Round cap: the live tail degrades to the per-name ladder instead of
+      // truncating the prepared set (byte parity over speed).
+      await drainVirtualChecks();
+      await capFallbackSweep();
+      continue;
+    }
+
+    // 4. ONE batched round trip for the whole round (chunks ride along).
+    if (ctx.onRound !== undefined) await ctx.onRound();
+    const batch = await ctx.driver.batch(statements);
+    stats.batches += 1;
+    stats.statements += statements.length;
+    stats.rounds += 1;
+    batch.forEach((result, i) => {
+      collectors[i]?.(result.rows as CardsRow[]);
+    });
+    collectors.length = 0;
+
+    // 5. Compose + cache (lexicon prime + fetch cache + enrichAndStore).
+    await composeAndCache([...sideRows, ...closureRows], ctx, foldStats);
+    // 5a. Negatives go dead: pair-join misses (compound — virtual? walk
+    //     queued) and simple-key misses (nothing stored, like the ladder).
+    for (const keys of sidePairKeys) {
+      for (const key of keys) {
+        if (ctx.getCard(key) === undefined) markDead(key);
+      }
+    }
+    for (const key of simpleKeys) {
+      if (ctx.getCard(key) === undefined) {
+        // negative simple name — includes junction SIDES pushed for
+        // composition (they are not pending entries, but must die here or
+        // their parent junction re-pushes them every round). Simple names
+        // never resolve virtual (states.rb needs a junction), so like the
+        // ladder they store nothing.
+        dead.add(key);
+        pending.delete(key);
+      }
+    }
+    // 5b. Prime the next round's sides.
+    sideIdsToPrime = [];
+    for (const row of [...sideRows, ...closureRows]) {
+      seenSideIds.add(row.id);
+      for (const sideId of [row.leftId, row.rightId]) {
+        if (sideId === null || seenSideIds.has(sideId)) continue;
+        seenSideIds.add(sideId);
+        sideIdsToPrime.push(sideId);
+      }
+    }
+    await drainVirtualChecks();
+  }
+
+  stats.cards = foldStats.cards;
+  return stats;
+}
+
+
+function resolveWarmName(raw: string, context: string): string | undefined {
+  try {
+    const parsed = DeckoName.parse(raw);
+    return parsed.isAbsolute ? parsed.s : parsed.absoluteName(DeckoName.parse(context)).s;
+  } catch {
+    return undefined;
+  }
 }
