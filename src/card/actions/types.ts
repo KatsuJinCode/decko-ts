@@ -118,11 +118,11 @@ export interface ActionResult extends CardActionSummary {
   subactions: CardActionSummary[];
 }
 
-/** The permission seam. The BASIC gate (anonymous rejection) always runs;
- *  `canWrite` is the hook the future full permission-resolution stream
- *  replaces — Ruby's ok? machinery
- *  (card-mod-permissions set/all/permissions.rb:37-51, event
- *  :check_permissions at :22-25) is deliberately NOT built here. */
+/** The host-side EXTRA permission gate. The rule-based ok? enforcement
+ *  (card-mod-permissions ok_to_create?/ok_to_update?/ok_to_delete?, ported
+ *  in view-task-rules.ts and enforced inside the engine before this hook)
+ *  decides first; `canWrite` may then deny further but is never consulted
+ *  to ALLOW what the rules denied. */
 export type CanWriteHook = (
   card: CardRecord,
   actor: Actor,

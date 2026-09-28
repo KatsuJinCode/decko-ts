@@ -86,6 +86,7 @@
 // card-mod-format-0.20.0/set/all/html/show.rb:7-17.
 
 import http from "node:http";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -100,6 +101,12 @@ import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
 import { renderPageBytes } from "./dist/src/card/render/page.js";
+// Write path (write-path slice 2): the whole write surface lives in its own
+// module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
+import {
+  handleWriteRequest,
+  writePathEnabled,
+} from "./dist/src/server/write-routes.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -2070,6 +2077,35 @@ async function handleAssetFile(pathname) {
 // The sign-in POST endpoints (the staging-slice names).
 const SIGNIN_POST_PATHS = new Set(["/_signin", "/_signout"]);
 
+// ---------------------------------------------------------------------------
+// Write-path dispatch (write-path slice 2)
+// ---------------------------------------------------------------------------
+
+// The CSRF HMAC secret (Rails session[:_csrf_token] analog): pinned via
+// DECKO_CSRF_SECRET so sessions survive a restart; a per-boot random keeps
+// an unset deployment safe (tokens simply rotate with the restart).
+const CSRF_SECRET =
+  process.env.DECKO_CSRF_SECRET ?? crypto.randomBytes(32).toString("hex");
+
+/** Bridge the node request to the write-routes module. Returns the write
+ *  response, or null when the method/path pair is not a write route (the
+ *  caller falls through to its 405). */
+async function dispatchWriteRequest(req, pathname) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const body = Buffer.concat(chunks).toString("utf8");
+  return handleWriteRequest(
+    { driver, fetcher, csrfSecret: CSRF_SECRET },
+    {
+      method: req.method,
+      pathname,
+      host: req.headers.host,
+      headers: req.headers,
+      body,
+    },
+  );
+}
+
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
@@ -2088,6 +2124,31 @@ const server = http.createServer(async (req, res) => {
     if (sessionToken !== null) {
       actor = await sessions.lookupSession(sessionToken);
     }
+  } else if (req.method === "POST" && SIGNIN_POST_PATHS.has(pathname)) {
+    // Slice-1 sign-in/sign-out POSTs: fall through to the shared dispatch
+    // chain below (handleSignin/handleSignout). They take precedence over
+    // the write-path marks — staging-slice endpoints are not card marks.
+  } else {
+    // Write path (write-path slice 2): all write logic lives in
+    // dist/src/server/write-routes.js — this file only dispatches. Opt-in
+    // via DECKO_WRITE_PATH=1 AND a writable DB boot (this server's default
+    // boot is readonly pure-browse; unset keeps the historical 405s).
+    if (writePathEnabled()) {
+      const writeResponse = await dispatchWriteRequest(req, pathname);
+      if (writeResponse !== null) {
+        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        console.log(
+          `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
+        );
+        return;
+      }
+    }
+    const body = jsonResponse(405, { error: "method not allowed" });
+    res.writeHead(body.status, body.headers).end(body.body);
+    console.log(
+      `[vm-staging] ${req.method} ${pathname} -> ${body.status} (${Date.now() - startedAt}ms)`,
+    );
+    return;
   }
   const requestEngine = actor !== null ? engineForActor(actor.id) : render;
 

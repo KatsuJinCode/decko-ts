@@ -236,6 +236,40 @@ export async function allTaskVerdictsForCard(
   return out;
 }
 
+/**
+ * The save-time verdict — the WRITE path's ok? (the action engine's gate,
+ * card-action-engine.ts assertCanWrite). ok_to_create? / ok_to_delete? are
+ * exactly the render algebra (taskVerdictForCard). ok_to_update? gains the
+ * clause the render never sees: the TYPE-CHANGE invariant
+ * (permissions.rb:148-153 — `return false unless permit(:update);
+ * return true unless type_id_changed? && !permitted?(:create)`) — a save
+ * that changes the card's type additionally requires create permission on
+ * the SAME card (permitted?, not the full ok_to_create? — no side walk).
+ * The caller supplies typeChanged (the engine knows the would-be type from
+ * the request; a render never does).
+ *
+ * undefined = unverifiable (the documented rule-less divergence — the port
+ * allows rather than fabricating a denial from missing rule data); the
+ * engine gate denies only on `false`, exactly like the render gate's
+ * `taskAllowed(task) !== false` contract.
+ */
+export async function saveTaskVerdictForCard(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  task: WriteTask,
+  state: ViewTaskState,
+  opts: { typeChanged?: boolean } = {},
+): Promise<boolean | undefined> {
+  if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
+  if (task !== "update") {
+    return taskVerdictForCard(fetcher, card, task, state); // :120-126 / :155-157
+  }
+  const update = await permitVerdict(fetcher, card, "update", state); // permit(:update) :148
+  if (update !== true) return update; // false = denied; undefined = unverifiable
+  if (opts.typeChanged !== true) return true; // :150 — type is not changing
+  return permitVerdict(fetcher, card, "create", state); // :151 — permitted?(:create), same card
+}
+
 /** permitted? (:105-110) — the applicable rule card's item ids against the
  *  actor's parties (among?, account_holder.rb:31-36). An applicable rule
  *  with NO item ids denies (who_can -> [] -> any? -> false). */
