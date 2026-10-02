@@ -99,13 +99,19 @@ Matches with portal-source-extracted classifier: 0 (must be 0)
 Both classifiers agree: true
 ```
 
-The four regexes from `review-server.mjs:519-522`:
+The four portal regexes from `review-server.mjs:519-522`, plus `RX_ISO_DASHED`
+— the 2026-10-02 privacy-gap-lane extension (dashed-ISO date journals such as
+`2026-08-26 notes` match none of the portal's four shapes and leaked past the
+scrub). The five-regex family is the classifier carried by
+`tmp-scrubber.mjs`, `tmp/content-sync-rehearsal/scrub-trial-decko-edge-in-place.mjs`,
+and `tmp/corpus-load-lane/scrub-corpus-scale-trial-decko-edge.mjs`:
 
 ```js
-const RX_PREFIX   = /^(?:\d{6}|\d{8})/;
-const RX_JUNCTION = /^(?:\d{6}|\d{8})\s*[-+]/;
-const RX_DATE_BDW = /\b(?:\d{6}|\d{8})\b\s*(?:bdw|bw)\b/i;
-const RX_BDW_DATE = /\b(?:bdw|bw)\s+(?:\d{6}|\d{8})\b/i;
+const RX_PREFIX     = /^(?:\d{6}|\d{8})/;
+const RX_JUNCTION   = /^(?:\d{6}|\d{8})\s*[-+]/;
+const RX_DATE_BDW   = /\b(?:\d{6}|\d{8})\b\s*(?:bdw|bw)\b/i;
+const RX_BDW_DATE   = /\b(?:bdw|bw)\s+(?:\d{6}|\d{8})\b/i;
+const RX_ISO_DASHED = /\b\d{4}-\d{2}-\d{2}/;
 ```
 
 ### Check 2 — post-delete dangling card_references by type

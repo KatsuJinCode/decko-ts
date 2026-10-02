@@ -4,23 +4,31 @@ import fs from 'fs';
 const SRC = 'tmp/raw-ground-truth/deck/corpus-v2.sqlite3';
 const DEST = 'tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3';
 
-// EXACT portal classifier (review-server.mjs lines 518-533)
-function dateJournalMatcher() {
-  const RX_PREFIX = /^(?:\d{6}|\d{8})/;
-  const RX_JUNCTION = /^(?:\d{6}|\d{8})\s*[-+]/;
-  const RX_DATE_BDW = /\b(?:\d{6}|\d{8})\b\s*(?:bdw|bw)\b/i;
-  const RX_BDW_DATE = /\b(?:bdw|bw)\s+(?:\d{6}|\d{8})\b/i;
-  return (name) => {
-    const n = String(name || "");
-    if (!n) return false;
-    if (RX_PREFIX.test(n)) return true;
-    if (RX_JUNCTION.test(n)) return true;
-    if (RX_DATE_BDW.test(n)) return true;
-    if (RX_BDW_DATE.test(n)) return true;
-    return false;
-  };
+// EXACT portal classifier (review-server.mjs lines 518-533) PLUS RX_ISO_DASHED,
+// the 2026-10-02 privacy-gap-lane extension (dashed-ISO date journals like
+// "2026-08-26 notes" leak past the portal's four shapes). This is the same
+// five-regex family + self-test carried by the fixed lane copies:
+// tmp/content-sync-rehearsal/scrub-trial-decko-edge-in-place.mjs and
+// tmp/corpus-load-lane/scrub-corpus-scale-trial-decko-edge.mjs.
+const RX_PREFIX = /^(?:\d{6}|\d{8})/;
+const RX_JUNCTION = /^(?:\d{6}|\d{8})\s*[-+]/;
+const RX_DATE_BDW = /\b(?:\d{6}|\d{8})\b\s*(?:bdw|bw)\b/i;
+const RX_BDW_DATE = /\b(?:bdw|bw)\s+(?:\d{6}|\d{8})\b/i;
+const RX_ISO_DASHED = /\b\d{4}-\d{2}-\d{2}/;
+function isDateJournalName(name) {
+  const n = String(name || '');
+  if (!n) return false;
+  return RX_PREFIX.test(n) || RX_JUNCTION.test(n) || RX_DATE_BDW.test(n) || RX_BDW_DATE.test(n) || RX_ISO_DASHED.test(n);
 }
-const isDateJournalName = dateJournalMatcher();
+const SELFTEST_POSITIVE = ['20260826', '20260826 Planning', '20260826+Review', '20260826-Retro', '20260826 bdw', 'bdw 20260826', '202608 BDW', '2026-08-26 notes', '2026-08-26+Review', '2026-08-26', '2026-08-26T14:30', '20260826-Retro notes', 'bdw 20260826 planning'];
+const SELFTEST_NEGATIVE = ['Home', 'About', 'Hello World', 'About+Home', 'Cardtype'];
+const SELFTEST_KNOWN_GAPS = ['2026/08/26', '2026.08.26', '26-08-2026', '2026-8-26'];
+let selftestFailed = 0;
+for (const n of SELFTEST_POSITIVE) if (!isDateJournalName(n)) { console.error(`  classifier MISSED: ${JSON.stringify(n)}`); selftestFailed++; }
+for (const n of SELFTEST_NEGATIVE) if (isDateJournalName(n)) { console.error(`  classifier FALSELY matched: ${JSON.stringify(n)}`); selftestFailed++; }
+for (const n of SELFTEST_KNOWN_GAPS) if (isDateJournalName(n)) { console.error(`  classifier gap closed unexpectedly: ${JSON.stringify(n)}`); selftestFailed++; }
+if (selftestFailed > 0) { console.error(`classifier self-test FAILED (${selftestFailed}); aborting`); process.exit(1); }
+console.log(`  classifier self-test: ${SELFTEST_POSITIVE.length} positives + ${SELFTEST_NEGATIVE.length} negatives + ${SELFTEST_KNOWN_GAPS.length} known gaps, all as specified`);
 
 // STEP 1: Re-copy source fresh
 fs.copyFileSync(SRC, DEST);
@@ -165,7 +173,7 @@ console.log("  card_virtuals total:", virtualsAfter);
 const allScrubbed = db.prepare(`SELECT name FROM cards`).all();
 let scrubbedMatches = 0;
 for (const r of allScrubbed) if (isDateJournalName(r.name)) scrubbedMatches++;
-console.log("\nPortal classifier against scrubbed deck:", scrubbedMatches, "matches (must be 0)");
+console.log("\nFive-regex classifier against scrubbed deck:", scrubbedMatches, "matches (must be 0)");
 
 // Save stats for the report
 const stats = {
