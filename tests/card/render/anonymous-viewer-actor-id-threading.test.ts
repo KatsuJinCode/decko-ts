@@ -1,4 +1,4 @@
-// Pin the anonymous actorId threading (R4 permission lane seam 2): the
+// Pin the anonymous actorId threading (R4 permission port seam 2): the
 // engine's permission state must carry the signed-out viewer's OWN card id
 // as a party — Ruby's parties are all_enabled_roles + [self]
 // (card-mod-account set/abstract/account_holder.rb:27-29) and

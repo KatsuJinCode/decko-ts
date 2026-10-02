@@ -1,4 +1,4 @@
-// The sass-style lane's page pins: the pass-15 page triage booked 30 pages
+// The sass-style suite's page pins: the pass-15 page triage booked 30 pages
 // under "sass-css-compile" (every style-type page in the corpus fails), but
 // the byte evidence (tmp/wrong-goal-hunt/sass-style-lane.md) shows the class
 // is FOUR view-level mechanisms, none of them compiled-CSS bytes:

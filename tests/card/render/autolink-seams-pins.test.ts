@@ -1,10 +1,10 @@
 // autolink-seams-pins.test.ts -- the autolink seam's committed pin tests
 // (branch lane-autolink over 9d72e74, 2026-10-01). Every expected byte below
 // is quoted from the CAPTURED oracle bytes (expected-v2 view-lane shards;
-// probe dumps tmp/lane-autolink-hl-probe in the lane worktree) - never
+// probe dumps tmp/lane-autolink-hl-probe in the worktree) - never
 // hand-written to force green.
 //
-// Families pinned here (the lane's committed seam):
+// Families pinned here (its committed seam):
 //   A1  uri.rb:63-68+86-89 trailing punctuation re-emitted after the
 //       anchor (sabrina mejias / Dan Williams oracle: williamscraig.com</a>.)
 //   A2a uri.rb:53-55 context_ok? anchors REJECTED_PREFIX at $ - a URL in

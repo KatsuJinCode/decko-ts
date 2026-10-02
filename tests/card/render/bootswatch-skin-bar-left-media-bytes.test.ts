@@ -1,4 +1,4 @@
-// bar-slots lane (2026-09-29, view-fail class V6): the Bootswatch-skin
+// bar-slots (2026-09-29, view-fail class V6): the Bootswatch-skin
 // cardtype's bar_left renders the media+icon layout — card-mod-bootstrap
 // set/type/bootswatch_skin/html_views.rb:57-63 (text_with_image →
 // media_snippet.haml) — where the engine used to render a bare title span.

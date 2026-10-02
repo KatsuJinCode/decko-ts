@@ -1,6 +1,6 @@
 // gemclose-residual-three-page-engine-dump-probe.test.ts -- the gem-anchored-
-// closure lane's diagnostic probe: renders EXACTLY the three nest-selection
-// residual pages the replays-adjudication lane left red
+// closure port's diagnostic probe: renders EXACTLY the three nest-selection
+// residual pages the replays-adjudication left red
 // (tmp/wrong-goal-hunt/replays-adjudication-lane.md verdict table, b2 sweep)
 // on a COPIED raw corpus database (tmp/raw-ground-truth/bench-corpus-raw.sqlite3
 // staged into this worktree; the pass20-int original is never opened for
@@ -67,7 +67,7 @@ describe("gem-anchored closure: three residual pages, engine byte dump", () => {
         }
         // The dispatch probe: the *head rule page's body bytes are the
         // setting-listing shape — render the two candidate cores directly
-        // so the lane can attribute the dispatch (rule card's own core vs
+        // so the suite can attribute the dispatch (rule card's own core vs
         // the *head setting card's core).
         for (const [label, cardName, view] of [
           ["core-all-head", "*all+*head", "core"],

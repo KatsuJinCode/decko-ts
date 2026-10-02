@@ -1,6 +1,6 @@
 // haml-slice: the Haml compiler the two `haml_file` views need.
 //
-// The two views the mod-views-a lane named as un-portable are
+// The two views the mod-views-a port named as un-portable are
 //
 //   A) card-mod-content set/abstract/haml_file.rb:20-22
 //        view :core do

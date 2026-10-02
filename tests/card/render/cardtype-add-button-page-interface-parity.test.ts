@@ -8,7 +8,7 @@
 // anchor), 118–154 bytes apart on 14–16 KB pages. The other 51 also
 // diverge in their embedded `+*type+by_name` member search (the oracle
 // renders `search-result-list` bars, the engine renders
-// `search-no-results`) — a separate lane's mechanism, excluded here
+// `search-no-results`) — a separate port's mechanism, excluded here
 // except for the one `Date` probe, which is asserted add-button-region
 // only.
 //
@@ -22,17 +22,17 @@
 // JavaScript and LWblog carried their OWN divergences in the pass-15 dump
 // (the external-link target="_blank" attribute ORDER, and an unescaped
 // apostrophe in +description content). Both of those families were fixed
-// by other lanes between the pass-15 graded tip and this lane base tip
+// by other ports between the pass-15 graded tip and this base tip
 // 27ddc7f, so at this base ALL 12 are byte-identical and every entry is
 // gated at the byte-identical level. The add-button-region level is kept
 // in the type (and the mechanism it exists for is documented on the
-// CardtypeTemplatePage interface) so a future other-lane regression on
+// CardtypeTemplatePage interface) so a future other-port regression on
 // one of these pages is reported rather than silently narrowing the gate.
 //
 //
 // The expected bytes are the raw-oracle page-lane shards under
 // tmp/raw-ground-truth/expected-v2/page-lane/ (gitignored, copied into
-// the worktree; see the lane receipt). The engine renders the real page
+// the worktree; see the receipt). The engine renders the real page
 // over the real raw corpus through the real page renderer, seeded the
 // same way the census replays seed it (raw-corpus-seeding.ts) so the
 // type cards, rule cards, permission codenames and reference graph are
@@ -69,7 +69,7 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
  *  "byte-identical" — the add_button fix is the page's ONLY divergence,
  *  so a regression anywhere on the page fails here.
  *  "add-button-region" — the page carries a divergence owned by another
- *  lane (named per entry), so only the add_button region is gated. */
+ *  port (named per entry), so only the add_button region is gated. */
 interface CardtypeTemplatePage {
   name: string;
   level: "byte-identical" | "add-button-region";
@@ -203,7 +203,7 @@ describe("cardtype page template interface: the :add_button anchor is oracle-pin
           }
         } else {
           // Gated on the interface block only: the anchor is byte-pinned
-          // above; record the other-lane divergence so a silent change
+          // above; record the other-port divergence so a silent change
           // there is visible in the failure output.
           if (!diff.equal) {
             regionOnly.push(

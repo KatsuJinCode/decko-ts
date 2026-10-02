@@ -1,4 +1,4 @@
-// D2 lane scratch probe: render the two dangling-description surfaces and
+// D2 scratch probe: render the two dangling-description surfaces and
 // write the engine's page bytes to tmp/d2-lane-dump/ so the byte regions can
 // be inspected next to the sha-verified oracle. Report-only, gated on the env
 // var so ordinary suite runs skip it.

@@ -1,4 +1,4 @@
-// attachment-served-filename-extension-case.test.ts -- the cd-smalls lane's
+// attachment-served-filename-extension-case.test.ts -- the cd-smalls suite's
 // RED pin for the attachment-filename-case class (7 pages, pass-15 content-div
 // subclass "attachment-filename-case", receipt brandonDojoTech
 // tmp/wrong-goal-hunt/cd-smalls-lane.md):

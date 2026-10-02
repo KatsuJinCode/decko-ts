@@ -108,7 +108,7 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // level.
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
-    // Structural shape (2026-09-27 cold-query lane re-pin, integrated with
+    // Structural shape (2026-09-27 cold-query re-pin, integrated with
     // R17's A-36 correction in merge pass 9 prep): round trips =
     // 2 + max(0, depth-1) and statements = 9 + max(0, depth-1) - slope 1
     // per chain LEVEL (one batch per unfetched inclusion level), independent
@@ -128,8 +128,8 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // config (html.rb:17-19), never a deck rule, so render.ts's fold
     // composition no longer appends the *default html view universe
     // statement - the prelude carries one fewer statement than the
-    // cold-query lane's own tree measured (10 -> 9 base). The head
-    // read-set (2026-09-28 async-view-handle lane) added one back to
+    // cold-query port's own tree measured (10 -> 9 base). The head
+    // read-set (2026-09-28 async-view-handle) added one back to
     // the SAME prelude batch (9 -> 10 base): card-mod-format's head
     // views read deck-level setting cards no reference closure can
     // reach. Round trips - the billed axis - are unchanged.
@@ -138,9 +138,9 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // statement + the +*test context junction priming — one batch) adds two
     // statements at every depth. Measured 12 at depth 1 at BOTH the email
     // lane tip 345bb06 (queue job-1790792364473-36227f35 — the shift
-    // pre-exists the merge, so no lane interaction) and the merged tip
+    // pre-exists the merge, so no cross-port interaction) and the merged tip
     // (job-1790792062952-890df2dd). Round trips are UNTOUCHED — the batch
-    // rides the existing prelude round trip. Same re-pin the email lane
+    // rides the existing prelude round trip. Same re-pin the email port
     // itself applied to junction-depth-closure.test.ts (13/12 -> 15/14).
     const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
     const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);

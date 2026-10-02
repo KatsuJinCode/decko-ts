@@ -1,6 +1,6 @@
 // gem-anchored-residual-pages-byte-parity.test.ts -- the gem-anchored-closure
-// lane's byte verdict for the three nest-selection residual pages the
-// replays-adjudication lane documented and left red (its receipt, verdict
+// port's byte verdict for the three nest-selection residual pages the
+// replays-adjudication documented and left red (its receipt, verdict
 // table b2: 31/34 slot-set, 3 pages engine-side residual):
 //
 //   GIV-the god of intimate violence  -- the engine dropped the

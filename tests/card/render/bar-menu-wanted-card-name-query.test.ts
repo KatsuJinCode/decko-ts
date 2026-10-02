@@ -1,4 +1,4 @@
-// Lane test for page-mechanism-census mechanism 4 (2026-09-29): bar-menu
+// Test for page-mechanism-census mechanism 4 (2026-09-29): bar-menu
 // links on wanted bars drop the `card[name]` query the oracle emits.
 //
 // Ruby mechanism: Card::Path#handle_unknown (card-mod-format-0.20.0

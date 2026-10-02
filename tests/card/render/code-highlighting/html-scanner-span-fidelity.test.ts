@@ -1,4 +1,4 @@
-// CodeRay html-scanner span fidelity (lane templatenest-coderay).
+// CodeRay html-scanner span fidelity (templatenest-coderay).
 //
 // The mechanism this pins is encoders/html.rb's span assembly, not the
 // scanner's token boundaries. `CodeRay.scan(content, :html).div` resolves

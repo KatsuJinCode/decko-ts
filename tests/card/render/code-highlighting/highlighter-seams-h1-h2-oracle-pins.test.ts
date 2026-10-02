@@ -1,6 +1,6 @@
 // highlighter-seams-h1-h2-oracle-pins.test.ts -- the H1/H2 highlighter seam
 // pins: byte identity between the port's scanners and the Ruby capture
-// deck's rendered bytes. Ground-truth chain (all three legs read this lane):
+// deck's rendered bytes. Ground-truth chain (all three legs read directly):
 //   content  bench-corpus-raw.sqlite3 cards.id (readonly query)
 //   oracle   tmp/raw-ground-truth/expected-v2/view-lane recapture shards
 //   ruby     coderay-1.1.3 scanners + the card-mod views that call them
@@ -38,7 +38,7 @@ import { scanJson } from "../../../../src/card/render/code-highlighting/scanners
 import { scanHtml } from "../../../../src/card/render/code-highlighting/scanners/html.js";
 
 // __ACE_CONTENT__ / __ACE_INNER__ are substituted from the DB + oracle
-// extract (node, this lane) - never hand-copied bytes.
+// extract (node, this suite) - never hand-copied bytes.
 const ACE_CONTENT = "{\n  \"default\": {\n  \"showGutter\": true,\n  \"theme\": \"ace/theme/github\",\n  \"printMargin\": false,\n  \"tabSize\": 2,\n  \"useSoftTabs\": true,\n  \"maxLines\": 30\n  }\n}\n";
 const ACE_ORACLE_INNER = "{\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>default</span><span style=\"color:#404\">&quot;</span></span>: {\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>showGutter</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#088\">true</span>,\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>theme</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">ace/theme/github</span><span style=\"color:#710\">&quot;</span></span>,\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>printMargin</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#088\">false</span>,\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>tabSize</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">2</span>,\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>useSoftTabs</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#088\">true</span>,\n  <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>maxLines</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">30</span>\n  }\n}\n";
 

@@ -1,7 +1,7 @@
-// Escape-family lane: the two over-escaping sites the pass-15 triage's
+// Escape-family suite: the two over-escaping sites the pass-15 triage's
 // "double-escape" class resolves to (58 page-lane fails at 017b182; the
 // class also contains pointer-item-shape and help-content pages a pure
-// escaping fix cannot flip -- see the lane receipt).
+// escaping fix cannot flip -- see the receipt).
 //
 // Mechanism 1 -- URI-autolink LABEL (card-mod-content chunk/uri.rb):
 //   Uri#process_uri_chunk -> format.link_to_resource @link_text, process_text
@@ -91,7 +91,7 @@ describe("URI-autolink anchors escape the href once and the label verbatim", () 
     expect(page).toContain(
       ">http://www.montessori.org/imc/index.php?option=com_content&amp;view=article&amp;id=334</a>",
     );
-    // the over-escape this lane fixes: the label must NOT carry &amp;amp;.
+    // the over-escape this suite fixes: the label must NOT carry &amp;amp;.
     expect(page).not.toContain(
       ">http://www.montessori.org/imc/index.php?option=com_content&amp;amp;view=",
     );

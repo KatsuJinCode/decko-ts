@@ -1,9 +1,9 @@
-// tests/card/render/fix-d6-main-nest-page470-dump.test.ts — D6 lane
+// tests/card/render/fix-d6-main-nest-page470-dump.test.ts — D6
 // (fix-d6-layout-as-main) EVIDENCE ARM, not a pin.
 //
 // Renders page 470 "AsIn Layout" — the only captured page whose MAIN card's
 // own content nests `{{_main}}` — through the sha-verified raw corpus copy
-// and writes the bytes to tmp/wrong-goal-hunt/fix-d6/ so the lane receipt
+// and writes the bytes to tmp/wrong-goal-hunt/fix-d6/ so the receipt
 // can show the exact residual against the frozen oracle shard
 // (expected-v2/page-lane/recapture-raw-shard-000000.jsonl entry id 470).
 //

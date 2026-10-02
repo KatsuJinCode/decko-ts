@@ -1,7 +1,7 @@
 // gemclose-head-family-candidate-pages-dump-probe.test.ts -- the gem-anchored-
-// closure lane's flip-candidate probe: renders the four FURTHER *head-family
+// closure port's flip-candidate probe: renders the four FURTHER *head-family
 // pages the page-lane carries (FrAi+*right+*head, GBA+*right+*head,
-// *head+*self, *head+*right) so the lane can adjudicate whether the
+// *head+*self, *head+*right) so the suite can adjudicate whether the
 // Right::Head/Self::Head core overrides moved them onto the oracle bytes.
 // Diagnostic only (dumps bytes; asserts presence) -- env-gated like the
 // three-page byte-parity suite.

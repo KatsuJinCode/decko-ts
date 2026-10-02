@@ -79,7 +79,7 @@ describe("external-link anchors render target first (links.rb opts insertion ord
     expect(page).toContain(
       '<a target="_blank" class="external-link" href="http://abcglobal.net">Association Building Community</a>',
     );
-    // The autolink path (bare URL) - already correct before this lane; the
+    // The autolink path (bare URL) - already correct before this port; the
     // assertion pins that the wikilink fix does not touch it.
     expect(page).toContain(
       '<a target="_blank" class="external-link" href="http://Culturesmith.com">Culturesmith.com</a>',

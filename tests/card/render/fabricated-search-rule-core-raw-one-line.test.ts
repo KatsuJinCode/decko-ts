@@ -1,5 +1,5 @@
 // fabricated-search-rule-core-raw-one-line.test.ts -- the pass-22
-// rule-bar one-line-content lane's red-first pin (wave plan §(b) Lane 2).
+// rule-bar one-line-content red-first pin (plan §(b)).
 //
 // The class: a Search-typed RULE card's bar-right one-line content must
 // render the RAW stored CQL source, never the executed search. Ruby seats

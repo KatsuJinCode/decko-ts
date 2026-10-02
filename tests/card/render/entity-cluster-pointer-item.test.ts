@@ -187,7 +187,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     },
   );
   // -------------------------------------------------------------------------
-  // INTEGRATION (p21 CQL item-typing lane): a COMPOUND unknown item whose
+  // INTEGRATION (p21 CQL item-typing): a COMPOUND unknown item whose
   // host item type carries a TYPE-LEVEL *structure rule is VIRTUAL
   // (states.rb:44-50 virtual? = compound && structure.present?) hence
   // KNOWN (states.rb:65) - Ruby's alter_unknown returns early and the
@@ -197,7 +197,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
   // Tracked Item+*type+*structure exists) render
   // `<div class="pointer-item item-bar"><span class="denied">` in the raw
   // oracle (exp @8350 / @8515-8987) where the engine's mini_bar two-span
-  // body was the lane's base act diff. The SIMPLE-named fixture above
+  // body was the port's base act diff. The SIMPLE-named fixture above
   // stays on the mini_bar arm: name.simple? short-circuits virtual?
   // whatever the type (states.rb:45).
   // -------------------------------------------------------------------------

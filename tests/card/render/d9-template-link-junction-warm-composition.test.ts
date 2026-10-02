@@ -1,4 +1,4 @@
-// D9 lane (warm-map junction load): the name algebra the engine's
+// D9 (warm-map junction load): the name algebra the engine's
 // prepare-phase junction warm and card-mod-edit's :template_nest view now
 // SHARE, plus the two pins that make the share load-bearing.
 //

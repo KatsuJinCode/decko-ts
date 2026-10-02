@@ -23,7 +23,7 @@
 // (tools/haml-slice/oracle-capture-group-list-haml-bytes.rb), plus 102
 // measured Haml 5.2.2 engine cases.
 //
-// REGISTRATION TRIPWIRE. The mod-views-a lane MEASURED that registering a
+// REGISTRATION TRIPWIRE. The mod-views-a port MEASURED that registering a
 // `:core` view on a set module most cards do not include silently takes over
 // the engine's main content renderer for EVERY card -
 // ViewRegistrationTable#chainFor (src/card/mod-loader/mod-registrar.ts) falls

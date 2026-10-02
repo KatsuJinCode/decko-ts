@@ -1,5 +1,5 @@
 // The non-html format families (csv / rss / json) pinned against the FRESH
-// Ruby oracle capture this lane took (2026-09-29):
+// Ruby oracle capture taken 2026-09-29:
 // fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl.
 //
 // Capture provenance (see benchmarks/capture-surfaces-formats.rb): the

@@ -1,11 +1,11 @@
 // carrierwave-cloud-filename-derivation.test.ts — the CARRIERWAVE-FILENAME
-// lane's pin: Ruby renders attachment filenames from CARD DATA, never the
+// suite's pin: Ruby renders attachment filenames from CARD DATA, never the
 // stored key. The engine emitted the stored identifier verbatim on cloud
 // content; Ruby's render chain derives `filename = "#{action_id}#{extension}"`
 // from db_content and deliberately ignores the stored identifier on
 // retrieval.
 //
-// Ruby chain (all citations verified on disk this lane):
+// Ruby chain (all citations verified on disk directly):
 //  - last_content_action_id = db_content.to_s.split(%r{[/.]})[-2], .to_i when
 //    Object#number? (card-mod-carrierwave-0.20.0 set/type/file.rb:11-15;
 //    card-1.110.0 config/initializers/01_core_extensions/object.rb:3-6

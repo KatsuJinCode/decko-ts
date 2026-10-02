@@ -85,7 +85,7 @@ describe("file-type core view renders the carrierwave download anchor", () => {
     expect(page).toContain(
       "<a href='http://s3.amazonaws.com//files/1865/12160.pdf'>Download +Documents</a>\n",
     );
-    // the pre-lane shape (label = the URL) is gone
+    // the pre-fix shape (label = the URL) is gone
     expect(page).not.toContain(
       '<a href="http://s3.amazonaws.com//files/1865/12160.pdf">http://s3.amazonaws.com//files/1865/12160.pdf</a>',
     );

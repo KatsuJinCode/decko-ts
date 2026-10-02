@@ -10,12 +10,12 @@
 // stratified slice across the corpus' name families (capped per family so
 // the repeated "…+BW+Time Tracking" / "…+BW+RVW" journal junctions cannot
 // crowd out other shapes) plus the perm-leak triage's two named exemplars,
-// which are the KNOWN BOUNDARY of this lane: they are the
+// which are the KNOWN BOUNDARY of this suite: they are the
 // denial-wrapper-leak class (prepare-render verdict timing, the
 // lane-perm-leak / lane-perm-allow territory — prefetch.ts chunking +
 // ensurePermissionVerdicts + the page.ts call), not the page-layer
-// presentation contract this lane proves. They ride the report-only census
-// so the flip is visible once the verdict-timing lane merges.
+// presentation contract this suite proves. They ride the report-only census
+// so the flip is visible once the verdict-timing port merges.
 
 /** The loud-denial exemplars the HARD block byte-compares (typical class:
  *  the denial frame fires when the main verdict resolves at sync-render

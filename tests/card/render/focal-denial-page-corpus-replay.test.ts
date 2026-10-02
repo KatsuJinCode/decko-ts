@@ -19,19 +19,19 @@
 //      (Brandon WilliamsCraig 393) carries the corpus' known
 //      link-query-dropped class (wanted-card href loses its
 //      ?card[name]= query; a graded-corpus divergence family outside this
-//      lane's contract -- pinning it here would gate this lane on another
-//      lane's unit forever). The controls' full byte verdicts ride the
+//      suite's contract -- pinning it here would gate this suite on another
+//      port's unit forever). The controls' full byte verdicts ride the
 //      block's controls-results.jsonl as evidence.
 //   2. REPORT-ONLY CENSUS: the 44-entry stratified slice
 //      (focal-denial-page-subset.ts) across the 3,069-entry class, one JSONL
 //      line each (verdict, sizes, first-diff offset, denial-frame markers on
 //      both sides) to tmp/focal-denial-replay/sweep-results.jsonl. The two
 //      boundary:true entries (20120122+BW+RVW 11179, BW 20111201 10623) are
-//      the perm-leak lane's denial-wrapper-leak exemplars -- on THIS lane's
+//      the perm-leak port's denial-wrapper-leak exemplars -- on THIS tree's
 //      base (before lane-perm-allow's verdict-timing fix 3e50585 merges) the
 //      cold prepare crash leaves zero verdicts and the leak class renders
 //      the titled body; they ride the census report-only so the flip is
-//      visible once that lane merges. They are NOT this lane's fix surface.
+//      visible once it merges. They are NOT this suite's fix surface.
 //
 // RUN (machine-local raw corpus; ~50 page renders over the 47k-card deck,
 // one seed per block, several minutes per seed):
@@ -75,7 +75,7 @@ interface PageLaneLine {
 }
 
 /** Stream every page-lane shard once; keep the yardstick page_html of the
- *  wanted names. Shard line order is stable, names are unique per lane. */
+ *  wanted names. Shard line order is stable, names are unique per shard. */
 async function loadYardstick(names: Set<string>): Promise<Map<string, PageLaneLine>> {
   const found = new Map<string, PageLaneLine>();
   const fs = await import("node:fs");
@@ -214,7 +214,7 @@ describe("focal (loud) denial page corpus replay (R3.4.d)", () => {
           // The over-deny contract: the readable page keeps its body -- the
           // page layer must not start denying it. Full byte equality is
           // evidence-only (see the module doc: the corpus' known
-          // link-query-dropped class is another lane's unit).
+          // link-query-dropped class is another port's unit).
           expect(markers.mainDenialSlot, `${control.name}: readable control must not render a denial frame`).toBe(false);
           expect(markers.sorryH1, `${control.name}: readable control must not render the loud denial heading`).toBe(false);
           expect(actN.length, `${control.name}: readable control must render a body, not an empty page`).toBeGreaterThan(1000);

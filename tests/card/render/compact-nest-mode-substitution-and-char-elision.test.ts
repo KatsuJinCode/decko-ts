@@ -1,5 +1,5 @@
 // The compact nest-mode mechanism, ported gem-derivative with fixture-less
-// pins (nest-mechanism-remainders lane 2026-10-01).
+// pins (nest-mechanism-remainders 2026-10-01).
 //
 // Two mechanisms live under nesting/mode.rb's :compact state, and NEITHER
 // has a single captured byte on the recorded surface (nest-mode-port census
