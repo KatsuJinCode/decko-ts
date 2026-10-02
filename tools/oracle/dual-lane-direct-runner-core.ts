@@ -499,14 +499,34 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
       ? path.join(opts.artifactDir, `${opts.label ?? "direct"}-aggregate.json`)
       : path.join(OUT_DIR, "dual-lane-verification-aggregate.json"));
 
-  // The per-worktree staging module the spec reaches as
-  // "./raw-corpus-seeding.js". Imported by absolute path because it lives in
-  // the gitignored instrument tree, not beside this file.
-  const { createRawStructureSeededStorage, RAW_CORPUS_DB } = await import(
-    pathToFileURL(
-      path.join(REPO_ROOT, "tmp", "raw-ground-truth", "scripts", "raw-corpus-seeding.js"),
-    ).href
-  );
+  // The corpus seeding module the spec reaches as "./raw-corpus-seeding.js".
+  //
+  // This pointed at the per-worktree staging copy under the gitignored
+  // instrument tree (tmp/, .gitignore:45). That copy PREDATES the FULL
+  // REFERENCE GRAPH PASS, so the graded run staged 3,184 card_references
+  // rows where the committed home stages 556,526. Every card a search card
+  // queries therefore had no outgoing reference rows, and the engine --
+  // whose generated SQL is correct -- rendered `search-no-results` where the
+  // Ruby oracle renders a result list. That is the whole negative-delta page
+  // family: 145 page-lane failures, 1,084,985 missing bytes.
+  //
+  // The fix is not in the engine and was not missing: the committed home
+  // tests/card/render/raw-corpus-seeding.ts carries the pass (:699-745) and
+  // its own header names this exact symptom. It simply never reached the
+  // graded run. So the runner imports the committed home.
+  //
+  // The assertion below is the point of the change: a seeding module that
+  // lacks the pass now REFUSES the run instead of silently producing a
+  // clean-looking aggregate full of negative-delta pages. A silent fallback
+  // to the staging copy would reinstate exactly this bug.
+  const SEEDING_MODULE = path.join(REPO_ROOT, "tests", "card", "render", "raw-corpus-seeding.js");
+  const seeding = await import(pathToFileURL(SEEDING_MODULE).href);
+  if (typeof seeding.createRawStructureSeededStorage !== "function") {
+    throw new Error(
+      `corpus seeding module ${SEEDING_MODULE} does not export createRawStructureSeededStorage`,
+    );
+  }
+  const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;
 
   // The aggregate's OWN directory, which is not necessarily OUT_DIR: a pooled
   // worker's aggregate lives in artifactDir, which the driver creates on disk
