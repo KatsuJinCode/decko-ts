@@ -3351,7 +3351,7 @@ function renderUnknownPointerListItem(
   const verdict = fmt.engine.pointerItemVerdict?.(fmt.card.key, phantom.key);
   const readable = verdict?.read === true;
   if ((itemView === "bar" || itemView === "closed") && !readable) {
-    // p21 CQL item-typing lane: the denied-arm SHAPE follows Ruby's
+    // The denied-arm SHAPE follows Ruby's
     // known?-ness split (states.rb:65 known? = real? || virtual?;
     // states.rb:44-50 virtual? = compound && structure.present?). A
     // VIRTUAL phantom (compound name + a *structure rule resolves for the
@@ -3590,8 +3590,7 @@ const noSearchResultsView: ViewFn = () => `<div class="search-no-results"></div>
  *  shared :title view does not read voo.title yet (wave-3); the no-label
  *  path renders the real :title view, which is the whole corpus surface.
  *
- *  SINGLE SOURCE for BOTH registrations (link-registration-drift lane
- *  2026-10-01): the html-format helper chain — links.rb:111-116 link_to_card
+ *  SINGLE SOURCE for BOTH registrations (2026-10-01): the html-format helper chain — links.rb:111-116 link_to_card
  *  (add_known_or_wanted_class links.rb:140-143) → links.rb:101-108 link_to
  *  (`opts[:href] ||= path ...`) → set/all/path.rb:29-33,74-77 +
  *  env/location.rb:6-15 card_path (rooted "/<url_key>"; url_key
@@ -3803,7 +3802,7 @@ function genericBarLeftHtml(ctx: ViewContext): string {
  *  text: _render_title, media_opts: { class: "align-items-center" } end`
  *  — the skin cardtype's media+icon layout.
  *
- *  bar-slots lane 2026-09-29 (view-fail class V6: 45 oracle entries —
+ *  2026-09-29 (view-fail class V6: 45 oracle entries —
  *  every Bootswatch-skin-typed card's bar renders this media block where
  *  the engine rendered a bare title span; the pass-15 dump pins the
  *  bytes in phase-008/014 (cerulean..yeti skin + the customized skins,
@@ -3896,7 +3895,7 @@ function modnameFromCodenameForViews(fmt: RenderFormat): string {
 }
 
 const barRightView: ViewFn = ({ fmt }) =>
-  // bar-slots lane (2026-09-29, view-fail class Z3): Mod-typed cards'
+  // view-fail class Z3 (2026-09-29): Mod-typed cards'
   // bar_right is type/mod.rb's section list ("tasks, cardtypes, scripts,
   // styles" ...) — card-mod-format's port note left it unported as a
   // "mod-runtime" gap, but the admin-config surface (ADMIN_CONFIG), the
@@ -4563,7 +4562,7 @@ const miniBarView: ViewFn = (ctx) => {
     // The slot JSON of every denied mini_bar therefore carries hide
     // ["bar_middle"]: the BW Oversight+ARCHETYPALLY oracle page pins 6 bars
     // / 6 hides, and the short-circuit below previously skipped the hide
-    // (replays-adjudication lane, 2026-10-01: the page's whole residual diff
+    // (2026-10-01: the page's whole residual diff
     // was 210 units = 5 x 42 chars of `,&quot;hide&quot;:[&quot;bar_middle&quot;]`).
     // These phantoms are not rule bars, so bar_nav stays visible
     // (prepareBar's R17 note) — hide gets bar_middle only.
@@ -4756,7 +4755,7 @@ const boxMiddleView: ViewFn = (ctx) => ctx.fmt.renderView("content");
 // peek only) and :updated_by (lines 10-16 + :76-99, the act search whose
 // data arrives through the render-time act-search seam,
 // src/card/history/updater-seam.ts). Flat-registry registrations, the
-// level the mod-a lane used for creator_credit; :board_act stays the mod
+// level creator_credit is ported at; :board_act stays the mod
 // file's named remainder.
 // ---------------------------------------------------------------------------
 
@@ -5024,7 +5023,7 @@ const flatLinknameView: ViewFn = ({ fmt }) => fmt.urlKey();
  *  add_button). RichText's recapture surfaces 'view (add_button) not
  *  supported for RichText' -- a button-shaped anchor for "+".
  *
- *  Lane mm-cardtype-tpl (2026-09-30): this flat fallback carried the SAME
+ *  2026-09-30: this flat fallback carried the SAME
  *  engine-only placeholder shape as the chain-aware
  *  cardtypeAddButtonView it mirrors (an engine-only `cardtype-add-button`
  *  class, a `/<key>/new` href, a bare `add` text) — the class appears in
@@ -5067,8 +5066,8 @@ const homePathView: ViewFn = ({ fmt }) => {
 /** card-mod-format set/self/home.rb view :home_url (perms: :none):
  *  `card_url ""` — the deck-root ABSOLUTE url (scheme+host+"/" in a Rails
  *  runtime). Self-set scoped in Ruby; the flat registry scopes by card key
- *  here (home_path's gate, same set). UNCHANGED by the mm-roleviews lane
- *  and deliberately so: the capture MASKS the host on this view (the page
+ *  here (home_path's gate, same set). Deliberately UNCHANGED:
+ *  the capture MASKS the host on this view (the page
  *  and view captures carry a bare "/" for the deck root — pinned by
  *  tests/card/mod-loader/card-mod-format-remaining-views.test.ts's
  *  `home_url is the deck-root path` case), so unlike the `:url` view
@@ -5158,7 +5157,7 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  loser is card-mod-history's anchor form, still reachable through its
  *  mod registration.
  *
- *  email-text-remainders lane (2026-10-01): this fn is ALSO the follow
+ *  2026-10-01: this fn is ALSO the follow
  *  mod's chain registration - base_views.rb:1 is a bare `format do`
  *  block (the BASE format, filed on Card::Format itself,
  *  registrar.rb:79-84), so card-mod-follow.ts registers it under the
@@ -5235,7 +5234,7 @@ const unfollowUrlView: ViewFn = () => "";
  *  where the text message's standalone `{{_|verify_url}}` sits).
  *  The SEND path — the arm that builds a real token URL — is
  *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl
- *  (lane-reset-flows' port of `token_url`); it substitutes the URL into
+ *  (the `token_url` port); it substitutes the URL into
  *  the message text itself and does not render through this view, so
  *  registering the blank arm here does not touch a delivered email. */
 const verifyUrlView: ViewFn = () => "";
