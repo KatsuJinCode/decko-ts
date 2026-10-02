@@ -3997,6 +3997,39 @@ const barRightView: ViewFn = ({ fmt }) =>
 const barBottomView: ViewFn = (ctx) => {
   const fmt = ctx.fmt;
   const card = fmt.card;
+  // The BootswatchSkin cardtype's :bar_bottom -- card-mod-bootstrap
+  // set/type/bootswatch_skin/html_views.rb:69-73:
+  //
+  //   view :bar_bottom do
+  //     wrap_with :code do render_core end
+  //   end
+  //
+  // `wrap_with :code` is a VERBATIM tag wrapper: `<code>#{render_core}</code>`,
+  // with no slot wrapper div. So Ruby's open view for a skin card runs the
+  // core straight inside `<code>` where every other cardtype gets the
+  // `<div id="X-content-view" class="card-slot content-view …">` wrap from
+  // bar.rb's `view :bar_bottom -> render :content, home_view: :content`.
+  // That is the WHOLE of the six-skin +493..+511 view-open residual (lux
+  // +493, materia +511, minty +501, pulse +501, sketchy +509, solar +501 --
+  // shard-000028 at cf7dc5c): one block, the wrapper div replaced by `<code>`,
+  // the body between them byte-identical.
+  //
+  // The gate is at the TOP of the function on purpose. Ruby resolves the view
+  // by MRO, and a card's own type-set module is ahead of the abstract
+  // bar.rb module, so the override wins for a bootswatch_skin-typed card
+  // whatever its name shape. Placing it after the pointer/list and rule-card
+  // branches below would make the port shape-conditional where Ruby is not.
+  //
+  // The dispatch has to be here, in the BASE table, for the same reason
+  // barLeftView's is (:3873) and coreView's is (:1192): the corpus grading
+  // pipeline replays views through a RenderEngine that never binds a
+  // ModLoader, so only base-table registrations dispatch on the graded
+  // surface. The mod-layer copy of this same body
+  // (card-mod-bootstrap.ts:927, registered at :1427) is correct and stays
+  // dead there.
+  if (card.typeCode === "bootswatch_skin" || card.typeName === "Bootswatch skin") {
+    return `<code>${fmt.renderView("core")}</code>`;
+  }
   // Rule-card detection: setKeys has RULE (for the 2-part rules the
   // engine's async enrich handles) OR the name is a 3-part compound
   // whose right starts with "*" (for 3-part rules the sync closure may

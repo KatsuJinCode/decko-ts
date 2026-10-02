@@ -99,6 +99,7 @@
   "tests/server/write-routes-anonymous-permission-pins.test.ts",
   "tests/server/write-routes-recaptcha-armed-update-delete.test.ts",
   "tests/server/write-routes-recaptcha-seat.test.ts",
+  "tests/card/render/bootswatch-skin-bar-bottom-code-wrap.test.ts",
   "tests/card/render/bootswatch-skin-virtual-field-type-identity.test.ts",
   "tests/card/render/wiki-link-title-escape-pins.test.ts",
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts",
