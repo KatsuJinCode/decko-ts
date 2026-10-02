@@ -169,7 +169,7 @@ export class Voo {
       if (inheritedItems !== undefined) this.opts["items"] = inheritedItems;
     }
     // :title is an heir key too (keymap[:both], "overrides the name of the
-    // card" - options.rb:50). Two consumers pinned it on different lanes:
+    // card" - options.rb:50). Two consumers pinned it, each with its own oracle arm:
     // (1) the board-stage3 engage_tab oracle arm — the discussion nest
     // carries title: "Discussion" and the :titled frame's header_title ->
     // :title chain reads voo.title two voo levels down (titled ->
@@ -263,7 +263,7 @@ export class Voo {
    *  `next if !force && viz_hash[view]` - the FIRST write on a view wins.
    *  This is Ruby's `voo.show x` / `voo.hide x` setter semantics (plain
    *  show/hide delegate here without force; only the ! variants and
-   *  process_visibility_options force). The forms lane depends on the
+   *  process_visibility_options force). The edit forms depend on the
    *  exact order: edit_content.rb's :edit_form view body runs
    *  `voo.show :edit_type_row` first, then the edit_form METHOD runs
    *  `voo.hide :edit_type_row` - a no-op under first-write-wins, which is
@@ -412,9 +412,9 @@ export interface HelpRulesApi {
  *               body is displayed as SOURCE rather than expanded.
  *  - "edit"     view_in_edit_mode - not ported (the edit forms need the
  *               Rails runtime; card-mod-edit's own views are out of scope
- *               for this engine lane).
+ *               for the engine port).
  *  - "compact"  view_in_compact_mode - PORTED (mode.rb:71-84 substitution
- *               + nesting.rb:52-63 elision; nest-mechanism-remainders lane
+ *               + nesting.rb:52-63 elision;
  *               2026-10-01 — see the modalNestView docblock).
  */
 export type NestMode = "normal" | "template" | "edit" | "compact";
@@ -699,8 +699,8 @@ export class RenderFormat {
    * form machinery and stays unported. :compact substitutes per
    * viewInCompactMode below.
    *
-   * COMPACT CENSUS (re-verified by the
-   * nest-mechanism-remainders lane the same day on the sha-verified
+   * COMPACT CENSUS (re-verified 2026-10-01
+   * on the sha-verified
    * 6a44dfdc dump copy + the 97 expected-v2 shards): the substitution has
    * ZERO observable on the recorded capture surface — every captured
    * one-line render (30,037 divs) is a raw or nest-free arm
@@ -2510,7 +2510,7 @@ export class RenderFormat {
     // default-list URI pass anchored it, +89 bytes on 14 page-lane
     // entries, probe job-1790846792533).
     //
-    // D10 (this lane's fix): the port had a SECOND, forked walk here -
+    // D10 (fixed here): the port had a SECOND, forked walk here -
     // same nest arm, but the text arm ran only the whole-piece
     // `expandWikiLinks` regex and never the Link-chunk-spans-a-Nest arm
     // that processContent runs (matchLinkWrappedNestOpener, above).
@@ -2552,7 +2552,7 @@ export class RenderFormat {
    *  (card-mod-bootstrap set/type/bootswatch_skin/core.haml field_nest
    *  title: opts).
    *
-   *  bar-slots lane 2026-09-29 (view-fail class Z10): settings with an
+   *  2026-09-29 (view-fail class Z10): settings with an
    *  I18n display title render THAT title
    *  (Card::Setting#title — the `setting_title.<codename>` locale keys;
    *  attribution training-data, the corpus pins the surface bytes) — the
@@ -2568,7 +2568,7 @@ export class RenderFormat {
    *  options+*right+*default is a junction — never simple — and keeps its
    *  rule name).
    *
-   *  Merge note (pass-18): both lanes landed the SAME three codenames —
+   *  Merge note (pass-18): both merge parents landed the SAME three codenames —
    *  this Z10 table (keyed on the resolved name's codename, here) and
    *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
    *  codename, consulted first at the view layer) carry identical values
@@ -2624,7 +2624,7 @@ export class RenderFormat {
  *  src/card/render.ts). Kept as an interface so views.ts and format.ts never
  *  import the engine concrete class - mirrors the harness's interface-only
  *  rule in spirit. */
-/** bar-slots lane 2026-09-29 (view-fail class Z10): the setting display
+/** 2026-09-29 (view-fail class Z10): the setting display
  *  titles the oracle pins (see RenderFormat#standardTitle's doc block).
  *  The three entries are the corpus's only I18n-covered settings; every
  *  other captured setting-codename card renders its raw name, so a miss
@@ -2966,7 +2966,7 @@ export interface RenderEngineLike {
     hostKey: string,
     key: string,
   ): { read: boolean; create: boolean | undefined } | undefined;
-  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution
+  /** The phantom-item VIRTUAL resolution
    *  (states.rb:65 known? = real? || virtual?; states.rb:44-50 virtual?
    *  = compound && structure.present?) for one UNKNOWN pointer/list item
    *  whose TYPE the seat knows (the host-resolved item type). Non-
@@ -3390,7 +3390,7 @@ const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
 // existing HTML tag (0 `href="...<a` manglings across all 48 view-lane
 // shards), so the scanner skips matches between < and >.
 //
-// TRAILING WORD BOUNDARY (host + email classes; the p20-autolink lane's
+// TRAILING WORD BOUNDARY (host + email classes; the
 // ms.paula fix, page 11251): Ruby's prefix_re carries a `\b` after the
 // pattern for BOTH classes -- HostUri: `(?:(?!#{REJECTED_PREFIX_RE})#{HOST})\b`
 // (uri.rb:123-127) and EmailUri: `(?:(?!#{REJECTED_PREFIX_RE})#{EMAIL})\b`
@@ -3836,7 +3836,7 @@ export function expandWikiLinks(
     // resource to one internal-link form from the PCTS/GBA nav pin; the
     // scheme-differentiated classes below carry the LATER raw-oracle pins
     // (external-link target="_blank" — clusters.4shard.after.md #17) and
-    // the same no-card-title-span property, which was that lane's fix.)
+    // the same no-card-title-span property.)
     const targetTrimmed = target.trim();
     if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
       if (/^https?:/.test(targetTrimmed)) {
