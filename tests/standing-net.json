@@ -98,7 +98,8 @@
   "tests/server/staging-server-recaptcha-env-config-pins.test.ts",
   "tests/server/write-routes-anonymous-permission-pins.test.ts",
   "tests/server/write-routes-recaptcha-armed-update-delete.test.ts",
-  "tests/server/write-routes-recaptcha-seat.test.ts"
+  "tests/server/write-routes-recaptcha-seat.test.ts",
+  "tests/card/render/bootswatch-skin-virtual-field-type-identity.test.ts"
  ],
- "manifestFileCount": 69
+ "manifestFileCount": 70
 }
