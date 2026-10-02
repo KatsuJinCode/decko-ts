@@ -281,7 +281,7 @@ describe("css/js chain scoping on the composed deck (post-fix behavior)", () => 
     // JsFormat's method table is its own: the js request finds the row
     // in the own-format pass (no fallback involved); the html chain
     // does NOT (the html bytes come from the flat record at
-    // render.ts:1519 — the flat-table lane's surface); the text
+    // render.ts:1519 — the flat-table port's surface); the text
     // lineage never sees it.
     expect(
       loader!.viewChain("ALL", "open_nest_editor", "js").map((e) => e.setModule),

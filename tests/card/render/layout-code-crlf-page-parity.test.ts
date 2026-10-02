@@ -26,7 +26,7 @@
 // corpus + captures and the seeding helper are local, gitignored builds under
 // tmp/raw-ground-truth/.
 //
-// Gate (self-contained-tests lane, 2026-10-01): the oracle side is raw
+// Gate (self-contained-tests, 2026-10-01): the oracle side is raw
 // page-lane captures of the live deck's real layout pages — personal content
 // that must not ship in a committed fixture — and the full-deck raw seed is a
 // minutes-long boot. The oracle-parity replay gates on the explicit
@@ -45,7 +45,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const REPO_RAW = path.join(REPO_ROOT, "tmp", "raw-ground-truth");
 // No sibling-checkout fallback: a clone must never reach into another
-// checkout's private files (self-contained-tests lane).
+// checkout's private files (self-contained-tests).
 
 function rawDir(): string | undefined {
   if (existsSync(path.join(REPO_RAW, "bench-corpus-raw.sqlite3"))) return REPO_RAW;

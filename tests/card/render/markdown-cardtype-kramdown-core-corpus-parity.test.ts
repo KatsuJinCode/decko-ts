@@ -202,7 +202,7 @@ async function seedMarkdownDeck(storage: RenderTestStorage): Promise<void> {
 
 describe("Markdown-type cards kramdown through the loader-less core (corpus parity)", () => {
   it("*all+*guide :core renders the captured oracle kramdown bytes verbatim", async () => {
-    // THE lane exemplar (expected-v2/view-lane/recapture-raw-shard-000039,
+    // THE exemplar (expected-v2/view-lane/recapture-raw-shard-000039,
     // *all+*guide :content inner). Before the dispatch fix the engine fell
     // through to the raw passthrough and these bytes came out as the
     // markdown source ("#### Editing Guide", no <p> wrappers).

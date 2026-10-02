@@ -1,5 +1,5 @@
 // The card-mod-format :smart_label view (the third named remainder - missing
-// since the mod-views-a lane): card-mod-format-0.20.0 set/all/content.rb
+// since the mod-views-a port): card-mod-format-0.20.0 set/all/content.rb
 // :26-41 -
 //   view :smart_label, cache: :never, unknown: true do
 //     label_with_description render_label, label_description

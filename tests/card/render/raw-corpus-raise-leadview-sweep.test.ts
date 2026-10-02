@@ -1,4 +1,4 @@
-// raw-corpus-raise-leadview-sweep.test.ts -- the lane's sweep runner (not a
+// raw-corpus-raise-leadview-sweep.test.ts -- this suite's sweep runner (not a
 // pin): renders every page of the two triage classes (pass15-page-fail-
 // classes.md, tips 017b182) over the full-deck corpus seed and reports the
 // flip evidence per page: raise gone? lead/configs render-error gone?

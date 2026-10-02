@@ -1,5 +1,5 @@
 // The type_plus_right/bootswatch_skin/colors bar arm (surfaces-batch3
-// lane): view :bar_middle (colors.rb:102-122) — the fixed colorpicker
+// port): view :bar_middle (colors.rb:102-122) — the fixed colorpicker
 // heredoc literal — registered so a "*colors card under a bootswatch_skin
 // left" dispatches it through the TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor
 // set-key token (the surfaces2 X-star-marker strip's anchor-path

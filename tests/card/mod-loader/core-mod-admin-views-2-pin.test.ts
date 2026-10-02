@@ -1,7 +1,7 @@
 // ORACLE-PINNED byte-compares for the core-mod admin views the
 // admin-view-pins fixture (fixtures/captured/admin-view-pins.json, the
 // lane-admin-pins capture) carries bytes for but had no pin tests for, plus
-// the two set/self/admin.rb views captured fresh this lane
+// the two set/self/admin.rb views captured fresh this suite
 // (fixtures/captured/admin-views-2-oracle.json,
 // tests/card/mod-loader/oracle-capture-admin-card-views.rb, no-write proof
 // card_actions 5018 -> 5018). The suite loads the FULL composed deck

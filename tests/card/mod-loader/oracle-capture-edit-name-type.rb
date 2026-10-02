@@ -1,5 +1,5 @@
 # oracle-capture-edit-name-type.rb - oracle capture for the card-mod-edit
-# NAME-EDITOR and TYPE-SHIFT surfaces (write-path slice 4, the edit2 lane):
+# NAME-EDITOR and TYPE-SHIFT surfaces (write-path slice 4, the edit2):
 # the framed name editor (frame -> header/menu/panel -> rename form), the
 # bare name form, the name formgroup, the name row, the framed type editor,
 # the bare type form, the type formgroup (the full cardtype select - the

@@ -1,13 +1,13 @@
-// raw-corpus-roleviews-sweep.test.ts -- THIS LANE's sweep runner (not a
+// raw-corpus-roleviews-sweep.test.ts -- THIS SUITE's sweep runner (not a
 // pin): renders every page of the pass-15 `engine-gap: unsupported-view`
 // class (pass15-page-fail-classes.md, tip 017b182) over the full-deck corpus
 // seed and reports, per page: does the engine still emit any
 // `view (X) not supported` render-error alert, which X, and is the page
 // byte-exact against the captured oracle bytes?
 //
-// Scoped to this lane's 34 class pages only (the sibling spec
+// Scoped to this suite's 34 class pages only (the sibling spec
 // raw-corpus-raise-leadview-sweep.test.ts covers the 23 raise-class pages,
-// which belong to the members-raise lane).
+// which belong to the members-raise port).
 //
 //   ROLEVIEWS_SWEEP=1 NODE_OPTIONS=--max-old-space-size=4096 \
 //   npx vitest run tests/card/render/raw-corpus-roleviews-sweep.test.ts \

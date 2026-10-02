@@ -29,9 +29,9 @@
 // The raw corpus + expected-v2 captures and the census seeding helper are
 // local, gitignored builds under tmp/raw-ground-truth/. Resolution: this
 // repo's tmp only — no sibling-checkout fallback (a clone must never reach
-// into another checkout's private files; self-contained-tests lane).
+// into another checkout's private files; self-contained-tests).
 //
-// Gate (self-contained-tests lane, 2026-10-01): the oracle side is raw
+// Gate (self-contained-tests, 2026-10-01): the oracle side is raw
 // page-lane captures of the live deck's real pages — personal content that
 // must not ship in a committed fixture — and the full-deck raw seed is a
 // minutes-long boot. The oracle-parity replay therefore gates on the

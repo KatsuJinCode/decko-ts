@@ -1,6 +1,6 @@
 // raw-corpus-p22-rulebar-content-pages.test.ts -- the pass-22 rule-bar
-// one-line-content lane's evidence probe. Renders the three pages the wave
-// plan names for this lane (plan §(b) Lane 2) through the engine's REAL page
+// one-line-content port's evidence probe. Renders the three pages the plan
+// names here (plan §(b)) through the engine's REAL page
 // renderer over the RAW ground-truth corpus and records the bar-right
 // regions of the named rule bars on both sides:
 //
@@ -8,7 +8,7 @@
 //       rule bar's one-line content renders EMPTY in the engine where the
 //       oracle shows the raw db_content JSON, 30 bytes @ offset 53737
 //       (p21-cql-item-typing-lane.md leftover #2, measured at the p21
-//       bases; this probe re-measures at the lane's own tip)
+//       bases; this probe re-measures at its own tip)
 //   Search                          shard 000000 -- member bar of stored
 //       rule card 17743 (Exhibit+Item+*type plus right+*content options,
 //       Search-typed): oracle one-line = raw db_content; the p20-cardtype
@@ -68,7 +68,7 @@ const PAGES: Array<{ key: string; name: string; shard: string }> = [
   { key: "recent-settings-self", name: "*recent settings+*self", shard: "recapture-raw-shard-000018.jsonl" },
 ];
 
-/** The bar whose bar-right region this lane owns, per page: the slot id
+/** The bar whose bar-right region this suite owns, per page: the slot id
  *  prefix of the bar card (slot ids are slot-id-normalized, so the lexical
  *  id prefix survives normalization) -- the extraction anchor. */
 const BAR_ANCHORS: Record<string, string[]> = {
@@ -106,7 +106,7 @@ function loadOraclePage(shard: string, name: string): PageLaneLine {
 }
 
 /** Extract every `<slot-start> … +3000` window whose anchor names one of
- *  this lane's bars, so the report carries BOTH sides of the bar-right
+ *  this suite's bars, so the report carries BOTH sides of the bar-right
  *  region byte-for-byte (the one-line div lives within the bar slot). */
 function extractBarRegions(html: string, anchors: string[]): string[] {
   const regions: string[] = [];

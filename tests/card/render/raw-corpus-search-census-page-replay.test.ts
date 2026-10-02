@@ -6,7 +6,7 @@
 // against the oracle's captured page HTML with the census's own comparator
 // (normalizeSlotIds + byteDiff) and its second-pass mechanism classifier.
 //
-// Report-only (the census lane's contract): the spec never gates the vitest
+// Report-only (the census contract): the spec never gates the vitest
 // run on parity; it records evidence --
 //
 //   tmp/census-search-final/results.jsonl   one line per page: identity,
@@ -134,7 +134,7 @@ describe("raw-corpus search-results census replay (47 c-structural pages)", () =
         if (diff.equal) pass++;
         else fail++;
 
-        // Search-flip evidence at the page level: the class this lane fixes
+        // Search-flip evidence at the page level: the class this suite fixes
         // is search-no-results where the oracle lists a search-result list.
         const expHasResults =
           expected.includes("search-result-list") || expected.includes("search-result-item");

@@ -1,7 +1,7 @@
 // The card-mod-format coverage recount's remaining missing views (the
 // 2026-09-29 recount lists 21 for this mod; :smart_label landed on
 // lane-follow2 9b980a5 and is covered by card-mod-format-smart-label.test.ts,
-// and four stay unported with named reasons — see the lane receipt
+// and four stay unported with named reasons — see the receipt
 // brandonDojoTech tmp/wrong-goal-hunt/format-views-port.md). This suite
 // ports FIFTEEN:
 //
@@ -372,7 +372,7 @@ describe("card-mod-format remaining views — live-oracle pins", () => {
       // capture EXCEPT the nested :action_summary's expand toggle: the TS
       // render carries the toggle, the Ruby cold capture does not. The
       // toggle flag (summary_diff_omits_content?, actions.rb:65) reads the
-      // engine-lifetime diff memo the history lane owns - its own receipt
+      // engine-lifetime diff memo the history port owns - its own receipt
       // documents the same toggle as capture-order-dependent
       // ("differ.rb:79-86 ivar lives on the cached Action record"). The
       // cold/warm divergence inside the conflict render is that port's

@@ -182,7 +182,7 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     const report = loader!.load(); // idempotent (the loader replays to a clean slate)
     expect(report.modNames).toEqual(["list"]);
     expect(report.registeredViews).toEqual([
-      // abstract/01_list.rb:39-44 :view_list (ported by the mod-views-b lane)
+      // abstract/01_list.rb:39-44 :view_list (ported by the mod-views-b port)
       "view_list",
       "one_line_content",
       "list",

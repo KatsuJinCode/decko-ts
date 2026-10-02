@@ -45,7 +45,7 @@
 // A view that first-diffs here is a REAL finding: the expectation is the
 // captured oracle bytes, never tuned to pass. first-diff position and a
 // context window are in the failure message, and a RESULT line is
-// logged per target/view/actor either way so the lane receipt can quote
+// logged per target/view/actor either way so the receipt can quote
 // them.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";

@@ -1,5 +1,5 @@
 // raw-corpus-raise-leadview-pages.test.ts -- the pin for the two named
-// page-fail classes this lane owns (pass15-page-fail-classes.md):
+// page-fail classes this suite owns (pass15-page-fail-classes.md):
 //
 //   CLASS 1 -- engine-raise-divergence (23 pages at tip 017b182): the
 //   `X+*members` List-typed pages raised NameNotFoundError ("id doesn't

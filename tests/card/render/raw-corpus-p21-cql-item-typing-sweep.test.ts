@@ -6,7 +6,7 @@
 // TYPED item the walk DENIES must render Ruby's plain quiet denial span, not
 // the untyped phantom's mini_bar wrap with the two-span body.
 //
-// BASE MEASUREMENT (this lane, job-1790800593920-f006b263, 46b6976): the
+// BASE MEASUREMENT (this suite, job-1790800593920-f006b263, 46b6976): the
 // typing arm's ALLOWED side is already landed at this base -- Daemeon
 // Reiydelle and Starhawk render BYTE-EXACT with the typed full bars
 // (data-card-type-id 398 Project / 2979 consideration). The residual this

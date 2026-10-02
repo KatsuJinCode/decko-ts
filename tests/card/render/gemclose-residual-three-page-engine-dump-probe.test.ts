@@ -5,7 +5,7 @@
 // on a COPIED raw corpus database (tmp/raw-ground-truth/bench-corpus-raw.sqlite3
 // staged into this worktree; the pass20-int original is never opened for
 // writes) and dumps the engine's page bytes to tmp/gemclose-probe/ for the
-// lane's byte-level adjudication. No assertions beyond presence -- this is a
+// port's byte-level adjudication. No assertions beyond presence -- this is a
 // probe, not a pin; the per-family pin suites carry the verdicts.
 //
 // RUN (through the machine test queue only; env-gated so ordinary suite

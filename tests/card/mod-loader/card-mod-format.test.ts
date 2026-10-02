@@ -124,7 +124,7 @@ beforeAll(async () => {
     typeId: 204,
   });
   // the HTML + Toggle cardtype cards and probes (unported-types-audit
-  // lane 2026-10-01): type/html.rb's :one_line_content override and
+  // 2026-10-01): type/html.rb's :one_line_content override and
   // type/toggle.rb's :one_line_content helper funnel are reachable only
   // for cards of those types — chain-scoped registrations (the URI probe
   // pattern, above).
@@ -293,7 +293,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // like the sibling :url above — this render() is the view-function
     // lane, so origin is "". The former bare ~200 was the pre-card_url
     // divergence (strand-fold receipt limitation 4), closed by the
-    // small-engine-items lane 2026-10-01; the page-lane half is pinned
+    // small-engine-items 2026-10-01; the page-lane half is pinned
     // in the next test.
     expect(await s.engine.render("Oracle Format Probe", "id_url")).toBe("/~200");
   });
@@ -365,7 +365,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
   });
 
   // ---- type/uri.rb (the URI cardtype's render path) --------------------
-  // uri-cardtype-port lane 2026-10-01. set/type/uri.rb:1-19: base block
+  // uri-cardtype-port 2026-10-01. set/type/uri.rb:1-19: base block
   // (:title_link :url_link — both `link_to_resource _render_raw`) + html
   // block (:core = render_title_link). NO corpus usage and NO captured
   // bytes: the sha-verified corpus dump copy (6A44DFDC...) carries the URI
@@ -429,7 +429,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
   });
 
   // ---- type/html.rb + type/toggle.rb (the one-line surfaces) -----------
-  // unported-types-audit lane 2026-10-01. set/type/html.rb:8-10 + :24-26:
+  // unported-types-audit 2026-10-01. set/type/html.rb:8-10 + :24-26:
   // view :one_line_content → raw_one_line_content (content.rb:43-45,
   // truncate(strip_tags(render_raw), voo.size || 60) with the "..."
   // omission) — the composition capture-proven on the Right::Head
@@ -611,7 +611,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // rendered :one_line_content on the live decko 0.20.0 oracle app.
     // Green WITH the registration above; RED without it (the withheld
     // All::Base body would serve the bare bytes — probe-proven in the
-    // lane receipt, queue job-1790889001462-76a9aedb: "plain probe body").
+    // receipt, queue job-1790889001462-76a9aedb: "plain probe body").
     await seedCard(s, {
       id: 212,
       name: "Oracle One Line Plain Probe",
@@ -663,7 +663,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // while this port's render surface is html — Ruby's html arm
     // (set/all/html/error.rb:33-35) wraps h(title_in_context) in a
     // text-muted span, and the compact substitution's unknown-card
-    // fallback (mode.rb:73, ported this lane) renders THIS view, so the
+    // fallback (mode.rb:73, ported this suite) renders THIS view, so the
     // registered body had to become the html arm to be mechanism-true.
     // The email formats keep their own "" overrides (card-mod-email
     // email_text.rb:6-8 / email_html.rb:38-40).
