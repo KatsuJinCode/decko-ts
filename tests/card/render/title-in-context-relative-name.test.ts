@@ -12,7 +12,7 @@
 // - wrap.rb:68-79 name_context_slot_option: the slot JSON carries the
 //   INITIAL (parent-derived, part-filtered) context as comma-joined keys,
 //   appended LAST. SUPERSEDED PIN CORRECTION (2026-09-28, live-wire
-//   mechanism-3 lane): an earlier version of this test expected the WANTED
+//   mechanism-3 work): an earlier version of this test expected the WANTED
 //   +management mini_bar to carry NO name_context, pinned to the stale
 //   live-v0.19.1 capture tmp/wrong-goal-hunt/captures/live_Aikido_2.html.
 //   The graded v0.20.0 capture contradicts that byte: the SAME shape
