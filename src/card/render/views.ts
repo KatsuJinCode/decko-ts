@@ -812,7 +812,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // format (Ruby format.rb#root — the parent chain walk, not the
   // immediate parent).
   //
-  // BARE VIEW LANE FIXED 2026-10-02 (the D3 lane). This branch answered
+  // BARE VIEW LANE FIXED 2026-10-02 (D3). This branch answered
   // "" for an unseated root on the claim that the family nests "only
   // fire inside their own pages". That claim was FALSE: the view-lane
   // capture of 34754 `*all+*head` (recapture-raw-shard-000029 views.content,
@@ -909,7 +909,7 @@ const coreViewBase: ViewFn = (ctx) => {
     // literal. Same mechanism as the parse-time exemption in render.ts:
     // 606 (resolveView) — the engine already skips the BadQuery raise for
     // rule-shaped search cards; the render dispatch must mirror that.
-    // P22 rule-bar one-line lane: the gate below is Ruby's standard_rule?
+    // The gate below is Ruby's standard_rule?
     // (lib/card/rule/all.rb:37-44 — right part a Setting, left part a Set,
     // NO part-count limit), not cardIsRule's 3-part-only gate
     // (render.ts cardIsRule `name.parts.length !== 3`). The RULE set's
@@ -1134,7 +1134,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // coderay-1.1.3 gems; kramdownToStashedHtml applies the
   // safe_process_content references stash: nests/links become {{<i>}}
   // placeholders, the literal remainder converts, the restore feeds
-  // processContent — content.rb:12-17). Kramdown-lane 2026-09-29: the
+  // processContent — content.rb:12-17). Kramdown 2026-09-29: the
   // chain dispatcher resolves the set-module override only when a mod
   // loader is wired, and the graded verifier/census path binds NO loader
   // (the same seam hosting the signup/toggle/plain_text/date/image/file
@@ -1269,7 +1269,7 @@ const coreViewBase: ViewFn = (ctx) => {
  *  blank is the captured surface anyway (the anonymous corpus pins box =
  *  "" on every +discussion page), so the catch contributes "".
  *
- *  layout-whitespace lane (2026-09-29), page-mechanism census: 27 sampled
+ *  (2026-09-29), page-mechanism census: 27 sampled
  *  +discussion pages failed by exactly the missing separator (e.g. corpus
  *  10375 Occupy oracle offset 26,405: "<p>\xa0</p>\r\n<p>\xa0</p>\n</div>"
  *  vs the engine's "<p>\xa0</p></div>"). */
@@ -1444,8 +1444,8 @@ export const templateLinkView: ViewFn = (ctx) => {
 
 /** set/abstract/test_context.rb:16-18 `def test_context_card;
  *  card.left.fetch(:test_context)&.first_card; end` — the LEFT card's
- *  +*test context junction's first ITEM card. Corpus census (this lane,
- *  bench-corpus-raw.sqlite3): signup alert email's junction (left 21791)
+ *  +*test context junction's first ITEM card. Corpus census
+ *  (bench-corpus-raw.sqlite3): signup alert email's junction (left 21791)
  *  holds "User" (id 2693); follower notification email's (left 21795)
  *  holds "*changed card" (id 33822, codename changed_card);
  *  verification/password reset (21783/21787) hold "Decko Bot+*account" —
@@ -1507,7 +1507,7 @@ function contextualizingTestContext(ctx: ViewContext, run: () => string): string
  *  test_context.rb:4-6: `view :core, cache: :never do contextualizing
  *  { super() } end`). super() is the base-format :core
  *  (view_definition.rb:18-21) — here coreView, the flat registration that
- *  stood before this lane (the all-set/base-class :core in the port's
+ *  stood here before (the all-set/base-class :core in the port's
  *  model; the carrierwave all-module override the chain would consult with
  *  a loader bound falls through to the same bytes for RichText/PlainText
  *  message cards). The base core's self-nests now dispatch on the CONTEXT
@@ -1649,7 +1649,7 @@ export function textMessageCoreBody(ctx: ViewContext): string {
  *  (:134-139) turn each SYMBOL tag into the field mark
  *  `card.name.field(tag)` and default `options[:title]` to that SAME
  *  absolute mark — LIVE-PROBED on the oracle app against the corpus db
- *  (bundle exec decko runner, this lane): edit_fields ==
+ *  (bundle exec decko runner): edit_fields ==
  *  [:to, :from, :cc, :bcc, :attach, :subject, :text_message,
  *  :html_message, :test_context] and normalized_edit_field_config(:to)
  *  == ["welcome email+*to", {:title=>"welcome email+*to"}] — the SYMBOL
@@ -1698,8 +1698,8 @@ export function emailTemplateCoreBody(ctx: ViewContext): string {
  *  Everything else — and every NON-html format (the email_text dispatch
  *  above re-enters :core for the base body; the Right html :cores are
  *  html-format views and must not re-fire there) — falls through to
- *  coreView, the base-format registration that stood here before this
- *  lane, byte-identically. */
+ *  coreView, the base-format registration that stood here before,
+ *  byte-identically. */
 const emailScopedCoreView: ViewFn = (ctx) => {
   if (ctx.fmt.formatName !== "html") return coreView(ctx);
   const card = ctx.fmt.card;
@@ -2438,7 +2438,7 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     if (codename !== undefined) ruleByCodename.set(codename, rule);
   }
   const safeKey = card.name.safeKey;
-  // layout-whitespace lane (2026-09-29): the group items are JOINED, not
+  // (2026-09-29): the group items are JOINED, not
   // suffixed. Ruby chain: category_accordion_item
   // (card-mod-rules-0.20.0 set/type/set/html_views/rule_lists.rb:83-90)
   // maps Card::Setting.groups.keys to accordion_item strings
@@ -3286,9 +3286,9 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // slot wrap at all (the census above) — no slot JSON, no type field.
   // The type opt's slot-JSON surface is the readable and phantom item
   // paths, which carry it above and below (merge pass 3: the
-  // slotjson-type lane's threading retained on both slot-emitting
+  // type-opt threading retained on both slot-emitting
   // branches; the denied-branch wrap it threaded is retired by the
-  // permission lane's census).
+  // census).
   //
   // Item-view flow-through (mod-b-view-fixes): the :bar arm is the
   // corpus-pinned default (default_item_view, html.rb:21-23); the other
