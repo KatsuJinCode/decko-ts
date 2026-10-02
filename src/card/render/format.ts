@@ -38,6 +38,7 @@ import type { CardRecord } from "../fetch/card-record.js";
 import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
 import {
   scanNests,
+  type ContentPiece,
   type NestOptions,
   type ParsedNest,
 } from "./nest-syntax.js";
@@ -2181,8 +2182,24 @@ export class RenderFormat {
       }
       const opener = matchLinkWrappedNestOpener(piece.text);
       if (opener === undefined) {
-        out += linkPass(piece.text);
-        i += 1;
+        const targetOpener = matchLinkTargetNestOpener(piece.text);
+        if (targetOpener === undefined) {
+          out += linkPass(piece.text);
+          i += 1;
+          continue;
+        }
+        // The nest splits the TARGET (`[[/new/{{…}}|label]]`): build the
+        // target forward to the pipe, the label to the closer, all from the
+        // RAW piece text — Ruby matched the Link chunk before chunking, so
+        // the braces survive into the href and the label verbatim.
+        const spanned = this.spanLinkTargetOverNest(
+          i,
+          targetOpener,
+          pieces,
+          linkPass,
+        );
+        out += spanned.out;
+        i = spanned.next;
         continue;
       }
       // The opener's prefix text still runs the plain link pass (it may
@@ -2224,6 +2241,78 @@ export class RenderFormat {
       i = j;
     }
     return out;
+  }
+
+  /** Span one `[[Target|nest|label|nest]]` Link chunk whose NEST SPLITS THE
+   *  TARGET — the case matchLinkTargetNestOpener detected but the single-piece
+   *  walker cannot. Mirrors the label-side span above: walk forward from the
+   *  opening piece, accumulate RAW text on both sides of the first `|`, stop
+   *  at the first `]]`, and render through renderLinkChunk.
+   *
+   *  RAW on both sides is the pinned behavior, not an omission: link.rb:14
+   *  matches `[[([^\]]+)]]` over the raw string BEFORE the nest scan, so a
+   *  nest inside the target stays `{{…}}` inside the href and a nest inside
+   *  the label stays `{{…}}` inside the anchor text. The oracle pins exactly
+   *  that on `Cardtype+*type+*default` (content + open):
+   *  `<a class="internal-link" href="/new/{{_self|linkname}}">add a
+   *  {{_self|name}} card</a>`.
+   *
+   *  Two bail-outs reproduce the un-spanned (verbatim) bytes rather than
+   *  guessing: no `|` divider anywhere (a bare `[[Target]]` spanning a nest —
+   *  never pinned, so unchanged), and no `]]` closer anywhere (Ruby's chunker
+   *  would not have matched a Link either). Both emit the opener bytes
+   *  verbatim and resume at the opening piece, exactly the pre-fix path. */
+  private spanLinkTargetOverNest(
+    openIndex: number,
+    opener: { prefix: string; head: string },
+    pieces: ContentPiece[],
+    linkPass: (text: string) => string,
+  ): { out: string; next: number } {
+    let target = opener.head;
+    let label = "";
+    let sawDivider = false;
+    let tail: string | undefined;
+    let j = openIndex + 1;
+    while (j < pieces.length) {
+      const inner = pieces[j]!;
+      if (inner.kind === "nest") {
+        // RAW nest text on both sides — see the doc comment.
+        if (sawDivider) label += inner.text;
+        else target += inner.text;
+        j += 1;
+        continue;
+      }
+      const pipeAt = sawDivider ? -1 : inner.text.indexOf("|");
+      const closeAt = inner.text.indexOf("]]");
+      if (pipeAt !== -1 && (closeAt === -1 || pipeAt < closeAt)) {
+        target += inner.text.slice(0, pipeAt);
+        label += inner.text.slice(pipeAt + 1);
+        sawDivider = true;
+        j += 1;
+        continue;
+      }
+      if (closeAt === -1) {
+        if (sawDivider) label += inner.text;
+        else target += inner.text;
+        j += 1;
+        continue;
+      }
+      const before = inner.text.slice(0, closeAt);
+      if (sawDivider) label += before;
+      else target += before;
+      tail = inner.text.slice(closeAt + 2);
+      j += 1;
+      break;
+    }
+    if (!sawDivider || tail === undefined) {
+      // No divider, or no closer: emit the opener bytes verbatim and resume
+      // at the opening piece (the pre-fix path).
+      return { out: `${linkPass(opener.prefix)}[[${opener.head}`, next: openIndex + 1 };
+    }
+    return {
+      out: `${linkPass(opener.prefix)}${this.renderLinkChunk(target, label)}${linkPass(tail)}`,
+      next: j,
+    };
   }
 
   /**
@@ -3997,4 +4086,34 @@ function matchLinkWrappedNestOpener(text: string): { prefix: string; target: str
   const match = /(?<!\\)\[\[([^\[\]\n|]+)\|\s*$/.exec(text);
   if (match === null || match.index === undefined) return undefined;
   return { prefix: text.slice(0, match.index), target: match[1] ?? "" };
+}
+
+/** The link TARGET opener: an UNTERMINATED `[[Target` at the end of a text
+ *  piece, with the pipe still to come. This is the sibling case
+ *  matchLinkWrappedNestOpener cannot see — there the nest splits the LABEL
+ *  (`[[/ | {{*logo}}]]`, pipe and `[[` in one piece), here the nest splits
+ *  the TARGET: `<p>[[/new/{{_self|linkname}}|add a …]]` scans into
+ *  `<p>[[/new/` + nest `{{_self|linkname}}` + `|add a ` + nest + ` card]]`,
+ *  so no single text piece holds both `[[` and `|`.
+ *
+ *  Ruby's Link chunk (link.rb:14 `full_re /\[\[([^\]]+)\]\]/`) matches the
+ *  RAW string BEFORE any nest chunking, and its target charset `[^\]]`
+ *  admits braces — so the target is the RAW `"/new/{{_self|linkname}}"` and
+ *  the oracle's href carries the braces verbatim
+ *  (`expected-v2/view-lane recapture-raw-shard-000000.jsonl`,
+ *  `Cardtype+*type+*default`, content + open: `<a class="internal-link"
+ *  href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>`). The
+ *  un-spanned form leaked the whole `[[…]]` wikitext; that is the -32-byte
+ *  view-lane byte-diff on this card in both views.
+ *
+ *  SCOPE: the head charset excludes `{`/`}` as well as the bracket/pipe/newline
+ *  set, so only a PLAIN target head opens the span. A `[[{{nest}}]]` form
+ *  (brace as the FIRST target character) keeps the old verbatim behavior
+ *  rather than guessing a resolution this branch was not pinned for. The
+ *  caller additionally requires a `|` divider before rendering, so a bare
+ *  `[[Target]]` spanning a nest is unchanged too. */
+function matchLinkTargetNestOpener(text: string): { prefix: string; head: string } | undefined {
+  const match = /(?<!\\)\[\[([^{}[\]\n|]*)$/.exec(text);
+  if (match === null || match.index === undefined) return undefined;
+  return { prefix: text.slice(0, match.index), head: match[1] ?? "" };
 }
