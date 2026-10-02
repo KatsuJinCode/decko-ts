@@ -37,7 +37,7 @@ import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js"
  *  tests/card/mod-loader/oracle-capture-layout-one-line.rb). The
  *  "Oracle One Line Plain Probe" arm is the standing pin of the All-set
  *  html :one_line_content wrap arm (set/all/html/views.rb:29-32) — the
- *  layout-fixture-adjudication lane gem-proved those bytes derive exactly
+ *  layout-fixture-adjudication gem-proved those bytes derive exactly
  *  from that arm. */
 const ONE_LINE_FIXTURE = JSON.parse(
   readFileSync(
@@ -72,7 +72,7 @@ beforeAll(async () => {
     id: 201,
     name: "Oracle Date Probe",
   });
-  // the Mod cardtype card + a Mod-typed probe. seed-sweep lane
+  // the Mod cardtype card + a Mod-typed probe. seed-sweep
   // 2026-09-29: :admin is defined on the Type::Mod set (type/mod.rb:3-5),
   // so the view is reachable only for Mod-TYPED cards - the corpus
   // recapture carries the "mod" cardtype and its 64 Mod-typed mod cards.
@@ -85,7 +85,7 @@ beforeAll(async () => {
     dbContent: "Hello world",
     typeId: 202, // the Mod cardtype
   });
-  // the URI cardtype card + URI-typed probes (uri-cardtype-port lane
+  // the URI cardtype card + URI-typed probes (uri-cardtype-port
   // 2026-10-01): set/type/uri.rb's overrides are reachable only for
   // URI-TYPED cards - the chain-scoped registration dispatches through
   // resolveView's TYPE-uri walk (the Mod probe pattern, above). One probe
@@ -173,7 +173,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // core, open, closed, etc. (src/card/render/views.ts). The mod
     // adds the rest.
     const portedViews = [
-      // REMOVED from this negative list 2026-09-30 (surfaces-batch2 lane):
+      // REMOVED from this negative list 2026-09-30 (surfaces-batch2):
       // "name", "linkname", "labeled_content", "labeled" — the flat
       // HTML_VIEWS table now carries deliberate loader-less fallback
       // registrations for all four (views.ts:3440-3457 flatNameView /
@@ -183,7 +183,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
       // oracle target-152 labeled arm). The graded verifier binds no mod
       // loader, so the fallbacks ARE the shipped surface for those views —
       // the negative assertion for them is stale, not the registrations.
-      // REMOVED 2026-09-30 (mm-roleviews lane): "url" — the flat
+      // REMOVED 2026-09-30 (mm-roleviews): "url" — the flat
       // HTML_VIEWS table now carries the :url body (views.ts#cardUrlView,
       // the same function card-mod-format's set-scoped registration uses),
       // because the four notification templates' `{{_|url}}` marks are
@@ -248,7 +248,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :url renders the view-lane card_url (base.rb:28 card_url _render_linkname)", async () => {
     const s = storage!;
-    // fix-d1-url-origin lane 2026-10-01: `card_url` is
+    // fix-d1-url-origin 2026-10-01: `card_url` is
     // `"#{Env.origin}#{card_path rel}"` (card-1.110.0 lib/card/env/
     // location.rb:19-21) and `Env.origin` is a PER-RENDER value
     // (serializable.rb:20-22 `Cardio.config.deck_origin ||
@@ -260,7 +260,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // is the rooted path. The page-lane counterpart is pinned separately
     // below; both shapes are in the frozen record for the same mark
     // (`/User` vs `https://culturesmith.com/User`, card 21792).
-    // mm-roleviews lane 2026-09-30 had moved this value to the absolute
+    // mm-roleviews 2026-09-30 had moved this value to the absolute
     // URL under the "graded surface is the page corpus" adjudication;
     // that adjudication could not express the other lane's bytes, which
     // is what left 21792/21796 red behind a "not closable" blocker.
@@ -342,7 +342,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // href=&quot;https://github.com/...&quot;&gt;` — real decko
     // link_to_resource output); with no external type the target attribute
     // is simply absent and class comes first, per links.rb:155-156.
-    // fix-d1-url-origin lane 2026-10-01: this value moved from the
+    // fix-d1-url-origin 2026-10-01: this value moved from the
     // external/absolute shape to the internal/rooted shape because the
     // anchor's resource is the SURFACE's card_url, and this render() is the
     // view-function lane. The page-lane shape is pinned in the next test.
@@ -473,7 +473,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :link renders the html-format link anchor (base.rb:35-47)", async () => {
     const s = storage!;
-    // RE-ADJUDICATED (link-registration-drift lane, 2026-10-01): Ruby has
+    // RE-ADJUDICATED (link-registration-drift, 2026-10-01): Ruby has
     // exactly ONE view :link across the loaded gems — card-mod-format-0.20.0
     // set/all/base.rb:35-37 (card-1.110.0 grep: zero definitions;
     // set/type/html.rb: only :one_line_content/:chunk_list) — and its
@@ -570,7 +570,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :one_line_content renders the html wrap arm around the content (views.rb:29-32)", async () => {
     const s = storage!;
-    // format-one-line-wrap lane 2026-10-01: the dispatched :one_line_content
+    // format-one-line-wrap 2026-10-01: the dispatched :one_line_content
     // for a plain card is the All-set html wrap arm (views.rb:29-32,
     // wrap: { div: { class: "text-muted" } } around the content.rb:47-49
     // helper) — Ruby's all-set load order (base.rb < content.rb <
@@ -602,8 +602,8 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :one_line_content on a plain card matches the captured oracle bytes (layout-one-line.json plain-probe standing pin)", async () => {
     const s = storage!;
-    // THE STANDING ORACLE PIN (format-one-line-wrap lane 2026-10-01).
-    // The layout-fixture-adjudication lane gem-proved the captured
+    // THE STANDING ORACLE PIN (format-one-line-wrap 2026-10-01).
+    // The layout-fixture-adjudication gem-proved the captured
     // plain-probe line derives EXACTLY from the All-set html wrap arm
     // (card-mod-format-0.20.0 set/all/html/views.rb:29-32 + the
     // content.rb:47-49 helper): a plain RichText card, dbContent
@@ -638,7 +638,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // :titled (views.ts titledView) is exactly that shape; this mod used
     // to shadow it with a bare re-registration, which stripped the wrapper
     // from every XHR save response once the mod deck was bound at a
-    // serving surface (the edit-forms lane's session2-gap-8 wiring).
+    // serving surface (the edit-forms suite's session2-gap-8 wiring).
     const s = storage!;
     const html = await s.engine.render("Oracle Format Probe", "titled");
     expect(html).toContain(`class="card-slot titled-view`);
@@ -658,7 +658,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :compact_missing renders the html text-muted title span (html/error.rb:33-35)", async () => {
     const s = storage!;
-    // Re-pinned by the nest-mechanism-remainders lane 2026-10-01: the
+    // Re-pinned by nest-mechanism-remainders 2026-10-01: the
     // former pin held the BASE-format arm (set/all/error.rb:2-4, bare "")
     // while this port's render surface is html — Ruby's html arm
     // (set/all/html/error.rb:33-35) wraps h(title_in_context) in a
@@ -735,7 +735,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // (views.rb:29-32). The two names DIVERGE in Ruby; this pin holds
     // that divergence. (The former bare-body divergence — raw renderRaw
     // trimmed, no strip, no "..." — was ADJUDICATED + PORTED to the
-    // Ruby-true composition by the format-remainder-ports lane
+    // Ruby-true composition by the format-remainder-ports work
     // 2026-10-01; on this 11-char plain card strip/truncate are no-ops,
     // so the bytes are unchanged from the pre-port pin.)
     const closed = await s.engine.render("Oracle Format Probe", "closed_content");
@@ -746,7 +746,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :closed_content strips tags then truncates to 60 with '...' BARE (the adjudicated content.rb:47-49 composition, no wrap)", async () => {
     const s = storage!;
-    // The divergence the lane closed: the pre-port body hard-trimmed the
+    // The divergence the port closed: the pre-port body hard-trimmed the
     // RAW bytes ("<p>aaa...</p>".substring(0, 60) — tag shell intact, no
     // omission). Ruby's captured alias block runs
     // truncate(strip_tags(render_core), 60, "...") (content.rb:47-49,
@@ -755,7 +755,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // NO text-muted wrap appears (the alias captures the pre-wrap
     // All::Content block — the wrap arm belongs to the :one_line_content
     // VIEW name only). Gem-derived pin: zero closed_content entries in
-    // the recorded capture surface (lane census 2026-10-01).
+    // the recorded capture surface (census 2026-10-01).
     await seedCard(s, {
       id: 226,
       name: "Oracle Closed Tags Probe",
@@ -778,7 +778,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // helper (content.rb:43-45): truncate strip_tags(render_raw),
     // length: one_line_character_limit (= 60, content.rb:1,51-53);
     // truncate emits "..." on truncation. The MRO-shadowed All::Content
-    // base view is withheld (format-remainder-ports lane 2026-10-01,
+    // base view is withheld (format-remainder-ports 2026-10-01,
     // allHtmlViewsRawOneLineContentView's record) — the wrap arm is the
     // only all-format-chain registration, same shape as the sibling
     // :one_line_content arm. Gem-derived pin: zero captured
@@ -813,20 +813,20 @@ describe("card-mod-format through the mod loader (A/B)", () => {
   it("WITH the mod: :admin renders the core view (type/mod.rb:3-5)", async () => {
     const s = storage!;
     // Ruby view body: `render_core` -> fmt.renderView("core").
-    // seed-sweep lane 2026-09-29: the render target moved from the
+    // seed-sweep 2026-09-29: the render target moved from the
     // default-typed Oracle Format Probe to the Mod-typed probe - :admin
     // is a Type::Mod view; Ruby raises unknown-view for other types.
     //
     // mm-cstructural (2026-09-30): the assertion USED to hardcode the
     // probe's raw content ("Hello world"), justified by "the core view
     // emits the raw dbContent unchanged for non-special types". That
-    // premise was the bug this lane fixed: a Mod-typed card's :core is NOT
+    // premise was the bug this suite fixed: a Mod-typed card's :core is NOT
     // the raw content — card-1.110.0 mod/core set/type/mod.rb:7-19
     // overrides :core with the render_section_views list, and every real
     // mod card stores no content at all (all 36 mod-typed rows in the raw
     // corpus carry content = ""). The delegation is what type/mod.rb:3-5
     // declares, so that is what is asserted: :admin EQUALS :core. Pinning
-    // the core's bytes here instead would re-freeze a view this lane just
+    // the core's bytes here instead would re-freeze a view this suite just
     // proved wrong, and would duplicate the pin that already exists where
     // the core is the subject
     // (tests/card/render/mod-cardtype-core-section-list-corpus-replay.test.ts,
@@ -904,7 +904,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
       "labeled_content",
       "titled_content",
       // NOT in the report: :titled. The bare All::Base re-registration was
-      // removed (edit-forms lane 2026-09-29): it shadowed the engine's
+      // removed (edit-forms 2026-09-29): it shadowed the engine's
       // slot-wrapped titled — the live ajax-slot shape — through the chain.
       // Ruby's All::Base titled body exists (base.rb:120-122) but the html
       // MRO dispatches the framed All::Html view and the with_wrapper slot
