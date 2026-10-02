@@ -1,5 +1,5 @@
 // ORACLE-PINNED byte-compares for the 22 bar/box + format views the
-// mod-views-a lane ported rendered-unpinned. The oracle bytes are
+// mod-views-a ported rendered-unpinned. The oracle bytes are
 // fixtures/captured/bar-box-format-views.json, captured inside the live
 // decko-0.20.0 demo app (tools/oracle/decko-oracle-app relative to
 // C:/localProjects/decko-ts) by
@@ -32,7 +32,7 @@
 // Actor arms: bot is rendered by the main engine (viewer actorId 1, the
 // decko_bot-codename card -> always-ok — the seed below rides
 // DECKOBOT_CODENAME, the deck's STORED bot codename (codename.rb:107-110
-// camelize derivation), the edit2-lane stand-in), sara by
+// camelize derivation), the edit2 stand-in), sara by
 // a signed-in non-admin engine (actorId 1217, the oracle deck's Sara id)
 // whose update permission rides the seeded *all+*update -> [[Anyone
 // Signed In]] rule (the deck's member-update grant), anonymous by a
@@ -131,7 +131,7 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
 
-  // the actor cards + codename/set machinery (mirrors the edit2-lane
+  // the actor cards + codename/set machinery (mirrors the edit2
   // harness's seed shape: read-rules alwaysOk keys on the deck's STORED bot
   // codename — DECKOBOT_CODENAME, "decko_bot", never an alternate spelling)
   await seedCard(s, { id: 1, name: "Decko Bot", codename: DECKOBOT_CODENAME });
@@ -213,7 +213,7 @@ beforeAll(async () => {
   });
 
   // the name-environment bridge: Home's content nests the CODENAME ref
-  // {{:getting_started|core}} (edit2-lane harness mechanism)
+  // {{:getting_started|core}} (edit2 harness mechanism)
   s.fetcher.installNameEnvironment();
   await s.fetcher.codenames.ensureLoaded();
 

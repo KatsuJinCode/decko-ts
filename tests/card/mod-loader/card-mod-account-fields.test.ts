@@ -1,5 +1,5 @@
 // card-mod-account's remaining render half of the right/account +
-// right/password set files (surfaces-batch3 lane):
+// right/password set files (surfaces-batch3):
 //
 //   - right/account/views.rb:50-57 (html block) view :core — the account
 //     field nests: `[account_field_nest(:email, "email"),

@@ -49,7 +49,7 @@ function ctxForUrls(urls: string): ViewContext {
 }
 
 /** Pull the mod-registered view function out of the CHAIN table.
- *  CORRECTED 2026-09-28 (lane-chainfor): both views are declared on
+ *  CORRECTED 2026-09-28: both views are declared on
  *  set/right/group_remote.rb, a nonbase set, so they are registered
  *  against that set module rather than written into the base-format
  *  record the engine falls through to (the deck-wide masking defect). */
@@ -61,13 +61,13 @@ function viewFor(name: string): ViewFn {
 
 describe("card-mod-assets mod loader", () => {
   describe("manifest shape (set/right/group_remote.rb setModule entries)", () => {
-    // cwwrite-seam lane (2026-09-28): the manifest grew the right/asset_output
+    // cwwrite-seam (2026-09-28): the manifest grew the right/asset_output
     // :not_found gate, the abstract/asset_outputter bookkeeping entry, and the
     // type_plus_right/set/{style,script} :asset_output_url registrations (the
     // concrete includers of the abstract, where the TS pattern surface can
     // dispatch it). The group_remote entries below are unchanged; these three
     // assertions updated to the new premise (the 5-entry manifest), the way
-    // the lane-A repair commit corrected stale premises toward the ported
+    // the repair commit corrected stale premises toward the ported
     // truth.
     it("registers the five set modules: group_remote + the cwwrite-seam asset-output surfaces", () => {
       expect(cardModAssets.setModules).toBeDefined();
@@ -120,14 +120,14 @@ describe("card-mod-assets mod loader", () => {
   });
 
   describe("the mod loader registers the views under its SET MODULE", () => {
-    // CORRECTED 2026-09-28 (lane-chainfor). These two views are declared
+    // CORRECTED 2026-09-28. These two views are declared
     // on set/right/group_remote.rb — a NONBASE set. Ruby keeps a nonbase
     // set's format module in Set.modules[:nonbase_format]
     // (set/format.rb:146-150), which a card reaches only through its own
     // pattern module keys (pattern/all.rb:49-55, pattern/base.rb:35-38),
     // NOT through the base format class. The flat record the engine falls
     // through to IS that base format class, so writing a set-scoped view
-    // into it is the deck-wide masking defect (lane-chainfor): one
+    // into it is the deck-wide masking defect: one
     // registration answered for cards that are not in the set.
     //
     // The view is still REGISTERED — the assertion moved from the flat
@@ -222,7 +222,7 @@ describe("card-mod-assets mod loader", () => {
 
   describe("the mod loader's reset() drops the mod's set-module registrations", () => {
     it("removes both views from the chain table after reset()", () => {
-      // CORRECTED 2026-09-28 (lane-chainfor): the registrations live on
+      // CORRECTED 2026-09-28: the registrations live on
       // the Right::GroupRemote set module, not on the shared base-format
       // record, so reset() clears the chain table (the same
       // restore-the-pre-load-state contract, one table over).

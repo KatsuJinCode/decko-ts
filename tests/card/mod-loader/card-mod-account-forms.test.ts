@@ -1,4 +1,4 @@
-// The account-side view tests assigned to the follow lane: the views whose
+// The account-side view tests assigned to the follow suite: the views whose
 // bodies need the actor session (Auth.current) + the form shapes:
 //   self/signin   :reset_password_success, :edit_buttons (card-mod-account
 //                  set/self/signin.rb:148-168)
@@ -83,7 +83,7 @@ async function loadMod(): Promise<RenderEngine> {
   // loadAccountMod, mod-events suites); without the bind the mod's
   // registrations are invisible and every WITH-the-mod assertion here dies
   // in UnsupportedViewError — the wiring bug that kept these four
-  // red (surfaces-batch2 lane, 2026-09-30).
+  // red (surfaces-batch2, 2026-09-30).
   bindModLoaderToEngine(storage, loader);
   await loader.installInto(modEngineHost(s.engine, s.fetcher));
   engine = s.engine;

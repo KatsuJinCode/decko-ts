@@ -1,4 +1,4 @@
-// The bootswatch_skin starred-anchor family (surfaces-batch3 lane):
+// The bootswatch_skin starred-anchor family (surfaces-batch3):
 //   - the skin :core (card-mod-bootstrap set/type/bootswatch_skin/
 //     html_views.rb:28, template :haml = core.haml) — the skin
 //     configuration page;
@@ -10,8 +10,8 @@
 // ORACLE BYTES: expected-v2 view-lane (pass17-int tmp, read-only) — the
 // raw-deck oracle rendered 22 Bootswatch skin cards' :content/:closed/:open.
 // The registrar's KNOWN DIVERGENCE note named exactly these views as the
-// nested-set-file shortname divergence's victims; the lane-surfaces2
-// X-star-marker strip (the lane's first commit) makes the registrations
+// nested-set-file shortname divergence's victims; the surfaces2
+// X-star-marker strip (its first commit) makes the registrations
 // dispatchable. No fresh oracle capture: every byte below comes from the
 // existing capture files (no oracle app boot, no NO-WRITE proof needed).
 //
@@ -97,7 +97,7 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     const s = storage!;
     // SUPERSEDED-PREMISE NOTE (surfaces-strand-fold fold, 2026-10-01): at
     // this strand's fork the flat arm rendered "" and the mod view differed.
-    // The bar-slots lane has since landed the family on the BASE table
+    // The bar-slots suite has since landed the family on the BASE table
     // (tests/card/render/bootswatch-skin-bar-left-media-bytes.test.ts;
     // views.ts bootswatchSkinBarLeftHtml) so the LOADER-LESS grading
     // pipeline dispatches it — the flat :core now renders the skin

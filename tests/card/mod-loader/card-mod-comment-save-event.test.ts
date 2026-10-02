@@ -1,6 +1,6 @@
 // The add_comment save event (card-mod-comment set/all/comment.rb:4-12) —
 // the E6 surface, ported through the mod-event seam and pinned against the
-// FRESH Ruby oracle capture this lane took (2026-09-29):
+// FRESH Ruby oracle capture taken 2026-09-29:
 // fixtures/oracle-surfaces/comment.jsonl (append bytes, multi-line wrap,
 // blank-comment no-op, anonymous denial).
 //
@@ -108,7 +108,7 @@ describe("E6 add_comment — the save event through the seam", () => {
     // the write-rule machinery a real deck bootstraps (seedStandardDeck's
     // *all+*update -> [[Anyone]]): the deny-by-default write gate refuses a
     // rule-less deck's save, which would shadow the comment machinery under
-    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups lane)
+    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups)
     await seedStandardDeck(storage);
     const card = await seedCard(storage, {
       name: "Supercard",
@@ -139,7 +139,7 @@ describe("E6 add_comment — the save event through the seam", () => {
     // the write-rule machinery a real deck bootstraps (seedStandardDeck's
     // *all+*update -> [[Anyone]]): the deny-by-default write gate refuses a
     // rule-less deck's save, which would shadow the comment machinery under
-    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups lane)
+    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups)
     await seedStandardDeck(storage);
     const card = await seedCard(storage, {
       name: "Supercard",
@@ -159,7 +159,7 @@ describe("E6 add_comment — the save event through the seam", () => {
     // the write-rule machinery a real deck bootstraps (seedStandardDeck's
     // *all+*update -> [[Anyone]]): the deny-by-default write gate refuses a
     // rule-less deck's save, which would shadow the comment machinery under
-    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups lane)
+    // test (verdict-semantics MEDIUM-2; sweep fix, semantics-followups)
     await seedStandardDeck(storage);
     const card = await seedCard(storage, {
       name: "Supercard",

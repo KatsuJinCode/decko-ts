@@ -92,7 +92,7 @@ beforeAll(async () => {
   // polymorphic dispatch reads. Ruby's file :source/:core live on
   // Type::File (set/type/file.rb), so the file-branch probe cards must BE
   // File-typed for that branch to be the Ruby-faithful surface (a
-  // plain-typed card dispatches the base core; the edit-forms lane
+  // plain-typed card dispatches the base core; the edit-forms port
   // corrected the polymorphic fall-through accordingly). Seeded ONCE: the
   // codename column is UNIQUE across cards.
   await seedCard(storage, { id: 499, name: "File", codename: "file", typeId: 9 });
@@ -265,7 +265,7 @@ describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)",
   // an image-typed card dispatches the icon-sized core render. The
   // polymorphic device ("all/zz_carrierwave_polymorphic") is ALL-scoped by
   // construction, so the type guard lives in the fn body (format-
-  // remainder-ports lane 2026-10-01; the format-one-line-wrap lane's
+  // remainder-ports 2026-10-01; the format-one-line-wrap
   // collision census flagged the missing guard). Non-image cards answer
   // the All-set html wrap arm (card-mod-format set/all/html/views.rb:
   // 29-32), the chain walk Ruby produces for them — one imported

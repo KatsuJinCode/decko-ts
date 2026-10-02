@@ -313,7 +313,7 @@ describe("card-mod-api_key manifest structure", () => {
   });
 
   it("registers every mod view under its SET MODULE, and reset restores the pre-load state", () => {
-    // CORRECTED 2026-09-28 (lane-chainfor). The premise "every view the
+    // CORRECTED 2026-09-28. The premise "every view the
     // manifest declares lands in the views record" was the deck-wide
     // masking defect itself: card-mod-api_key's views are declared on
     // set/right/* modules, and Ruby puts a nonbase set's format module in
@@ -845,7 +845,7 @@ describe("card-mod-api_key superView trio (A/B against live oracle)", () => {
   // (view_definition.rb:18-21) instead of "". The trio renders the real
   // delegated bytes; full captured-fixture byte parity stays labeled on
   // :titled because :generate_button's Rails form internals still
-  // diverge (the capture lane's secondary note).
+  // diverge (the capture's secondary note).
   it(":titled resolves Right::ApiKey through the RIGHT-Xapi_key token and renders the api key", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle ApiKey Account+*api key", "titled");
