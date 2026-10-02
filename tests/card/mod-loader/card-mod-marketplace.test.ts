@@ -1,4 +1,4 @@
-// card-mod-marketplace: the marketplace-as-a-mod lane's proof.
+// card-mod-marketplace: the marketplace-as-a-mod suite's proof.
 //
 // WHAT THIS TEST PROVES, in order:
 //

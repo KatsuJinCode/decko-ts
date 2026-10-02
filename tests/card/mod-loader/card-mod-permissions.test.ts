@@ -389,7 +389,7 @@ describe("card-mod-permissions through the loader", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2b. events[] - the manifest events surface (lane: events)
+// 2b. events[] - the manifest events surface
 // ---------------------------------------------------------------------------
 
 describe("card-mod-permissions events[] through the loader", () => {
@@ -671,7 +671,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
   it("emits the hidden content field with the card content (content.rb:57-59 hidden_field)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "Anyone" }));
     const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
-    // the gem-true byte shape (the 2026-09-29 rules-views-port-3 lane's
+    // the gem-true byte shape (the 2026-09-29 rules-views-port-3
     // oracle correction, pinned by fixtures/captured/rules-views.json
     // rule_form_card_editor): bootstrap's form-control class append
     // (bootstrap/form.rb:24-28) + Tags::HiddenField's autocomplete +
@@ -765,7 +765,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     );
     // link_to_card's attr order: target (caller opt), class known-card
     // (links.rb:140-144), href LAST (links.rb:105) - the gem-true shape the
-    // rules-views-port-3 lane's oracle pins
+    // rules-views-port-3 oracle pins
     expect(out).toContain('<a target="decko_role" class="known-card" href="/Anyone">');
     expect(out).toContain("close_fullscreen");
     // the individuals list carries ONLY the un-grouped items (the gem-true

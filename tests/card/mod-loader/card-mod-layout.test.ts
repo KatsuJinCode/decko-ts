@@ -241,7 +241,7 @@ afterAll(() => {
 describe("card-mod-layout through the mod loader (A/B)", () => {
   it("WITHOUT the mod: the mod's views are unsupported", async () => {
     const s = storage!;
-    // REMOVED from this negative list 2026-09-30 (surfaces-batch2 lane):
+    // REMOVED from this negative list 2026-09-30 (surfaces-batch2):
     // "nav_link_in_dropdown", "navbar_links", "nav_item" — the page-lane
     // navbar family ships as DELIBERATE flat HTML_VIEWS fallbacks
     // (src/card/render/navbar-views.ts NAVBAR_VIEWS, spread into the flat
@@ -672,7 +672,7 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     // card-mod-layout-0.20.0): the CodeRay :core lives ONLY on Right::Head
     // (set/right/head.rb:16-18). set/type/html.rb defines NO view :core —
     // its lines 13-17 are the base-format chunk_list block the seed-sweep
-    // lane misread — so an Html-typed card's :core dispatches to the base
+    // pass misread — so an Html-typed card's :core dispatches to the base
     // format core: the raw content processed as content. (The former pin
     // here expected CodeRay on the Html-type arm; that registration's
     // predicate coderayed every Html-typed card once the mod deck was bound

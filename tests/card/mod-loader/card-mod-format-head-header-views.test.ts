@@ -108,7 +108,7 @@ describe("card-mod-format header/html/head — six missing views (rendered-unpin
     // header.rb:4-6 header_wrap [render_header_title, render_menu];
     // header.rb:8-12 wrap_with :div, class: classy("d0-card-header") do
     // output Array.wrap(header_parts) end.
-    // CORRECTED 2026-09-30 (surfaces-batch2 lane): the former "joins with NO
+    // CORRECTED 2026-09-30 (surfaces-batch2): the former "joins with NO
     // separator" comment misread output() — card-1.110.0
     // lib/card/format/content.rb:70-73 is `Array.wrap(content)
     // .flatten.compact.join "\n"`: the parts join with a NEWLINE (the same
@@ -162,7 +162,7 @@ describe("card-mod-format header/html/head — six missing views (rendered-unpin
     // constant (src/card/render/head-views.ts:181, joined into the page
     // head at page.ts:628 — the page captures DO exercise the shape, the
     // trailing newline arriving from the page's own .join("\n")).
-    // CORRECTED 2026-09-30 (surfaces-batch2 lane): the template TERMINATES
+    // CORRECTED 2026-09-30 (surfaces-batch2): the template TERMINATES
     // with the last line's own newline — meta_tags.haml's final byte is \n
     // and haml_to_html (card-1.110.0 lib/card/set/format/haml_paths.rb:8-10)
     // keeps it — oracle-pinned (fixtures bar-box-format-views.json: the 94B

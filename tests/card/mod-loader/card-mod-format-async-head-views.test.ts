@@ -223,7 +223,7 @@ describe("the five head views through the mod (A/B)", () => {
     // .flatten.compact.join "\n" over the six names declared at
     // head.rb:1-4. The five ported here contribute; :meta_tags (a Haml
     // template) and :universal_edit_button / :rss_links are registered
-    // by the other lanes, so this asserts the SHAPE (one line per
+    // by the other ports, so this asserts the SHAPE (one line per
     // registered head view, newline-joined) and the two pinned
     // substrings, not a six-line literal.
     expect(head.split("\n").length).toBeGreaterThanOrEqual(2);

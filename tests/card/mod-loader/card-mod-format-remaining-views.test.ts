@@ -375,7 +375,7 @@ describe("card-mod-format remaining views — live-oracle pins", () => {
       // engine-lifetime diff memo the history lane owns - its own receipt
       // documents the same toggle as capture-order-dependent
       // ("differ.rb:79-86 ivar lives on the cached Action record"). The
-      // cold/warm divergence inside the conflict render is that lane's
+      // cold/warm divergence inside the conflict render is that port's
       // open unit, named here rather than masked; the conflict view's own
       // bytes (slot, class-ups, alert, revision span, actor link, act
       // composition) are pinned by the source-derived test above.

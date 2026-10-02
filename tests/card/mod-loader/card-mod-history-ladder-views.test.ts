@@ -1,5 +1,5 @@
 // card-mod-history's act_legend / last_action / change views
-// (surfaces-batch3 lane — the R18/D4 ladder batch-2 named as its remainder).
+// (surfaces-batch3 — the R18/D4 ladder batch-2 named as its remainder).
 //
 //   - views.rb:15-23 :act_legend — the bs_layout legend row; the bytes are
 //     ORACLE-PINNED against the legend row inside the LIVE capture's

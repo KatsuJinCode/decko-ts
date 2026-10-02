@@ -23,7 +23,7 @@
 // (attribute order = ActiveSupport reverse_merge!'s replace(defaults.merge
 // (self)) rebuild: tabindex/data-*/class, href LAST).
 //
-// A/B through the mod loader per the established lane shape.
+// A/B through the mod loader per the established suite shape.
 //
 // RED state: :smart_label is not registered - renders raise
 // UnsupportedViewError.

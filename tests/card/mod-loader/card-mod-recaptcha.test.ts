@@ -388,7 +388,7 @@ describe("card-mod-recaptcha through the mod loader", () => {
   });
 
   it("registers :core on its set module, NOT on the base-format record, and reset restores", () => {
-    // CORRECTED 2026-09-28 (lane-chainfor). The old expectation - that
+    // CORRECTED 2026-09-28. The old expectation - that
     // the mod's :core REPLACES HTML_VIEWS["core"] - was the deck-wide
     // masking defect, and card-mod-recaptcha's :core is the case the
     // dispatch note in format.ts calls out by name ("card-mod-recaptcha's

@@ -1,6 +1,6 @@
 // The view :input remainder arms (card-mod-edit-0.20.0 set/all/editor.rb) —
-// the input-remainders lane, built on the E10 seam the not-started-closure
-// lane left (card-mod-ace-editor-input.test.ts):
+// the input-remainders suite, built on the E10 seam the not-started-closure
+// port left (card-mod-ace-editor-input.test.ts):
 //
 // 1. input_type_from_rule (editor.rb:9-11) —
 //    `card.rule(:input_type)&.gsub(/[\[\]]/, "")&.tr(" ", "_")`: the
@@ -30,7 +30,7 @@
 //    a card named "Custom Input Card").
 //
 // All three arms are FIXTURE-LESS: the captured oracles carry no bytes for
-// them (scanned this lane): fixtures/captured/edit-views.json renders
+// them (scanned directly): fixtures/captured/edit-views.json renders
 // every :input through the rich_text/ace arms (no hidden card[content]
 // field — the only type="hidden" in the edit chains is the
 // conflict_tracker), fixtures/captured/content-inputs.json's three :input

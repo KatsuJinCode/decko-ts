@@ -297,7 +297,7 @@ describe("card-mod-markdown through the mod loader (A/B)", () => {
   it("reset() drops the set-module override; the base markdown dispatch keeps the same bytes", async () => {
     // After reset() the Type::Markdown set-module registration is gone
     // (the registration assertions above cover that), but the loader-less
-    // base core now carries the identical kramdown dispatch (kramdown-lane
+    // base core now carries the identical kramdown dispatch (kramdown
     // seam change), so the rendered bytes are the kramdown bytes in BOTH
     // dispatch worlds - which is exactly the loader-bound/loader-less
     // byte parity the corpus path requires.

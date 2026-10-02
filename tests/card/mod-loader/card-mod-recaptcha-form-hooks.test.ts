@@ -1,5 +1,5 @@
 // The form-stage hooks (card-mod-recaptcha-0.20.0 set/all/recaptcha.rb
-// format :html, 74-104) - the captcha-remainders lane's server-side port.
+// format :html, 74-104) - the captcha-remainders server-side port.
 // Ruby reaches two overrides from EVERY card_form through the format's
 // module chain once the mod is loaded:
 //

@@ -50,7 +50,7 @@
 // left id 150 and an empty db_content - probed read-only through the decko
 // runner). The gem-deck capture that seeded the radio probe
 // (tests/card/mod-loader/oracle-capture-list-mod.rb) writes probe cards into
-// the SHARED oracle database; this lane was told to prove fresh captures
+// the SHARED oracle database; this suite was required to prove fresh captures
 // wrote nothing, so the checkbox bytes are pinned GEM-SOURCE-DERIVED (haml +
 // actionview, cited per line above) instead of capture-pinned. The pins are
 // therefore byte-exact against the sources that produce them, and are marked

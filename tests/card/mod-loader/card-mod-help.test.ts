@@ -40,7 +40,7 @@
 // the byte-equality A/B pin is currently red on attribute order
 // (TS popoverLink emits via emitAttrs in hash insertion order:
 // href, tabindex, class, data-bs-*; Ruby link_to emits: tabindex,
-// data-bs-*, class, href). Fix lives on the bootstrap lane at
+// data-bs-*, class, href). Fix lives in the bootstrap mod at
 // card-mod-bootstrap.ts#popoverLink. set/right/guide.rb only defines
 // a card-level raw_help_text method (no view declared). See viewsMissing
 // for the full set-block accounting.
@@ -123,7 +123,7 @@ beforeAll(async () => {
   // guide card here is RichText-typed so this fixture exercises the
   // plain-text :core path.
   //
-  // TYPE 14 -> 2 (mm-I-R lane, oracle-capture correction). The seed said
+  // TYPE 14 -> 2 (mm-I-R, oracle-capture correction). The seed said
   // Setting (14 is this fixture's *setting cardtype card), which made the
   // port render card-mod-rules' SETTING cardtype :core - set/type/setting.rb:39-55,
   // the "All X rules that apply to" listing - instead of the guide text,
@@ -185,7 +185,7 @@ beforeAll(async () => {
   // dispatches through Card::Set::Right::Help::HtmlFormat). dbContent
   // carries _render_core's body (RichText :core renders dbContent
   // verbatim). typeId 2 = RichText, the type the capture's probe cards
-  // carried (mm-I-R lane: 14 -> 2, the same Setting-vs-content correction
+  // carried (mm-I-R: 14 -> 2, the same Setting-vs-content correction
   // as the guide rule card above - with typeId 14 the port answered the
   // SETTING cardtype's :core listing and the byte pin could never match
   // the captured popover anchor, whose data-bs-content is the dbContent).
