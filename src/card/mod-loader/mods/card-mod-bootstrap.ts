@@ -995,12 +995,27 @@ function scssTypeIdentity(ctx: ViewContext): {
   typeName: string;
   typeCode: string;
 } {
+  // The type identity of the virtual +*colors / +*variables field card is
+  // the SCSS TYPE CARD's own identity: its ID (17436) and its NAME
+  // ("SCSS"). The previous form read `typeCard.typeId` / `typeCard.typeName`
+  // — the type card's OWN type (every type card is Cardtype-typed, id 5)
+  // — which rendered `TYPE-cardtype … data-card-type-id="5"
+  // data-card-type-name="Cardtype"` whenever the SCSS card had already
+  // joined the render-card map (any earlier page that enriched it), and
+  // fell to the hardcoded fallback {17436, "SCSS"} only while the map was
+  // cold. That is the boot-order-dependent +32 skin-page family: first
+  // skin render byte-exact, every later skin render +32 (20 canvas pages,
+  // all exactly +32, divergence at each Xcolor/Xvariable accordion slot).
+  // The map miss arm keeps the same identity the hit arm now returns, so
+  // the resolution is render-order independent. (Oracle pins: the cerulean
+  // skin page's slots carry TYPE-scss / data-card-type-id="17436" /
+  // data-card-type-name="SCSS" on EVERY sampled skin page.)
   const typeCard = ctx.fmt.engine.fetchRenderCard("SCSS");
-  if (typeCard !== undefined) {
+  if (typeCard !== undefined && typeCard.id !== undefined) {
     return {
-      typeId: typeCard.typeId,
-      typeName: typeCard.typeName ?? "SCSS",
-      typeCode: typeCard.typeCode ?? "scss",
+      typeId: typeCard.id,
+      typeName: typeCard.name?.s ?? "SCSS",
+      typeCode: "scss",
     };
   }
   return { typeId: 17436, typeName: "SCSS", typeCode: "scss" };
