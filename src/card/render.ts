@@ -116,7 +116,7 @@ import { trackedFieldByIndex } from "./history/change.js";
 // card-mod-format's :conflict (set/all/html/error.rb:37-51) reads the same
 // render-time act data - card.last_action (:38 revision span + the actor
 // walk) and render_act (:47, the act_from_context no-act_id branch).
-// "history_tab" joins for the board lane (card-mod-edit tab_views.rb:8-12:
+// "history_tab" joins for the board views (card-mod-edit tab_views.rb:8-12:
 // acts_board_layout reads the same prepared act bundle).
 const HISTORY_SEAM_VIEWS = new Set([
   "history",
@@ -354,7 +354,7 @@ export class RenderEngine implements RenderEngineLike {
    *  this map, which is a TS render-perf structure with no Ruby counterpart
    *  (Ruby's expired Card objects simply re-fetch). Without the map drop a
    *  post-save page render serves the pre-save content forever (observed
-   *  live: session-replay2 lane step-05). The next render re-fetches and
+   *  live). The next render re-fetches and
    *  re-enriches from the database row. */
   expireRenderCard(name: string): void {
     const key = DeckoName.parse(name ?? "").key;
@@ -588,7 +588,7 @@ export class RenderEngine implements RenderEngineLike {
    *  Cleared on resetCaches(). */
   private defaultRuleTypes: Map<string, number> | undefined;
   /** composed *default rule key -> the rule card's db_content (the
-   *  p20-nest-selection lane: content/all.rb:17-19 standard_content's
+   *  content/all.rb:17-19 standard_content's
    *  new_card branch — a nest-miss new card's content IS the *default
    *  rule's content; the oracle's associative_inquiry-discussion-titled-view
    *  body is discussion+*right+*default's `<p> </p>` x2 verbatim). Parsed
@@ -989,7 +989,7 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
-    // bar-slots lane (view-fail class V6): the bootswatch_skin bar_left
+    // view-fail class V6: the bootswatch_skin bar_left
     // nests the card's +Image child at :boxed (card-mod-bar_and_box
     // media_snippet.haml's `nest image_card, view: :boxed, size: size`).
     // Ruby's nest does a live fetch; the sync ViewFn reads the
@@ -1190,7 +1190,7 @@ export class RenderEngine implements RenderEngineLike {
     // path's existing batch, and `headReadsWarmed` keeps it out of every
     // later one. The query-count gates in tests/card/render
     // (junction-depth-closure, render-engine, depth-sweep) pin the cold
-    // shape and are unchanged by this lane.
+    // shape and are unchanged by this change.
     //
     // This is the engine's own idiom, not a new subsystem: the same
     // shape as preloadAllSettingCards, preloadSetRules and the
@@ -1386,7 +1386,7 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     // Ruby render(view, opts): the render's view opts ride the voo (the
-    // form-substrate-2 lane's modal hidden-header arm reaches the wrap
+    // form-substrate-2 modal hidden-header arm reaches the wrap
     // gates through params.viewOpts; undefined for every prior caller -
     // the {} pass-through is byte-identical).
     const baseHtml = format.renderView(view, params.viewOpts ?? {});
@@ -1719,9 +1719,9 @@ export class RenderEngine implements RenderEngineLike {
       // once per engine (the canary guard inside prepare makes the second
       // call a no-op). Without this the graded page lane rendered every
       // menu popover as the &nbsp; placeholder where Ruby resolved help
-      // (26 oracle pages carry real help text; the pass-15 sass lane's
+      // (26 oracle pages carry real help text; the
       // three +*variables pages pin the resolved bytes).
-      // Lane p22-rules-table (head-rule popover counts): the help resolver's
+      // Head-rule popover counts: the help resolver's
       // deck-wide Setting#count batch filters by the VIEWER's readable rule
       // set (help-popover.ts settingRuleCountsStatement — the port of the
       // Card.search read filter). An UNRESOLVED readPermission degrades that
