@@ -134,10 +134,10 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // views read deck-level setting cards no reference closure can
     // reach. Round trips - the billed axis - are unchanged.
     // 2026-09-30 pass-20 integration re-pin (10 -> 12 base): the p20-email
-    // lane's junction-priming prelude batch (the email field-anchor prelude
+    // port's junction-priming prelude batch (the email field-anchor prelude
     // statement + the +*test context junction priming — one batch) adds two
     // statements at every depth. Measured 12 at depth 1 at BOTH the email
-    // lane tip 345bb06 (queue job-1790792364473-36227f35 — the shift
+    // port tip 345bb06 (queue job-1790792364473-36227f35 — the shift
     // pre-exists the merge, so no cross-port interaction) and the merged tip
     // (job-1790792062952-890df2dd). Round trips are UNTOUCHED — the batch
     // rides the existing prelude round trip. Same re-pin the email port

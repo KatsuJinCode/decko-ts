@@ -1,5 +1,5 @@
 // mod-cardtype-core-section-list-corpus-replay.test.ts -- the mm-cstructural
-// lane's dominant c-structural mechanism: the Mod cardtype's page body.
+// port's dominant c-structural mechanism: the Mod cardtype's page body.
 //
 // MECHANISM (traced, not inferred). card-1.110.0 mod/core set/type/mod.rb:7-19
 //    view :core do
@@ -28,7 +28,7 @@
 //
 // POPULATION: 28 pages (the 27 mech=mod-body-empty rows of the pass-15
 // c-structural class plus the mixed `mod: history` row) — see
-// mod-cardtype-core-section-list-subset.ts and the triage table in the lane
+// mod-cardtype-core-section-list-subset.ts and the triage table in the
 // receipt (C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/mm-cstructural-lane.md).
 //
 // TWO GATED BLOCKS:
@@ -40,7 +40,7 @@
 //      content carries description only (no admin.yml sections, no assets).
 //   2. THE SWEEP (report-only): all 28 mod pages, one JSONL line each,
 //      written to tmp/mod-cardtype-replay/sweep-results.jsonl — the
-//      flip-count evidence for the lane receipt.
+//      flip-count evidence for the receipt.
 //
 // THE ONE NORMALIZATION, and why it is here and not in normalizeSlotIds:
 // type/mod.rb:88-98 accordion_sections passes `context: title.hash` to
@@ -107,7 +107,7 @@ interface PageLaneLine {
  *  derivable. The sign is part of the value on BOTH sides (the capture's own
  *  rows carry `card-mod_list--681338365-collapse-id`, a negative hash).
  *
- *  This mask is the REPO'S, not this lane's: tests/card/mod-loader/
+ *  This mask is the REPO'S, not this suite's: tests/card/mod-loader/
  *  core-mod-admin-views.test.ts:50-57 and core-mod-admin-views-pin.test.ts
  *  apply `/(card-[0-9a-z_:]+-)-?[0-9]+(-collapse-id)/g -> $1HASH$2` for the
  *  same reason, and fixtures/captured/admin-view-pins.json records
@@ -122,7 +122,7 @@ function maskCollapseId(s: string): string {
 }
 
 /** Stream every page-lane shard once; keep the yardstick page_html of the
- *  wanted names. Shard line order is stable, names are unique per lane. */
+ *  wanted names. Shard line order is stable, names are unique per shard. */
 async function loadYardstick(names: Set<string>): Promise<Map<string, PageLaneLine>> {
   const found = new Map<string, PageLaneLine>();
   if (!existsSync(PAGE_LANE_DIR)) return found;
@@ -276,7 +276,7 @@ describe("Mod cardtype core: the type/mod.rb section list (28 c-structural pages
               firstDiffOffset: diff.firstDifference?.codeUnitOffset ?? null,
               expectedExcerpt: diff.firstDifference?.expectedExcerpt ?? null,
               actualExcerpt: diff.firstDifference?.actualExcerpt ?? null,
-              // the body-empty fingerprint this lane closed: the engine's
+              // the body-empty fingerprint this suite closed: the engine's
               // d0-card-body for a mod-typed card is empty
               engineBodyEmpty: /d0-card-content ALL TYPE-mod SELF-[^"]*"><\/div>/.test(actual),
               oracleBodyEmpty: /d0-card-content ALL TYPE-mod SELF-[^"]*"><\/div>/.test(expected),

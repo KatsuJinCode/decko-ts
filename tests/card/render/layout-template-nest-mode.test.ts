@@ -33,7 +33,7 @@
 // siblings. These tests pin the state machine itself, not just the one
 // card, so a future :edit or :compact addition has somewhere to land.
 //
-// THE `{{_main}}` EXCEPTION (adjudicated 2026-10-01, lane
+// THE `{{_main}}` EXCEPTION (adjudicated 2026-10-01,
 // nest-mode-control-adjudication). The negative control used to assert that
 // the whole 22747 body - `{{:header|core}}`, `{{_main|titled}}` and
 // `{{:footer|content}}` alike - comes back nest-EXPANDED in :normal mode.

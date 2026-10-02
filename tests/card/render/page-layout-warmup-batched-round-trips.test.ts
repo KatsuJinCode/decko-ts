@@ -1,7 +1,7 @@
 // Cold page render: the layout warm-up chase is BATCHED and BOUNDED
-// (warmup lane — the item-5 cold-render burst fix).
+// (warmup — the item-5 cold-render burst fix).
 //
-// Failure shape (measured on the real corpus deck, nitpicks lane Round 2
+// Failure shape (measured on the real corpus deck, nitpicks Round 2
 // item 5): warmUpLayoutNests walked nest references, [[link]] targets and
 // pointer/list items TRANSITIVELY to a fixpoint, one point-query fetch
 // ladder per name (SELECT id FROM cards WHERE key = ?, junction

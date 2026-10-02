@@ -86,7 +86,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // simple sides + the depth-2 junction (side-key pair join), round 1
       // joins the depth-3 junction by its sides' resolved ids.
       expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(2);
-      // Measured shape (2026-09-27 cold-query lane re-pin): 1 root fetch +
+      // Measured shape (2026-09-27 cold-query re-pin): 1 root fetch +
       // the PRELUDE batch (src/card/render/prefetch.ts: the root's side
       // priming, the root's TYPE row (enrichment fold), the root's
       // set-pattern anchor priming (the rule walk's *self/*type/*all
@@ -97,9 +97,9 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // prep: default_nest_view is process config (html.rb:17-19), never a
       // deck rule, so render.ts's fold composition no longer appends the
       // *default html view universe statement - one fewer prelude
-      // statement than the cold-query lane's own tree measured). The head
+      // statement than the cold-query port's own tree measured). The head
       // read-set moved the other way, 12 -> 13 statements, on the
-      // 2026-09-28 async-view-handle lane: card-mod-format's head views
+      // 2026-09-28 async-view-handle: card-mod-format's head views
       // read deck-level setting cards that no reference closure can
       // reach, so the prefetch rides THIS SAME prelude batch as a 13th
       // statement rather than as a query of its own. ROUND TRIPS are
@@ -110,7 +110,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // since the prelude primes their anchors. Constant in deck size;
       // +1 batch per chain LEVEL. (2026-09-23..09-26 shape was 8 round
       // trips: root + 2 enrich primes + round 0 + round 1 + 3 rule-lookup
-      // candidates.) The p20-email-views lane added TWO prelude
+      // candidates.) The p20-email-views port added TWO prelude
       // statements (13 -> 15), both inside the SAME batch so round trips
       // stay at 4: the email-template read_form's field-setting anchors
       // (prefetch.ts emailFieldAnchorSlot, commit 76a1887 — EXISTS-gated,
@@ -191,7 +191,7 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
-      // Measured shape (2026-09-27 cold-query lane re-pin, integrated with
+      // Measured shape (2026-09-27 cold-query re-pin, integrated with
       // R17's A-36 correction in merge pass 9 prep): 1 root fetch +
       // the PRELUDE batch (side priming + TYPE row fold + set-pattern
       // anchor priming + the folded engine statements) + the round-0 batch
@@ -201,13 +201,13 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // R17 (A-36) rides through the prelude: default_nest_view is process
       // config (html.rb:17-19), never a deck rule, so render.ts's fold
       // composition no longer appends the *default html view universe
-      // statement - one fewer prelude statement than the cold-query lane's
+      // statement - one fewer prelude statement than the cold-query port's
       // own tree measured (13 -> 12). The head read-set added one back
-      // (11 -> 12) on the 2026-09-28 async-view-handle lane, inside the
+      // (11 -> 12) on the 2026-09-28 async-view-handle, inside the
       // SAME prelude batch, so round trips stay at 3. (The 2026-09-23..
       // 09-26 shape was 7 round trips / 15 statements: root + 2 enrich
       // primes + round 0 + 3 rule-lookup candidates.) The p20-email-views
-      // lane added TWO prelude statements (12 -> 14, see the depth-3 test
+      // port added TWO prelude statements (12 -> 14, see the depth-3 test
       // above): the email field-setting anchors and the +*test context
       // junction priming - same batch, round trips unchanged.
       expect(snapshot.roundTrips).toBe(3);

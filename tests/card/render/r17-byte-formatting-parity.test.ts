@@ -1,5 +1,5 @@
-// R17 byte-formatting lane regression pins (2026-09-27). The dual-lane
-// view/page classes this lane closed, each cited to the Ruby mechanism it
+// R17 byte-formatting regression pins (2026-09-27). The dual-lane
+// view/page classes this suite closed, each cited to the Ruby mechanism it
 // ports and the oracle byte that pinned it:
 //
 // 1. LANE-CONFIG DEFAULT NEST VIEW (A-36 correction). Ruby's html

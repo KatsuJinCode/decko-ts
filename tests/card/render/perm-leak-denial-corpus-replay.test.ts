@@ -21,7 +21,7 @@
 //   2. THE SWEEP (report-only): all 130 leak pages, one JSONL line each
 //      (verdict, sizes, first-diff offset, denial-frame marker) written to
 //      tmp/perm-leak-replay/sweep-results.jsonl — the flip-count evidence
-//      for the lane receipt.
+//      for the receipt.
 //
 // RUN (machine-local raw corpus; ~130 page renders over the 47k-card deck):
 //   PERM_LEAK_REPLAY=1 NODE_OPTIONS=--max-old-space-size=4096 \
@@ -55,11 +55,11 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
  *  frame). The row's third named card, FOR CHILDREN’S CLASS+*self, is the
  *  OPPOSITE shape — the oracle RENDERS a virtual rule-card bar
  *  (+*self+*head) the engine over-denies (permission_denied_mismatch sig;
- *  pre-existing at the lane base, pre-fix actual already carried 21 denial
+ *  pre-existing at the base, pre-fix actual already carried 21 denial
  *  spans vs the oracle's 18). That is the candidate-walk/rules-algebra
- *  class, not the fail-open leak this lane fixes; this lane's contract
+ *  class, not the fail-open leak this suite fixes; this suite's contract
  *  ("deny where Ruby denies") does not permit widening to chase it. It
- *  stays pinned as a remaining diff in the lane receipt and the sweep
+ *  stays pinned as a remaining diff in the receipt and the sweep
  *  block's JSONL below. */
 const LEAK_EXEMPLARS = ["20120122+BW+RVW", "BW 20111201"];
 
@@ -71,7 +71,7 @@ interface PageLaneLine {
 }
 
 /** Stream every page-lane shard once; keep the yardstick page_html of the
- *  wanted names. Shard line order is stable, names are unique per lane. */
+ *  wanted names. Shard line order is stable, names are unique per shard. */
 async function loadYardstick(names: Set<string>): Promise<Map<string, PageLaneLine>> {
   const found = new Map<string, PageLaneLine>();
   const files = existsSync(PAGE_LANE_DIR)

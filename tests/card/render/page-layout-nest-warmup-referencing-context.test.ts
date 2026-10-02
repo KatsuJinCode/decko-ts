@@ -1,6 +1,6 @@
 // Cold page render: the LAYOUT body's nest targets and their content
 // references must warm with the REFERENCING card as the relative-name
-// context (nitpicks lane defect 2 companion fix).
+// context (nitpicks defect 2 companion fix).
 //
 // Failure shape (observed on the real /Aikido_Oak_Cliff cold render, the
 // operator's "page ends early" class): *footer nests {{:credit|core}};

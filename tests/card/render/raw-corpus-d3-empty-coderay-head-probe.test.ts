@@ -1,4 +1,4 @@
-// raw-corpus-d3-empty-coderay-head-probe.test.ts -- the D3 lane's
+// raw-corpus-d3-empty-coderay-head-probe.test.ts -- the D3 suite's
 // VERIFICATION + PIN for the empty-CodeRay head family.
 //
 // MECHANISM (card-mod-layout-0.20.0 set/self/head.rb:9-17):
@@ -51,10 +51,10 @@ const PROBE_CARDS = [
   // byte-equal and is pinned as the control that the carve-out preserves.
   { id: 2575, name: "home-layout", views: ["content"], pin: true },
   // 314 is RECORDED, not pinned, and the assertion beside it is the proof
-  // that this lane did not move it: `Classic Layout` is Layout-typed, so
+  // that this suite did not move it: `Classic Layout` is Layout-typed, so
   // contentNestsHeadCore() returns false, the seat in RenderEngine#render
   // never runs, and no head bytes exist for its key. Its remaining
-  // divergence is a DIFFERENT mechanism this lane did not touch — a bare URL
+  // divergence is a DIFFERENT mechanism this suite did not touch — a bare URL
   // inside the CodeRay JavaScript sub-scanner body is autolinked by the port
   // where the oracle leaves it as highlighted source text (first diff at
   // offset 4666, deep past the literal `{{*head|core}}`). Logged, not pinned.
@@ -86,7 +86,7 @@ async function readShardEntry(id: number): Promise<any | undefined> {
  * (src/card/render/deck-origin.ts), and the port pins it unconditionally while
  * the web-format captures ran with origin ABSENT. The two oracle surfaces
  * disagree; that needs a surface-scoped origin policy, not a flip, and it is
- * NOT this lane's to shift. Projecting the value out is the only way to
+ * NOT this suite's to shift. Projecting the value out is the only way to
  * assert the D3 property (the CodeRay pre carries the resolved head) without
  * either hand-pinning the origin bytes or silently shipping D1's flip.
  */
@@ -174,7 +174,7 @@ describe("D3 empty-CodeRay head family (*all+*head / PCTS+*self+*head :core)", (
         }
         if (!probe.pin) {
           // THE NO-REGRESSION PROOF for a recorded row: the seat in
-          // RenderEngine#render is the only behavioral change this lane makes,
+          // RenderEngine#render is the only behavioral change this suite makes,
           // and it is gated on contentNestsHeadCore(). A Layout-typed card
           // answers false, so the seat never runs and no head bytes exist for
           // its key — this card's bytes are exactly what the base tip emits.

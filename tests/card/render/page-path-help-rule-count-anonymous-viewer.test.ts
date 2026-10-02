@@ -1,5 +1,5 @@
 // page-path-help-rule-count-anonymous-viewer.test.ts -- the p22-rules-table
-// lane's red-first pin for the head-rule popover count on the PAGE path.
+// port's red-first pin for the head-rule popover count on the PAGE path.
 //
 // MECHANISM (traced): the rule-card help popover's setting_link text
 // "(N <setting> rules)" (card-mod-rules set/rule/board_rules_editor.rb:21-27)

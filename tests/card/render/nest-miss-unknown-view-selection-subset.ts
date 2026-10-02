@@ -1,7 +1,7 @@
 /**
- * The p20-nest-selection lane's page population: the 34 pages of the
+ * The p20-nest-selection port's page population: the 34 pages of the
  * pass-15 c-structural class whose mechanism is the nest-selection
- * disagreement (mm-cstructural lane receipt §4 #2 missing-slot / #3
+ * disagreement (mm-cstructural receipt §4 #2 missing-slot / #3
  * phantom-slot — C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/mm-cstructural-lane.md).
  *
  * 19 Project pages missing the `+discussion` titled-view slot; 2 BWjournal

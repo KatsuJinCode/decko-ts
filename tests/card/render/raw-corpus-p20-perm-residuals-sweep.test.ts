@@ -1,6 +1,6 @@
 // raw-corpus-p20-perm-residuals-sweep.test.ts -- the pass-20 permission-
-// residuals lane's sweep runner (lane-p20-perm, base b2f4700). The lane's
-// class is the 11 non-perm-sweep pages routed to it by four earlier lane
+// residuals port's sweep runner (lane-p20-perm, base b2f4700). Its
+// class is the 11 non-perm-sweep pages routed to it by four earlier port
 // receipts, plus a grows-as-pages-flip hard-assert block:
 //
 //   - 4 mixed18 route-outs booked to perm (tmp/wrong-goal-hunt/mixed18-lane.md
@@ -8,12 +8,12 @@
 //     as pinned by the dead agents)" on BW Oversight+ARCHETYPALLY, Starhawk,
 //     Daemeon Reiydelle, Michael Christensen; the mixed18 engine commits are
 //     NOT in this base -- 38ba98e/8991ee9 are not ancestors of b2f4700 -- so
-//     these pages carry their full diff here, of which this lane owns the
+//     these pages carry their full diff here, of which this suite owns the
 //     permission-shaped regions);
-//   - 3 Role pages whose :configs role->items grouping the mm-roleviews lane
+//   - 3 Role pages whose :configs role->items grouping the mm-roleviews port
 //     proved capture-state-bound (tmp/wrong-goal-hunt/mm-roleviews-lane.md
 //     leftover 5: Administrator, Administrator+Dashboard, Help Desk);
-//   - 3 layout pages the mm-whitespace lane left with a `{{*foot|core}}` nest
+//   - 3 layout pages the mm-whitespace port left with a `{{*foot|core}}` nest
 //     rendering as its literal text where the oracle renders the read-denied
 //     span (tmp/wrong-goal-hunt/mm-whitespace-lane.md leftovers: home-layout,
 //     bdwilliamscraig-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
@@ -22,7 +22,7 @@
 // writes exp/act pairs + a JSONL line (byte-exact, code units, first-diff
 // offset, denial-span counts) to tmp/p20-perm-residuals/.
 //
-// Block 2 (hard assert): pages this lane has FLIPPED to byte-exact, pinned so
+// Block 2 (hard assert): pages this suite has FLIPPED to byte-exact, pinned so
 // a regression re-opens loudly. Starts empty; grows with each fix commit.
 //
 // RUN (machine-local raw corpus; P20_PERM_RESIDUALS=1):
@@ -45,7 +45,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "p20-perm-residuals");
 
 const SWEEP_REQUESTED = process.env.P20_PERM_RESIDUALS === "1";
 
-/** The lane's 11 non-perm-sweep pages, grouped by the receipt that routed
+/** The suite's 11 non-perm-sweep pages, grouped by the receipt that routed
  * them here. The 5 perm-allow-2 triage pages are NOT here -- they have their
  * own instrument (perm-allow-overdeny-corpus-replay.test.ts). */
 const LANE_PAGES = [
@@ -64,7 +64,7 @@ const LANE_PAGES = [
   },
 ];
 
-/** Pages flipped byte-exact by this lane, pinned hard after the flip. */
+/** Pages flipped byte-exact by this suite, pinned hard after the flip. */
 const FLIPPED_PAGES: ReadonlyArray<string> = [
   "home-layout",
   "bdwilliamscraig-layout",

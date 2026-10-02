@@ -1,4 +1,4 @@
-// lane-p20-autolink probe: render the lane's two pages (11251 ANGELS,
+// lane-p20-autolink probe: render its two pages (11251 ANGELS,
 // 18560 Kimberly Richardson) over the raw corpus and dump the engine state
 // the phantom-item dispatch and the autolink depend on. PROBE ONLY —
 // not a gate; skipped unless LANE_P20_AUTOLINK_PROBE=1.

@@ -11,7 +11,7 @@
 // Oracles:
 //   - raw recapture oracle (tmp/raw-ground-truth/expected/
 //     recapture-raw-shard-000005.jsonl, entry id 9625 "The End of Awe
-//     by Maureen Dowd - NYTimes", the round-9 lane's named first
+//     by Maureen Dowd - NYTimes", the round-9 pass's named first
 //     difference): the `{{+Source Title}}` nest's slot carries
 //     nest_name "+Source Title" while data-card-name stays absolute
 //     ("The End of Awe by Maureen Dowd - NYTimes+Source Title").

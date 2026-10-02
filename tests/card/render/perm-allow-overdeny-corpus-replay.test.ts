@@ -2,7 +2,7 @@
 // permission class: pages where the engine DENIES a card Ruby's mod
 // set-module ok_to_read? overrides grant (tmp/wrong-goal-hunt/
 // pass15-page-fail-classes.md, sig permission_denied_mismatch + the four
-// over-deny pages the perm-leak lane documented).
+// over-deny pages the perm-leak port documented).
 //
 // The mechanism (gem-pinned + oracle-probed, see
 // tmp/wrong-goal-hunt/perm-allow-ruby-probe/): thirteen mod set files define
@@ -12,7 +12,7 @@
 // cards' stored rules ("Help Desk" / "Anyone Signed In" role grants) while
 // the capture-deck Ruby probe returns ok?(:read)=true for every named page.
 //
-// Two gated blocks (the perm-leak lane's replay shape):
+// Two gated blocks (the perm-leak port's replay shape):
 //   1. THE NAMED OVER-DENY PAGES (hard assert): the four perm-leak-receipt
 //      pages + the FOR CHILDREN'S CLASS+*self triage exemplar render
 //      byte-identical to the frozen yardstick (expected-v2 page lane,
@@ -48,7 +48,7 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
  *  verdict denies where the capture deck's Ruby probe answers
  *  ok?(:read)=true) plus the triage's FOR CHILDREN'S CLASS+*self exemplar
  *  (its +*self+*head virtual rule-card bar over-denies in the rule-editor
- *  nav; 21 denial spans vs the oracle's 18 at the lane base). */
+ *  nav; 21 denial spans vs the oracle's 18 at the base). */
 const OVER_DENY_PAGES = [
   "Anonymous+*account",
   "Anonymous+*account+*email",

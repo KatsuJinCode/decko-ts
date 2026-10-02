@@ -1,5 +1,5 @@
 // raw-corpus-escape-family-pages.ts -- the escape/encoding family subset,
-// pinned for the escape-family lane sweep
+// pinned for the escape-family sweep
 // (raw-corpus-escape-family-page-sweep.test.ts).
 //
 // PROVENANCE. The 82 rows are exactly the entries the pass-15 page-fail
@@ -12,11 +12,11 @@
 // the oracle page-lane shard file its id lives in
 // (tmp/raw-ground-truth/expected-v2/page-lane/).
 //
-// The lanes that touched this surface BEFORE this lane's base 71eb7e1
+// The ports that touched this surface BEFORE base 71eb7e1
 // already flip part of the class: census-tail2 (9d334ea) fixed the two
 // wikilink external emitters' attribute order (attr-target class) and the
 // plain_text core CGI.escapeHTML branch (entity-escape class). The sweep
-// therefore measures flips against the LANE BASE, not 017b182.
+// therefore measures flips against the 71eb7e1 base, not 017b182.
 
 export interface EscapeFamilyEntry {
   phase: string;

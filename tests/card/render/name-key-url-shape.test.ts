@@ -1,7 +1,7 @@
-// name-key-url-shape.test.ts -- view-keys lane (pass-16 H5/L1, name-key &
+// name-key-url-shape.test.ts -- view-keys suite (pass-16 H5/L1, name-key &
 // URL shaping). Byte pins extracted from the pass-15 fresh-process dump
 // pairs (C:/localProjects/decko-ts-pass15-int/tmp/raw-ground-truth/
-// enumeration/view-fail-dump-phases/) and re-confirmed against the lane's
+// enumeration/view-fail-dump-phases/) and re-confirmed against the
 // own baseline sweep. One case per shape rule:
 //
 //   R1 query percent-encoding encodes UTF-8 BYTES, not codepoints
@@ -79,7 +79,7 @@ describe("name-key/url shape: phantom item bar body attrs (R2, V12+Z4 exemplar b
     // follows the same not-ok -> space -> underscore fold as spaces and
     // hyphens).
     //
-    // RE-PIN (mm-escape-residue lane, 2026-09-30). This asserted the
+    // RE-PIN (mm-escape-residue, 2026-09-30). This asserted the
     // ONE-level `data-card-name='Nicole Le&#39;Strix'`. The body is the
     // bar.haml shape (its own doc comment says so), and bar.haml's
     // `data: bar_wrap_data` crosses Haml's escape_attrs boundary, which

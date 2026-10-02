@@ -1,5 +1,5 @@
 // raw-corpus-p21-cql-item-typing-sweep.test.ts -- the pass-21 CQL item-typing
-// lane's instrument (lane-p21-cqltype, base 46b6976). The class (p20-phantom-
+// port's instrument (lane-p21-cqltype, base 46b6976). The class (p20-phantom-
 // verdict-triage.md Family A, the phantom-TYPE arm): phantom list items must
 // be TYPED from the winning `*content options` Search card's CQL `type` key
 // (rule 1739 -> Project, 2978 -> consideration, 10280 -> Tracked Item), and a
@@ -10,7 +10,7 @@
 // typing arm's ALLOWED side is already landed at this base -- Daemeon
 // Reiydelle and Starhawk render BYTE-EXACT with the typed full bars
 // (data-card-type-id 398 Project / 2979 consideration). The residual this
-// lane owns is the denied-arm SHAPE split:
+// port owns is the denied-arm SHAPE split:
 //   - Social Media Distribution+Tactics: act 3 denial spans / 0 bare items
 //     vs oracle 2 / 1 (the Tracked Item phantom 6582-denies but renders the
 //     mini_bar two-span body).
@@ -33,15 +33,15 @@
 //        <= oracle. NOT pinned byte-exact: the page carries a PRE-EXISTING
 //        30-byte diff at offset 53737 at this base (the *content options
 //        rule bar's one-line content renders empty where the oracle shows
-//        the rule JSON) -- a rule-bar content seat outside this lane's
+//        the rule JSON) -- a rule-bar content seat outside this suite's
 //        class, disclosed in the receipt.
 // BW Oversight+ARCHETYPALLY is REPORT-ONLY: its diff is the `_left`
-// live-climb arm owned by the sibling lane.
+// live-climb arm owned by the sibling port.
 //
 // RUN (machine-local raw corpus; P21_CQL_ITEM_TYPING=1; ONE corpus boot --
 // two boots in one vitest process crash natively on this machine, see the
 // p20-perm-residuals receipt's STATUS_STACK_BUFFER_OVERRUN note and this
-// lane's job-1790800593920-f006b263):
+// suite's job-1790800593920-f006b263):
 //   npx vitest run tests/card/render/raw-corpus-p21-cql-item-typing-sweep.test.ts \
 //     --no-file-parallelism  (with P21_CQL_ITEM_TYPING=1 in the environment)
 
@@ -271,7 +271,7 @@ describe(
         }
 
         // PIN 5 (GUARD, counts only -- see the file header for the
-        // pre-existing one-line-content diff this lane does not own):
+        // pre-existing one-line-content diff this suite does not own):
         // Exhibit+Item's 22 full rule bars stay and the page gains no
         // denial.
         {

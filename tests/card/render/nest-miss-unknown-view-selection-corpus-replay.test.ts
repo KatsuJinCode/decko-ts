@@ -1,5 +1,5 @@
 // nest-miss-unknown-view-selection-corpus-replay.test.ts -- the p20-nest-
-// selection lane's gate: the c-structural class's nest-selection disagreement.
+// selection port's gate: the c-structural class's nest-selection disagreement.
 //
 // MECHANISM (traced, not inferred). The class's two opposite directions are
 // ONE mechanism: Card::View::Permission#alter_unknown (card-1.110.0

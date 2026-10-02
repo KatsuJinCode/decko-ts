@@ -1,4 +1,4 @@
-// R16 residual-lane regression pins (2026-09-27). The failure families the
+// R16 residual regression pins (2026-09-27). The failure families the
 // dual-lane verifier exposed on the set-page rules editor, each cited to the
 // Ruby mechanism it ports and the oracle byte that pinned it:
 //
@@ -117,7 +117,7 @@ async function seedDeck(): Promise<void> {
   await seedReference(s, 52, 7, "anyone_signed_in");
   void SETTING_TYPE_ID;
 
-  // The *recent settings card (lane p22-rules-table): the recent category
+  // The *recent settings card (p22-rules-table): the recent category
   // membership is DECK DATA — setting_categories.rb:64-67 reads
   // Card[:recent_settings].item_cards — so the fixture now carries the
   // corpus's *recent settings card (row 23808's 21-item list, verbatim).

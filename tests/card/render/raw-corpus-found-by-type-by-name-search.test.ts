@@ -1,5 +1,5 @@
 // raw-corpus-found-by-type-by-name-search.test.ts -- the RED pin for the
-// found_by CQL gap (the residual trio after the search-prepare lane:
+// found_by CQL gap (the residual trio after the search-prepare port:
 // tmp/wrong-goal-hunt/search-prepare-fix.md section 3): the
 // `<cardtype>+*type+by name` virtual searches (Sign up 12 / PlainText 22 /
 // VAP 827) execute into the SQL generator's found_by refusal
@@ -117,7 +117,7 @@ function searchResultRegion(page: string, dataCardName: string): string {
 
 /** page id -> (render name, the `+*type+by name` slot's data-card-name as
  *  both sides emit it). The three census pages whose only residual
- *  mechanism after the search-prepare lane was the empty found_by search. */
+ *  mechanism after the search-prepare port was the empty found_by search. */
 const PAGES: Array<{ id: number; name: string; slot: string }> = [
   { id: 12, name: "Sign up", slot: "Sign_up+*type+by_name" },
   { id: 22, name: "PlainText", slot: "PlainText+*type+by_name" },

@@ -1,4 +1,4 @@
-// help-content-rule-page-flip-replay.test.ts -- the help-content lane's
+// help-content-rule-page-flip-replay.test.ts -- the help-content suite's
 // fresh-process flip measurement over the escape-family population (the 35+
 // `mod: X+*style|script` rule pages + *on create|delete|update + *style rule
 // pages the escape-family receipt routed here). For every pass-15 fail-dump
@@ -7,8 +7,8 @@
 // page from the raw corpus DB with the same seeding the official dump protocol
 // used (dump-view-lane-fails: createRawStructureSeededStorage over every live
 // id + warmLexicon) and compares the menu popover's data-bs-content attribute
-// bytes against the oracle's. The attribute is the unit this lane owns (whole
-// pages carry other lanes' pending diffs), so flip counts are attribute-level.
+// bytes against the oracle's. The attribute is the unit this suite owns (whole
+// pages carry other ports' pending diffs), so flip counts are attribute-level.
 //
 // The card name is recovered from the view-lane shard jsonl by slug-matching
 // (the dump key is `${shardDigits}-${slug(name)}-${slug(view)}`, slug =

@@ -1,4 +1,4 @@
-// raw-corpus-escape-family-page-sweep.test.ts -- the escape-family lane's
+// raw-corpus-escape-family-page-sweep.test.ts -- the escape-family suite's
 // sweep: renders the pass-15 triage's 82 escape/encoding pages (the four
 // primary classes pinned in raw-corpus-escape-family-pages.ts) through the
 // engine's REAL page renderer over the RAW ground-truth corpus, and compares
@@ -12,7 +12,7 @@
 //   tmp/escape-family-sweep/pages/<id>-<key>.{exp,act}.html
 //       both normalized sides, for offline re-analysis
 //
-// The flip count the lane receipt reports is byteExact here, per class.
+// The flip count the receipt reports is byteExact here, per class.
 //
 // RUN (explicitly; needs the machine-local raw corpus via tmp/raw-ground-truth
 // -- see RAW_CORPUS_DB -- and ~82 page renders over the 47k-card deck):

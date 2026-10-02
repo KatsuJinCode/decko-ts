@@ -1,4 +1,4 @@
-// raw-corpus-cd-smalls-attachment-flips.test.ts -- the cd-smalls lane's
+// raw-corpus-cd-smalls-attachment-flips.test.ts -- the cd-smalls suite's
 // fresh-process flip measurement for the attachment-filename-case class
 // (7 pages): render each page against the raw-corpus seed and compare the
 // served img-src attachment URL region with the oracle page-lane bytes.

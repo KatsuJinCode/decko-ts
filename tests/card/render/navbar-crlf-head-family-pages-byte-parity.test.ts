@@ -1,6 +1,6 @@
-// navbar-crlf-head-family-pages-byte-parity.test.ts -- the navbar-cr lane's
+// navbar-crlf-head-family-pages-byte-parity.test.ts -- the navbar-cr suite's
 // byte verdict for the four *head-family rule pages the gem-anchored-closure
-// lane's receipt listed as the one residual class (its verdict: each differs
+// receipt listed as the one residual class (its verdict: each differs
 // from its oracle shard by one CR in the navbar join, engine 0 CRs vs oracle
 // 1 CR at offset ~4916):
 //
@@ -16,7 +16,7 @@
 // matches with content.slice(lastIndex, m.index), and the seeded dbContent
 // carries the corpus bytes verbatim (raw-corpus-seeding.ts dbContent:
 // row.content). The prior receipt's "engine 0 CRs" was a measurement
-// artifact: the probe dump written at that lane's own tip
+// artifact: the probe dump written at that worktree's own tip
 // (tmp/gemclose-probe/cand-*.html) carries the CR at the oracle offset and is
 // slot-normalized identical to the oracle shards. This suite pins the
 // byte-exact state so the deck-wide class (20,597 corpus cards store CR in

@@ -1,4 +1,4 @@
-// raw-corpus-cd-smalls-head-asset-probe.test.ts -- the cd-smalls lane's
+// raw-corpus-cd-smalls-head-asset-probe.test.ts -- the cd-smalls suite's
 // probe + RED pin for the head-asset divergence class (11 pages, pass-15
 // content-div subclass "head-asset-divergence", receipt
 // brandonDojoTech tmp/wrong-goal-hunt/cd-smalls-lane.md):

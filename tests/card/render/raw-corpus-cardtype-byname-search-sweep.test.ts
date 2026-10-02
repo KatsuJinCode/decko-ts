@@ -1,12 +1,12 @@
 // raw-corpus-cardtype-byname-search-sweep.test.ts -- the p20-cardtype-search
-// lane's evidence sweep: renders the 51 large-gap Cardtype-typed page-lane
+// port's evidence sweep: renders the 51 large-gap Cardtype-typed page-lane
 // failures (the pass-15 fail-dump class "Cardtype pages whose byte mass is
 // the +*type+by_name member search", pinned with numeric page-lane ids in
 // raw-corpus-cardtype-byname-search-subset.json) through the engine's REAL
 // page renderer over the RAW ground-truth corpus, and records per-page
 // parity/search evidence against the oracle page-lane bytes.
 //
-// Report-only (the census lane's contract; the graded verifier already ran
+// Report-only (the census contract; the graded verifier already ran
 // for pass-19 -- this spec never re-runs a grader): it records evidence --
 //
 //   tmp/census-ctsearch/results.jsonl   one line per page: identity,
@@ -140,7 +140,7 @@ describe("raw-corpus cardtype by_name search sweep (51 large-gap Cardtype pages)
         if (diff.equal) pass++;
         else fail++;
 
-        // Search-flip evidence at the page level: the class this lane owns
+        // Search-flip evidence at the page level: the class this suite owns
         // is search-no-results where the oracle lists a search-result list.
         const expHasResults =
           expected.includes("search-result-list") || expected.includes("search-result-item");
@@ -227,7 +227,7 @@ describe("raw-corpus cardtype by_name search sweep (51 large-gap Cardtype pages)
             `mechs=${JSON.stringify(r.mechanisms)}`,
         );
       }
-      // report-only lane: never gate the vitest run on parity
+      // report-only suite: never gate the vitest run on parity
       expect(results.length).toBe(SUBSET.length);
       storage.close();
     },

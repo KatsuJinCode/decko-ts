@@ -1,4 +1,4 @@
-// mod-assets-child-group-list-core.test.ts -- the p20-help-content lane's
+// mod-assets-child-group-list-core.test.ts -- the p20-help-content suite's
 // pins for the Abstract::ModAssets CHILD cards' :core (the pages
 // "mod: X+*style" / "mod: X+*script").
 //

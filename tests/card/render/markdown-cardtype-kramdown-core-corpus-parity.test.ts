@@ -8,9 +8,9 @@
 // exactly 4 rows carry type_code "markdown", 8 of their 11 captured views
 // render kramdown bytes (:content + :open per card; :closed is bar-only).
 // Every byte this file pins is copied verbatim from those captured oracle
-// views (the raw ground-truth dumps this lane was sized from):
+// views (the raw ground-truth dumps this suite was sized from):
 //
-//   *all+*guide            45414  shard-000039  (the lane exemplar)
+//   *all+*guide            45414  shard-000039  (the exemplar)
 //   Cardtype+*type+*guide  38250  shard-000032
 //   *structure+*right+*guide 38251 shard-000032
 //   Administrator+Dashboard 34817 shard-000032  (only its kramdown-owned
@@ -40,7 +40,7 @@
 // below (and the mod's existing oracle corpus) are matched by the handroll,
 // and kramdown's decko-specific composition (the references stash feeding
 // decko's own nest/link chunk passes) has no library shape. The decision
-// this lane adds: the handroll is SUFFICIENT for every corpus-exercised
+// this suite adds: the handroll is SUFFICIENT for every corpus-exercised
 // construct (ATX header + auto id, paragraphs, strong/em, tight ordered
 // list, smart quotes/apostrophes, ellipsis, wikilink/external/internal
 // links, nest stash), so the fix is the DISPATCH, not the converter.
@@ -63,7 +63,7 @@ const ALL_GUIDE_CONTENT =
 
 /** *all+*guide :content inner core bytes — the captured oracle view minus the
  *  content-slot wrap (slotWrapCommon div), extracted verbatim from the
- *  capture (444 bytes). THE lane exemplar's deliverable bytes. */
+ *  capture (444 bytes). THE exemplar's deliverable bytes. */
 const ALL_GUIDE_CORE =
   '<h4 id="editing-guide">Editing Guide</h4>\n\n' +
   "<p>This default guide will appear in the full editor view of any card \n" +
@@ -219,7 +219,7 @@ describe("Markdown-type cards kramdown through the loader-less core (corpus pari
   it("*all+*guide :open carries the kramdown bytes inside the accordion body", async () => {
     // The open view's accordion-body delegates to bar_bottom -> content ->
     // core, so the same kramdown bytes must appear inside the bar. (The
-    // bar's menu/help region is other lanes' surface; this pins only the
+    // bar's menu/help region is other ports' surface; this pins only the
     // body bytes.)
     const storage = await createRenderTestStorage();
     try {

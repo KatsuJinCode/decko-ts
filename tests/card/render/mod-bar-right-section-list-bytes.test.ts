@@ -1,4 +1,4 @@
-// bar-slots lane (2026-09-29, view-fail class Z3): the Mod cardtype's
+// bar-slots (2026-09-29, view-fail class Z3): the Mod cardtype's
 // bar_right is type/mod.rb's section list — the mod's present sections
 // comma-joined in the oracle-pinned order tasks < settings <
 // configurations < cardtypes < scripts < styles — where the engine used to

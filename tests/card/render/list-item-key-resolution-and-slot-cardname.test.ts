@@ -33,7 +33,7 @@
 // transformation in slotWrap (and the pointer-item slot builder, which
 // Ruby builds with the same wrap helper).
 //
-// RECALIBRATED (p22-name-form lane, 2026-10-01, bf2ac46): the url_key
+// RECALIBRATED (p22-name-form, 2026-10-01, bf2ac46): the url_key
 // gate `new? && compound?` is the whole general rule, and the engine
 // implements it on every slot emitter (views.ts#slotCardname,
 // pointer-list.ts#pointerListItemSlot). The compound gate is what the
@@ -158,7 +158,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       expect(html).toContain('data-card-name="Host Person+video"');
       expect(html).not.toContain("Host Person+videos");
       // A real card's slot, not the phantom: the phantom's pinned type
-      // (swtktey/22281) must be gone. Merged semantics (lane-deferred):
+      // (swtktey/22281) must be gone. Merged semantics (deferred):
       // the item slot shape is READ-DENIAL-gated — a READABLE item keeps
       // the `bar-view` slot nestRecord produced, with the resolved
       // card's data-card-id (both oracles: corpus v2 229/229 mini_bar
@@ -225,7 +225,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       // data-card-name="Conflict_Done_Well+management" — url_key form,
       // case retained, underscores for spaces.
       //
-      // RECALIBRATED (p22-name-form lane). The original render used
+      // RECALIBRATED (p22-name-form). The original render used
       // {{+management|open}} — a shape that only rendered a slot while
       // the round-10-era flat `open: true` unknown-view row stood
       // (card-mod-comment's RIGHT-discussion-scoped declaration

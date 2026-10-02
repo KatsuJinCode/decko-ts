@@ -1,4 +1,4 @@
-// help-content-rule-page-setting-registry.test.ts -- the help-content lane's
+// help-content-rule-page-setting-registry.test.ts -- the help-content suite's
 // red-first byte tests for the 38-page population the escape-family receipt
 // routed here (escape-family-lane.md residual: "Help-content resolver gaps
 // (35 mod: X+*style|script + *on create|delete|update + *style rule pages) --
@@ -8,12 +8,12 @@
 // copied verbatim from the pass-15 fail dump
 // (decko-ts-pass15-int tmp/raw-ground-truth/enumeration/view-fail-dump-full/
 // html/<page>-closed.expected.html), so a green run pins the exemplar bytes
-// exactly. At the lane base be76583 every assertion in the first describe
+// exactly. At base be76583 every assertion in the first describe
 // block is RED: the registry (setting-help-text.ts) lacks the style/script/
 // on_create entries, so the engine served "&amp;nbsp;" (mod + setting-card
 // pages) or the bare count div (rule-branch pages).
 //
-// Ruby chain (installed gems, pinned in the lane receipt):
+// Ruby chain (installed gems, pinned in the receipt):
 //   menu.rb:35-37 help_link -> all/help.rb:36-38 raw_help_text =
 //   card.try(:raw_help_text) || help_rule_card&.content, where the static
 //   strings register via Card::Setting#help_text_for_setting

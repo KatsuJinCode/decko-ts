@@ -1,4 +1,4 @@
-// raw-corpus-p20-help-content-pages.ts -- the p20-help-content lane's page
+// raw-corpus-p20-help-content-pages.ts -- the p20-help-content suite's page
 // subset: the 38 corpus pages the mm-escape-residue receipt attributed to the
 // help-content resolver gap (its residual table, "38 | help-content resolver
 // gap"). Two mechanisms:

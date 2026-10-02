@@ -54,7 +54,7 @@ import { SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 // ---------------------------------------------------------------------------
 
 describe("formatImageCore — Ruby's image cardtype :core body", () => {
-  // 2026-09-26 page-lane correction (layout-resolver lane): Rails
+  // 2026-09-26 page-lane correction (layout-resolver): Rails
   // image_tag(source, alt: card.name) emits the tag alt-first with the
   // haml-style close — pinned by the expected-v2 capture on BOTH lanes
   // (view-lane *favicon :open: `<img alt="*favicon"

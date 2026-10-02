@@ -1,4 +1,4 @@
-// raw-corpus-d8-layout-chunk-list-probe.test.ts -- the D8 lane's
+// raw-corpus-d8-layout-chunk-list-probe.test.ts -- the D8 suite's
 // VERIFICATION + PIN for the Classic Layout (card 314) CodeRay autolink
 // divergence.
 //
@@ -84,7 +84,7 @@ async function readShardEntry(id: number): Promise<any | undefined> {
 }
 
 /** The D1 origin pin, projected out on BOTH sides -- the same symmetric
- *  shape format.ts's own comment and the D3 lane's pin use. 314's content
+ *  shape format.ts's own comment and the D3 pin use. 314's content
  *  nests `{{*head|core}}`, so the head rule's own bytes ride in and carry
  *  the D1 `decko.rootUrl` value. Projecting it (rather than hand-pinning the
  *  origin bytes) keeps the pin asserting the D8 property. */

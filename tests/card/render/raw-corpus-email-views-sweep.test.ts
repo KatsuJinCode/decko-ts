@@ -1,6 +1,6 @@
-// raw-corpus-email-views-sweep.test.ts -- THIS LANE's sweep runner (not a
+// raw-corpus-email-views-sweep.test.ts -- THIS SUITE's sweep runner (not a
 // pin): renders every page of the pass-20 email-views class (the
-// roleviews lane's leftovers 1-4: the EmailTemplate `:core =
+// roleviews leftovers 1-4: the EmailTemplate `:core =
 // render_read_form` family, the Abstract::TestContext / email_text
 // message pages, and Shark) over the full-deck corpus seed and reports,
 // per page: is the page byte-exact against the captured oracle bytes,

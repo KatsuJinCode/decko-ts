@@ -1,7 +1,7 @@
 // prefetch-side-id-pair-chunk.test.ts -- the cold prefetch closure's
 // junction-id-pair round must not exceed SQLite's expression-depth limit.
 //
-// THE BUG (perm-leak lane, 2026-09-29): prefetchInclusionClosure's round
+// THE BUG (perm-leak, 2026-09-29): prefetchInclusionClosure's round
 // builder (src/card/render/prefetch.ts, the sideIdPairs branch) joined a
 // round's known-sided junction targets with one OR-tuple per pair —
 // `(j.left_id = ? AND j.right_id = ?) OR ...` — unbounded in the frontier

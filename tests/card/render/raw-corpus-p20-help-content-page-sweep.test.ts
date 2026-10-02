@@ -1,5 +1,5 @@
 // raw-corpus-p20-help-content-page-sweep.test.ts -- the p20-help-content
-// lane's sweep: renders the 38 pages the mm-escape-residue receipt attributed
+// port's sweep: renders the 38 pages the mm-escape-residue receipt attributed
 // to the help-content resolver gap (raw-corpus-p20-help-content-pages.ts)
 // through the engine's REAL page renderer over the RAW ground-truth corpus,
 // and compares byte-for-byte against the oracle's captured page HTML.
@@ -12,7 +12,7 @@
 //   tmp/p20-help-sweep/pages/<id>-<key>.{exp,act}.html
 //                                      both normalized sides
 //
-// The flip count the lane receipt reports is byteExact here, per class.
+// The flip count the receipt reports is byteExact here, per class.
 // Pages render in the subset's shard/phase order over ONE shared storage --
 // the escape-family sweep's own protocol -- because the setting-card pages'
 // set-class rows walk the enriched render-card map, whose state reflects the

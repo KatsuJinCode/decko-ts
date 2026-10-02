@@ -1,4 +1,4 @@
-// navbar-cr-main-menu-crlf-source-probe.test.ts -- the navbar-cr lane's
+// navbar-cr-main-menu-crlf-source-probe.test.ts -- the navbar-cr suite's
 // diagnostic probe. The four *head-family rule pages (FrAi+*right+*head,
 // GBA+*right+*head, *head+*self, *head+*right) each differ from their oracle
 // shard by exactly ONE byte: a CR the oracle keeps in the navbar join

@@ -68,7 +68,7 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     // Rails truncate omits the omission from the budget: the TOTAL length
     // is `length` (60), so 60 chars stay untruncated and 61 become
     // 57 + "..." (card-mod-format content.rb:43-53 Rails truncate
-    // semantics; the tails-lane oracle pin AAM+*self+*guide truncates at
+    // semantics; the tails oracle pin AAM+*self+*guide truncates at
     // 58 visible chars of stripped markdown text — "…in the full" — the
     // 57-byte text budget).
     const html = ruleBarRightHtml(base("b".repeat(61)));
