@@ -1802,7 +1802,7 @@ export class RenderEngine implements RenderEngineLike {
    * applies (the caller keeps its context fallback - the pre-existing
    * shape for genuinely unknown lefts).
    */
-  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution — the
+  /** The phantom-item VIRTUAL resolution — the
    *  port of Ruby's known?-ness decision for a pointer/list fetch-miss
    *  item (states.rb:65 known? = real? || virtual?; states.rb:44-50
    *  virtual? = compound && structure.present?). The pointer-list seat
@@ -2171,12 +2171,12 @@ export class RenderEngine implements RenderEngineLike {
    *     card 4033 trash=1): the new card's type lands on *all+*default
    *     (rule 28, BasicCs), its read walk hits BasicCs+*type+*read (rule
    *     22283, "Anyone Signed In") and Anonymous is denied → the quiet
-   *     denial span inside the highlighted layout source (the p20 lane's
-   *     pinned class).
+   *     denial span inside the highlighted layout source (the oracle-pinned
+   *     class).
    *  2. COMPOUND names (the {{+field}} phantom family — BW Oversight's
    *     {{+Human|closed}} leaves): the verdict is the LIVE RECURSIVE _left
    *     walk (card-mod-permissions set/all/permissions.rb:55-71, read
-   *     verbatim this lane: `permission_rule_id` -> `rule(action).match?(
+   *     verbatim: `permission_rule_id` -> `rule(action).match?(
    *     /^\[?\[?_left\]?\]?$/)` -> `left_permission_rule_id` ->
    *     `lcard.permission_rule_id action` — the stored read_rule_id column
    *     is never consulted). The walk itself was PROVEN verdict-correct
@@ -2325,7 +2325,7 @@ export class RenderEngine implements RenderEngineLike {
    * corpus's structured-content path doesn't exercise them and the
    * async computeIsRule would re-fetch through the ladder for those.
    *
-   * FORM-SUBSTRATE LANE CORRECTION (oracle-pinned by
+   * CORRECTION (oracle-pinned by
    * fixtures/captured/form-substrate.json rule_card_head/guide): the
    * 2-part restriction below was WRONG against Ruby — standard_rule?
    * (all.rb:37-44) has NO part-count limit; the 2-part "*all+*head" is a
@@ -2452,7 +2452,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Page-render recovery seam (the perm-leak lane, 2026-09-29): resolve the
+   * Page-render recovery seam (2026-09-29): resolve the
    * read-permission state and judge every prepared card when the prepare
    * render died BEFORE the folded batch landed. The page path catches
    * prepare errors and continues (nested-raise semantics), but the sync
@@ -2788,7 +2788,7 @@ export class RenderEngine implements RenderEngineLike {
       // suite's *content options popover pin (known-card [[List]] /
       // [[Pointer]] / [[Search]]) is the guard. Cost: one point query per
       // registry-known harvested target - the same cost model as the
-      // un-skipped arm below (bar-slots lane's own doc).
+      // un-skipped arm below (the un-skipped arm's own doc).
       const prepared = await this.prepareItemForRender(target);
       if (prepared !== undefined) seated = true;
     }
@@ -5015,7 +5015,7 @@ export class RenderEngine implements RenderEngineLike {
       case "all":
       case "rstar":
       case "all_plus":
-      // bar-slots lane (2026-09-29, view-fail class V1): the *star set card
+      // 2026-09-29 (view-fail class V1): the *star set card
       // (codename "star" — the RSTAR family's set card in the oracle deck)
       // joins the nameless-prototype arm. Oracle-pinned by the *star set
       // page's 20 rule rows (shard 3, *star :content/:open): the 12 rows
