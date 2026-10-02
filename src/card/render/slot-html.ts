@@ -59,6 +59,21 @@ export function htmlEscapeExceptQuotes(s: string): string {
     .replace(/</g, "&lt;");
 }
 
+/** The wiki-link card-title attribute's escape (title.rb wrapped_title):
+ *  the oracle escapes &, >, <, and double quotes but leaves SINGLE quotes
+ *  raw — the Nicole Le'Strix pin (page-lane shard-000010, Archetypal role
+ *  playing discussion on Facebook Aug 2012, offset 10190: the wanted-card
+ *  attribute reads title="Nicole Le'Strix" with the raw apostrophe where
+ *  h() would emit &#39;). Same four-entity table as h() minus the
+ *  apostrophe rule. */
+export function htmlEscapeKeepApostrophe(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/>/g, "&gt;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
+
 /** wrap.rb wrap_data slot-id: `SecureRandom.hex(10)` - exactly 20 lowercase
  *  hex (the replay normalization's contract, docs/replay-harness.md). */
 export function newSlotId(): string {

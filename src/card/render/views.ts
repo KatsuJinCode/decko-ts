@@ -3617,7 +3617,14 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // format.ts#wrappedTitleInner's oracle census.
   const inner =
     label !== undefined
-      ? `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`
+      ? // The ATTR escapes (h); the TEXT does not. Oracle: the Process Arts
+        // +*referred_to_by anchor (page-lane shard-000000, offset 12658)
+        // renders title="Pages tagged with &quot;Process Arts&quot;" with
+        // the RAW quotes in the span text — `>Pages tagged with "Process
+        // Arts"<` — and the +bytes family (Process Arts +10) was exactly
+        // the double-escaped text. title.rb:39-42 wrapped_title splits
+        // joints only; it never html-escapes.
+        `<span class="card-title" title="${h(label)}">${wrappedTitleInner(label)}</span>`
       : fmt.renderView("title");
   return `<a class="${cls}" href="/${h(fmt.urlKey())}">${inner}</a>`;
 }

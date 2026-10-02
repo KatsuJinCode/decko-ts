@@ -43,7 +43,7 @@ import {
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
 import type { SearchResultPaging } from "./search-paging.js";
-import { cgiEscape, h, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
+import { cgiEscape, h, htmlEscapeKeepApostrophe, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms, viewDenialView, type CrudTask } from "../permissions/view-perms.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
 import { resolveContentOverride } from "./content-overrides.js";
@@ -3813,7 +3813,7 @@ function wantedHrefQuerySuffix(hrefSource: string): string {
  *  linkTitleInContext below for why the list is per-nest and why it is
  *  empty on the bare view lane). Both are optional so the nestless
  *  to_s callers keep their current bytes. */
-function expandWikiLinks(
+export function expandWikiLinks(
   text: string,
   engine?: RenderEngineLike,
   context?: DeckoName,
@@ -3941,8 +3941,8 @@ function expandWikiLinks(
     // relativization, not the authored text.
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${h(titleText)}">` +
-      `${wrappedTitleInner(h(titleText))}</span>` +
+      `<span class="card-title" title="${htmlEscapeKeepApostrophe(titleText)}">` +
+      `${wrappedTitleInner(titleText)}</span>` +
       `</a>`
     );
   });
