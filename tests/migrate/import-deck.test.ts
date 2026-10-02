@@ -15,8 +15,8 @@
 //   4. content-free report - the JSON never contains card names/content
 //      (DATA RULE audit)
 //
-// The 867MB anonymized seed's full local-D1 import is run by the lane
-// lead and reported in the deliverable; this suite covers the correctness
+// The 867MB anonymized seed's full local-D1 import is run outside
+// this suite and reported in the deliverable; this suite covers the correctness
 // surface on a small fixture where the assertions are sharp.
 
 import { describe, it, expect, afterAll } from "vitest";

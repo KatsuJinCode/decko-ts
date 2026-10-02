@@ -263,18 +263,18 @@ describe("RenderEngine structured content", () => {
       // default_nest_view is process config (html.rb:17-19), never a deck
       // rule, so render.ts's fold composition no longer appends the
       // *default_html_view universe statement - one fewer prelude statement
-      // than the cold-query lane's own tree measured (14 -> 13). The
+      // than the cold-query port's own tree measured (14 -> 13). The
       // remaining round trips are the root fetchByName and the view-override
       // rule walk (this deck measured 13 statements / 8 round trips before
       // the 2026-09-23 per-key closure rounds; 14/8 through round 10's
       // folded *default_html_view universe; 13/6 since the 2026-09-27
-      // cold-query lane: the prelude batch folds the type row and the
+      // cold-query: the prelude batch folds the type row and the
       // rule-walk anchor priming, so the enrich and rule-lookup point round
       // trips became cache hits). The head read-set (2026-09-28
-      // async-view-handle lane) added one statement back into the SAME
+      // async-view-handle) added one statement back into the SAME
       // prelude batch (13 -> 14): card-mod-format's head views read
       // deck-level setting cards no reference closure can reach. Round
-      // trips stay at 6. The p20-email lane added TWO always-pushed,
+      // trips stay at 6. The p20-email port added TWO always-pushed,
       // SQL-gated prelude primes (14 -> 16, round trips still 6): the
       // +*test_context junction probe (prefetch.ts, commits 3c79ef3/
       // d68953e/a55b477) and the nine email field-setting anchor keys
@@ -324,7 +324,7 @@ describe("RenderEngine structured content", () => {
     //    createable { wrap { unknown_link ... } } end` with `createable =
     //    card.ok?(:create) ? yield : ""` — this deck seeds NO *create
     //    rules, so ok?(:create) is false and the nest renders "".
-    // The p20-nest-selection lane (9a0d5c1) retired the pre-lane GLOBAL
+    // The p20-nest-selection (9a0d5c1) retired the pre-fix GLOBAL
     // open:true decl this test originally pinned; the corpus-proven
     // selection is pinned independently by
     // tests/card/render/nest-miss-unknown-view-selection-corpus-replay.
@@ -413,7 +413,7 @@ describe("RenderEngine structured content", () => {
       expect(html).toContain("RIGHT-discussion");
       // ...and the nest resolved contextually: <instance>+discussion
       // (round 9's absolutization), not the literal "+discussion". The
-      // NAME-FORM lane's slot_cardname rule (card-mod-format wrap.rb:50-53:
+      // NAME-FORM port's slot_cardname rule (card-mod-format wrap.rb:50-53:
       // an UNSAVED COMPOUND card displays the url_key form — live pin
       // Conflict_Done_Well.html) shapes the display: url_key
       // "Thing_Host+discussion", case kept, underscore for the space.

@@ -158,13 +158,13 @@ describe("sorting", () => {
   // (sql.ts orderDirectivesOf): Ruby declares none, so production's SQLite
   // ties resolved by rowid == cards.id; the corpus decks tie on the NULL-key
   // tier with arbitrary seeded physical order instead (see the p20
-  // cardtype-search lane receipt). JOINED statements never take the
+  // cardtype-search receipt). JOINED statements never take the
   // tie-breaker: with a join in flight the unspecified tier is the JOIN
   // EMISSION order (the driving table's rowid sequence), and appending
   // `c0.id asc` re-sorts that tier away from production bytes — the somatic
   // *referred_to_by listing rendered referrer 27518 in slot 13 instead of
   // slot 29 (its card_references row was inserted last, cr.id 6296176),
-  // pushing 29740 off the limit-20 listing (refer-to-composition lane).
+  // pushing 29740 off the limit-20 listing (refer-to-composition).
   it("ORDER_MAP mapping and default dir [oracle: sort: 'update' -> ORDER BY c0.updated_at desc]", () => {
     expect(sql({ sort: "update" }).sql).toBe(
       "SELECT c0.*, c0.updated_at, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.id asc",

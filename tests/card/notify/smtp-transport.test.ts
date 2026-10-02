@@ -231,7 +231,7 @@ describe("SmtpTransport wire conversation", () => {
     expect(server.captured.quitSeen).toBe(true);
 
     const data = server.captured.data!;
-    // Ruby wire order (probe, lane-notify receipt): Date, From, To, ...,
+    // Ruby wire order (probe, notify receipt): Date, From, To, ...,
     // Message-ID, Subject, MIME-Version, Content-Type, CTE.
     const headerBlock = data.split("\r\n\r\n")[0]!;
     const headers = headerBlock.split("\r\n").filter((l) => /^[A-Za-z-]+:/.test(l));

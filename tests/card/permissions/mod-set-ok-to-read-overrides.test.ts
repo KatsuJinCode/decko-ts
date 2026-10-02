@@ -36,7 +36,7 @@
 // CHILDREN'S CLASS (plain card, *self rule granting five roles)
 // ok?(:read)=false -- the generic path still denies.
 //
-// SAFETY (the lane contract): every branch here is a verbatim port of the
+// SAFETY (the suite contract): every branch here is a verbatim port of the
 // cited gem file. The overrides only ever fire for the exact set populations
 // Ruby's set files match (pattern application is by name key, so a tag key
 // comparison IS Ruby's set membership). Nothing else widens.
@@ -392,7 +392,7 @@ describe("right::asset_output (card-mod-assets): left.ok_to_read?", () => {
 describe("self-set read overrides (version/signin/account_links)", () => {
   it("allows the *version card itself despite its denying stored rule", async () => {
     const s = storage!;
-    // The verdict is this lane's subject. The BYTES are version.rb's own
+    // The verdict is this suite's subject. The BYTES are version.rb's own
     // content override (mod/core/set/self/version.rb:5 `def content;
     // Cardio::Version.release; end` — rendered, not the denial span, and
     // not the seeded dbContent either: the set module replaces `content`
@@ -409,7 +409,7 @@ describe("self-set read overrides (version/signin/account_links)", () => {
 
   it("allows the *account links card itself despite its denying stored rule", async () => {
     const s = storage!;
-    // The verdict is this lane's subject; the BYTES are account_links.rb's
+    // The verdict is this suite's subject; the BYTES are account_links.rb's
     // own core override (set/self/account_links.rb:8 `view :core` renders
     // the #logging navbar, and :content wraps core) — never the denial
     // span and not the seeded dbContent.

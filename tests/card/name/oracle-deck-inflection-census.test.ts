@@ -11,7 +11,7 @@
  *    the census with this config applied must report ZERO divergent keys
  *    (see inflect-census-key-divergence.test.ts)"
  *
- * Two things were checked while closing U4 (2026-09-30, lane-mm-S-Z):
+ * Two things were checked while closing U4 (2026-09-30, mm-S-Z):
  *
  *   1. `inflect-census-key-divergence.test.ts` is NOT in the tree. Only its
  *      config file is (tests/viewkeys-lane-sweep/oracle-deck-inflection-

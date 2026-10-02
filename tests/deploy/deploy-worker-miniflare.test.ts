@@ -225,7 +225,7 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:card-name.json serves Ruby's json-format :molecule shape", async () => {
-    // The surfaces-batch1 lane's R3 closure (2026-09-29): the 200 body is
+    // The surfaces-batch1 port's R3 closure (2026-09-29): the 200 body is
     // the json format's show default :molecule — atom + items + links +
     // ancestors + html_url + type nest + timestamps, wrapped by
     // page_details (url + requested_at), pretty-printed — NOT the fork's
@@ -264,12 +264,12 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:card-name.csv and /:card-name.rss serve the csv/rss format shows", async () => {
-    // The surfaces-batch1 lane's P11/P10 routes (engine_routes.rb:22
+    // The surfaces-batch1 port's P11/P10 routes (engine_routes.rb:22
     // `get "/:mark(.:format)"`): csv defaults :titled, rss defaults :feed
     // with the rss_enabled config gate (default FALSE — the "RSS feeds
     // disabled" string IS the Ruby default-state bytes).
     //
-    // csv 500, not 200 (deploy-miniflare lane, 2026-10-02): this case
+    // csv 500, not 200 (deploy-miniflare, 2026-10-02): this case
     // originally wired `expect(csv.status).toBe(200)` with a loose body
     // check, but that assertion was never green in any commit — born red
     // at 6ad17162 (which added the pin and the worker's origin-prefix

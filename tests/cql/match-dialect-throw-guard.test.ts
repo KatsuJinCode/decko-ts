@@ -12,7 +12,7 @@
 //      pattern that was silently mismatching either matches Ruby (parity)
 //      or throws.
 //
-// RED-FIRST (admin-views-2 lane): the three oracle entries the old pin
+// RED-FIRST (admin-views-2): the three oracle entries the old pin
 // carried as KNOWN_DIVERGENCES (oracle-match-replay.test.ts) assert STRICT
 // name-set parity here — red on the pre-guard engine (silent no-matches),
 // green once the translation lands. The old pin test is upgraded in the
@@ -110,7 +110,7 @@ describe("oracle entries the old pin carried as divergences — regex dialect cl
       // capture deck's id-29 row (RStar-typed junction, left 3 / right 21,
       // name+content NULL) composed "Cardtype+*type+*structure" at capture
       // time while the TS model (left 3, right 21, no RStar naming)
-      // composes "Cardtype+*type" (probe evidence in the lane receipt,
+      // composes "Cardtype+*type" (probe evidence in the receipt,
       // tmp probes 5-6 of decko-oracle-app). The POSIX TRANSLATION itself
       // is proven by the compile unit test above.
       for (const name of ["raw_mysql57_wordstart", "raw_unicode_class"]) {

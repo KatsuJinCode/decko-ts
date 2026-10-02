@@ -194,7 +194,7 @@ describe("readCardRowsByIdChunked", () => {
     const { raw, counting } = await createStorage();
     try {
       // 205 ids: statements = ceil(205/50) = 5 (4 full + 1 partial of 5);
-      // batch calls = ceil(5/20) = 1. The subrequest math the lane exists
+      // batch calls = ceil(5/20) = 1. The subrequest math this suite exists
       // for: 205 logical reads -> 1 round trip.
       const ids: number[] = [];
       for (let i = 0; i < 205; i++) {

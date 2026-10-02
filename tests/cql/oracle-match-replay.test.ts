@@ -25,7 +25,7 @@
 //     shape relies on Annex-B identity escapes).
 // Each pin asserts the exact TS result against the Ruby result; upgrading
 // the UDF to translate these constructs fails the pin and the test must be
-// upgraded with it. UPGRADED 2026-09-29 (admin-views-2 lane): the
+// upgraded with it. UPGRADED 2026-09-29 (admin-views-2): the
 // translation layer landed, the two pure-regex entries joined the strict
 // set, and the throw-on-untranslated guard's tests live in
 // match-dialect-throw-guard.test.ts. raw_posix_alpha keeps its own
@@ -143,7 +143,7 @@ export async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void>
 }
 
 // The three former pinned divergences. UPGRADED 2026-09-29 (admin-views-2
-// lane) together with the UDF, exactly as this file's own pin instruction
+// work) together with the UDF, exactly as this file's own pin instruction
 // required: the compileMatchPattern translation layer (docs/cql-match-
 // decision.md "Decision" items 1-2) landed — POSIX classes, the
 // [[:<:]]/[[:>:]] word boundaries and \p{...} (u-flag, with the V8
@@ -158,7 +158,7 @@ export async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void>
 // content NULL) composed "Cardtype+*type+*structure" at capture time
 // while the TS model composes "Cardtype+*type" (oracle probes 5-6,
 // decko-oracle-app tmp/; the TS seed row 29 carries leftId 3 / rightId 21
-// with no RStar naming). Outside the regex guard's class — a CQL-lane
+// with no RStar naming). Outside the regex guard's class — a CQL
 // deck-model item, disclosed here rather than silently skipped.
 const KNOWN_DIVERGENCES = new Set(["raw_posix_alpha"]);
 

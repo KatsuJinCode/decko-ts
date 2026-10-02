@@ -8,7 +8,7 @@
 //   binding. No Cloudflare account, no network: workerd is the production
 //   binary.
 //
-//   The three gates the ask names, each as its own case:
+//   The three gates the task names, each as its own case:
 //     1. sign-in happy path   — POST /update/*signin with the captured
 //        subcard grammar mints a D1 session row, answers 303 + Set-Cookie,
 //        and the cookie resolves the session on the NEXT request.
@@ -18,7 +18,7 @@
 //        answers 403 and the engine is never reached (asserted by the
 //        absence of any card_acts row).
 //
-//   Plus the parity guard this lane most easily could have broken: with BOTH
+//   Plus the parity guard this suite most easily could have broken: with BOTH
 //   flags unset, every existing read-only route is unchanged, and the
 //   workerd process.env gate agreement the host depends on is measured
 //   rather than assumed.
@@ -125,7 +125,7 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   // "getaddrinfo ENOTFOUND decko-demo.test". The work had actually run
   // (the owner account existed on the retry, which then correctly 404'd the
   // closed window). Asserting a 303 means asking for the 303, not for
-  // wherever it points. MEASURED: see the lane receipt.
+  // wherever it points. MEASURED: see the receipt.
   const fetch = async (path: string, init?: Record<string, unknown>): Promise<Response> =>
     (await mf.dispatchFetch(`https://decko-demo.test${path}`, {
       redirect: "manual",
@@ -191,7 +191,7 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
     });
 
     it("leaves every existing read-only route byte-unchanged", async () => {
-      // The routes the worker entry shipped before this lane. If a gate leaked into
+      // The routes the worker entry shipped before this port. If a gate leaked into
       // the read path, these move.
       const home = await booted.fetch("/");
       expect(home.status, await home.clone().text()).toBe(200);
@@ -271,7 +271,7 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
     });
 
     it("proves the engine's own in-worker gate agreed, not just the host's", async () => {
-      // The load-bearing runtime claim of this lane, measured. The host reads
+      // The load-bearing runtime claim of this suite, measured. The host reads
       // env.DECKO_FIRST_RUN and assigns it into process.env so the shared
       // module's OWN gate (first-run-routes.ts:145 -> firstRunEnabled()) can
       // see it. If that assignment had not taken, handleFirstRunRequest would
@@ -424,14 +424,14 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
       //    engine raises PermissionDenied. That is Ruby-faithful, and it is
       //    a property of the seeded DECK CONTENT, not of the write path.
       //
-      //    What this proves about the wiring, which is the lane's subject:
+      //    What this proves about the wiring, which is the suite's subject:
       //    the request left the Worker, matched the create route, carried the
       //    D1-backed session, resolved it to the OWNER card (not Anonymous),
       //    reached the engine's rule walk, and came back as a Ruby-shaped
       //    403 (error.rb:103-105). Every hop of the write path is exercised.
       //    What it does NOT prove is a successful save — see Limitations in
-      //    the lane receipt; the deck needs write rights seeded before a
-      //    create can succeed, and that is a deck-content decision this lane
+      //    the receipt; the deck needs write rights seeded before a
+      //    create can succeed, and that is a deck-content decision this suite
       //    does not make on the operator's behalf.
       expect(created.status, await created.clone().text()).toBe(403);
       const body = await created.text();

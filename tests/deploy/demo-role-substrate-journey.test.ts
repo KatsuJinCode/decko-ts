@@ -3,7 +3,7 @@
 // substrate -> 0006 role substrate, then create-owner -> grant-the-owner-a-role
 // -> read the permission state back.
 //
-// WHY THIS FILE EXISTS. The demo-account-seeding lane (972b727) shipped the
+// WHY THIS FILE EXISTS. The demo-account-seeding port (972b727) shipped the
 // account system and deliberately shipped NO roles, recording the omission in
 // its own migration header (deploy/migrations/0004-demo-account-substrate.sql
 // "NOT INCLUDED ... roles ... None is read by the census, the create, or
@@ -24,7 +24,7 @@
 // WHAT IS PROVEN, and against which Ruby source:
 //
 //   1. CONTROL: on 0001..0004 alone a signed-in viewer's party list carries NO
-//      role ids at all — the exact hole the lane was handed, reproduced rather
+//      role ids at all — the exact hole the suite was handed, reproduced rather
 //      than asserted from a comment. The codename lookups read-rules.ts:244-248
 //      issue both select NULL, so the `anyone` / `anyone_signed_in` parties
 //      (read-rules.ts:303-304, :320-322, the port of account_holder.rb:111-113
@@ -70,7 +70,7 @@
 // (card-mod-account set/type/role.rb:26-32 `add_item`/`drop_item` against
 // `+*disabled roles`) is inert for the same missing write path.
 //
-// NOT IN tests/standing-net.json — recorded in the lane receipt, same as the
+// NOT IN tests/standing-net.json — recorded in the receipt, same as the
 // 0004 journey.
 //
 // STORAGE. A real temp FILE built by node:sqlite (DatabaseSync): the SQL files
@@ -162,7 +162,7 @@ function armDemoProfile(): void {
  * Build a temp database with the migration chain applied, using node:sqlite.
  *
  * `withRoles: false` stops at 0004 — the control the journey proof needs: the
- * 0001..0004 chain exactly as it shipped before this lane.
+ * 0001..0004 chain exactly as it shipped before this port.
  */
 async function deck(opts: { withRoles?: boolean; applyRolesTwice?: boolean } = {}): Promise<Deck> {
   const dir = mkdtempSync(join(tmpdir(), "decko-demo-roles-"));
@@ -301,7 +301,7 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
       expect(found, `codename ${codename} (${citation}) missing from 0006`).toBeDefined();
       ids[codename] = found!.id;
     }
-    // The names are the gem's, not this lane's invention.
+    // The names are the gem's, not this suite's invention.
     const names = await d.driver.query<{ name: string }>(
       `SELECT name FROM cards WHERE codename IN
          ('role','members','anyone','anyone_signed_in','administrator','eagle','shark','help_desk')

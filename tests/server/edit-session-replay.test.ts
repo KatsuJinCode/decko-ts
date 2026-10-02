@@ -1,8 +1,8 @@
-// Replays the captured REAL Rails editing session (session-replay2 lane,
+// Replays the captured REAL Rails editing session (session-replay2,
 // 2026-09-28) against the TypeScript write path, and diffs the resulting
 // card/act/action/changes rows against the captured DB state.
 //
-// The oracle capture lives OUTSIDE this repo (machine-local lane artifact):
+// The oracle capture lives OUTSIDE this repo (machine-local artifact):
 //   C:\localProjects\brandonDojoTech\tmp\wrong-goal-hunt\captures-auth-forms\edit-session\
 //   manifest.json = per-step request/params, response status+sha256+bytes,
 //   and the raw act/action/changes rows written after each state change
@@ -28,7 +28,7 @@
 //        probe db_content = EDIT TWO bytes; cards.updater_id 1217
 //   step-08 POST /update/<protected> anonymous -> 403, ZERO new rows
 //
-// DIVERGENCES CLOSED relative to the 2026-09-28 pins (edit-divergences lane):
+// DIVERGENCES CLOSED relative to the 2026-09-28 pins (edit-divergences):
 //   * CSRF posture: the TS HMAC-token gate is GONE — live decko arms no
 //     forgery protection (decko-0.20.0/card-1.110.0 carry no
 //     protect_from_forgery; the only reference is environments/cucumber.rb:27
@@ -49,7 +49,7 @@
 //     view_from_params): a ported view renders that view; a view the TS
 //     engine has not ported raises Ruby's unsupported-view UserError 422
 //     (format/render.rb:60-64, error.rb:21).
-//   * The edit/history VIEW PORT (edit-forms lane, 2026-09-29): the views
+//   * The edit/history VIEW PORT (edit-forms, 2026-09-29): the views
 //     were already ported and byte-pinned at the engine level (slices 3/4 +
 //     the substrate); the SERVING surface ran on the seed html views only —
 //     the process never loaded the mod deck, so every mod-registered view
@@ -464,7 +464,7 @@ describeIfFixture(
       // (defaultDeckLoader in vm-staging-server.mjs) makes the mod-registered
       // views visible to the SERVING surface, which previously answered the
       // seed-only UnsupportedViewError 422 — the session2-gap-8 mechanism
-      // this lane closed. Ruby's unsupported-view UserError 422
+      // this suite closed. Ruby's unsupported-view UserError 422
       // (format/render.rb:60-64, error.rb:21) now fires only for genuinely
       // unported names (asserted in the routes test below).
       const res = await get(`/Session_Replay_Probe_G_2026-09-28?view=edit`, sessionCookie);

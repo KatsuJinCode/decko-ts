@@ -1,4 +1,4 @@
-// The upload INPUT half over the write surface (uploads2 lane): the edit
+// The upload INPUT half over the write surface (uploads2): the edit
 // form's file_chooser posts multipart/form-data to Ruby's own grammar —
 // POST /update/<mark> with a card[<mount>] file part — and the write
 // surface must parse it with Rack's semantics, route the file into the
@@ -6,7 +6,7 @@
 // answer with the same cud_success redirect every other save gets.
 //
 // Ruby truth pinned from the installed gems (all file:line checked this
-// lane; the full citation block lives in the implementing modules):
+// directly; the full citation block lives in the implementing modules):
 //   - Rack 2.2.24 multipart: boundary from the content-type (rack
 //     multipart.rb:24 MULTIPART regex), per-part heads/body
 //     (multipart/parser.rb), filename "" parts contribute NOTHING
@@ -41,7 +41,7 @@
 //     arm) — byte parity means the port invents none either.
 //   - Success: response.rb redirect_cud_success — the plain-form 303 hard
 //     redirect with the card_url-absolute Location, the exact shape the
-//     urlencoded save lane pinned. The multipart save rides the same
+//     urlencoded save pinned. The multipart save rides the same
 //     path; these tests pin that it does.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";

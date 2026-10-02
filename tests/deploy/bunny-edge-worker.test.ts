@@ -231,7 +231,7 @@ describe("bunny edge worker — routes", () => {
     // first slash is the card name, so "/a/b/c" looks up the card "a/b/c".
     // The handler's trailing `No route for <path>` 404 branch is therefore
     // unreachable (cardName is only ever null for a ".json" path, which is
-    // handled earlier) — recorded in the lane receipt, not changed here.
+    // handled earlier) — recorded in the receipt, not changed here.
     const db = mockDb();
     const res = await handleRequest(get("/a/b/c"), TRIAL_ENV, db.factory);
     expect(res.status).toBe(404);

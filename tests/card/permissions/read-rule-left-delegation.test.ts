@@ -1,4 +1,4 @@
-// Regression tests for the permission-verdict lane mechanisms (the
+// Regression tests for the permission-verdict port mechanisms (the
 // permission_denied_mismatch class on the dual-lane exam):
 //
 // 1. THE "_left" RULE-CONTENT DELEGATION on the READ side. Ruby's

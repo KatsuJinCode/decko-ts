@@ -193,7 +193,7 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // R17: one fewer - the *default html view universe left the fold
       // (A-36 correction: default_nest_view is process config,
       // html.rb:17-19, never a deck rule).
-      // +1 head read-set statement (2026-09-28 async-view-handle lane):
+      // +1 head read-set statement (2026-09-28 async-view-handle):
       // card-mod-format's head views read deck-level setting cards that
       // no reference closure can reach, so the prefetch rides THIS batch
       // as a 7th folded statement. `batches` above stays 1 — the round

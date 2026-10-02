@@ -140,7 +140,7 @@ describeIfCorpus("TPR virtual rule cards: the anchor-type read chain decides the
     // Oracle total is 17; the engine carries 2 EXTRA bare denial lis at this
     // tip (slots[21]/[22] of the probe census — the whole-lis are settings
     // the oracle's list drops entirely: the restricted-to-prototype-type
-    // enumeration family, NOT a verdict; named in the lane receipt).
+    // enumeration family, NOT a verdict; named in the receipt).
     // Pin the floor the climb class owns: at least the oracle's 17.
     expect(denialSpans(html)).toBeGreaterThanOrEqual(17);
   });

@@ -10,7 +10,7 @@
 // and auth/permissions.rb:8-13 short-circuits on that constant
 // (`when DeckoBotID then true`). With the wrong constant the engine's
 // bot actor lost the short-circuit and was denied owner-only cards:
-// the member-view lane's single read-verdict miss (The Red Book
+// the member-view port's single read-verdict miss (The Red Book
 // considered [admin]: *self+*read grants one member; Ruby's admin reads
 // it via always_ok?, the fixed engine must too).
 //
@@ -116,7 +116,7 @@ describe("decko_bot codename: the admin always_ok? short-circuit (regression)", 
     // canReadByStoredRule short-circuits on alwaysOk before the readable-set
     // lookup (permissions.rb:140 -> read-rules.ts canReadByStoredRule) — the
     // owner-only rule grants the owner, never the bot, and the bot still
-    // reads: this is the exact verdict the member-view lane measured as the
+    // reads: this is the exact verdict the member-view port measured as the
     // one read-verdict miss.
     expect(canReadByStoredRule(OWNER_ONLY_READ_RULE_ID, state)).toBe(true);
   });

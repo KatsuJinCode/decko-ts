@@ -1,4 +1,4 @@
-// The follow-editor suggestions merge (the follow lane's named remainder):
+// The follow-editor suggestions merge (the follow port's named remainder):
 // card-mod-follow-0.20.0 set/type_plus_right/user/follow/
 // follow_editor_helper.rb:83-90 suggested_following_rule_options_hash reads
 // card.suggestions (user/follow.rb:21-23: Card[:follow_suggestions]&.

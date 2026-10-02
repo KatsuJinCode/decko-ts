@@ -1,4 +1,4 @@
-// The *nests arm of followed_field? (the follow lane's named remainder):
+// The *nests arm of followed_field? (the follow port's named remainder):
 // card-mod-follow-0.20.0 set/all/follow/followed_by.rb:16-31 walks the left
 // card's *follow_fields rule items and matches each item key against the
 // field card's key OR the *nests codename key - the *nests arm asks
