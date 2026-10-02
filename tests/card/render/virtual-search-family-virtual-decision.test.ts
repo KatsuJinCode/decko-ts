@@ -1,5 +1,5 @@
 // virtual-search-family-virtual-decision.test.ts -- the gem-anchored-closure
-// lane's regression net for the VirtualSearch family (FIX A): a nest whose
+// port's regression net for the VirtualSearch family (FIX A): a nest whose
 // target compound name has NO row still renders when the right part is one
 // of the 16 card-mod-search virtual-search rights.
 //

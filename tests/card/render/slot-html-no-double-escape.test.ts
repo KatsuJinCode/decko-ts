@@ -28,7 +28,7 @@
 // `&nbsp;` and depends on the helper escaping `&` → `&amp;` (the dual-lane
 // raw oracle's `data-bs-content="&amp;nbsp;"` shape) keeps working.
 //
-// THE OTHER SIDE (mm-escape-residue lane, 2026-09-30): emitHamlAttrs is the
+// THE OTHER SIDE (mm-escape-residue, 2026-09-30): emitHamlAttrs is the
 // same gem method's HAML twin and escapes at a DIFFERENT level, because
 // Haml has no html_safe? escape hatch. bar.haml / box.haml pass the very
 // same `wrap_data` payload as a HAML `data:` attribute, so an
@@ -119,7 +119,7 @@ describe("emitAttrs / emitHamlAttrs — single-escape, no double-escape (Rails c
   });
 
   it("emitHamlAttrs applies the FULL Haml escape_attrs pass (two levels on a h()-escaped name)", () => {
-    // RE-PIN (mm-escape-residue lane, 2026-09-30). The prior pin here read
+    // RE-PIN (mm-escape-residue, 2026-09-30). The prior pin here read
     // "emitHamlAttrs passes values through verbatim (single-quoted HAML attrs
     // are caller-pre-escaped)" and treated the HAML escape_attrs re-escape as
     // "a separate (Ruby-side) issue, not this emitter's concern". That premise

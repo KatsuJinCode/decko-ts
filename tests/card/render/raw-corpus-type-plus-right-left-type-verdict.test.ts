@@ -1,6 +1,6 @@
 // raw-corpus-type-plus-right-left-type-verdict.test.ts -- the RED pin for
 // the missing-pattern-side set-key fabrication unit's VERDICT arm (the
-// censustail3 lane; receipts tmp/wrong-goal-hunt/cd-smalls-lane.md class 2
+// censustail3 worktree; receipts tmp/wrong-goal-hunt/cd-smalls-lane.md class 2
 // and cql-found-by-lane.md section 3):
 //
 //   Ruby's TYPE_PLUS_RIGHT anchor (card-1.110.0

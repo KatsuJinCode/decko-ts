@@ -129,7 +129,7 @@ describe("whole-deck search read path rides chunked reads (result identity, boun
       expect(html).toContain('<div class="card-list card-list-bar search-result-list">');
 
       // Bounded transport: the render may not scale driver calls with the
-      // result set. (The per-item point-read shape this lane replaced
+      // result set. (The per-item point-read shape this suite replaced
       // measures ~1+ round trip per item — 120 here — plus the search.)
       expect(snapshot.roundTrips).toBeLessThan(120);
       expect(snapshot.roundTrips).toBeLessThanOrEqual(20);

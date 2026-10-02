@@ -1,4 +1,4 @@
-// setting-page-rule-help-alert.test.ts -- the p20-help-content lane's pins
+// setting-page-rule-help-alert.test.ts -- the p20-help-content suite's pins
 // for the Setting-type card pages' rule_help alert.
 //
 // Ruby chain: card-mod-rules set/type/setting.rb:59-61 view :rule_help

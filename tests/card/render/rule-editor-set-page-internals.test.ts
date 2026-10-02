@@ -6,7 +6,7 @@
 //    href from the url_key (card-mod-format set/all/base.rb:35-44 link_view
 //    `opts[:known] = card.known?` + links.rb:140-143
 //    add_known_or_wanted_class + cardname variants.rb #url_key href form).
-//    The pre-lane engine emitted `wanted-card` and the authored-name href
+//    The pre-fix engine emitted `wanted-card` and the authored-name href
 //    for EVERY item; the raw oracle pins `known-card` + url_key href for
 //    items that resolve to cards (e.g. *all+*delete bar_right:
 //    `<a class="known-card" href="/Administrator">`).
@@ -184,7 +184,7 @@ describe("category accordion group lis", () => {
     expect(html).toContain('_count badge bg-secondary ms-3">4</span>');
     // The editing group must NOT expose the restricted settings for *all.
     // (Slot-id membership is the pin; the id spelling carries the name
-    // key's singularization, which is the name-key lane's surface, so the
+    // key's singularization, which is the name-key port's surface, so the
     // content_options id is matched tolerantly.)
     const editingStart = html.indexOf("card-Xall-editing-collapse-id");
     const editingBody = html.slice(editingStart, html.indexOf("card-Xall-event-collapse-id"));

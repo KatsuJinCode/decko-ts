@@ -1,12 +1,12 @@
 // raw-corpus-searchfix-prototype-probe.test.ts -- the p22 search-regression-fix
-// lane's mechanism probe. Boots the engine over the raw ground-truth corpus,
+// port's mechanism probe. Boots the engine over the raw ground-truth corpus,
 // renders the Search page FIRST (no isolated renders before it -- the pass-13
 // first-render-wins lesson, job-1790820154566 / job-1790822005721), THEN
 // introspects, for the six *content options rule bars on that page, which leg
 // of ruleSetPrototypeTypeCode fails when the `_category-recent` class is
 // dropped: trunk warmth, set-card id, the warm-map collectRules walk, or the
 // *default rule's presence in the PRELOADED default-rule universe that
-// newCardDefaultType reads (the Ruby-faithful cold resolution this lane
+// newCardDefaultType reads (the Ruby-faithful cold resolution this suite
 // installs as the fallback).
 //
 // Report-only (never asserts page parity, never re-runs a grader): records to
@@ -91,7 +91,7 @@ describe("raw-corpus searchfix prototype leg probe (Search page)", () => {
         const collected = setCard !== undefined ? engine.collectRules(setCard) : [];
         const defaultRuleName = `${item.setName}+*default`;
         const defaultWarm = engine.fetchRenderCard(defaultRuleName);
-        // The Ruby-faithful cold walk this lane installs as fallback:
+        // The Ruby-faithful cold walk this suite installs as fallback:
         // ensure_type over the preloaded *default universe.
         const cold = engine.newCardDefaultType(DeckoName.parse(item.prototypeName));
         const coldCode = cold !== undefined ? engine.peekCodenameById(cold.typeId) : undefined;

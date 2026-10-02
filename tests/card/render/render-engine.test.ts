@@ -277,14 +277,14 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // never a deck rule, so render.ts's fold composition no longer
     // appends the *default html view universe statement - one fewer
     // prelude statement at every depth (9/10/12/16 here).
-    // The head read-set (2026-09-28 async-view-handle lane) added one
+    // The head read-set (2026-09-28 async-view-handle) added one
     // back at every depth (10/11/13/17) — the same prelude BATCH, so the
     // round-trip line above is untouched at 2/3/5/9. card-mod-format's
     // head views read deck-level setting cards that no reference closure
     // can reach; the standalone form (measured before the fold) cost a
     // round trip too, which is why it rides the batch.
     // 2026-09-30 pass-20 integration re-pin (10/11/13/17 -> 12/13/15/19):
-    // the p20-email lane's junction-priming prelude batch (the email
+    // the p20-email port's junction-priming prelude batch (the email
     // field-anchor prelude statement + the +*test context junction priming
     // — the SAME prelude batch that moved junction-depth-closure.test.ts to
     // 15/14 at the email tip) adds two folded statements per render at

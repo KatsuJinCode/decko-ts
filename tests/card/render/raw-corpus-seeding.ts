@@ -197,7 +197,7 @@ export async function createRawStructureSeededStorage(
     ...new Set(ruleRows.map((r) => r.left_id).filter((x): x is number => x !== null)),
   ];
 
-  // *update rule universe (replays-adjudication lane, 2026-10-01): the
+  // *update rule universe (replays-adjudication, 2026-10-01): the
   // admin-configs machinery reads the deck's *update rules exactly the way
   // the read-rule universe above reads the *read ones — Ruby's
   // responsible-role walk (all/admin.rb:32-38 scoping_rule_card) resolves
@@ -402,7 +402,7 @@ export async function createRawStructureSeededStorage(
   };
   closeClosure();
 
-  // IdList item-line walk (raise-leadview lane, 2026-09-29): List-type
+  // IdList item-line walk (raise-leadview, 2026-09-29): List-type
   // cards store `~id` item LINES in content (card-mod-list
   // set/abstract/id_list.rb storage), and the corpus's <Role>+*members rows
   // name TRASHED member rows (861 "ANON-…", 10134 "…*trash") that carry NO

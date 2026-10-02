@@ -1,8 +1,8 @@
 // The card-title span renders RELATIVE to the page's name context
 // (context_names.rb): inside the "Aikido 2" page, the +management /
 // +overview slot titles display as "+management" / "+overview", not the
-// full junction. The operator's live-vs-served comparison (round: nitpicks
-// lane) flagged exactly this on /Aikido_2 and /Archetypal_Psychology.
+// full junction. The live-vs-served comparison (round: nitpicks
+// round) flagged exactly this on /Aikido_2 and /Archetypal_Psychology.
 //
 // Mechanism (port of card-mod-format + context_names.rb):
 // - html/views.rb:55-62 view :titled wraps its header in
