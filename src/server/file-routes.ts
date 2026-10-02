@@ -27,8 +27,8 @@
 // Existing file/image-typed card -> attachment UPDATE; missing mark ->
 // card CREATE typed file/image (type from the form's `type` field, else
 // the param name, else the sniffed content type). Ruby's own grammar is
-// POST /:mark => card#create; that surface belongs to the write-routes
-// lane and is deliberately not claimed here.
+// POST /:mark => card#create; that surface belongs to
+// src/server/write-routes.ts and is deliberately not claimed here.
 //
 // Named remainder (documented, not silently missing): per-request READ
 // permission on file GETs when the host provides no canReadCard; cloud/

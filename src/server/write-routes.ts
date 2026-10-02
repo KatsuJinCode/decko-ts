@@ -29,7 +29,7 @@
 // grammar (params[:card][:subcards]) is implemented ONLY where the captured
 // real session pinned it: the *signin update (the :signin event, below).
 //
-// Multipart uploads (the uploads2 lane): the edit form's file_chooser
+// Multipart uploads: the edit form's file_chooser
 // posts multipart/form-data to Ruby's own grammar — POST (PUT/PATCH)
 // /update/<mark> with a card[<mount>] file part. The multipart body is
 // parsed with Rack 2.2.24's semantics (src/server/multipart-form.ts, gem
@@ -67,7 +67,7 @@
 // verify_authenticity_token (request_forgery_protection.rb), so it is
 // equally unarmed: a cross-origin form post is not a live failure either.
 // This reverses the earlier TS posture (HMAC csrfTokenFor + 422), which
-// modeled "the Rails default" instead of the live app; the save-lane pins
+// modeled "the Rails default" instead of the live app; the save-path pins
 // that enforced it were updated to the live shapes.
 //
 // Error shapes — card-1.110.0 lib/card/error.rb status codes:

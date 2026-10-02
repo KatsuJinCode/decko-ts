@@ -20,7 +20,7 @@
 //   Per the PARITY RULE: with DECKO_FIRST_RUN unset this module answers
 //   NOTHING — handleFirstRunRequest returns null and the host falls through to
 //   its own 404, byte-identical to today's surface. No existing route, view,
-//   card name or config is touched by this lane.
+//   card name or config is touched.
 //
 // MOUNTING
 //   The host wires one call. Nothing here imports a host, opens a port, or
@@ -39,7 +39,7 @@
 //   straight through to the action gates with no csrf meta tag in any captured
 //   page. This surface matches that rather than inventing a token the live
 //   deck does not have, and rather than re-deriving Ruby's default posture
-//   that the write-path lane already corrected.
+//   that src/server/write-routes.ts already corrected.
 //
 //   The window is the rate limit, and it is a structural one rather than a
 //   time-boxed one: the census is re-counted on every request

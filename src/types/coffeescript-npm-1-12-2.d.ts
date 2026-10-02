@@ -1,5 +1,5 @@
-// Type declaration for the `coffeescript` npm package pinned at 1.12.2 (the
-// compile-engines lane's disclosed dependency add). The 1.12.2 package
+// Type declaration for the `coffeescript` npm package pinned at 1.12.2.
+// The 1.12.2 package
 // predates TypeScript and ships no types; it is a CommonJS module whose
 // export is the CoffeeScript compiler object. Only the surface the compile
 // engines use is declared.
