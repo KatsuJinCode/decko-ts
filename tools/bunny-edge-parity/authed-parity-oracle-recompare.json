@@ -1,0 +1,83 @@
+{
+  "target": "https://decko-edge-wm2um.bunny.run",
+  "release_id": 1125468,
+  "script_id": 93646,
+  "account": "trial",
+  "stage": "pass 2 — oracle recompare with the corrected shell-strip anchor",
+  "sampled_at": "2026-10-02T22:31:32.962Z",
+  "requests_issued_this_stage": 10,
+  "cumulative_requests_this_lane": 129,
+  "rows": [
+    {
+      "path": "/*signin/title",
+      "name": "*signin",
+      "view": "title",
+      "anon_status": 200,
+      "authed_status": 200,
+      "edge_shell_bytes": 55,
+      "oracle_bytes": 55,
+      "anon_equals_authed": true,
+      "oracle_verdict_pass1": "shell-extraction-failed",
+      "oracle_verdict_pass2": "identical",
+      "first_diff": null
+    },
+    {
+      "path": "/RichText",
+      "name": "RichText",
+      "view": "open",
+      "anon_status": 200,
+      "authed_status": 200,
+      "edge_shell_bytes": 3438,
+      "oracle_bytes": 59533,
+      "anon_equals_authed": true,
+      "oracle_verdict_pass1": "divergent",
+      "oracle_verdict_pass2": "divergent",
+      "first_diff": {
+        "offset": 3400,
+        "edge": "ass=\"card-title\" title=\"Add RichText\">Add RichText</span></a></p>\n<p></p>\n</div>\n</div>\n</div>\n</div>\n</div>",
+        "oracle": "ass=\"card-title\" title=\"Add RichText\">Add RichText</span></a></p>\n<p><div id=\"rich_text-Xtype-by_name-content-view\" class=\"card-slot content",
+        "edge_len": 3438,
+        "oracle_len": 59533
+      }
+    },
+    {
+      "path": "/Brandon Williamscraig",
+      "name": "Brandon Williamscraig",
+      "view": "open",
+      "anon_status": 200,
+      "authed_status": 200,
+      "edge_shell_bytes": 5247,
+      "oracle_bytes": 5247,
+      "anon_equals_authed": true,
+      "oracle_verdict_pass1": "divergent",
+      "oracle_verdict_pass2": "identical",
+      "first_diff": null
+    },
+    {
+      "path": "/*all/content",
+      "name": "*all",
+      "view": "content",
+      "anon_status": 200,
+      "authed_status": 200,
+      "edge_shell_bytes": 54734,
+      "oracle_bytes": 54734,
+      "anon_equals_authed": true,
+      "oracle_verdict_pass1": "divergent",
+      "oracle_verdict_pass2": "identical",
+      "first_diff": null
+    },
+    {
+      "path": "/*all",
+      "name": "*all",
+      "view": "open",
+      "anon_status": 200,
+      "authed_status": 200,
+      "edge_shell_bytes": 56828,
+      "oracle_bytes": 56828,
+      "anon_equals_authed": true,
+      "oracle_verdict_pass1": "divergent",
+      "oracle_verdict_pass2": "identical",
+      "first_diff": null
+    }
+  ]
+}
