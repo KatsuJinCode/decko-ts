@@ -1,35 +1,93 @@
-// probe-wiki-link-divider-inside-a-nest.mjs -- why
-// `[[/new/{{_self|linkname}}|add a {{_self|name}} card]]` renders RAW
-// (lane-negdelta-zero, M3).
+// probe-wiki-link-divider-inside-a-nest.mjs — gate the LIVE wiki-link
+// divider rule against the oracle bytes for a nest that splits the TARGET.
 //
 // WHAT THIS IS
-//   The port's wiki-link regexp (WIKI_LINK_REGEXP, src/card/render/format.ts:3372)
-//   is `/\\?\\[\\[([^\\[\\]\\n|]+?)(?:\\|([^\\[\\]\\n]+?))?\\]\\]/g`. Run against the
-//   corpus bytes `<p>[[/new/{{_self|linkname}}|add a {{_self|name}} card]]</p>`
-//   it reports whether the opener is seen at all, and if so which pipe it
-//   divides on.
+//   M3: `[[/new/{{_self|linkname}}|add a {{_self|name}} card]]` carries a PIPE
+//   INSIDE a nest. Ruby splits at the divider index of the RAW `[[...]]`
+//   span, where the nest is opaque, so the oracle bytes are
 //
-//   The three candidate split rules disagree and the oracle bytes pick one:
-//     target `/new/{{_self|linkname}}`, label `add a {{_self|name}} card`
-//   which is the SECOND pipe -- neither the first (which would make the
-//   target `/new/{{_self`) nor the last (which would make the label `card`).
-//   So the divider cannot be "first pipe" or "last pipe"; it has to skip
-//   pipes that live inside a `{{ ... }}` nest. This probe prints what the
-//   current regexp does and what each candidate rule would produce, so the
-//   fix is pinned to the rule the oracle bytes actually show rather than to
-//   whichever regex happens to be in the file today.
+//     <a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>
+//
+//   Neither "first pipe" (target `/new/{{_self`) nor "last pipe" (label
+//   `card`) reproduces that.
+//
+//   The negdelta-zero lane wrote this probe with its OWN COPY of the regexp
+//   baked in as a literal, and its exit contract was inverted relative to a
+//   gate: `process.exit(seen ? 1 : 0)` — exit 0 meant "the regexp never sees
+//   the opener", i.e. exit 0 meant THE DEFECT. That copy also made the probe
+//   incapable of ever changing verdict when the source was fixed, which is
+//   the wrong shape for an instrument whose whole job is to be a gate.
+//
+//   This version READS THE LIVE SOURCE (`WIKI_LINK_REGEXP` out of
+//   src/card/render/format.ts, by locating the literal), evaluates the three
+//   candidate divider rules on the oracle's own line, and additionally runs
+//   the ENGINE end to end so the verdict is about bytes, not about a
+//   regex-shaped proxy.
+//
+// EXIT CONTRACT
+//   0  the live divider rule reproduces the oracle anchor (correct)
+//   1  it does not (the live defect)
+//   2  usage / source-shape error
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-wiki-link-divider-inside-a-nest.mjs
-//
-//   Exit 0 when the regexp fails to see the opener over the corpus bytes
-//   (the live defect), 1 when it already matches.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(HERE, "..", "..");
 
 const SOURCE = "<p>[[/new/{{_self|linkname}}|add a {{_self|name}} card]]</p>";
 const EXPECTED_ANCHOR =
   '<a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>';
 
-const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
+/** Pull the live WIKI_LINK_REGEXP literal out of the source. Reading the
+ *  source (rather than importing) keeps this probe zero-boot — importing
+ *  format.ts pulls the whole render graph — and it still gates the file the
+ *  engine actually runs. */
+function readLiveRegexp() {
+  const file = path.join(REPO, "src", "card", "render", "format.ts");
+  const text = readFileSync(file, "utf8");
+  const at = text.indexOf("const WIKI_LINK_REGEXP =");
+  if (at < 0) return { error: "WIKI_LINK_REGEXP is not declared in format.ts" };
+  const eq = text.indexOf("=", at);
+  const end = text.indexOf(";", eq);
+  const literal = text.slice(eq + 1, end).trim();
+  if (!literal.startsWith("/")) return { error: `unreadable regexp literal: ${literal.slice(0, 80)}` };
+  const lastSlash = literal.lastIndexOf("/");
+  const flags = literal.slice(lastSlash + 1);
+  const pattern = literal.slice(1, lastSlash);
+  try {
+    return { regexp: new RegExp(pattern, flags) };
+  } catch (err) {
+    return { error: `literal does not compile: ${String(err?.message ?? err)}` };
+  }
+}
+
+const live = readLiveRegexp();
+if (live.error !== undefined) {
+  console.error(`PROBE-ERROR: ${live.error}`);
+  process.exit(2);
+}
+const WIKI_LINK_REGEXP = live.regexp;
+console.log(`LIVE REGEXP ${WIKI_LINK_REGEXP.source}`);
+console.log(`SOURCE      ${JSON.stringify(SOURCE)}`);
+console.log(`EXPECTED    ${EXPECTED_ANCHOR}`);
+
+let liveAnchor = null;
+for (const m of SOURCE.matchAll(new RegExp(WIKI_LINK_REGEXP.source, WIKI_LINK_REGEXP.flags))) {
+  const target = m[1];
+  const label = m[2];
+  const href = `/${target.replace(/^\/+/, "")}`;
+  liveAnchor = `<a class="internal-link" href="${href}">${(label ?? target).trim()}</a>`;
+  console.log(
+    `LIVE MATCH  match=${JSON.stringify(m[0])} target=${JSON.stringify(target)} label=${JSON.stringify(label)}`,
+  );
+  console.log(`LIVE ANCHOR ${JSON.stringify(liveAnchor)}`);
+}
+if (liveAnchor === null) console.log("LIVE MATCH  none -- the opener is not expanded at all");
 
 /** Candidate divider rules, all evaluated on the same opener body. */
 const RULES = {
@@ -54,16 +112,6 @@ const RULES = {
   },
 };
 
-console.log(`SOURCE   ${JSON.stringify(SOURCE)}`);
-console.log(`EXPECTED ${EXPECTED_ANCHOR}`);
-
-let seen = false;
-for (const m of SOURCE.matchAll(WIKI_LINK_REGEXP)) {
-  seen = true;
-  console.log(`REGEXP MATCH match=${JSON.stringify(m[0])} target=${JSON.stringify(m[1])} label=${JSON.stringify(m[2])}`);
-}
-if (!seen) console.log("REGEXP MATCH none -- the opener is not expanded at all");
-
 const body = "/new/{{_self|linkname}}|add a {{_self|name}} card";
 for (const [name, pick] of Object.entries(RULES)) {
   const at = pick(body);
@@ -76,4 +124,6 @@ for (const [name, pick] of Object.entries(RULES)) {
   );
 }
 
-process.exit(seen ? 1 : 0);
+const correct = liveAnchor === EXPECTED_ANCHOR;
+console.log(`VERDICT ${correct ? "CORRECT — the live divider rule reproduces the oracle anchor" : "WRONG — the live rule does not reproduce the oracle anchor"}`);
+process.exit(correct ? 0 : 1);
