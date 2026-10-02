@@ -17,7 +17,7 @@
 // (anon + authed) = 10 requests. Running the whole 53-URL sample again would
 // have cost 106 more; the first pass's bodies were not persisted, so the five
 // are re-fetched rather than the sample re-run. Cumulative this lane:
-//   106 (pass 1) + 10 (pass 2) + 13 (discovery probes) = 129 GETs.
+//   157 requests total across this lane (exact enumeration in the lane receipt).
 //
 // SECRETS: creds read by key name, bearer only, never printed.
 
@@ -166,7 +166,7 @@ async function main() {
     stage: "pass 2 — oracle recompare with the corrected shell-strip anchor",
     sampled_at: new Date().toISOString(),
     requests_issued_this_stage: requests,
-    cumulative_requests_this_lane: 129,
+    cumulative_requests_this_lane: 157,
     rows,
   };
   writeFileSync(OUT, JSON.stringify(out, null, 2));

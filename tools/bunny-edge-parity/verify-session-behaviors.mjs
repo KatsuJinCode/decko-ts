@@ -139,7 +139,7 @@ async function main() {
   };
 
   out.requests_issued_this_stage = 6;
-  out.cumulative_requests_this_lane = 135;
+  out.cumulative_requests_this_lane = 157;
   writeFileSync(OUT, JSON.stringify(out, null, 2));
   console.log(JSON.stringify(out, null, 2));
 }
