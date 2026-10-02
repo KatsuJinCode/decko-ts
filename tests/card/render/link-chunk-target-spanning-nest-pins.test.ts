@@ -27,7 +27,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { RenderFormat } from "../../../src/card/render/format.js";
+import { RenderFormat, expandWikiLinks, expandContentLinks } from "../../../src/card/render/format.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { setDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
@@ -116,5 +116,65 @@ describe("link chunk whose nest splits the TARGET (link.rb:14 full_re)", () => {
     } finally {
       storage.close();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The SECOND half of the same mechanism: WIKI_LINK_REGEXP's target atom.
+//
+// processContent's piece walker above is the label/target SPLIT path. The
+// plain pass is expandWikiLinks, whose target class `[^\[\]\n|]` splits at
+// the first pipe EVEN WHEN THAT PIPE BELONGS TO A NEST — on the oracle's own
+// source line it produced target `/new/{{_self`, label
+// `linkname}}|add a {{_self|name}} card` (measured before the atom change).
+//
+// The atom is `(?:[^\[\]\n|{]|\{\{[^{}]*\}\})+?`. The `{` EXCLUSION is what
+// makes it bite: with `{` left in the literal arm the lazy quantifier reaches
+// `/new/{{_self` char by char and the change is a no-op (new and old agreed
+// on 9/9 cases when measured that way).
+// ---------------------------------------------------------------------------
+describe("WIKI_LINK_REGEXP target atom admits a whole nest", () => {
+  it("keeps a nest's own pipe inside the target", () => {
+    const html = expandContentLinks(
+      "[[/new/{{_self|linkname}}|add a {{_self|name}} card]]",
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(html).toBe(
+      '<a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>',
+    );
+  });
+
+  it("leaves every ordinary wiki link byte-identical", () => {
+    // The blast-radius contract. Each of these matched the OLD class with the
+    // same target and label, and must still.
+    const cases: Array<[string, string]> = [
+      // `Anyone` and `A` are name_standardish, so the wanted href carries no
+      // ?card[name]= suffix (path.rb:84-107).
+      ["[[Anyone]]", '<a class="wanted-card" href="/Anyone"><span class="card-title" title="Anyone">Anyone</span></a>'],
+      ["[[A|B]]", '<a class="wanted-card" href="/A"><span class="card-title" title="B">B</span></a>'],
+      ["[[A|B|C]]", '<a class="wanted-card" href="/A"><span class="card-title" title="B|C">B|C</span></a>'],
+      // The label keeps objectify's leading space OFF — the nest arm already
+      // carries it into the target's trailing `|\s*`.
+      ["[[/ | {{*logo}}]]", '<a class="internal-link" href="/">{{*logo}}</a>'],
+    ];
+    for (const [source, expected] of cases) {
+      expect(expandContentLinks(source, undefined, undefined, undefined)).toBe(expected);
+    }
+  });
+
+  it("still renders the oracle's escaped-bracket and quote-escape pins", () => {
+    expect(expandWikiLinks('[[Nicole Le\'Strix]]', undefined, undefined, undefined)).toContain(
+      'title="Nicole Le\'Strix"',
+    );
+    const tagged = expandWikiLinks(
+      '[[Process Arts+*referred_to_by|Pages tagged with "Process Arts"]]',
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(tagged).toContain('title="Pages tagged with &quot;Process Arts&quot;"');
+    expect(tagged).toContain('>Pages tagged with "Process Arts"</span>');
   });
 });

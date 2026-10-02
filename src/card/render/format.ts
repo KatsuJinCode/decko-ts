@@ -3489,8 +3489,27 @@ export function wrappedTitleInner(title: string): string {
  *  RenderFormat#renderLinkChunk instead): `[[Target]]` and
  *  `[[Target|label]]` become the Link chunk's anchor bytes. Backslash
  *  escaping (`\[\[`) is honored so a literal `[[` survives when the author
- *  means the markdown brackets and not a card link. */
-const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
+ *  means the markdown brackets and not a card link.
+ *
+ *  THE TARGET ATOM ADMITS A WHOLE NEST. `[[/new/{{_self|linkname}}|label]]`
+ *  carries a PIPE INSIDE the target, and a bare `[^…|]` class split at that
+ *  pipe: target `/new/{{_self`, label `linkname}}|add a {{_self|name}} card`
+ *  (measured on the oracle's own source line). Ruby splits at the divider
+ *  index of the RAW `[[...]]` span, where the nest is opaque — so the atom is
+ *  `(?:[^\[\]\n|{]|\{\{[^{}]*\}\})+?`: any ordinary char, or a whole `{{…}}`
+ *  consumed as one unit.
+ *
+ *  The `{` EXCLUSION is load-bearing, not cosmetic. With `{` left in the
+ *  literal arm the lazy quantifier never reaches the nest arm — the shortest
+ *  target `/new/{{_self` is reachable char by char, matches, and the change is
+ *  a no-op (measured: new and old agreed on 9/9 cases). Excluding `{` forces
+ *  `{{` down the nest arm, so the nest's own `|` is inside the target. The
+ *  two arms stay disjoint on their first character, so there is no ambiguous
+ *  path. A MALFORMED nest (`[[a{{b|c]]`, no closing braces) now fails to match
+ *  where the old class matched a truncated target — the old match was itself
+ *  the bug. */
+const WIKI_LINK_REGEXP =
+  /\\?\[\[((?:[^\[\]\n|{]|\{\{[^{}]*\}\})+?)(?:\|([^\[\]\n]+?))?\]\]/g;
 
 // card-mod-content lib/card/content/chunk/uri.rb -- the THREE URI chunk
 // classes (Uri / HostUri / EmailUri) ride the DEFAULT chunk list
