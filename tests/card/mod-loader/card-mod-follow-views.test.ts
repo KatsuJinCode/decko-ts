@@ -1,6 +1,6 @@
 // The follow-mod view tests: the follow views whose bodies the lane-follow
 // port renders through the follow-rule walk + the form shapes + the actor
-// session seam. A/B through the mod loader, per the established lane shape.
+// session seam. A/B through the mod loader, per the established suite shape.
 //
 // All bytes are RENDERED-UNPINNED: the capture corpus carries NO Ruby-oracle
 // bytes for any follow view name (verified: 0 hits for follow_status/
@@ -194,7 +194,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
   it(":edit_buttons on *follow defaults is UNREACHABLE in Ruby too (self/follow_defaults.rb:49-55 — the module constant vs the singularized self-anchor token)", async () => {
     await loadMod();
     const s = storage!;
-    // mm-I-R lane: this pin was RED and is now a NEGATIVE pin, because
+    // mm-I-R: this pin was RED and is now a NEGATIVE pin, because
     // Ruby cannot reach the view either — the set module's constant and
     // the card's self-anchor token never meet.
     //

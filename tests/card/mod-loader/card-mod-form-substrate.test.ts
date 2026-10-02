@@ -1,4 +1,4 @@
-// The form-machinery substrate lane (2026-09-29): the shared card_form /
+// The form-machinery substrate suite (2026-09-29): the shared card_form /
 // formgroup / button substrate extracted for cross-mod use, and the views it
 // unblocks:
 //
@@ -35,7 +35,7 @@
 // body reads nothing but the voo).
 //
 // RED-FIRST: this file was written before the port and run against the
-// pristine d6b1957 tree (the lane's base worktree): every WITH-the-mod byte
+// pristine d6b1957 tree (the base worktree): every WITH-the-mod byte
 // test failed there with UnsupportedViewError (renders-missing).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -121,7 +121,7 @@ beforeAll(async () => {
   const s = storage;
 
   // the set-pattern anchors the rule cards' set keys walk (the rules-views
-  // lane's seed pattern): *all, the type cards, the setting cards
+  // suite's seed pattern): *all, the type cards, the setting cards
   await seedCard(s, { id: 7, name: "*all", codename: "all", typeId: 5 });
   await seedCard(s, { id: 5, name: "Set", codename: "set" });
   await seedCard(s, { id: 3, name: "Setting", codename: "setting" });
@@ -268,7 +268,7 @@ describe("card-mod form substrate (WITH mods, oracle-pinned)", () => {
 // ---------------------------------------------------------------------------
 // the create_form shell (gem-source pin - the oracle deck has no substrate-only
 // create fixture; the shell's byte shapes are the Rails form_for create arm,
-// corroborated by the tinymce lane's captured new_image create shell)
+// corroborated by the tinymce suite's captured new_image create shell)
 // ---------------------------------------------------------------------------
 
 import type { RenderFormat, Voo, ViewContext } from "../../../src/card/render/format.js";

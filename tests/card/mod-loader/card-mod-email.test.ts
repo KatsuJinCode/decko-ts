@@ -114,7 +114,7 @@ describe("card-mod-email through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :compact_missing; the email_text format renders the empty string (set/all/email_text.rb:6-8)", async () => {
     const s = storage!;
-    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the
+    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the
     // empty-string body lives in the email_text FORMAT block
     // (email_text.rb:5-8) - EmailTextFormat's method table only. This
     // suite loads NO format mod (all/error.rb's html :compact_missing is
@@ -135,13 +135,13 @@ describe("card-mod-email through the mod loader (A/B)", () => {
   it("WITH the mod: the html format REJECTS :last_action; the email_text format renders the verb (set/all/email_text.rb:10-12)", async () => {
     const s = storage!;
     // the body is the real `_render_last_action_verb` delegation
-    // (email-text-remainders lane, 2026-10-01): the verb dispatch answers
+    // (email-text-remainders, 2026-10-01): the verb dispatch answers
     // the base-format notify verb - card-mod-follow set/all/notify/
     // base_views.rb:44-46's `'edite'd` fallback -> "edited" (render path
     // reads no act rows; the engine's compiled-in base verb entry carries
     // it here where the follow mod is not loaded).
     //
-    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): Ruby
+    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): Ruby
     // files this all-set registration under EmailTextFormat
     // (set/format.rb:137-139 keyed on the class define_on_format
     // resolved; registrar.rb:79-84 mixes it into that class only), so an

@@ -1,4 +1,4 @@
-// The form-substrate-2 lane (2026-09-29): the rule_form family's OPEN
+// The form-substrate-2 suite (2026-09-29): the rule_form family's OPEN
 // form-parity arms closed against live oracle bytes - the two arms the
 // landed receipts (rules-views-port-3.md, rules-cap-lane.md) left named:
 //
@@ -30,7 +30,7 @@
 // TIME.
 //
 // REGISTRATION SHAPE: the composition lives in
-// mod-form-substrate-rule-form.ts EXPORTED-UNREGISTERED (the lane-rules-views3
+// mod-form-substrate-rule-form.ts EXPORTED-UNREGISTERED (the rules-views3
 // tree owns the :rule_form/:modal_rule registrations and their own pins; a
 // second registration would collide at the merge). These tests bind the
 // exported bodies through a TEST-LOCAL manifest with the gem's configs and
@@ -41,7 +41,7 @@
 // consuming tree registers it).
 //
 // RED-FIRST: this file was written before the composition existed and run
-// against the pristine b49cb96 tree (the lane's base worktree): the
+// against the pristine b49cb96 tree (the base worktree): the
 // composition tests failed there on the missing module/exports while the
 // A/B guards, the no-write proof and the helper-fact cross-checks passed.
 
@@ -242,7 +242,7 @@ describe("card-mod form substrate 2 (WITH the composition, oracle-pinned)", () =
     // :rule_form bound through the gem's declaration (rule_form.rb:2 -
     // cache: :never, unknown: true); the disclosed editor seam injects the
     // capture's own section bytes per surface (see the module doc - a
-    // registering lane on the merged tree drops the injection and the
+    // registering port on the merged tree drops the injection and the
     // composition dispatches renderView natively). prototypeTypeId = the
     // seeded RichText row (deck data - the walk's *type candidate).
     const ruleFormBound: ModViewDefinition = {

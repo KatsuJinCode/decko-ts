@@ -222,7 +222,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
 
   // card-mod-format set/all/base.rb:28-29 `view(:url) { card_url
   // _render_linkname }` / `view(:id_url) { card_url "~#{card.id}" }`.
-  // BOTH SHAPES, ONE HELPER (fix-d1-url-origin lane, 2026-10-01). The
+  // BOTH SHAPES, ONE HELPER (fix-d1-url-origin, 2026-10-01). The
   // earlier "INSTRUMENT ADJUDICATION" (surfaces-strand-fold fold) treated
   // the two oracle surfaces as a conflict and picked the page lane: this
   // raw-deck (view-lane) oracle and the PAGE-lane oracle DO disagree on
@@ -269,7 +269,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
     // `https://culturesmith.com/~21783` (origin present) —
     // env/location.rb:6-21, serializable.rb:20-22. No corpus bytes reach
     // :id_url on either lane; the pins are gem-derived (the fixture-less
-    // convention, small-engine-items lane 2026-10-01) and exist to pin
+    // convention, small-engine-items 2026-10-01) and exist to pin
     // both sides of the surface seam.
     expect(await storage!.engine.render("verification email", "id_url")).toBe("/~21783");
   });
@@ -283,7 +283,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
   // ---------------------------------------------------------------------
   // The four full-view pins, RED for one named missing engine feature.
   //
-  // MECHANISM (gem source, read this lane):
+  // MECHANISM (gem source, read directly):
   //   card-mod-email-0.20.0/set/abstract/test_context.rb:1-13
   //     format :html do
   //       view :core, cache: :never do
@@ -329,7 +329,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
   for (const [id, blocker, unwrapped] of [
     // UNWRAPPED at the surfaces-strand-fold fold (2026-10-01): the account
     // verify/reset flows and their helper views ARE ported at the tip
-    // (lane-reset-flows e773abb and the p20-email merge are ancestors), and
+    // (reset-flows e773abb and the p20-email merge are ancestors), and
     // the renders below pass byte-exact against this oracle — the strand's
     // own unwrap signal ("the pins go red the moment that view is ported").
     [21784, "card-mod-account :verify_url / :token_days (denial: :blank) through the test context", true],
@@ -351,10 +351,10 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
     //     Ruby's oracle harness had the full deck and rendered `User`.
     //     Not hand-fixable: the fixture is captured ground truth with
     //     provenance; re-running the extractor is a capture run.
-    // (b) ORIGIN — CLOSED (fix-d1-url-origin lane, 2026-10-01): this
+    // (b) ORIGIN — CLOSED (fix-d1-url-origin, 2026-10-01): this
     //     view-lane oracle carries origin-absent `/User`
     //     (env/location.rb:19-21 + serializable.rb:20-22), and the port's
-    //     `card_url` is now surface-scoped, so on THIS lane it renders
+    //     `card_url` is now surface-scoped, so on THIS tree it renders
     //     `/User` too. The `{{_|url}}` arm no longer differs; only the
     //     capture arm above keeps this pin red.
     [21792, "capture: fixture omits the User context-item card (2693) so the seam answers no-context (byte 567, {{_|name}} arm)", false],
@@ -363,7 +363,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
     // (":url / :list_of_changes / :subedits through the test context") is
     // stale: :subedits renders the literal mark on BOTH sides, and
     // :list_of_changes is empty on both.
-    // ENGINE DELTA CLOSED (link-registration-drift lane, 2026-10-01): the
+    // ENGINE DELTA CLOSED (link-registration-drift, 2026-10-01): the
     // mod-level :link/:nav_link registrations now import the flat
     // render/views.ts bodies (linkAnchorBody — rooted href + card-title
     // span, the ONE Ruby shape: card-mod-format-0.20.0 set/all/base.rb:35
@@ -372,7 +372,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
     // {{_user|link}}) match the oracle bytes. First diff MOVED byte 631 ->
     // 737 (ours 1395 B vs oracle 1371 B = the 24-byte origin prefix), ONE
     // delta left:
-    // (a) ORIGIN — CLOSED (fix-d1-url-origin lane, 2026-10-01): the
+    // (a) ORIGIN — CLOSED (fix-d1-url-origin, 2026-10-01): the
     //     `{{_|url}}?view=history` arm was the last delta, and it was the
     //     unconditional origin — the view-lane oracle carries
     //     `/*changed_card?view=history` (env/location.rb:19-21 over an
@@ -408,7 +408,7 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
   // {{_|last_action_verb}} resolve against *changed card) — and the it.fails
   // above keeps tracking the ONE named residual: the adjudicated origin
   // prefix in the {{_|url}} arm (the mod-level :link anchor shape closed by
-  // the link-registration-drift lane, 2026-10-01).
+  // link-registration-drift, 2026-10-01).
   it("card 21796: the body resolves past :last_action_verb (ported), byte-exactness still tracked by the blocked pin above", async () => {
     await expect(storage!.engine.render(renderNameFor(21796), "content")).resolves.toContain(
       "email-html-link",

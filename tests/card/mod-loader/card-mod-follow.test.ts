@@ -117,7 +117,7 @@ beforeAll(async () => {
     id: 211,
     leftId: 210,
     rightId: 130, // +followers right
-    // typeId 2 (RichText), NOT 14 — mm-I-R lane, the same oracle-capture
+    // typeId 2 (RichText), NOT 14 — mm-I-R, the same oracle-capture
     // correction the help suite's guide/popover probes took. With the
     // Setting type (14 is this fixture's *setting cardtype card) the port
     // answered card-mod-rules' SETTING cardtype :core
@@ -135,7 +135,7 @@ beforeAll(async () => {
   });
 
   // Oracle User Probe (left side of the User+follow junction).
-  // seed-sweep lane 2026-09-29: the probe now CARRIES the User type its
+  // seed-sweep 2026-09-29: the probe now CARRIES the User type its
   // name claims - typeId 2 (RichText) left the type_plus_right/user/follow
   // set module unreachable (the TYPE_PLUS_RIGHT anchor resolves from the
   // LEFT card's type name, so a RichText-typed probe anchors
