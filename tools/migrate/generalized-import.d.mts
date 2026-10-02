@@ -1,24 +1,46 @@
 export function importFromSqlite(opts: {
   sourcePath: string;
-  outPath?: string;
-  driver?: unknown;
-  ddlPath?: string;
-  verify?: boolean;
-  determinism?: boolean;
-  modCompat?: boolean;
-  strict?: boolean;
-  [k: string]: unknown;
+  driver: unknown;
+  ddlPath: string;
+  tables?: string[];
+  batchSize?: number;
+  maxErrors?: number;
+  append?: boolean;
+  deriveKey?: (name: string) => string | undefined;
+  onProgress?: (rows: number, total: number) => void;
 }): Promise<{
-  allParity: boolean;
-  tables: Record<string, unknown>;
   counts: Record<string, number>;
-  schemaMappings: Record<string, string>;
-  skippedTables: Record<string, number>;
+  checksums: Record<
+    string,
+    { sum: number; count: number; minId: number | undefined; maxId: number | undefined }
+  >;
   warnings: string[];
-  errors: unknown[];
-  settingsInventory: {
-    tables: Array<{ source: string; count: number; sampleKeys?: string[]; [k: string]: unknown }>;
-    [k: string]: unknown;
+  skippedTables: Record<string, number>;
+  keyRepair: {
+    derived: number;
+    nullSimpleKeys: number;
+    lexResolved: number;
+    lexUnresolved: number;
   };
-  [k: string]: unknown;
+  errors: Array<{ table: string; rowId: number | null; message: string }>;
+  bytesRead: number;
+  rowsEmitted: number;
+  elapsedMs: number;
+  sourceInventory: Record<
+    string,
+    { columns: string[]; columnTypes: Record<string, string>; rowCount: number }
+  >;
+  settingsInventory: {
+    tables: Array<{
+      source: string;
+      count: number;
+      columns: string[];
+      keyColumn: string;
+      valueColumn: string;
+      sampleKeys: string[];
+    }>;
+    totalCount: number;
+    warning: string | undefined;
+  };
+  schemaMappings: Record<string, string>;
 }>;

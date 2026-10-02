@@ -1,7 +1,7 @@
 // The card-mod-permissions gem (card-mod-permissions-0.20.0), ported through
 // the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-permissions-0.20.0/): eleven set files (1 abstract, 2 all,
 // 4 right, 4 self), no lib/, no haml, no set_pattern/, 4 html views
 // declared (tools/compat-report/mod-compat-report.json
@@ -76,7 +76,7 @@
 //   en.yml:2) is consumed only by require_permission_rule!
 //   (permissions.rb:77-85), an event-path error with no TS surface.
 //
-// Events (this lane): the seven events the manifest's events[] surface can
+// Events: the seven events the manifest's events[] surface can
 // carry verbatim - file coordinates injected by the loader's SetLoader
 // phase (mod-loader.ts:283-293, the same path card-mod-list's not-ported
 // events would take). Ruby file -> manifest field map:
@@ -123,6 +123,7 @@ import type {
   DeckoModManifest,
   ModEngineHost,
   ModEventFn,
+  ModEventRegistration,
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -293,9 +294,12 @@ function checkBoxTag(
  *  "close_fullscreen", reorder -> "reorder", remove -> "close";
  *  the literal "add" name passes through). */
 function iconTag(materialName: string, extraClass?: string): string {
+  // the captured icon_tag bytes carry the extra class FIRST
+  // ("text-muted notranslate material-icons" - rules-views.json
+  // rule_form_card_editor)
   const cls = extraClass === undefined
     ? "notranslate material-icons"
-    : `notranslate material-icons ${extraClass}`;
+    : `${extraClass} notranslate material-icons`;
   return `<i class="${cls}">${materialName}</i>`;
 }
 
@@ -403,7 +407,17 @@ export function resetPermissionRolesForTests(): void {
  *  role's presence in item_names CHECKS the box AND CONSUMES the name, so
  *  the individuals list (the caller's remaining item_names) excludes
  *  grouped names. Returns the rows AND the consumed list's remainder
- *  (Ruby mutates item_names in place). */
+ *  (Ruby mutates item_names in place).
+ *
+ *  BYTE SHAPE (the oracle correction - pinned by
+ *  fixtures/captured/rules-views.json rule_form_card_editor, the *all+*read
+ *  rule form's perm editor): each row is the groups helper's <<-HTML heredoc
+ *  VERBATIM - the source indentation rides the emitted bytes (8/10/12
+ *  leading spaces; the box, the role name and the option link share ONE
+ *  line, permission.rb:55), the rows join "\n" (`* "\n"`), and the
+ *  option link is link_to_card's attribute order - target (caller opt),
+ *  class "known-card" (links.rb:140-144 add_known_or_wanted_class),
+ *  href appended LAST (links.rb:105). */
 function groupRowsAndRemainingItems(
   itemNames: string[],
 ): { rows: string; remainingItems: string[] } {
@@ -413,7 +427,7 @@ function groupRowsAndRemainingItems(
     if (checked !== -1) remaining.splice(checked, 1);
     const icon = iconTag("close_fullscreen", "text-muted");
     const optionLink =
-      `<a href="/${h(DeckoName.parse(option.name).urlKey)}" target="decko_role">${icon}</a>`;
+      `<a target="decko_role" class="known-card" href="/${h(DeckoName.parse(option.name).urlKey)}">${icon}</a>`;
     const box = checkBoxTag(
       `${option.key}-perm-checkbox`,
       option.name,
@@ -421,9 +435,11 @@ function groupRowsAndRemainingItems(
       "perm-checkbox-button",
     );
     return (
-      `<div class="form-check checkbox">` +
-      `<label class="form-check-label">${box} ${h(option.name)} ${optionLink}</label>` +
-      `</div>`
+      `        <div class="form-check checkbox">\n` +
+      `          <label class="form-check-label">\n` +
+      `            ${box} ${h(option.name)} ${optionLink}\n` +
+      `          </label>\n` +
+      `        </div>\n`
     );
   });
   return { rows: rows.join("\n"), remainingItems: remaining };
@@ -434,26 +450,41 @@ function groupRowsAndRemainingItems(
  *  class) of li.pointer-li.mb-1 rows (handle icon, pointer_item text
  *  field with data-options-card + placeholder, delete button), then the
  *  add-another button. placeholder_text is "" (card-mod-edit
- *  set/all/editor.rb:60-62). */
-function listInput(itemNames: string[], extraCssClass: string): string {
-  const rows = itemNames
+ *  set/all/editor.rb:60-62).
+ *
+ *  BYTE SHAPE (the oracle correction - pinned by
+ *  fixtures/captured/rules-views.json rule_form_card_editor): the haml
+ *  template's single-quoted attributes, one template line per emitted line;
+ *  `ul_classes = classy "pointer-list-editor", extra_class` where
+ *  extra_class is list_input's OWN "pointer-list-ul" literal (html_views.rb:
+ *  49-51) - the caller's extra_css_class: 'perm-indiv-ul' argument is DEAD
+ *  (list_input never reads it); items_for_input (html_views.rb:115-118)
+ *  maps an EMPTY list to [""] - one value-less row; the haml output ends
+ *  with a trailing newline (haml_to_html's template flush). */
+function listInput(itemNames: string[]): string {
+  const items = itemNames.length === 0 ? [""] : itemNames;
+  const rows = items
     .map(
       (item) =>
-        `<li class="pointer-li mb-1">` +
-        `<span class="input-group">` +
-        `<span class="input-group-text handle">${iconTag("reorder")}</span>` +
+        `<li class='pointer-li mb-1'>\n` +
+        `<span class='input-group'>\n` +
+        `<span class='input-group-text handle'>\n${iconTag("reorder")}\n</span>\n` +
         `<input type="text" name="pointer_item" id="pointer_item" value="${h(item)}" class="pointer-item-text form-control"` +
         (cardsWithAccountUrlKey === undefined ? "" : ` data-options-card="${h(cardsWithAccountUrlKey)}"`) +
-        ` placeholder="" />` +
-        `<button class="pointer-item-delete btn btn-secondary" type="button">${iconTag("close")}</button>` +
-        `</span></li>`,
+        ` placeholder="" />\n` +
+        `<button class='pointer-item-delete btn btn-secondary' type='button'>\n${iconTag("close")}\n</button>\n` +
+        `</span>\n` +
+        `</li>`,
     )
     .join("\n");
   return (
-    `<ul class="pointer-list-editor ${extraCssClass}">${rows}</ul>\n` +
-    `<span class="input-group">` +
-    `<button class="_pointer-item-add btn btn-secondary" type="submit">${iconTag("add")}add another</button>` +
-    `</span>`
+    `<ul class='pointer-list-editor pointer-list-ul'>\n${rows}\n</ul>\n` +
+    `<span class='input-group'>\n` +
+    `<button class='_pointer-item-add btn btn-secondary' type='submit'>\n` +
+    `${iconTag("add")}\n` +
+    `add another\n` +
+    `</button>\n` +
+    `</span>\n`
   );
 }
 
@@ -477,32 +508,46 @@ function inheritanceCheckbox(ctx: ViewContext): string {
 /** permission.rb:26-43 view :input: the hidden content field, then the
  *  perm editor (inheritance checkbox when inheritable, the Groups
  *  checkboxes, the Individuals list_input). item_names is EMPTY when
- *  inheriting (the rule inherits; nothing to list). The hidden content
- *  field is _render_hidden_content_field (card-mod-format
- *  set/all/content.rb:57-59: `hidden_field :content, class:
- *  "d0-card-content"` - Rails form_for emits
- *  input[type=hidden][name=card[content]]#card_content); that view is
- *  card-mod-format's (not in HTML_VIEWS), so the bytes are inlined here
- *  and cited rather than dispatching to an unregistered view. */
+ *  inheriting (the rule inherits; nothing to list).
+ *
+ *  BYTE SHAPE (the oracle correction - pinned by
+ *  fixtures/captured/rules-views.json rule_form_card_editor): the view body
+ *  is the %( ... ) literal VERBATIM - the source indentation rides the
+ *  bytes (6-space content lines, 8-space interpolation lines, the blank
+ *  line between the Groups and Individuals sections), the literal opens
+ *  with "\n" and ends with "\n    " (the closing paren line's indent).
+ *  The hidden content field is _render_hidden_content_field (card-mod-format
+ *  set/all/content.rb:57-59 `hidden_field :content, class: "d0-card-content"`)
+ *  through the bootstrap field-helper override (card-mod-bootstrap
+ *  set/all/bootstrap/form.rb:5-11 FIELD_HELPERS + 24-28 bootstrap_options:
+ *  " form-control" appended to the class) and Rails' Tags::HiddenField
+ *  (autocomplete="off" set BEFORE super) + Tags::TextField#render (options
+ *  stringify; size=nil dropped; type/value set; add_default_name_and_id
+ *  appends name/id LAST) - attr order class, autocomplete, type, value,
+ *  name, id. */
 const inputView: ViewFn = (ctx) => {
   assertPermissionRule(ctx, "input");
   const itemNames = inheriting(ctx) ? [] : rawItemStrings(ctx.fmt.card.dbContent);
   const hiddenField =
-    `<input type="hidden" name="card[content]" id="card_content" class="d0-card-content" value="${h(ctx.fmt.card.dbContent)}" />`;
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${h(ctx.fmt.card.dbContent)}" name="card[content]" id="card_content" />`;
   const { rows, remainingItems } = groupRowsAndRemainingItems(itemNames);
   return (
-    `${hiddenField}\n` +
-    `<div class="perm-editor">\n` +
-    inheritanceCheckbox(ctx) +
-    `\n<div class="perm-group perm-vals perm-section">\n` +
-    `<h5 class="text-muted">Groups</h5>\n` +
-    rows +
-    `\n</div>\n` +
-    `\n<div class="perm-indiv perm-vals perm-section">\n` +
-    `<h5 class="text-muted">Individuals</h5>\n` +
-    listInput(remainingItems, "perm-indiv-ul") +
-    `\n</div>\n` +
-    `</div>`
+    `\n      ${hiddenField}\n` +
+    `      <div class="perm-editor">\n` +
+    `        ${inheritanceCheckbox(ctx)}\n` +
+    `        <div class="perm-group perm-vals perm-section">\n` +
+    `          <h5 class="text-muted">Groups</h5>\n` +
+    `          ${rows}` +
+    `\n        </div>\n` +
+    `\n        <div class="perm-indiv perm-vals perm-section">\n` +
+    `          <h5 class="text-muted">Individuals</h5>\n` +
+    // Ruby's call passes extra_css_class: 'perm-indiv-ul', but list_input
+    // never reads it (html_views.rb:49 hardcodes "pointer-list-ul") - the
+    // argument is dead there, so the port's listInput takes none.
+    `          ${listInput(remainingItems)}` +
+    `\n        </div>\n` +
+    `      </div>\n` +
+    `    `
   );
 };
 
@@ -634,37 +679,14 @@ const checkPermissionsFn: ModEventFn = (_card, _host) => {
 
 /** A set-module entry that registers no views (the passive files:
  *  events carry separately into events[], see the headers below; setting
- *  opts are the same). The setPaths follow the gem tree verbatim.
- *
- *  The events shape mirrors ModEventRegistration (mod-manifest.ts:190-218):
- *  the full Ruby director stage list (validate + initialize included) and
- *  the `changed`/`after` fields the batch-1 blockers named as missing.
- *  Inline shape so the per-file declarations stay textually close to
- *  Ruby; the cast at registration time (mod-loader.ts:283-293) re-uses
- *  ModEventRegistration. */
-function passiveSetModule(setPath: string, events?: ReadonlyArray<{
-  event: string;
-  at?: "initialize" | "prepare_to_validate" | "validate" | "prepare_to_store" |
-    "store" | "finalize" | "integrate" | "after_integrate" |
-    "integrate_with_delay" | "extend" | "extend_with_delay";
-  on?: readonly ("create" | "update" | "delete" | "save")[];
-  when?: string;
-  changed?: readonly string[];
-  after?: string;
-  priority?: number;
-  fn: ModEventFn;
-}>): { setPath: string; events?: ReadonlyArray<{
-  event: string;
-  at?: "initialize" | "prepare_to_validate" | "validate" | "prepare_to_store" |
-    "store" | "finalize" | "integrate" | "after_integrate" |
-    "integrate_with_delay" | "extend" | "extend_with_delay";
-  on?: readonly ("create" | "update" | "delete" | "save")[];
-  when?: string;
-  changed?: readonly string[];
-  after?: string;
-  priority?: number;
-  fn: ModEventFn;
-}> } {
+ *  opts are the same). The setPaths follow the gem tree verbatim. The
+ *  events are plain ModEventRegistration records (mod-manifest.ts:232-276 -
+ *  the full Ruby director stage list and the `changed`/`after` fields);
+ *  the registration seam injects setPath + modName per file. */
+function setModuleEntry(
+  setPath: string,
+  events?: readonly ModEventRegistration[],
+): { setPath: string; events?: readonly ModEventRegistration[] } {
   return events === undefined ? { setPath } : { setPath, events };
 }
 
@@ -708,7 +730,7 @@ const cardModPermissions: DeckoModManifest = {
       //   - :check_permissions (`:validate`, lines 22-26) - :validate is
       //     the Ruby validate stage (card-1.110.0 director.rb:18), present
       //     in ModEventStage; recorded verbatim.
-      ...passiveSetModule("all/permissions", [
+      ...setModuleEntry("all/permissions", [
         {
           event: "set_read_rule",
           at: "store",
@@ -739,7 +761,7 @@ const cardModPermissions: DeckoModManifest = {
       // update_rule_cache (`:finalize, when: :rule?`, lines 4-6) +
       // expire_related (`:finalize`, lines 8-11). Both are recordable
       // verbatim.
-      ...passiveSetModule("all/update_read_rules", [
+      ...setModuleEntry("all/update_read_rules", [
         {
           event: "update_rule_cache",
           at: "finalize",
@@ -755,13 +777,28 @@ const cardModPermissions: DeckoModManifest = {
     },
     {
       // card-mod-permissions-0.20.0/set/right/create.rb - include_set
-      // Abstract::Permission + assign_type :list (the views ride the
-      // abstract module's registration above)
-      ...passiveSetModule("right/create"),
+      // Abstract::Permission + assign_type :list. Each module's html format
+      // includes Abstract::Permission::HtmlFormat, so the perm-editor
+      // :input body registers under EACH Right::<setting> shortname - the
+      // chained dispatch resolves :input HERE for every *X+<setting> rule
+      // card (the rule_form_card_editor chain;
+      // the abstract/permission registration above stays for the abstract
+      // home - the include-materialized shape).
+      ...setModuleEntry("right/create"),
+      formats: {
+        html: {
+          views: [{ view: "input", viewFn: inputView }],
+        },
+      },
     },
     {
       // card-mod-permissions-0.20.0/set/right/delete.rb - same shape
-      ...passiveSetModule("right/delete"),
+      ...setModuleEntry("right/delete"),
+      formats: {
+        html: {
+          views: [{ view: "input", viewFn: inputView }],
+        },
+      },
     },
     {
       // card-mod-permissions-0.20.0/set/right/read.rb - include +
@@ -771,7 +808,7 @@ const cardModPermissions: DeckoModManifest = {
       // All three clauses land: `after: "update_rule_cache"` is the
       // relative ordering recorded verbatim, `at: "finalize"` is the
       // stage, `when: "rule?"` is the named predicate.
-      ...passiveSetModule("right/read", [
+      ...setModuleEntry("right/read", [
         {
           event: "cascade_read_rule",
           at: "finalize",
@@ -780,10 +817,20 @@ const cardModPermissions: DeckoModManifest = {
           fn: cascadeReadRuleFn,
         },
       ]),
+      formats: {
+        html: {
+          views: [{ view: "input", viewFn: inputView }],
+        },
+      },
     },
     {
       // card-mod-permissions-0.20.0/set/right/update.rb - same shape
-      ...passiveSetModule("right/update"),
+      ...setModuleEntry("right/update"),
+      formats: {
+        html: {
+          views: [{ view: "input", viewFn: inputView }],
+        },
+      },
     },
     {
       // card-mod-permissions-0.20.0/set/self/create.rb

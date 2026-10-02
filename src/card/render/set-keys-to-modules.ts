@@ -78,7 +78,20 @@ function camelizeAnchor(anchor: string): string {
  * against the registered table, so the star-marker ambiguity resolves by
  * lookup, never by guessing: exact hit wins, then X-stripped combinations
  * (each "-"-separated anchor fragment may independently carry the marker).
- * Bounded: fragments^n variants, fragments <= 3 in practice. */
+ * Bounded: fragments^n variants, fragments <= 3 in practice.
+ *
+ * Multi-fragment anchors ALSO carry a "::"-joined variant: Ruby's
+ * TypePlusRight constant for a set/type_plus_right/set/style.rb file is
+ * Card::Set::TypePlusRight::Set+Style (the anchor's "+" survives in the
+ * Ruby constant) — and this conversion's "Set+Style" form matches that —
+ * but the registration table's shortnames come from the module PATH
+ * (mod-registrar.ts setModuleShortname: "type_plus_right/set/style" ->
+ * "TypePlusRight::Set::Style"), so the walker needs the path-join form as
+ * a candidate too. Without it every type_plus_right (and self) chain
+ * token misses its registered module (measured live in the cwwrite-seam
+ * lane: `*all+*style`'s chain for asset_output_url was EMPTY while the
+ * load report listed TypePlusRight::Set::Style). Candidate ORDER: exact
+ * Ruby-constant form first, path form after. */
 export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
   const first = safeKeyToModuleShortname(safeKey);
   const dashIdx = safeKey.indexOf("-");
@@ -90,6 +103,21 @@ export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
     f.startsWith("X") && f.length > 1 ? [f, f.slice(1)] : [f],
   );
   const out = new Set<string>([first]);
+  // The module-PATH join for the EXACT fragments, X markers or not.
+  // Registrations key on the module PATH (mod-registrar.ts
+  // setModuleShortname "::"-joins every segment), so a multi-fragment
+  // anchor must offer the "::" form even when NO fragment carries the
+  // star marker: a "User+email" card anchors "TYPE_PLUS_RIGHT-user-email"
+  // (the tag card is not star-named, so there is no X to strip and the
+  // mask loop below never runs) and must still reach the registered
+  // "TypePlusRight::User::Email". Measured live in the seed-sweep lane:
+  // the X-marked case dispatched (the fix) while this
+  // no-X case returned a one-candidate list that no registered module
+  // carries. Lookup still decides - the candidate is tried against the
+  // registered table, never assumed.
+  if (frags.length > 1) {
+    out.add(`${camelizeCode(code)}::${frags.map(camelizeCode).join("::")}`);
+  }
   const total = optionsPerFrag.reduce((a, o) => a * o.length, 1);
   for (let mask = 1; mask < total; mask++) {
     let m = mask;
@@ -99,7 +127,12 @@ export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
       m = Math.floor(m / opts.length);
       chosen.push(opts[idx]);
     }
-    out.add(`${camelizeCode(code)}::${camelizeAnchor(chosen.join("-"))}`);
+    const camelFragments = chosen.map((frag) => camelizeCode(frag));
+    out.add(`${camelizeCode(code)}::${camelFragments.join("+")}`);
+    if (camelFragments.length > 1) {
+      // the module-PATH join (setModuleShortname): segments join "::".
+      out.add(`${camelizeCode(code)}::${camelFragments.join("::")}`);
+    }
   }
   return [...out];
 }

@@ -317,15 +317,19 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
         .join(` ${condition.conj.toUpperCase()} `)})`;
     case "foundBy":
       // The refusal surfaces as BadQuery (Card::Error::BadQuery's port), not
-      // a generic error: found_by is refused BY DESIGN at generate time
-      // (execute.ts docs — "the generator refuses them", deferred wave 2),
-      // so callers must be able to distinguish the refusal from an engine
-      // crash. Through the deploy worker's /api/query the plain Error fell
-      // into the 500 "CQL execution failed" branch while every other bad
-      // statement answered 400 "bad CQL" — a refused-by-design statement
-      // indistinguishable from a crash (probe api-query-found-by-refused).
+      // a generic error. found_by is RESOLVED before generation:
+      // execute.ts#resolveFoundByConditions translates every foundBy
+      // condition into the equivalent id-set constraint (the port of
+      // card-1.110.0 lib/card/query/card_query/found_by.rb). Reaching this
+      // case means an unhandled shape survived the resolution pass — a loud
+      // backstop, never a silent empty. (Historical note: this case was the
+      // wave-1 blanket refusal "deferred to wave 2"; through the deploy
+      // worker's /api/query a plain Error fell into the 500 "CQL execution
+      // failed" branch while every other bad statement answered 400 "bad
+      // CQL" — so the backstop stays a CqlBadQuery, probe
+      // api-query-found-by-refused.)
       throw new CqlBadQuery(
-        "found_by requires runtime query execution (Query.run / Card.fetch) — deferred to wave 2; see docs/cql-port-notes.md",
+        "found_by condition reached SQL generation unresolved (unhandled found_by shape) — execute.ts resolveFoundByConditions should have translated it",
       );
   }
 }
@@ -411,14 +415,58 @@ interface OrderDirective {
   dir: string;
 }
 
-/** Order#order_directives / #order_field / #order_dir */
+/** Order#order_directives / #order_field / #order_dir, plus the id
+ *  tie-breaker (SINGLE-TABLE scans only).
+ *
+ *  WHY THE TIE-BREAKER: Ruby's ORDER BY declares no tie-break
+ *  (sql_statement/order.rb builds `ORDER BY <field> <dir>` only), so tied
+ *  rows come out in SQLite's unspecified tier — physical rowid order. In
+ *  every real deck rowid IS cards.id (INTEGER PRIMARY KEY), so production
+ *  ties resolved in id-ascending order; the captured oracle bytes embed
+ *  exactly that (the Image member search's NULL-key cohort renders in
+ *  id order 217,431,...,712 — the exact `ORDER BY key, id` head).
+ *  The ported decks break ties by THEIR physical order instead: the corpus
+ *  scrub carries name/key as NULL for 40,090 of 49,829 rows
+ *  (seedCard writes keyColumn NULL for unnamed rows,
+ *  render-test-storage.ts), so every `sort: name` search over such rows
+ *  ties on the NULL-key tier and the seeded deck's insertion (BFS closure)
+ *  order decides — scrambling the head-20 the html limit renders.
+ *  Appending `<alias>.id ASC` pins the unspecified tier to the production
+ *  semantics; queries without ties are untouched.
+ *
+ *  WHY NOT ON JOINED STATEMENTS: with a join in the statement the
+ *  unspecified tier is the JOIN EMISSION order — the driving table's rowid
+ *  sequence — not the superquery's id column. Ruby emits `ORDER BY key`
+ *  bare for the reference-tie shape (reference_attributes.rb refer_to →
+ *  tie :reference … {to: :referer_id}; live oracle-app Card::Query SQL for
+ *  somatic+*referred_to_by: `SELECT DISTINCT c0.* FROM cards c0 JOIN
+ *  card_references cr1 ON c0.id = cr1.referer_id WHERE (cr1.ref_type IN
+ *  ('L','I') AND cr1.referee_id = 1186) … ORDER BY c0.key asc`), and its
+ *  captured row order is card_references-rowid order: junction rows (NULL
+ *  keys, sorted first) in reference-insertion order — somatic's referrer
+ *  27518 "Soma+description" whose reference row was written LAST
+ *  (cr.id 6296176) renders 29th, while simple-card 37473 (real key) sorts
+ *  after the whole NULL-key tier. Appending `c0.id asc` re-sorted that
+ *  tier id-ascending, hoisting 27518 into head-20 slot 13 and pushing
+ *  29740 off the limited listing — the somatic first-diff. better-sqlite3
+ *  reproduces Ruby's emission exactly for the Ruby SQL shape (verified
+ *  head-30 equal), so joined statements carry the bare Ruby ORDER BY. */
 function orderDirectivesOf(query: QueryNode): OrderDirective[] {
   const sortMod = query.mods.sortBy ?? query.mods.sort;
   if (!sortMod || sortMod.length === 0) return [];
-  return sortMod.map((token, index) => {
+  const directives = sortMod.map((token, index) => {
     const field = orderField(query, token);
     return { field, dir: orderDir(query, token, index) };
   });
+  // A statement already ordering by this table's id is total — the
+  // tie-breaker would never fire and would only noise the generated SQL.
+  // Joined statements never take the tie-breaker at all (see above): their
+  // unspecified tier must stay the join emission order.
+  const idField = `${query.tableAlias}.id`;
+  if (!directives.some((d) => d.field === idField) && renderedJoins(query).length === 0) {
+    directives.push({ field: idField, dir: "asc" });
+  }
+  return directives;
 }
 
 function orderField(query: QueryNode, token: string): string {

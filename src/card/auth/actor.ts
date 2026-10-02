@@ -13,9 +13,11 @@
 //     generated at boot from card codenames:
 //     `Card.const_get_or_set("#{codename.to_s.camelize}ID") { id }`
 //     (codename.rb:108) — the card with codename "anonymous" defines
-//     Card::AnonymousID, codename "deckobot" defines Card::DeckoBotID.
-//     The names, too, are deck data, not gem constants ("Anonymous" with
-//     codename "anonymous": card-mod-account-0.20.0/data/real.yml:69-72).
+//     Card::AnonymousID, codename "decko_bot" defines Card::DeckoBotID
+//     (camelize: decko_bot → "DeckoBot"). The codenames and names are deck
+//     data, not gem constants: mod/core/data/real.yml:17-19 seeds the bot
+//     as name "Decko Bot", codename "decko_bot" (recode.yml:8 records the
+//     wagn_bot → decko_bot rename; the codename was never "deckobot").
 //
 // Engine-context mapping: the TS engine has no process-global Auth singleton
 // — the actions layer takes an explicit actor parameter — so `as`/`as_bot`
@@ -39,8 +41,10 @@ export interface Actor {
 /** Codename of the card all signed-out activity is credited to. */
 export const ANONYMOUS_CODENAME = "anonymous";
 
-/** Codename of the administrator bot used for system writes (as_bot). */
-export const DECKOBOT_CODENAME = "deckobot";
+/** Codename of the administrator bot used for system writes (as_bot).
+ *  Ruby's stored codename (mod/core/data/real.yml:19; the DeckoBotID
+ *  constant camelize-derives from it, codename.rb:108). */
+export const DECKOBOT_CODENAME = "decko_bot";
 
 /** Error thrown when the deck's cards table has no row for a system actor's
  *  codename — a deck without an Anonymous/DeckoBot card is not bootstrapped

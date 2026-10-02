@@ -1,0 +1,85 @@
+{
+  "helper_facts": {
+    "recent_settings_content": [
+      "*script",
+      "*update",
+      "*help",
+      "*content_options",
+      "*input_type",
+      "*follow",
+      "*create",
+      "*read",
+      "*structure",
+      "*layout",
+      "*captcha"
+    ],
+    "rich_text_editor": "tinymce"
+  },
+  "image_card": {
+    "meta": {
+      "db_content": "",
+      "id": 287,
+      "key": "image+*right+*default",
+      "last_action_id": 349,
+      "name": "Image+*right+*default",
+      "type_code": "image",
+      "type_id": 284,
+      "type_name": "Image"
+    },
+    "views": {
+      "new_image_buttons": {
+        "bytes": "<div class=\"form-group button-form-group\"><button name=\"button\" type=\"submit\" data-disable-with=\"Submitting\" no_origin_update=\"true\" class=\"submit-button me-3 _update-history-pills btn btn-primary\" data-cy=\"save\">Save</button></div>"
+      }
+    }
+  },
+  "no_write_discipline": "render-only capture; card_actions count asserted unchanged",
+  "no_write_proof": {
+    "actions_after": 5018,
+    "actions_before": 5018,
+    "unchanged": true
+  },
+  "normalizations": {
+    "data-slot-id": "RANDOMIZED",
+    "undo link revert_actions[] action id": "ACTIONID"
+  },
+  "rule_card_guide": {
+    "meta": {
+      "db_content": "#### Editing Guide\n\nThis default guide will appear in the full editor view of any card \nwithout more specific guidance.  You can use it to put forward principles of style, \nrules of conduct, or any other help text you think may be of use to persons editing \ncontent.\n\nGuide content can be edited in [[*guide|*guide rules]].\n",
+      "id": 95,
+      "key": "*all+*guide",
+      "last_action_id": 116,
+      "name": "*all+*guide",
+      "type_code": "markdown",
+      "type_id": 65,
+      "type_name": "Markdown"
+    },
+    "views": {
+      "quick_edit": {
+        "bytes": "<div id=\"Xall-Xguide-quick_edit-view\" class=\"card-slot quick_edit-view ALL ALL_PLUS TYPE-markdown RSTAR RULE RIGHT-Xguide TYPE_PLUS_RIGHT-set-Xguide SELF-Xall-Xguide\" data-card-id=\"95\" data-card-name=\"*all+*guide\" data-card-type-id=\"65\" data-card-type-name=\"Markdown\" data-card-link-name=\"*all+*guide\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit&quot;,&quot;show&quot;:[&quot;quick_edit&quot;]}\"><div class='_category-all _category-common rule-item _rule-item'>\n<h6 class='fw-bold'>\nguide\n</h6>\n<div class=\"help-text\">appears in the full editor view to guide users</div>\n<form class=\"card-form slotter autosave\" id=\"edit_card_95\" data-slot-selector=\".set-info.card-slot\" action=\"/update/*all+*guide\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><input type=\"hidden\" name=\"success[view]\" id=\"success_view\" value=\"quick_edit_success\" autocomplete=\"off\" /><div class=\"form-group card-editor\" data-card-id=\"95\" data-card-name=\"*all+*guide\" data-card-link-name=\"*all+*guide\"><label for=\"card_content\">Content</label>\n<div class=\"editor content-editor\"><textarea rows=\"5\" class=\"d0-card-content ace-editor-textarea form-control\" data-ace-mode=\"markdown\" name=\"card[content]\" id=\"card_content\">\n#### Editing Guide\n\nThis default guide will appear in the full editor view of any card \nwithout more specific guidance.  You can use it to put forward principles of style, \nrules of conduct, or any other help text you think may be of use to persons editing \ncontent.\n\nGuide content can be edited in [[*guide|*guide rules]].\n</textarea></div></div></form>\n<div id=\"Xall-Xguide-quick_edit-view\" class=\"card-slot quick_edit-view ALL ALL_PLUS TYPE-markdown RSTAR RULE RIGHT-Xguide TYPE_PLUS_RIGHT-set-Xguide SELF-Xall-Xguide set-info\" data-card-id=\"95\" data-card-name=\"*all+*guide\" data-card-type-id=\"65\" data-card-type-name=\"Markdown\" data-card-link-name=\"*all+*guide\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit&quot;,&quot;show&quot;:[&quot;quick_edit&quot;]}\"><div class='form-group form-control-feedback'>\n<label>\nSet\n</label>\n<p class='text-muted'>\nAll cards\n</p>\n</div>\n</div>\n</div>\n</div>"
+      },
+      "quick_edit_success": {
+        "bytes": "<div id=\"Xall-Xguide-quick_edit_success-view\" class=\"card-slot quick_edit_success-view ALL ALL_PLUS TYPE-markdown RSTAR RULE RIGHT-Xguide TYPE_PLUS_RIGHT-set-Xguide SELF-Xall-Xguide set-info\" data-card-id=\"95\" data-card-name=\"*all+*guide\" data-card-type-id=\"65\" data-card-type-name=\"Markdown\" data-card-link-name=\"*all+*guide\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit_success&quot;,&quot;show&quot;:[&quot;quick_edit_success&quot;]}\"><div class='form-group form-control-feedback'>\n<label>\nSet\n</label>\n<p class='text-muted'>\nAll cards\n</p>\n<p class='autosubmit-success-notification'>\n<span class='text-success'>\nApplied!\n</span>\n<a rel=\"nofollow\" class=\"btn btn-secondary ms-2 btn-sm btn-reduced-padding slotter\" data-slot-selector=\".card-slot.quick_edit-view\" href=\"/update/*all+*guide?revert_actions%5B%5D=ACTIONID&amp;revert_to=previous\" data-remote=\"true\" data-method=\"post\">undo</a>\n</p>\n</div>\n</div>"
+      }
+    }
+  },
+  "rule_card_head": {
+    "meta": {
+      "db_content": "{{:head|core}}",
+      "id": 49,
+      "key": "*all+*head",
+      "last_action_id": 59,
+      "name": "*all+*head",
+      "type_code": "html",
+      "type_id": 39,
+      "type_name": "HTML"
+    },
+    "views": {
+      "quick_edit": {
+        "bytes": "<div id=\"Xall-Xhead-quick_edit-view\" class=\"card-slot quick_edit-view ALL ALL_PLUS TYPE-html RSTAR RULE RIGHT-Xhead TYPE_PLUS_RIGHT-set-Xhead SELF-Xall-Xhead\" data-card-id=\"49\" data-card-name=\"*all+*head\" data-card-type-id=\"39\" data-card-type-name=\"HTML\" data-card-link-name=\"*all+*head\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit&quot;,&quot;show&quot;:[&quot;quick_edit&quot;]}\"><div class='_category-all rule-item _rule-item'>\n<h6 class='fw-bold'>\nhead\n</h6>\n<div class=\"help-text\">head tag content</div>\n<form class=\"card-form slotter autosave\" id=\"edit_card_49\" data-slot-selector=\".set-info.card-slot\" action=\"/update/*all+*head\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><input type=\"hidden\" name=\"success[view]\" id=\"success_view\" value=\"quick_edit_success\" autocomplete=\"off\" /><div class=\"form-group card-editor\" data-card-id=\"49\" data-card-name=\"*all+*head\" data-card-link-name=\"*all+*head\"><label for=\"card_content\">Content</label>\n<div class=\"editor content-editor\"><textarea rows=\"5\" class=\"d0-card-content ace-editor-textarea form-control\" data-ace-mode=\"html\" name=\"card[content]\" id=\"card_content\">\n{{:head|core}}</textarea></div></div></form>\n<div id=\"Xall-Xhead-quick_edit-view\" class=\"card-slot quick_edit-view ALL ALL_PLUS TYPE-html RSTAR RULE RIGHT-Xhead TYPE_PLUS_RIGHT-set-Xhead SELF-Xall-Xhead set-info\" data-card-id=\"49\" data-card-name=\"*all+*head\" data-card-type-id=\"39\" data-card-type-name=\"HTML\" data-card-link-name=\"*all+*head\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit&quot;,&quot;show&quot;:[&quot;quick_edit&quot;]}\"><div class='form-group form-control-feedback'>\n<label>\nSet\n</label>\n<p class='text-muted'>\nAll cards\n</p>\n</div>\n</div>\n</div>\n</div>"
+      },
+      "quick_edit_success": {
+        "bytes": "<div id=\"Xall-Xhead-quick_edit_success-view\" class=\"card-slot quick_edit_success-view ALL ALL_PLUS TYPE-html RSTAR RULE RIGHT-Xhead TYPE_PLUS_RIGHT-set-Xhead SELF-Xall-Xhead set-info\" data-card-id=\"49\" data-card-name=\"*all+*head\" data-card-type-id=\"39\" data-card-type-name=\"HTML\" data-card-link-name=\"*all+*head\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;quick_edit_success&quot;,&quot;show&quot;:[&quot;quick_edit_success&quot;]}\"><div class='form-group form-control-feedback'>\n<label>\nSet\n</label>\n<p class='text-muted'>\nAll cards\n</p>\n<p class='autosubmit-success-notification'>\n<span class='text-success'>\nApplied!\n</span>\n<a rel=\"nofollow\" class=\"btn btn-secondary ms-2 btn-sm btn-reduced-padding slotter\" data-slot-selector=\".card-slot.quick_edit-view\" href=\"/update/*all+*head?revert_actions%5B%5D=ACTIONID&amp;revert_to=previous\" data-remote=\"true\" data-method=\"post\">undo</a>\n</p>\n</div>\n</div>"
+      }
+    }
+  }
+}

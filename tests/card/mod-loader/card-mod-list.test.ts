@@ -23,6 +23,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -171,6 +172,7 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     const before = normalize(await s.engine.render("Oracle List Probe", "content"));
     loader = new ModLoader([{ manifest: cardModList }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
     const after = normalize(await s.engine.render("Oracle List Probe", "content"));
     expect(after).toBe(before);
@@ -180,8 +182,18 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     const report = loader!.load(); // idempotent (the loader replays to a clean slate)
     expect(report.modNames).toEqual(["list"]);
     expect(report.registeredViews).toEqual([
+      // abstract/01_list.rb:39-44 :view_list (ported by the mod-views-b lane)
+      "view_list",
       "one_line_content",
       "list",
+      // abstract/01_list/html_views.rb:56-58's editor loop - all five of
+      // the loop's views the port registers: :checkbox/:select/
+      // :multiselect/:autocomplete as views in their own right; :radio
+      // rides the :input dispatch (listFamilyInputHtml).
+      "checkbox",
+      "select",
+      "multiselect",
+      "autocomplete",
       "input",
       "nest_list_input",
     ]);
@@ -363,10 +375,42 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle List Probe", "nest_list_input")).rejects.toThrow(
       captureError("nest_list_input", "Oracle List Probe"),
     );
-    // :view_list is not ported (see the mod header: box/labeled item views
-    // + relative timestamps in the section bytes) -> unsupported view
-    await expect(s.engine.render("Oracle List Probe", "view_list")).rejects.toThrow(
-      captureError("view_list", "Oracle List Probe"),
+  });
+
+  it("WITH the mod: :view_list's arms dispatch each item view - the box arm renders the base-table box views (01_list.rb:39-44)", async () => {
+    const s = storage!;
+    // 01_list.rb:39-44 renders each of %i[bar box closed titled labeled]
+    // as `<p><h3>#{view} items</h3>` + the item's view bytes. mod-b-view-fixes
+    // made the item-view opt REAL (item_view_options[:view] flows into the
+    // wrapper classes and the item dispatch). The raise arm this test used
+    // to pin ("this loader loads only card-mod-list + card-mod-search, so
+    // :box is unregistered and the UserError propagates") is falsified by
+    // the flat HTML_VIEWS registration of the bar_and_box family in
+    // src/card/render/views.ts (the documented port site for the
+    // loader-less grading surface — the bar-and-box test file's own header
+    // records it). With the box views registered, the box arm renders
+    // exactly what Ruby's FULL-mod deck renders: the known item's box wrap.
+    // The oracle-pinned five-arm bytes (UNKNOWN items, where box/titled
+    // substitute to :unknown and labeled to :labeled) live in
+    // tests/card/mod-loader/card-mod-search-list-oracle-pinned.test.ts
+    // (fixtures/captured/search-list-views.json target 152, commit b1069e5).
+    const html = await s.engine.render("Oracle List Probe", "view_list");
+    // the arm loop reaches the box section in %i[...] order
+    expect(html).toContain("<p><h3>box items</h3>");
+    // the known item's box wrap: the box div (box.haml:2 class list) with
+    // the item's identity attrs, the three box.haml sections, and the item
+    // body inside the box_middle content view
+    expect(html).toContain("<div class='box ");
+    expect(html).toContain("card _card-link nodblclick'");
+    expect(html).toContain("data-card-name='Oracle Probe Child'");
+    expect(html).toContain("class='box-top card-header text-center'");
+    expect(html).toContain("class='box-middle card-body'");
+    expect(html).toContain("class='box-bottom card-footer text-center'");
+    // :view_list is declared on Abstract::List, so a non-list-family card
+    // has no reachable definition - the same set guard the module's other
+    // views carry.
+    await expect(s.engine.render("Oracle Probe Child", "view_list")).rejects.toThrow(
+      captureError("view_list", "Oracle Probe Child"),
     );
   });
 

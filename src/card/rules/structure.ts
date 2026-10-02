@@ -139,9 +139,11 @@ export function ruleUniverseStatementBySetting(settingName: string): SQLStatemen
       `JOIN name_walk n ON n.id = r.left_id\n` +
       `WHERE r.trash = 0\n` +
       `  AND r.right_id = (SELECT id FROM cards\n` +
-      `                    WHERE ("key" = '${settingName}' OR name = '${settingName}')\n` +
+      `                    WHERE ("key" = ? OR name = ?)\n` +
       `                      AND trash = 0 ORDER BY id LIMIT 1)`,
-    params: [],
+    // The setting name is bound, never interpolated into the SQL text —
+    // settingName is a caller-supplied string.
+    params: [settingName, settingName],
   };
 }
 

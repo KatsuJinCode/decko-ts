@@ -171,7 +171,7 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
     }
   });
 
-  it("renders internal link chunks as wanted-card anchors (the :link view)", async () => {
+  it("renders internal link chunks as known-card anchors when the target exists (the :link view)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCodenameCards(storage);
@@ -180,11 +180,18 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       await resolver.prepare();
 
       const html = await storage.engine.render("*read", "closed");
-      // "Who can view cards in the [[Set]]." - "Set" does not exist in the
-      // seed, so the chunk renders Ruby's wanted-card anchor
+      // "Who can view cards in the [[Set]]." - "Set" IS seeded (id 10,
+      // codename set), so Ruby's Card.known? (links.rb:140-144, a live
+      // fetch) answers true and the chunk renders the known-card anchor.
+      // The pre-V4 engine rendered wanted-card here through map luck (the
+      // prepared closure never chased "Set", so the nest path seated a
+      // phantom); the V4 prepare-phase link-target warm pass seats the real
+      // card (pass-18 bar-slots merge obligation). Absence stays wanted:
+      // link-known-class-and-pointer-paging.test.ts pins the "Nobody At
+      // All" shape.
       expect(helpContentOf(html)).toBe(
         "Who can view cards in the " +
-        "&lt;a class=&quot;wanted-card&quot; href=&quot;/Set&quot;&gt;" +
+        "&lt;a class=&quot;known-card&quot; href=&quot;/Set&quot;&gt;" +
         "&lt;span class=&quot;card-title&quot; title=&quot;Set&quot;&gt;Set&lt;/span&gt;&lt;/a&gt;.",
       );
     } finally {

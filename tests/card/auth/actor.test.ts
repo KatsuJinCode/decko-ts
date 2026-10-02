@@ -34,7 +34,7 @@ describe("system actor constructors", () => {
     expect(await actorAnonymous(storage.driver)).toEqual({ id: 2, name: "Test Anon" });
   });
 
-  it("actorBot resolves the 'deckobot' codename card's id and name (as_bot target)", async () => {
+  it("actorBot resolves the 'decko_bot' codename card's id and name (as_bot target)", async () => {
     expect(await actorBot(storage.driver)).toEqual({ id: 1, name: "Test Bot" });
   });
 

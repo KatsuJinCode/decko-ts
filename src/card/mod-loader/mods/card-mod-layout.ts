@@ -1,7 +1,7 @@
 // The card-mod-layout gem (card-mod-layout-0.20.0), ported through the mod
 // loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-layout-0.20.0/): 23 set files (patterns abstract/all/right/self/
 // type), 5 lib/ files (the Card::Layout support class), 3 haml templates, 3
 // event hooks, config/admin.yml + locales, data/ seeds, and NO mod.yml
@@ -25,9 +25,15 @@
 //   set (:head_content, :input).
 //
 // NOT ported (honest remainder, per file):
-// - set/self/account_links.rb (:sign_in/:sign_out/:sign_up/:invite/:my_card +
-//   :core) - every body branches on Card::Auth state (signed_in?/current
-//   roles/ok? :create on new cards); no Auth runtime exists headlessly
+// - set/self/account_links.rb :my_card + :core - both bodies branch on
+//   Card::Auth state (signed_in? / current roles / ok? :create on new
+//   cards) and no Auth runtime exists headlessly. The FOUR LINK views
+//   (:sign_in / :sign_out / :sign_up / :invite) ARE ported by the
+//   mod-views-b lane (2026-09-28, rendered-unpinned) - their bodies are
+//   plain `link_to_card` anchors, the auth state only reaches them through
+//   the `perms:` gate, and the engine's view-permission gate leaves an
+//   un-implemented method predicate unverified-ALLOWED, so the bytes are
+//   the signed-OUT reader's. See the view block below.
 // - set/right/enabled_roles.rb (:edit_inline super() + checkbox input +
 //   validate_role_enabling/clear_roles_cache events) - the edit framework is
 //   unported (docs/render-port-notes.md) and the events are write-path
@@ -88,14 +94,18 @@ import {
 } from "../../render/text-helpers.js";
 import {
   UnsupportedViewError,
+  wrappedTitleInner,
   type RenderCard,
+  type RenderFormat,
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
+import { myCardDropdownInnerHtml } from "../../render/navbar-views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
 import type { ModEngineHost } from "../mod-manifest.js";
+import { warmRuleCards } from "./rule-card-warm.js";
 
 // The base implementations captured BEFORE any registration replaces the
 // table entry (see the set-scoped dispatch note in the header).
@@ -465,111 +475,21 @@ function firstPointerItem(content: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// prepareEngine - the boot-time *guide rule warm (the Rule::Cache analog)
+// prepareEngine - the boot-time *guide rule warm (the Rule::Cache analog).
+// The statement and the multi-pass composition live once in
+// rule-card-warm.ts (ruleSidesStatement + warmRuleCards).
 // ---------------------------------------------------------------------------
-
-/** The *guide rule card ids plus every transitive side id needed to compose
- *  their junction names - the boot-time rule-cache join (lib/card/rule/
- *  cache.rb:10-27) with the setting narrowed to codename 'guide', with the
- *  recursive side walk of the prefetch's reached-CTE shape (the
- *  card-mod-help prepareHelpRules statement's twin). */
-function guideRuleSidesStatement(setTypeId: number, settingTypeId: number): {
-  sql: string;
-  params: unknown[];
-} {
-  const ruleJoin =
-    "FROM cards rules\n" +
-    "  JOIN cards sets ON rules.left_id = sets.id\n" +
-    "  JOIN cards settings ON rules.right_id = settings.id\n" +
-    "WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'guide'\n" +
-    "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0";
-  return {
-    sql:
-      "WITH RECURSIVE reached(id) AS (\n" +
-      `  SELECT rules.id ${ruleJoin}\n` +
-      "  UNION\n" +
-      "  SELECT s.id FROM reached r\n" +
-      "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-      "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
-      ")\n" +
-      "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
-    params: [setTypeId, settingTypeId],
-  };
-}
 
 /** One batch, once per engine: every *guide rule card enters the prepared
  *  render-card map (multi-pass junction composition - sides first, then
- *  their junctions; the card-mod-help prepareHelpRules shape). After this
- *  the :overlay_help_link guide branch resolves rule cards synchronously. */
+ *  their junctions). After this the :overlay_help_link guide branch
+ *  resolves rule cards synchronously. */
 async function prepareGuideRules(host: ModEngineHost): Promise<void> {
   await host.codenames.ensureLoaded(); // memoized; first call only
   const setTypeId = host.codenames.peekId("set");
   const settingTypeId = host.codenames.peekId("setting");
   if (setTypeId === undefined || settingTypeId === undefined) return; // degenerate deck
-  const results = await host.batch([guideRuleSidesStatement(setTypeId, settingTypeId)]);
-  type FetchedRow = {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-  };
-  const rows = (results[0] as { rows: FetchedRow[] } | undefined)?.rows ?? [];
-  if (rows.length === 0) return;
-
-  interface PreparedRecord {
-    row: FetchedRow;
-    record: NonNullable<Awaited<ReturnType<ModEngineHost["fetchById"]>>>;
-  }
-  const byId = new Map<number, PreparedRecord>();
-  for (const row of rows) {
-    const record = await host.fetchById(row.id);
-    if (record === undefined) continue;
-    byId.set(row.id, {
-      row: {
-        id: row.id,
-        leftId: record.leftId ?? null,
-        rightId: record.rightId ?? null,
-        name: record.name?.s ?? null,
-      },
-      record,
-    });
-  }
-
-  // multi-pass junction composition (sides before junctions)
-  const names = new Map<number, string>();
-  let pending = [...byId.values()];
-  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
-    const still: PreparedRecord[] = [];
-    for (const item of pending) {
-      const row = item.row;
-      let composed: string | undefined = row.name ?? undefined;
-      if (composed === undefined && row.leftId !== null && row.rightId !== null) {
-        const left = names.get(row.leftId);
-        const right = names.get(row.rightId);
-        if (left !== undefined && right !== undefined) composed = `${left}+${right}`;
-      }
-      if (composed === undefined) {
-        still.push(item);
-        continue;
-      }
-      names.set(row.id, composed);
-    }
-    if (still.length === pending.length) break; // unresolvable sides stay
-    pending = still;
-  }
-
-  // Assign the composed name onto junction records and cache them (the
-  // fetch ladder's assign_name semantics - a record reached by id carries
-  // no name mark, so the composed name is assigned here).
-  for (const { row, record } of byId.values()) {
-    const composed = names.get(row.id);
-    if (composed === undefined) continue;
-    if (row.name === null) {
-      record.name = DeckoName.parse(composed);
-      record.key = DeckoName.parse(composed).key;
-    }
-    await host.cacheFetchedRecord(record);
-  }
+  await warmRuleCards(host, setTypeId, settingTypeId, ["guide"]);
 }
 
 // ---------------------------------------------------------------------------
@@ -581,11 +501,13 @@ async function prepareGuideRules(host: ModEngineHost): Promise<void> {
  *  navbar_links.rb:33 render_title -> the html :title view). A chunk LABEL
  *  rides the nest's title option (link.rb:31-33 options title:) and the
  *  title view renders it - the corpus-pinned label shape the :link view uses
- *  (views.ts:589-591); without a label the real :title view dispatches. */
+ *  (views.ts:589-591); without a label the real :title view dispatches. The
+ *  label arm IS wrapped_title (title.rb:38-42), joint span included
+ *  (format.ts#wrappedTitleInner). */
 function titleBytes(ctx: ViewContext): string {
   const label = ctx.voo.opts["title"];
   if (typeof label === "string" && label !== "") {
-    return `<span class="card-title" title="${h(label)}">${h(label)}</span>`;
+    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
   return ctx.fmt.renderView("title");
 }
@@ -763,14 +685,21 @@ function isSelfHeadCard(card: RenderCard): boolean {
 /** right/head.rb:16-18 view :core: process_content(::CodeRay.scan(
  *  render_raw, :html).div) - the html scanner's DIV template is the
  *  render layer's highlight(raw, "html") (code-highlighting/index.ts,
- *  byte-matched to the coderay fixtures). Registered as ONE composed fn
- *  covering BOTH of this gem's :core overrides (right/head.rb:16-18 and
- *  type/html.rb:13-17, the Html cardtype - with_nest_mode :template has no
- *  byte effect on the core output itself) over the base core; self/head's
- *  :core (self/head.rb:9-17) is NOT ported (see the header remainder). */
+ *  byte-matched to the coderay fixtures). Registered on Right::Head ONLY:
+ *  Ruby's :core for this gem lives in that one file — the seed-sweep
+ *  lane's "also type/html.rb:13-17" claim misread the gem (that file's
+ *  lines 13-17 are the format-do chunk_list block; set/type/html.rb
+ *  defines NO view :core), and the extra Html-type predicate arm coderayed
+ *  every Html-typed card's body once the mod deck was bound at a serving
+ *  surface (the session2-gap-8 wiring exposed it: the
+ *  page chrome's {{:header|core}} nest — the *header card, Html-typed —
+ *  rendered the navbar as CodeRay source). An Html-typed card's :core
+ *  dispatches to the BASE format core, the live site's own shape.
+ *  self/head's :core (self/head.rb:9-17) is NOT ported (the header
+ *  remainder). */
 const layoutCoreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
-  if (isRightHeadCard(fmt.card) || fmt.card.typeCode === "html" || fmt.card.typeName === "Html") {
+  if (isRightHeadCard(fmt.card)) {
     return fmt.processContent(highlight(fmt.renderRaw(), "html"));
   }
   return baseCore(ctx);
@@ -798,9 +727,20 @@ const headContentView: ViewFn = (ctx) => {
  *  omission when truncation happened; strip_tags (nest-syntax.ts:24-26,
  *  nest.rb's `string.gsub(/<[^>]*>/, "")`) drops the HTML tags the head-
  *  rule raw carries (the *head setting's rule dbContent, e.g.
- *  `<meta name="..." content="...">`). The view exists ONLY on the
- *  Right::Head set; outside it Ruby's dispatch raises the unsupported-view
- *  UserError (render.rb#view_method) - same guard as :head_content. */
+ *  `<meta name="..." content="...">`). SET SCOPE: the gem defines this
+ *  view on Right::Head (set/right/head.rb:12-14) - but the view NAME is
+ *  not exclusive to that set: the All-set html block (card-mod-format-
+ *  0.20.0 set/all/html/views.rb:29-32) defines :one_line_content for
+ *  every card, so OUTSIDE Right::Head Ruby's dispatch resolves to that
+ *  arm (the text-muted wrap; the plain-probe arm of fixtures/captured/
+ *  layout-one-line.json captures exactly that) - it does not raise.
+ *  The raise below is the TS port's set-scope registration guard (the
+ *  set-scoped port convention; the resolution seam is mod-registrar.ts
+ *  ViewRegistrationTable + the chain-aware SetModuleViewTable), kept
+ *  unchanged. Corrected 2026-10-01 (the layout-fixture-adjudication
+ *  lane's finding; the former "outside it Ruby's dispatch raises the
+ *  unsupported-view UserError" claim misread the All-set html arm as
+ *  absent - unlike :head_content, which IS exclusive to this set). */
 const rightHeadOneLineContentView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   if (!isRightHeadCard(fmt.card)) {
@@ -830,6 +770,165 @@ const headInputView: ViewFn = (ctx) => {
  *  family). Composed per the set-scoped dispatch note. */
 const headBarBottomView: ViewFn = (ctx) =>
   isSelfHeadCard(ctx.fmt.card) ? "" : baseBarBottom(ctx);
+
+// ---------------------------------------------------------------------------
+// set/self/account_links.rb - the four account LINK views (ported by the
+// mod-views-b lane, 2026-09-28; RENDERED-UNPINNED - no oracle capture of any
+// of them exists; the shapes below are derived from the Ruby source).
+//
+//   view :sign_up,  link_options(:show_signup_link?) do
+//     link_to_card :signup, account_link_text(:sign_up),
+//                  class: nav_link_class("signup-link"),
+//                  path: { action: :new, mark: :signup }
+//   end
+//   view :sign_in,  link_options(:not_signed_in?) do
+//     link_to_card :signin, account_link_text(:sign_in),
+//                  class: nav_link_class("signin-link")
+//   end
+//   view :sign_out, link_options(:signed_in?) do
+//     link_to_card :signin, account_link_text(:sign_out),
+//                  class: nav_link_class("signout-link"),
+//                  path: { action: :delete }
+//   end
+//   view :invite,   link_options(:show_invite_link?) do
+//     link_to_card :signup, account_link_text(:invite),
+//                  class: nav_link_class("invite-link"),
+//                  path: { action: :new, mark: :signup }
+//   end
+//
+// The byte chain, and what each link does to it:
+//  (1) `link_to_card` (card-mod-format set/all/links.rb:111-116) calls
+//      `add_known_or_wanted_class opts, name` (links.rb:140-144) which
+//      APPENDS "known-card" or "wanted-card" to the class - add_class is
+//      `alias_method :append_class, :add_class` (card-1.110.0
+//      lib/card/format/content.rb:43-49), so the caller's class comes first
+//      and the known/wanted chip comes last.
+//  (2) `add_to_path opts, mark: Card::Name[cardish]` (links.rb:33-36) MERGES
+//      :mark into opts[:path] - it never overwrites the caller's :path
+//      entries, so :sign_out's `path: {action: :delete}` becomes
+//      `{action: :delete, mark: signin}`.
+//  (3) `link_to` (links.rb:99-106): `opts[:href] ||= path opts.delete(:path)`
+//      runs FIRST, so :href is appended AFTER the caller-supplied :class -
+//      the anchor is `<a class="..." href="...">` - and `text = raw(text ||
+//      href)` keeps the given text (raw marks it html_safe, so it is NOT
+//      escaped inside the anchor; the anchor's own attributes still are).
+//  (4) `account_link_text purpose` (account_links.rb:78-80) is
+//      `voo.title || t("account_#{purpose}")`; the en strings live in
+//      card-mod-account-0.20.0 config/locales/en.yml (account_sign_in:31
+//      "Sign in", account_sign_out:33 "Sign out", account_sign_up:34
+//      "Sign up", account_invite:17 "Invite"). This engine does not model
+//      voo.title (an un-ported Voo heir key, format.ts:110), so the port
+//      always takes the `t(...)` arm.
+//  (5) `nav_link_class type` (account_links.rb:82-84) is
+//      `"nav-link #{classy(type)}"`; classy with no registered class_up
+//      returns the argument unchanged, so the class is exactly
+//      "nav-link <type>-link".
+//
+// NOT PORTED from this file (named, not skipped): :my_card's ROLES arm is
+// the named remainder (the can_disable_roles? gate + the
+// interactive_roles_dropdown nest — the session roles runtime; the view
+// itself IS registered 2026-09-29, the account_dropdown arm, see the view
+// block below), and the file's :core (line 8-13 -
+// `Auth.signed_in?` decides logged-in/logged-out and the body is
+// `navbar_items.join "\n"`, which nests the four link views above).
+// The PERMS gate is also not enforced: `link_options` (line 28-30) sets
+// `perms: :show_signup_link? | :not_signed_in? | :signed_in? |
+// :show_invite_link?`, and the engine's view-permission gate implements
+// only the `can_configure?` method predicate (format.ts:486-489) - an
+// un-implemented predicate leaves the view unverified-ALLOWED, so all four
+// views render regardless of sign-in state. The bytes below are therefore
+// the bytes for a signed-OUT reader.
+// ---------------------------------------------------------------------------
+
+/** DeckoName.url_key for the account cards these views link to. `signin` /
+ *  `signup` are the codename'd account cards; their url_key is the
+ *  lowercase form (nothing to escape), so the engine's urlKey is the same
+ *  string. `action` is the trailing path segment `path({action: :new,
+ *  mark: :signup})` produces. */
+function accountCardHref(name: string, action?: string): string {
+  const urlKey = DeckoName.parse(name).urlKey;
+  return action === undefined ? `/${h(urlKey)}` : `/${h(urlKey)}/${h(action)}`;
+}
+
+/** links.rb:140-144 add_known_or_wanted_class: `Card.known?(name)`. The
+ *  engine's equivalent is whether the name resolves to a seeded card (the
+ *  same fetch-miss-means-wanted convention card-mod-search.ts
+ *  #gotoAutocompleteIcon already uses). */
+function knownOrWantedClass(fmt: RenderFormat, name: string): string {
+  return fmt.engine.fetchRenderCard(name) === undefined ? "wanted-card" : "known-card";
+}
+
+function accountLinkView(
+  target: string,
+  linkClass: string,
+  text: string,
+  action?: string,
+): ViewFn {
+  return (ctx) => {
+    const cls = `nav-link ${linkClass} ${knownOrWantedClass(ctx.fmt, target)}`;
+    return `<a class="${h(cls)}" href="${h(accountCardHref(target, action))}">${h(text)}</a>`;
+  };
+}
+
+const signInView = accountLinkView("signin", "signin-link", "Sign in");
+const signUpView = accountLinkView("signup", "signup-link", "Sign up", "new");
+const signOutView = accountLinkView("signin", "signout-link", "Sign out", "delete");
+const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
+
+// ---------------------------------------------------------------------------
+// the :my_card and :edit_inline views (the R21 port,
+// 2026-09-29 — the last two unregistered layout views)
+// ---------------------------------------------------------------------------
+
+/** account_links.rb:56-58 view :my_card (link_options perms :signed_in?,
+ *  denial :blank) — `can_disable_roles? ? interactive_roles_dropdown :
+ *  account_dropdown`.
+ *
+ *  The account_dropdown arm composes from the PREPARED session state
+ *  (pageSessionMyCardHtml — the same golden-backed btn-group the navbar
+ *  renders, account_dropdown.rb:7-12 via navbar-views.ts). Signed-out or
+ *  unprepared sessions render "" (the denial :blank shape — the same
+ *  drop-from-the-compact the navbar's compact performs).
+ *
+ *  NAMED REMAINDER (the ladder's degraded-labeled rung): the
+ *  can_disable_roles? gate (Auth.current_roles.size > 1 && Codename
+ *  .exist?(:enabled_roles)) and its interactive_roles_dropdown arm (the
+ *  nest of +*enabled_roles, view: :edit_inline) need the session ROLES
+ *  runtime, which the port's page session does not carry — every
+ *  authenticated golden capture shows the account_dropdown arm (the
+ *  capture sessions hold no roles), so this view renders that arm; the
+ *  roles arm's bytes stay gem-source-defined (account_links.rb:60-70 +
+ *  enabled_roles.rb) until the roles runtime lands. */
+const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+
+/** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
+ *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
+ *  renders `wrap_with(:div, class: "pointer-checkbox-list") { account_dropdown }`
+ *  after card.ensure_roles fills empty content.
+ *
+ *  The port composes the account_dropdown from the prepared session state
+ *  (the SAME golden-backed shape the :my_card view renders; a signed-out
+ *  engine composes the Anonymous-actor shape — Auth.current for anonymous
+ *  IS the Anonymous card, rendered-unpinned). ensure_roles is a WRITE
+ *  (content fill on first read) — the render path cannot write; the port
+ *  renders the card's current content (an empty enabled_roles card renders
+ *  an empty checkbox list), named remainder.
+ *
+ *  NAMED REMAINDER: the role checkboxes (account_dropdown_role_items —
+ *  Auth.current_roles mapped through the role_checkbox haml
+ *  `.pointer-checkbox.dropdown-item` div: a `_submit-on-change` checkbox +
+ *  link_to_card per role, checked = the card's item_names) need the session
+ *  roles runtime; the port renders the dropdown's two fixed items. */
+const enabledRolesEditInlineView: ViewFn = (ctx) => {
+  const sessionHtml =
+    ctx.fmt.engine.pageSessionMyCardHtml ??
+    myCardDropdownInnerHtml(
+      "Anonymous",
+      { actor: true, accountSettings: false, signin: true },
+      [],
+    );
+  return `<div class="pointer-checkbox-list">${sessionHtml}</div>`;
+};
 
 // ---------------------------------------------------------------------------
 // the manifest (one entry per PORTED gem file; setPaths as in the gem tree;
@@ -913,6 +1012,53 @@ const cardModLayout: DeckoModManifest = {
       },
     },
     {
+      // card-mod-layout-0.20.0/set/self/account_links.rb - the four
+      // account LINK views plus :my_card (the R21
+      // port — the account_dropdown arm; the roles arm is the named
+      // remainder on the view). The file's :core is NOT registered
+      // (auth runtime — see the view block above; the composed
+      // accountLinksCoreHtml rides navbar-views.ts's registration).
+      setPath: "self/account_links",
+      formats: {
+        html: {
+          views: [
+            // account_links.rb:33-35 view :sign_up, perms :show_signup_link?
+            { view: "sign_up", viewFn: signUpView, config: { cache: "never" } },
+            // account_links.rb:39-41 view :sign_in, perms :not_signed_in?
+            { view: "sign_in", viewFn: signInView, config: { cache: "never" } },
+            // account_links.rb:44-48 view :sign_out, perms :signed_in?
+            { view: "sign_out", viewFn: signOutView, config: { cache: "never" } },
+            // account_links.rb:50-54 view :invite, perms :show_invite_link?
+            { view: "invite", viewFn: inviteView, config: { cache: "never" } },
+            // account_links.rb:56-58 view :my_card, perms :signed_in?,
+            // denial :blank
+            {
+              view: "my_card",
+              viewFn: myCardView,
+              config: { cache: "never", denial: "blank" },
+            },
+          ],
+        },
+      },
+    },
+    {
+      // card-mod-layout-0.20.0/set/right/enabled_roles.rb — the
+      // :edit_inline view (the R21 port; the role
+      // checkboxes are the named remainder on the view).
+      setPath: "right/enabled_roles",
+      formats: {
+        html: {
+          views: [
+            {
+              view: "edit_inline",
+              viewFn: enabledRolesEditInlineView,
+              config: { cache: "never", unknown: true },
+            },
+          ],
+        },
+      },
+    },
+    {
       // card-mod-layout-0.20.0/set/self/head.rb (the :core override is NOT
       // ported - nest root.card, view: :head needs the unported :head view
       // and root/main machinery; *head's core falls through to base)
@@ -949,8 +1095,27 @@ const cardModLayout: DeckoModManifest = {
       // right/head entry, so the flat table is replaced exactly once; the
       // predicate covers both sets. The :navbar_links override is not
       // portable: its body calls item_links, a method from another mod)
+      //
+      // 2026-09-29: layoutCoreView is REGISTERED on this
+      // module too. CORRECTED by the edit-forms lane 2026-09-29 against the
+      // actual gem bytes: set/type/html.rb defines NO view :core — its only
+      // definitions are the base-format chunk_list (:14-16) and the html
+      // format's input_type (:20-22) + one_line_content (:24-26). The
+      // seed-sweep "also type/html.rb:13-17" claim misread the file (the
+      // :core it cites lives at set/right/head.rb:16-18 only). The
+      // registration STAYS — the Type::Html module exists in Ruby and the
+      // chainFor narrowing (26ef575) keys the Html-typed
+      // card's own TYPE token to it — but the composed fn now answers the
+      // BASE core for Html-typed cards (the Ruby dispatch shape: no
+      // Type::Html core override, so the base format core renders), which
+      // is also the byte shape the live site serves for its Html-typed
+      // chrome cards.
       setPath: "type/html",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [{ view: "core", viewFn: layoutCoreView }],
+        },
+      },
     },
   ],
   prepareEngine: prepareGuideRules,

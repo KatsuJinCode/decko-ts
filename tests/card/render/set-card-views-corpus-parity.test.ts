@@ -24,6 +24,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import Database from "better-sqlite3";
 import {
+  CORPUS_DB,
   createCorpusSeededStorage,
   readShardLines,
   type ShardLine,
@@ -72,13 +73,19 @@ function proofEntries(): ProofEntry[] {
  *  hanging off the set cards, the help rule cards, and the closure.
  *  The standard structure-corpus seeding only covers *structure rules;
  *  these 7 entries are rule cards with right=*default / *right / *type /
- *  *self settings, which need their own universe. */
+ *  *self settings, which need their own universe.
+ *
+ *  The id walk opens CORPUS_DB (the committed miniature by default, the
+ *  rich machine-local corpus under DECKO_TS_CORPUS_V2 — the same
+ *  resolution every other corpus consumer uses). The miniature carries
+ *  every row this walk visits: the builder replicates this exact walk
+ *  against the corpus dump when closing the fixture
+ *  (build-self-contained-test-fixtures.mjs step 5.6), so walk(mini) ==
+ *  walk(private) by construction — the walk result is identical in both
+ *  regimes and no machine-local absolute path participates. */
 async function createSetCardSeededStorage(): Promise<RenderTestStorage> {
   const ids = new Set<number>(TARGET_IDS);
-  const corpus = new Database(
-    "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3",
-    { readonly: true },
-  );
+  const corpus = new Database(CORPUS_DB, { readonly: true });
   try {
     const setTypeId = (corpus
       .prepare(`SELECT id FROM cards WHERE codename='set' AND trash=0`)

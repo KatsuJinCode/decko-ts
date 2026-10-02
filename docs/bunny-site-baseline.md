@@ -238,8 +238,8 @@ The 23 divergent cases are not 23 broken pages — they are 23 pages where **sub
 The next phase (the one that was supposed to deploy but didn't) needs to:
 
 1. Build a Bunny Edge Scripting entry at `deploy/bunny-worker.ts` modeled on `deploy/worker.ts` (the Cloudflare Workers entry) and `decko-demo/my_demo/mod/library_serverless/lib/serverless/bridge/bunny_edge_scripting.ts` (the prior art). Wire `BunnyDbDriver` from `src/card/drivers/bunny-db.ts`.
-2. Add the per-request `x-db-ops` response header (the same shape the ask specified) sourced from `BunnyDbQueryCounter.count()` at end of render. Also expose a `/__metrics` endpoint returning aggregate counters (parity of Cloudflare's `__metrics`, `deploy/src/worker-metrics.ts:580`).
-3. Deploy via the Bunny dashboard `dash.bunny.net/scripting` (the `api.bunny.net/scripting/*` API paths all returned 404 in this session — see evidence above; the dashboard is the working path, per the operator's brief).
+2. Add the per-request `x-db-ops` response header (Cloudflare's `__metrics` response shape, for parity) sourced from `BunnyDbQueryCounter.count()` at end of render. Also expose a `/__metrics` endpoint returning aggregate counters (parity of Cloudflare's `__metrics`, `deploy/src/worker-metrics.ts:580`).
+3. Deploy via the Bunny dashboard `dash.bunny.net/scripting` (the `api.bunny.net/scripting/*` API paths all returned 404 in this session — see evidence above; the dashboard is the working path).
 4. Smoke test 3 known public cards and report the base URL.
 
 Once that lands, the harness can re-run against a real edge URL:

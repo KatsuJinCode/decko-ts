@@ -17,6 +17,15 @@
 //      itself rides ONE batch call per 20 statements.
 //   3. JUNCTION ITEMS: rows whose names compose through side cards stay
 //      bounded too (the side rows ride the same chunked read).
+//
+// The seeded search cards declare `"limit":0` — Ruby's UNLIMITED shape
+// (cql_search.rb:85-87 card_content_limit = `cql_hash&.dig :limit`; 0 is
+// TRUTHY in Ruby, so `0 || super` keeps the 0 and the search renders the
+// whole set unpaged). Without it the html search view's default limit of 20
+// (search_params.rb:38-40, the paging unit) would render the first page +
+// the paging nav, and this suite's whole-set identity assertions would read
+// a 20-item window. The default-limit page shape is pinned on the raw
+// corpus in raw-corpus-found-by-type-by-name-search.test.ts.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -60,7 +69,7 @@ async function seedWholeDeckSearchDeck(
       id: 80,
       name: "Whole Deck Junction Probe",
       typeId: 98,
-      dbContent: '{"left":"Chunk Parent","sort":"name"}',
+      dbContent: '{"left":"Chunk Parent","sort":"name","limit":0}',
     });
     // Warm-up: enrich the parent (the search card's left operand) into
     // idsByKey so the CQL resolves it — the search card's own JSON content
@@ -81,7 +90,7 @@ async function seedWholeDeckSearchDeck(
       id: 80,
       name: "Whole Deck Probe",
       typeId: 98,
-      dbContent: '{"type":"Chunk Note","sort":"name"}',
+      dbContent: '{"type":"Chunk Note","sort":"name","limit":0}',
     });
     await storage.engine.render("chunk item 001", "content");
   }

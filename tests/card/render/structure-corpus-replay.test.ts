@@ -1,6 +1,8 @@
 // Corpus replay for the *structure rule template mechanism (stream R2).
 //
-// The corpus replay driver (benchmarks/corpus-v2/replay-shard.test.ts)
+// The corpus replay driver (benchmarks/corpus-v2/replay-shard.bench.ts —
+// out of the default suite since 2026-09-30; see its header for the
+// explicit-run config)
 // classifies entries as "structurePending" when Ruby's captured content or
 // captured view bytes equal a *structure rule template's stored content —
 // Ruby rendered the RULE TEMPLATE (content/all.rb:8-10:

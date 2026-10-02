@@ -189,6 +189,31 @@ mis-allow/mis-deny — the seeding enrichment is required, not optional.
   `perms: :update` views): not exercised by the captured surface; the
   registry shape in view-perms.ts is where they land.
 
+## Rule-resolution cache: the whole-universe shape (performance history)
+
+The contract lives on `RuleResolutionDriverCache` in
+src/card/permissions/read-rules.ts; this note keeps the measurements and
+the reasoning trail behind the shape.
+
+- A first pass memoized per key SET: the resolver's callers repeated the
+  identical key set up to 164-168x, and collapsing that re-resolution was
+  the first win. What remained was ~550 DISTINCT key sets — one per
+  read-verdict walk (`canReadByRuleLookupDepth` -> ensureVerdicts) — each
+  paying ~59ms for the recursive CTE: 32.7s of a 33.2s cold anonymous Home
+  render (98.5% of db time; measured on the staging corpus copy with
+  canonical indexes). A per-key-set memo cannot help those: every set is
+  distinct.
+- The whole-universe build inverts the memo unit: ONE unfiltered recursive
+  CTE per driver generation (the closure shape the per-call resolver ran
+  before its fragment filter), then Map lookups with zero SQL. Measured on
+  the staging corpus copy, boot-warm: universe CTE 272ms / 47,225 rows;
+  serving all 550 captured render calls afterwards 5ms; the render's
+  resolver mass drops from ~30s to ~0.3s.
+- Equivalence was probe-verified on the staging corpus: 2,443/2,443
+  requested keys, 0 mismatches (the argument is in the cache docblock).
+- withContent's lazy content reads: 29 distinct rule cards covered the
+  entire staging render.
+
 ## Tests
 
 - tests/card/permissions/read-permission.test.ts — unit deck: readable /

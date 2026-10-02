@@ -7,7 +7,12 @@
 // Run via: npx vitest run tests/card/render/depth-sweep.test.ts
 //
 // Reported numbers populate a JSON file under benchmarks/results/depth-sweep-ts.json
-// so the M3 report has receipts.
+// so the M3 report has receipts. That write is OPT-IN via
+// DEPTH_SWEEP_WRITE_ARTIFACT=1: the committed receipt is authoritative
+// (docs/perf-measurement.md), and an unconditional rewrite put a fresh
+// measured_at + wall-ms into the tree on every suite run, dirtying it and
+// forcing housekeeping commits between folds. The assertions below run on
+// every execution; only the receipt refresh is gated.
 
 import { describe, expect, it } from "vitest";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -18,6 +23,11 @@ import {
 } from "./render-test-storage.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
+
+// Receipt refresh is opt-in (see header): the depth-sweep assertions below
+// run on every execution; benchmarks/results/depth-sweep-ts.json is rewritten
+// only when DEPTH_SWEEP_WRITE_ARTIFACT=1.
+const ARTIFACT_WRITE_REQUESTED = process.env.DEPTH_SWEEP_WRITE_ARTIFACT === "1";
 
 const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20];
 // Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
@@ -118,10 +128,22 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // config (html.rb:17-19), never a deck rule, so render.ts's fold
     // composition no longer appends the *default html view universe
     // statement - the prelude carries one fewer statement than the
-    // cold-query lane's own tree measured (10 -> 9 base). Round trips -
-    // the billed axis - are unchanged.
+    // cold-query lane's own tree measured (10 -> 9 base). The head
+    // read-set (2026-09-28 async-view-handle lane) added one back to
+    // the SAME prelude batch (9 -> 10 base): card-mod-format's head
+    // views read deck-level setting cards no reference closure can
+    // reach. Round trips - the billed axis - are unchanged.
+    // 2026-09-30 pass-20 integration re-pin (10 -> 12 base): the p20-email
+    // lane's junction-priming prelude batch (the email field-anchor prelude
+    // statement + the +*test context junction priming — one batch) adds two
+    // statements at every depth. Measured 12 at depth 1 at BOTH the email
+    // lane tip 345bb06 (queue job-1790792364473-36227f35 — the shift
+    // pre-exists the merge, so no lane interaction) and the merged tip
+    // (job-1790792062952-890df2dd). Round trips are UNTOUCHED — the batch
+    // rides the existing prelude round trip. Same re-pin the email lane
+    // itself applied to junction-depth-closure.test.ts (13/12 -> 15/14).
     const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 9 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
@@ -129,33 +151,40 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // Warm cache: zero queries on the second render (the rule cache is hit).
     expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
 
-    mkdirSync("benchmarks/results", { recursive: true });
-    writeFileSync(
-      "benchmarks/results/depth-sweep-ts.json",
-      JSON.stringify(
-        {
-          measured_at: new Date().toISOString(),
-          environment: "local better-sqlite3 over production-schema DDL; synthetic chains",
-          axes: {
-            round_trips: "driver calls: query() + batch() each count ONE",
-            statements: "individual SQL statements (batch members count one each)",
-            warm: "second render of same chain in same engine instance",
+    if (ARTIFACT_WRITE_REQUESTED) {
+      mkdirSync("benchmarks/results", { recursive: true });
+      writeFileSync(
+        "benchmarks/results/depth-sweep-ts.json",
+        JSON.stringify(
+          {
+            measured_at: new Date().toISOString(),
+            environment: "local better-sqlite3 over production-schema DDL; synthetic chains",
+            axes: {
+              round_trips: "driver calls: query() + batch() each count ONE",
+              statements: "individual SQL statements (batch members count one each)",
+              warm: "second render of same chain in same engine instance",
+            },
+            ruby_measured_truth: {
+              source: "decko-ts/benchmarks/results/ruby-nesting-r1-r2.json",
+              formula: "depth + 3; depth 32 hard-capped by Card.config.max_depth=20 with 'Man, you're too deep' UserError",
+              table: RUBY_MEASURED,
+            },
+            ts_constant: { round_trips: rts[0], statements: sts[0] },
+            rows,
+            ts_reduces_query_count_by: rows
+              .filter((r) => r.rubyMeasured !== null)
+              .map((r) => ({ depth: r.depth, ruby: r.rubyMeasured, ts: r.roundTrips, ratio: r.rubyRatio })),
           },
-          ruby_measured_truth: {
-            source: "decko-ts/benchmarks/results/ruby-nesting-r1-r2.json",
-            formula: "depth + 3; depth 32 hard-capped by Card.config.max_depth=20 with 'Man, you're too deep' UserError",
-            table: RUBY_MEASURED,
-          },
-          ts_constant: { round_trips: rts[0], statements: sts[0] },
-          rows,
-          ts_reduces_query_count_by: rows
-            .filter((r) => r.rubyMeasured !== null)
-            .map((r) => ({ depth: r.depth, ruby: r.rubyMeasured, ts: r.roundTrips, ratio: r.rubyRatio })),
-        },
-        null,
-        2,
-      ),
-    );
+          null,
+          2,
+        ),
+      );
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(
+        "\n(receipt not refreshed: set DEPTH_SWEEP_WRITE_ARTIFACT=1 to rewrite benchmarks/results/depth-sweep-ts.json)",
+      );
+    }
 
     // Human-readable summary in the test report.
     // eslint-disable-next-line no-console

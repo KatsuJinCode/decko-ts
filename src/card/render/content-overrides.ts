@@ -43,6 +43,7 @@
 //   interface RegisteredContentOverride { setPath, modName, fn }
 
 import type { RenderFormat, RenderCard } from "./format.js";
+import { bootstrapCoreContent, bootstrapFunctionsContent } from "./bootstrap-code-files.js";
 
 /** A content override: returns the bytes that stand in for dbContent for a
  *  card matched by `setPath`. Mirrors Ruby's `def content; ...; end` body:
@@ -63,6 +64,16 @@ export interface RegisteredContentOverride {
    *  RegisteredSetModule.modName). */
   readonly modName: string;
   readonly fn: ContentFn;
+  /** MERGE-PASS-18 discriminator (compile-engines merge): does the set
+   *  module's `def content` carry an `assign_type` (the card's TYPE-effect
+   *  moves before the type set modules resolve — card-mod-date's
+   *  when_created family) or not (the card KEEPS its type, so the
+   *  cardtype's own view :core — the scss/css CodeRay branch — still fires,
+   *  wrapping the overridden raw; set/self/bootstrap_core.rb's bootstrap
+   *  code files). Default true (the C3 surfaces2 behavior: the override
+   *  bytes are the FINAL core); false lets the typeCode branches run with
+   *  renderRaw() reading the same registry. */
+  readonly supersedesType?: boolean;
 }
 
 /** The registry mod porters write into. register() replaces a previous
@@ -106,7 +117,43 @@ export class ContentOverrideRegistry {
 // process-wide default instance
 // ---------------------------------------------------------------------------
 
-let defaultRegistry: ContentOverrideRegistry | undefined;
+/** The BUILT-IN default: the engine-layer content accessors a bare engine
+ *  (no mod loader, no deck boot - the grading verifier's exact shape) must
+ *  still serve. Today that is exactly the bootstrap code-file contents
+ *  (bootstrap-code-files.ts): the "bootstrap: core" / "bootstrap:
+ *  functions" virtual cards whose stored rows are empty and whose
+ *  `def content` assembles the vendored Bootstrap SCSS tree. Without this
+ *  seed their pages render empty CodeRay pres.
+ *
+ *  A deck boot REPLACES this registry (setDefaultContentOverrideRegistry
+ *  with the loader's own - the mod manifest contentOverrides land there),
+ *  which is why the bootstrap mod manifest deliberately does NOT re-declare
+ *  these two: a mod-side duplicate would vanish for loader-less consumers
+ *  the moment any loader booted. */
+const BUILT_IN_DEFAULT_REGISTRY = new ContentOverrideRegistry();
+BUILT_IN_DEFAULT_REGISTRY.register({
+  // setPath anchors are the card's KEY form: decko's key algorithm
+  // singularizes ("bootstrap: functions" -> key "bootstrap_function" —
+  // the oracle deck's stored row reads "key":"bootstrap_function"), so
+  // the Self-pattern match (cardBelongsToSet: card.name.key === anchor)
+  // is against the singular. The codename spelling ("bootstrap_functions")
+  // does NOT match and the card renders an empty CodeRay pre.
+  // supersedesType: false — set/self/bootstrap_core.rb declares ONLY
+  // `def content`; the card stays SCSS-typed, so the cardtype's CodeRay
+  // core branch fires over the overridden raw (the oracle page pins).
+  setPath: "self/bootstrap_core",
+  modName: "bootstrap",
+  fn: bootstrapCoreContent,
+  supersedesType: false,
+});
+BUILT_IN_DEFAULT_REGISTRY.register({
+  setPath: "self/bootstrap_function",
+  modName: "bootstrap",
+  fn: bootstrapFunctionsContent,
+  supersedesType: false,
+});
+
+let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
 
 /** Bind a registry as the render-path default (call after the mod loader's
  *  SetLoader phase). The render layer reads from this seam; mod porters do
@@ -231,7 +278,21 @@ function camelizeAnchor(anchor: string): string {
  *  Cards without an override produce byte-identical output to the existing
  *  renderRaw path - the corpus suites under tests/card/render/ pin them
  *  and they MUST not change. */
+/** The rendered bytes of the matched override (the registered fn), or
+ *  undefined when no registration matches. */
 export function resolveContentOverride(fmt: RenderFormat): string | undefined {
+  return resolveContentOverrideEntry(fmt)?.fn(fmt);
+}
+
+/** The single precedence walk over the registered overrides: LAST matching
+ *  registration in path order wins (Ruby's method dispatch: the LAST `def
+ *  content` in include order wins). Returns the matched REGISTRATION —
+ *  the coreView dispatch consults supersedesType to decide between the
+ *  final bytes and the fall-through to the cardtype's own core branches,
+ *  and resolveContentOverride renders through the same match. */
+export function resolveContentOverrideEntry(
+  fmt: RenderFormat,
+): RegisteredContentOverride | undefined {
   if (defaultRegistry === undefined) return undefined;
   const card = fmt.card;
   let lastMatch: RegisteredContentOverride | undefined;
@@ -240,5 +301,5 @@ export function resolveContentOverride(fmt: RenderFormat): string | undefined {
     const reg = defaultRegistry.forPath(setPath);
     if (reg !== undefined) lastMatch = reg;
   }
-  return lastMatch?.fn(fmt);
+  return lastMatch;
 }

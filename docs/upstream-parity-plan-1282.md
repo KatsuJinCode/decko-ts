@@ -1,8 +1,8 @@
-# Upstream parity plan — decko-commons#1282 + Astra's four parities
+# Upstream parity plan — decko-commons#1282, the four-parity framework
 
-## Fleet log — 2026-09-21 evening (wave C + the replay flip)
+## Landing log — 2026-09-21 evening (shadow router + the replay flip)
 
-LANDED: MiniMax wave C — T5 shadow-compare router skeleton (proxy returns
+LANDED: T5 shadow-compare router skeleton (proxy returns
 Ruby bytes untouched, deliberate-TS-diff JSONL log, allow/block/sample
 policy; 28/28; real-upstream wiring is the next stream), E1 notify
 inventory + first mechanism (follow-rule email on update, byte-stable
@@ -12,7 +12,7 @@ docs/notify-port-notes.md), T2 shared behavioral contract
 pinned-synthetic / 5 divergent-documented / 4 unported, Ruby file:line +
 TS test on every statement).
 
-THE REPLAY FLIP (coordinator): corpus replay driver re-seeded — the FULL
+THE REPLAY FLIP: corpus replay driver re-seeded — the FULL
 deck (47,235 rows) + read-rule universe + *structure universe + stored
 read_rule columns seed ONCE; denied views are JUDGED (permissionPending
 skip/class retired); record handler applies structuredCardContent
@@ -28,7 +28,7 @@ syntax highlighting, *mini bar-cols setting, pointer/list cardtype
 content views, missing search-JSON validation Ruby raises on) — ~40
 min/shard; full 48-shard run launched on the 4-way split.
 
-Fleet log — 2026-09-21 (all integrated in 31f2048)
+Landing log — 2026-09-21 (all integrated in 31f2048)
 
 LANDED: R1 help-popover (13 corpus entries byte-exact; 26 rule-card count
 aggregates are capture-vs-DB drift, pinned at unit level), R2 structure
@@ -42,16 +42,16 @@ S1 MySQL oracle rung (COMPLETE: portable MariaDB rung, 30-entry match
 battery byte-stable, TS replay 27/30, decision = upgrade the SQLite
 REGEXP UDF with throw-on-untranslated; concurrent-race incident on the
 shared SQLite oracle deck documented in docs/oracle-harness.md).
-MiniMax wave A: T6 compat report (1 ported / 30 partial / 2 ignored),
+Also landed: T6 compat report (1 ported / 30 partial / 2 ignored),
 S6 gherkin first slice (31 tests), P1 write conformance (8 Ruby
-scenarios; found P3/P4). Wave B: T4 generalized migration (606k rows,
+scenarios; found P3/P4). T4 generalized migration (606k rows,
 parity + determinism proven on sanitized corpus; 6 gaps to one-click),
 T8 PG dialect (91 tests; live-PG rung specified, not proven),
 R9 Ruby CTE dividend (honest partial: overlay + CTE + hydration work;
 0% reduction until a <10-line reset_patterns guard lands — the
 contribution-series-2 opener).
 
-Coordinator fixes during integration: isRule import wiring + render.ts
+Integration fixes: isRule import wiring + render.ts
 eager/lazy seams (helpResolver once-per-engine), strict-less-than pin
 moved to the round-trip axis (statements fold, round trips are the
 #1282 metric), T4 declaration files, P1 test type fixes (runtime
@@ -61,29 +61,29 @@ behavior unchanged).
 > governing project contract. The [private work board](core/work-board.md)
 > maps these streams to acceptance issues without changing active ownership.
 > [Publication gates](core/governance.md) apply to all delivery work below.
-> Public placement and deployments require Julian's exact-package approval.
+> Public placement and deployments require the project owner's
+> exact-package approval.
 > PostgreSQL and shared Ruby/TS optimization are parallel work on that board.
 
-Work items for the fleet executing the full migration plan. Spec sources:
+Work items executing the full migration plan. Spec sources:
 decko-commons/decko issue 1282 (byte-parity acceptance, constant-queries
 promise, one-click deploy, seamless migration, provider adapters) and the
-Astra framework adopted in the #1282 thread: TypeScript and Ruby are two
-implementations of one abstracted system, verified across FOUR kinds of
-parity — **persistence, semantics, rendering, side effects**.
+four-parity framework adopted in the #1282 thread: TypeScript and Ruby are
+two implementations of one abstracted system, verified across FOUR kinds
+of parity — **persistence, semantics, rendering, side effects**.
 
-Status legend: `[x]` landed, `[~]` in flight (owner), `[ ]` queued.
-Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
+Status legend: `[x]` landed, `[~]` in flight, `[ ]` queued.
 
 ## Rendering parity
 
 - `[~]` R1 help-popover menu content — ~200 shard-0 realFails; menuView
   hardcodes `data-bs-content="&amp;nbsp;"` where Ruby renders the `*help`
-  rule content. Owner: REG pool. Owns `views.ts` + `format.ts` +
+  rule content. Owns `views.ts` + `format.ts` +
   new helper under `src/card/render/`. (docs/set-keys-parity-notes.md
   first sampled it.)
 - `[~]` R2 `*structure` rule templates — 106 structurePending entries on
   shard 0: cards with no db_content render their set's `*structure` rule
-  template content in Ruby. Owner: REG pool. Owns `src/card/rules/**`
+  template content in Ruby. Owns `src/card/rules/**`
   extensions + `render.ts` prepare-phase hook.
 - `[ ]` R3 search-core views — card_list / search nested views in the
   captured corpus (fail class "search cores"). Blocked on R1 (shares
@@ -99,32 +99,32 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 - `[~]` S2 non-anonymous permission actors — Anonymous is the only wired
   viewer; Ruby parties come from account member cards / roles
   (card-mod-account set/abstract/account_holder.rb:27-53,115-123). The
-  seam is `readPermissionStateFromResults(actorId, signedIn)`. Owner:
-  REG pool. Owns `src/card/permissions/**` + session glue.
+  seam is `readPermissionStateFromResults(actorId, signedIn)`.
+  Owns `src/card/permissions/**` + session glue.
 - `[ ]` S1 CQL `match` — needs a MySQL oracle rung (impossible on SQLite;
   docs/oracle-harness.md), then driver UDF/FTS5 decision.
-- `[~]` S3 mod loader + 33 card-mods — mechanism LANDED 2026-09-21
-  (REG): load order (Bundler closure), SetPattern front-insert, view
+- `[~]` S3 mod loader + 33 card-mods — mechanism LANDED 2026-09-21:
+  load order (Bundler closure), SetPattern front-insert, view
   override/config semantics; card-mod-help proven end-to-end vs a live
   sha-stable Ruby capture (28 tests; docs/mod-loader-port-notes.md).
   Remaining: per-mod ports, sequenced by the T6 report (1 ported /
   30 partial / 2 ignored); unknown-card mod-view hook is a documented
-  3-line coordinator patch.
-- `[~]` S5 non-read view perms — LANDED 2026-09-21 (REG): full task
+  3-line render-seam patch.
+- `[~]` S5 non-read view perms — LANDED 2026-09-21: full task
   resolution + skip_perms + denial substitutions (33 tests); corpus
   census shows all 124,632 captured denials are `(read)`-labeled, so
   non-read coverage is gem-cited + synthetic-pinned
-  (docs/view-perms-notes.md). Coordinator patch (ensureTaskVerdicts +
-  taskAllowed) queued for the next render.ts integration pass.
-- `[~]` S6 Gherkin features port — first slice LANDED 2026-09-21 (MM
-  wave A): 13 upstream features inventoried, CRUD/names/views ported
+  (docs/view-perms-notes.md). The ensureTaskVerdicts +
+  taskAllowed patch is queued for the next render.ts integration pass.
+- `[~]` S6 Gherkin features port — first slice LANDED 2026-09-21:
+  13 upstream features inventoried, CRUD/names/views ported
   (31 tests green), per-feature blockers documented
   (docs/gherkin-port-notes.md). Remaining 10 features queued behind
   email/follow/CQL/history modules.
 
 ## Persistence parity
 
-- `[~]` P1 write-path conformance — LANDED 2026-09-21 (MM wave A): 8
+- `[~]` P1 write-path conformance — LANDED 2026-09-21: 8
   Ruby scenarios captured (`fixtures/write-conformance/`), TS replay
   10/10 structural byte-parity on scenarios 01–06; two real defects
   found and routed below. Owns `benchmarks/capture-write-conformance.rb`
@@ -145,12 +145,12 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
 
 ## Runtime abstraction + delivery (#1282 product surface)
 
-- `[x]` T6 mod compatibility report generator — LANDED 2026-09-21 (MM
-  wave A): 33 mods → 1 ported / 30 partial / 0 missing / 2 ignored;
+- `[x]` T6 mod compatibility report generator — LANDED 2026-09-21:
+  33 mods → 1 ported / 30 partial / 0 missing / 2 ignored;
   `tools/compat-report/**` + `docs/mod-compat-notes.md`. Static
   inventory only (no runtime load test — rides S3).
 - `[ ]` T1 Deploy-to-Cloudflare button on a public repo (artifact shipped;
-  repo placement is Julian's call).
+  repo placement is the project owner's call).
 - `[ ]` T2 Bunny Edge Scripting + Bunny Database adapter path.
 - `[ ]` T3 config-page provisioning payload doubling as recovery artifact
   (non-button providers).
@@ -158,11 +158,11 @@ Pool: REG = regular-model background agent, MM = MiniMax-M3 agent.
   proven SourceDeck importer into the one-click path.
 - `[ ]` T5 shadow-compare router (TS behind Ruby, live-traffic byte
   comparison, clean-cutover report).
-- `[ ]` T7 M3 published metrics: live source-deck.example vs actual CF deploy
-  (needs Julian/Ethan coordination; local numbers are engineering
-  artifacts).
+- `[ ]` T7 published metrics: live source-deck.example vs actual CF deploy
+  (needs upstream and site-owner coordination; local numbers are
+  engineering artifacts).
 
-## Coordinator-held (not fleet work)
+## Integration-held
 
 - Replay driver: pre-seed all shards (cross-shard nest targets) + flip
   the denied-span skip → judged (needs permission seeding enrichment per

@@ -5,6 +5,14 @@
 export { findRule, findRules, ruleCacheKey, nameAsPatternCardInput } from "./lookup.js";
 export type { RuleLookupResult } from "./lookup.js";
 
+// the codename-form rule lookup cache (lib/card/rule/cache.rb — recount S2.4.c)
+export {
+  ruleCacheStatement,
+  buildRuleLookupHash,
+  ruleIdLookup,
+} from "./rule-cache.js";
+export type { RuleCacheRow } from "./rule-cache.js";
+
 export {
   parseViewOverride,
   applyViewOverride,

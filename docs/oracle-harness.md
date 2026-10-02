@@ -5,7 +5,8 @@ in `fixtures/captured/` are the executable specification: the decko-ts
 port must reproduce them byte-for-byte (modulo documented normalizations).
 
 - Oracle versions: card 1.110.0 / decko 0.20.0 on Ruby 3.3
-  (`C:\Ruby33-x64`), Rails 7.2.3.2 stack, SQLite via the precompiled
+  (installed gems under the Ruby gems directory, `gem environment gemdir`),
+  Rails 7.2.3.2 stack, SQLite via the precompiled
   `sqlite3-2.9.6-x64-mingw-ucrt` gem.
 - Oracle app: `tools/oracle/decko-oracle-app/` (gitignored; disposable,
   rebuildable from the commands below).
@@ -19,8 +20,8 @@ From the repo root, in Git Bash:
 
 ```bash
 cd tools/oracle/decko-oracle-app
-RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture.rb
-RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/cql_capture.rb
+RAILS_ENV=development bundle exec decko runner ../../tools/oracle/capture.rb
+RAILS_ENV=development bundle exec decko runner ../../tools/oracle/cql_capture.rb
 ```
 
 Seeding is create-if-missing (re-runs converge, no duplicate cards).
@@ -43,8 +44,8 @@ The app is disposable. Full rebuild (only needed if the app dir is
 deleted or the DB is corrupted):
 
 ```bash
-cd C:/localProjects/decko-ts/tools/oracle
-C:/Ruby33-x64/bin/decko new decko-oracle-app -d sqlite3 --skip-bundle
+cd tools/oracle
+decko new decko-oracle-app -d sqlite3 --skip-bundle
 cd decko-oracle-app
 printf '\n# Windows timezone data (zoneinfo dirs do not exist on Windows)\ngem "tzinfo-data"\n' >> Gemfile
 printf '\n# ActiveSupport 7.2 JSON encoding passes legacy quirks_mode kwarg; json 3.x removed it\ngem "json", "~> 2.7"\n' >> Gemfile
@@ -186,9 +187,8 @@ lives in `docs/cql-match-decision.md`; the TS replay is
 
 ### Server: portable MariaDB, no install
 
-Machine recon found no Docker, no MySQL/MariaDB install or service, and
-one WSL distro (the Handler app environment - left untouched). What the
-recon DID find: the `mysql2` gem's build had been attempted before and
+Machine recon found no Docker and no MySQL/MariaDB install or service. What
+the recon DID find: the `mysql2` gem's build had been attempted before and
 failed (`extconf failed, exit code 1` - no client headers/libs), and the
 network reachable. Provisioning therefore used the portable MariaDB
 Windows zip, run entirely in userspace:
@@ -211,7 +211,7 @@ Windows zip, run entirely in userspace:
   utf8mb4 COLLATE utf8mb4_general_ci`); `decko setup` ran the schema +
   core-card seed into it (604 cards, same count as the SQLite rung).
 
-### The mysql2 gem fight (all steps required, in order)
+### Building mysql2 on Windows (all steps required, in order)
 
 1. The gem's Windows build path has TWO branches
    (`ext/mysql2/extconf.rb:246+`): the dlltool/libmysql.a vendoring branch
@@ -275,15 +275,9 @@ identical sha256 (`d5780dc5...` for runs 2 and 3; run 1 differed because
 first-creation state converges - the create-then-capture contract from
 the SQLite rung applies here too).
 
-### Concurrency warning for the SHARED SQLite deck (2026-09-21 incident)
+### Concurrency warning for the SHARED SQLite deck
 
-The SQLite rung's deck (`db/development.sqlite3`) is shared state, and on
-2026-09-21 another fleet stream was actively mutating it (probe cards
-`TstR*_root`, read-rule/account state mid-experiment). A `cql_capture.rb`
-re-run during that window recorded all-empty result sets and overwrote
-`fixtures/captured/cql-basic.json`; the file was restored byte-identical
-to its committed sha (3463b60e...) and `smoke.json` was never touched.
-Rule of thumb: SQLite-rung captures are only trustworthy when no other
-stream is mutating the shared deck (check for recent non-seed cards first);
-the MySQL rung is immune - its server, datadir and database are private
-to this rung.
+The SQLite rung's deck (`db/development.sqlite3`) is shared state: captures
+are only trustworthy when nothing else is mutating the shared deck (check
+for recent non-seed cards first). The MySQL rung is immune — its server,
+datadir and database are private to this rung.

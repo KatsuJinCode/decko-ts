@@ -2,7 +2,7 @@
 
 The mod-loading REGISTRATION mechanism: how a card-mod gem plugs its set
 patterns, views, and setting definitions into a running deck. Oracle: card
-1.110.0 / decko 0.20.0 (`C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/`), live
+1.110.0 / decko 0.20.0 (`gems/`), live
 oracle app `tools/oracle/decko-oracle-app`. All file+line cites are the
 installed gems.
 
@@ -367,8 +367,8 @@ themselves; there is no view cache) and need no patch.
   therefore registers mod views globally and RECORDS the owning set module
   in the basket. Set-scoped dispatch (and Right::Help's :popover) needs
   the render layer to consult `card.setKeys` first - a render-stream
-  change, noted for the coordinator. The captured corpus exercises only
-  all-set mod views, which is why the byte proofs are unaffected.
+  change, recorded as the named remainder. The captured corpus exercises
+  only all-set mod views, which is why the byte proofs are unaffected.
 - **Gem load order is deck input.** The loader does not reimplement
   Bundler's resolve; decks pass their bundle order (the capture pins the
   oracle deck's). A deck that hand-orders mods differently gets exactly

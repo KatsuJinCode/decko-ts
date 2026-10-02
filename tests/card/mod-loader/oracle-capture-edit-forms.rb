@@ -6,7 +6,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-forms/tests/card/mod-loader/oracle-capture-edit-forms.rb
+#     <repo>/tests/card/mod-loader/oracle-capture-edit-forms.rb
 #
 # Records to <script-repo>/fixtures/captured/edit-forms.json:
 # 1. For each target card (an existing basic RichText content card and the

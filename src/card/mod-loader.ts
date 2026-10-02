@@ -57,12 +57,33 @@ import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
 } from "./render/content-overrides.js";
+import { registerSetTypeAssignment, resetSetTypeAssignments } from "./set-patterns/set-type-assignment.js";
+/** The registered format names whose Ruby class descends from HtmlFormat
+ *  (AbstractFormat#format_ancestry, registration.rb:60-65) and therefore
+ *  reopens the html method table when they carry no own registration:
+ *  rss (RssFormat < HtmlFormat, card-mod-format-0.20.0 rss_format.rb:6)
+ *  and email_html (EmailHtmlFormat < Card::Format::HtmlFormat,
+ *  card-mod-email-0.20.0 email_html_format.rb:6). css/js do NOT descend
+ *  from html — CssFormat and JsFormat subclass Format DIRECTLY
+ *  (css_format.rb:6, js_format.rb:6) — so a css/js chain miss reaches the
+ *  BASE tail below, never the html chain (include_set_format_modules,
+ *  format.rb:57-63, walks exactly the format_ancestry). The pre-2026-10-01
+ *  set carried css/js too (the recorded modeling discrepancy the
+ *  css-js-format-parents lane surveyed): zero css/js chain requests exist
+ *  (the only non-html dispatch is email_text, render/views.ts:1443) and
+ *  zero css-keyed registrations, so no byte rode the broader fallback —
+ *  pinned by tests/card/mod-loader/
+ *  view-dispatch-css-js-format-ancestry-census.test.ts. email_text
+ *  (EmailTextFormat < TextFormat < Format) does NOT descend; its chain
+ *  misses reach the base record, never the html chain. */
+const HTML_DESCENDED_FORMATS = new Set(["rss", "email_html"]);
 import {
   ModEventRegistry,
   setDefaultModEventRegistry,
 } from "./mod-loader/mod-event-registry.js";
 import type {
   DeckoModManifest,
+  ModBasketTask,
   ModEngineHost,
   ModEventRegistration,
   ModEventStage,
@@ -84,8 +105,23 @@ export { default as cardModHelp } from "./mod-loader/mods/card-mod-help.js";
 export { setKeysToModuleChain } from "./render/set-keys-to-modules.js";
 export type { DeckoModManifest, ModEngineHost } from "./mod-loader/mod-manifest.js";
 export type { ModViewConfig, ModSetModuleFile, ModSettingOpts, ModPatternRegistration } from "./mod-loader/mod-manifest.js";
+export type { ModBasketTask } from "./mod-loader/mod-manifest.js";
 export type { ModEventRegistration, ModEventStage, ModEventTrigger, ModEventCard, ModEventFn } from "./mod-loader/mod-manifest.js";
 export type { RegisteredSetting } from "./mod-loader/mod-registrar.js";
+
+/** One `basket[:tasks][:name] = {...}` contribution, with the contributing
+ *  mod + set path recorded (the registrar's provenance pattern). */
+export interface RegisteredBasketTask extends ModBasketTask {
+  readonly setPath: string;
+  readonly modName: string;
+}
+
+/** One `basket[:warnings] << :name` contribution. */
+export interface RegisteredBasketWarning {
+  readonly warning: string;
+  readonly setPath: string;
+  readonly modName: string;
+}
 
 /** One mod input: the manifest plus the Dirs bookkeeping. */
 export interface ModSource {
@@ -155,6 +191,12 @@ export class ModLoader {
    *  The execution seam (the action engine's stages) will consult it via
    *  eventsForStage once the deck boot binds the default. */
   private readonly modEvents = new ModEventRegistry();
+  /** The set-module basket contributions (set/self/admin.rb's
+   *  `basket[:tasks][:name] = {...}` / `basket[:warnings] << :name`),
+   *  collected in load order. The *admin :core/:warning views read the
+   *  deck basket = core's own entries merged with these. */
+  private readonly basketTaskEntries: RegisteredBasketTask[] = [];
+  private readonly basketWarningEntries: RegisteredBasketWarning[] = [];
 
   constructor(mods: readonly ModSource[], views: Record<string, ViewFn> = HTML_VIEWS) {
     this.views = new ViewRegistrationTable(views);
@@ -224,15 +266,22 @@ export class ModLoader {
     const registeredSettings: string[] = [];
     const registeredContentOverrides: string[] = [];
     const registeredEvents: string[] = [];
+    this.basketTaskEntries.length = 0;
+    this.basketWarningEntries.length = 0;
 
     // The compiled-in core patterns seed the concrete table (the ported
     // "core mod" - mod/core/set_pattern/01..09, oracle order in
     // PATTERN_TABLE); mod registrations then front-insert on top. The
-    // settings registry starts empty the way Ruby's boot does.
+    // settings registry starts empty the way Ruby's boot does. The
+    // type-assignment registry likewise: Ruby's Set::Type.assignment is a
+    // cattr hash populated ONLY by set-module assign_type lines at boot
+    // (advanced_api.rb:5-8), so every load() restarts it from empty and the
+    // phase-2 walk re-registers each file's entry.
     this.patterns.seedCore(PATTERN_TABLE.map((spec) => spec.code));
     this.settings.clear();
     this.contentOverrides.clear();
     this.modEvents.clear();
+    resetSetTypeAssignments();
 
     // ---- phase 1: SetPatternLoader (loader.rb:17) ------------------------
     for (const mod of ordered) {
@@ -258,19 +307,90 @@ export class ModLoader {
             .sort(bySetPath);
           for (const file of files) {
             this.registerSetModule(mod.manifest.name, file);
-            registeredSetModules.push(setModuleShortname(file.setPath));
             const shortname = setModuleShortname(file.setPath);
-            for (const formatBlock of Object.values(file.formats ?? {})) {
+            registeredSetModules.push(shortname);
+            const kind: SetModuleKind = kindOfSetPath(file.setPath);
+            for (const [formatKey, formatBlock] of Object.entries(file.formats ?? {})) {
               for (const view of formatBlock.views ?? []) {
-                // flat last-wins (render-path seam, byte-compatible).
-                this.views.register(view.view, view.viewFn);
+                // flat last-wins (render-path seam, byte-compatible) -
+                // ALL SETS ONLY. Card::Set::Format#register_set_format
+                // (set/format.rb:133-144) branches on all_set?: an ALL
+                // set's format module goes to Set.modules[:base_format]
+                // and process_base_format_modules (registrar.rb:79-84)
+                // mixes it into the BASE format class every card's
+                // format inherits from, so its views ARE universal and
+                // belong on the flat record. A NONBASE set's format
+                // module goes to Set.modules[:nonbase_format] and
+                // reaches a card only through
+                // Card::Set::Pattern::All#set_format_modules
+                // (pattern/all.rb:49-55) keyed on that card's OWN
+                // pattern module keys - writing one into the shared
+                // base record made it the fallthrough for EVERY card
+                // (measured: set/right/html_message's :content replaced
+                // the engine's main content renderer deck-wide; the
+                // guard is tests/card/mod-loader/
+                // view-set-scope-fallback.test.ts).
+                //
+                // FORMAT SCOPING (flat-table-format-scope lane,
+                // 2026-10-01): the flat record is the HTML-VISIBLE engine
+                // table (render.ts `this.views = HTML_VIEWS` - the same
+                // object this constructor receives), so an all-set
+                // registration lands here only under Ruby's html-visible
+                // keys. define_on_format resolves the block's format to a
+                // CLASS (format_class_name(:base) -> Card::Format,
+                // format/registration.rb:27-30); register_all_set_format
+                // files the module under THAT class (set/format.rb:
+                // 137-139) and process_base_format_modules mixes each
+                // class's list into the class itself (registrar.rb:79-84
+                // add_set_modules). An html-keyed module lands on
+                // HtmlFormat; a base-keyed one on Card::Format, the root
+                // every format inherits (format_ancestry,
+                // registration.rb:35-39). A foreign-keyed module
+                // (email_text/email_html/json/js/...) lands on ITS class
+                // ONLY - HtmlFormat's ancestry never includes it, and
+                // subclass modules never back-propagate (EmailHtmlFormat
+                // < HtmlFormat, card-mod-email lib/card/format/
+                // email_html_format.rb:6; the aliases table maps "email"
+                // TOWARD email_html, never a non-html key onto html).
+                // The census
+                // (tests/card/mod-loader/
+                // view-dispatch-flat-record-format-scope-census.test.ts)
+                // measured the composed deck: 168 all-set+abstract
+                // registrations over keys {html, base, json, email_html,
+                // email_text, js}; the foreign rows are all/email_text's
+                // compact_missing+unknown+last_action,
+                // all/email_html's compact_missing+unknown,
+                // all/autocomplete's select2_option (json), and
+                // all/reference_editor/nest_image's
+                // change_create_to_update+open_nest_editor (js). Before
+                // this filter the foreign rows FLAT-REGISTERED and four
+                // green html-render pins rode them (the A/B email
+                // :last_action "edited", search :select2_option's json
+                // bytes, the tinymce :change_create_to_update/
+                // :open_nest_editor js bytes) - Ruby raises
+                // unsupported-view for every one (the html method table
+                // never included those classes); those pins now hold
+                // both directions (html rejects, own format renders).
+                if (
+                  kind !== "nonbase" &&
+                  (formatKey === "html" || formatKey === "base")
+                ) {
+                  this.views.register(view.view, view.viewFn);
+                }
                 // chain-aware: every view is recorded under its
                 // contributing set module so the walker can resolve
                 // Ruby's MRO per card (set/format.rb:146-150) and the
                 // superView helper can delegate to the next module's
-                // same view (Ruby's `super()`).
-                this.viewChains.register(shortname, view.view, view.viewFn);
+                // same view (Ruby's `super()`). The kind rides along so
+                // the empty-chain fallback can tell an all-set
+                // registration from a set-scoped one.
+                this.viewChains.register(shortname, view.view, view.viewFn, kind, formatKey);
                 this.viewConfigs.register(view.view, view.config);
+                // p20-nest-selection: keep the config under its set module
+                // too — the per-card `unknown:` setting resolution walks
+                // the card's chain and needs each module's OWN declaration
+                // (the flat byView record cannot answer per card).
+                this.viewConfigs.registerForModule(shortname, view.view, view.config);
                 if (!registeredViews.includes(view.view)) registeredViews.push(view.view);
               }
             }
@@ -306,6 +426,24 @@ export class ModLoader {
                 modName: mod.manifest.name,
               });
               registeredEvents.push(event.event);
+            }
+            for (const task of file.basketTasks ?? []) {
+              // set-module `basket[:tasks][:name] = {...}` (set/basket.rb's
+              // basket machinery; the self/admin.rb files). Load order is
+              // the basket insertion order the *admin task table renders.
+              this.basketTaskEntries.push({
+                ...task,
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+              });
+            }
+            for (const warning of file.basketWarnings ?? []) {
+              // set-module `basket[:warnings] << :name`.
+              this.basketWarningEntries.push({
+                warning,
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+              });
             }
           }
         }
@@ -355,6 +493,8 @@ export class ModLoader {
     this.basket.clear();
     this.contentOverrides.clear();
     this.modEvents.clear();
+    this.basketTaskEntries.length = 0;
+    this.basketWarningEntries.length = 0;
     this.loaded = false;
   }
 
@@ -414,10 +554,15 @@ export class ModLoader {
    *   module shortname "Right::ApiKey" via safeKeyToModuleShortname.
    * - anchorless token (e.g. "ALL", "RSTAR", "RULE"): no single
    *   module shortname applies; the walker expands to EVERY registered
-   *   set module whose pattern code matches (the ALL token expands
-   *   to every All::* module; RSTAR expands to every Rstar::* module
-   *   if any registered; RULE expands to every Rule::* module).
-   *   Per-token order is preserved so Ruby's MRO walk is honored.
+ *   set module whose pattern code matches (the ALL token expands
+ *   to every All::* module; RSTAR expands to every Rstar::* module
+ *   if any registered; RULE expands to every Rule::* module).
+ *   Within one token the LATER-registered module comes first (Ruby's
+ *   include-order precedence: module.rb:15-22 + registrar.rb:79-84 —
+ *   the last-loaded same-view registration shadows the earlier), and
+ *   only registrations declared under the requested format's key are
+ *   visible (set/format.rb:120-144 files each all-set format module
+ *   under its own format class).
    *
    * Format inheritance (AbstractFormat#format block reopen - card-
    * 1.110.0 lib/card/format.rb:62-68's format_ancestry): when `format`
@@ -437,9 +582,38 @@ export class ModLoader {
     // (the abstract sets CodeContent/HamlFile/ReadOnly etc. match here).
     // Format-specific scoping (no per-format registry today): when the
     // format is not html and the abstract-style fallback returns
-    // entries, those entries win; otherwise the html-chain fallback
-    // applies. The current port registers every view under html, so
-    // the html fallback is what fires for css/js/rss requests today.
+    // entries, those entries win; otherwise the format-inheritance tail
+    // below applies. Only rss/email_html reopen the html chain
+    // (HTML_DESCENDED_FORMATS above); css/js — CssFormat/JsFormat <
+    // Format (css_format.rb:6, js_format.rb:6) — land on the base tail,
+    // and no css/js chain request exists on this codebase (the only
+    // non-html dispatch is email_text, render/views.ts:1443; the
+    // css/scss asset bytes are the compile-engines leaf seam, never a
+    // chain request — view-dispatch-css-js-format-ancestry-census
+    // pins the census).
+    //
+    // RESIDUAL SCOPE: THIS
+    // arm is format-blind AND kind-blind - entries() yields every kind
+    // (base/abstract/nonbase) under every manifest format key, while
+    // Ruby files each module's format block under its OWN format class
+    // (set/format.rb:120-144) and never mixes set scopes into one
+    // method table. The blindness is adjudicated UNOBSERVABLE on this
+    // codebase and the arm is retained verbatim: safeSetKeys always
+    // carries the ALL token (set-patterns/registry.ts:308-313
+    // `applies: () => true`), so no src dispatch reaches it - the only
+    // viewChain("") calls are the abstract-pseudo-pattern probes
+    // (card-mod-content.test.ts, default-mod-deck.test.ts,
+    // view-dispatch-superview.test.ts). The census probe
+    // (tests/card/mod-loader/
+    // view-dispatch-flat-record-format-scope-census.test.ts) pins the
+    // measured spans: over the composed deck the fallback set spans
+    // MORE THAN ONE format key for exactly {count, compact_missing,
+    // unknown, last_action, last_action_verb} and MORE THAN ONE kind
+    // for 18 further views (abstract+nonbase+base mix under key html
+    // alone for most). Reopening signal: a src caller that passes an
+    // abstract-derived or empty setKeys - or a census-tripping foreign
+    // registration - re-adjudicates this arm together with the flat
+    // record's format filter at the registration seam.
     if (tokens.length === 0) {
       const out: ViewChainEntry[] = [];
       for (const entry of this.viewChains.entries()) {
@@ -454,14 +628,72 @@ export class ModLoader {
       if (dashIdx === -1) {
         // Anchorless: expand to every registered module with this
         // pattern code (e.g. "ALL" -> All::Base, All::Help, ...).
+        //
+        // SAME-PATTERN ORDER:
+        // LATER-REGISTERED WINS within the token. Ruby includes the
+        // all-set module list in load order (module.rb:15-22
+        // add_set_modules; registrar.rb:42-49 process_base_modules /
+        // registrar.rb:79-84 process_base_format_modules) and each later
+        // `include` sits directly above the format class, so the
+        // LAST-loaded module defining a view shadows the earlier
+        // same-view registrations. The chain therefore lists the latest
+        // registration FIRST - chain[0] (the render dispatch,
+        // render.ts:1511) answers Ruby's MRO head.
+        //
+        // FORMAT SCOPING: only registrations declared under THIS
+        // format's manifest key are visible. Ruby files every all-set
+        // format module under its own format class (set/format.rb:
+        // 120-144 register_all_set_format keyed on format_class), so an
+        // email_text registration of a view never enters the html method
+        // table - compact_missing {All::Error(html arm),
+        // All::EmailHtml(email_html), All::EmailText(email_text)} are
+        // three format classes, not one chain. A non-html format whose
+        // own arm is empty falls back via the format-inheritance tail
+        // below ONLY when its Ruby class descends from HtmlFormat
+        // (rss/email_html — HTML_DESCENDED_FORMATS above); css/js
+        // (CssFormat/JsFormat < Format, css_format.rb:6/js_format.rb:6)
+        // and EmailTextFormat never do — their misses land on the base
+        // tail.
+        //
+        // RESIDUAL SCOPE:
+        // THIS scoping is the anchorless arm's alone. The anchored
+        // exact-token arm and the nested-prefix expansion below still
+        // probe the format-blind SetModuleViewTable.viewFor, though Ruby
+        // files an anchored (nonbase) set's format module under its own
+        // format class the same way (set/format.rb:120-144
+        // register_standard_set_format; only the requested class's
+        // modules reach the card's format singleton - format.rb:62-68
+        // include_set_format_modules + pattern/base.rb:30-37
+        // format_module_list). The divergence is adjudicated
+        // UNOBSERVABLE on this codebase and the blindness is retained:
+        // the census
+        // (tests/card/mod-loader/
+        // view-dispatch-anchored-cross-format-collision-census.test.ts)
+        // measures 159 anchored registrations - 157 html + 2 json
+        // (carrierwave self/search :image_complete, api_key right/
+        // api_key :token) - and ZERO cross-format collision groups, so
+        // no dispatch can pick the wrong format's bytes BETWEEN two
+        // same-token arms. The single-registration leak shapes are
+        // bounded: the only non-html chain dispatch in the port is the
+        // text-message email_text :core re-entry (render/views.ts:1443),
+        // unreachable until a loader-bound surface seeds a
+        // codename-bearing *text message (today's seeds carry none -
+        // notify-save-path-wiring.test.ts:80), and the two json rows'
+        // views have no non-json dispatch (the route json show is the
+        // format-families layer, bypassing this walk). A future
+        // non-html anchored registration trips the census probe and
+        // reopens the adjudication.
         const code = token.toLowerCase();
         const matches = this.setModuleShortnamesForCode(code);
+        const scoped: ViewChainEntry[] = [];
         for (const shortname of matches) {
-          const viewFn = this.viewChains.viewFor(shortname, view);
+          const viewFn = this.viewChains.viewForFormat(shortname, view, format);
           if (viewFn !== undefined) {
-            out.push({ setModule: shortname, view, viewFn });
+            scoped.push({ setModule: shortname, view, viewFn });
           }
         }
+        scoped.reverse();
+        out.push(...scoped);
       } else {
         // Anchored: resolve to the first REGISTERED shortname among the
         // token's candidates (exact conversion first, then the star-marker
@@ -469,24 +701,174 @@ export class ModLoader {
         // while the rule card's token is "RIGHT-Xapi_key"; lookup decides,
         // never string guessing). Unregistered tokens fall through to the
         // next set-key token, Ruby's MRO walk unchanged.
+        let matched = false;
         for (const shortname of safeKeyToModuleShortnameCandidates(token)) {
           const viewFn = this.viewChains.viewFor(shortname, view);
           if (viewFn !== undefined) {
             out.push({ setModule: shortname, view, viewFn });
+            matched = true;
             break;
+          }
+        }
+        if (!matched) {
+          // Nested format modules under an ANCHORED pattern/anchor path
+          // (type/set/html_views, type/set/setting_categories, ...): the
+          // token -> shortname conversion can only produce "Type::Set", but
+          // Ruby's set-module inclusion gives a Set card EVERY module under
+          // Card::Set::Type::Set (the nested modules reopen the same format
+          // class). Expand to every REGISTERED shortname whose setPath sits
+          // under the token's pattern/anchor path, in load order - same
+          // lookup-decides discipline as the anchorless expansion, scoped
+          // to the anchored prefix. (The rules mod's setting-list family -
+          // type/set/html_views/rule_lists - was unreachable before this
+          // expansion: the d6b1957 tree's own set_label/input chain misses
+          // were the same gap.)
+          //
+          // STAR-MARKER STRIP (surfaces-batch2, 2026-09-30): a starred
+          // anchor's safe key prefixes X ("*account" -> "Xaccount"), but
+          // the gem's set-file PATH carries the plain anchor
+          // (set/right/account/views.rb -> "right/account/views") - the
+          // prefix comparison compared "right/Xaccount/" against
+          // "right/account/" and never matched, so every nested set file
+          // under a starred anchor (right/account/views' token_days family
+          // + closure) was unreachable - the exact gap the token-view
+          // it.fails markers pinned. The setPath side never carries X, so
+          // the comparison uses the stripped form.
+          //
+          // COMPOUND-ANCHOR STRIP (surfaces-batch3, 2026-09-30): the X
+          // marker sits on EACH STARRED SEGMENT of the anchor, not only on
+          // the first - the TYPE_PLUS_RIGHT pattern's token anchor is
+          // "<left type>-X<right>" ("TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor"),
+          // whose set path is "type_plus_right/bootswatch_skin/colors". A
+          // leading-only strip left that prefix comparison broken
+          // ("bootswatch_skin-Xcolor" vs "bootswatch_skin/colors"), so the
+          // whole type_plus_right/* starred family (colors' bar_middle, the
+          // set/script and set/style arms) stayed unreachable. The strip
+          // now applies per dash-separated segment (the codename segments
+          // are the starred ones; the type segment never carries X, and
+          // stripping nothing from it is a no-op).
+          //
+          // SINGULAR/PLURAL + PATH-SEGMENT CANDIDATES (surfaces-batch3):
+          // scoped to the TYPE_PLUS_RIGHT pattern - the one installed
+          // pattern whose anchor has MULTIPLE parts, which changes both
+          // spellings: the token anchor "bootswatch_skin-Xcolor" maps to
+          // the path "type_plus_right/bootswatch_skin/colors.rb" (each
+          // anchor part is a DIRECTORY - the last dash is a slash), and the
+          // right part carries the SINGULARIZED codename ("*colors" -> key
+          // "color") while the set-file path spells the codename
+          // ("colors.rb" - the registrar's KNOWN DIVERGENCE #1
+          // singularization, worked around here at the same level as the
+          // X-strip until the codename-key re-key lands). Single-part
+          // patterns (right/self/type) keep the batch-2 form ONLY: their
+          // plural divergence (RIGHT-follower -> right/followers) is that
+          // same recorded divergence's xfailed territory with lanes' seeds
+          // and expectations written against the current walk - widening
+          // those here would flip tests this lane does not own (the
+          // follow A/B suite's +*followers probe flipped when the plural
+          // candidate reached right/followers - measured, then scoped out).
+          const code = token.slice(0, dashIdx).toLowerCase();
+          const strippedAnchor = token
+            .slice(dashIdx + 1)
+            .split("-")
+            .map((seg) => seg.replace(/^X/, ""))
+            .join("-")
+            .toLowerCase();
+          const anchors =
+            code !== "type_plus_right"
+              ? [strippedAnchor]
+              : (() => {
+                  // path-segment form: the LAST dash becomes a slash
+                  const lastDash0 = strippedAnchor.lastIndexOf("-");
+                  const slashForm =
+                    lastDash0 === -1
+                      ? strippedAnchor
+                      : `${strippedAnchor.slice(0, lastDash0)}/${strippedAnchor.slice(lastDash0 + 1)}`;
+                  const forms = [strippedAnchor, slashForm];
+                  for (const base of [strippedAnchor, slashForm]) {
+                    const lastDash = base.lastIndexOf("-");
+                    const lastSeg = base.slice(lastDash + 1);
+                    if (!lastSeg.endsWith("s")) {
+                      forms.push(
+                        lastDash === -1
+                          ? `${lastSeg}s`
+                          : `${base.slice(0, lastDash + 1)}${lastSeg}s`,
+                      );
+                    }
+                  }
+                  return forms;
+                })();
+          for (const anchor of anchors) {
+            for (const mod of this.basket.allNonbase()) {
+              const setPath = this.basket.setPathFor(mod.shortname);
+              if (setPath === undefined) continue;
+              if (setPath === `${code}/${anchor}` || setPath.startsWith(`${code}/${anchor}/`)) {
+                const viewFn = this.viewChains.viewFor(mod.shortname, view);
+                if (viewFn !== undefined) {
+                  out.push({ setModule: mod.shortname, view, viewFn });
+                }
+              }
+            }
           }
         }
       }
     }
     // Format inheritance: when the named format produces no chain
-    // entries (the typical case for css/js/rss today - all views
-    // register under html), fall back to the html chain. Ruby's
-    // AbstractFormat#format blocks reopen the html parent class when
-    // they don't override a view, so a css/js/rss render lands in
-    // the html chain unless a css-specific registration wins first.
-    if (out.length === 0 && format !== "html") {
+    // entries, fall back to the html chain — but ONLY for the formats
+    // whose Ruby class descends from HtmlFormat (the
+    // HTML_DESCENDED_FORMATS gate below): rss (RssFormat < HtmlFormat,
+    // rss_format.rb:6) and email_html (EmailHtmlFormat < HtmlFormat,
+    // email_html_format.rb:6). Ruby's AbstractFormat#format blocks
+    // reopen the html parent class only through that ancestry
+    // (include_set_format_modules, format.rb:57-63, walks
+    // format_ancestry). css/js do NOT descend — CssFormat/JsFormat
+    // subclass Format directly (css_format.rb:6, js_format.rb:6) — so a
+    // css/js chain miss skips this arm and lands on the BASE tail below
+    // (the survey fix, 2026-10-01; the
+    // census probe pins that no css/js chain request exists to observe
+    // the change). EmailTextFormat < TextFormat < Format
+    // (email_text_format.rb) likewise never sees the html method table,
+    // so an email_text chain miss must reach the BASE (flat) record, not
+    // the html chain — falling back there would let the html chain's own
+    // :core re-enter itself (the text-message card's html :core
+    // dispatches email_text's :core). email_html DOES descend and keeps
+    // the fallback.
+    if (
+      out.length === 0 &&
+      format !== "html" &&
+      HTML_DESCENDED_FORMATS.has(format)
+    ) {
+      // the recursion carries the html level AND (through its own base
+      // tail, below) the base level - Ruby's MRO for an html-descended
+      // format (RssFormat/EmailHtmlFormat < HtmlFormat < Format) is
+      // [own] ++ [html] ++ [base]
       return this.viewChain(setKeys, view, "html");
     }
+    // BASE-FORMAT TAIL: the bare
+    // `format do` block files its module on Card::Format ITSELF
+    // (register_all_set_format keyed on the base format class,
+    // card-1.110.0 lib/card/set/format.rb:142-144;
+    // process_base_format_modules, registrar.rb:79-84, mixes it into the
+    // class EVERY format inherits). Those views answer in every format,
+    // AFTER the format's own registrations (EmailTextFormat -> TextFormat
+    // -> Format: the own-format module sits closer in the MRO than the
+    // base-class module), and later-registered-wins applies within the
+    // base pass exactly as within the format pass. The manifest's
+    // documented "base" key (mod-manifest.ts:286-288) marks them; a module
+    // that declared the view under BOTH the requested format and base
+    // contributes BOTH entries (Ruby compiles separate format-class
+    // modules per block - the HtmlFormat module included closer than the
+    // Card::Format one - and super() walks exactly that pair). The
+    // html-descended recursion above already carries this tail, so it
+    // does not run twice.
+    const baseScoped: ViewChainEntry[] = [];
+    for (const shortname of this.setModuleShortnamesForCode("all")) {
+      const baseFn = this.viewChains.viewForFormat(shortname, view, "base");
+      if (baseFn !== undefined) {
+        baseScoped.push({ setModule: shortname, view, viewFn: baseFn });
+      }
+    }
+    baseScoped.reverse();
+    out.push(...baseScoped);
     return out;
   }
 
@@ -518,6 +900,33 @@ export class ModLoader {
     return this.viewConfigs.configFor(view);
   }
 
+  /** view/permission.rb:38 `setting :unknown` for ONE card — the per-card
+   *  half of the p20-nest-selection fix. Walks the card's own view chain
+   *  (viewChain: the same MRO walk the dispatcher uses, most-specific set
+   *  first) and answers the first chain entry whose set module CARRIES an
+   *  `unknown` config for the view. Ruby dispatches
+   *  `try _view_<view>__<setting>` on the card's format class: the method
+   *  exists only on set modules that declared the view with an `unknown:`
+   *  option, and the most specific defining module wins — a module that
+   *  defines the view WITHOUT the setting does not answer, so the walk
+   *  skips it (exactly the configForModule-undefined case).
+   *  Undefined = no module in the card's chain declares the setting (the
+   *  caller substitutes :unknown; format/error.rb:23 `setting_view ||
+   *  :unknown`). */
+  viewUnknownSettingForCard(
+    setKeys: string,
+    view: string,
+    format: string = "html",
+  ): true | string | false | undefined {
+    for (const entry of this.viewChain(setKeys, view, format)) {
+      const config = this.viewConfigs.configForModule(entry.setModule, view);
+      if (config !== undefined && config.unknown !== undefined) {
+        return config.unknown;
+      }
+    }
+    return undefined;
+  }
+
   /** The Card::Setting registry port (groups with nil holes, preferences). */
   settingsRegistry(): SettingRegistry {
     return this.settings;
@@ -533,6 +942,19 @@ export class ModLoader {
    *  deck boot binds as the execution seam's default). */
   eventRegistry(): ModEventRegistry {
     return this.modEvents;
+  }
+
+  /** The `basket[:tasks]` contributions in load order (the deck task
+   *  basket is core's own CORE_TASK_BASKET merged with these — the *admin
+   *  :core task table and type/mod #tasks read it). */
+  basketTaskContributions(): readonly RegisteredBasketTask[] {
+    return this.basketTaskEntries;
+  }
+
+  /** The `basket[:warnings]` contributions in load order (the deck warning
+   *  list the *admin :warning view walks). */
+  basketWarningContributions(): readonly RegisteredBasketWarning[] {
+    return this.basketWarningEntries;
   }
 
   /** The concrete pattern table INCLUDING mod patterns, in lookup order.
@@ -562,6 +984,13 @@ export class ModLoader {
     // Record the shortname <-> setPath mapping so the chain walker
     // can recover the pattern code for anchorless-token expansion.
     this.basket.recordSetPath(shortname, file.setPath);
+    // advanced_api.rb:5-8 `assign_type type, module_key=nil`:
+    // `module_key ||= shortname; Type.assignment[module_key] = type`. The
+    // manifest field carries the type argument verbatim (the codename or
+    // name string the gem's line named, e.g. "list" on set/right/to.rb).
+    if (file.assignsType !== undefined) {
+      registerSetTypeAssignment(shortname, file.assignsType);
+    }
   }
 }
 

@@ -18,6 +18,9 @@ import type { CardsRow } from "../../../src/server/schema.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import { expireRuleResolutionCache } from "../../../src/card/permissions/read-rules.js";
+import type { Lex } from "../../../src/card/fetch/lexicon.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the DDL carries no
  *  ";" inside literals - same splitter contract as the fetch stream's
@@ -116,6 +119,35 @@ export async function createRenderTestStorage(): Promise<RenderTestStorage> {
   return { engine: new RenderEngine(fetcher), fetcher, counting, close: () => driver.close() };
 }
 
+/** Bind a loaded ModLoader to the engine so the render path resolves views
+ *  through Ruby's per-card MRO walk (RenderEngine#computeResolvedView ->
+ *  `loader.viewChain(card.setKeys, view, format)`, src/card/render.ts).
+ *
+ *  NEEDED, not optional: RenderEngine captures `getDefaultModLoader()` in
+ *  its CONSTRUCTOR (render.ts:466), which runs inside
+ *  createRenderTestStorage — long before a test file's beforeAll creates
+ *  and loads its loader. A test that renders a SET-SCOPED view without
+ *  this line silently reached it through the flat base-format record
+ *  instead, which is exactly the deck-wide masking this seam's absence
+ *  used to hide: a `set/right/*` or `set/type/*` view answered for cards
+ *  that are not in the set at all. The flat record now carries only the
+ *  universally-applicable (set/all/*) registrations, so an unbound
+ *  engine cannot see a set-scoped view — correctly.
+ *
+ *  Pass the loader the test already built; this does not construct or
+ *  load one. `storage` may be undefined: a manifest-structure test
+ *  inspects the loader without ever constructing a render engine, and
+ *  there is nothing to bind in that case - the process-wide default is
+ *  still set, because superView (mod-view-helpers.ts) and the modView*
+ *  config accessors read it. */
+export function bindModLoaderToEngine(
+  storage: RenderTestStorage | undefined,
+  loader: ModLoader,
+): void {
+  if (storage !== undefined) storage.engine.modLoader = loader;
+  setDefaultModLoader(loader);
+}
+
 const DEFAULT_TYPE_ID = 2;
 
 export interface SeedOptions {
@@ -148,6 +180,10 @@ export interface SeedOptions {
    *  the raw-corpus seeding passes the corpus value through; unset keeps
    *  the historical seed default (2026-09-19 00:00:00.000). */
   createdAt?: string;
+  /** cards.updated_at — the corpus row's literal SQL datetime (the json
+   *  molecule's updated_at pin reads this column; unset keeps the
+   *  historical seed default). */
+  updatedAt?: string;
   /** cards.creator_id — the self_signup?/invited? input
    *  (views.rb:39-45 compares against AnonymousID). Unset keeps the
    *  historical seed default (1). */
@@ -210,7 +246,7 @@ export async function seedCard(
       // card.created_at}" from this column); the historical seed default
       // otherwise.
       opts.createdAt ?? "2026-09-19 00:00:00.000",
-      "2026-09-19 00:00:00.000",
+      opts.updatedAt ?? "2026-09-19 00:00:00.000",
       // creator_id: the invited?/self_signup? input (views.rb:39-45
       // compares against AnonymousID); historical default otherwise.
       opts.creatorId ?? 1,
@@ -223,6 +259,39 @@ export async function seedCard(
       opts.dbContent ?? null,
     ],
   );
+  // Fixture rows land OUTSIDE the write engine, so the post-save seam
+  // (CardActionEngine.expireAfterWrite) never sees them; the rule-key
+  // universe cache (read-rules.ts) is per driver and would otherwise
+  // answer stale for keys seeded after a first resolution. Expire here —
+  // the same invalidation a committed save performs, applied at the
+  // fixture seam. The staleness CONTRACT for truly raw writes is pinned
+  // separately (rule-resolution-memo.test.ts uses driver.query directly).
+  expireRuleResolutionCache(storage.fetcher.driver);
+  // Same seam, lexicon half. A committed create runs the update_lexicon
+  // store event (Ruby: mod/core/set/all/name_events.rb:76-78 -> Lexicon.add
+  // -> lexicon.rb:79-82 write), which OVERWRITES both lex cache keys the
+  // row now owns. A fixture INSERT cannot, so a db-confirmed negative
+  // cached earlier for this id — id_to_lex caches the miss via cache.fetch
+  // (lexicon.rb:101-102; src/card/fetch/lexicon.ts cacheFetch: "a stored
+  // nil is a hit") — outlives the row and answers "unknown" forever. The
+  // live trigger: render.ts#preloadSetRules fetches every corpus-pinned
+  // RULE_TYPE_IDS_FOR_PRELOAD id (virtual-rule-card.ts:126 — the deck's
+  // List=47 / Toggle=51 / HTML=50 rule-type cards) on any set-card render,
+  // and a fixture that later seeds those ids (search-permission-filter's
+  // twin junction 47 / "Doc Beta" 51) resolved through the stale nils.
+  // Drop both keys (deleteFor = lexicon.rb:38-41 delete); the next async
+  // read re-caches positives from the stored row — the same end state
+  // Lexicon.add produces, reached by re-read because the side cards a
+  // junction's composed name needs may not be seeded yet at this seam.
+  if (opts.id !== undefined) {
+    const lex: Lex | undefined =
+      isCompound
+        ? [opts.leftId ?? undefined, opts.rightId ?? undefined]
+        : hasName
+          ? opts.name!
+          : undefined;
+    storage.fetcher.lexicon.deleteFor(opts.id, lex);
+  }
 }
 
 /** Seed one card_references row (the reference graph the read-rule cache
@@ -240,6 +309,60 @@ export async function seedReference(
     `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
      VALUES (?, ?, ?, ?, NULL)`,
     [refererId, refereeKey, refereeId, refType],
+  );
+}
+
+/** Seed one card_acts row (lib/card/act.rb:19-23 - a group of recorded
+ *  actions; `card_id` is the act's PRIMARY card, which is NOT necessarily
+ *  the card any of its actions touched - the deck's act 105328 has
+ *  card_id 1 while carrying the create actions for both Home (521) and
+ *  the Decko logo (291)). */
+export async function seedAct(
+  storage: RenderTestStorage,
+  opts: { id?: number; cardId?: number | null; actorId?: number | null; actedAt?: string },
+): Promise<void> {
+  await storage.counting.query(
+    `INSERT INTO card_acts (id, card_id, actor_id, acted_at, ip_address)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      opts.id ?? null,
+      opts.cardId ?? null,
+      opts.actorId ?? null,
+      opts.actedAt ?? "2026-09-19 00:00:00.000",
+      null,
+    ],
+  );
+}
+
+/** Seed one card_actions row (lib/card/action.rb:23-35 - a group of
+ *  changes to ONE card within an act). `actionType` takes the STORED
+ *  integer, not the Ruby symbol: TYPE_OPTIONS = %i[create update delete]
+ *  (action.rb:42) and `action_type=` writes TYPE_OPTIONS.index(value)
+ *  (action.rb:89-91), so create=0, update=1, delete=2 - the same codes
+ *  ActionQuery#add_update_condition matches as 1 (action_query.rb:31-33). */
+export async function seedAction(
+  storage: RenderTestStorage,
+  opts: {
+    id?: number;
+    cardId?: number | null;
+    actId?: number | null;
+    actionType?: 0 | 1 | 2;
+    draft?: boolean;
+    comment?: string | null;
+  },
+): Promise<void> {
+  await storage.counting.query(
+    `INSERT INTO card_actions (id, card_id, card_act_id, super_action_id, action_type, draft, comment)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      opts.id ?? null,
+      opts.cardId ?? null,
+      opts.actId ?? null,
+      null,
+      opts.actionType ?? 0,
+      opts.draft === true ? 1 : 0,
+      opts.comment ?? null,
+    ],
   );
 }
 

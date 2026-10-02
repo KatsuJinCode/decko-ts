@@ -1,0 +1,337 @@
+{
+ "_provenance": {
+  "captured_from": "the live production deck's compiled *all+*script bundle, URL /files/~50617/1768074298.js (bucket copy: brandonDojoTech tmp/wrong-goal-hunt/a27-assets/live-1768074298.js, 995,951 bytes)",
+  "oracle_pin_source": "a27-assets lane capture 2026-09-26; the assembled INPUT twin is the cwinput lane's live pin (sha256 36a3d55df942e04f..., 1,050,887 bytes — fixtures/captured/all-script-assembled-input.js)",
+  "leaf_grammar": "comment_with_source (card-mod-script set/abstract/00_script.rb:20-22): each leaf is '// <file basename>\\n' + the leaf core; leaves join '\\n' (asset_group.rb render_items_and_compress within a group, asset_outputter.rb input_from_item_cards joint between groups)",
+  "compression": "Uglifier.new(harmony: true).compile (00_script.rb:25-27 try_compress) under compress_assets=true (cardio railtie default; the production deck's state)",
+  "parity_summary": {
+   "byte_exact": 48,
+   "ours_plus_trailing_newline": 1,
+   "live_only_mod_leaves": 4
+  },
+  "named_divergences": [
+   "jquery.iframe-transport.js: the live compile's uglify runtime emitted one trailing newline our snapshot does not (code bytes identical; 1 byte)",
+   "decko_logo.js / decko_org.js.coffee / snap.js / snap_svg.js: a live-only 16th script group (a custom production mod whose sources exist on no local surface — not in the oracle app's gem set, not in the corpus); the port compiles the 15 manifest mods the deck DB lists. tinymce_config.js.coffee (the last shared leaf) carries byte-exact-plus-bundle-join: its live slice adds only the inter-group '\\n' join before that live-only group"
+  ]
+ },
+ "leaves": [
+  {
+   "name": "jquery-ui.min.js",
+   "liveBytes": 253230,
+   "liveSha256": "5b728419f106263fa84c0ebb4cd7ab4fc1e96841f378f57964200e303a70cdad",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "jquery.ui.autocomplete.html.js",
+   "liveBytes": 809,
+   "liveSha256": "bd69ce6e78a70ed4863de02a69587e17d4a80872cfc4dae99cd52efbfdb6ccad",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "jquery.autosize.js",
+   "liveBytes": 3202,
+   "liveSha256": "8200decf4c1a8f96c2cf2ec34a72aea509bb1f46b2a29c90daa7e37bb203739a",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "jquery.fileupload.js",
+   "liveBytes": 19128,
+   "liveSha256": "edcca590a2af6db54990e00e27ed2f24966379376488e86eea539d57a8874e41",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "jquery.iframe-transport.js",
+   "liveBytes": 2564,
+   "liveSha256": "647cf0eee1190c33a7d466d89ed51e3d480429e0c99d92c7e34395ca6b81d814",
+   "parity": "ours-plus-trailing-newline"
+  },
+  {
+   "name": "decko.js.coffee",
+   "liveBytes": 580,
+   "liveSha256": "457edf53190a4fe89ff1e54af26e5b4336e742a1745528e552b264a592448898",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "decko_jquery.js.coffee",
+   "liveBytes": 613,
+   "liveSha256": "ebee1900e4eb676fae64874875787eb3717abb315764463f7e5aec5203373408",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "slot.js.coffee",
+   "liveBytes": 3243,
+   "liveSha256": "06ac10277d00a984deb0f96d5c4aafd7d91945929d05127c511aa7299536674c",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "slotter.js.coffee",
+   "liveBytes": 4185,
+   "liveSha256": "06a9f9324163e2ba27c208188e7364d67002887fd96ed2b9843593bbdada540e",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "slot_ready.js.coffee",
+   "liveBytes": 353,
+   "liveSha256": "b40097180dd5f06f2afe8fec56c915f5ede2d9ee582644aca774ac49e1105513",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "clicks_and_hovers.js.coffee",
+   "liveBytes": 3380,
+   "liveSha256": "b2df463917b0dea70652c6515a36a2ef173d9020233e44c5ddb8e35bef77591b",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "pointer_config.js.coffee",
+   "liveBytes": 2630,
+   "liveSha256": "c3a4a108a2e45d768b67f952d984e5285313c4d45ad839209b6235da42689ea6",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "pointer_list_editor.js.coffee",
+   "liveBytes": 1593,
+   "liveSha256": "bfceb11938860f12cfd2ceeddbeb7ff5e84f68582a66e00c413f51aaf82d53aa",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "autocomplete.js.coffee",
+   "liveBytes": 805,
+   "liveSha256": "feb6e5f4e349f6424cff23adf4d017280c09291d44fec91621b6578959d29ddf",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "search_box.js.coffee",
+   "liveBytes": 733,
+   "liveSha256": "bf16d1951049f068308798e9298413dc8d89b1a5c54151f4c397686b16de5755",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "rules.js.coffee",
+   "liveBytes": 1403,
+   "liveSha256": "6df7a07f93125f4977eb45072c2e9ab5458f8b083208e2becb933a8a9f9dee04",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "autosave.js.coffee",
+   "liveBytes": 638,
+   "liveSha256": "ca3c9e5b8cf0f69b992957d161368619078880455f06d9df8b55600cd8ad66c0",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "board.js.coffee",
+   "liveBytes": 1045,
+   "liveSha256": "f32b25f9d53aebaf279a5f1f7cf67e2b17e1c9b22f1e38e3ca6c88b9f7d3a014",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "components.js.coffee",
+   "liveBytes": 775,
+   "liveSha256": "c625ced0940b6a173d84c2cbab85709e9c5536d613a92819ae5449b388a1ff96",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "doubleclick.js.coffee",
+   "liveBytes": 822,
+   "liveSha256": "99cd6665329936ddd579689924dccae20cc32106e5db803c7ae7ed311beac728",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "editor.js.coffee",
+   "liveBytes": 1271,
+   "liveSha256": "650c0d473172d1db29227a690883e7c34ef58a7d42b7c9b2fb970a81416287a2",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "name_editor.js.coffee",
+   "liveBytes": 942,
+   "liveSha256": "069ca95de44e61261d8a2a223955758ea1852d26356d1b15a82d98dcc1daed8a",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "tooltip.js.coffee",
+   "liveBytes": 187,
+   "liveSha256": "976921288f592b09611a8cf9bc0bffaa6535a8cc16ad117ee7d92fdc04af4830",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "type_editor.js.coffee",
+   "liveBytes": 690,
+   "liveSha256": "a3696b7593b34bcdc3d6ee1573684fdcd7c86b2f66ad2e4be8aaac66c28b3e5b",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "toggle_visibility.js.coffee",
+   "liveBytes": 339,
+   "liveSha256": "f177792edcd7f57976fb453d394fd027fad1c83f167b15139c6a864aa8ca8af5",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "upload.js.coffee",
+   "liveBytes": 1900,
+   "liveSha256": "ce6268dd83280c21e53885ba6e57809841929c0389778419f303a1b6c2502b73",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "decko_ace_config.js.coffee",
+   "liveBytes": 910,
+   "liveSha256": "3842529dc591ce10ecbe723f4dc5203666b21143d82c945b7c385182b60e0bcc",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "bar_and_box.js.coffee",
+   "liveBytes": 932,
+   "liveSha256": "fdb051a41de4ba5d1ae4f145c2e6d3b7bd9c7a800eb2a5b1f08d29c602adc302",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "click_select.js.coffee",
+   "liveBytes": 487,
+   "liveSha256": "440cb8f8d96413e4d22127eaa39ed098bc81626dd27bd0dc399dc299b76ae713",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "bootstrap.bundle.js",
+   "liveBytes": 79173,
+   "liveSha256": "bbd105b0cea5ce1aa9cca3a4cf3d56999b77cb4fbe7c1c8b83197c2a70de6eb3",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "decko_modal.js.coffee",
+   "liveBytes": 602,
+   "liveSha256": "36c763cf38f789c81c7d9a7b9ce75323ed5546da6bcab85eb3c7873b45c44ee7",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "decko_popover.js.coffee",
+   "liveBytes": 602,
+   "liveSha256": "cd1b8e733c44ac6e2ebcec8d5f79b119a128a6efd1a86e58abbea8a815d2dcfe",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "script_load_select2.js.coffee",
+   "liveBytes": 2064,
+   "liveSha256": "9d94b9b549e4355f1a635c179b2802a90275798c19caba48fc2b6bf7577f4036",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "bootstrap-colorpicker.min.js",
+   "liveBytes": 20639,
+   "liveSha256": "10291f4c22c657f7b05bbd65b7b6526183dfa13c07e1115c3aae6d8275b1a7b6",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "script_colorpicker.js.coffee",
+   "liveBytes": 137,
+   "liveSha256": "31e0f0886668b5f35dde04a7b38b8059e32a68c9f8c694cc043fe8f48ae51fce",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "follow.js.coffee",
+   "liveBytes": 700,
+   "liveSha256": "070b89fbc307397a7df038fc3094709798ffc675401ee4fcf3365c7d29540699",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "tab.js.coffee",
+   "liveBytes": 636,
+   "liveSha256": "d6c306466e3f65c993a63bfcf30f8b2d2c8823742b028370b9df7a8abf6bd238",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "layout.js.coffee",
+   "liveBytes": 2162,
+   "liveSha256": "1e9d26434af7d3bcd6db78372c2ff2109252e8bf019db59b0c0655b58e3eacd2",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "modal.js.coffee",
+   "liveBytes": 3025,
+   "liveSha256": "245b0d0db6cf03c4b7cbf446f401ec43e158071b7b8f8ad8eb0d653197371643",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "overlay.js.coffee",
+   "liveBytes": 1411,
+   "liveSha256": "0c9c1c7c0a6bb5c2bad6e97e78129c6ec979e37a891ffc3e32651a9d1a5677dc",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "recaptcha.js.coffee",
+   "liveBytes": 888,
+   "liveSha256": "086399cd9b32b304e594d4d2ee3bbaadc6dde49f1729ab1daa7ee2ffde0614bc",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "image_editor.js.coffee",
+   "liveBytes": 1743,
+   "liveSha256": "45678c5041ebe44f58d16b1440724b14da8686172ce037fb15335a8d63e2a707",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "link_editor.js.coffee",
+   "liveBytes": 1870,
+   "liveSha256": "44b89847319538c49125ef13609c404ede8f54c4bb490c4e57a446238b1439a3",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "nest_editor.js.coffee",
+   "liveBytes": 4091,
+   "liveSha256": "a2df254debc6cf22c7a605e74ef86d0d5f3e90e5269b02d627a208144f421537",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "nest_editor_name.js.coffee",
+   "liveBytes": 2683,
+   "liveSha256": "3b2b82949de9195451d5b1311e596c19f8542b0a18c2ea43309a99bdb1fe9372",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "nest_editor_options.js.coffee",
+   "liveBytes": 6457,
+   "liveSha256": "ccfbd70005da12b9ec995520a5ac8c4cb9fe7cf2c91e3fa9ae93b2f43f23408e",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "nest_editor_rules.js.coffee",
+   "liveBytes": 58,
+   "liveSha256": "bbddb39abb38dff3ad11643953068f300cc2cf718b439e5b9fdd142626f5d186",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "script_tinymce.js",
+   "liveBytes": 391994,
+   "liveSha256": "dd3ded79508cb70cb67de4d83500071d2eacf484f02aa8443f5719b8354a0c39",
+   "parity": "byte-exact"
+  },
+  {
+   "name": "tinymce_config.js.coffee",
+   "liveBytes": 1324,
+   "liveSha256": "e6af60ca9224f1317e0dca7c3a09ac312b7342b7d7f109c845e291b119fb12e2",
+   "parity": "byte-exact-plus-bundle-join"
+  },
+  {
+   "name": "decko_logo.js",
+   "liveBytes": 1601,
+   "liveSha256": "f915789df5a0855c72dd7f09a43cb3be5ab1a796e734bebc2b3af2d5d338873d",
+   "parity": "live-only-mod-leaf"
+  },
+  {
+   "name": "decko_org.js.coffee",
+   "liveBytes": 444,
+   "liveSha256": "0558ae7254ef2fce4426d179091132451600a50104765ed1cc6de6df8b835919",
+   "parity": "live-only-mod-leaf"
+  },
+  {
+   "name": "snap.js",
+   "liveBytes": 81125,
+   "liveSha256": "0e66de516f62279be2c06f6154b807697eee6bebb4298669579d7637372fad8e",
+   "parity": "live-only-mod-leaf"
+  },
+  {
+   "name": "snap_svg.js",
+   "liveBytes": 81128,
+   "liveSha256": "d4997da7603b042badff3f1a8c36d1de7247b8a86ccd9364d14ce32323a08002",
+   "parity": "live-only-mod-leaf"
+  }
+ ]
+}

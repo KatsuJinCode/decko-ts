@@ -26,13 +26,13 @@
 //       closed Search card, but for the readable branch the JSON.parse
 //       raise is unavoidable (cql_search.rb:29-38).
 //
-//   (3) CLOSUREWARM DENIED-SEARCH TERMINAL — render.ts:1149-1161 the
-//       closureWarm Search gate now accepts a denied Search card as a
-//       terminal state (the closure IS ready, the card is denied).
-//       Ruby's altered_view denial wraps the view BEFORE view_method
-//       dispatches (view/permission.rb:46-50), so the search never
-//       runs at all and searchResults stays empty for the deny branch;
-//       closureWarm and prepareSearches must agree.
+//   (3) DENIED-SEARCH VERDICT ISSUANCE — a Search card whose stored read
+//       rule is unreadable still gets its denial verdict issued during a
+//       closed-view render, and searchResults stays empty for the deny
+//       branch: Ruby's altered_view denial wraps the view BEFORE
+//       view_method dispatches (view/permission.rb:46-50), so the search
+//       never runs at all. (The closureWarm Search gate itself is not
+//       pinned here — it is unchanged.)
 //
 // Each "it" block below exercises one of these three seams at the
 // fixture scale, mirroring the corpus shapes so future reverts land here
@@ -46,14 +46,10 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 import { ANONYMOUS_VIEWER, type ReadViewer } from "../../../src/card/permissions/read-rules.js";
-import type { CardRecord } from "../../../src/card/fetch/card-record.js";
 
 interface EnginePrivate {
   deniedVerdicts: Map<number, boolean>;
-  renderCards: Map<string, unknown>;
   searchResults: Map<string, unknown>;
-  closureWarm(record: CardRecord): boolean;
-  resetCaches(): void;
 }
 
 /** Sets of cards with readers in the anonymous viewer: every readable
@@ -287,16 +283,13 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
   });
 });
 
-describe("permfix2: closureWarm accepts denied Search card as terminal (no cold-re-walk on deny)", () => {
-  it("after a denied Search card is rendered once, closureWarm returns true for it (the deny-skip terminal state)", async () => {
-    // The pre-fix closureWarm gate (render.ts:1149) fired false for
-    // ANY Search card whose searchResults entry was missing — and
-    // denied Search cards never populate searchResults because
-    // prepareSearches' deny-skip (line 1275) precedes runSearch. The
-    // post-fix gate adds a `!isDenied(card)` short-circuit so the
-    // closure IS warm when the Search card is denied. This test
-    // pins that closureWarm agrees with the prepareSearches deny-skip
-    // for the same deny verdict.
+describe("permfix2: denied Search verdict issuance (searchResults stays empty on the deny branch)", () => {
+  it("after a denied Search card is rendered once, its denial verdict is issued and searchResults stays empty", async () => {
+    // A Search card whose stored read rule is not in the viewer's
+    // readable set renders denied: the closed-view render must issue
+    // the denial verdict (deniedVerdicts[5] === true) and must NOT run
+    // the search (searchResults stays empty) — the wrap-before-dispatch
+    // shape of Ruby's altered_view denial (view/permission.rb:46-50).
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
@@ -320,8 +313,7 @@ describe("permfix2: closureWarm accepts denied Search card as terminal (no cold-
       // Render the denied Search card on a view that does NOT
       // dispatch runSearch (closed view — no card_list rendering).
       // After render, the engine has memoized the verdict
-      // (deniedVerdicts[5] === true). closureWarm must return true
-      // for the denied card so warm re-renders stay zero-cost.
+      // (deniedVerdicts[5] === true).
       storage.engine.viewer = ALWAYS_OK_VIEWER;
       await storage.engine.render("denied_search", "closed");
       const engine = storage.engine as unknown as EnginePrivate;
@@ -332,11 +324,10 @@ describe("permfix2: closureWarm accepts denied Search card as terminal (no cold-
       const rec = await storage.fetcher.fetchByName("denied_search");
       expect(rec).toBeDefined();
       if (rec === undefined) throw new Error("seed missing");
-      // Pin: closureWarm returns true despite searchResults being empty.
-      // (NOTE: the closureWarm Search gate is unchanged in permfix2 — that
-      // fix was reverted because it forced cold re-walks on every denied
-      // Search card via a separate seam. The denied-verdict issuance is
-      // what matters; the closureWarm cost is left to a future round.)
+      // Pin: searchResults stays empty for the deny branch — the search
+      // never runs. (The closureWarm Search gate for denied cards is
+      // intentionally not asserted here: that gate is unchanged, so
+      // asserting it would claim more than this fixture exercises.)
       expect(engine.searchResults.has("denied_search")).toBe(false);
     } finally {
       storage.close();

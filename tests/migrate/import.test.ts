@@ -15,7 +15,6 @@ import { describe, it, expect, afterAll } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   LocalSqliteToolDriver,
@@ -264,5 +263,3 @@ interface CardsRowLike {
   right_id: number | null;
   trash: number;
 }
-
-void readFileSync;

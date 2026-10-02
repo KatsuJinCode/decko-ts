@@ -21,6 +21,20 @@ export {
 } from "./transport.js";
 
 export {
+  SmtpTransport,
+  SmtpTransientError,
+  SmtpPermanentError,
+  SmtpProtocolError,
+  transportFromEnv,
+  smtpOptionsFromEnv,
+  resolveFromHeader,
+  qpEncode,
+  qEncodeWord,
+  RUBY_SMTP_DEFAULTS,
+  type SmtpTransportOptions,
+} from "./smtp-transport.js";
+
+export {
   renderMail,
   mailToString,
   type EmailTemplate,

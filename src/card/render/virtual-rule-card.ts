@@ -119,6 +119,21 @@ function ruleTypeForSetting(settingCodename: string): { typeId: number; typeName
   return RULE_TYPE_BY_SETTING.get(settingCodename);
 }
 
+/** The distinct corpus-pinned rule-card type ids the map resolves - the
+ *  preload list render.ts#preloadSetRules walks into the render-card map
+ *  (right after the setting cards) so the SYNC virtual construction can
+ *  resolve the deck's own type card (deckTypeCard below). */
+export const RULE_TYPE_IDS_FOR_PRELOAD: ReadonlyArray<number> = [
+  ...new Set([...RULE_TYPE_BY_SETTING.values()].map((v) => v.typeId)),
+];
+
+/** The map's corpus-pinned template type id for one setting (undefined =
+ *  the settingCard fallback shape) - the id the DECK type-card lookup
+ *  keys on. */
+export function ruleTypeIdForSetting(settingCodename: string): number | undefined {
+  return RULE_TYPE_BY_SETTING.get(settingCodename)?.typeId;
+}
+
 /** The setting card the virtual child points at - the engine prefetches
  *  every setting (autoname, default, ..., follow) via
  *  preloadAllSettingCards; an absent setting card means the deck has no
@@ -136,6 +151,20 @@ export interface VirtualRuleCardInputs {
    *  the right part's codename for the rule-set-categories walk the
    *  before(:bar) hook reads (format.ts#ruleSetCategories). */
   readonly settingCodename: string;
+  /** The DECK's type card at the template-resolved id (the caller
+   *  resolves ruleTypeIdForSetting through render.ts findRenderCardById) -
+   *  the card whose NAME and codename the rendered virtual must print.
+   *  Ruby resolves the virtual rule card's type through the
+   *  structure/template walk to an ID, then reads type_name/type_code off
+   *  the deck's card AT that id; the corpus deck names its type cards
+   *  differently from the raw deck (codename html = card 50 named "gwtx";
+   *  fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
+   *  *captcha+*right Xhead-bar and fixtures/corpus/shard-000000.jsonl
+   *  corpus:268 both read TYPE-gwtx / data-card-type-name="gwtx").
+   *  Undefined (type card not preloaded / absent from the deck) keeps
+   *  the map's raw-deck literal - the documented degradation, the same
+   *  shape as the settingCard.typeId fallback below. */
+  readonly deckTypeCard?: RenderCard;
 }
 
 /** Build the in-memory virtual rule card Ruby constructs on the fly for
@@ -177,7 +206,7 @@ export interface VirtualRuleCardInputs {
  *  these values; the pre-fix `Setting`/278 stamp made every virtual
  *  rule bar mis-type. */
 export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard {
-  const { setCard, settingCard, settingCodename } = inputs;
+  const { setCard, settingCard, settingCodename, deckTypeCard } = inputs;
   // set.name.s + "+" + the SETTING CARD'S OWN NAME. Ruby's
   // setting_list_item joins the set name with the setting card's stored
   // name (which carries the leading "*" and the STORED DISPLAY form),
@@ -208,8 +237,16 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // don't appear in the captured corpus.
   const ruleType = ruleTypeForSetting(settingCodename);
   const typeId = ruleType?.typeId ?? settingCard.typeId;
-  const typeName = ruleType?.typeName ?? settingCard.typeName;
-  const typeCode = ruleType?.typeCode ?? settingCard.typeCode;
+  // Ruby prints the DECK's type card at the template-resolved id:
+  // type_name (card.type_name) and the codename-derived type code are
+  // lookups on THAT card, so the served deck's type names are what the
+  // oracle bytes carry (TYPE-gwtx / data-card-type-name="gwtx" for the
+  // *head virtuals - fixtures/corpus/shard-000000.jsonl corpus:268 and
+  // fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
+  // *captcha+*right agree). The map literals are the RAW-deck names and
+  // are only the fallback for a deck that does not carry the type card.
+  const typeName = deckTypeCard?.name.s ?? ruleType?.typeName ?? settingCard.typeName;
+  const typeCode = deckTypeCard?.typeCode ?? ruleType?.typeCode ?? settingCard.typeCode;
   // left/right id wiring: the rule card's record points at the set
   // (left_id) and the setting (right_id). Records use the underlying
   // CardRecord shape so the engine's left-id lookup is consistent with

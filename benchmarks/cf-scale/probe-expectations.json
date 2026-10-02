@@ -559,7 +559,7 @@
             "statusOk": true,
             "contains:No route for": true
           },
-          "oracle": "deploy surface has NO view segment (deploy/worker.ts:419-421 — 'no slashes in this surface'); the ROOT worker.js:57-62 DOES route views. Ruby decko routes /name/view. Surface narrowing is deliberate; recorded so the remote diff flags regressions.",
+          "oracle": "deploy surface has NO view segment (deploy/worker.ts:419-421 — 'no slashes in this surface'); the ROOT worker entry (worker.ts parsePath) DOES route views. Ruby decko routes /name/view. Surface narrowing is deliberate; recorded so the remote diff flags regressions.",
           "note": "slash-path rejected"
         },
         {

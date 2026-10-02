@@ -102,7 +102,9 @@ matches the requested view. Skips rules with non-parseable content.
 - HTML transforms (class append, titleClass swap, tag swap, joint styling).
 - End-to-end: rule found → override applied → final HTML carries it.
 
-872/872 repo-wide tests pass after this stream (was 851).
+Landing-time suite count is not restated here; the standing verification
+surface is `tests/standing-net.json` (run via
+`node tools/test-queue/run-standing-net.mjs`).
 
 ## Integration into the renderer
 

@@ -3,8 +3,11 @@
 // contributes ZERO views - the compat report's entry for this gem declares
 // htmlViewsDeclared: 0 / htmlViewsMissingNames: [] (its only format block
 // is a before :core hook, not a view), so the mod must leave the render
-// path byte-identical. The pure card-method semantics of set/type/session.rb
-// and the lib config value are proven against their Ruby lines.
+// path byte-identical. The lib config value
+// (lib/card/mod/session.rb's allow_anonymous_cookies) is proven against
+// its Ruby line; the set/type/session.rb card-method overrides have no TS
+// attach surface (see the mod source's NOT-ported list) and are not
+// transcribed as standalone stubs.
 //
 // Proof shape (A/B on the loader tables, not on views - there are none):
 //   WITHOUT the mod load: the set-module basket carries no session entries
@@ -31,16 +34,8 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModSession, {
-  sessionCardHistory,
-  sessionCardFollowable,
-  sessionRecaptchaOn,
-  sessionOkToCreate,
-  sessionOkToUpdate,
-  sessionKey,
-  sessionAddToTrash,
   ALLOW_ANONYMOUS_COOKIES,
 } from "../../../src/card/mod-loader/mods/card-mod-session.js";
-import { DeckoName } from "../../../src/card/name.js";
 import { HTML_VIEWS } from "../../../src/card/render/views.js";
 
 let storage: RenderTestStorage | undefined;
@@ -126,39 +121,6 @@ describe("card-mod-session through the mod loader (A/B)", () => {
   it("WITH the mod load: the manifest answers to both its names (class_methods.rb:26-28 strips card-mod-)", () => {
     expect(loader!.fetchMod("card-mod-session")?.manifest.name).toBe("session");
     expect(loader!.fetchMod("session")?.manifest.gemName).toBe("card-mod-session");
-  });
-
-  it("set/type/session.rb:9-11 def history?; false - Session cards have no history", () => {
-    expect(sessionCardHistory()).toBe(false);
-  });
-
-  it("set/type/session.rb:13-15 def followable?; false - Session cards are not followable", () => {
-    expect(sessionCardFollowable()).toBe(false);
-  });
-
-  it("set/type/session.rb:17-19 def recaptcha_on?; false - never recaptcha a session write", () => {
-    expect(sessionRecaptchaOn()).toBe(false);
-  });
-
-  it("set/type/session.rb:47-53 ok_to_create?/ok_to_update?; true - the permission bypass", () => {
-    expect(sessionOkToCreate()).toBe(true);
-    expect(sessionOkToUpdate()).toBe(true);
-  });
-
-  it("set/type/session.rb:21-23 def session_key; \"_card_#{key}\" - the session-hash key rides the card key", () => {
-    // the prefix joins the CANONICAL key (DeckoName.key): "Test Session
-    // Card" -> "test_session_card"
-    const cardKey = DeckoName.parse("Test Session Card").key;
-    expect(cardKey).toBe("test_session_card");
-    expect(sessionKey(cardKey)).toBe("_card_test_session_card");
-  });
-
-  it("set/type/session.rb:55-57 add_to_trash merges trash: true into a NEW args hash (Hash#merge semantics)", () => {
-    const args = { id: 81, skip_permissions: true };
-    const merged = sessionAddToTrash(args);
-    expect(merged).toEqual({ id: 81, skip_permissions: true, trash: true });
-    // the receiver is untouched (Ruby's merge does not mutate)
-    expect(args).toEqual({ id: 81, skip_permissions: true });
   });
 
   it("lib/card/mod/session.rb:1-3 allow_anonymous_cookies = true", () => {

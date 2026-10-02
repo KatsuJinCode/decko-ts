@@ -12,8 +12,12 @@
 //   node tools/migrate/apply-chunks-to-d1-local.mjs <chunks-dir> [--d1-path <path>]
 
 import Database from "better-sqlite3";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const DEFAULT_D1_DIR = join(REPO_ROOT, "deploy", ".wrangler", "state", "v3", "d1", "miniflare-D1DatabaseObject");
 
 const args = process.argv.slice(2);
 const chunksDir = args[0];
@@ -21,9 +25,35 @@ if (!chunksDir) {
   console.error("usage: node apply-chunks-to-d1-local.mjs <chunks-dir> [--d1-path <path>]");
   process.exit(1);
 }
-let d1Path = args.includes("--d1-path")
-  ? args[args.indexOf("--d1-path") + 1]
-  : "C:/localProjects/decko-ts/deploy/.wrangler/state/v3/d1/miniflare-D1DatabaseObject/a1a303fd200c27b83bab36405a71ada7966fab9c97029264ac552a5732c81cd3.sqlite";
+
+function fail(msg) {
+  console.error(`apply-chunks-to-d1-local: ${msg}`);
+  process.exit(1);
+}
+
+// Resolve the local D1 database: an explicit --d1-path wins; otherwise the
+// single *.sqlite under the wrangler local state is used, and anything else
+// (no dir, no database, several) is a loud error — never a guessed default.
+function resolveD1Path() {
+  const flagIdx = args.indexOf("--d1-path");
+  if (flagIdx !== -1) return args[flagIdx + 1];
+  if (!existsSync(DEFAULT_D1_DIR)) {
+    fail(`no local D1 state at ${DEFAULT_D1_DIR}; pass --d1-path <file.sqlite>`);
+  }
+  const candidates = readdirSync(DEFAULT_D1_DIR).filter((f) => f.endsWith(".sqlite"));
+  if (candidates.length === 0) {
+    fail(`no *.sqlite database under ${DEFAULT_D1_DIR}; pass --d1-path <file.sqlite>`);
+  }
+  if (candidates.length > 1) {
+    fail(`multiple local D1 databases under ${DEFAULT_D1_DIR}; pass --d1-path with one of: ${candidates.join(", ")}`);
+  }
+  return join(DEFAULT_D1_DIR, candidates[0]);
+}
+
+const d1Path = resolveD1Path();
+if (!existsSync(d1Path)) {
+  fail(`local D1 database not found: ${d1Path} (apply a first chunk via wrangler, or pass --d1-path)`);
+}
 
 const files = readdirSync(chunksDir).filter((f) => f.endsWith(".sql")).sort();
 console.log(`apply-chunks-to-d1-local: ${files.length} chunks from ${chunksDir}`);

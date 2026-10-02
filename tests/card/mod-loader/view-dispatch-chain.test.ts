@@ -178,25 +178,61 @@ describe("SetModuleViewTable - per-set-module view recording", () => {
     expect(chain[0]?.viewFn).toBe(allTitled);
   });
 
-  it("chainFor with empty cardChain falls back to load-order registration", () => {
-    // The "no set applies" case: the Abstract pseudo-pattern's chain
-    // is empty (card-mod-content set/abstract/01_code_content.rb,
-    // haml_file.rb, read_only.rb all register :input but no concrete
-    // set applies to a "card with no name"-shape input). The walker
-    // returns the registering modules in load order.
+  it("chainFor with empty cardChain falls back to the UNIVERSALLY APPLICABLE modules only", () => {
+    // CORRECTED 2026-09-28 (lane-chainfor). The old expectation was
+    // that an empty card chain returns EVERY registering module in load
+    // order, and it used three Abstract modules to say so. That was the
+    // deck-wide masking defect: the comment above the code said "the only
+    // matches are from set/all/* modules" while the code returned every
+    // module in the table, so a `set/right/*` or `set/type/*` view
+    // answered for cards that are not in the set (measured: card-mod-
+    // email's :content replaced the engine's content renderer on every
+    // card).
+    //
+    // What Ruby does when no set matches: the card resolves the view off
+    // the BASE format class. Card::Set::Registrar#process_base_format_
+    // modules (registrar.rb:79-84) mixes the ALL-set format modules into
+    // that class, and Card::Set::Pattern::All#set_format_modules
+    // (pattern/all.rb:49-55) reaches modules[:nonbase_format] only through
+    // the card's OWN pattern module keys (pattern/base.rb:35-38) - an
+    // abstract or nonbase module is not there. So the fallback is the
+    // set/all/* bucket and nothing else.
     const table = new SetModuleViewTable();
     const codeContent: ViewFn = () => "code_content:input";
     const hamlFile: ViewFn = () => "haml_file:input";
     const readOnly: ViewFn = () => "read_only:input";
-    table.register("Abstract::CodeContent", "input", codeContent);
-    table.register("Abstract::HamlFile", "input", hamlFile);
-    table.register("Abstract::ReadOnly", "input", readOnly);
+    const allBase: ViewFn = () => "all_base:input";
+    const allHelp: ViewFn = () => "all_help:input";
+    // The kind is the registrar.rb:21-29 bucket the loader passes in.
+    table.register("Abstract::CodeContent", "input", codeContent, "abstract");
+    table.register("Abstract::HamlFile", "input", hamlFile, "abstract");
+    table.register("Abstract::ReadOnly", "input", readOnly, "abstract");
+    table.register("All::Base", "input", allBase, "base");
+    table.register("All::Help", "input", allHelp, "base");
+
+    // Abstract-set modules are NOT universal - they reach a card only
+    // through `include_set` from a set the card is in
+    // (set/inheritance.rb:32-61), which this table does not model.
     const chain = table.chainFor([], "input");
-    expect(chain.map((e) => e.setModule)).toEqual([
-      "Abstract::CodeContent",
-      "Abstract::HamlFile",
-      "Abstract::ReadOnly",
-    ]);
+    expect(chain.map((e) => e.setModule)).toEqual(["All::Base", "All::Help"]);
+    expect(chain.map((e) => e.viewFn)).toEqual([allBase, allHelp]);
+
+    // A view that ONLY an abstract module registers resolves to nothing
+    // off an empty chain - the base format class does not carry it.
+    const onlyAbstract = new SetModuleViewTable();
+    onlyAbstract.register("Abstract::CodeContent", "bar_middle", codeContent, "abstract");
+    expect(onlyAbstract.chainFor([], "bar_middle")).toEqual([]);
+
+    // And a card that IS in the set still reaches it through its own
+    // chain, which is the half the narrowing must not touch. (The chain
+    // is named with the registered modules' own shortnames; the ALL
+    // token's single "All" bucket is the loader-side divergence recorded
+    // in mod-registrar.ts#setModuleShortname, not this table's business.)
+    expect(
+      table
+        .chainFor(["Type::Basic", "All::Base", "All::Help"], "input")
+        .map((e) => e.setModule),
+    ).toEqual(["All::Base", "All::Help"]);
   });
 
   it("clear() drops every per-set-module registration", () => {

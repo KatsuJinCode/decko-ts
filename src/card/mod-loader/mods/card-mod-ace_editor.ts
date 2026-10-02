@@ -1,7 +1,7 @@
 // The card-mod-ace_editor gem (card-mod-ace_editor-0.20.0), ported through
 // the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-ace_editor-0.20.0/): two set files, no lib/, no set_pattern/, no
 // events, zero HTML views declared. Ported here byte-verifiably:
 //

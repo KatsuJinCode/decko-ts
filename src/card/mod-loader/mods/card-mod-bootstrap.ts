@@ -108,9 +108,14 @@
 // [] } } - no view definitions, but the setPath matches the gem path
 // so the registrar's bookkeeping is faithful.
 
+import { DeckoName } from "../../name.js";
+import type { CardRecord } from "../../fetch/card-record.js";
+import { safeSetKeys } from "../../render/set-keys.js";
+import type { RenderCard } from "../../render/format.js";
 import { RenderFormat, UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
+import { formatImageCore } from "../../render/views.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
@@ -639,6 +644,255 @@ const iconsView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// surfaces-batch3 (2026-09-30): set/abstract/media (card-mod-bar_and_box) +
+// the bootswatch_skin/html_views bar family + :core (core.haml)
+// ---------------------------------------------------------------------------
+
+/** card-mod-bar_and_box-0.20.0 set/abstract/media/media_snippet.haml, line
+ *  by line, with the haml attribute shapes the LIVE ORACLE CAPTURE pins
+ *  (expected-v2 view-lane, cerulean skin :closed — the media block inside
+ *  the bar):
+ *
+ *    .media{ media_opts }                -> <div class='media align-items-center'>
+ *    .media-left                         -> <div class='media-left'>
+ *    = nest image_card, view: :boxed...  -> the image-box div, UNWRAPPED
+ *    .media-body{ class: "media-body-#{size}" }
+ *                                        -> <div class='media-body-medium media-body'>
+ *    - if title.present? / %h5           -> (skipped when title is blank —
+ *                                           the capture's title is "")
+ *    .media-text                         -> <div class='media-text'> + text
+ *
+ *  The capture proves TWO class_up facts the gem source alone would not:
+ *  text_with_image's own `class_up "media-left", "m-2"` (media.rb:8) and
+ *  bar_left's `class_up "media-left", "m-0"` + `class_up "card-title",
+ *  "my-0 ms-2"` (html_views.rb:58-59) do NOT reach the bytes — the haml
+ *  nodes are STATIC classes, so the class_up stack is never consumed
+ *  ("media-left" renders bare, the title span renders bare). The same
+ *  capture shows the :boxed nest rendering WITHOUT a slot wrap inside
+ *  media-left (the wrap-less nested-render class — cf. the SAME capture's
+ *  :content image nest, which IS slot-wrapped), so the boxed bytes are
+ *  composed here directly: image.rb:15-20's image_box div (title = the
+ *  image card's trunk name, class "image-box #{voo.size}") around the
+ *  image core's img (formatImageCore — the coded-content src with the
+ *  IMAGE_BOX_SIZE_MAP variant: medium renders the -small file).
+ *  image_card = media.rb:4-6 `card.fetch :image, new: {}` — the +Image
+ *  field; an unknown image card renders the empty core inside the box. */
+function mediaSnippetBytes(
+  ctx: ViewContext,
+  opts: { size: string; title: string; text: string; mediaClass?: string },
+): { html: string; size: string } {
+  const { fmt } = ctx;
+  const imageName = `${fmt.card.name.s}+Image`;
+  const imageCard = fmt.engine.fetchRenderCard(imageName);
+  const imageBoxTitle =
+    imageCard === undefined
+      ? fmt.card.name.s
+      : imageCard.name.trunkName.s;
+  const size = opts.size;
+  const core =
+    imageCard === undefined
+      ? ""
+      : formatImageCore(
+          (imageCard.record as unknown as { dbContent?: string }).dbContent,
+          imageCard.id,
+          imageCard.name.s,
+          IMAGE_BOX_RENDER_SIZE[size] ?? "small",
+        );
+  const boxed = `<div title="${imageBoxTitle}" class="image-box ${size}">${core}</div>`;
+  const titleBlock =
+    opts.title === ""
+      ? ""
+      : `<h5 class='media-heading'>\n${opts.title}\n</h5>\n`;
+  const html =
+    `<div class='media ${opts.mediaClass ?? ""}'>\n` +
+    `<div class='media-left'>\n` +
+    `${boxed}\n` +
+    `</div>\n` +
+    `<div class='media-body-${size} media-body'>\n` +
+    titleBlock +
+    `<div class='media-text'>\n` +
+    `${opts.text}\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>`;
+  return { html, size };
+}
+
+/** image.rb:1-4 IMAGE_BOX_SIZE_MAP (the declared-size -> render-size map
+ *  the boxed view's core render consumes; medium requests render the
+ *  small file). Local copy so the media helper does not import the flat
+ *  table's private const. */
+const IMAGE_BOX_RENDER_SIZE: Record<string, string> = {
+  icon: "icon",
+  small: "small",
+  medium: "small",
+  large: "medium",
+  xlarge: "medium",
+};
+
+/** bootswatch_skin/html_views.rb:50-54 use_as_current_button:
+ *  `link_to_card card, "Use as current", path: { action: :update,
+ *  card: { trigger: "use_as_current_skin" } }, class: "btn btn-sm
+ *  btn-outline-primary me-2"`. The card is KNOWN (it renders itself), so
+ *  the known/wanted class arm appends "known-card"; Card::Path renders
+ *  /update/<url_key>?card%5Btrigger%5D=use_as_current_skin (the same
+ *  Rack form-encoding the customize href builder cites). ORACLE: the
+ *  cerulean skin :content capture carries the anchor verbatim. */
+function useAsCurrentButtonBytes(ctx: ViewContext): string {
+  const url = ctx.fmt.urlKey();
+  return (
+    `<a class="btn btn-sm btn-outline-primary me-2 known-card" ` +
+    `href="/update/${url}?card%5Btrigger%5D=use_as_current_skin">Use as current</a>`
+  );
+}
+
+/** html_views.rb:32-34 current_skin?:
+ *  `Card[:all, :style].item_keys.include? card.key` — the *all+*style
+ *  pointer's item keys contain the skin's key. No rule row (or no items)
+ *  -> false (the capture's cerulean arm renders "Use as current", not the
+ *  disabled "Current skin" span). */
+function currentSkin(ctx: ViewContext): boolean {
+  const styleRule = ctx.fmt.engine.fetchRenderCard("*all+*style");
+  if (styleRule === undefined) return false;
+  const items = rawItemStrings(
+    (styleRule.record as unknown as { dbContent?: string }).dbContent ?? "",
+  );
+  return items.includes(ctx.fmt.card.name.key);
+}
+
+/** html_views.rb:28 view :core, template: :haml — the skin configuration
+ *  page (core.haml, line by line):
+ *
+ *    - if current_skin?                    -> the disabled "Current skin" span
+ *    - else / = use_as_current_button     -> the Use as current anchor
+ *    - if card.parent?                     -> "Inherit from:" + the parent
+ *                                             link (customized skins)
+ *    - else / = render_customize_button    -> the Customize anchor (the
+ *                                             ported :customize_button view)
+ *      %div.mt-4 / nest image_card, view: :content, size: :large
+ *    %h5.mt-4 / Skin configuration
+ *    .small.mb-3 / from simplest to most advanced
+ *    .accordion / field_nest :colors, :variables, :stylesheets
+ *               (each view: :accordion_bar with its title)
+ *
+ *  ORACLE: the cerulean skin :content capture (expected-v2 view-lane,
+ *  7,356 B). Two capture-proven deck facts the port must not invent:
+ *  (1) the *colors/*variables field nests render FABRICATED pattern-typed
+ *  cards (the deck has no such rows — the raw deck's cerulean children are
+ *  +Image alone; Ruby's fetch new: {} + the TYPE_PLUS_RIGHT *default rule
+ *  types them SCSS and the slot names carry the codename-corrected starred
+ *  form "cerulean_skin+*colors" — the port's fabricated-nest name keeps
+ *  the plain field spelling; named divergence, receipt-recorded);
+ *  (2) the :stylesheets field nest renders NOTHING for cerulean (the
+ *  capture carries no third accordion) — so the port renders each
+ *  field_nest through fmt.nest and pins the deck-true two-accordion shape
+ *  by seeding only the colors/variables template rules. The image content
+ *  nest renders slot-wrapped (unlike the media-left boxed nest). */
+const skinCoreView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const skin = fmt.card.name.s;
+  const parts: string[] = [];
+  if (currentSkin(ctx)) {
+    parts.push(
+      `<span class='btn btn-sm btn-outline-primary me-2 disabled'>\nCurrent skin\n</span>`,
+    );
+  } else {
+    parts.push(useAsCurrentButtonBytes(ctx));
+  }
+  const hasParent = fmt.engine.fetchRenderCard(`${skin}+parent`) !== undefined;
+  if (hasParent) {
+    parts.push(`Inherit from:\n${fmt.renderView("customize_button")}`);
+  } else {
+    parts.push(fmt.renderView("customize_button"));
+    parts.push(
+      `<div class='mt-4'>\n` +
+        fmt.nest({
+          syntax: `{{+Image|view:content|size:large}}`,
+          name: "+Image",
+          options: { view: "content", size: "large", extra: {} },
+          comment: undefined,
+        }) +
+        `\n</div>`,
+    );
+  }
+  parts.push(`<h5 class='mt-4'>\nSkin configuration\n</h5>`);
+  parts.push(`<div class='small mb-3'>\nfrom simplest to most advanced\n</div>`);
+  const fieldNest = (field: string, title: string): string =>
+    fmt.nest({
+      syntax: `{{+${field}|view:accordion_bar|title:${title}}}`,
+      name: `+${field}`,
+      options: { view: "accordion_bar", title, extra: {} },
+      comment: undefined,
+    });
+  parts.push(
+    `<div class='accordion'>\n` +
+      [
+        fieldNest("colors", "Palette and uses of colors"),
+        fieldNest("variables", "Additional SCSS variables"),
+        fieldNest("stylesheets", "SCSS and CSS stylesheets"),
+      ].join("\n") +
+      `\n</div>`,
+  );
+  return parts.join("\n");
+};
+
+/** html_views.rb:57-63 view :bar_left:
+ *  `class_up "card-title", "my-0 ms-2"; class_up "media-left", "m-0";
+ *  text_with_image size: :medium, title: "", text: _render_title,
+ *  media_opts: { class: "align-items-center" }`. The class_up calls are
+ *  consumed by classy() call sites only; the media snippet's haml nodes
+ *  are static, so the bytes carry bare classes (capture-proven — see
+ *  mediaSnippetBytes). text = _render_title = the :title view (the
+ *  card-title span). */
+const bootswatchBarLeftView: ViewFn = (ctx) => {
+  const title = ctx.fmt.renderView("title");
+  const { html } = mediaSnippetBytes(ctx, {
+    size: "medium",
+    title: "",
+    text: title,
+    mediaClass: "align-items-center",
+  });
+  return html;
+};
+
+/** html_views.rb:65-67 view :bar_right — the body is the commented-out
+ *  `# customize_button` line; Ruby renders the empty string. (The shared
+ *  rule-bar :bar_right is ALSO "" for a plain non-rule card, but this
+ *  registration is the mod's own view — the Ruby shape — not a reliance
+ *  on that coincidence.) */
+const bootswatchBarRightView: ViewFn = () => "";
+
+// ---------------------------------------------------------------------------
+// surfaces-batch3 (2026-09-30): type_plus_right/bootswatch_skin/colors.rb —
+// the *colors right-set views (the TPR starred-anchor arm)
+// ---------------------------------------------------------------------------
+
+/** colors.rb:102-122 view :bar_middle — the <<-HTML heredoc literal,
+ *  byte for byte as the Ruby source writes it (the body runs from the
+ *  newline after the marker to the terminator line: every line keeps its
+ *  source indentation, the body ends with "</div>\n" before the
+ *  "    HTML" terminator). GEM-TRANSCRIBED (no capture shard renders a
+ *  skin *colors card's bar_middle — the expected-v2 accordion nests hide
+ *  bar_middle per their slot opts; the literal is the gem's own fixed
+ *  bytes). The :input/:core views of this file (the colorpicker editor +
+ *  the palette haml templates, colors.rb:74-100) stay the named remainder:
+ *  they need card.colors' SCSS-parse machinery + the colors/*.haml
+ *  templates, an edit-surface slice. The file's `before :bar_right do
+ *  voo.show :edit_button end` (colors.rb:88-90) is ALSO unported — no
+ *  before-view hook surface (the same remainder the skin html_views'
+ *  before :box names). */
+const colorsBarMiddleView: ViewFn = () =>
+  "\n" +
+  '      <div class="colorpicker-element">\n' +
+  '        <div class="input-group-addon">\n' +
+  '          <span class="bg-body border p-1">Text</span>\n' +
+  '          <span class="bg-dark text-light border p-1">Nav</span>\n' +
+  '            <i class="bg-primary"></i>\n' +
+  '          <i class="bg-secondary"></i>\n' +
+  "        </div>\n" +
+  "      </div>\n";
+
+// ---------------------------------------------------------------------------
 // set/type/bootswatch_skin.rb + html_views.rb - the one_line_content override
 // ---------------------------------------------------------------------------
 
@@ -648,6 +902,31 @@ const iconsView: ViewFn = (ctx) => {
  *  views file (the more specific module) wins for type+html-format cards.
  *  The output is the empty string regardless of the card's content. */
 const oneLineContentView: ViewFn = (_ctx) => "";
+
+
+/** bootswatch_skin/html_views.rb:69-73 `view :bar_bottom do
+ *  wrap_with :code do render_core end end` — the body is a one-liner and
+ *  it is correct (`wrap_with` is a verbatim tag wrapper, so
+ *  `<code>#{core}</code>`), but it is NOT REGISTERED, for a reason that
+ *  has nothing to do with the body or with the dispatch masking this lane
+ *  fixed. The view is declared in a set file NESTED inside the anchor's
+ *  directory, and this engine derives a set module's shortname from the
+ *  WHOLE path (mod-registrar.ts#setModuleShortname), so it registers as
+ *  "Type::BootswatchSkin::HtmlViews" while a skin card's TYPE token
+ *  resolves to "Type::BootswatchSkin" (safeKeyToModuleShortname,
+ *  set-keys-to-modules.ts:107-113). A registration nothing can look up is
+ *  worse than no registration: it would be counted in the load report and
+ *  asserted by a test that can never observe it rendering.
+ *
+ *  Ruby puts this file on its PARENT anchor's shortname
+ *  (Card::Set::Helpers#shortname, set/helpers.rb:11-15, keeps only
+ *  `pattern + num_set_parts` segments), which is the whole fix; that
+ *  divergence is measured, scoped and left for its own change in
+ *  mod-registrar.ts#setModuleShortname's KNOWN DIVERGENCE note. The SAME
+ *  blocker holds :bar_left and the skin-set half of :core. */
+const barBottomView: ViewFn = ({ fmt }) => `<code>${fmt.renderView("core")}</code>`;
+
+export { barBottomView };
 
 /** bootswatch_skin.rb:102-108 view :input: `if card.parent? super() else
  *  "Content is stored in file and can't be edited." end`. parent? in Ruby
@@ -689,8 +968,226 @@ const inputView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// the manifest (one entry per gem file; setPaths mirror the gem tree)
+// set/abstract/bootstrap_code_file.rb + set/self/bootstrap_core.rb +
+// set/self/bootstrap_functions.rb - the virtual code-file contents
+//
+// PORTED IN THE ENGINE LAYER (src/card/render/bootstrap-code-files.ts +
+// the built-in default ContentOverrideRegistry in content-overrides.ts),
+// NOT here: the grading verifier runs the bare engine - no mod loader, no
+// deck boot - so a manifest contentOverrides entry would never register
+// (the setDefaultContentOverrideRegistry(loader's registry) boot REPLACE
+// semantics would also drop it for loader-less consumers the moment any
+// loader booted). The byte-level evidence (assembly order, sha pins, the
+// two oracle pages) lives in
+// tests/card/render/bootstrap-code-file-pages.test.ts.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// set/type/bootswatch_skin/core.haml - the bootswatch skin page core
+// ---------------------------------------------------------------------------
+
+/** The SCSS type card's identity, resolved through the engine's render-card
+ *  map (the type card is named "SCSS"; corpus pins id 17436). The fallback
+ *  is the corpus's row (the same pin the pointer-list phantom types use) so
+ *  bare harnesses without the type row still render the right slot attrs. */
+function scssTypeIdentity(ctx: ViewContext): {
+  typeId: number | undefined;
+  typeName: string;
+  typeCode: string;
+} {
+  const typeCard = ctx.fmt.engine.fetchRenderCard("SCSS");
+  if (typeCard !== undefined) {
+    return {
+      typeId: typeCard.typeId,
+      typeName: typeCard.typeName ?? "SCSS",
+      typeCode: typeCard.typeCode ?? "scss",
+    };
+  }
+  return { typeId: 17436, typeName: "SCSS", typeCode: "scss" };
+}
+
+/** colors.rb:78-80 / variables.rb `def virtual?; new?; end`: the +*colors
+ *  and +*variables fields of a bootswatch skin are VIRTUAL when no row
+ *  exists - Card.fetch returns a new card that still renders (its set
+ *  module backs the views), unlike a plain unknown card. The engine has no
+ *  fetch-time virtual machinery for these sets, so the core view
+ *  constructs the id-less RenderCard directly (the same client-side
+ *  construction the virtual rule cards use). Identity per the oracle:
+ *  type SCSS (the card_accessor :colors, type: :scss declaration types new
+ *  field cards), set keys ALL ALL_PLUS TYPE-scss RSTAR RIGHT-Xcolor
+ *  TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor - no SELF token (pattern/all.rb
+ *  :40-42 drops the concrete self pattern for new cards; safeSetKeys
+ *  isNew: true). */
+function virtualSkinFieldCard(
+  ctx: ViewContext,
+  field: "colors" | "variables",
+): RenderCard {
+  const skin = ctx.fmt.card;
+  const name = DeckoName.parse(`${skin.name.s}+*${field}`);
+  const scssType = scssTypeIdentity(ctx);
+  const typeId = scssType.typeId;
+  const typeName = scssType.typeName;
+  const record: CardRecord = {
+    id: undefined,
+    codename: undefined,
+    leftId: skin.id,
+    rightId: undefined,
+    typeId,
+    dbContent: "",
+    trash: false,
+    creatorId: undefined,
+    updaterId: undefined,
+    createdAt: undefined,
+    updatedAt: undefined,
+    currentRevisionId: undefined,
+    readRuleClass: undefined,
+    readRuleId: undefined,
+    referencesExpired: undefined,
+    name,
+    key: name.key,
+    isNew: true,
+    fromTrash: false,
+    uncacheable: false,
+  };
+  const setKeys = safeSetKeys({
+    name,
+    typeId,
+    typeName,
+    leftTypeName: skin.typeName,
+    isRule: false,
+    isNew: true,
+  });
+  return {
+    record,
+    name,
+    key: name.key,
+    typeName,
+    typeId,
+    typeCode: scssType.typeCode,
+    id: undefined,
+    dbContent: "",
+    setKeys,
+  };
+}
+
+/** core.haml:10-12 `= field_nest <field>, view: :accordion_bar, title:
+ *  "..."` - the field resolution order:
+ *  1. a stored row (customized skins carry real +*colors / +*variables /
+ *     +*stylesheets children) nests as itself;
+ *  2. no row + colors/variables -> the VIRTUAL field card (virtual?,
+ *     bootswatch_skin.rb:91-92 + colors.rb:78-80) nests id-less;
+ *  3. no row + stylesheets -> the field is a plain unknown card (the Skin
+ *     type carries no virtual? method, type_plus_right/bootswatch_skin/
+ *     stylesheets.rb is include_set Abstract::SkinField only), and the
+ *     nest renders "" - Ruby's unknown nest view for a card the Anonymous
+ *     viewer cannot create (the same quiet-empty the unknown view renders;
+ *     the oracle pins the ABSENT accordion for every theme skin). */
+function skinFieldNest(
+  ctx: ViewContext,
+  field: "colors" | "variables" | "stylesheets",
+  title: string,
+): string {
+  const { fmt } = ctx;
+  const name = fmt.card.name.s;
+  const opts = { show: ["accordion_bar"], hide: ["bar_middle"], title };
+  const real = fmt.engine.fetchRenderCard(`${name}+*${field}`);
+  if (real !== undefined) {
+    return fmt.nestRecord(real, "accordion_bar", opts);
+  }
+  if (field === "stylesheets") return "";
+  return fmt.nestRecord(virtualSkinFieldCard(ctx, field), "accordion_bar", opts);
+}
+
+/** links.rb:33-36 + 140-144 link_to_card with a NAME-string cardish: the
+ *  label is the name verbatim (no title-view span - the oracle's inherit
+ *  link reads `>journal skin</a>`, bare text), the class gains the
+ *  known/wanted token after the caller's classes. */
+function linkToCardName(ctx: ViewContext, target: string): string {
+  const known = ctx.fmt.engine.fetchRenderCard(target) !== undefined;
+  const cls = known ? "known-card" : "wanted-card";
+  const urlKey = DeckoName.parse(target).urlKey;
+  return `<a class="${cls}" href="/${urlKey}">${target}</a>`;
+}
+
+/** The bootswatch skin page core, exported for the compiled-in coreView
+ *  typeCode dispatch (views.ts - the signupCoreHtml pattern: the graded
+ *  surface is the loader-less engine, so the type-level core body is
+ *  reached from the engine layer, not a set-scoped registration). */
+export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
+  return bootswatchCoreView(ctx);
+}
+
+/** set/type/bootswatch_skin/core.haml - the bootswatch skin page's :core
+ *  (the content view delegates here, card-mod-format set/all/base.rb
+ *  content -> core). Haml whitespace semantics: every template line emits
+ *  its rendered output followed by "\n", static tags wrap their blocks
+ *  with the close tag on its own line. The captured oracle bytes
+ *  ("cerulean skin" / "journal skin customized" page dumps):
+ *
+ *  - `- if current_skin?` / `%span.disabled` -> the Current skin span
+ *    (single-quoted static tag, content on its own line); `- else` ->
+ *    use_as_current_button + line newline. No corpus skin is the current
+ *    one, so the button branch is the pinned path.
+ *  - `- if card.parent?` (parent_skin_card&.real?, bootswatch_skin.rb
+ *    :57-59) -> "Inherit from:" + link_to_card of the +parent pointer's
+ *    first item; `- else` -> customize_button + `<div class='mt-4'>` /
+ *    nest image_card content/size:large / `</div>`.
+ *  - the Skin configuration h5/small headers, then `.accordion` wrapping
+ *    the three field_nests (colors, variables, stylesheets), each output
+ *    followed by the template line's newline - the ABSENT stylesheets
+ *    field on theme skins is what produces the double newline before the
+ *    `.accordion` close in the oracle bytes. */
+const bootswatchCoreView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  if (fmt.card.typeCode !== "bootswatch_skin") {
+    throw new UnsupportedViewError("core", fmt.card.name.s);
+  }
+  const name = fmt.card.name.s;
+  // html_views.rb:32-34 current_skin?: `Card[:all, :style].item_keys
+  // .include? card.key` - the *all+*style rule's item keys.
+  const styleRule = fmt.engine.fetchRenderCard("*all+*style");
+  const currentKeys =
+    styleRule === undefined
+      ? []
+      : rawItemStrings(styleRule.dbContent ?? "").map(
+          (s) => DeckoName.parse(s).key,
+        );
+  let out = "";
+  if (currentKeys.includes(fmt.card.key)) {
+    out += `<span class='btn btn-sm btn-outline-primary me-2 disabled'>\nCurrent skin\n</span>\n`;
+  } else {
+    // html_views.rb:50-54 use_as_current_button: link_to_card card,
+    // "Use as current", path: { action: :update, card: { trigger:
+    // "use_as_current_skin" } }, class: "btn btn-sm btn-outline-primary
+    // me-2". The card is known (it renders), so known-card appends.
+    out += `<a class="btn btn-sm btn-outline-primary me-2 known-card" href="/update/${fmt.urlKey()}?card%5Btrigger%5D=use_as_current_skin">Use as current</a>\n`;
+  }
+  const parentCard = fmt.engine.fetchRenderCard(`${name}+parent`);
+  if (parentCard !== undefined) {
+    // parent_skin_card = parent_card&.first_card; the haml renders
+    // link_to_card of card.parent (the pointer's first item name).
+    const firstItem = rawItemStrings(parentCard.dbContent ?? "")
+      .filter((s) => s.length > 0)[0];
+    out += `Inherit from:\n${firstItem === undefined ? "" : linkToCardName(ctx, firstItem)}\n`;
+  } else {
+    // html_views.rb:38-48 customize_button (the parent-less branch) +
+    // `<div class='mt-4'>` + nest image_card, view: :content, size:
+    // :large. image_card = card.fetch(:image, new: {}) (card-mod-bar_and_box
+    // set/abstract/media.rb:2-4); every corpus skin carries an Image row
+    // (the bootswatch mod data files ship them), so the fetch resolves.
+    out += `${customizeButtonView(ctx)}\n`;
+    const imageCard = fmt.engine.fetchRenderCard(`${name}+Image`);
+    out += `<div class='mt-4'>\n${imageCard === undefined ? "" : fmt.nestRecord(imageCard, "content", { size: "large" })}\n</div>\n`;
+  }
+  out += `<h5 class='mt-4'>\nSkin configuration\n</h5>\n<div class='small mb-3'>\nfrom simplest to most advanced\n</div>\n<div class='accordion'>\n`;
+  out += `${skinFieldNest(ctx, "colors", "Palette and uses of colors")}\n`;
+  out += `${skinFieldNest(ctx, "variables", "Additional SCSS variables")}\n`;
+  out += `${skinFieldNest(ctx, "stylesheets", "SCSS and CSS stylesheets")}\n`;
+  out += `</div>\n`;
+  return out;
+};
+
+
 
 /** The "passive" set-modules - files whose views are documented as
  *  not-yet-ported above. We still register them so the set-module basket
@@ -700,6 +1197,10 @@ const passiveSetModule = (setPath: string): ModSetModuleFile => ({
   setPath,
   formats: { html: { views: [] } },
 });
+
+// ---------------------------------------------------------------------------
+// the manifest (one entry per gem file; setPaths mirror the gem tree)
+// ---------------------------------------------------------------------------
 
 const cardModBootstrap: DeckoModManifest = {
   name: "bootstrap",
@@ -828,14 +1329,20 @@ const cardModBootstrap: DeckoModManifest = {
     passiveSetModule("all/bootstrap/wrapper"),
     {
       // card-mod-bootstrap-0.20.0/set/self/bootstrap_core.rb - the
-      // bootstrap_core "code file" card's SCSS bundle loader. Methods
-      // only.
+      // bootstrap_core "code file" card's SCSS bundle loader. The `def
+      // content` override is PORTED IN THE ENGINE LAYER
+      // (src/card/render/bootstrap-code-files.ts, seeded as the built-in
+      // default ContentOverrideRegistry entry) - see the section comment
+      // above. No manifest surface: a contentOverrides entry here would be
+      // dead for the loader-less verifier and dropped by the boot-replace
+      // semantics for booted decks.
       setPath: "self/bootstrap_core",
       formats: { html: { views: [] } },
     },
     {
       // card-mod-bootstrap-0.20.0/set/self/bootstrap_functions.rb - the
-      // bootstrap_functions "code file" card's SCSS loader. Methods only.
+      // bootstrap_functions "code file" card's SCSS loader. Same engine-
+      // layer port (bootstrap-code-files.ts bootstrapFunctionsContent).
       setPath: "self/bootstrap_functions",
       formats: { html: { views: [] } },
     },
@@ -846,7 +1353,14 @@ const cardModBootstrap: DeckoModManifest = {
       // via superView to the next set module's same view; view
       // :one_line_content is registered in html_views.rb below (that
       // file's redefinition wins for type+html-format cards; both Ruby
-      // bodies are the empty string).
+      // bodies are the empty string). view :core (html_views.rb:15-17,
+      // template :haml -> core.haml) is NOT registered here: its graded
+      // dispatch is the compiled-in coreView typeCode branch
+      // (views.ts, the signupCoreHtml pattern) - the loader-less
+      // verifier never registers mod views, so a set-scoped
+      // registration would be dead surface for the grade. The builder
+      // (bootswatchSkinCoreHtml below) is exported and views.ts calls
+      // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
       formats: {
         html: {
@@ -861,15 +1375,17 @@ const cardModBootstrap: DeckoModManifest = {
       // view :bar_left / :bar_right / :bar_bottom + view :core. The
       // :core view is template :haml (core.haml) - the HAML depends on
       // accordion_bar + field_nest + nest :content, a structured-content
-      // surface not in this port. Of the declared views, only
-      // :one_line_content + :customize_button are independently
-      // testable; :bar_left/right/bottom and :core require either the
-      // accordion_bar/flexible-nest machinery. :customize_button ports
-      // here with a local path builder (Card::Path#render +
-      // new_skin_path_args -> "card/create?card[name]=...&card[type]
-      // =bootswatch_skin&card[fields][parent]=..."). Cited:
-      // html_views.rb:24-26 view :customize_button + html_views.rb:38-
-      // 48 customize_button method.
+      // surface not in this port. :bar_left IS PORTED (bar-slots lane
+      // 2026-09-29, byte-shaped to the pass-15 V6 dump) but registered in
+      // the BASE views table (views.ts barLeftView) - the corpus grading
+      // pipeline never binds a ModLoader, so only base-table
+      // registrations dispatch on the graded surface. :customize_button
+      // ports here with a local path
+      // builder (Card::Path#render + new_skin_path_args ->
+      // "card/create?card[name]=...&card[type]=bootswatch_skin&
+      // card[fields][parent]=..."). Cited: html_views.rb:24-26 view
+      // :customize_button + html_views.rb:38-48 customize_button
+      // method.
       setPath: "type/bootswatch_skin/html_views",
       formats: {
         html: {
@@ -877,6 +1393,23 @@ const cardModBootstrap: DeckoModManifest = {
             { view: "one_line_content", viewFn: oneLineContentView },
             // html_views.rb:24-26 view :customize_button, cache: :never
             { view: "customize_button", viewFn: customizeButtonView, config: { cache: "never" } },
+            // surfaces-batch3 (2026-09-30): the rest of the file's view
+            // surface. :core (html_views.rb:28, template :haml = core.haml),
+            // :bar_left (html_views.rb:57-63, the Abstract::Media
+            // text_with_image block), :bar_right (html_views.rb:65-67, the
+            // empty body), :bar_bottom (html_views.rb:69-73, the <code>
+            // wrap). The X-star-marker strip (mod-loader.ts viewChain
+            // expansion) is what makes these nested-file registrations
+            // dispatchable for TYPE-bootswatch_skin cards whose parent
+            // module registers a DIFFERENT view of the same name chain.
+            // NAMED REMAINDER: the file's `before :box do voo.show!
+            // :box_middle end` hook (html_views.rb:24-26) — the port has
+            // no before-view hook surface; a skin's :box renders without
+            // the forced box_middle viz.
+            { view: "core", viewFn: skinCoreView },
+            { view: "bar_left", viewFn: bootswatchBarLeftView },
+            { view: "bar_right", viewFn: bootswatchBarRightView },
+            { view: "bar_bottom", viewFn: barBottomView },
           ],
         },
       },
@@ -884,14 +1417,10 @@ const cardModBootstrap: DeckoModManifest = {
     {
       // card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb -
       // event hooks (initialize_because_of_type_change, copy_theme,
-      // validate_theme_template). No views. The TS port carries the
-      // two events whose stages are in the ModEventStage enum (validate
-      // is NOT in the TS enum - lib/card/director.rb's STAGES include
-      // "validate" but the TS port's ModEventStage
-      // (mod-manifest.ts:151-159) does not yet); validate_theme_template
-      // is recorded without an `at` field (the execution seam resolves
-      // stages by registration). This entry proves the events surface
-      // adoption: load() populates loader.eventRegistry() with
+      // validate_theme_template). No views. All three stages are in the
+      // ModEventStage union (mod-manifest.ts:158-169, the full Ruby
+      // director stage list - card-1.110.0 lib/card/director/director.rb
+      // :18). load() populates loader.eventRegistry() with
       // setPath + modName injected, and the load report carries the
       // registered event names (mod-loader.ts:283-294 + 308).
       setPath: "type/bootswatch_skin/events",
@@ -918,11 +1447,11 @@ const cardModBootstrap: DeckoModManifest = {
           fn: () => undefined,
         },
         // events.rb:14-18 validate_theme_template at :validate,
-        // on: :create. :validate is NOT in the ModEventStage enum
-        // (mod-manifest.ts:151-159) - the event is recorded without an
-        // `at` so the seam can still recognize its stage when wired.
+        // on: :create (:validate is in the ModEventStage union,
+        // mod-manifest.ts:158-169).
         {
           event: "validate_theme_template",
+          at: "validate",
           on: ["create"],
           fn: () => undefined,
         },
@@ -947,7 +1476,20 @@ const cardModBootstrap: DeckoModManifest = {
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [
+            // colors.rb:102-122 — the fixed bar_middle literal. surfaces-
+            // batch3: the registration makes the view dispatchable for
+            // *colors cards under a bootswatch_skin left (the TYPE_PLUS_RIGHT
+            // token's X-stripped anchor path), replacing the clobber concern
+            // the original comment recorded: the viewChain per-card MRO walk
+            // (not a global flat table) scopes the registration to cards
+            // whose set keys carry the anchor.
+            { view: "bar_middle", viewFn: colorsBarMiddleView },
+          ],
+        },
+      },
     },
     // The remaining type_plus_right/bootswatch_skin/* files -
     // image.rb, parent.rb, stylesheets.rb, variables.rb - all methods

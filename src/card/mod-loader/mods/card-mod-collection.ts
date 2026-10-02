@@ -1,7 +1,7 @@
 // The card-mod-collection gem (card-mod-collection-0.20.0), ported through
 // the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-collection-0.20.0/): six set files (3 abstract, 3 all), one
 // lib/ class (Card::PagingLinks - pure data structure, no Rails), and one
 // HAML template. The T6 verdict (tools/compat-report/mod-compat-report.json,
@@ -266,18 +266,14 @@ function rawItemStrings(content: string): string[] {
     .filter((item) => item !== "");
 }
 
-/** item.rb:104-106 item_count args={}: `item_names(args).size`. The
- *  headless port reads dbContent directly (the engine has no item_names
- *  helper); the count is the post-split, post-strip size. */
+/** item.rb:104-106 item_count args={}: `item_names(args).size` - the same
+ *  quantity paging.rb:16-17 count_with_params reads as
+ *  `card.item_names.count`. The headless port reads dbContent directly
+ *  (the engine has no item_names helper); the count is the post-split,
+ *  post-strip size. The html :count view (item.rb:179-182) and the paging
+ *  helpers both consume this one count. */
 function itemCount(ctx: ViewContext): number {
   return rawItemStrings(ctx.fmt.card.dbContent).length;
-}
-
-/** item.rb:117-120 view :count (base format): `try :count`. The base body
- *  resolves card.count when the card responds to it. Headlessly: dbContent
- *  is the canonical source, the integer count is the post-split size. */
-function baseCountView(ctx: ViewContext): string {
-  return String(itemCount(ctx));
 }
 
 /** item.rb:180-182 view :count (html format): `number_with_delimiter
@@ -304,44 +300,29 @@ const countView: ViewFn = (ctx) => formatWithDelimiter(itemCount(ctx));
 // set/abstract/paging.rb - the limit/offset/count helpers
 // ---------------------------------------------------------------------------
 
-/** paging.rb:5-6 limit: `contextual_param(:limit) || default_limit`.
- *  contextual_param reads env_search_param (the Rails request env) first,
- *  then voo.cql[:limit]. The headless port reads from voo.opts["limit"]
- *  (the render's render_opt); default_limit is 0 when no override. */
-function readLimit(ctx: ViewContext): number {
-  const fromOpts = ctx.voo.opts["limit"];
+/** paging.rb:5-6 limit and :8-9 offset: `contextual_param(:limit) ||
+ *  default_limit` / `contextual_param(:offset) || 0` - one
+ *  contextual_param read, the key the only difference (env_search_param -
+ *  the Rails request env - first, then voo.cql[:key]). The headless port
+ *  reads from voo.opts[key] (the render's render_opt); the default is 0
+ *  when no override. */
+function readNumericOpt(ctx: ViewContext, key: "limit" | "offset"): number {
+  const fromOpts = ctx.voo.opts[key];
   if (typeof fromOpts === "number") return fromOpts;
   if (typeof fromOpts === "string" && fromOpts !== "") {
     const n = Number(fromOpts);
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
-}
-
-/** paging.rb:8-9 offset: `contextual_param(:offset) || 0`. Same shape. */
-function readOffset(ctx: ViewContext): number {
-  const fromOpts = ctx.voo.opts["offset"];
-  if (typeof fromOpts === "number") return fromOpts;
-  if (typeof fromOpts === "string" && fromOpts !== "") {
-    const n = Number(fromOpts);
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-}
-
-/** paging.rb:16-17 count_with_params: `card.item_names.count`. The TS port
- *  uses the same rawItemStrings split the count view uses. */
-function countWithParams(ctx: ViewContext): number {
-  return rawItemStrings(ctx.fmt.card.dbContent).length;
 }
 
 /** paging.rb:24-28 total_pages: `return 1 if limit.zero?; (count - 1) / limit`.
  *  Ruby integer division; count < limit yields 0 here (no full page).
  *  Ruby's `((0) / 5).to_i = 0` - the TS port uses Math.floor to match. */
 function totalPages(ctx: ViewContext): number {
-  const limit = readLimit(ctx);
+  const limit = readNumericOpt(ctx, "limit");
   if (limit === 0) return 1;
-  const count = countWithParams(ctx);
+  const count = itemCount(ctx);
   return Math.floor((count - 1) / limit);
 }
 
@@ -349,18 +330,18 @@ function totalPages(ctx: ViewContext): number {
  *  Ruby's offset/limit returns the 0-based page index (page 0 is the first
  *  page). The TS port mirrors this. */
 function currentPage(ctx: ViewContext): number {
-  const limit = readLimit(ctx);
+  const limit = readNumericOpt(ctx, "limit");
   if (limit === 0) return 1;
-  const offset = readOffset(ctx);
+  const offset = readNumericOpt(ctx, "offset");
   return Math.floor(offset / limit);
 }
 
 /** paging.rb:41-43 last_item_on_page: `[count, offset + limit].min`.
  *  Used in the paging-context div ("X-Y of Z"). */
 function lastItemOnPage(ctx: ViewContext): number {
-  const limit = readLimit(ctx);
-  const offset = readOffset(ctx);
-  return Math.min(countWithParams(ctx), offset + limit);
+  const limit = readNumericOpt(ctx, "limit");
+  const offset = readNumericOpt(ctx, "offset");
+  return Math.min(itemCount(ctx), offset + limit);
 }
 
 // ---------------------------------------------------------------------------
@@ -374,10 +355,10 @@ function lastItemOnPage(ctx: ViewContext): number {
  *  fits under the limit, and the canonical case hides paging when limit
  *  >= count. */
 function showPaging(ctx: ViewContext): boolean {
-  const limit = readLimit(ctx);
+  const limit = readNumericOpt(ctx, "limit");
   if (limit < 1) return false;
   if (fewerResultsThanLimit(ctx)) return false;
-  return limit < countWithParams(ctx);
+  return limit < itemCount(ctx);
 }
 
 /** paging_views.rb:11-15 fewer_results_than_limit?: `return false unless
@@ -387,8 +368,8 @@ function showPaging(ctx: ViewContext): boolean {
  *  raw content length). In the TS port the item count comes from
  *  rawItemStrings.size which matches the canonical count. */
 function fewerResultsThanLimit(ctx: ViewContext): boolean {
-  if (readOffset(ctx) !== 0) return false;
-  return readLimit(ctx) > readOffset(ctx) + countWithParams(ctx);
+  if (readNumericOpt(ctx, "offset") !== 0) return false;
+  return readNumericOpt(ctx, "limit") > readNumericOpt(ctx, "offset") + itemCount(ctx);
 }
 
 /** paging_views.rb:36-40 page_link_li_class status: `["page-item",
@@ -435,7 +416,7 @@ function pagingLinks(ctx: ViewContext): string[] {
     const liClass = pageLinkLiClass(status);
     const pathArgs =
       page !== null
-        ? { limit: readLimit(ctx), offset: page * readLimit(ctx) }
+        ? { limit: readNumericOpt(ctx, "limit"), offset: page * readNumericOpt(ctx, "limit") }
         : {};
     const link = pageLink(text, page, options, pathArgs);
     return `<li class="${liClass}">${link}</li>`;
@@ -457,9 +438,9 @@ function pagingLinks(ctx: ViewContext): string[] {
 const pagingView: ViewFn = (ctx) => {
   if (!showPaging(ctx)) return "";
   const links = pagingLinks(ctx).join("\n");
-  const start = readOffset(ctx) + 1;
+  const start = readNumericOpt(ctx, "offset") + 1;
   const end = lastItemOnPage(ctx);
-  const total = countWithParams(ctx);
+  const total = itemCount(ctx);
   const pagingContext = `${start}-${end} of ${total}`;
   return (
     `<nav class="nav justify-content-between align-items-center">\n` +
@@ -471,15 +452,11 @@ const pagingView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // the manifest (one setModules entry per gem file; format :html block holds
-// the two ported views)
+// the two ported views). Files whose views are not ported carry a passive
+// `{ setPath, formats: { html: { views: [] } } }` entry - written inline so
+// the basket reflects the gem's set/ tree (registrar.rb walks every file
+// regardless of whether the TS port registers a view on it).
 // ---------------------------------------------------------------------------
-
-/** Set modules whose files define no portable html views - registered so
- *  the basket reflects the gem's set/ tree (registrar.rb walks every file
- *  regardless of whether the TS port registers a view on it). */
-function passiveSetModule(setPath: string): ModSetModuleFile {
-  return { setPath, formats: { html: { views: [] } } };
-}
 
 const setModules: ModSetModuleFile[] = [
   // pattern: all (the "base" bucket per loader.rb#parts_from_path)

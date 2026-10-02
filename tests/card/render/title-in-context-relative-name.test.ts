@@ -11,8 +11,22 @@
 // - title.rb standard_title -> title_in_context: `card.name.from(*context_names)`.
 // - wrap.rb:68-79 name_context_slot_option: the slot JSON carries the
 //   INITIAL (parent-derived, part-filtered) context as comma-joined keys,
-//   appended LAST; known slots only (the live captures' wanted slots - e.g.
-//   /Aikido_2's +management mini_bar - carry no name_context).
+//   appended LAST. SUPERSEDED PIN CORRECTION (2026-09-28, live-wire
+//   mechanism-3 lane): an earlier version of this test expected the WANTED
+//   +management mini_bar to carry NO name_context, pinned to the stale
+//   live-v0.19.1 capture tmp/wrong-goal-hunt/captures/live_Aikido_2.html.
+//   The graded v0.20.0 capture contradicts that byte: the SAME shape
+//   (a wanted, id-less +management mini_bar nested directly in the page
+//   body) is the Conflict_Done_Well page in
+//   tmp/raw-ground-truth/expected-v2/page-lane/
+//   dual-lane-validation-2026-09-25.jsonl — and there the slot CARRIES
+//   name_context "conflict_done_well" with no data-card-id. Today's live
+//   wire agrees (live-wire-class-tokens.md: Occupy's wanted
+//   +pdf/+tags/+discussion slots carry name_context on BOTH the v0.20.0
+//   snapshot and the 2026-09-28 live fetch; probe snap=3 live=3 eng=0).
+//   wrap.rb:74-78's only gate is initial_context_names.present? — the
+//   unknown-card gate was an overfit to the stale capture and was removed
+//   (name-context-slot-json-gate.test.ts pins both oracle shapes).
 //
 // Live bytes (tmp/wrong-goal-hunt/captures/live_Aikido_2.html):
 //   <span class="card-title" title="+management"><span>+</span>management</span>
@@ -60,13 +74,17 @@ describe("title_in_context: relative slot titles under the page context", () => 
     expect(html).toContain("&quot;home_view&quot;:&quot;titled&quot;,&quot;name_context&quot;:&quot;aikido_2&quot;}");
 
     // The WANTED +management nest (closed -> mini_bar substitution):
-    // live pins a RELATIVE bar-left title but NO name_context in the
-    // slot JSON (unknown-card formats do not carry the page context in
-    // the captured bytes).
+    // RELATIVE bar-left title, and the slot JSON CARRIES name_context —
+    // wrap.rb:74-78's only gate is initial_context_names.present? (see the
+    // superseded-pin correction in the header: the graded oracle's
+    // Conflict_Done_Well+management wanted slot carries name_context, and
+    // today's live wire agrees on the Occupy page's wanted slots).
     expect(html).toContain('<span class="card-title" title="+management">');
     expect(html).not.toContain('title="Aikido 2+management"');
     const managementSlot = html.slice(html.indexOf("aikido_2-management-"));
-    expect(managementSlot).not.toContain("name_context");
+    expect(managementSlot).toContain(
+      "&quot;home_view&quot;:&quot;open&quot;,&quot;name_context&quot;:&quot;aikido_2&quot;}",
+    );
   });
 
   it("keeps the full junction title when the same card renders OUT of context", async () => {

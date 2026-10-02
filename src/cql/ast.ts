@@ -46,9 +46,11 @@ export type ConditionNode =
   /** group of conditions joined by a conjunction (MatchAttributes#or_join) */
   | { kind: "group"; conj: "and" | "or"; conditions: ConditionNode[] }
   /**
-   * FoundBy#found_by — home recorded, but generating SQL for it requires
-   * running a nested query and fetching Search cards at interpretation time
-   * (Query.run / Card.fetch). Deferred to wave 2; generateSql raises.
+   * FoundBy#found_by (card-1.110.0 lib/card/query/card_query/found_by.rb).
+   * Resolved at EXECUTION time — execute.ts#resolveFoundByConditions runs
+   * the found statement and replaces this condition with the equivalent
+   * id-set constraint before SQL generation. This node reaching the
+   * generator means an unhandled shape survived that pass (sql.ts refuses).
    */
   | { kind: "foundBy"; value: unknown };
 
@@ -139,6 +141,24 @@ export interface ParseOptions {
    * sentinels Ruby uses: -2 for clause_to_hash, -999 for Tie#id_from_val.
    */
   resolveCardId?: (name: string) => number | undefined | null;
+  /**
+   * The async half of Ruby's name resolution. Card::Lexicon.id answers
+   * cache-first WITH a synchronous SQL fallback (card-1.110.0
+   * lexicon.rb#lex_to_id), so Ruby heals every cache miss - including
+   * entries the Temporary cache's max_keys reset wiped
+   * (cache/temporary.rb#within_key_counts, default 10_000 keys) - during
+   * interpretation itself. The port's interpretation is synchronous over
+   * the warm-cache mirror (`resolveCardId` -> DbLexicon.peekId), which by
+   * contract has no db fallback. `ensureCardId` is that fallback leg,
+   * hoisted into the async phase: executeQuery resolves the statement's
+   * card-name strings through it BEFORE interpretation runs, so the
+   * resolved entries sit in the cache the sync mirror reads (and nothing
+   * writes between this pass and parseCql that could evict them). Wire it
+   * to the same walk `resolveCardId` mirrors (DbLexicon.id). Unresolved or
+   * throwing names stay the interpreter's business - they take Ruby's
+   * sentinels exactly as before.
+   */
+  ensureCardId?: (name: string) => Promise<number | undefined>;
   /** codename -> id resolver standing in for Card::Codename.id (member key) */
   resolveCodename?: (codename: string) => number | undefined | null;
   /**

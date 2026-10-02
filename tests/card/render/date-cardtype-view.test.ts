@@ -53,6 +53,7 @@ import { describe, expect, it } from "vitest";
 import { formatDateCore } from "../../../src/card/render/views.js";
 import { isValidDateContent, dateError } from "../../../src/card/render/errors.js";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import { SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 
 // ---------------------------------------------------------------------------
 // the strftime equivalence helper itself (pure function)
@@ -221,7 +222,7 @@ describe("captured corpus — Date-type card byte surface", () => {
     const path = await import("node:path");
     const url = new URL("../../..", import.meta.url);
     const repoRoot = url.pathname.replace(/^\//, "");
-    const shardPath = path.join(repoRoot, "fixtures/corpus/shard-000000.jsonl");
+    const shardPath = SHARD_000000_PATH; // committed miniature (fixtures/test-corpus/)
     const text = await fs.readFile(shardPath, "utf8");
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const dateCards: Array<{ id: number; content: string }> = [];
@@ -257,7 +258,7 @@ describe("captured corpus — Date-type card byte surface", () => {
     const path = await import("node:path");
     const url = new URL("../../..", import.meta.url);
     const repoRoot = url.pathname.replace(/^\//, "");
-    const shardPath = path.join(repoRoot, "fixtures/corpus/shard-000000.jsonl");
+    const shardPath = SHARD_000000_PATH; // committed miniature (fixtures/test-corpus/)
     const text = await fs.readFile(shardPath, "utf8");
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry1135 = lines

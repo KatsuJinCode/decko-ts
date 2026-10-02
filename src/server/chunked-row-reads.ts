@@ -1,5 +1,5 @@
-// Transport chunking for set-shaped reads — the lane-coldquery batching
-// pattern (src/card/render/prefetch.ts, e3ae820) generalized into a
+// Transport chunking for set-shaped reads — the batching pattern from
+// src/card/render/prefetch.ts (e3ae820) generalized into a
 // driver-layer primitive.
 //
 // THE PROBLEM IT EXISTS FOR: the engine's read paths used to issue one
@@ -8,8 +8,9 @@
 // drivers each round trip is one HTTP request — one D1 API subrequest — and
 // the Workers free tier cuts an invocation off at 50 subrequests. The demo's
 // whole-deck search probe (6,233 result rows, one fetchById each) measured
-// 12,475 round trips for ONE page render (the lane baseline; see the
-// lane-chunking receipt) — unusable on the free tier.
+// 12,475 round trips for ONE page render — unusable on the free tier. The
+// figure's record and the hermetic pin on the replacement read path live in
+// tests/card/render/search-whole-deck-chunked-reads.test.ts.
 //
 // THE MECHANISM: transport chunking, not a semantics change. The ids ride
 // IN-list statements of IDS_PER_STATEMENT bound parameters each, and the
@@ -32,9 +33,9 @@ import type { CardsRow } from "./schema.js";
 import type { SQLDatabaseDriver, SQLStatement } from "./driver.js";
 
 /** Bound parameters per IN-list statement. Cloudflare D1 caps a query at
- *  100 bound parameters (provider limit, not verifiable from this machine —
- *  the number is pinned here with headroom so a driver adapter can never
- *  drift into it); 50 per statement is the lane assignment's working size.
+ *  100 bound parameters (provider limit, not verifiable without a deployed
+ *  D1 — the number is pinned here with headroom so a driver adapter can
+ *  never drift into it); 50 per statement is this module's working size.
  *  Local drivers accept it trivially (SQLite's floor is 999 variables). */
 export const CHUNKED_READ_IDS_PER_STATEMENT = 50;
 

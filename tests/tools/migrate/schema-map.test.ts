@@ -7,7 +7,7 @@
 // translates columns correctly across the variants we've seen.
 
 import { describe, it, expect, afterAll } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -63,12 +63,11 @@ function makeDb(): string {
 afterAll(() => {
   for (const d of dirs) {
     try {
-      // best-effort cleanup; SQLite WAL files may still be open briefly
-      const Database = require("better-sqlite3");
-      // no-op; tmpdir cleanup is OS-managed on Windows
-      void Database;
+      // Best-effort cleanup; every database handle is closed by the time
+      // this runs, so the removal should normally succeed.
+      rmSync(d, { recursive: true, force: true });
     } catch {
-      // ignore
+      // ignore — the temp dirs live under the OS temp root either way
     }
   }
 });

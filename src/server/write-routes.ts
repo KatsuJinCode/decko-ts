@@ -1,8 +1,8 @@
 // The HTTP write surface: card CREATE / UPDATE / DELETE over the
-// CardActionEngine, with session-token auth and Ruby-equivalent CSRF on
-// form posts. Lives as its own module so the staging server imports it
-// with a two-line dispatch (and so the sign-in lane's edits to the same
-// server file never collide with it).
+// CardActionEngine, cookie-or-token session auth, live-decko redirect and
+// soft-redirect responses. Lives as its own module so the staging server
+// imports it with a two-line dispatch (and so the edits to
+// the same server file never collide with it).
 //
 // URL grammar — decko-0.20.0 config/engine_routes.rb:27-48 (the mounted
 // Decko::Engine, the only routes a real deck serves):
@@ -25,58 +25,86 @@
 //
 // NOT implemented, on purpose (documented remainder): the GET "explicit
 // alternatives" (routes.rb:41-43 `get (card)/delete(/:mark)` etc.) — GETs
-// that mutate are exactly what CSRF protection exists to prevent; the
-// staging surface keeps mutations on state-changing verbs only.
+// that mutate stay off the staging surface; the general subcard update
+// grammar (params[:card][:subcards]) is implemented ONLY where the captured
+// real session pinned it: the *signin update (the :signin event, below).
 //
-// Auth — rest.rb:37-47 authenticate/authenticators: the session token comes
-// from the `Authorization` header (`Token token="..."` OR `Bearer ...` —
-// actionpack-7.2.3.2 http_authentication.rb:427 TOKEN_REGEX) or the
-// `token` param, and resolves through the SessionStore (engine-for-session
-// seam). Unknown/expired/revoked tokens degrade to Anonymous
-// (auth/current.rb:58-63) — Anonymous writes are denied per the rules
-// (PermissionDenied, HTTP 403, exactly like Ruby).
+// Multipart uploads (the uploads2 lane): the edit form's file_chooser
+// posts multipart/form-data to Ruby's own grammar — POST (PUT/PATCH)
+// /update/<mark> with a card[<mount>] file part. The multipart body is
+// parsed with Rack 2.2.24's semantics (src/server/multipart-form.ts, gem
+// file:lines cited there); the file part routes into the engine's
+// attachment input (CardMount's file=/image= argument, card_mount.rb:41-44);
+// validate_file_exist (attachment.rb:26-34) rejects mount-typed creates
+// without an upload; the success/error responses stay the shared cud
+// shapes documented below. The two-step preliminary upload flow
+// (00_upload_cache.rb — the JS editor's attachment_upload param, the
+// new_file cache card, the preview_editor round trip) is NOT this
+// surface: the direct file-part save is Ruby's own path for existing
+// cards and for creates without the cache detour.
 //
-// CSRF — decko carries no forgery override anywhere (only the cucumber
-// environment disables it), so Rails 7.2's default
-// `protect_from_forgery with: :exception` governs real decks. Verified in
-// actionpack-7.2.3.2 request_forgery_protection.rb: non-GET/HEAD requests
-// need a valid Origin (when the header is present) AND an authenticity
-// token that compares against the session's token
-// (`session[:_csrf_token]`, SessionStore :319-325); tokens arrive via the
-// `authenticity_token` param or the `X-CSRF-Token` header (:461-470); a
-// failure raises InvalidAuthenticityToken -> HTTP 422
-// (exception_wrapper.rb:21). The port: a form post
-// (application/x-www-form-urlencoded) must present a token that equals
-// csrfTokenFor(secret, sessionToken) — an HMAC-SHA256 under a server-side
-// secret, keyed to the session, unguessable without the secret, rotated
-// with the session. Documented divergences from Rails: (1) the token is
-// stable per session rather than re-masked per request (BREACH masking —
-// irrelevant for a surface that does not compress responses); (2) JSON
-// bodies are the API carve-out — they authenticate with the Authorization
-// token itself, which a cross-origin browser cannot attach or read (the
-// exact threat CSRF exists for), so the token check is scoped to FORM
-// posts; (3) a form post with no session behind it has no session token to
-// derive a CSRF secret from -> 422 (Rails would bind the token to its
-// cookie session; this surface's anonymous-session machinery is a later
-// stream).
+// Auth — card_controller/rest.rb:37-40 `Card::Auth.signin_with(**authenticators)`
+// runs as a before_action on EVERY request: authenticators are
+// `token_from_header || params[:token]` (actionpack http_authentication.rb:427
+// TOKEN_REGEX), and signin_with falls through to signin_with_session when no
+// token was presented (auth/current.rb:50-63) — the cookie session
+// (session[session_user_key]). The port: Authorization header / token param
+// first, else the staging session cookie (SESSION_COOKIE_NAME — the cookie
+// the /_signin surface issues). Unknown/expired/revoked credentials degrade
+// to Anonymous (auth/current.rb:58-63); Anonymous writes are denied per the
+// rules (PermissionDenied, HTTP 403, exactly like Ruby).
+//
+// CSRF — none, deliberately: live decko arms no forgery protection.
+// decko-0.20.0 / card-1.110.0 contain no `protect_from_forgery` call
+// anywhere (the ONLY forgery reference in the whole generation is
+// decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
+// allow_forgery_protection), and the decko application sets no
+// load_defaults that would arm Rails' default_protect_from_forgery. The
+// receipt is the captured real session (2026-09-28): every token-less form
+// post — the sign-in POST, both saves, the anonymous denial — went straight
+// through to the action gates (303/200/403; no csrf meta tags in any
+// captured page). Rails' origin check (valid_request_origin?) lives inside
+// verify_authenticity_token (request_forgery_protection.rb), so it is
+// equally unarmed: a cross-origin form post is not a live failure either.
+// This reverses the earlier TS posture (HMAC csrfTokenFor + 422), which
+// modeled "the Rails default" instead of the live app; the save-lane pins
+// that enforced it were updated to the live shapes.
 //
 // Error shapes — card-1.110.0 lib/card/error.rb status codes:
-//   Card::Error::PermissionDenied -> 403 (view :denial); NotFound -> 404;
-//   UserError (validation: name conflicts, type errors, delete guards) -> 422.
+//   Card::Error::PermissionDenied -> 403 (view :denial, error.rb:104);
+//   NotFound -> 404 (:83,89); UserError (validation) -> 422 (:21).
 // The engine's anonymous-actor rejection maps to 403 as well: Ruby denies
-// anonymous writes through the SAME ok? machinery (403 PermissionDenied),
-// the port's hard anonymous gate produces the identical HTTP shape.
-// CSRF failures -> 422 per Rails. HTML bodies here are minimal staging
-// shapes (the full-chrome error pages stay the server file's business).
+// anonymous writes through the SAME ok? machinery (403 PermissionDenied).
+// Unsupported views are UserErrors in Ruby (format/render.rb:60-64
+// `raise Card::Error::UserError, unsupported_view_error_message`) -> 422.
+//
+// Responses — card_controller/response.rb: non-JSON CUD success is
+// redirect_cud_success (:25-33): hard_redirect(url, 303) for the plain-form
+// flavor (:31; :12 treats [302,303] as redirect), where hard_redirect
+// absolutizes the URL through card_url (:40-42). The ajax flavor
+// (Card::Env.ajax? = request.xhr? — X-Requested-With contains
+// XMLHttpRequest, actionpack-7.2.3.2 request.rb:290-294 — or
+// params[:simulate_xhr], env/serializable.rb:24) defaults to the SOFT
+// redirect (:36) and re-renders the saved card through `show` (:54-62) —
+// the captured XHR save came back 200 + the card's titled slot. An ajax
+// HARD redirect renders JSON {redirect: url} instead (:42-46); the *signin
+// success path reproduces that branch because the signin form pins
+// success[redirect]=true (set/self/signin.rb:171). JSON requests keep the
+// API shape (200 + ids) — not part of the captured browser session.
 
-import { createHmac, createHash } from "node:crypto";
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
 import type { CardRecord } from "../card/fetch/card-record.js";
 import { SessionStore } from "../card/auth/index.js";
+import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import { CardActionError, type ActionResult } from "../card/actions/types.js";
+import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
+import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
+import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
+import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { DeckoName } from "../card/name.js";
+import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
+import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
 
 /** One inbound write request, normalized off the node request. Header keys
  *  are lower-cased (node's convention). The body is the RAW bytes read by
@@ -86,30 +114,74 @@ export interface WriteRouteRequest {
   /** The URL pathname, percent-ENcoded as received (normalized: no
    *  trailing slashes). */
   pathname: string;
-  /** The Host header (origin checks). */
+  /** The Host header (absolute redirect URLs, Ruby's card_url). */
   host: string | undefined;
   headers: Record<string, string | undefined>;
   body: string;
+  /** The RAW body bytes — required for multipart/form-data (binary file
+   *  payloads a utf8 string corrupts; the utf8 `body` stays the transport
+   *  for the urlencoded/JSON content types). Rack parses multipart off
+   *  rack.input's raw stream (rack/multipart.rb:42-49); this field is the
+   *  port's rack.input. Absent on a multipart request -> empty params
+   *  (the caller's degenerate fallback, not a Ruby shape). */
+  bodyBytes?: Uint8Array;
 }
 
 /** Host-provided state: the storage seam, the fetch engine the write
- *  engines run through, and the CSRF HMAC secret. */
+ *  engines run through, and (optionally) a renderer for the ajax
+ *  soft-redirect response. */
 export interface WriteRouteContext {
   driver: SQLDatabaseDriver;
   fetcher: FetchEngine;
-  /** HMAC key for per-session CSRF tokens (Rails session[:_csrf_token]
-   *  analog). Rotate on compromise; per-boot random is fine for staging. */
-  csrfSecret: string;
   now?: () => Date;
   /** client ip captured on card_acts (director/class_methods.rb:27-29);
    *  defaults to the X-Forwarded-For header, then "127.0.0.1". */
   ipAddress?: string;
+  /** Renders one card's html view to a slot fragment — the host's render
+   *  machinery for the ajax soft redirect (response.rb:54-62 soft_redirect
+   *  re-renders through `show`). Absent -> ajax saves fall back to the
+   *  hard redirect (documented TS deviation for host surfaces with no
+   *  renderer; the staging server always provides it). */
+  renderSlot?: (name: string) => Promise<string>;
+  /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
+   *  through to every write engine this module builds — the multipart
+   *  upload surface stores bytes through it. Absent = attachment saves
+   *  fail with the engine's programming-error rejection. */
+  attachmentStore?: AttachmentStore;
+  /** The deck's file_storage config (Cardio.config.file_storage port;
+   *  undefined = the :local default) — validate_file_exist's web? arm and
+   *  the storage-type resolution ride it. */
+  fileStorage?: string;
+  /** The recaptcha guard config (CardActionRecaptchaConfig — the
+   *  Cardio.config.recaptcha_* port, card-mod-recaptcha lib/card/mod/
+   *  recaptcha.rb:1-10), passed through UNCHANGED to every write engine
+   *  this module builds. ABSENT = the guard off (recaptcha.rb:46-48
+   *  recaptcha_keys? false) — the pre-seat behavior, byte-identical.
+   *  Arming the seat also composes the recaptcha mod's event runtime (see
+   *  recaptchaEventRuntime below): the guard IS the :recaptcha validate
+   *  event, so a config without the registered event would never fire
+   *  (the engine's prepareRecaptchaSaveInput requires both,
+   *  card-action-engine.ts:1876-1882). When the host supplies no
+   *  captchaRuleContent, the engine defaults to the deck's own rule walk
+   *  (ruleContentForCard — recaptcha.rb:22's
+   *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
+   *  to the real siteverify GET (recaptcha.rb:41-44). */
+  recaptcha?: CardActionRecaptchaConfig;
 }
 
 export interface WriteRouteResponse {
   status: number;
   headers: Record<string, string>;
   body: string;
+  /** The saved card's name, set at the successful-mutation point
+   *  (successResponse) on EVERY success flavor — JSON and HTML alike. The
+   *  host's post-save cache expiry keys on this, never on the response's
+   *  HTTP shape: Ruby expires the saved card's cache in the after_commit
+   *  integration phase (card-1.110.0 lib/card/director/phases.rb:3,:54)
+   *  on every committed save, and a JSON save commits exactly like an
+   *  HTML one. Error responses leave it unset (no commit, no expire —
+   *  phases.rb:19-21). */
+  expiryName?: string;
 }
 
 /** Whether the host exposes the write path at all. The staging server
@@ -119,15 +191,45 @@ export function writePathEnabled(): boolean {
   return process.env.DECKO_WRITE_PATH === "1";
 }
 
-/** The session's CSRF token — Rails' session[:_csrf_token] analog. HMAC
- *  under the server secret over the session token's DIGEST (the raw token
- *  never feeds a second use). Deterministic per session: forms can embed
- *  it; without the secret it is unguessable; revoking the session rotates
- *  it. Exported for the form-rendering surface (edit forms, sign-in forms)
- *  to embed — the Ruby shape is the hidden authenticity_token input. */
-export function csrfTokenFor(ctx: WriteRouteContext, sessionToken: string): string {
-  const digest = createHash("sha256").update(sessionToken).digest("hex");
-  return createHmac("sha256", ctx.csrfSecret).update(`decko-ts csrf:${digest}`).digest("hex");
+// -----------------------------------------------------------------------
+// session cookie — the transport half of signin_with_session
+// (auth/current.rb:59-63). The staging /_signin surface issues this cookie;
+// the write path reads it for every session-less (cookie-only) write, the
+// way Rails reads session[:user_...] off the cookie session.
+// -----------------------------------------------------------------------
+
+export const SESSION_COOKIE_NAME = "decko_ts_session";
+// Mirrors SessionStore's DEFAULT_SESSION_TTL_SECONDS (48h) so the cookie
+// and the server-side row expire together. Ruby's expiry is app config
+// (token_expiry) — this is a port decision, not a ported number.
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 48;
+
+/** The session token carried by the request's cookie header, or null. */
+export function readSessionCookie(cookieHeader: unknown): string | null {
+  if (typeof cookieHeader !== "string" || cookieHeader === "") return null;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === SESSION_COOKIE_NAME) {
+      const value = part.slice(eq + 1).trim();
+      return value === "" ? null : value;
+    }
+  }
+  return null;
+}
+
+/** The Set-Cookie header value for a fresh session token (the /_signin and
+ *  /update/*signin success surfaces). */
+export function sessionCookieHeader(token: string): string {
+  return (
+    `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; ` +
+    `Max-Age=${SESSION_COOKIE_MAX_AGE}`
+  );
+}
+
+/** The cleared-cookie header (the signout surface). */
+export function clearedSessionCookieHeader(): string {
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
 // -----------------------------------------------------------------------
@@ -136,31 +238,122 @@ export function csrfTokenFor(ctx: WriteRouteContext, sessionToken: string): stri
 // -----------------------------------------------------------------------
 
 interface ParsedBody {
-  /** params[:card] — the Card.new/update! args. */
+  /** params[:card] — the Card.new/update! args. File-part values ride
+   *  cardFiles, never this map (a text part under a mount name lands here
+   *  as a string — card_mount.rb:41-42's blank early-return shape). */
   card: Record<string, string>;
+  /** params[:card][:subcards]["+*email"] etc. — the subcard-hash grammar
+   *  the captured sign-in form posts (card[subcards][+*email][content]).
+   *  Only the *signin update consumes these (the :signin event); general
+   *  subcard saves remain unported. */
+  subcards: Record<string, Record<string, string>>;
+  /** params[:success] — the success hash (success[redirect], success[mark]). */
+  success: Record<string, string>;
+  /** The multipart FILE parts under the card hash, by mount name — the
+   *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
+   *  CardMount's file=/image= argument (card_mount.rb:41-44). */
+  cardFiles: Record<string, MultipartFilePart>;
   /** params[:token] (rest.rb:42 authenticators). */
   token?: string;
-  /** params[:authenticity_token] (request_forgery_protection.rb:470). */
-  authenticityToken?: string;
   /** params[:_method] — the Rails form verb override. */
   methodOverride?: string;
+  /** params[:simulate_xhr] (env/serializable.rb:24 — the ajax half). */
+  simulateXhr?: boolean;
+  /** params[:comment] / params[:comment_author] — the add_comment event's
+   *  inputs (card-mod-comment set/all/comment.rb:4-12). */
+  comment?: string;
+  commentAuthor?: string;
+  /** params[:draft] — `Env.params["draft"] == "true"` reads it
+   *  (mod/core/set/all/content.rb:20-22), the autosave POST's flag
+   *  (card-mod-edit-0.20.0 assets/script/autosave.js.coffee:20 posts
+   *  'draft': 'true' alongside the serialized form). */
+  draft?: string;
+  /** params[:recaptcha_token] — the event :recaptcha input
+   *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66; the grecaptcha
+   *  v3 token the recaptcha_token hidden field posts, recaptcha.rb:75-83). */
+  recaptchaToken?: string;
+}
+
+/** The urlencoded/json key grammar every content type shares (the
+ *  Rack::Utils.normalize_params walk over one ordered entry). */
+function applyParam(
+  parsed: ParsedBody,
+  key: string,
+  value: string,
+): void {
+  // the subcard shape FIRST — the plain card-hash match below is greedy
+  // and would swallow card[subcards][+*email][content] whole.
+  const subMatch = /^card\[subcards\]\[([^\]]+)\]\[([^\]]+)\]$/.exec(key);
+  if (subMatch !== null) {
+    const slot = (parsed.subcards[subMatch[1]] ??= {});
+    slot[subMatch[2]] = value;
+    return;
+  }
+  const cardMatch = /^card\[(.+)\]$/.exec(key);
+  if (cardMatch !== null) {
+    parsed.card[cardMatch[1]] = value;
+    return;
+  }
+  const successMatch = /^success\[([^\]]+)\]$/.exec(key);
+  if (successMatch !== null) {
+    parsed.success[successMatch[1]] = value;
+    return;
+  }
+  if (key === "token") parsed.token = value;
+  else if (key === "_method") parsed.methodOverride = value;
+  else if (key === "simulate_xhr") parsed.simulateXhr = value !== "";
+  else if (key === "comment") parsed.comment = value;
+  else if (key === "comment_author") parsed.commentAuthor = value;
+  else if (key === "draft") parsed.draft = value;
+  else if (key === "recaptcha_token") parsed.recaptchaToken = value;
+}
+
+function emptyParsedBody(): ParsedBody {
+  return { card: {}, subcards: {}, success: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
   const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
   if (contentType === "application/x-www-form-urlencoded") {
     const params = new URLSearchParams(req.body);
-    const card: Record<string, string> = {};
+    const parsed = emptyParsedBody();
     for (const [key, value] of params.entries()) {
-      const match = /^card\[(.+)\]$/.exec(key);
-      if (match !== null) card[match[1]] = value;
+      applyParam(parsed, key, value);
     }
-    return {
-      card,
-      token: params.get("token") ?? undefined,
-      authenticityToken: params.get("authenticity_token") ?? undefined,
-      methodOverride: params.get("_method") ?? undefined,
-    };
+    return parsed;
+  }
+  if (contentType === "multipart/form-data") {
+    // Rack::Multipart.extract_multipart (rack/multipart.rb:42-49): the
+    // raw byte stream parsed to ordered parts; params assemble in order
+    // with LAST-WINS scalar overwrite (query_parser.rb:142) — the
+    // file_chooser's hidden card[file]="" loses to the file part.
+    if (req.bodyBytes === undefined) return emptyParsedBody();
+    const parsed = emptyParsedBody();
+    let parts: ReturnType<typeof parseMultipartForm>;
+    try {
+      parts = parseMultipartForm(req.bodyBytes, req.headers["content-type"] ?? "");
+    } catch {
+      // Rack's EOFError("bad content body") is a 500 class
+      // (parser.rb:300,311; outside user_error_classes), not a card
+      // validation — the host's error surface handles it.
+      throw new Error("bad content body");
+    }
+    for (const part of parts) {
+      if (part.kind === "file") {
+        // The card-hash mount key: the disposition name is the full
+        // "card[file]"/"card[image]" form (card_mount.rb's setter args);
+        // store under the UNWRAPPED mount name the handler reads.
+        const cardMatch = /^card\[(.+)\]$/.exec(part.name);
+        parsed.cardFiles[cardMatch !== null ? cardMatch[1] : part.name] = part;
+      } else {
+        applyParam(parsed, part.name, part.value);
+      }
+    }
+    // the FLAT params the comment box and the autosave POST ride applyParam
+    // like the other top-level shortcuts (comment.rb reads params[:comment]
+    // / params[:comment_author]; content.rb:20-22 reads params[:draft] —
+    // all outside card[...]).
+    return parsed;
   }
   if (contentType === "application/json") {
     let parsed: unknown;
@@ -169,7 +362,9 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
     } catch {
       throw new CardActionError("name-illegal", "request body is not valid JSON");
     }
-    if (typeof parsed !== "object" || parsed === null) return { card: {} };
+    if (typeof parsed !== "object" || parsed === null) {
+      return emptyParsedBody();
+    }
     const obj = parsed as Record<string, unknown>;
     const rawCard = typeof obj["card"] === "object" && obj["card"] !== null
       ? (obj["card"] as Record<string, unknown>)
@@ -179,15 +374,30 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
       if (typeof value === "string") card[key] = value;
       else if (typeof value === "number") card[key] = String(value);
     }
+    const success: Record<string, string> = {};
+    const rawSuccess = typeof obj["success"] === "object" && obj["success"] !== null
+      ? (obj["success"] as Record<string, unknown>)
+      : {};
+    for (const [key, value] of Object.entries(rawSuccess)) {
+      if (typeof value === "string") success[key] = value;
+    }
     return {
       card,
+      subcards: {},
+      success,
+      cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
-      authenticityToken:
-        typeof obj["authenticity_token"] === "string" ? obj["authenticity_token"] : undefined,
       methodOverride: typeof obj["_method"] === "string" ? obj["_method"] : undefined,
+      simulateXhr: obj["simulate_xhr"] === true || obj["simulate_xhr"] === "true",
+      draft:
+        typeof obj["draft"] === "string"
+          ? obj["draft"]
+          : obj["draft"] === true
+            ? "true"
+            : undefined,
     };
   }
-  return { card: {} };
+  return emptyParsedBody();
 }
 
 /** Ruby's authenticators (rest.rb:41-47): `token_from_header || params[:token]`
@@ -239,14 +449,25 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
     if (put) return { verb: "update", json: false };
     return null;
   }
-  // super-explicit (card)/<verb>(/<mark>) — routes.rb:45-48
-  const explicit = /^\/card\/(create|update|delete)(?:\/(.*))?$/.exec(pathname);
-  if (explicit !== null) {
-    const verb = explicit[1] as WriteVerb;
-    if (verb === "create" && !(post || put)) return null; // via: %i[post patch]
-    if (verb === "update" && !(post || put)) return null; // via: %i[post put patch]
-    if (verb === "delete" && !del) return null; // via: :delete
-    return { verb, mark: explicit[2], json: false };
+  // (card)/<verb>(/<mark>) — engine_routes.rb:46-48. The "card/" prefix is
+  // OPTIONAL ("(card)" in the Rails route): POST /update/<mark> is the shape
+  // every real decko edit form posts (the captured oracle edit form carries
+  // action="/update/<mark>"; engine_routes.rb:47 routes it via
+  // %i[post put patch]). When the prefix is absent the mark is REQUIRED —
+  // a bare "/update" falls through to the :mark routes below, which
+  // engine_routes.rb:36 matches as a card literally named "update".
+  // ":mark" stays single-segment (Rails route segments never span "/").
+  const explicitMatch = /^\/(card\/)?(create|update|delete)(?:\/([^/]+))?$/.exec(pathname);
+  if (explicitMatch !== null) {
+    const prefix = explicitMatch[1];
+    const verb = explicitMatch[2] as WriteVerb;
+    const mark = explicitMatch[3];
+    if (prefix !== undefined || mark !== undefined) {
+      if (verb === "create" && !(post || put)) return null; // via: %i[post patch]
+      if (verb === "update" && !(post || put)) return null; // via: %i[post put patch]
+      if (verb === "delete" && !del) return null; // via: :delete
+      return { verb, mark, json: false };
+    }
   }
   if (post) {
     // ":mark" is ONE path segment (Rails route segments never span "/") —
@@ -268,15 +489,7 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
  *  spaces; the .json format suffix is not part of the name. */
 function markToName(mark: string): string {
   const withoutFormat = mark.replace(/\.json$/i, "");
-  return decodeURIComponentSafe(withoutFormat).replace(/_/g, " ");
-}
-
-function decodeURIComponentSafe(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
+  return decodeUriComponentSafe(withoutFormat).replace(/_/g, " ");
 }
 
 /** Rack::MethodOverride semantics: only a POST is overridable, and only to
@@ -288,30 +501,12 @@ function effectiveMethod(method: string, parsed: ParsedBody): string {
   return method;
 }
 
-// -----------------------------------------------------------------------
-// CSRF (module header cites the Rails sources)
-// -----------------------------------------------------------------------
-
-/** Rails valid_request_origin? — an Origin header, when present, must be
- *  same-origin with the request's own base URL. No Origin header (curl,
- *  server-to-server) passes. */
-function validRequestOrigin(req: WriteRouteRequest): boolean {
-  const origin = req.headers["origin"];
-  if (origin === undefined || origin === "") return true;
-  const host = req.host;
-  if (host === undefined) return false;
-  let parsed: URL;
-  try {
-    parsed = new URL(origin);
-  } catch {
-    return false;
-  }
-  return parsed.host === host;
-}
-
-function isFormPost(req: WriteRouteRequest): boolean {
-  const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
-  return contentType === "application/x-www-form-urlencoded";
+/** Card::Env.ajax? (env/serializable.rb:24): `request&.xhr? ||
+ *  params[:simulate_xhr]`, where xhr? is Rails'
+ *  X-Requested-With contains XMLHttpRequest (actionpack request.rb:290-294). */
+function isAjax(req: WriteRouteRequest, parsed: ParsedBody): boolean {
+  if (parsed.simulateXhr) return true;
+  return /XMLHttpRequest/i.test(req.headers["x-requested-with"] ?? "");
 }
 
 // -----------------------------------------------------------------------
@@ -342,9 +537,10 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403,
- *  NotFound 404, UserError (validation) 422. anonymous-actor is Ruby's
- *  permission denial in engine terms (module header). */
+/** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403
+ *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21).
+ *  anonymous-actor is Ruby's permission denial in engine terms (module
+ *  header). */
 function errorStatus(code: CardActionError["code"]): number {
   if (code === "not-found") return 404;
   if (code === "anonymous-actor" || code === "permission-denied") return 403;
@@ -360,25 +556,46 @@ function errorResponse(json: boolean, error: CardActionError): WriteRouteRespons
 
 /** Ruby's cud_success (rest.rb:80-89): HTML redirects to the card's
  *  location; JSON reloads (the caller re-fetches — the response carries
- *  the ids to reconcile). */
+ *  the ids to reconcile). BOTH flavors carry expiryName: this is the
+ *  successful-mutation point, and the save's cache expiry cannot depend
+ *  on which response shape the request format produced (module header on
+ *  WriteRouteResponse; the JSON flavor's missing Location header was the
+ *  deployed build's stale-render defect). */
+/** Ruby's card_url (Env::Location): the deck origin, or the request's own
+ *  scheme+host_with_port (env/serializable.rb:19-21). hard_redirect runs
+ *  every redirect URL through it (response.rb:41), so live Location
+ *  headers are absolute (captured: "http://localhost:3011/..."). */
+function cardUrl(req: WriteRouteRequest, path: string): string {
+  if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
+  return `http://${req.host}${path}`;
+}
+
+/** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
+ *  hard redirect — `hard_redirect success.to_url, 303` (:31), Location
+ *  absolutized through card_url (:41). JSON keeps the API shape. */
 function successResponse(
+  req: WriteRouteRequest,
   json: boolean,
   name: string,
   saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
 ): WriteRouteResponse {
   if (json) {
-    return jsonResponse(200, {
-      card: { name, url: `/${locationName(name)}` },
-      verb: saved.verb,
-      card_id: saved.cardId,
-      act_id: saved.actId,
-      action_id: saved.actionId,
-    });
+    return {
+      ...jsonResponse(200, {
+        card: { name, url: `/${locationName(name)}` },
+        verb: saved.verb,
+        card_id: saved.cardId,
+        act_id: saved.actId,
+        action_id: saved.actionId,
+      }),
+      expiryName: name,
+    };
   }
   return {
-    status: 302,
-    headers: { Location: `/${locationName(name)}`, "Cache-Control": "no-store" },
+    status: 303,
+    headers: { Location: cardUrl(req, `/${locationName(name)}`), "Cache-Control": "no-store" },
     body: "",
+    expiryName: name,
   };
 }
 
@@ -388,8 +605,98 @@ function locationName(name: string): string {
 }
 
 // -----------------------------------------------------------------------
+// the *signin update — the :signin event over the captured form grammar
+// -----------------------------------------------------------------------
+
+const SIGNIN_KEY = DeckoName.parse("*signin").key;
+
+/** The captured sign-in form (manifest step-02, 2026-09-28) posts
+ *  card[subcards][+*email][content] / [+*password][content] (the account
+ *  mod's form views) to /update/*signin with _method=patch and
+ *  success[redirect]=true&success[mark]=*previous. Ruby runs the :signin
+ *  validation event (card-mod-account-0.20.0 set/self/signin.rb:10-12:
+ *  authenticate_or_abort field_content(:email), field_content(:password)),
+ *  then signin_success aborts the save (:15-17 — no card/act rows), and
+ *  the controller's success path redirects to *previous (:171) —
+ *  previous_location is the session history's last entry
+ *  (env/location_history.rb:19-21), which initializes to "/" (:6-9).
+ *  Response: the hard redirect 303 (plain form; captured), or the ajax
+ *  hard-redirect JSON {redirect: url} (response.rb:42-46).
+ *
+ *  Failure shape NOT pinned by the capture (live was only captured
+ *  succeeding): the abort :failure ladder message is surfaced as a
+ *  UserError 422 (error.rb:21) — disclosed as unverified-against-live. */
+async function handleSigninUpdate(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+): Promise<WriteRouteResponse> {
+  const email = parsed.subcards["+*email"]?.content ?? "";
+  const password = parsed.subcards["+*password"]?.content ?? "";
+  // signin.rb:46-48 abort_unless email/password — "email missing" /
+  // "password missing" are failure aborts before any authentication.
+  if (email === "" || password === "") {
+    const message = email === "" ? "email missing" : "password missing";
+    return json
+      ? jsonResponse(422, { error: { code: "signin-failure", message } })
+      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+  }
+  const sessions = new SessionStore({ driver: ctx.driver });
+  const outcome = await signinAccount(ctx.driver, sessions, email, password);
+  if (!outcome.ok) {
+    const message = outcome.message;
+    return json
+      ? jsonResponse(422, { error: { code: "signin-failure", message } })
+      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+  }
+  // *previous (signin.rb:171) -> previous_location -> "/" fresh
+  // (location_history.rb:6-9); the session history stack itself is
+  // unported (documented).
+  const target = cardUrl(req, "/");
+  if (isAjax(req, parsed)) {
+    // the ajax hard redirect (response.rb:42-46)
+    const body = jsonResponse(200, { redirect: target });
+    return {
+      status: body.status,
+      headers: { ...body.headers, "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+      body: body.body,
+    };
+  }
+  return {
+    status: 303,
+    headers: { Location: target, "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+    body: "",
+  };
+}
+
+// -----------------------------------------------------------------------
 // the handler
 // -----------------------------------------------------------------------
+
+/** The armed seat's event runtime: the recaptcha mod's registry + the
+ *  named-when predicates, composed ONCE per process — the same
+ *  registration the SetLoader phase performs when the mod is loaded
+ *  (ModLoader resolveOrder + load; the harness composition,
+ *  card-mod-recaptcha-validate-event.test.ts:58-63). Dynamic imports keep
+ *  an unarmed module graph exactly as before this seat existed, and the
+ *  cache means a deck arms the guard at most one load per process. */
+let recaptchaSeatRuntime: Promise<ModEventRuntime> | undefined;
+function recaptchaEventRuntime(): Promise<ModEventRuntime> {
+  recaptchaSeatRuntime ??= (async () => {
+    const [{ default: cardModRecaptcha }, { recaptchaModEventPredicates }, { ModLoader }] =
+      await Promise.all([
+        import("../card/mod-loader/mods/card-mod-recaptcha.js"),
+        import("../card/mod-loader/mods/card-mod-recaptcha.js"),
+        import("../card/mod-loader.js"),
+      ]);
+    const loader = new ModLoader([{ manifest: cardModRecaptcha }]);
+    loader.resolveOrder({ gemMods: ["recaptcha"] });
+    loader.load();
+    return { registry: loader.eventRegistry(), predicates: recaptchaModEventPredicates };
+  })();
+  return recaptchaSeatRuntime;
+}
 
 /**
  * Dispatch one non-GET request against the write grammar. Returns the
@@ -397,9 +704,11 @@ function locationName(name: string): string {
  * host falls through to its own 404/405 surface — the historical 405s
  * stay for every non-write method/path pair).
  *
- * Per request: token -> actor (SessionStore; unresolvable = Anonymous),
- * form-post CSRF check (422 on failure), engine gate (the ok_to_* rule
- * walk inside the CardActionEngine), save, act rows, response.
+ * Per request: token-or-cookie -> session token (rest.rb:37-40 +
+ * auth/current.rb:50-63), the *signin subcard-update branch when the mark
+ * is *signin (the :signin event), engine gate (the ok_to_* rule walk
+ * inside the CardActionEngine), save, act rows, response (303 hard
+ * redirect / 200 soft-redirect slot / JSON).
  */
 export async function handleWriteRequest(
   ctx: WriteRouteContext,
@@ -425,36 +734,61 @@ export async function handleWriteRequest(
   const route = matchRoute(method, req.pathname);
   if (route === null) return null;
 
-  // authenticate (rest.rb:37-47): token -> actor; unresolvable = Anonymous.
-  const token = tokenFromRequest(req, parsed);
-  const sessions = new SessionStore({ driver: ctx.driver });
-  const actor = token !== null ? await sessions.resolveActorFromToken(token) : null;
-
-  // CSRF for form posts (module header): origin check + authenticity token.
-  // The token compares against the SESSION's CSRF token — a form post with
-  // no resolvable session behind it has nothing to compare (no anonymous
-  // session machinery yet) -> 422, the Rails no-session posture.
-  if (isFormPost(req)) {
-    if (!validRequestOrigin(req)) {
-      return csrfFailure(json, "HTTP Origin header didn't match request base URL");
-    }
-    const presented = parsed.authenticityToken ?? req.headers["x-csrf-token"];
-    const expected = actor !== null && token !== null ? csrfTokenFor(ctx, token) : null;
-    if (presented === undefined || expected === null || presented !== expected) {
-      return csrfFailure(json, "Can't verify CSRF token authenticity.");
+  // The *signin update IS the login action (signin.rb:6 "/update/:signin is
+  // the login action") — before any card machinery runs.
+  if (route.verb === "update" && route.mark !== undefined) {
+    if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
+      return handleSigninUpdate(ctx, req, json, parsed);
     }
   }
 
-  const engine = await createCardActionEngineForSession(ctx.fetcher, ctx.driver, token, {
+  // authenticate (rest.rb:37-40): header/param token first, else the
+  // cookie session (auth/current.rb:50-63); unresolvable = Anonymous.
+  const sessionToken =
+    tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
+
+  const engine = await createCardActionEngineForSession(ctx.fetcher, ctx.driver, sessionToken, {
     ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1",
     now: ctx.now,
+    attachmentStore: ctx.attachmentStore,
+    fileStorage: ctx.fileStorage,
+    // the recaptcha seat (WriteRouteContext.recaptcha): the config passes
+    // through UNCHANGED — the engine's own defaults are the rule walk and
+    // the real siteverify GET. The event runtime rides along only when
+    // armed: without the registered :recaptcha event the config would
+    // never fire (card-action-engine.ts:1876-1882). Unarmed = the exact
+    // pre-seat option shape, byte-identical.
+    ...(ctx.recaptcha === undefined
+      ? {}
+      : { recaptcha: ctx.recaptcha, modEvents: await recaptchaEventRuntime() }),
   });
+
+  // CardMount's mount argument: the card[<mount>] file part is the
+  // file=/image= setter's argument (card_mount.rb:41-44). The deck's
+  // attachment cardtypes carry exactly one mount each — `attachment :file`
+  // (set/type/file.rb:1) / `attachment :image` (set/type/image.rb:1). A
+  // file part under any other card-hash key is Ruby's unknown-attribute
+  // error class; this surface reads only the two mounts (documented).
+  const attachmentInput =
+    parsed.cardFiles["file"] ?? parsed.cardFiles["image"] ?? undefined;
+  const attachment: AttachmentInput | undefined = attachmentInput === undefined
+    ? undefined
+    : {
+        bytes: attachmentInput.bytes,
+        originalFilename: attachmentInput.filename,
+        declaredContentType: attachmentInput.contentType,
+      };
 
   try {
     let result: ActionResult | null;
     let name: string;
     if (route.verb === "create") {
-      const input = createInputFromParams(route, parsed);
+      const input = {
+        ...createInputFromParams(route, parsed, attachment),
+        comment: parsed.comment,
+        commentAuthor: parsed.commentAuthor,
+        recaptchaToken: parsed.recaptchaToken,
+      };
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
     } else if (route.verb === "update") {
@@ -475,8 +809,11 @@ export async function handleWriteRequest(
         // the create path revives). The name rides the request's own
         // resolution: card-hash name when present, else the URL mark.
         const created = await engine.createCard({
-          ...createInputFromParams(route, parsed),
+          ...createInputFromParams(route, parsed, attachment),
           name: updateName,
+          comment: parsed.comment,
+          commentAuthor: parsed.commentAuthor,
+          recaptchaToken: parsed.recaptchaToken,
         });
         name = created.name?.s ?? updateName;
         result = created;
@@ -491,6 +828,18 @@ export async function handleWriteRequest(
           typeName: card["type"],
           typeId:
             typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
+          attachment,
+          comment: parsed.comment,
+          commentAuthor: parsed.commentAuthor,
+          recaptchaToken: parsed.recaptchaToken,
+          // the edit form's :conflict_tracker hidden field
+          // (card-mod-edit-0.20.0 set/all/form.rb:27-31) - the stale-revision
+          // value detect_conflict validates (card-mod-history
+          // set/all/history/events.rb:19-22, when: :edit_conflict?).
+          lastActionIdBeforeEdit: card["last_action_id_before_edit"],
+          // Env.params["draft"] == "true" (mod/core/set/all/content.rb:20-22):
+          // the autosave POST (assets/script/autosave.js.coffee:20).
+          draft: parsed.draft === "true",
         });
         name = result?.name?.s ?? updateName;
       }
@@ -503,34 +852,66 @@ export async function handleWriteRequest(
       if (existing === undefined) {
         throw new CardActionError("not-found", `no such card: ${markName}`);
       }
-      result = await engine.deleteCard({ cardId: existing.id });
+      result = await engine.deleteCard({
+        cardId: existing.id,
+        // params[:recaptcha_token] — the event :recaptcha input rides every
+        // save verb (recaptcha.rb:50 has no `on:`; trash.rb:11-21 makes the
+        // delete an update save), so the DELETE wire plumbs it like the
+        // create/update legs.
+        recaptchaToken: parsed.recaptchaToken,
+      });
       name = markName;
     }
-    return successResponse(json, name, {
+
+    const saved = {
       cardId: result?.cardId ?? 0,
       actId: result?.actId ?? 0,
       actionId: result?.actionId ?? 0,
       verb: result?.verb ?? route.verb,
-    });
+    };
+
+    // The ajax soft redirect (response.rb:25-36 + :54-62): the ajax flavor
+    // defaults to "soft" — re-render the saved card through `show` and
+    // answer 200 + the rendered slot (the captured XHR save: 200 + the
+    // titled slot). JSON requests keep the API shape.
+    if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
+      const slotHtml = await ctx.renderSlot(name);
+      return {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        body: slotHtml,
+        // This 200 slot carries no Location header, and the host's
+        // expireRenderCachesAfterSave gate (expiryName) must reach the
+        // boot + other-actor engines the renderSlot hook's own expiry
+        // (actor engine only) cannot — the save's cache expiry cannot
+        // depend on the response shape (WriteRouteResponse module header).
+        expiryName: name,
+      };
+    }
+    return successResponse(req, json, name, saved);
   } catch (error) {
     if (error instanceof CardActionError) return errorResponse(json, error);
     throw error;
   }
 }
 
-function csrfFailure(json: boolean, message: string): WriteRouteResponse {
-  return json
-    ? jsonResponse(422, { error: { code: "csrf-failure", message } })
-    : htmlResponse(422, "Forbidden", `<pre>${escapeHtml(message)}</pre>`);
-}
-
 /** Card params for CREATE — uri_fetch_opts (card_class.rb:128-133): the
  *  card hash wins; the mark fills the name; the /type/<type> shortcut
- *  fills the type unless the hash set one. */
+ *  fills the type unless the hash set one. The card[<mount>] file part
+ *  rides as the attachment input — assign_set_specific_attributes
+ *  (attachment.rb:90-97) resets content when attaching, which the
+ *  engine's attachment handling models. */
 function createInputFromParams(
   route: RouteMatch,
   parsed: ParsedBody,
-): { name: string; content?: string; typeName?: string; typeId?: number } {
+  attachment: AttachmentInput | undefined,
+): {
+  name: string;
+  content?: string;
+  typeName?: string;
+  typeId?: number;
+  attachment?: AttachmentInput;
+} {
   const card = parsed.card;
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
   if (name === "") {
@@ -544,6 +925,7 @@ function createInputFromParams(
     content: card["content"],
     typeName,
     typeId: typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
+    attachment,
   };
 }
 

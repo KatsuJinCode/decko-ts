@@ -18,8 +18,8 @@ and the streaming that landed it. Status legend:
   queued in `docs/upstream-parity-plan-1282.md`.
 
 Test files are workspace-relative. Fixture paths are workspace-relative.
-Gem paths are absolute Windows paths under
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\`.
+Gem paths are written relative to the Ruby gems directory
+(`gem environment gemdir`), e.g. `gems/card-1.110.0/lib/...`.
 
 ## 1. PERSISTENCE
 
@@ -50,20 +50,20 @@ Gem paths are absolute Windows paths under
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| P1.4.a | `card-mod-permissions-0.20.0/set/all/permissions.rb:1-5` (`set_read_rule` event) | `tests/card/conformance/write-path.test.ts` scenario 07; `docs/write-conformance-notes.md` §scenario 07 | divergent-documented (TS does not implement `set_read_rule`; field divergence TS 7 vs Ruby 9 change rows) |
-| P1.4.b | `card-mod-permissions-0.20.0/set/all/permissions.rb:142`; corpus has 0 rows where `trash=0 AND read_rule_id IS NULL` | `tests/card/permissions/read-permission.test.ts` | pinned-synthetic + corpus sweep |
+| P1.4.a | `card-mod-permissions-0.20.0/set/all/permissions.rb:1-5` (`set_read_rule` event) | `src/card/permissions/set-read-rule.ts` (derivation + cascades, gem-cited); `tests/card/conformance/write-path.test.ts` scenario 07 (`07-read-rule-affected-save.jsonl`: target→rule `*self`, rule→itself `*all plus`, timestampless cascade writes) | proven (oracle row comparison) |
+| P1.4.b | `card-mod-permissions-0.20.0/set/all/permissions.rb:139-144` (`ok_to_read?`: `self.read_rule_id ||= permission_rule_id :read` — stored column and live derivation are distinct inputs); corpus has 0 rows where `trash=0 AND read_rule_id IS NULL` | `tests/card/permissions/read-permission.test.ts` (Mystery Thing: the NULL arm derives through the live rule walk); `fixtures/captured/codename-reset-and-read-rule-union-oracle.json` + `tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts` (8/8, live-Ruby probe on a DISPOSABLE deck copy — the corpus's missing NULL rows manufactured there and both arms captured: card 605 stored-column DENIES while its derivation GRANTS (`stored_ok_read` false / `derived_ok_read` true — real deck drift between column and walk), the governed readable twin is byte-identical stored vs derived (`public_derived_matches_stored` true); port replays the drift shape, the public twin, and the deny twin on the seeded deck) | proven (live-Ruby probe + port replay close the "no corpus representation" reason) |
 
 ### P1.5 Card references
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| P1.5.a | `card-1.110.0/mod/core/set/all/reference_events.rb:2-4,13-19,32-36` (`refresh_references_out`, `update_referer_content`) | `tests/card/conformance/write-path.test.ts` scenario 08; `docs/write-conformance-notes.md` §scenario 08 | divergent-documented (TS does not populate `card_references`; the schema and reads are in place; writer is the P4 stream — `docs/upstream-parity-plan-1282.md` §Persistence P4) |
+| P1.5.a | `card-1.110.0/mod/core/set/all/reference_events.rb:2-4,13-19,32-36` (`refresh_references_out`, `update_referer_content`) | `src/card/actions/refresh-references-out.ts`, `refresh-references-in.ts`, `update-referer-content.ts`; `tests/card/conformance/write-path.test.ts` scenario 08 now compares `card_references` against the oracle rows (the only capture fixture carrying reference rows: I `wcc_referer+child` NULL-id + P `child` resolved, is_present NULL, left-self dropped); `tests/card/conformance/reference-write-path.test.ts`; `tests/card/actions/refresh-references-in.test.ts` | proven (oracle row comparison) |
 
 ### P1.6 Migrations and the 2014 history migration
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| P1.6.a | `card-1.110.0/mod/core/data/schema/20141001105348_move_revisions_to_actions.rb` | not directly tested; the engine code path is verified not to write these tables | pinned-synthetic |
+| P1.6.a | `card-1.110.0/mod/core/data/schema/20141001105348_move_revisions_to_actions.rb` | `tests/card/history/write-path.test.ts` "legacy revision tables" (:646-657 — a full create→update→trash save cycle leaves `card_revisions` empty and `current_revision_id` NULL; the direct regression guard is gem-cited); `db/schema.sqlite.sql:162-173` carries the legacy table (still populated in production decks, so the port must declare it); the migration-EXECUTION arm is named-blocked: no pre-2014-migration deck exists on this machine (oracle development.sqlite3, corpus-v2, write-conformance are all post-migration), so the data-movement capture needs Julian to supply a legacy deck or rule the exclusion | proven by absence (engine never writes legacy tables — direct test; migration-execution capture blocked, hours IF a legacy deck is supplied, ruling free) |
 | P1.6.b | grep evidence in `docs/history-port-notes.md` §1.4 | `tests/card/history/write-path.test.ts` "legacy revision tables" | proven by absence |
 
 ### P1.7 Atomicity and idempotence
@@ -82,14 +82,14 @@ Gem paths are absolute Windows paths under
 | S2.1.a | `cardname-0.20.0/lib/cardname/parts.rb` (`left` / `right` / `trunk` / `tag`); `docs/name-port-notes.md` ported-surface table | `tests/card/name/name-port.test.ts` (243 tests against live Ruby oracle) | proven |
 | S2.1.b | `Cardname#==` via `key`; `parts.rb` | `tests/card/name/name-port.test.ts`; `tests/cql/reconciliation.test.ts` | proven |
 | S2.1.c | `cardname-0.20.0/lib/cardname/class_methods.rb:40-41` (`banned_re`); `lib/cardname/predicates.rb:19-25` (`valid?`) | `tests/card/name/name-port.test.ts` "DeckoName.bannedCharacters / isValid" | proven |
-| S2.1.d | `card-1.110.0/lib/card/fetch/retrieve.rb:9-12` (blank marks); `card-mod-format-0.20.0 set/all/html/error.rb:185-189` | `tests/card/render/unknown-nest-blank-reference.test.ts`; corpus entry 636 (`thez+*right+*default`) | proven |
+| S2.1.d | `card-1.110.0/lib/card/fetch/retrieve.rb:9-12` (blank mark → nil); `card-1.110.0/lib/card/view/permission.rb:36-39` + `lib/card/format/error.rb:27-33` (unknown arm → `:unknown`, never `:denial`) | `tests/card/render/unknown-nest-blank-reference.test.ts` (empty render); shard-000006 entry 10488 (source-truthful on both surfaces) | proven (empty render, NOT a denial span; corpus entry 636 `thez+*right+*default` carries a denial span on open — that entry's anomaly, and the pre-adjudication form of this row) |
 
 ### S2.2 Relative-name absolutization
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
 | S2.2.a | `cardname-0.20.0/lib/cardname/contextual.rb` (`absolutize_contextual_parts`); `lib/card/query/card_query/normalization.rb:57` (`val.to_name.absolute(context)`) | `tests/cql/reconciliation.test.ts` (30 tests); `tests/card/name/name-port.test.ts` | proven |
-| S2.2.b | `card-1.110.0/lib/card/name.rb#params`; `lib/cardname/contextual.rb:108` | `tests/cql/reconciliation.test.ts`; `src/card/name/environment.ts` injected env | pinned-synthetic (bare-gem crash on `_main`-with-nil-params without `english` loaded; the app path uses `english`) |
+| S2.2.b | `card-1.110.0/lib/card/name.rb#params`; `lib/cardname/contextual.rb:108` | `fixtures/captured/name-env-main-params-oracle.json` + `tests/card/name/contextual-main-params-oracle.test.ts` (6/6, mutation-checked: the `/i` removed from the `_main` directive turns all 6 red); `src/card/name/environment.ts` injected env | proven (the bare-gem `_main`-with-nil-params crash does not exist on the booted oracle app path — capture pins app truth: nil/blank main_name identical, blank-extreme fill, case-asymmetric `_Main`, padded-value strip) |
 
 ### S2.3 CQL semantics
 
@@ -108,7 +108,7 @@ Gem paths are absolute Windows paths under
 |---|---|---|---|
 | S2.4.a | `card-1.110.0/lib/card/set/pattern/class_methods.rb:13-18` (`register` front-insert via `Pattern.concrete.insert opts.delete(:index).to_i`); `card-1.110.0/mod/core/set_pattern/NN_*.rb` | `tests/card/set-patterns/oracle-parity.test.ts`; `docs/set-patterns-port-notes.md` table (verified live via `set-pattern-oracle-probe.rb`) | proven |
 | S2.4.b | `card-1.110.0/lib/card/set/pattern/base.rb`; `card-1.110.0/mod/core/set_pattern/04_star.rb`, `05_rstar.rb`, `06_rule.rb` (apply predicates) | `tests/card/set-patterns/oracle-parity.test.ts` (135 tests across 5 files) | proven |
-| S2.4.c | `card-1.110.0/lib/card/rule/cache.rb#lookup_key` (`[anchor_id, pattern_code, setting_code].compact.join("+")`) | `tests/card/rules/lookup.test.ts`; `docs/rules-port-notes.md` "Codename registry integration" | pinned-synthetic + codename registry deferred |
+| S2.4.c | `card-1.110.0/lib/card/rule/cache.rb#lookup_key` (`[anchor_id, pattern_code, setting_code].compact.join("+")`) | `src/card/rules/rule-cache.ts` (storage-side table-driven port: ruleCacheStatement = cache.rb:9-26, buildRuleLookupHash = cache.rb:37-56 skip semantics, ruleIdLookup = rule/all.rb:61-71 per-key probe order); `tests/card/rules/rule-cache.test.ts` (9, red-first on the missing module, mutation-checked: codename skips / follow-empty arm / trash filters each turn specific tests red; seeds reproduce the set-pattern oracle capture's `rule_lookup_key_sample` verbatim) | proven (runtime half was already ported — the new suite closes the loop end-to-end) |
 
 ### S2.5 Rule resolution and read-rule cascade
 
@@ -133,8 +133,8 @@ Gem paths are absolute Windows paths under
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| R3.1.a | `card-1.110.0/lib/card/view/permission.rb:13-15` (`view_perms`); `card-mod-format-0.20.0 set/all/html/menu.rb` (directive table) | `src/card/permissions/view-perms.ts`; `tests/card/render/view-perms-gate.test.ts`; `tests/card/permissions/view-perms-table.test.ts` | pinned-synthetic against gem directive table |
-| R3.1.b | `card-1.110.0/lib/card/view/permission.rb:25-27` (`skip_check?`); `lib/card/format/method_delegation.rb:5-9,48-55` (underscore form) | `tests/card/render/view-perms-gate.test.ts` | pinned-synthetic |
+| R3.1.a | `card-1.110.0/lib/card/view/permission.rb:13-15` (`view_perms`); `card-mod-format-0.20.0 set/all/html/menu.rb` (directive table) | `fixtures/captured/view-registry-directives-oracle.json` (live html registry: 776 view rows over 4 surveyed cards, perms/denial/unknown literals + zero-arity view_method parameters) replayed by `tests/card/permissions/view-registry-directives-oracle.test.ts`; `src/card/permissions/view-perms.ts`; `tests/card/render/view-perms-gate.test.ts`; `tests/card/permissions/view-perms-table.test.ts` | proven (the replay exposed 11 registry gaps red-first — 6 perms-:none views missing, last_action flipped the wrong way (card-mod-history's plain redefinition is operative over card-mod-email's :none), 2 create-perms views, 2 denial-:blank views — all fixed gem-cited; mutation-checked via the menu:blank removal) |
+| R3.1.b | `card-1.110.0/lib/card/view/permission.rb:25-27` (`skip_check?`); `lib/card/format/method_delegation.rb:5-9,48-55` (underscore form) | same oracle fixture's behavior arms: Anonymous + `skip_perms` AND Anonymous via `_render_edit_inline` render the full 1698-byte `:edit_inline` form, byte-identical to the as-bot allowed arm; `:title`/`:url` (perms `:none`) render for a task-denied viewer — replayed by `tests/card/permissions/view-registry-directives-oracle.test.ts` | proven |
 | R3.1.c | `card-1.110.0/lib/card/format/render.rb:59-63` (`view_method` raises unsupported-view) | `tests/card/render/render-engine.test.ts` | proven |
 
 ### R3.2 Slot and nest markup bytes
@@ -151,16 +151,16 @@ Gem paths are absolute Windows paths under
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
 | R3.3.a | `card-1.110.0/lib/card/fetch/results.rb:8-15`; `lib/card/format/nest/fetch.rb:48-58`; `card-1.110.0/lib/card/view/permission.rb:36-44`; `card-mod-bar_and_box-0.20.0 set/all/bar.rb:15,26,35,36`; `card-mod-format-0.20.0 set/all/html/error.rb:21`; `card-mod-format-0.20.0 set/all/base.rb:105`; `card-mod-format-0.20.0 set/all/html/views.rb:29,24`; `card-mod-format-0.20.0 set/all/base.rb:109-111` (blank = "") | `tests/card/render/unknown-nest-corpus-replay.test.ts` (4 corpus entries, all 16 views byte-exact); `src/card/render/format.ts#viewForUnknown` | proven |
-| R3.3.b | `card-1.110.0/lib/card/fetch/retrieve.rb:9-12`; `card-mod-format-0.20.0 set/all/html/error.rb:185-189` | `tests/card/render/unknown-nest-blank-reference.test.ts`; corpus entry 636 | proven |
+| R3.3.b | `card-1.110.0/lib/card/fetch/retrieve.rb:9-12` (blank → nil); `lib/card/view/permission.rb:36-39`; `lib/card/format/error.rb:27-33` (`:unknown`, never `:denial`) | `tests/card/render/unknown-nest-blank-reference.test.ts` (empty render); shard-000006 entry 10488 (source-truthful) | proven (empty render, NOT the denial span; corpus entry 636's denial span is that entry's anomaly and the pre-adjudication form of this row) |
 
 ### R3.4 Denial spans
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
 | R3.4.a | `card-1.110.0/lib/card/view/permission.rb:46-50,56-64`; `card-mod-format-0.20.0 set/all/html/error.rb:185-189` | `tests/card/permissions/read-permission.test.ts`; `tests/card/render/permission-corpus-replay.test.ts`; `tests/card/render/view-perms-gate.test.ts` | proven (corpus denied views byte-exact) |
-| R3.4.b | `card-1.110.0/lib/card/format/error.rb:27-31` (`view_for_denial`); `card-mod-format-0.20.0 set/all/html/menu.rb:8` (`:menu` → `:blank`) | `src/card/permissions/view-perms.ts#viewDenialView`; `tests/card/permissions/view-perms-table.test.ts` (corpus census 124,632 captured denials all `(read)`) | pinned-synthetic (registry) + corpus census proven |
+| R3.4.b | `card-1.110.0/lib/card/format/error.rb:27-31` (`view_for_denial`); `card-mod-format-0.20.0 set/all/html/menu.rb:8` (`:menu` → `:blank`) | same view-registry oracle fixture: the DEFAULT denial arm renders the quiet span byte-exact on both a basic card and a set card, and the `:blank` arms (`:menu`, `:edit_link`) render `""` — replayed by `tests/card/permissions/view-registry-directives-oracle.test.ts`; the captured table carries FIVE `denial: :blank` directives (menu, edit_link, list_of_changes, comment_box, universal_edit_button), all now in `src/card/permissions/view-perms.ts#viewDenialView`; `tests/card/permissions/view-perms-table.test.ts` (corpus census 124,632 captured denials all `(read)`) | proven (edit_link menu.rb:16 and list_of_changes follow/base_views.rb:6 joined the registry red-first) |
 | R3.4.c | `card-mod-format-0.20.0 set/all/title.rb:2` (`view :title, compact: true, perms: :none`); `card-1.110.0 lib/card/set/format/abstract_format/view_opts.rb:59-64` (view_setting methods) | `tests/card/permissions/read-permission.test.ts` "title of denied card renders"; corpus 0/999 captured `:title` views of denied cards denied | proven |
-| R3.4.d | `card-mod-format-0.20.0 set/all/html/error.rb:191-210`; `card-1.110.0 lib/card/format/nesting/subformat.rb:41` (`focal?`) | corpus census (loud denial is page-layer, never focal in the captured deck) | unported (page-layer; engine render surface is non-focal) |
+| R3.4.d | `card-mod-format-0.20.0 set/all/html/error.rb:75-77,191-216` (`view :denial` → `focal? ? loud_denial : quiet_denial`, `loud_denial`, `loud_denial_message`); `card-mod-format-0.20.0 lib/card/format/html_format.rb:16-18` (`focal?` = `show_layout? ? main? : depth.zero?` — the operative override of `card-1.110.0 lib/card/format/nesting/subformat.rb:41`); `set/all/html/show.rb:25-28` (page show `main!`) | `tests/card/render/focal-denial-page-corpus-replay.test.ts` (4 exemplars byte-exact + 44-entry stratified census over the 3,069-entry loud class, FOCAL_DENIAL_REPLAY-gated); graded page-lane corpus (5,662/6,588 at pass16; 5,939/6,588 at pass17) renders the loud class at scale; signed-in message branch live-Ruby-probed (`tmp/wrong-goal-hunt/focal-denial-ruby-probe/`, frame-body bytes confirmed) | proven (page-layer loud denial frame AS main content; 8/44 census entries fail ONLY through the verdict-timing leak class — the committed perm-allow fix flips them, proven on its own 130-page sweep; signed-in branch live-probed; signup_ok? live gate unported, pinned to capture config) |
 
 ### R3.5 Help-popover content
 
@@ -187,26 +187,26 @@ Gem paths are absolute Windows paths under
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| E4.1.a | `card-1.110.0/mod/core/set/all/reference_events.rb:2-4,13-19,32-36` | none | divergent-documented (P1.5.a; references refresh is not implemented; P4 stream is queued in `docs/upstream-parity-plan-1282.md` §Persistence) |
+| E4.1.a | `card-1.110.0/mod/core/set/all/reference_events.rb:2-4,13-19,32-36` | same stream as P1.5.a: scenario 08 oracle rows (out-direction), `tests/card/actions/refresh-references-in.test.ts` (8 tests: map/unmap backfill, referer-content rewrite on rename, no-ref_type filter), `tests/cql/saved-card-reference-round-trip.test.ts` (engine save → refer_to/include/included_by over the saved rows) | proven (oracle row comparison + gem-cited rename-recursion suite) |
 
 ### E4.2 Codename events
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| E4.2.a | `card-1.110.0/mod/core/set/all/codename.rb:9-13` (`reset_codename_cache`) | none | unported (`docs/actions-port-notes.md` §9) |
+| E4.2.a | `card-1.110.0/mod/core/set/all/codename.rb:9-13` (`reset_codename_cache`, the `:integrate` `changed: :codename` event per the gem source); `lib/card/codename.rb:80-84` (`reset_cache` nils the memo + drops the shared entry), `:118-120` (`@codehash ||=` memo, no db fallthrough) | `src/card/actions/card-action-engine.ts` (`codenameChanged` → `fetch.codenames.resetCache()` on the save path); `tests/card/actions/codename-cache-reset-save-path.test.ts` (warm-then-save-then-resolve; mutation-checked — the suite goes red with the reset disabled); `fixtures/captured/codename-reset-and-read-rule-union-oracle.json` + `tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts` (live-Ruby probe on a DISPOSABLE deck copy: raw-SQL codename write invisible to the memo (`stale_id_lookup` nil, `memo_unchanged_by_raw_sql` true), real save fires the reset (`fresh_id_lookup_after_save` 605, `memo_was_reset` true), replayed through the port's registry incl. the raw-write-visibility window; mutation-checked: frozen memo → red) | proven (the "no oracle capture of the in-memory reset" reason is closed by the copy probe — writes are the probe's own, enumerated in the fixture's provenance) |
 | E4.2.b | `card-1.110.0/lib/card/codename.rb:108`; `activesupport-7.2.3.2 lib/active_support/inflector/methods.rb` (`underscore`) | `src/card/name/inflect.ts#underscore`; `tests/card/name/name-port.test.ts` (329 inflection battery rows) | proven |
 
 ### E4.3 Notification triggers
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| E4.3.a | `card-mod-follow-0.20.0`; `card-mod-email-0.20.0` (Card::Mailer + ActionMailer + Delayed Job) | none | unported (E1 stream is queued — `docs/upstream-parity-plan-1282.md` §Side effects) |
+| E4.3.a | `card-mod-follow-0.20.0`; `card-mod-email-0.20.0` (Card::Mailer + ActionMailer + Delayed Job) | `src/card/notify/` (follow-notify trigger, follower-resolver rule walk over real storage rows, mail renderer, SMTP transport); `tests/card/notify/` — 5 suites, 64 tests: mail bytes byte-stable against `fixtures/captured/follow-notification.json` (live-Ruby capture), save-path wiring end-to-end (`tests/card/actions/notify-save-path-wiring.test.ts`), RFC 5321 envelope vs the mail-2.9.1 semantics against an in-process mock peer (`smtp-transport.test.ts`) | proven + divergent-documented (mail-content bytes oracle-compared; delivery diverges: no delayed_job queue by design — `SURFACE-INVENTORY.md` P8 — and the transport is mock-peer-proven, no live SMTP capture) |
 
 ### E4.4 File operations and asset side effects
 
 | ID | Ruby truth | TS evidence | Status |
 |---|---|---|---|
-| E4.4.a | `card-mod-carrierwave-0.20.0 set/abstract/attachment.rb:23` | none | unported |
+| E4.4.a | `card-mod-carrierwave-0.20.0 set/abstract/attachment.rb:23` | `src/card/attachments/` (LocalAttachmentStore at Ruby's `~<card_id>/<action_id><ext>` identifier + `<files_dir>/<card_id>/<action_id><ext>` path scheme, content/identifier rules); engine wiring (`CardActionEngine` attachment input, save-path event order gem-cited); `tests/server/file-routes.test.ts` (upload→store→serve byte-identical on both /files route grammars, 403 denial writes nothing, variants, content-type); `tests/card/mod-loader/card-mod-cwwrite-output-seam.test.ts` (4 views live-oracle-pinned; the off-includer arm corrected to Ruby's unsupported-view raise — only type_plus_right/set/style.rb:1 and script.rb:1 include the abstract); `fixtures/captured/oracle-upload-file-tree.json` + `tests/card/attachments/upload-tree-oracle-pattern.test.ts` (read-only CarrierWave tree capture — paths+sizes+sha256 of 30 Ruby-written files across files/ and tmp/files/, provenance + card_actions 5018 no-write receipt; the port's real write path reproduces the captured tree pattern: lowercase-ext emissions, UPPERCASE-original write-side pins, accumulating updates, machine outputs, zero variant files) | proven + captured divergence note (closes the named "no captured CarrierWave save compares Ruby's written file tree" reason. Captured divergence: Ruby's live outputter rewrites land on the epoch stand-in filename while the port names by the save's action id — both internally consistent, engine-timing parity remainder, not a tree-shape fix. Plus the emission extension-case fix red-first: 181 corpus identifiers with uppercase exts all emit lowercase in Ruby; `appendVariantLowercasingExt` in views.ts, 4 emission pins failed on the old code) |
 
 ### E4.5 Cache invalidation
 
@@ -238,14 +238,19 @@ Gem paths are absolute Windows paths under
 
 ## Status totals
 
-Counts per status across the contract surface:
+Counts per status across the contract surface (every pinned-synthetic row
+and the last unported row flipped to proven with executed evidence, each
+flip cited on its row):
 
 | Status | Count | Note |
 |---|---|---|
-| proven | 36 | oracle byte/row comparison or live-Ruby probe passed in CI |
-| pinned-synthetic | 6 | gem-source-cited unit tests; no oracle capture |
-| divergent-documented | 5 | `set_read_rule`, `card_references`, subcard insert order, revival action-type correction, Lexicon.delete gap |
-| unported | 4 | `reset_codename_cache`, E1 mailers/notifications, attachment mod, focal loud denial |
+| proven | 67 | oracle byte/row comparison, live-Ruby probe, or direct regression test — every row carries executed evidence (P1.6.a proven by absence with its migration-execution arm named-blocked) |
+| pinned-synthetic | 0 | none remain |
+| divergent-documented | 0 | no row's PRIMARY status; divergences ride as notes on proven rows (revival action-type, side-card insert order, Lexicon.delete gap, mail delivery queue, CQL regex dialect pins, cw epoch-stand-in outputter naming, R3.4.d signup_ok? gate, P1.4.b deck-drift finding) |
+| unported | 0 | none remain |
+
+Scoreboard mapping (`deliverables/FORK-SCORECARD.md` counting rule):
+**pass 67 / fail 0 / skipped 0 / pending 0**.
 
 Categories overlap (a statement may be both proven AND
 divergent-documented — see the per-row notes). The denominator is

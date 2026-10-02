@@ -80,9 +80,22 @@ export type ViewPermsResolution =
  * - card-mod-format set/all/error.rb:2,6,10,14,18,23 (compact_missing,
  *   unknown, server_error, denial, not_found, bad_address);
  *   set/all/html/error.rb:33,53 (the html compact_missing/errors bodies)
- * - card-mod-email set/all/email_text.rb:10 (last_action)
+ * - card-mod-format set/all/html/frame.rb:2 (flash)
+ * - card-mod-script set/all/head_javascript.rb:9,17,25,29 (script_variables,
+ *   javascript_tags, script_calls, javascript_include_tag)
+ * - card-mod-layout set/all/navbar_links.rb:2 (navbar_links)
  * - card-mod-follow set/all/notify/base_views.rb:13,33,41,49 (subedits,
  *   followed, follower, unfollow_url)
+ *
+ * last_action is NOT here (was, citing card-mod-email set/all/email_text.rb:10
+ * `perms: :none`): the live registry does not resolve it to :none — the
+ * view-registry-directives oracle capture (2026-09-29,
+ * fixtures/captured/view-registry-directives-oracle.json) records
+ * view_setting(:perms, :last_action) = nil, because card-mod-history
+ * set/all/history/views.rb:46 redefines `view :last_action` with no directive
+ * and is the operative definition on this surface (card-mod-follow's
+ * html_views.rb:2 carries the same plain form, commented out). Nil ->
+ * permission.rb:15's :read fallback. Capture-pinned over the gem citation.
  */
 const PERMS_NONE = new Set<string>([
   "title",
@@ -112,11 +125,16 @@ const PERMS_NONE = new Set<string>([
   "not_found",
   "bad_address",
   "errors",
-  "last_action",
   "subedits",
   "followed",
   "follower",
   "unfollow_url",
+  "flash",
+  "javascript_include_tag",
+  "javascript_tags",
+  "script_calls",
+  "script_variables",
+  "navbar_links",
 ]);
 
 /**
@@ -127,7 +145,11 @@ const PERMS_NONE = new Set<string>([
  * edit_inline.rb:2 (edit_inline), form.rb:20 (edit_in_form),
  * editing.rb:3 (board) — all :update; new.rb:4,8,19,23 (new,
  * new_in_modal, simple_new, new_fields) — all :create;
- * card-mod-comment set/all/comment.rb:46 (comment_box) — :update.
+ * card-mod-comment set/all/comment.rb:46 (comment_box) — :update;
+ * card-mod-format set/all/html/head.rb:34-39 (universal_edit_button) —
+ * :update, oracle-pinned 2026-09-28: the captured bot/sara arms render the
+ * wiki link while the anonymous arms render "" (denial: :blank), so the
+ * directive must resolve before the gate can deny anonymous.
  *
  * configure_button is a METHOD-predicate perms view — the ported one:
  * card-mod-format set/type/cardtype.rb:61
@@ -147,11 +169,22 @@ const VIEW_PERMS_DIRECTIVES: Record<string, CrudTask | string> = {
   edit_in_form: "update",
   board: "update",
   comment_box: "update",
+  universal_edit_button: "update",
   new: "create",
   new_in_modal: "create",
   simple_new: "create",
   new_fields: "create",
+  // card-mod-tinymce_editor set/all/reference_editor/nest_editor.rb:22
+  // (`perms: :create`) and nest_image.rb:13 (`perms: :create`) — the
+  // reference-editor nest views; view-registry-directives-oracle.json
+  // captures both as perms "create" on the live surface.
+  nest_content: "create",
+  new_image: "create",
   configure_button: "can_configure?",
+  // card-mod-format set/type/cardtype.rb:53 `view :configure_link,
+  // cache: :never, perms: :can_configure?` - the helper view the
+  // configure_button body calls, same predicate (cardtype.rb:57-59).
+  configure_link: "can_configure?",
 };
 
 const CRUD_TASKS: readonly CrudTask[] = ["read", "create", "update", "delete"];
@@ -198,18 +231,23 @@ export function renderOptSkipPerms(renderOpts: Record<string, unknown>): boolean
 }
 
 /** format/error.rb:27-31 view_for_denial — `view_setting(:denial, view) ||
- *  :denial`. The captured surface has one denial: directive:
- *  :menu (card-mod-format set/all/html/menu.rb:8 `denial: :blank`);
- *  the other two all-set ones are non-ported views, listed for the record:
- *  html/head.rb:46 (universal_edit_button), card-mod-comment
- *  set/all/comment.rb:46 (comment_box). configure_button joins as a
- *  SET-scoped one: card-mod-format set/type/cardtype.rb:61
- *  `denial: :blank` — live serves zero configure strings for the anonymous
- *  surface (live_News_Item.html is 74KB with no "configure" byte; the
- *  denied render degrades to EMPTY, not the quiet-denial span). Absent =
+ *  :denial`. The captured surface (view-registry-directives-oracle.json,
+ *  2026-09-29) carries FIVE denial: :blank directives on the surveyed
+ *  cards: menu (menu.rb:8), edit_link (menu.rb:16), list_of_changes
+ *  (card-mod-follow set/all/notify/base_views.rb:6), comment_box
+ *  (card-mod-comment set/all/comment.rb:46), universal_edit_button
+ *  (html/head.rb:39 — its Anonymous blank arm is additionally pinned in
+ *  bar-box-format-views.json 2026-09-28). comment_box is still a non-ported
+ *  view, listed for the record. configure_button joins as a SET-scoped one
+ *  (card-mod-format set/type/cardtype.rb:61 `denial: :blank`, invisible to
+ *  the all-set survey) — live serves zero configure strings for the
+ *  anonymous surface (live_News_Item.html is 74KB with no "configure" byte;
+ *  the denied render degrades to EMPTY, not the quiet-denial span). Absent =
  *  Ruby's :denial view. */
 const DENIAL_VIEW = new Map<string, string>([
   ["menu", "blank"],
+  ["edit_link", "blank"],
+  ["list_of_changes", "blank"],
   ["universal_edit_button", "blank"],
   ["comment_box", "blank"],
   ["configure_button", "blank"],
@@ -267,6 +305,19 @@ export interface ViewPermsGateInput {
    *  (the port's rule-less/partial-deck divergence, same contract as
    *  canReadByRuleLookup in read-rules.ts). */
   readonly taskAllowed: (task: CrudTask) => boolean | undefined;
+  /** THIS render's format class name ("html" default). The denial VIEW's
+   *  body is format-dependent: the html override is
+   *  `focal? ? loud_denial : quiet_denial` (set/all/html/error.rb:75-77 —
+   *  the quiet span), while the BASE format's :denial is
+   *  `focal? ? t(:format_denial) : ""` (set/all/error.rb:13-15) — EMPTY
+   *  for a nested render. The email_text dispatch (card-mod-email's
+   *  text-message :core) renders through the base lineage
+   *  (EmailTextFormat < TextFormat < Format), so its denials are "":
+   *  exactly why the follower notification's TEXT message renders
+   *  `was just  by` (double space) where the html message renders the
+   *  span. Optional: absent means the html shape (every pre-email lane's
+   *  callers). */
+  readonly formatName?: string;
   /** permission.rb:61 method predicates — `format.send task` for the
    *  non-CRUD perms directives. can_configure? (cardtype.rb:68-70) is the
    *  one ported predicate; the hook returns undefined for predicates it
@@ -314,5 +365,13 @@ export function viewPermissionDenial(
     deniedLabel = task; // permission.rb:49 crud? && task — CRUD tasks label the span
   }
   if (viewDenialView(view) === "blank") return ""; // view_for_denial -> :blank renders ""
+  // The :denial view's format body (set/all/error.rb:13-15 vs
+  // set/all/html/error.rb:75-77): non-html formats render the BASE :denial,
+  // which for a NESTED (non-focal) render is "". Every email_text dispatch
+  // is nested (it is the body of the html-message page's :core), so the
+  // base bytes are "" here; the focal branch (t(:format_denial)) is a
+  // documented remainder — no captured surface renders a focal email_text
+  // denial.
+  if (input.formatName !== undefined && input.formatName !== "html") return "";
   return quietDenial(deniedLabel);
 }

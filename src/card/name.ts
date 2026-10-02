@@ -604,7 +604,20 @@ export class DeckoName {
     const compressed = DeckoName.baseParse(
       [null, ...compacted].join(DeckoName.JOINT),
     );
-    return this.key === compressed.absoluteName(...compactFrom).key ? compressed : this;
+    // Ruby: `compressed.absolute_name(from)` where `from` is the whole
+    // context LIST as an array — and `absolute` does
+    // `context = (context || "").to_name`, whose Object#to_name is
+    // `Cardname.new self` (cardname core_ext.rb), whose stringify JOINS an
+    // array with the joint (class_methods.rb:52-58). The context list is
+    // therefore ONE compound context name for the round-trip check, not a
+    // list of separate arguments. (Spreading the list here made
+    // absoluteName read only its FIRST element, so every multi-part context
+    // failed the round-trip and the title stayed the full name — live-wire
+    // mechanism 2: the +*self rule-bar pages render title="A+*self+*default"
+    // where the oracle renders title="+*default".)
+    return this.key === compressed.absoluteName(DeckoName.compose(compactFrom)).key
+      ? compressed
+      : this;
   }
 
   /** interpret contextual name; string result (contextual.rb #absolute). */
@@ -652,8 +665,36 @@ export class DeckoName {
     return this.fieldName(tag).s;
   }
 
-  /** fields.rb #field_name: leading "+" on the tag is dropped. */
-  fieldName(tag: string | number): DeckoName {
+  /**
+   * fields.rb #field_name: `[self, tag].to_name`, and in WAGN
+   * `Array#to_name` is NOT `Cardname.new` — it is `Card::Name.compose`
+   * (card-1.110.0 config/initializers/01_core_extensions/array.rb:80-83
+   * `def cardname; Card::Name.compose self; end` + `alias to_name`).
+   * Two consequences this port has to carry:
+   *
+   *  1. A SYMBOL tag resolves through the codename registry to the
+   *     codename card's real name (card-1.110.0 lib/card/name.rb:73-81
+   *     `from_cardish ... when Symbol then Codename.name! cardish`).
+   *     template_nest.rb:27's `[type, name].to_name.field_name
+   *     :type_plus_right` is the pinned case: `:type_plus_right` is the
+   *     codename of the `*type plus right` SET card, so the composed
+   *     junction tag is `*type plus right` (cardname-0.20.0 alone would
+   *     emit the starless `type_plus_right`, which resolves to nothing).
+   *  2. Only a STRING tag loses a leading "+" (fields.rb:16's
+   *     `tag.to_s[1..] if !tag.is_a?(Symbol) && tag.to_s[0] == "+"`).
+   */
+  fieldName(tag: string | number): DeckoName;
+  fieldName(tag: Cardish): DeckoName;
+  fieldName(tag: Cardish): DeckoName {
+    if (
+      typeof tag === "object" &&
+      tag !== null &&
+      !Array.isArray(tag) &&
+      !(tag instanceof DeckoName) &&
+      "codename" in tag
+    ) {
+      return DeckoName.compose([this, tag]);
+    }
     const tagStr = String(tag);
     const stripped = tagStr.charAt(0) === "+" ? tagStr.slice(1) : tagStr;
     return DeckoName.compose([this, stripped]);

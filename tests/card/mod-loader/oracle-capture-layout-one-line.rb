@@ -26,9 +26,15 @@
 #      strip_tags collapses the wrap; the long body inside is truncated
 # 5. Rendered bytes with `size: <n>` option - confirms `voo.size` overrides
 #    the 60-char default
-# 6. Rendered bytes for the unsupported-card probe (Plain probe without
-#    *head right part) - confirms Ruby's dispatch raises the
-#    unsupported-view UserError
+# 6. Rendered bytes for the non-right-of-head probe (Plain probe without
+#    the *head right part) - confirms the All-set html :one_line_content
+#    override (card-mod-format set/all/html/views.rb:29-32: `unknown:
+#    :mini_unknown, wrap: { div: { class: "text-muted" } }` around
+#    one_line_content, content.rb:47-49 `truncate strip_tags(render_core),
+#    length: one_line_character_limit`): the text-muted wrap bytes, NOT an
+#    error - the view is defined on every html-format card, so the
+#    dispatch never raises for a known card; only the Right::Head
+#    override (set/right/head.rb:12-14, no wrap) is scoped to *head rules
 #
 # Determinism contract (mirrors tools/oracle/capture.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
@@ -43,7 +49,7 @@
 #   PROBE_HTML    = "Oracle One Line Html Probe"  + dbContent "<meta ...>"
 #   PROBE_MIXED   = "Oracle One Line Mixed Probe" + dbContent "<span>a*70</span>"
 #   PROBE_PLAIN   = "Oracle One Line Plain Probe" (NOT a right-of-head rule -
-#                    for the unsupported-view error path)
+#                    exercises the All-set html one_line_content wrap arm)
 
 require "json"
 
@@ -91,7 +97,8 @@ RENDER_TARGETS = [
   ["#{PROBE_MIXED}+*head", :one_line_content]
 ].freeze
 
-# Plain (non-right-of-head) probe - the dispatch error path
+# Plain (non-right-of-head) probe - the All-set html wrap arm
+# (set/all/html/views.rb:29-32), not an error path
 PLAIN_RENDER = [
   [PROBE_PLAIN, :one_line_content]
 ].freeze
@@ -180,7 +187,8 @@ rescue StandardError => e
   views[key] = "CAPTURE_ERROR: #{e.class}: #{e.message}"
 end
 
-# plain probe -> dispatch error path
+# plain probe -> All-set html wrap arm (html/views.rb:29-32; no raise -
+# the view is defined on every html-format card)
 PLAIN_RENDER.each do |name, view_name|
   card = Card.fetch(name)
   format = card.format

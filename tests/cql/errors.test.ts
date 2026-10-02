@@ -85,8 +85,13 @@ describe("member without codename resolution [ReferenceAttributes#member]", () =
 });
 
 describe("found_by [FoundBy]", () => {
-  it("parses into the AST but generateSql defers with an explicit error", () => {
+  // Re-pinned by the pass-17 integration (lane-cql-found-by): found_by now
+  // RESOLVES at execution (execute.ts resolveFoundByConditions), so the
+  // generator's old wave-2 deferral is gone. generateSql's found_by case is
+  // the loud backstop for shapes the resolver did not translate — hash
+  // values like {id: 5} reach it and must refuse explicitly, never silently.
+  it("parses into the AST but generateSql's backstop refuses unresolved shapes with an explicit error", () => {
     const ast = parseCql({ found_by: { id: 5 } });
-    expect(() => generateSql(ast)).toThrow(/found_by requires runtime query execution/);
+    expect(() => generateSql(ast)).toThrow(/found_by condition reached SQL generation unresolved/);
   });
 });

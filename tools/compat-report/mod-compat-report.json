@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-23T23:01:29.512Z",
-  "gemDir": "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems",
-  "repo": "C:\\localProjects\\decko-ts",
+  "generatedAt": "2026-10-02T01:46:52.787Z",
+  "gemDir": "$GEM_HOME",
+  "repo": "C:\\localProjects\\decko-ts-lane-fixr-tools",
   "surface": {
     "implementedPatterns": [
       "all",
@@ -15,58 +15,144 @@
       "type_plus_right"
     ],
     "htmlViews": [
+      "accordion_bar",
+      "accordion_bar_list",
+      "accordion_rule_list",
+      "act",
+      "act_legend",
       "acted_at",
+      "action_expanded",
+      "action_summary",
       "add_autocomplete_item",
+      "add_button",
+      "add_link",
+      "add_url",
       "admin",
       "api_key",
+      "asset_output_url",
       "bad_address",
       "bar",
+      "bar_body",
       "bar_bottom",
       "bar_left",
+      "bar_menu",
       "bar_middle",
       "bar_right",
+      "bar_setting_list",
       "blank",
+      "board",
+      "board_link",
+      "board_rules_tab",
+      "board_type_formgroup",
+      "box",
       "box_bottom",
       "box_middle",
+      "box_top",
+      "boxed",
+      "boxed_link",
       "buttons",
       "card_list",
+      "card_select",
+      "cardboard",
+      "cardtypes",
       "carousel",
+      "change",
       "change_create_to_update",
+      "checkbox",
+      "checkbox_list",
       "close_modal_link",
       "closed",
       "closed_account",
+      "closed_bar",
       "closed_content",
+      "closure",
       "codename",
       "comment_box",
       "compact_missing",
+      "configs",
+      "configurations",
+      "configure_button",
+      "configure_link",
       "confirm_update_all",
+      "conflict",
+      "conflict_tracker",
       "content",
       "content_changes",
+      "content_formgroup",
+      "content_formgroups",
+      "content_panel",
+      "content_with_title",
       "core",
       "count",
       "created_at",
+      "creator_credit",
       "current",
       "customize_button",
       "denial",
+      "depends_on",
+      "description",
       "draft_legend",
       "edit",
+      "edit_button",
+      "edit_buttons",
+      "edit_form",
+      "edit_in_form",
+      "edit_inline",
+      "edit_inline_buttons",
+      "edit_link",
+      "edit_name",
+      "edit_name_row",
+      "edit_nests",
+      "edit_row",
+      "edit_rules",
+      "edit_structure",
+      "edit_type",
+      "edit_type_form",
+      "edit_type_row",
       "email_page",
+      "engage_tab",
       "errors",
+      "expanded_bar",
+      "favicon_tag",
       "file_size",
+      "filtered_accordion_rule_list",
+      "flash",
+      "follow_button",
+      "follow_item",
+      "follow_section",
+      "follow_status",
+      "follow_tab",
+      "followed",
+      "full_bar",
+      "full_page_link",
       "full_width",
+      "gem_info",
       "generate_button",
       "goto_autocomplete_item",
       "grouped_list",
       "guide",
+      "guide_tab",
+      "head",
       "head_content",
+      "header",
+      "header_title",
       "help",
+      "help_link",
       "help_text",
+      "hidden_content_field",
+      "history",
+      "history_tab",
+      "home_path",
+      "home_url",
+      "home_view",
       "icons",
       "id",
       "id_url",
+      "ignore_tab",
       "image_complete",
       "inline",
       "input",
+      "invite",
       "javascript_include_tag",
       "javascript_tags",
       "just_deleted",
@@ -74,62 +160,125 @@
       "label",
       "labeled",
       "labeled_content",
+      "labeled_editor",
       "last_action",
+      "last_action_verb",
       "lead",
       "link",
+      "link_editor",
       "link_tag",
+      "link_with_checkbox",
       "linkname",
       "list",
+      "list_of_changes",
       "menu",
+      "menu_block",
+      "meta_tags",
       "mini_bar",
       "mini_unknown",
       "modal",
       "modal_footer",
       "modal_link",
+      "modal_link_editor",
       "modal_menu",
+      "modal_nest_rules",
+      "modal_pill_setting_list",
+      "modal_rule",
       "modal_title",
+      "my_card",
       "name",
+      "name_form",
+      "name_formgroup",
       "nav_item",
       "nav_link",
       "nav_link_in_dropdown",
       "navbar_links",
       "nest_list_input",
+      "nest_rules",
+      "new",
+      "new_buttons",
+      "new_fields",
+      "new_image_buttons",
+      "new_in_modal",
+      "new_in_modal_buttons",
+      "new_type_formgroup",
       "no_search_results",
       "not_found",
       "one_line_content",
       "open",
+      "open_bar",
       "open_content",
       "open_nest_editor",
+      "overlay_guide",
       "overlay_header",
       "overlay_help_link",
       "overlay_menu",
+      "overlay_rule",
+      "overlay_rule_list_link",
       "overlay_title",
+      "page_title",
+      "page_title_tag",
       "paging",
+      "pill_setting_list",
       "pills",
       "pills_static",
       "pointer_core",
       "pop_out_modal_link",
       "popover",
       "preview",
+      "preview_editor",
       "progress_bar",
+      "quick_edit",
+      "quick_edit_setting_list",
+      "quick_edit_success",
       "raw",
       "raw_one_line_content",
+      "read_form",
+      "read_formgroup",
+      "related_tab",
       "remote_script_tags",
       "reset_password_days",
+      "reset_password_success",
+      "reset_password_url",
+      "results_for_keyword",
+      "roles",
+      "rss_links",
+      "rule_board_link",
+      "rule_edit",
+      "rule_form",
+      "rule_form_card_editor",
       "rule_help",
+      "rule_nest_editor_link",
+      "rules_tab",
       "script_calls",
       "script_variables",
+      "scripts",
       "search_count",
       "search_error",
       "server_error",
       "set_label",
+      "settings",
+      "short_content",
+      "sign_in",
+      "sign_out",
+      "sign_up",
+      "simple_new",
+      "smart_label",
       "source",
       "status",
+      "styles",
       "stylesheet_include_tag",
+      "stylesheet_tags",
+      "subedits",
       "tabs",
       "tabs_static",
+      "tasks",
+      "template_link",
       "template_nest",
+      "text_without_nests",
       "title",
+      "title_link",
+      "title_no_link",
       "titled",
       "titled_content",
       "token",
@@ -137,11 +286,20 @@
       "token_expiry",
       "token_link",
       "type",
+      "type_formgroup",
+      "type_info",
+      "unfollow_url",
+      "universal_edit_button",
       "unknown",
       "updated_at",
+      "updated_by",
       "url",
       "url_link",
-      "verify_days"
+      "verify_days",
+      "verify_url",
+      "view_list",
+      "views",
+      "warning"
     ],
     "hasRuleLookup": true,
     "hasRuleApply": true,
@@ -156,30 +314,20 @@
       "gem": "card-mod-account-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=closed_account, edit, one_line_content, open_content; missing=account_tab, closure, configs, content_formgroups, edit_buttons, link_with_checkbox, ...; pins=1/12",
-        "evidence": "12/24 html views in HTML_VIEWS∪mod-manifests (7/19 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=1",
+        "status": "ported",
+        "verdict": "17 mod-specific view(s) ported: closed_account, closure, configs, content_formgroups, edit, edit_buttons, ...",
+        "evidence": "22/24 html views in HTML_VIEWS∪mod-manifests (17/19 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=1",
         "metrics": {
           "htmlViewsDeclared": 24,
-          "htmlViewsCovered": 12,
-          "htmlViewsMissing": 12,
+          "htmlViewsCovered": 22,
+          "htmlViewsMissing": 2,
           "htmlViewsMissingNames": [
             "account_tab",
-            "closure",
-            "configs",
-            "content_formgroups",
-            "edit_buttons",
-            "link_with_checkbox",
-            "new",
-            "new_buttons",
-            "reset_password_success",
-            "reset_password_url",
-            "setup",
-            "verify_url"
+            "setup"
           ],
           "specificViewsDeclared": 19,
-          "specificViewsCovered": 7,
-          "specificViewsCoverage": 36.8,
+          "specificViewsCovered": 17,
+          "specificViewsCoverage": 89.5,
           "patternsUsed": [
             "all",
             "all",
@@ -197,12 +345,12 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 50,
+          "viewsCoverage": 91.7,
           "setModules": 22,
           "libRbFiles": 1,
           "hamlFiles": 6,
           "manifestExists": true,
-          "manifestViewsDeclared": 8,
+          "manifestViewsDeclared": 15,
           "testExists": true,
           "testCount": 12,
           "bytePins": 1
@@ -210,7 +358,7 @@
       },
       "inv": {
         "gem": "card-mod-account-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-account-0.20.0",
+        "gemPath": "card-mod-account-0.20.0",
         "counts": {
           "setRbFiles": 23,
           "libRbFiles": 1,
@@ -419,14 +567,21 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "labeled",
           "closed_account",
+          "core",
           "token_days",
           "verify_days",
           "reset_password_days",
           "token_expiry",
+          "closure",
+          "raw",
           "open_content",
           "one_line_content",
-          "raw"
+          "reset_password_success",
+          "edit_buttons",
+          "link_with_checkbox",
+          "configs"
         ],
         "testExists": true,
         "testCount": 12,
@@ -470,7 +625,7 @@
       },
       "inv": {
         "gem": "card-mod-ace_editor-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-ace_editor-0.20.0",
+        "gemPath": "card-mod-ace_editor-0.20.0",
         "counts": {
           "setRbFiles": 2,
           "libRbFiles": 0,
@@ -511,7 +666,7 @@
       "classification": {
         "status": "ported",
         "verdict": "6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link",
-        "evidence": "7/7 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=30 it(), byte-pins=12",
+        "evidence": "7/7 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=34 it(), byte-pins=14",
         "metrics": {
           "htmlViewsDeclared": 7,
           "htmlViewsCovered": 7,
@@ -534,13 +689,13 @@
           "manifestExists": true,
           "manifestViewsDeclared": 10,
           "testExists": true,
-          "testCount": 30,
-          "bytePins": 12
+          "testCount": 34,
+          "bytePins": 14
         }
       },
       "inv": {
         "gem": "card-mod-api_key-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-api_key-0.20.0",
+        "gemPath": "card-mod-api_key-0.20.0",
         "counts": {
           "setRbFiles": 2,
           "libRbFiles": 2,
@@ -608,8 +763,8 @@
           "api_key"
         ],
         "testExists": true,
-        "testCount": 30,
-        "bytePins": 12
+        "testCount": 34,
+        "bytePins": 14
       }
     },
     {
@@ -618,7 +773,7 @@
       "classification": {
         "status": "ported",
         "verdict": "2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag",
-        "evidence": "3/3 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=11",
+        "evidence": "3/3 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 3,
           "htmlViewsCovered": 3,
@@ -643,15 +798,15 @@
           "libRbFiles": 1,
           "hamlFiles": 1,
           "manifestExists": true,
-          "manifestViewsDeclared": 2,
+          "manifestViewsDeclared": 4,
           "testExists": true,
           "testCount": 15,
-          "bytePins": 11
+          "bytePins": 6
         }
       },
       "inv": {
         "gem": "card-mod-assets-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-assets-0.20.0",
+        "gemPath": "card-mod-assets-0.20.0",
         "counts": {
           "setRbFiles": 12,
           "libRbFiles": 1,
@@ -716,12 +871,14 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "not_found",
+          "asset_output_url",
           "javascript_include_tag",
           "stylesheet_include_tag"
         ],
         "testExists": true,
         "testCount": 15,
-        "bytePins": 11
+        "bytePins": 6
       }
     },
     {
@@ -729,26 +886,16 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "6 mod-specific view(s) ported: bar, bar_bottom, bar_left, bar_middle, bar_right, mini_bar",
-        "evidence": "8/17 html views in HTML_VIEWS∪mod-manifests (6/11 mod-specific)",
+        "verdict": "11 mod-specific view(s) ported: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ...",
+        "evidence": "17/17 html views in HTML_VIEWS∪mod-manifests (11/11 mod-specific)",
         "metrics": {
           "htmlViewsDeclared": 17,
-          "htmlViewsCovered": 8,
-          "htmlViewsMissing": 9,
-          "htmlViewsMissingNames": [
-            "accordion_bar",
-            "bar_body",
-            "bar_menu",
-            "boxed",
-            "boxed_link",
-            "closed_bar",
-            "expanded_bar",
-            "full_bar",
-            "open_bar"
-          ],
+          "htmlViewsCovered": 17,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 11,
-          "specificViewsCovered": 6,
-          "specificViewsCoverage": 54.5,
+          "specificViewsCovered": 11,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -760,7 +907,7 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 47.1,
+          "viewsCoverage": 100,
           "setModules": 4,
           "libRbFiles": 0,
           "hamlFiles": 5,
@@ -773,7 +920,7 @@
       },
       "inv": {
         "gem": "card-mod-bar_and_box-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-bar_and_box-0.20.0",
+        "gemPath": "card-mod-bar_and_box-0.20.0",
         "counts": {
           "setRbFiles": 4,
           "libRbFiles": 0,
@@ -883,7 +1030,7 @@
           "libRbFiles": 16,
           "hamlFiles": 11,
           "manifestExists": true,
-          "manifestViewsDeclared": 6,
+          "manifestViewsDeclared": 13,
           "testExists": true,
           "testCount": 32,
           "bytePins": 30
@@ -891,7 +1038,7 @@
       },
       "inv": {
         "gem": "card-mod-bootstrap-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-bootstrap-0.20.0",
+        "gemPath": "card-mod-bootstrap-0.20.0",
         "counts": {
           "setRbFiles": 24,
           "libRbFiles": 16,
@@ -970,12 +1117,19 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "content",
+          "accordion_bar",
           "progress_bar",
           "icons",
           "carousel",
           "input",
           "one_line_content",
-          "customize_button"
+          "customize_button",
+          "core",
+          "bar_left",
+          "bar_right",
+          "bar_bottom",
+          "bar_middle"
         ],
         "testExists": true,
         "testCount": 32,
@@ -987,18 +1141,16 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "5 mod-specific view(s) ported: content_changes, full_width, input, link_tag, source",
-        "evidence": "7/8 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=18",
+        "verdict": "6 mod-specific view(s) ported: content_changes, full_width, input, link_tag, preview_editor, source",
+        "evidence": "8/8 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=35 it(), byte-pins=21",
         "metrics": {
           "htmlViewsDeclared": 8,
-          "htmlViewsCovered": 7,
-          "htmlViewsMissing": 1,
-          "htmlViewsMissingNames": [
-            "preview_editor"
-          ],
+          "htmlViewsCovered": 8,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 6,
-          "specificViewsCovered": 5,
-          "specificViewsCoverage": 83.3,
+          "specificViewsCovered": 6,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -1012,20 +1164,20 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 87.5,
+          "viewsCoverage": 100,
           "setModules": 11,
           "libRbFiles": 7,
           "hamlFiles": 3,
           "manifestExists": true,
-          "manifestViewsDeclared": 9,
+          "manifestViewsDeclared": 11,
           "testExists": true,
-          "testCount": 33,
-          "bytePins": 18
+          "testCount": 35,
+          "bytePins": 21
         }
       },
       "inv": {
         "gem": "card-mod-carrierwave-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-carrierwave-0.20.0",
+        "gemPath": "card-mod-carrierwave-0.20.0",
         "counts": {
           "setRbFiles": 17,
           "libRbFiles": 7,
@@ -1201,6 +1353,8 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "input",
+          "preview_editor",
           "full_width",
           "preview",
           "content_changes",
@@ -1212,8 +1366,8 @@
           "one_line_content"
         ],
         "testExists": true,
-        "testCount": 33,
-        "bytePins": 18
+        "testCount": 35,
+        "bytePins": 21
       }
     },
     {
@@ -1255,7 +1409,7 @@
       },
       "inv": {
         "gem": "card-mod-collection-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-collection-0.20.0",
+        "gemPath": "card-mod-collection-0.20.0",
         "counts": {
           "setRbFiles": 6,
           "libRbFiles": 1,
@@ -1342,7 +1496,7 @@
       },
       "inv": {
         "gem": "card-mod-comment-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-comment-0.20.0",
+        "gemPath": "card-mod-comment-0.20.0",
         "counts": {
           "setRbFiles": 3,
           "libRbFiles": 0,
@@ -1431,7 +1585,7 @@
       },
       "inv": {
         "gem": "card-mod-content-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-content-0.20.0",
+        "gemPath": "card-mod-content-0.20.0",
         "counts": {
           "setRbFiles": 14,
           "libRbFiles": 7,
@@ -1540,7 +1694,7 @@
       },
       "inv": {
         "gem": "card-mod-date-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-date-0.20.0",
+        "gemPath": "card-mod-date-0.20.0",
         "counts": {
           "setRbFiles": 5,
           "libRbFiles": 0,
@@ -1610,7 +1764,7 @@
       },
       "inv": {
         "gem": "card-mod-defaults-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-defaults-0.20.0",
+        "gemPath": "card-mod-defaults-0.20.0",
         "counts": {
           "setRbFiles": 0,
           "libRbFiles": 1,
@@ -1671,7 +1825,7 @@
       },
       "inv": {
         "gem": "card-mod-delayed_job-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-delayed_job-0.20.0",
+        "gemPath": "card-mod-delayed_job-0.20.0",
         "counts": {
           "setRbFiles": 0,
           "libRbFiles": 2,
@@ -1707,57 +1861,17 @@
       "gem": "card-mod-edit-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=edit, input, just_deleted; missing=board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit_buttons, ...; pins=4/9",
-        "evidence": "3/42 html views in HTML_VIEWS∪mod-manifests (3/41 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=4",
+        "status": "ported",
+        "verdict": "41 mod-specific view(s) ported: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...",
+        "evidence": "42/42 html views in HTML_VIEWS∪mod-manifests (41/41 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=4",
         "metrics": {
           "htmlViewsDeclared": 42,
-          "htmlViewsCovered": 3,
-          "htmlViewsMissing": 39,
-          "htmlViewsMissingNames": [
-            "board",
-            "board_type_formgroup",
-            "cardboard",
-            "conflict_tracker",
-            "content_formgroup",
-            "content_formgroups",
-            "edit_buttons",
-            "edit_form",
-            "edit_in_form",
-            "edit_inline",
-            "edit_inline_buttons",
-            "edit_name",
-            "edit_name_row",
-            "edit_nests",
-            "edit_row",
-            "edit_rules",
-            "edit_structure",
-            "edit_type",
-            "edit_type_form",
-            "edit_type_row",
-            "engage_tab",
-            "follow_section",
-            "guide_tab",
-            "history_tab",
-            "name_form",
-            "name_formgroup",
-            "new",
-            "new_buttons",
-            "new_fields",
-            "new_in_modal",
-            "new_in_modal_buttons",
-            "new_type_formgroup",
-            "overlay_guide",
-            "read_form",
-            "read_formgroup",
-            "related_tab",
-            "rules_tab",
-            "simple_new",
-            "type_formgroup"
-          ],
+          "htmlViewsCovered": 42,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 41,
-          "specificViewsCovered": 3,
-          "specificViewsCoverage": 7.3,
+          "specificViewsCovered": 41,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "right",
@@ -1771,12 +1885,12 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 7.1,
+          "viewsCoverage": 100,
           "setModules": 21,
           "libRbFiles": 0,
           "hamlFiles": 5,
           "manifestExists": true,
-          "manifestViewsDeclared": 2,
+          "manifestViewsDeclared": 44,
           "testExists": true,
           "testCount": 9,
           "bytePins": 4
@@ -1784,7 +1898,7 @@
       },
       "inv": {
         "gem": "card-mod-edit-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-edit-0.20.0",
+        "gemPath": "card-mod-edit-0.20.0",
         "counts": {
           "setRbFiles": 25,
           "libRbFiles": 0,
@@ -1865,7 +1979,49 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "titled",
+          "board_rules_tab",
+          "board",
+          "cardboard",
+          "guide_tab",
+          "rules_tab",
+          "related_tab",
+          "history_tab",
+          "follow_section",
+          "engage_tab",
+          "edit_form",
+          "edit_name_row",
+          "edit_inline",
+          "edit_inline_buttons",
+          "edit_row",
+          "edit_name",
+          "name_form",
+          "edit_type_row",
+          "edit_type",
+          "edit_type_form",
+          "type_formgroup",
+          "board_type_formgroup",
+          "edit_buttons",
           "just_deleted",
+          "edit_nests",
+          "edit_structure",
+          "edit_rules",
+          "input",
+          "content_formgroups",
+          "content_formgroup",
+          "conflict_tracker",
+          "name_formgroup",
+          "edit_in_form",
+          "read_form",
+          "read_formgroup",
+          "new",
+          "new_in_modal",
+          "new_fields",
+          "new_type_formgroup",
+          "new_buttons",
+          "new_in_modal_buttons",
+          "simple_new",
+          "overlay_guide",
           "template_nest"
         ],
         "testExists": true,
@@ -1906,7 +2062,7 @@
           "libRbFiles": 2,
           "hamlFiles": 1,
           "manifestExists": true,
-          "manifestViewsDeclared": 4,
+          "manifestViewsDeclared": 6,
           "testExists": true,
           "testCount": 10,
           "bytePins": 4
@@ -1914,7 +2070,7 @@
       },
       "inv": {
         "gem": "card-mod-email-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-email-0.20.0",
+        "gemPath": "card-mod-email-0.20.0",
         "counts": {
           "setRbFiles": 14,
           "libRbFiles": 2,
@@ -1969,7 +2125,9 @@
           "email_page",
           "unknown",
           "compact_missing",
-          "last_action"
+          "last_action",
+          "core",
+          "content"
         ],
         "testExists": true,
         "testCount": 10,
@@ -1981,24 +2139,18 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "5 mod-specific view(s) ported: confirm_update_all, edit, errors, one_line_content, status",
-        "evidence": "6/13 html views in HTML_VIEWS∪mod-manifests (5/12 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=6",
+        "verdict": "11 mod-specific view(s) ported: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...",
+        "evidence": "12/13 html views in HTML_VIEWS∪mod-manifests (11/12 mod-specific); mod-loader pins: manifest=yes, test=11 it(), byte-pins=6",
         "metrics": {
           "htmlViewsDeclared": 13,
-          "htmlViewsCovered": 6,
-          "htmlViewsMissing": 7,
+          "htmlViewsCovered": 12,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "edit_buttons",
-            "follow_button",
-            "follow_item",
-            "follow_status",
-            "follow_tab",
-            "ignore_tab",
             "rule_editor"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 5,
-          "specificViewsCoverage": 41.7,
+          "specificViewsCovered": 11,
+          "specificViewsCoverage": 91.7,
           "patternsUsed": [
             "all",
             "all",
@@ -2016,20 +2168,20 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 46.2,
+          "viewsCoverage": 92.3,
           "setModules": 25,
           "libRbFiles": 2,
           "hamlFiles": 2,
           "manifestExists": true,
-          "manifestViewsDeclared": 5,
+          "manifestViewsDeclared": 13,
           "testExists": true,
-          "testCount": 12,
+          "testCount": 11,
           "bytePins": 6
         }
       },
       "inv": {
         "gem": "card-mod-follow-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-follow-0.20.0",
+        "gemPath": "card-mod-follow-0.20.0",
         "counts": {
           "setRbFiles": 32,
           "libRbFiles": 2,
@@ -2125,14 +2277,22 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "follow_item",
+          "rule_form",
+          "edit",
+          "follow_button",
+          "last_action_verb",
+          "follow_status",
           "core",
           "status",
           "one_line_content",
           "confirm_update_all",
-          "edit"
+          "edit_buttons",
+          "follow_tab",
+          "ignore_tab"
         ],
         "testExists": true,
-        "testCount": 12,
+        "testCount": 11,
         "bytePins": 6
       }
     },
@@ -2141,52 +2301,19 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "11 mod-specific view(s) ported: admin, bar_right, compact_missing, errors, input, label, ...",
-        "evidence": "22/57 html views in HTML_VIEWS∪mod-manifests (11/46 mod-specific); mod-loader pins: manifest=yes, test=37 it(), byte-pins=6",
+        "verdict": "44 mod-specific view(s) ported: add_button, add_link, add_url, admin, bar_right, board_link, ...",
+        "evidence": "55/57 html views in HTML_VIEWS∪mod-manifests (44/46 mod-specific); mod-loader pins: manifest=yes, test=46 it(), byte-pins=8",
         "metrics": {
           "htmlViewsDeclared": 57,
-          "htmlViewsCovered": 22,
-          "htmlViewsMissing": 35,
+          "htmlViewsCovered": 55,
+          "htmlViewsMissing": 2,
           "htmlViewsMissingNames": [
-            "add_button",
-            "add_link",
-            "add_url",
-            "board_link",
-            "configure_button",
-            "configure_link",
-            "conflict",
-            "content_panel",
-            "content_with_title",
             "debug_server_error",
-            "demo",
-            "edit_button",
-            "edit_link",
-            "favicon_tag",
-            "flash",
-            "full_page_link",
-            "head",
-            "header",
-            "header_title",
-            "help_link",
-            "hidden_content_field",
-            "labeled_editor",
-            "menu_block",
-            "meta_tags",
-            "page_title",
-            "page_title_tag",
-            "rss_links",
-            "short_content",
-            "smart_label",
-            "stylesheet_tags",
-            "title_link",
-            "title_no_link",
-            "type_info",
-            "universal_edit_button",
-            "view_list"
+            "demo"
           ],
           "specificViewsDeclared": 46,
-          "specificViewsCovered": 11,
-          "specificViewsCoverage": 23.9,
+          "specificViewsCovered": 44,
+          "specificViewsCoverage": 95.7,
           "patternsUsed": [
             "all",
             "all",
@@ -2202,20 +2329,20 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 38.6,
+          "viewsCoverage": 96.5,
           "setModules": 33,
           "libRbFiles": 16,
           "hamlFiles": 6,
           "manifestExists": true,
-          "manifestViewsDeclared": 32,
+          "manifestViewsDeclared": 51,
           "testExists": true,
-          "testCount": 37,
-          "bytePins": 6
+          "testCount": 46,
+          "bytePins": 8
         }
       },
       "inv": {
         "gem": "card-mod-format-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-format-0.20.0",
+        "gemPath": "card-mod-format-0.20.0",
         "counts": {
           "setRbFiles": 40,
           "libRbFiles": 16,
@@ -2469,15 +2596,15 @@
           "updated_at",
           "acted_at",
           "raw",
-          "one_line_content",
           "labeled_content",
           "titled_content",
           "blank",
-          "titled",
           "labeled",
           "label",
           "closed_content",
-          "raw_one_line_content",
+          "hidden_content_field",
+          "smart_label",
+          "view_list",
           "compact_missing",
           "unknown",
           "server_error",
@@ -2485,11 +2612,30 @@
           "not_found",
           "bad_address",
           "errors",
-          "admin"
+          "flash",
+          "short_content",
+          "one_line_content",
+          "raw_one_line_content",
+          "head",
+          "favicon_tag",
+          "page_title_tag",
+          "stylesheet_tags",
+          "page_title",
+          "add_link",
+          "add_button",
+          "add_url",
+          "configure_button",
+          "configure_link",
+          "admin",
+          "bar_right",
+          "input",
+          "labeled_editor",
+          "title_link",
+          "core"
         ],
         "testExists": true,
-        "testCount": 37,
-        "bytePins": 6
+        "testCount": 46,
+        "bytePins": 8
       }
     },
     {
@@ -2498,7 +2644,7 @@
       "classification": {
         "status": "ported",
         "verdict": "5 mod-specific view(s) ported: guide, help, help_text, lead, popover",
-        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=8",
+        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=13 it(), byte-pins=8",
         "metrics": {
           "htmlViewsDeclared": 5,
           "htmlViewsCovered": 5,
@@ -2525,13 +2671,13 @@
           "manifestExists": true,
           "manifestViewsDeclared": 5,
           "testExists": true,
-          "testCount": 14,
+          "testCount": 13,
           "bytePins": 8
         }
       },
       "inv": {
         "gem": "card-mod-help-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-help-0.20.0",
+        "gemPath": "card-mod-help-0.20.0",
         "counts": {
           "setRbFiles": 6,
           "libRbFiles": 0,
@@ -2577,7 +2723,7 @@
           "popover"
         ],
         "testExists": true,
-        "testCount": 14,
+        "testCount": 13,
         "bytePins": 8
       }
     },
@@ -2586,27 +2732,18 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "2 mod-specific view(s) ported: draft_legend, last_action",
-        "evidence": "2/12 html views in HTML_VIEWS∪mod-manifests (2/12 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=30",
+        "verdict": "11 mod-specific view(s) ported: act, act_legend, action_expanded, action_summary, change, creator_credit, ...",
+        "evidence": "11/12 html views in HTML_VIEWS∪mod-manifests (11/12 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=38",
         "metrics": {
           "htmlViewsDeclared": 12,
-          "htmlViewsCovered": 2,
-          "htmlViewsMissing": 10,
+          "htmlViewsCovered": 11,
+          "htmlViewsMissing": 1,
           "htmlViewsMissingNames": [
-            "act",
-            "act_legend",
-            "action_expanded",
-            "action_summary",
-            "board_act",
-            "change",
-            "creator_credit",
-            "history",
-            "last_action_verb",
-            "updated_by"
+            "board_act"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 2,
-          "specificViewsCoverage": 16.7,
+          "specificViewsCovered": 11,
+          "specificViewsCoverage": 91.7,
           "patternsUsed": [
             "all"
           ],
@@ -2614,20 +2751,20 @@
             "all"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 16.7,
+          "viewsCoverage": 91.7,
           "setModules": 3,
           "libRbFiles": 12,
           "hamlFiles": 0,
           "manifestExists": true,
-          "manifestViewsDeclared": 1,
+          "manifestViewsDeclared": 9,
           "testExists": true,
           "testCount": 40,
-          "bytePins": 30
+          "bytePins": 38
         }
       },
       "inv": {
         "gem": "card-mod-history-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-history-0.20.0",
+        "gemPath": "card-mod-history-0.20.0",
         "counts": {
           "setRbFiles": 11,
           "libRbFiles": 12,
@@ -2700,11 +2837,19 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
-          "draft_legend"
+          "draft_legend",
+          "history",
+          "act",
+          "action_summary",
+          "action_expanded",
+          "last_action_verb",
+          "act_legend",
+          "last_action",
+          "change"
         ],
         "testExists": true,
         "testCount": 40,
-        "bytePins": 30
+        "bytePins": 38
       }
     },
     {
@@ -2746,7 +2891,7 @@
       },
       "inv": {
         "gem": "card-mod-integrate-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-integrate-0.20.0",
+        "gemPath": "card-mod-integrate-0.20.0",
         "counts": {
           "setRbFiles": 8,
           "libRbFiles": 0,
@@ -2790,23 +2935,16 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "18 mod-specific view(s) ported: bar_bottom, close_modal_link, head_content, input, modal, modal_footer, ...",
-        "evidence": "19/25 html views in HTML_VIEWS∪mod-manifests (18/24 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=7",
+        "verdict": "24 mod-specific view(s) ported: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ...",
+        "evidence": "25/25 html views in HTML_VIEWS∪mod-manifests (24/24 mod-specific); mod-loader pins: manifest=yes, test=34 it(), byte-pins=7",
         "metrics": {
           "htmlViewsDeclared": 25,
-          "htmlViewsCovered": 19,
-          "htmlViewsMissing": 6,
-          "htmlViewsMissingNames": [
-            "edit_inline",
-            "invite",
-            "my_card",
-            "sign_in",
-            "sign_out",
-            "sign_up"
-          ],
+          "htmlViewsCovered": 25,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 24,
-          "specificViewsCovered": 18,
-          "specificViewsCoverage": 75,
+          "specificViewsCovered": 24,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -2822,20 +2960,20 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 76,
+          "viewsCoverage": 100,
           "setModules": 23,
           "libRbFiles": 5,
           "hamlFiles": 3,
           "manifestExists": true,
-          "manifestViewsDeclared": 19,
+          "manifestViewsDeclared": 25,
           "testExists": true,
-          "testCount": 33,
+          "testCount": 34,
           "bytePins": 7
         }
       },
       "inv": {
         "gem": "card-mod-layout-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-layout-0.20.0",
+        "gemPath": "card-mod-layout-0.20.0",
         "counts": {
           "setRbFiles": 23,
           "libRbFiles": 5,
@@ -2928,11 +3066,17 @@
           "head_content",
           "one_line_content",
           "core",
+          "sign_up",
+          "sign_in",
+          "sign_out",
+          "invite",
+          "my_card",
+          "edit_inline",
           "input",
           "bar_bottom"
         ],
         "testExists": true,
-        "testCount": 33,
+        "testCount": 34,
         "bytePins": 7
       }
     },
@@ -2941,18 +3085,16 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "4 mod-specific view(s) ported: input, list, nest_list_input, one_line_content",
-        "evidence": "5/6 html views in HTML_VIEWS∪mod-manifests (4/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15",
+        "verdict": "5 mod-specific view(s) ported: input, list, nest_list_input, one_line_content, view_list",
+        "evidence": "6/6 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 6,
-          "htmlViewsCovered": 5,
-          "htmlViewsMissing": 1,
-          "htmlViewsMissingNames": [
-            "view_list"
-          ],
+          "htmlViewsCovered": 6,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 5,
-          "specificViewsCovered": 4,
-          "specificViewsCoverage": 80,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -2968,20 +3110,20 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 83.3,
+          "viewsCoverage": 100,
           "setModules": 16,
           "libRbFiles": 0,
           "hamlFiles": 8,
           "manifestExists": true,
-          "manifestViewsDeclared": 4,
+          "manifestViewsDeclared": 6,
           "testExists": true,
-          "testCount": 14,
+          "testCount": 15,
           "bytePins": 15
         }
       },
       "inv": {
         "gem": "card-mod-list-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-list-0.20.0",
+        "gemPath": "card-mod-list-0.20.0",
         "counts": {
           "setRbFiles": 18,
           "libRbFiles": 0,
@@ -3083,13 +3225,15 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "view_list",
           "one_line_content",
           "list",
+          "checkbox",
           "input",
           "nest_list_input"
         ],
         "testExists": true,
-        "testCount": 14,
+        "testCount": 15,
         "bytePins": 15
       }
     },
@@ -3098,8 +3242,8 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "manifest + byte-pinned test (13 pins across 14 it()): core",
-        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=13",
+        "verdict": "manifest + byte-pinned test (15 pins across 14 it()): core",
+        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 1,
           "htmlViewsCovered": 1,
@@ -3123,12 +3267,12 @@
           "manifestViewsDeclared": 1,
           "testExists": true,
           "testCount": 14,
-          "bytePins": 13
+          "bytePins": 15
         }
       },
       "inv": {
         "gem": "card-mod-markdown-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-markdown-0.20.0",
+        "gemPath": "card-mod-markdown-0.20.0",
         "counts": {
           "setRbFiles": 1,
           "libRbFiles": 0,
@@ -3163,7 +3307,7 @@
         ],
         "testExists": true,
         "testCount": 14,
-        "bytePins": 13
+        "bytePins": 15
       }
     },
     {
@@ -3207,7 +3351,7 @@
       },
       "inv": {
         "gem": "card-mod-permissions-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-permissions-0.20.0",
+        "gemPath": "card-mod-permissions-0.20.0",
         "counts": {
           "setRbFiles": 11,
           "libRbFiles": 0,
@@ -3326,7 +3470,7 @@
       },
       "inv": {
         "gem": "card-mod-recaptcha-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-recaptcha-0.20.0",
+        "gemPath": "card-mod-recaptcha-0.20.0",
         "counts": {
           "setRbFiles": 8,
           "libRbFiles": 1,
@@ -3395,39 +3539,16 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "12 mod-specific view(s) ported: bar, bar_bottom, bar_middle, bar_right, grouped_list, help_text, ...",
-        "evidence": "13/35 html views in HTML_VIEWS∪mod-manifests (12/34 mod-specific); mod-loader pins: manifest=yes, test=29 it(), byte-pins=19",
+        "verdict": "34 mod-specific view(s) ported: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ...",
+        "evidence": "35/35 html views in HTML_VIEWS∪mod-manifests (34/34 mod-specific); mod-loader pins: manifest=yes, test=29 it(), byte-pins=19",
         "metrics": {
           "htmlViewsDeclared": 35,
-          "htmlViewsCovered": 13,
-          "htmlViewsMissing": 22,
-          "htmlViewsMissingNames": [
-            "accordion_bar_list",
-            "accordion_rule_list",
-            "bar_setting_list",
-            "board_rules_tab",
-            "card_select",
-            "filtered_accordion_rule_list",
-            "modal_nest_rules",
-            "modal_pill_setting_list",
-            "modal_rule",
-            "nest_rules",
-            "overlay_rule",
-            "overlay_rule_list_link",
-            "pill_setting_list",
-            "quick_edit",
-            "quick_edit_setting_list",
-            "quick_edit_success",
-            "rule_board_link",
-            "rule_edit",
-            "rule_form",
-            "rule_form_card_editor",
-            "rule_nest_editor_link",
-            "template_link"
-          ],
+          "htmlViewsCovered": 35,
+          "htmlViewsMissing": 0,
+          "htmlViewsMissingNames": [],
           "specificViewsDeclared": 34,
-          "specificViewsCovered": 12,
-          "specificViewsCoverage": 35.3,
+          "specificViewsCovered": 34,
+          "specificViewsCoverage": 100,
           "patternsUsed": [
             "all",
             "all",
@@ -3449,12 +3570,12 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 37.1,
+          "viewsCoverage": 100,
           "setModules": 24,
           "libRbFiles": 0,
           "hamlFiles": 4,
           "manifestExists": true,
-          "manifestViewsDeclared": 5,
+          "manifestViewsDeclared": 30,
           "testExists": true,
           "testCount": 29,
           "bytePins": 19
@@ -3462,7 +3583,7 @@
       },
       "inv": {
         "gem": "card-mod-rules-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-rules-0.20.0",
+        "gemPath": "card-mod-rules-0.20.0",
         "counts": {
           "setRbFiles": 32,
           "libRbFiles": 0,
@@ -3553,11 +3674,36 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "quick_edit_success",
+          "card_select",
+          "one_line_content",
+          "raw_one_line_content",
+          "overlay_rule",
+          "modal_rule",
           "overlay_title",
+          "help_text",
+          "rule_edit",
           "rule_help",
+          "rule_nest_editor_link",
+          "rule_board_link",
+          "quick_edit",
+          "rule_form",
+          "rule_form_card_editor",
           "grouped_list",
           "set_label",
-          "input"
+          "input",
+          "board_rules_tab",
+          "filtered_accordion_rule_list",
+          "nest_rules",
+          "modal_nest_rules",
+          "bar_setting_list",
+          "pill_setting_list",
+          "modal_pill_setting_list",
+          "accordion_rule_list",
+          "accordion_bar_list",
+          "quick_edit_setting_list",
+          "overlay_rule_list_link",
+          "template_link"
         ],
         "testExists": true,
         "testCount": 29,
@@ -3603,7 +3749,7 @@
           "libRbFiles": 2,
           "hamlFiles": 0,
           "manifestExists": true,
-          "manifestViewsDeclared": 5,
+          "manifestViewsDeclared": 6,
           "testExists": true,
           "testCount": 18,
           "bytePins": 15
@@ -3611,7 +3757,7 @@
       },
       "inv": {
         "gem": "card-mod-script-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-script-0.20.0",
+        "gemPath": "card-mod-script-0.20.0",
         "counts": {
           "setRbFiles": 16,
           "libRbFiles": 2,
@@ -3686,7 +3832,8 @@
           "javascript_tags",
           "script_calls",
           "javascript_include_tag",
-          "remote_script_tags"
+          "remote_script_tags",
+          "core"
         ],
         "testExists": true,
         "testCount": 18,
@@ -3698,29 +3845,27 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "8 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, count, goto_autocomplete_item, one_line_content, ...",
-        "evidence": "11/23 html views in HTML_VIEWS∪mod-manifests (8/20 mod-specific); mod-loader pins: manifest=yes, test=24 it(), byte-pins=6",
+        "verdict": "10 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ...",
+        "evidence": "13/23 html views in HTML_VIEWS∪mod-manifests (10/20 mod-specific); mod-loader pins: manifest=yes, test=27 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 23,
-          "htmlViewsCovered": 11,
-          "htmlViewsMissing": 12,
+          "htmlViewsCovered": 13,
+          "htmlViewsMissing": 10,
           "htmlViewsMissingNames": [
             "body",
-            "checkbox_list",
             "complete",
             "feed_body",
             "feed_item_description",
             "molecule",
             "name_complete",
             "name_match",
-            "results_for_keyword",
             "search_box",
             "search_box_complete",
             "select2_option"
           ],
           "specificViewsDeclared": 20,
-          "specificViewsCovered": 8,
-          "specificViewsCoverage": 40,
+          "specificViewsCovered": 10,
+          "specificViewsCoverage": 50,
           "patternsUsed": [
             "all",
             "all",
@@ -3736,20 +3881,20 @@
             "type"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 47.8,
+          "viewsCoverage": 56.5,
           "setModules": 28,
           "libRbFiles": 1,
           "hamlFiles": 5,
           "manifestExists": true,
-          "manifestViewsDeclared": 6,
+          "manifestViewsDeclared": 8,
           "testExists": true,
-          "testCount": 24,
-          "bytePins": 6
+          "testCount": 27,
+          "bytePins": 5
         }
       },
       "inv": {
         "gem": "card-mod-search-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-search-0.20.0",
+        "gemPath": "card-mod-search-0.20.0",
         "counts": {
           "setRbFiles": 29,
           "libRbFiles": 1,
@@ -3871,13 +4016,15 @@
           "count",
           "search_count",
           "search_error",
+          "checkbox_list",
           "one_line_content",
+          "results_for_keyword",
           "goto_autocomplete_item",
           "add_autocomplete_item"
         ],
         "testExists": true,
-        "testCount": 24,
-        "bytePins": 6
+        "testCount": 27,
+        "bytePins": 5
       }
     },
     {
@@ -3917,7 +4064,7 @@
       },
       "inv": {
         "gem": "card-mod-session-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-session-0.20.0",
+        "gemPath": "card-mod-session-0.20.0",
         "counts": {
           "setRbFiles": 2,
           "libRbFiles": 1,
@@ -3978,14 +4125,13 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "5 mod-specific view(s) ported: box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag",
-        "evidence": "6/13 html views in HTML_VIEWS∪mod-manifests (5/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=35",
+        "verdict": "6 mod-specific view(s) ported: box, box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag",
+        "evidence": "7/13 html views in HTML_VIEWS∪mod-manifests (6/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=37",
         "metrics": {
           "htmlViewsDeclared": 13,
-          "htmlViewsCovered": 6,
-          "htmlViewsMissing": 7,
+          "htmlViewsCovered": 7,
+          "htmlViewsMissing": 6,
           "htmlViewsMissingNames": [
-            "box",
             "compiled",
             "compressed",
             "import",
@@ -3994,8 +4140,8 @@
             "stylesheet_path"
           ],
           "specificViewsDeclared": 12,
-          "specificViewsCovered": 5,
-          "specificViewsCoverage": 41.7,
+          "specificViewsCovered": 6,
+          "specificViewsCoverage": 50,
           "patternsUsed": [
             "all",
             "self",
@@ -4009,20 +4155,20 @@
             "type_plus_right"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 46.2,
+          "viewsCoverage": 53.8,
           "setModules": 16,
           "libRbFiles": 0,
           "hamlFiles": 2,
           "manifestExists": true,
-          "manifestViewsDeclared": 3,
+          "manifestViewsDeclared": 4,
           "testExists": true,
           "testCount": 17,
-          "bytePins": 35
+          "bytePins": 37
         }
       },
       "inv": {
         "gem": "card-mod-style-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-style-0.20.0",
+        "gemPath": "card-mod-style-0.20.0",
         "counts": {
           "setRbFiles": 16,
           "libRbFiles": 0,
@@ -4111,11 +4257,12 @@
         "manifestViews": [
           "box_bottom",
           "customize_button",
-          "box_middle"
+          "box_middle",
+          "core"
         ],
         "testExists": true,
         "testCount": 17,
-        "bytePins": 35
+        "bytePins": 37
       }
     },
     {
@@ -4155,7 +4302,7 @@
       },
       "inv": {
         "gem": "card-mod-tabs-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-tabs-0.20.0",
+        "gemPath": "card-mod-tabs-0.20.0",
         "counts": {
           "setRbFiles": 2,
           "libRbFiles": 2,
@@ -4207,26 +4354,23 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "2 mod-specific view(s) ported: change_create_to_update, open_nest_editor",
-        "evidence": "2/11 html views in HTML_VIEWS∪mod-manifests (2/11 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=33",
+        "verdict": "5 mod-specific view(s) ported: change_create_to_update, link_editor, modal_link_editor, new_image_buttons, open_nest_editor",
+        "evidence": "5/11 html views in HTML_VIEWS∪mod-manifests (5/11 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=31",
         "metrics": {
           "htmlViewsDeclared": 11,
-          "htmlViewsCovered": 2,
-          "htmlViewsMissing": 9,
+          "htmlViewsCovered": 5,
+          "htmlViewsMissing": 6,
           "htmlViewsMissingNames": [
-            "link_editor",
-            "modal_link_editor",
             "modal_nest_editor",
             "modal_nest_image",
             "nest_content",
             "nest_editor",
             "nest_image",
-            "new_image",
-            "new_image_buttons"
+            "new_image"
           ],
           "specificViewsDeclared": 11,
-          "specificViewsCovered": 2,
-          "specificViewsCoverage": 18.2,
+          "specificViewsCovered": 5,
+          "specificViewsCoverage": 45.5,
           "patternsUsed": [
             "all",
             "self"
@@ -4236,20 +4380,20 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 18.2,
+          "viewsCoverage": 45.5,
           "setModules": 4,
           "libRbFiles": 1,
           "hamlFiles": 10,
           "manifestExists": true,
-          "manifestViewsDeclared": 2,
+          "manifestViewsDeclared": 5,
           "testExists": true,
           "testCount": 33,
-          "bytePins": 33
+          "bytePins": 31
         }
       },
       "inv": {
         "gem": "card-mod-tinymce_editor-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-tinymce_editor-0.20.0",
+        "gemPath": "card-mod-tinymce_editor-0.20.0",
         "counts": {
           "setRbFiles": 9,
           "libRbFiles": 1,
@@ -4299,12 +4443,15 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "link_editor",
+          "modal_link_editor",
+          "new_image_buttons",
           "change_create_to_update",
           "open_nest_editor"
         ],
         "testExists": true,
         "testCount": 33,
-        "bytePins": 33
+        "bytePins": 31
       }
     },
     {
@@ -4342,7 +4489,7 @@
       },
       "inv": {
         "gem": "card-mod-virtual-0.20.0",
-        "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-virtual-0.20.0",
+        "gemPath": "card-mod-virtual-0.20.0",
         "counts": {
           "setRbFiles": 1,
           "libRbFiles": 1,

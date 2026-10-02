@@ -37,6 +37,7 @@ import {
   diffTrackedFields,
   trackedFieldIndex,
   type CardFieldState,
+  type TrackedField,
 } from "./change.js";
 import type { ReadRuleRecord } from "../permissions/set-read-rule.js";
 
@@ -89,6 +90,11 @@ export interface CreateCardInput {
    *  "the first operation on the writer" (the common request shape); see
    *  ActWriter docs. */
   isActCard?: boolean;
+  /** card_actions.comment on the CREATE action — the attachment mod's
+   *  :save_original_filename writes the original upload filename there on
+   *  create saves too (card-mod-carrierwave set/abstract/attachment.rb
+   *  :20-24; the update path already carried comment). Defaults to NULL. */
+  comment?: string | null;
 }
 
 export interface UpdateCardInput {
@@ -124,6 +130,16 @@ export interface UpdateCardInput {
    *  Defaults to "the first operation on the writer" (the common request
    *  shape); see ActWriter docs. */
   isActCard?: boolean;
+  /** Fields the caller asserts are dirty BEYOND the tracked-field diff —
+   *  unioned into `changed` when the diff comes up empty. Needed because
+   *  Ruby's dirty flag for a mounted attachment is the ASSIGNMENT, not the
+   *  computed value: re-uploading a file with the same extension computes
+   *  an intermediate identifier equal to the current db_content, yet the
+   *  save is real (new action row, new bytes, :correct_identifier rewrite —
+   *  card-mod-carrierwave attachment.rb's mount assignment + event pair).
+   *  Without this the no-op detection below silently drops the attachment
+   *  save. */
+  dirtyFields?: readonly TrackedField[];
 }
 
 export interface SavedAction {
@@ -227,7 +243,7 @@ export class ActWriter {
       superActionId: input.superActionId ?? null,
       actionType: actionTypeCode("create"),
       draft: 0,
-      comment: null,
+      comment: input.comment ?? null,
     });
     const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
 
@@ -255,7 +271,13 @@ export class ActWriter {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<SavedAction | null> {
-    const changed = diffTrackedFields(input.before, input.after);
+    let changed = diffTrackedFields(input.before, input.after);
+    if (changed.length === 0 && input.dirtyFields !== undefined) {
+      // Caller-asserted dirty fields (the mounted-attachment assignment —
+      // see UpdateCardInput.dirtyFields): a real save even when the computed
+      // values equal the pre-act state.
+      changed = [...input.dirtyFields];
+    }
     if (changed.length === 0) {
       // finalize_action else-branch (events.rb:34-37): with no changed
       // fields and no pre-existing changes the action row is never saved,

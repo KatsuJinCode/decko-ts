@@ -1,7 +1,7 @@
 // import-deck.test.ts — the productized CLI's tests, covering chunking +
 // validation on a small synthetic fixture.
 //
-// The ask: "tests for the chunking + validation on a small fixture". The
+// Coverage: chunking + validation on a small synthetic fixture. The
 // fixture is a tiny deck built from the existing synthetic-dump helpers,
 // written in all three source shapes (SQLite, mysqldump, deck-INSERT
 // text) so the CLI's three ingest paths are exercised end-to-end on the
@@ -363,10 +363,9 @@ describe("import-deck CLI - chunking + validation", () => {
     // Apply every chunk into a brand-new SQLite DB and re-count.
     const targetDb = join(dir, "roundtrip.sqlite");
     const db = new Database(targetDb);
-    const { readFileSync: rd, readdirSync: rdd } = require("node:fs") as typeof import("node:fs");
     db.exec(readFileSync(join(REPO_ROOT, "db", "schema.sqlite.sql"), "utf8"));
-    for (const f of rdd(join(outDir, "chunks")).filter((x) => x.endsWith(".sql")).sort()) {
-      db.exec(rd(join(outDir, "chunks", f), "utf8"));
+    for (const f of readdirSync(join(outDir, "chunks")).filter((x) => x.endsWith(".sql")).sort()) {
+      db.exec(readFileSync(join(outDir, "chunks", f), "utf8"));
     }
     const cards = db.prepare("SELECT COUNT(*) AS n FROM cards").get() as { n: number };
     expect(cards.n).toBe(7);

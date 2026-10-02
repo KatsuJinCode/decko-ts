@@ -84,13 +84,39 @@ const FIXTURE = JSON.parse(
   >;
 };
 
+/** The slice-4 fixture (fixtures/captured/edit-name-type.json): 8 views per
+ *  actor per target - the name-editor family (edit_name, name_form,
+ *  name_formgroup, edit_name_row) and the type-shift family (edit_type,
+ *  edit_type_form, type_formgroup, board_type_formgroup). */
+const NAME_TYPE_FIXTURE = JSON.parse(
+  readFileSync(
+    fileURLToPath(
+      new URL("../../../fixtures/captured/edit-name-type.json", import.meta.url),
+    ),
+    "utf8",
+  ),
+) as {
+  targets: Record<
+    string,
+    {
+      id: number;
+      name: string;
+      type: string;
+      views: Record<string, Record<string, string>>;
+    }
+  >;
+  no_write_proof: { actions_before: number; actions_after: number; unchanged: boolean };
+};
+
 /** The capture's normalizations (see the module doc): slot ids and card ids
  *  are random/seed-state by design; the conflict tracker's value is the
- *  captured card's action id (693/604). */
+ *  captured card's action id (693/604); data-select2-id (the type select's
+ *  "<unique_id>-<epoch>" marker, slice 4) normalizes to SELECT2. */
 function normalize(html: string): string {
   return html
     .replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"')
     .replace(/data-card-id=(["'])\d+\1/g, 'data-card-id="RANDOMIZED"')
+    .replace(/data-select2-id=(["'])([^"']*)-\d+\1/g, 'data-select2-id="SELECT2"')
     .replace(
       /(<input class="current_revision_id form-control" autocomplete="off" type="hidden" value=")[^"]*(")/,
       "$1ACTION_ID$2",
@@ -108,13 +134,23 @@ let loader: ModLoader | undefined;
  *  holding its default ANONYMOUS viewer (the storage's main engine is
  *  switched to the signed-in admin stand-in viewer). */
 let anonymousEngine: RenderEngine | undefined;
+/** The bot stand-in engine (write-path slice 4): viewer actorId 1 = the
+ *  decko_bot codename card -> Auth.always_ok? (read-rules.ts alwaysOk) -
+ *  every task verdict passes without a rule walk, matching the captured
+ *  admin actor's createable list (all 28 cardtype cards). */
+let botEngine: RenderEngine | undefined;
+/** The sara stand-in engine: a plain signed-in member (actorId 583, no
+ *  role membership) - passes *all+*create ("Anyone Signed In"), fails the
+ *  eight type-scoped Shark rules - the captured member createable list
+ *  (20 of 28). */
+let saraEngine: RenderEngine | undefined;
 
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
 
   // codename/type cards (the codename registry + set keys read these)
-  await seedCard(s, { id: 2, name: "RichText" }); // the cardtypes' type card
+  await seedCard(s, { id: 2, name: "RichText", typeId: 9 }); // the cardtypes' type card (type Cardtype - in the createable search)
   await seedCard(s, { id: 7, name: "Editor" });
   await seedCard(s, { id: 8, name: "*type", codename: "type", typeId: 14 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
@@ -157,6 +193,82 @@ beforeAll(async () => {
   // prime the codehash memo so the sync peeks resolve deterministically.
   s.fetcher.installNameEnvironment();
   await s.fetcher.codenames.ensureLoaded();
+
+  // ---- write-path slice 4 seeds: the create-rule surface the type select's
+  // createable list reads. Captured from the oracle deck (probe recorded in
+  // tmp/wrong-goal-hunt/edit2-lane.md): *all+*create => "Anyone Signed In";
+  // eight type-scoped rules => "Shark"; 28 cardtype-typed cards survive the
+  // non_createable_types basket filter.
+  // codename "decko_bot" (underscore) — the STORED spelling the permission
+  // machinery matches (actor.ts:47 DECKOBOT_CODENAME; codename.rb:107-110
+  // derives DeckoBotID from the stored codename; recode.yml:8 records the
+  // wagn_bot -> decko_bot rename — it was never "deckobot"). The seed
+  // predates the read-rules.ts constant fix and the bot stand-in silently
+  // lost always_ok, rendering 26 createable types against the captured 28.
+  await seedCard(s, { id: 1, name: "Decko Bot 1", codename: "decko_bot" });
+  await seedCard(s, { id: 9, name: "Cardtype", codename: "cardtype", typeId: 9 });
+  await seedCard(s, { id: 15, name: "*create", codename: "create", typeId: 14 });
+  await seedCard(s, { id: 16, name: "*anyone", codename: "anyone", typeId: 14 });
+  await seedCard(s, {
+    id: 17,
+    name: "*anyone signed in",
+    codename: "anyone_signed_in",
+    typeId: 14,
+  });
+  await seedCard(s, { id: 25, name: "Anonymous", codename: "anonymous" });
+  await seedCard(s, { id: 50, name: "Shark" });
+  // the 26 non-RichText/Cardtype bot-createable cardtype cards (ids 51..76)
+  const TYPE_CARDS = [
+    "PlainText", "Markdown", "Phrase", "HTML", "Number", "Toggle", "Date",
+    "URI", "File", "Image", "List", "Pointer", "Search", "Link list",
+    "Nest list", "Notification template", "Email template", "User", "Role",
+    "Layout", "Skin", "CSS", "SCSS", "JSON", "JavaScript", "CoffeeScript",
+  ] as const;
+  const typeIdByName = new Map<string, number>(
+    TYPE_CARDS.map((name, i) => [name, 51 + i]),
+  );
+  for (const name of TYPE_CARDS) {
+    await seedCard(s, { id: typeIdByName.get(name)!, name, typeId: 9 });
+  }
+  // *all+*create -> "Anyone Signed In" (party reference to card 17) - the
+  // deck-default create rule the member verdicts ride
+  await seedCard(s, {
+    id: 80,
+    leftId: 10,
+    rightId: 15,
+    dbContent: "Anyone Signed In",
+  });
+  await seedReference(s, 80, 17, "anyone_signed_in");
+  // the deck's *all+*update ALSO grants Anyone Signed In (the captured sara
+  // renders the full name/type forms - the member passes update); the
+  // existing reference row carries the Editor party, this one the
+  // signed-in party (the anonymous denial still holds: its parties lack
+  // Anyone Signed In)
+  await seedReference(s, 30, 17, "anyone_signed_in");
+  // the eight type-scoped Shark rules (HTML Cardtype JavaScript CoffeeScript
+  // CSS SCSS Skin Layout): "<Type>+*type" set card (type Set, id 13) then
+  // the rule row hanging off *create, each granting [[Shark]] (card 50)
+  const SHARK_TYPES = [
+    "HTML", "Cardtype", "JavaScript", "CoffeeScript", "CSS", "SCSS",
+    "Skin", "Layout",
+  ] as const;
+  for (const [i, typeName] of SHARK_TYPES.entries()) {
+    const typeCardId = typeName === "Cardtype" ? 9 : typeIdByName.get(typeName)!;
+    const setCardId = 200 + i; // above every card id seeded above
+    await seedCard(s, {
+      id: setCardId,
+      leftId: typeCardId,
+      rightId: 8,
+      typeId: 13, // Set-typed: the who_can join reads sets.type_id
+    });
+    await seedCard(s, {
+      id: 210 + i,
+      leftId: setCardId,
+      rightId: 15,
+      dbContent: "Shark",
+    });
+    await seedReference(s, 210 + i, 50, "shark");
+  }
 }, 60_000);
 
 afterAll(() => {
@@ -238,5 +350,70 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
     expect(fixture.conflict_probe.errors_conflict).toEqual([
       "changes not based on latest revision",
     ]);
+  });
+});
+
+describe("card-mod-edit NAME + TYPE editors (write-path slice 4)", () => {
+  // The captured view set per actor per target (the name-editor family and
+  // the type-shift family; oracle: fixtures/captured/edit-name-type.json,
+  // captured in-process by tests/card/mod-loader/oracle-capture-edit-
+  // name-type.rb for the SAME two targets and three actors as slice 3).
+  const NAME_TYPE_VIEWS = [
+    "edit_name",
+    "name_form",
+    "name_formgroup",
+    "edit_name_row",
+    "edit_type",
+    "edit_type_form",
+    "type_formgroup",
+    "board_type_formgroup",
+  ] as const;
+
+  it("the pinned capture is render-only: card_actions count unchanged (no-write proof)", () => {
+    expect(NAME_TYPE_FIXTURE.no_write_proof.unchanged).toBe(true);
+    expect(NAME_TYPE_FIXTURE.no_write_proof.actions_before).toBe(
+      NAME_TYPE_FIXTURE.no_write_proof.actions_after,
+    );
+  });
+
+  it("bot stand-in (always_ok): all 8 views match the oracle bytes (both cards)", async () => {
+    const s = storage!;
+    botEngine = new RenderEngine(new FetchEngine(s.counting));
+    botEngine.viewer = { signedIn: true, actorId: 1 }; // the decko_bot codename card
+    await loader!.installInto(modEngineHost(botEngine, s.fetcher));
+    for (const [targetKey, target] of Object.entries(NAME_TYPE_FIXTURE.targets)) {
+      for (const view of NAME_TYPE_VIEWS) {
+        const html = normalize(await botEngine.render(target.name, view));
+        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.bot[view]);
+      }
+    }
+  });
+
+  it("sara stand-in (plain member): the type views carry the member createable list", async () => {
+    const s = storage!;
+    saraEngine = new RenderEngine(new FetchEngine(s.counting));
+    saraEngine.viewer = { signedIn: true, actorId: 583 }; // no role membership
+    await loader!.installInto(modEngineHost(saraEngine, s.fetcher));
+    for (const [targetKey, target] of Object.entries(NAME_TYPE_FIXTURE.targets)) {
+      for (const view of NAME_TYPE_VIEWS) {
+        const html = normalize(await saraEngine.render(target.name, view));
+        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.sara[view]);
+      }
+    }
+  });
+
+  it("anonymous: the perms views render the quiet denial span, the perms-free views the full bytes", async () => {
+    const s = storage!;
+    for (const [targetKey, target] of Object.entries(NAME_TYPE_FIXTURE.targets)) {
+      for (const view of ["edit_name", "name_form", "edit_type", "edit_type_form"] as const) {
+        // No normalization: the denial span carries no dynamic bytes.
+        const html = await anonymousEngine!.render(target.name, view);
+        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.anonymous[view]);
+      }
+      for (const view of ["name_formgroup", "edit_name_row", "type_formgroup", "board_type_formgroup"] as const) {
+        const html = normalize(await anonymousEngine!.render(target.name, view));
+        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.anonymous[view]);
+      }
+    }
   });
 });

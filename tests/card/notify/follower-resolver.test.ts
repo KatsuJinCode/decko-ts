@@ -24,6 +24,7 @@ import {
   createActionsTestStorage,
   seedCard,
   seedStandardDeck,
+  SET_TYPE_ID,
   type ActionsTestStorage,
   type StandardFixture,
 } from "../actions/actions-test-storage.js";
@@ -38,9 +39,14 @@ import {
 } from "../../../src/card/notify/index.js";
 
 // Row ids used by the follow deck below (seedStandardDeck takes 2, 3, 7,
-// 8, 50; the wiring test took 556-562).
+// 8, 50 and, since the write-rule machinery landed, 300-307 with the
+// codenames set/create/update/delete/anyone; the wiring test took 556-562).
 const ID = {
-  set: 100,
+  // the Set TYPE rows must be typed Set (Ruby's sets.type_id = SetID,
+  // preference_cache.rb:17): reuse the FIXTURE's Set codename card — a
+  // second codename-"set" row hits cards.codename UNIQUE (the same
+  // collision rule-content-walk.test.ts hit; cards.codename is UNIQUE)
+  set: SET_TYPE_ID,
   setting: 101,
   user: 102,
   follow: 103,
@@ -66,14 +72,14 @@ const ID = {
 } as const;
 
 /** The codename + user + follow-rule minimum a follower-resolution test
- *  needs on top of seedStandardDeck: the Set/Setting/User type cards,
- *  the *follow setting, the four option cards, the *self/*type pattern
- *  cards, Joe + Sara as User-typed cards with +*account+*email children,
- *  and set rows typed Set (as Ruby's PreferenceCache SQL requires —
- *  rule/preference_cache.rb:17 `sets.type_id = SetID`). */
+ *  needs on top of seedStandardDeck: the Setting/User type cards (Set
+ *  comes from the fixture itself), the *follow setting, the four option
+ *  cards, the *self/*type pattern cards, Joe + Sara as User-typed cards
+ *  with +*account+*email children, and set rows typed Set (as Ruby's
+ *  PreferenceCache SQL requires — rule/preference_cache.rb:17
+ *  `sets.type_id = SetID`). */
 async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixture> {
   const f = await seedStandardDeck(storage);
-  await seedCard(storage, { id: ID.set, name: "Set", codename: "set", typeId: 3 });
   await seedCard(storage, { id: ID.setting, name: "Setting", codename: "setting", typeId: 3 });
   await seedCard(storage, { id: ID.user, name: "User", codename: "user", typeId: 3 });
   await seedCard(storage, { id: ID.follow, name: "*follow", codename: "follow", typeId: ID.setting });

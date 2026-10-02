@@ -154,26 +154,43 @@ describe("limit / offset / count quirks", () => {
 });
 
 describe("sorting", () => {
+  // Every SINGLE-TABLE ORDER BY carries the `c0.id asc` tie-breaker
+  // (sql.ts orderDirectivesOf): Ruby declares none, so production's SQLite
+  // ties resolved by rowid == cards.id; the corpus decks tie on the NULL-key
+  // tier with arbitrary seeded physical order instead (see the p20
+  // cardtype-search lane receipt). JOINED statements never take the
+  // tie-breaker: with a join in flight the unspecified tier is the JOIN
+  // EMISSION order (the driving table's rowid sequence), and appending
+  // `c0.id asc` re-sorts that tier away from production bytes — the somatic
+  // *referred_to_by listing rendered referrer 27518 in slot 13 instead of
+  // slot 29 (its card_references row was inserted last, cr.id 6296176),
+  // pushing 29740 off the limit-20 listing (refer-to-composition lane).
   it("ORDER_MAP mapping and default dir [oracle: sort: 'update' -> ORDER BY c0.updated_at desc]", () => {
     expect(sql({ sort: "update" }).sql).toBe(
-      "SELECT c0.*, c0.updated_at FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc",
+      "SELECT c0.*, c0.updated_at, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.id asc",
     );
   });
 
   it("explicit sort_dir [oracle: ... ORDER BY c0.key desc]", () => {
     expect(sql({ return: "name", sort: "name", sort_dir: "desc" }).sql).toBe(
-      "SELECT c0.name, c0.left_id, c0.right_id, c0.key FROM cards c0 WHERE c0.trash is false ORDER BY c0.key desc",
+      "SELECT c0.name, c0.left_id, c0.right_id, c0.key, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.key desc, c0.id asc",
     );
   });
 
   it("multiple sorts with per-directive dirs [oracle: ORDER BY c0.updated_at desc, c0.key asc]", () => {
     expect(sql({ sort: ["update", "name"], sort_dir: ["desc", "asc"] }).sql).toBe(
-      "SELECT c0.*, c0.updated_at, c0.key FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.key asc",
+      "SELECT c0.*, c0.updated_at, c0.key, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.key asc, c0.id asc",
+    );
+  });
+
+  it("sort: id does not double the tie-breaker (the directive is already total)", () => {
+    expect(sql({ sort: "id" }).sql).toBe(
+      "SELECT c0.*, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.id asc",
     );
   });
 
   it("deprecated dir behaves like sort_dir [oracle]", () => {
-    expect(sql({ sort: "name", dir: "desc" }).sql).toContain("ORDER BY c0.key desc");
+    expect(sql({ sort: "name", dir: "desc" }).sql).toContain("ORDER BY c0.key desc, c0.id asc");
   });
 
   it("sort hash builds the LEFT JOIN and orders by the joined field [oracle]", () => {
@@ -181,6 +198,9 @@ describe("sorting", () => {
     // SELECT DISTINCT c0.*, c1.db_content FROM cards c0
     //  LEFT JOIN (cards c1
     //  JOIN cards c2 ON c1.right_id = c2.id AND c2.trash is false ) ON c0.id = c1.left_id AND c1.trash is false WHERE c0.trash is false ORDER BY c1.db_content asc
+    // Joined statements carry the bare Ruby ORDER BY — no `c0.id asc`
+    // tie-breaker (its unspecified tier is the join emission order, not
+    // the superquery's id column; see the describe block above).
     expect(sql({ sort: { right: {} } }).sql).toBe(
       "SELECT DISTINCT c0.*, c1.db_content FROM cards c0 " +
         "LEFT JOIN (cards c1 JOIN cards c2 ON c1.right_id = c2.id AND c2.trash is false) " +
@@ -190,7 +210,7 @@ describe("sorting", () => {
 
   it("sort_as casts the field (SQLite type approximation)", () => {
     expect(sql({ sort: "name", sort_as: "numeric" }).sql).toContain(
-      "ORDER BY CAST(c0.key AS REAL) asc",
+      "ORDER BY CAST(c0.key AS REAL) asc, c0.id asc",
     );
   });
 });
@@ -458,9 +478,12 @@ describe("statement shorthand", () => {
   });
 });
 
-describe("found_by (deferred)", () => {
-  it("generateSql refuses found_by with a pointer to the notes", () => {
-    expect(() => sql({ found_by: { id: 5 } })).toThrow(/found_by requires runtime query execution/);
+// Re-pinned by the pass-17 integration (lane-cql-found-by): found_by
+// resolves at execution now; the generator case is the loud backstop for
+// shapes resolveFoundByConditions did not translate.
+describe("found_by (generator backstop)", () => {
+  it("generateSql's backstop refuses unresolved found_by shapes with an explicit error", () => {
+    expect(() => sql({ found_by: { id: 5 } })).toThrow(/found_by condition reached SQL generation unresolved/);
   });
 });
 

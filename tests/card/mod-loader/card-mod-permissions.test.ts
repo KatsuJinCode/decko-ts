@@ -280,9 +280,20 @@ describe("card-mod-permissions manifest structure", () => {
     expect(typeof permissionCoreView).toBe("function");
   });
 
-  it("the passive set files register no views (their events have no TS surface)", () => {
+  it("the event-only set files register no views; right/* register the include-materialized :input (the 2026-09-29 rules-views-port-3 chain registration)", () => {
     for (const module of cardModPermissions.setModules ?? []) {
       if (module.setPath === "abstract/permission") continue;
+      if (module.setPath.startsWith("right/")) {
+        // each right/* module's html format includes Abstract::Permission::
+        // HtmlFormat, so the perm-editor :input registers under each
+        // Right::<setting> shortname - the CHAIN resolves it for
+        // *X+<setting> rule cards (the rule_form_card_editor input chain;
+        // oracle-pinned in fixtures/captured/rules-views.json
+        // rule_form_card_editor)
+        const html = module.formats?.["html"]?.views ?? [];
+        expect(html.map((v) => v.view)).toEqual(["input"]);
+        continue;
+      }
       const formatKeys = Object.keys(module.formats ?? {});
       expect(formatKeys).toEqual([]);
     }
@@ -525,7 +536,7 @@ describe("card-mod-permissions events[] through the loader", () => {
     const fakeCard = { name: "*all+*read" };
     const fakeHost = {} as ModEngineHost;
     for (const entry of registry.all()) {
-      const result = await entry.fn(fakeCard, fakeHost);
+      const result = await entry.fn(fakeCard, fakeHost, {} as never);
       expect(result).toBeUndefined();
     }
   });
@@ -660,8 +671,14 @@ describe(":input (abstract/permission.rb:26-43)", () => {
   it("emits the hidden content field with the card content (content.rb:57-59 hidden_field)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "Anyone" }));
     const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    // the gem-true byte shape (the 2026-09-29 rules-views-port-3 lane's
+    // oracle correction, pinned by fixtures/captured/rules-views.json
+    // rule_form_card_editor): bootstrap's form-control class append
+    // (bootstrap/form.rb:24-28) + Tags::HiddenField's autocomplete +
+    // Tags::TextField's attr order (class, autocomplete, type, value,
+    // name, id)
     expect(out).toContain(
-      '<input type="hidden" name="card[content]" id="card_content" class="d0-card-content" value="Anyone" />',
+      '<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="Anyone" name="card[content]" id="card_content" />',
     );
   });
 
@@ -703,7 +720,13 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     expect(out).toContain(
       '<input type="checkbox" name="inherit" id="inherit" value="inherit" checked="checked" />',
     );
-    expect(out).toContain('<ul class="pointer-list-editor perm-indiv-ul"></ul>');
+    // the gem-true list_input shape: the ul class is list_input's OWN
+    // "pointer-list-ul" literal (card-mod-list html_views.rb:49-51 - the
+    // caller's extra_css_class argument is dead), single-quoted haml attrs,
+    // and items_for_input's empty -> [""] one value-less row (html_views.rb:
+    // 115-118); pinned by fixtures/captured/rules-views.json
+    // rule_form_card_editor
+    expect(out).toContain("<ul class='pointer-list-editor pointer-list-ul'>\n<li class='pointer-li mb-1'>");
   });
 
   it("no checkbox when the trunk is not a set card (permission.rb:74-77 not_set branch)", () => {
@@ -740,21 +763,26 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     expect(out).toContain(
       '<input type="checkbox" name="anyone_signed_in-perm-checkbox" id="anyone_signed_in-perm-checkbox" value="Anyone Signed In" class="perm-checkbox-button" />',
     );
-    expect(out).toContain('href="/Anyone" target="decko_role"');
+    // link_to_card's attr order: target (caller opt), class known-card
+    // (links.rb:140-144), href LAST (links.rb:105) - the gem-true shape the
+    // rules-views-port-3 lane's oracle pins
+    expect(out).toContain('<a target="decko_role" class="known-card" href="/Anyone">');
     expect(out).toContain("close_fullscreen");
-    // the individuals list carries ONLY the un-grouped items
-    expect(out).toContain('<ul class="pointer-list-editor perm-indiv-ul">');
+    // the individuals list carries ONLY the un-grouped items (the gem-true
+    // ul class - html_views.rb:49's own "pointer-list-ul" literal)
+    expect(out).toContain("<ul class='pointer-list-editor pointer-list-ul'>");
     expect(out).toContain('value="u1"');
     // Administrators appears only in its group row (label + checkbox), not
     // as a pointer_item input row
     expect(out).not.toContain(
       'name="pointer_item" id="pointer_item" value="Administrators"',
     );
-    // list_input.haml rows: handle icon, delete button, add-another
-    expect(out).toContain('<span class="input-group-text handle">');
+    // list_input.haml rows (single-quoted haml attrs, one tag per line):
+    // handle icon, delete button, add-another
+    expect(out).toContain("<span class='input-group-text handle'>");
     expect(out).toContain('class="pointer-item-text form-control"');
     expect(out).toContain('data-options-card="Cards_with_account"');
-    expect(out).toContain('class="_pointer-item-add btn btn-secondary" type="submit"');
+    expect(out).toContain("class='_pointer-item-add btn btn-secondary' type='submit'");
     expect(out).toContain("add another");
   });
 

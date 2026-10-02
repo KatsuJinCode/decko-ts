@@ -27,13 +27,16 @@
 //   - LOADER REGISTRATIONS (basket, settings registry, load report) run
 //     through ModLoader on a CLONED views record (card-mod-api_key.test.ts
 //     :266 precedent) so the live HTML_VIEWS record is never mutated.
-//   - RUBY-ORACLE PINS: the regex anchors, to_f and to_sym nil semantics,
-//     and the capitalize variants were pinned by running the gem's own
-//     interpreter (C:/Ruby33-x64/bin/ruby.exe) during this port; the tests
-//     below carry the oracle values in their comments.
+//   - RUBY-ORACLE PINS: the regex anchors, the to_f/to_sym parsing
+//     semantics, and the capitalize variants were pinned against Ruby 3.3
+//     via the committed probe tests/card/mod-loader/
+//     oracle-capture-recaptcha-semantics.rb (card-mod-recaptcha-0.20.0's
+//     own patterns); the tests below carry the oracle values in their
+//     comments.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -42,7 +45,6 @@ import { ModLoader } from "../../../src/card/mod-loader.js";
 import { HTML_VIEWS } from "../../../src/card/render/views.js";
 import cardModRecaptcha, {
   RECAPTCHA_CARDIO_CONFIG_DEFAULTS,
-  RECAPTCHA_DEFAULTS,
   RECAPTCHA_DEFAULT_ERROR,
   RECAPTCHA_DEPRECATED_CONFIG_NAMES,
   RECAPTCHA_ERROR_CODES,
@@ -292,6 +294,7 @@ describe("card-mod-recaptcha setting_opts (set/self/captcha.rb:1-5)", () => {
     const record = { ...HTML_VIEWS };
     const loader = new ModLoader([{ manifest: cardModRecaptcha }], record);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const permission = loader.settingsRegistry().groups.get("permission");
     expect(permission).toHaveLength(5);
     expect(permission?.[0]).toBeNull();
@@ -316,6 +319,7 @@ describe("card-mod-recaptcha setting_opts (set/self/captcha.rb:1-5)", () => {
       record,
     );
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const slots = loader.settingsRegistry().groups.get("permission") ?? [];
     expect(slots.map((entry) => entry?.codename ?? null)).toEqual([
       "create",
@@ -358,6 +362,7 @@ describe("card-mod-recaptcha through the mod loader", () => {
     const record = { ...HTML_VIEWS };
     const loader = new ModLoader([{ manifest: cardModRecaptcha }], record);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const basket = loader.setModules();
     // all/* -> base (All::Recaptcha)
     expect(basket.base.map((m) => m.shortname)).toContain("All::Recaptcha");
@@ -382,16 +387,35 @@ describe("card-mod-recaptcha through the mod loader", () => {
     }
   });
 
-  it("registers :core into the views record and reset restores the pre-load state", () => {
+  it("registers :core on its set module, NOT on the base-format record, and reset restores", () => {
+    // CORRECTED 2026-09-28 (lane-chainfor). The old expectation - that
+    // the mod's :core REPLACES HTML_VIEWS["core"] - was the deck-wide
+    // masking defect, and card-mod-recaptcha's :core is the case the
+    // dispatch note in format.ts calls out by name ("card-mod-recaptcha's
+    // :core hijacks every card's :core when it loads last"). Ruby scopes
+    // it: a set-scoped view's format module lives in
+    // Set.modules[:nonbase_format] (set/format.rb:146-150) and reaches a
+    // card only through that card's own pattern module keys
+    // (pattern/all.rb:49-55), so it is NOT the base format class's
+    // method. "define_method replace" is true WITHIN a set module
+    // (SetModuleViewTable.register) and false across the base record.
     const record = { ...HTML_VIEWS };
     const before = record["core"];
     const loader = new ModLoader([{ manifest: cardModRecaptcha }], record);
     loader.load();
-    expect(record["core"]).toBeDefined();
-    expect(record["core"]).not.toBe(before); // define_method replace (view_definition.rb:18-21)
+    // Registered - under the set module that declares it (the :core
+    // override lives on set/self/recaptcha_settings.rb, not on an all
+    // set, so it is set-scoped).
+    const chain = loader.viewChainTable();
+    const owners = chain.entries().filter((e) => e.view === "core");
+    expect(owners.length).toBeGreaterThan(0);
+    expect(owners.every((e) => e.setModule.startsWith("Self::"))).toBe(true);
+    // And the shared base-format body is untouched.
+    expect(record["core"]).toBe(before);
     expect(loader.viewConfigFor("core")).toBeUndefined(); // no view config on the Ruby call
     loader.reset();
-    expect(record["core"]).toBe(before); // unregisterAll restores
+    expect(chain.entries().find((e) => e.view === "core")).toBeUndefined();
+    expect(record["core"]).toBe(before);
   });
 });
 
@@ -633,7 +657,7 @@ describe("card-mod-recaptcha pure semantics: set/self/captcha.rb state + set/sel
 
 describe("card-mod-recaptcha pure semantics: set/abstract/recaptcha_setting.rb", () => {
   it("recaptchaFieldContentError accepts keys, blanks, hyphens, underscores; rejects the rest (recaptcha_setting.rb:1-5)", () => {
-    expect(recaptchaFieldContentError("6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG")).toBe(
+    expect(recaptchaFieldContentError("TEST_SITE_KEY-0123456789abcdefghij")).toBe(
       undefined,
     );
     expect(recaptchaFieldContentError("key_with-under_1")).toBe(undefined);
@@ -644,7 +668,8 @@ describe("card-mod-recaptcha pure semantics: set/abstract/recaptcha_setting.rb",
   });
 
   it("the ^...$ anchors are LINE anchors, matching Ruby's Onigmo semantics (oracle-pinned)", () => {
-    // Ruby oracle (C:/Ruby33-x64/bin/ruby.exe):
+    // Ruby oracle (tests/card/mod-loader/oracle-capture-recaptcha-semantics.rb,
+    // Ruby 3.3):
     //   /^[a-zA-Z0-9\-_]*$/.match?("ok\nbad!")  => true
     //   /^[a-zA-Z0-9\-_]*$/.match?("\nok\n")    => true
     // Ruby ^/$ anchor per line and match? searches anywhere - ANY clean
@@ -668,12 +693,13 @@ describe("card-mod-recaptcha pure semantics: set/abstract/recaptcha_setting.rb",
 // ---------------------------------------------------------------------------
 
 describe("card-mod-recaptcha pure semantics: config/late/recaptcha.rb + set/self/admin.rb", () => {
-  it("RECAPTCHA_DEFAULTS carries the development-only keys (config/late/recaptcha.rb:20-23)", () => {
-    expect(RECAPTCHA_DEFAULTS).toEqual({
-      site_key: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
-      secret_key: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
-    });
-  });
+  // config/late/recaptcha.rb:20-23 @defaults - the development-only key pair
+  // the gem hardcodes; the port takes it as injected configuration, so the
+  // pair lives here (test configuration), not in src/.
+  const DEV_DEFAULTS = {
+    site_key: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
+    secret_key: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
+  };
 
   it("RECAPTCHA_DEPRECATED_CONFIG_NAMES mirrors @deprecated (config/late/recaptcha.rb:16-19)", () => {
     expect(RECAPTCHA_DEPRECATED_CONFIG_NAMES).toEqual({
@@ -695,32 +721,38 @@ describe("card-mod-recaptcha pure semantics: config/late/recaptcha.rb + set/self
   });
 
   it("usingDefaults is the recaptcha_config_issues? check (config/late/recaptcha.rb:32-34 + self/admin.rb:3-5)", () => {
-    expect(usingDefaults(RECAPTCHA_DEFAULTS.site_key)).toBe(true);
-    expect(usingDefaults("CUSTOM_KEY")).toBe(false);
-    expect(usingDefaults(undefined)).toBe(false);
-    expect(usingDefaults(null)).toBe(false);
+    expect(usingDefaults(DEV_DEFAULTS.site_key, DEV_DEFAULTS.site_key)).toBe(true);
+    expect(usingDefaults("CUSTOM_KEY", DEV_DEFAULTS.site_key)).toBe(false);
+    expect(usingDefaults(undefined, DEV_DEFAULTS.site_key)).toBe(false);
+    expect(usingDefaults(null, DEV_DEFAULTS.site_key)).toBe(false);
+    // line 34 `Cardio.config.recaptcha_site_key == @defaults[:site_key]` with
+    // no default injected: an absent resolution still compares equal
+    // (nil == nil) - the capture deck stores no +*site key content, so the
+    // warning fires with no injection.
+    expect(usingDefaults(undefined)).toBe(true);
   });
 
   it("recaptchaSettingValue follows the card > config > deprecated > default precedence (config/late/recaptcha.rb:39-44)", () => {
     expect(recaptchaSettingValue("CARD", "CONFIG", "DEPRECATED")).toBe("CARD");
     expect(recaptchaSettingValue(undefined, "CONFIG", "DEPRECATED")).toBe("CONFIG");
     expect(recaptchaSettingValue(undefined, undefined, "DEPRECATED")).toBe("DEPRECATED");
-    expect(recaptchaSettingValue(undefined, undefined, undefined)).toBe(
-      RECAPTCHA_DEFAULTS.site_key,
-    );
+    expect(
+      recaptchaSettingValue(undefined, undefined, undefined, "site_key", DEV_DEFAULTS),
+    ).toBe(DEV_DEFAULTS.site_key);
+    expect(recaptchaSettingValue(undefined, undefined, undefined)).toBeUndefined();
     expect(recaptchaSettingValue("", "CONFIG", "DEPRECATED")).toBe("CONFIG"); // blank card value skipped (config/late/recaptcha.rb:56 value.present?)
   });
 
   it("recaptchaSettingValue's default operand follows the setting - @defaults[setting] (config/late/recaptcha.rb:43)", () => {
     expect(
-      recaptchaSettingValue(undefined, undefined, undefined, "site_key"),
-    ).toBe("6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG");
+      recaptchaSettingValue(undefined, undefined, undefined, "site_key", DEV_DEFAULTS),
+    ).toBe(DEV_DEFAULTS.site_key);
     expect(
-      recaptchaSettingValue(undefined, undefined, undefined, "secret_key"),
-    ).toBe("6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf");
-    expect(recaptchaSettingValue(undefined, undefined, undefined)).toBe(
-      RECAPTCHA_DEFAULTS.site_key,
-    ); // site_key is the default `which`
+      recaptchaSettingValue(undefined, undefined, undefined, "secret_key", DEV_DEFAULTS),
+    ).toBe(DEV_DEFAULTS.secret_key);
+    expect(
+      recaptchaSettingValue(undefined, undefined, undefined, "site_key"),
+    ).toBeUndefined(); // no injected default: the fallback resolves undefined
   });
 
   it("recaptchaConfigIssuesMessage composes the localhost (temp) branch (self/admin.rb:10-14 + en.yml:4)", () => {

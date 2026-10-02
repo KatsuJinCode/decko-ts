@@ -1,7 +1,7 @@
 // The card-mod-help gem (card-mod-help-0.20.0), ported through the mod
 // loader - the reference port proving the mechanism end to end.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-help-0.20.0/): six set files, no lib/, no set_pattern/, no
 // events. Ported here byte-verifiably: set/all/help.rb (the :help,
 // :help_text, :lead views - oracle bytes in
@@ -16,10 +16,7 @@
 // card-mod-bootstrap.ts (popoverLink, card-mod-bootstrap.ts:166); the
 // oracle bytes for the live :popover dispatch are captured against
 // fixtures/captured/help-popover.json "rendered" - the A/B test asserts
-// byte equality, currently red because popoverLink's emitAttrs hash
-// insertion order (href, tabindex, class, data-bs-*) differs from
-// Ruby's link_to order (tabindex, data-bs-*, class, href); fix lives in
-// card-mod-bootstrap.ts's popoverLink on the bootstrap lane), and the
+// byte equality), and the
 // two setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
 // state under "setting_groups"/"setting_opts_*").
 //
@@ -33,7 +30,6 @@
 //   consumer
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { DeckoName } from "../../name.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
@@ -43,10 +39,11 @@ import type {
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { processHelpContent } from "../../render/help-popover.js";
 import { parseNestOptions } from "../../render/nest-syntax.js";
+import { warmRuleCards } from "./rule-card-warm.js";
 // popoverLink (set/all/bootstrap/helper.rb:41-44) - the icon_tag :help +
 // data-bs-toggle=popover anchor helper card-mod-help set/right/help.rb:4-6's
 // `view :popover do popover_link _render_core end` consumes. Imported from
-// card-mod-bootstrap.ts as-is per this round's bootstrap lane.
+// card-mod-bootstrap.ts as-is (the one shared implementation).
 import { popoverLink } from "./card-mod-bootstrap.js";
 
 // ---------------------------------------------------------------------------
@@ -153,8 +150,21 @@ const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
  *  _view_content`. _view_content calls the content view's method DIRECTLY
  *  (no render! pass, so no before(:content) hook - the oracle bytes carry
  *  no d0-card-content) - here: the core bytes in the lead slot wrap, the
- *  classy extra landing at the class list's end (the classUp chain). */
-const leadView: ViewFn = (ctx) => {
+ *  classy extra landing at the class list's end (the classUp chain).
+ *
+ *  EXPORTED: the view is also the
+ *  compiled-in HTML_VIEWS["lead"] registration (render/views.ts imports
+ *  this fn). The graded page-lane harness runs the engine WITHOUT a bound
+ *  mod loader, so dispatch falls to the flat record (render.ts
+ *  computeResolvedView's fallback) - without the compiled-in entry every
+ *  Role page's `+:description|lead` nest emitted "view (lead) not
+ *  supported" render-error alerts (pass15's 34 unsupported-view pages:
+ *  17 Role pages nest it through the type template, the email-template
+ *  pages through their bodies). Single source: the mod registration and
+ *  the compiled-in entry
+ *  are the SAME function, so a loader-bound engine (chain[0] = All::Help
+ *  wins the chain walk) and the mod-less harness cannot drift. */
+export const leadView: ViewFn = (ctx) => {
   ctx.voo.classUp("card-slot", "lead");
   return modSlotWrap(ctx, "lead", ctx.fmt.renderView("core"));
 };
@@ -186,11 +196,7 @@ const leadView: ViewFn = (ctx) => {
  *  true, mod/core/set_pattern/07_right.rb:2); the capture seeds
  *  Oracle Help Popover Probe+*help (WITH a *help rule) and Oracle Bare
  *  Popover Probe+*help (WITHOUT), and the test asserts byte equality
- *  against the captured bytes for both. The byte-equality pin is
- *  currently red (TS popoverLink emits attrs in insertion order:
- *  href, tabindex, class, data-bs-* while Ruby link_to emits
- *  tabindex, data-bs-*, class, href); fix lives in card-mod-bootstrap.ts's
- *  popoverLink on the bootstrap lane. */
+ *  against the captured bytes for both. */
 const popoverView: ViewFn = (ctx) => {
   // help.rb:5 `popover_link _render_core` -> helper.rb:41 popover_link
   // text. The renderView dispatch goes through the format's standard
@@ -261,7 +267,15 @@ function prependGuideEditLink(ctx: ViewContext, text: string): string {
   if (guideCard === undefined) return text;
   const taskAllowed = ctx.fmt.engine.taskAllowed?.(guideCard, "update");
   if (taskAllowed !== undefined && taskAllowed === false) return text;
-  const href = `/${guideCard.name.urlKey}/edit`;
+  // guide.rb:30 nests the guide card with view: :edit_link; the guide card
+  // is a Rule-typed card and the Rule set overrides edit_link_view to
+  // :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the
+  // link_to_view target is the RULE editor. Oracle-corrected 2026-09-29:
+  // the live capture (fixtures/captured/edit-views.json, guide_tab /
+  // overlay_guide / alert_guide arms) pins href="/*all+*guide/rule_edit" -
+  // this emitter previously answered "/<name>/edit" (the non-rule
+  // edit_link default), which no captured surface shows.
+  const href = `/${guideCard.name.urlKey}/rule_edit`;
   const editLink =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip"` +
     ` data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg"` +
@@ -282,154 +296,15 @@ function guideInnerHtml(ctx: ViewContext): string {
 const guideView: ViewFn = (ctx) => modSlotWrap(ctx, "guide", guideInnerHtml(ctx));
 
 // ---------------------------------------------------------------------------
-// prepareEngine - the boot-time *help rule warm (the Rule::Cache analog)
+// prepareEngine - the boot-time *help rule warm (the Rule::Cache analog).
+// The statement and the multi-pass composition live once in
+// rule-card-warm.ts (ruleSidesStatement + warmRuleCards); this boot warms
+// *help and *guide in two sequential batches. Adding the *guide warm here
+// keeps card-mod-help self-contained: card-mod-layout also warms *guide
+// rules via its own prepareEngine, so a deck that loads both mods issues
+// the warm twice (the second pass is a no-op since the rule cards are
+// already in the prepared render-card map).
 // ---------------------------------------------------------------------------
-
-/** The *help rule card ids PLUS every transitive side id needed to compose
- *  their junction names: the rule-cache join (lib/card/rule/cache.rb:10-27)
- *  narrowed to codename 'help', with the recursive side walk of the
- *  prefetch's reached-CTE shape. */
-function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): {
-  sql: string;
-  params: unknown[];
-} {
-  const ruleJoin =
-    "FROM cards rules\n" +
-    "  JOIN cards sets ON rules.left_id = sets.id\n" +
-    "  JOIN cards settings ON rules.right_id = settings.id\n" +
-    "WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help'\n" +
-    "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0";
-  return {
-    sql:
-      "WITH RECURSIVE reached(id) AS (\n" +
-      `  SELECT rules.id ${ruleJoin}\n` +
-      "  UNION\n" +
-      "  SELECT s.id FROM reached r\n" +
-      "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-      "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
-      ")\n" +
-      "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
-    params: [setTypeId, settingTypeId],
-  };
-}
-
-/** The *guide rule card ids plus every transitive side id needed to compose
- *  their junction names - the rule-cache join narrowed to codename 'guide'
- *  (card-mod-help set/all/guide.rb:47-52 determine_guide_card +
- *  card-1.110.0 lib/card/rule/cache.rb:10-27's join). The reachable-CTE
- *  mirrors helpRuleSidesStatement; the only difference is the setting
- *  codename. Adding the *guide warm here keeps card-mod-help
- *  self-contained: card-mod-layout also warms *guide rules via its own
- *  prepareEngine (prepareGuideRules there), so a deck that loads both
- *  mods issues the warm twice (the second pass is a no-op since the rule
- *  cards are already in the prepared render-card map). */
-function guideRuleSidesStatement(setTypeId: number, settingTypeId: number): {
-  sql: string;
-  params: unknown[];
-} {
-  const ruleJoin =
-    "FROM cards rules\n" +
-    "  JOIN cards sets ON rules.left_id = sets.id\n" +
-    "  JOIN cards settings ON rules.right_id = settings.id\n" +
-    "WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'guide'\n" +
-    "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0";
-  return {
-    sql:
-      "WITH RECURSIVE reached(id) AS (\n" +
-      `  SELECT rules.id ${ruleJoin}\n` +
-      "  UNION\n" +
-      "  SELECT s.id FROM reached r\n" +
-      "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-      "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
-      ")\n" +
-      "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
-    params: [setTypeId, settingTypeId],
-  };
-}
-
-/** One batch, once per codename: every rule card with that codename enters
- *  the prepared render-card map. Junction names compose in-memory from the
- *  fetched side records (multi-pass: sides first, then their junctions) -
- *  a rule card reached by ID has no name mark to seed the lexicon's
- *  on-demand composition, so this mirrors the prefetch's composeAndCache
- *  shape (prefetch.ts). After this the helpRuleCard + guideRuleCard
- *  helpers resolve rule cards synchronously - zero queries on the render
- *  path. */
-async function prepareRulesForCodename(
-  host: ModEngineHost,
-  setTypeId: number,
-  settingTypeId: number,
-  codename: "help" | "guide",
-): Promise<void> {
-  const stmt =
-    codename === "help"
-      ? helpRuleSidesStatement(setTypeId, settingTypeId)
-      : guideRuleSidesStatement(setTypeId, settingTypeId);
-  const results = await host.batch([stmt]);
-  type FetchedRow = {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-  };
-  const rows = (results[0] as { rows: FetchedRow[] } | undefined)?.rows ?? [];
-  if (rows.length === 0) return;
-
-  interface PreparedRecord {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-    record: NonNullable<Awaited<ReturnType<ModEngineHost["fetchById"]>>>;
-  }
-  const byId = new Map<number, PreparedRecord>();
-  for (const row of rows) {
-    const record = await host.fetchById(row.id);
-    if (record === undefined) continue;
-    byId.set(row.id, {
-      id: row.id,
-      leftId: record.leftId ?? null,
-      rightId: record.rightId ?? null,
-      name: record.name?.s ?? null,
-      record,
-    });
-  }
-
-  // multi-pass junction composition (sides before junctions)
-  const names = new Map<number, string>();
-  let pending = [...byId.values()];
-  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
-    const still: PreparedRecord[] = [];
-    for (const row of pending) {
-      let composed: string | undefined = row.name ?? undefined;
-      if (composed === undefined && row.leftId !== null && row.rightId !== null) {
-        const left = names.get(row.leftId);
-        const right = names.get(row.rightId);
-        if (left !== undefined && right !== undefined) composed = `${left}+${right}`;
-      }
-      if (composed === undefined) {
-        still.push(row);
-        continue;
-      }
-      names.set(row.id, composed);
-    }
-    if (still.length === pending.length) break; // unresolvable sides stay
-    pending = still;
-  }
-
-  // Assign the composed name onto junction records and cache them (the
-  // fetch ladder's assign_name semantics - a record reached by id carries
-  // no name mark, so the composed name is assigned here).
-  for (const row of byId.values()) {
-    const composed = names.get(row.id);
-    if (composed === undefined) continue;
-    if (row.name === null) {
-      row.record.name = DeckoName.parse(composed);
-      row.record.key = DeckoName.parse(composed).key;
-    }
-    await host.cacheFetchedRecord(row.record);
-  }
-}
 
 /** The card-mod-help prepareEngine: warm *help rules (helpRuleCard) AND
  *  *guide rules (guideRuleCard) in two sequential batches. Both rule walks
@@ -440,8 +315,8 @@ async function prepareHelpAndGuideRules(host: ModEngineHost): Promise<void> {
   const setTypeId = host.codenames.peekId("set");
   const settingTypeId = host.codenames.peekId("setting");
   if (setTypeId === undefined || settingTypeId === undefined) return; // degenerate deck
-  await prepareRulesForCodename(host, setTypeId, settingTypeId, "help");
-  await prepareRulesForCodename(host, setTypeId, settingTypeId, "guide");
+  await warmRuleCards(host, setTypeId, settingTypeId, ["help"]);
+  await warmRuleCards(host, setTypeId, settingTypeId, ["guide"]);
 }
 
 // ---------------------------------------------------------------------------
@@ -511,8 +386,7 @@ const cardModHelp: DeckoModManifest = {
       // the top of this file. Bytes captured against
       // fixtures/captured/help-popover.json "rendered" (captured via
       // tests/card/mod-loader/oracle-capture-help-popover.rb); the
-      // A/B test asserts byte equality but is currently red on attr
-      // order (popoverLink lives on the bootstrap lane).
+      // A/B test asserts byte equality.
       setPath: "right/help",
       formats: {
         html: {

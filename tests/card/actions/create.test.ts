@@ -116,7 +116,7 @@ describe("createCard — simple create (Set)", () => {
     await expect(engine.createCard({ name: "" })).rejects.toMatchObject({ code: "name-illegal" });
     await expect(engine.createCard({ name: "+orphan" })).rejects.toMatchObject({ code: "name-illegal" }); // name_incomplete?
     await expect(engine.createCard({ name: "a".repeat(256) })).rejects.toMatchObject({ code: "name-illegal" });
-    expect(await f.storage.count("cards")).toBe(6); // nothing written
+    expect(await f.storage.count("cards")).toBe(14); // nothing written (6 base rows + 8 rule-machinery rows)
   });
 
   it("rejects duplicate names (validate_uniqueness_of_name, name_events.rb:19-26)", async () => {
@@ -130,18 +130,34 @@ describe("createCard — simple create (Set)", () => {
   it("rejects anonymous actors before any row is written", async () => {
     const f = await fresh();
     const before = await f.storage.count("cards");
-    // null actor (Auth.current_id fallback to AnonymousID — auth/current.rb:7-9)
+    // null actor on a deck that cannot form the anonymous codename card
+    // (this fixture has no codename 'anonymous' row): the fragment-seed
+    // legacy gate (Auth.current_id fallback to AnonymousID —
+    // auth/current.rb:7-9; Card[AnonymousID] could not form here either).
     const anonEngine = actionEngine(f.storage, null);
     await expect(anonEngine.createCard({ name: "Nope" })).rejects.toMatchObject({
       code: "anonymous-actor",
     });
-    // an actor NAMED *anonymous (signed_in? false — auth/current.rb:43-47)
-    const namedAnon = actionEngine(f.storage, ANON);
-    await expect(namedAnon.createCard({ name: "Nope 2" })).rejects.toMatchObject({
-      code: "anonymous-actor",
-    });
     expect(await f.storage.count("cards")).toBe(before);
     expect(await f.storage.count("card_acts")).toBe(0);
+  });
+
+  it("an actor NAMED *anonymous is id-keyed: it acts as its own account, never as Anonymous", async () => {
+    // LOW-1 (verdict-semantics lane 2026-10-01): Ruby keys actor identity
+    // on the id (Auth.as_id — auth/proxy.rb:11/:32-35; signed_in? =
+    // current_id != AnonymousID, auth/current.rb:43-47). This fixture has
+    // no codename 'anonymous' row, so no id can be the Anonymous card's:
+    // the named actor is an ordinary account (id 2) and its create rides
+    // the *all+*create [[Anyone]] fallback like any signed-in writer.
+    const f = await fresh();
+    const namedAnon = actionEngine(f.storage, ANON);
+    const ok = await namedAnon.createCard({ name: "Named But Not Anonymous" });
+    expect(ok.cardId).toBeGreaterThan(0);
+    const row = await f.storage.selectOne<{ creator_id: number }>(
+      "SELECT creator_id FROM cards WHERE id = ?",
+      [ok.cardId],
+    );
+    expect(row?.creator_id).toBe(ANON.id); // 2 — its own id, never an Anonymous misattribution
   });
 
   it("honors the canWrite permission seam", async () => {

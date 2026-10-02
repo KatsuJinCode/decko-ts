@@ -10,6 +10,10 @@
 // brought up through the real auth migration runner.
 
 import { createHash } from "node:crypto";
+import {
+  generatedEmail,
+  generatedPassword,
+} from "../../../src/testing/generated-credentials.js";
 import { describe, expect, it } from "vitest";
 import {
   authenticateAccount,
@@ -40,11 +44,13 @@ const IDS = {
 
 const HOLDER = { id: 9100, name: "Joe User" };
 const JUNCTION_ID = 9101;
-const EMAIL = "joe@example.com";
+const EMAIL = generatedEmail("joe");
 const SALT = "SALT";
-const PASSWORD = "secret";
-// Digest::SHA1.hexdigest("SALT--secret--"), precomputed independently.
-const DIGEST = "3c92dd6f59610052250bc50b6b33f9416e7cac3c";
+const PASSWORD = generatedPassword("signin");
+// Digest::SHA1.hexdigest(`${SALT}--${PASSWORD}--`) over the generated pair,
+// computed at module load (the pre-miniature era precomputed it for a
+// hardcoded literal pair).
+const DIGEST = createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex");
 
 const TS = "2026-09-20 11:00:00.000";
 
@@ -151,13 +157,13 @@ async function buildStorage(opts?: {
 
 describe("account password verification (Ruby Card::Auth salted SHA-1)", () => {
   it("encryptAccountPassword reproduces Digest::SHA1.hexdigest('salt--password--')", async () => {
-    expect(await encryptAccountPassword("secret", "SALT")).toBe(DIGEST);
+    expect(await encryptAccountPassword(PASSWORD, SALT)).toBe(DIGEST);
     // Independent recomputation through node:crypto (different runtime
     // implementation than the Web Crypto path under test).
-    expect(createHash("sha1").update("SALT--secret--").digest("hex")).toBe(
+    expect(createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex")).toBe(
       DIGEST,
     );
-    expect(await sha1Hex("SALT--secret--")).toBe(DIGEST);
+    expect(await sha1Hex(`${SALT}--${PASSWORD}--`)).toBe(DIGEST);
   });
 
   it("rubyStrip strips exactly Ruby's String#strip set (ASCII whitespace + NUL)", () => {

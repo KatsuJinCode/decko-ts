@@ -1,0 +1,548 @@
+// autocomplete.js.coffee
+(function() {
+  decko.slot.ready(function(slot) {
+    return slot.find('._autocomplete').each(function(_i) {
+      return decko.initAutoCardPlete($(this));
+    });
+  });
+
+  decko.initAutoCardPlete = function(input) {
+    var optionsCard, path;
+    optionsCard = input.data('options-card');
+    if (!optionsCard) {
+      return;
+    }
+    path = optionsCard + '.json?view=name_match';
+    return input.autocomplete({
+      source: decko.slot.path(path)
+    });
+  };
+
+  decko.select2Autocomplete = {
+    init: function(el, options, ajaxOptions) {
+      var opts;
+      opts = $.extend({}, this._defaults(el), options);
+      if (ajaxOptions) {
+        $.extend(opts.ajax, ajaxOptions);
+      }
+      return el.select2(opts);
+    },
+    _defaults: function(el) {
+      return {
+        multiple: false,
+        width: "100%!important",
+        minimumInputLength: 0,
+        maximumSelectionSize: 1,
+        placeholder: el.attr("placeholder"),
+        escapeMarkup: function(markup) {
+          return markup;
+        },
+        ajax: {
+          delay: 200,
+          cache: true,
+          url: decko.path(':search.json'),
+          processResults: function(data) {
+            return {
+              results: data
+            };
+          },
+          data: function(params) {
+            return {
+              query: {
+                keyword: params.term
+              },
+              view: "complete"
+            };
+          }
+        }
+      };
+    }
+  };
+
+}).call(this);
+
+// search_box.js.coffee
+(function() {
+  $(window).ready(function() {
+    var box, el;
+    el = $('._search-box');
+    box = new decko.searchBox(el);
+    el.data("searchBox", box);
+    return box.init();
+  });
+
+  decko.searchBox = (function() {
+    function searchBox(el) {
+      this.box = el;
+      this.sourcepath = this.box.data("completepath");
+      this.originalpath = this.sourcepath;
+      this.config = {
+        source: this.sourcepath,
+        select: this.select
+      };
+    }
+
+    searchBox.prototype.init = function() {
+      return this.box.autocomplete(this.config, {
+        html: true
+      });
+    };
+
+    searchBox.prototype.select = function(_event, ui) {
+      var url;
+      url = ui.item.url;
+      if (url) {
+        return window.location = url;
+      }
+    };
+
+    searchBox.prototype.form = function() {
+      return this.box.closest("form");
+    };
+
+    searchBox.prototype.keyword = function() {
+      return this.keywordBox().val();
+    };
+
+    searchBox.prototype.keywordBox = function() {
+      return this.form().find("#query_keyword");
+    };
+
+    return searchBox;
+
+  })();
+
+}).call(this);
+
+// rules.js.coffee
+(function() {
+  decko.slot.ready(function(slot) {
+    return slot.find('._setting-filter').each(function() {
+      return decko.filterRulesByCategory($(this).closest(".card-slot"), $(this).find('input._setting-category:checked').attr("id"));
+    });
+  });
+
+  $.extend(decko, {
+    filterRulesByCategory: function(container, category) {
+      return $(container).find('._setting-list ._setting-group').each(function(_i) {
+        var $list, hiddenCount, items;
+        $list = $(this);
+        items = $list.find('._rule-item');
+        hiddenCount = 0;
+        items.each(function() {
+          var $item, wrapper;
+          $item = $(this);
+          wrapper = $item.parent().is("li") ? $item.parent() : $item;
+          if ($item.hasClass("_category-" + category)) {
+            return wrapper.show();
+          } else {
+            wrapper.hide();
+            return hiddenCount += 1;
+          }
+        });
+        if (hiddenCount === items.length) {
+          return $list.hide();
+        } else {
+          $list.show();
+          return $list.find('._count').html(items.length - hiddenCount);
+        }
+      });
+    }
+  });
+
+  $(window).ready(function() {
+    $('body').on('click', '.perm-vals input', function() {
+      return $(this).slot().find('#inherit').attr('checked', false);
+    });
+    $('body').on('click', '.perm-editor #inherit', function() {
+      var slot;
+      slot = $(this).slot();
+      slot.find('.perm-group input:checked').attr('checked', false);
+      return slot.find('.perm-indiv input').val('');
+    });
+    $('body').on('click', '._rule-submit-button', function() {
+      var checked, f;
+      f = $(this).closest('form');
+      checked = f.find('._set-editor input:checked');
+      if (checked.val()) {
+        if (checked.attr('warning')) {
+          return confirm(checked.attr('warning'));
+        } else {
+          return true;
+        }
+      } else {
+        f.find('._set-editor').addClass('warning');
+        $(this).notify('To what Set does this Rule apply?');
+        return false;
+      }
+    });
+    return $('body').on('click', 'input._setting-category', function() {
+      var category;
+      category = $(this).attr("id");
+      return decko.filterRulesByCategory($(this).closest('.card-slot'), category);
+    });
+  });
+
+}).call(this);
+
+// toggle_visibility.js.coffee
+(function() {
+  $(function() {
+    return $("body").on("click", "._toggle-pw-visibility", function(event) {
+      var passwordField, togglePassword;
+      passwordField = $("._pw-input");
+      togglePassword = $("._pw-text-area");
+      if (passwordField.prop("type") === "password") {
+        passwordField.prop("type", "text");
+        return togglePassword.find("i").text("visibility");
+      } else {
+        passwordField.prop("type", "password");
+        return togglePassword.find("i").text("visibility_off");
+      }
+    });
+  });
+
+}).call(this);
+
+// upload.js.coffee
+(function() {
+  var disableUploader;
+
+  decko.editors.init[".file-upload"] = function() {
+    return decko.upload_file(this);
+  };
+
+  $.extend(decko, {
+    upload_file: function(fileupload) {
+      var $_fileupload, url;
+      $(fileupload).on('fileuploadsubmit', function(e, data) {
+        var $_this, card_name, type_id;
+        $_this = $(this);
+        card_name = $_this.siblings(".attachment_card_name:first").attr("name");
+        type_id = $_this.siblings("#attachment_type_id").val();
+        return data.formData = {
+          "card[type_id]": type_id,
+          "attachment_upload": card_name
+        };
+      });
+      $_fileupload = $(fileupload);
+      if ($_fileupload.closest("form").attr("action").indexOf("update") > -1) {
+        url = "card/update/" + $(fileupload).siblings("#file_card_name").val();
+      } else {
+        url = "card/create";
+      }
+      return $(fileupload).fileupload({
+        url: decko.path(url),
+        dataType: 'html',
+        done: decko.doneFile,
+        add: decko.chooseFile,
+        progressall: decko.progressallFile
+      });
+    },
+    chooseFile: function(e, data) {
+      var editor;
+      data.form.find('button[type=submit]').attr('disabled', true);
+      editor = $(this).closest('.card-editor');
+      $('#progress').show();
+      editor.append('<input type="hidden" class="extra_upload_param" ' + 'value="true" name="attachment_upload">');
+      editor.append('<input type="hidden" class="extra_upload_param" ' + 'value="preview_editor" name="view">');
+      data.submit();
+      editor.find('.choose-file').hide();
+      return editor.find('.extra_upload_param').remove();
+    },
+    progressallFile: function(e, data) {
+      var progress;
+      progress = parseInt(data.loaded / data.total * 100, 10);
+      return $('#progress .progress-bar').css('width', progress + '%');
+    },
+    doneFile: function(e, data) {
+      var editor;
+      editor = $(this).closest('.card-editor');
+      editor.find('.chosen-file').replaceWith(data.result);
+      return data.form.find('button[type=submit]').attr('disabled', false);
+    }
+  });
+
+  $(window).ready(function() {
+    $('body').on('click', '.cancel-upload', function() {
+      var editor;
+      editor = $(this).closest('.card-editor');
+      editor.find('.choose-file').show();
+      editor.find('.chosen-file').empty();
+      editor.find('.progress').show();
+      editor.find('#progress .progress-bar').css('width', '0%');
+      return editor.find('#progress').hide();
+    });
+    $('body').on("submit", "form", function() {
+      return disableUploader(this, true);
+    });
+    return $("body").on("ajax:complete", "form", function() {
+      return disableUploader(this, false);
+    });
+  });
+
+  disableUploader = function(form, toggle) {
+    var uploader;
+    uploader = $(form).find(".file-upload[type=file]");
+    if (uploader[0]) {
+      return uploader.prop("disabled", toggle);
+    }
+  };
+
+}).call(this);
+
+// decko_ace_config.js.coffee
+(function() {
+  var aceEditorContent;
+
+  decko.editors.add('.ace-editor-textarea', function() {
+    return decko.initAce($(this));
+  }, function() {
+    return aceEditorContent(this[0]);
+  });
+
+  $.extend(decko, {
+    setAceConfig: function(string) {
+      var setter;
+      setter = function() {
+        try {
+          return $.parseJSON(string);
+        } catch (error) {
+          return {};
+        }
+      };
+      return decko.aceConfig = setter();
+    },
+    configAceEditor: function(editor, mode) {
+      var conf;
+      conf = {
+        showGutter: true,
+        theme: "ace/theme/github",
+        printMargin: false,
+        tabSize: 2,
+        useSoftTabs: true,
+        maxLines: 30,
+        minLines: 10
+      };
+      editor.setOptions(conf);
+      return editor.session.setMode("ace/mode/" + mode);
+    },
+    initAce: function(textarea) {
+      var editDiv, editor, mode;
+      mode = textarea.attr("data-ace-mode");
+      if (!mode) {
+        textarea.autosize();
+        return;
+      }
+      editDiv = $("<div>", {
+        position: "absolute",
+        width: "auto",
+        height: textarea.height()
+      }).insertBefore(textarea);
+      textarea.css("visibility", "hidden");
+      textarea.css("height", "0px");
+      editor = ace.edit(editDiv[0]);
+      editor.getSession().setValue(textarea.val());
+      decko.configAceEditor(editor, mode);
+      textarea.data("ace", editor);
+    }
+  });
+
+  aceEditorContent = function(element) {
+    var ace_div, editor;
+    ace_div = $(element).siblings(".ace_editor");
+    editor = ace.edit(ace_div[0]);
+    return editor.getSession().getValue();
+  };
+
+}).call(this);
+
+// bar_and_box.js.coffee
+(function() {
+  var cardLinkPath, openInNewTab;
+
+  $(function() {
+    $(document).on('click', "._card-link", function(event) {
+      var cl;
+      cl = $(this);
+      if (cl.data("skip") === "on") {
+        return cl.data("skip", null);
+      } else if (openInNewTab(event)) {
+        return window.open(cardLinkPath(cl), "_tab_" + Math.floor(Math.random() * 1000));
+      } else if (cl.closest("._card-link-modal")[0]) {
+        return cl.find("._modal-page-link").trigger("click");
+      } else {
+        return window.location = cardLinkPath(cl);
+      }
+    });
+    return $("body").on("shown.bs.collapse", ".bar > .collapse", function(_event) {
+      var s;
+      s = $(this).find("> .d0-card-body > .card-slot-stub");
+      s.slotReload(s.data("stubUrl"));
+      return s.removeClass("card-slot-stub");
+    });
+  });
+
+  openInNewTab = function(event) {
+    return event.metaKey;
+  };
+
+  cardLinkPath = function(cl) {
+    return decko.path(cl.data("cardLinkUrl") || cl.data("cardLinkName"));
+  };
+
+  decko.slot.ready(function(slot) {
+    return slot.find("._card-link a, ._card-link ._card-link-clickable").on("click", function(event) {
+      var a;
+      a = $(this);
+      if (a.hasClass("_over-card-link") || a.closest("._over-card-link")[0]) {
+        return a.closest("._card-link").data("skip", "on");
+      } else {
+        return event.preventDefault();
+      }
+    });
+  });
+
+}).call(this);
+
+// click_select.js.coffee
+(function() {
+  $(window).ready(function() {
+    $("body").on("click", "._click-multiselect-editor ._select-item", function(event) {
+      $(this).closest("._select-item").toggleClass("selected");
+      return event.stopPropagation();
+    });
+    return $("body").on("click", "._click-select-editor ._select-item", function(event) {
+      var selectEditor;
+      selectEditor = $(this).closest("._click-select-editor");
+      selectEditor.find(".selected").removeClass("selected");
+      $(this).closest("._select-item").addClass("selected");
+      return event.stopPropagation();
+    });
+  });
+
+}).call(this);
+
+// follow.js.coffee
+(function() {
+  $(window).ready(function() {
+    $('body').on('click', '.btn-item', function() {
+      return $(this).find('i').html('hourglass_full');
+    });
+    $('body').on('mouseenter', '.btn-item-delete', function() {
+      $(this).find('i').html('remove');
+      return $(this).addClass("btn-danger").removeClass("btn-primary");
+    });
+    $('body').on('mouseleave', '.btn-item-delete', function() {
+      $(this).find('i').html('check');
+      return $(this).addClass("btn-primary").removeClass("btn-danger");
+    });
+    return $('body').on('submit', '.edit-view.SELF-Xfollow_default .card-form', function() {
+      var confirmer;
+      confirmer = $(this).find('.confirm_update_all-view');
+      if (confirmer.is(':hidden')) {
+        $(this).find('.follow-updater').show();
+        confirmer.show('blind');
+        return false;
+      }
+    });
+  });
+
+}).call(this);
+
+// tab.js.coffee
+(function() {
+  $(window).ready(function() {
+    $('body').on('show.bs.tab', 'a', function(e) {
+      var link, tabname;
+      link = $(this);
+      if (link.closest(".tab-content").length > 0) {
+        return;
+      }
+      tabname = $(this).data("tabName");
+      return window.history.pushState("tab", "", "?tab=" + tabname);
+    });
+    return $('body').on('show.bs.tab', 'a.load[data-bs-toggle="tab"][data-url]', function(e) {
+      var tab_content, tab_id, tab_pane, targ, url;
+      targ = $(e.target);
+      tab_id = targ.attr("href");
+      url = targ.data("url");
+      targ.removeClass("load");
+      tab_pane = $(tab_id);
+      tab_content = tab_pane.closest(".tab-panel").children(".tab-content");
+      tab_content.startLoading(true);
+      return $.ajax({
+        url: url,
+        success: function(html) {
+          tab_pane.append(html);
+          return decko.contentLoaded(tab_pane, $(this));
+        },
+        complete: function() {
+          return tab_content.stopLoading(true);
+        }
+      });
+    });
+  });
+
+}).call(this);
+
+// recaptcha.js.coffee
+(function() {
+  var executeGrecaptcha, handleRecaptcha, updateRecaptchaToken;
+
+  $(window).ready(function() {
+    return $('body').on('submit', 'form.slotter', function(event) {
+      var form;
+      form = $(this);
+      if (form.data('recaptcha') === 'on') {
+        return handleRecaptcha(form, event);
+      }
+    });
+  });
+
+  handleRecaptcha = function(form, event) {
+    var recaptcha;
+    recaptcha = form.find("input._recaptcha-token");
+    if (recaptcha[0] == null) {
+      return recaptcha.val("recaptcha-token-field-missing");
+    } else if (recaptcha.hasClass("_token-updated")) {
+      return recaptcha.removeClass("_token-updated");
+    } else if (typeof grecaptcha === "undefined" || grecaptcha === null) {
+      return recaptcha.val("grecaptcha-undefined");
+    } else {
+      return updateRecaptchaToken(form, event);
+    }
+  };
+
+  updateRecaptchaToken = function(form, event) {
+    var recaptcha;
+    recaptcha = form.find("input._recaptcha-token");
+    if (recaptcha[0] == null) {
+      return recaptcha.val("recaptcha-token-field-missing");
+    } else if (typeof grecaptcha === "undefined" || grecaptcha === null) {
+      return recaptcha.val("grecaptcha-undefined");
+    } else {
+      if (event) {
+        event.stopPropagation();
+      }
+      executeGrecaptcha(form, event, recaptcha);
+      return false;
+    }
+  };
+
+  executeGrecaptcha = function(form, event, recaptcha) {
+    var action, siteKey;
+    siteKey = recaptcha.data("site-key");
+    action = recaptcha.data("action");
+    return grecaptcha.execute(siteKey, {
+      action: action
+    }).then(function(token) {
+      recaptcha.val(token);
+      recaptcha.addClass("_token-updated");
+      if (event) {
+        return form.submit();
+      }
+    });
+  };
+
+}).call(this);

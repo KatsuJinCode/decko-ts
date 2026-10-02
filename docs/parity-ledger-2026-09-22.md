@@ -4,22 +4,17 @@ The standing answer to "where is the port against byte-for-byte parity with
 the Ruby oracle (card-1.110.0 / decko-0.20.0), and what is left." Numbers
 cite their source; every claim names the command or file that produced it.
 
-## Capstone doctrine (Julian, 2026-09-22 morning)
+## How to read this ledger
 
-1. Once a suite or corpus surface is proven byte-identical, it is RECORDED
-   below and NOT re-run during development. Regression re-verification
-   happens ONCE, at the capstone. Proven suites' day-to-day protection is
-   the narrow named-path tests of whatever is being changed, not sweeps.
-2. The full 48-shard corpus replay is THE CAPSTONE: it runs once, at the
-   very end, when every fix is landed — as the final proof and the record
-   of everything byte-identical. It is not a development loop.
-3. The 4-slice run launched 2026-09-21 23:35 is the BASELINE INVENTORY
-   (pre-prepare-cache, pre-final-fixes): its results JSONs feed the final
-   reconciliation, and the capstone run replaces its numbers.
-4. Long runs happen in PARALLEL with all other work, never as a blocker.
-
-Capstone cost after the prepare-cache fix (below): ~200k renders × ~56 ms
-÷ 4 slices ≈ **under an hour**, down from ~8 h.
+This ledger is a point-in-time record: each PROVEN row names the test
+files (and, where a sweep ran, the command and date) that produced its
+evidence when it was recorded. It is not an exemption from re-running:
+day-to-day regression protection is the standing test net
+(`tests/standing-net.json`, run via `node tools/test-queue/run-standing-net.mjs`)
+plus the named-path suites of whatever is being changed. The full 48-shard
+corpus replay is a whole-corpus proof run for the final parity claim, not a
+development loop. After the prepare-cache fix (below) it costs ~200k renders
+× ~56 ms ÷ 4 slices ≈ **under an hour**, down from ~8 h.
 
 ## The measure
 
@@ -44,7 +39,7 @@ those entries are proven byte-exact by
 tests/card/render/structure-corpus-replay.test.ts (FULL sweep green, 465
 entries, ~17 s).
 
-## PROVEN byte-identical (recorded once; not re-run during development)
+## PROVEN byte-identical (point-in-time records; protected by the standing test net)
 
 | surface | proven | evidence | commit |
 | --- | --- | --- | --- |
@@ -84,7 +79,7 @@ The capstone replay inherits this automatically.
 | set-card html views | 7 pinned entries | Rules section accordions, open-view hide list, set menu popover, rule bar classes | set-card-views-corpus-parity.test.ts |
 | Date cardtype valid path | no oracle exists (all 4,021 corpus Date cards hold invalid content) | strftime core port, deterministic-seed tests | date-cardtype-view.test.ts (16) |
 
-Render directory: 133/133 green (npx vitest run tests/card/render/, 2026-09-22 04:43) — recorded once per the capstone doctrine; not re-run.
+Render directory: 133/133 green (npx vitest run tests/card/render/, 2026-09-22 04:43) — point-in-time measurement at recording.
 
 ## The data-drift class (classified, never excused)
 
@@ -101,44 +96,32 @@ The clean elimination is a corpus re-capture from a dump-faithful deck
 (~1 day including the re-replay). Decision: not worth it for the M1 claim;
 booked for whenever the corpus regenerates for real reasons.
 
-## The plan to the capstone (2026-09-22, agents + coordinator)
+## The plan to the full-corpus proof (2026-09-22)
 
-Workstreams — every one lands BEFORE the capstone; the capstone is a
+Workstreams — every one lands BEFORE the full-corpus proof; the proof is a
 consequence, not a phase:
 
 | # | workstream | owner | state |
 | --- | --- | --- | --- |
-| W1 | set_read_rule save event (write path) | background agent (regular) | **DONE** 8343e72 — derivation + _left cascade + engine hooks; scenario 07 enforced; remainders listed in its report |
-| W2 | card_references write-path population | background agent (regular) | **DONE** — L/I/P semantics, delete+rebuild, compound resolution; 7/7 conformance; referee-side backfill deferred (documented) |
-| W3 | search-type core views (valid-JSON byte parity) | background agent (minimax) | **DONE** — port already byte-correct; +10-test pin; corpus has no valid-JSON search oracle |
-| W4 | ERB/HAML content provenance | background agent (minimax) | **DONE** — zero template-derived corpus content (evidence doc); no-op with proof |
-| W5 | notify save-path wiring | coordinator, direct | **DONE** 7a1ca6c — engine seams + deck template resolver + interpolation resolved/unresolved split |
-| W6 | baseline 4-slice inventory → reconcile every entry against the classes/PROVEN table | coordinator, on baseline landing | waiting on the baseline run |
-| W7 | CAPSTONE: single 48-shard run (~<1 h post-cache), aggregate = the recorded proof | coordinator, once W1-W6 land | gated on W6 |
+| W1 | set_read_rule save event (write path) | persistence stream | **DONE** 8343e72 — derivation + _left cascade + engine hooks; scenario 07 enforced; remainders listed in its report |
+| W2 | card_references write-path population | persistence stream | **DONE** — L/I/P semantics, delete+rebuild, compound resolution; 7/7 conformance; referee-side backfill deferred (documented) |
+| W3 | search-type core views (valid-JSON byte parity) | search-core stream | **DONE** — port already byte-correct; +10-test pin; corpus has no valid-JSON search oracle |
+| W4 | ERB/HAML content provenance | template-provenance stream | **DONE** — zero template-derived corpus content (evidence doc); no-op with proof |
+| W5 | notify save-path wiring | notify stream | **DONE** 7a1ca6c — engine seams + deck template resolver + interpolation resolved/unresolved split |
+| W6 | baseline 4-slice inventory → reconcile every entry against the classes/PROVEN table | integration, after the baseline run | waiting on the baseline run |
+| W7 | full-corpus proof: single 48-shard run (~<1 h post-cache), aggregate = the recorded proof | integration, once W1-W6 land | gated on W6 |
 
-Capstone preconditions checklist (all must hold before W7 launches):
+Preconditions checklist (all must hold before W7 launches):
 every W1-W5 landed and reconciled; `npx tsc --noEmit` clean; each changed
 surface's named-path tests green at final state; the drift classes still
-counted and printed. The capstone's aggregate JSON is archived with the
-commit hash; the M1 claim is stated against it, then never re-run.
+counted and printed. The proof run's aggregate JSON is archived with the
+commit hash; the M1 claim is stated against it.
 
-After the capstone (demo sequence): redeploy the Cloudflare worker with
-the integrated engine → live smoke of the demo deck → show Julian the
+After the proof (demo sequence): redeploy the Cloudflare worker with
+the integrated engine → live smoke of the demo deck → present the
 parity number, the live worker, and this ledger. The CF token cleanup
 (`node deploy/cleanup.mjs --yes` + revoke) happens after the demo.
 
-Explicitly OUT of capstone scope (product breadth, not parity proof;
+Explicitly OUT of scope for the parity proof (product breadth, not parity;
 separate go/no-go): live-PG rung proof, the 30 partial mods' breadth,
-one-click deploy polish, M3 live-metrics milestone.
-
-## Fleet post-mortem (2026-09-22 morning)
-
-The three long-running regular agents (R3 search cores, P3 set_read_rule,
-R4 HAML/ERB rules) were found inert at 8.5 h: timestamps show R3's last
-exec at 20:27 the previous night and zero exec activity ever for P3/R4 —
-all three died with the ZCode restarts and left stale registry rows. P3
-and R4 wrote nothing; R3's outputs were already committed. Lessons applied:
-liveness is judged from exec/transcript timestamps, never from "no
-output.txt yet" or a file mtime; streams are scoped shorter with check-ins;
-workflow-subagent results must be submitted before turn end (wave E's E1
-failed exactly this way and was repaired by amend + salvage).
+one-click deploy polish, the published-metrics milestone.

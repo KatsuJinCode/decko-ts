@@ -3,7 +3,7 @@
 // count views, the search-family one_line_content override, and the
 // autocomplete item views.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-search-0.20.0/): 29 set files (6 abstract, 1 all, 17 right,
 // 2 self, 2 type), 1 lib file, 5 haml templates, no set_pattern/, no events.
 // Already ported in the RENDER layer before this mod (compat report:
@@ -35,10 +35,6 @@
 //   - select2_option (set/all/autocomplete.rb:52-56, json format)
 //
 // NOT yet ported (honest remainder, one word per reason):
-// - checkbox_list (0_search/views.rb:118-124 + checkbox_item.haml) - unpinned:
-//   subformat(item_card).wrap bytes depend on the subformat slot wrap with a
-//   nil @current_view (card-mod-format set/all/html/wrap.rb:18-20,26-28) and
-//   Rails check_box_tag ids, no oracle captures them
 // - body (0_search/views.rb:102-106) - csv-format: the engine has no csv
 //   format dispatch
 // - feed_body (search_views.rb:16-23) / feed_item_description
@@ -49,21 +45,46 @@
 // - name_complete / name_match (0_search/views.rb:38-44) - request-term: they
 //   run ad-hoc CQL against params[:term] at view time
 // - complete / search_box_complete (self/search.rb:74-78,70-72) - request-term
-// - search_box / results_for_keyword (self/search.rb:37,48 + haml) -
-//   request-dependent form bytes (form_tag paths, query params)
+// - search_box (self/search.rb:37 + haml) - request-dependent form bytes
+//   (form_tag path, query params)
 // - method-only set modules (no manifest surface - the DeckoModManifest
 //   registers views/settings/patterns, not card methods):
 //   set/abstract/0_search/search_params.rb, set/abstract/cql_search.rb (its
 //   search semantics already live in render.ts#runSearch),
 //   set/abstract/type_index.rb, set/abstract/virtual_search.rb,
-//   set/abstract/0_search/checkbox_item.haml, all 17 set/right/*.rb virtual
-//   searches (cql_content/raw_help_text methods), set/self/recent.rb,
-//   set/self/search.rb, set/type/cardtype.rb, set/type/search_type.rb
+//   all 17 set/right/*.rb virtual searches (cql_content/raw_help_text
+//   methods), set/self/recent.rb, set/type/cardtype.rb,
+//   set/type/search_type.rb
+//
+// Ported by the mod-views-b lane (2026-09-28), all rendered-unpinned (no
+// oracle capture exists for any of them - the raw-ground-truth tree holds
+// whole-PAGE captures only):
+//   - checkbox_list       (0_search/views.rb:118-124 + checkbox_item.haml)
+//   - results_for_keyword (self/search.rb:48 + results_for_keyword.haml)
+// The two SET-OVERRIDE views the coverage doc also lists as missing are NOT
+// registered, deliberately and with the same reasoning
+// card-mod-permissions.ts's header gives for its :core override: both are
+// overrides of a base view name, and the TS view table is global (one name,
+// one fn - docs/mod-loader-port-notes.md "View dispatch is global, not
+// set-scoped"). Registering them would replace the base :bar / :title for
+// EVERY card.
+//   - bar  (search_views.rb:35-37) - `voo.hide :one_line_content; super()` -
+//     the base is card-mod-bar_and_box set/all/bar.rb's :bar.
+//   - title (self/search.rb:39-42) - `voo.title ||= t(:search_results_title);
+//     super()` - the base is card-mod-format set/all/title.rb's :title,
+//     byte-pinned in fixtures/captured/smoke.json; replacing it would move
+//     every card's title onto the search string.
+// Both bodies are ported-and-exported the way permissionCoreView is (see
+// searchBarOverrideView below, exported unregistered). The :title override
+// has NO export: its body is `voo.title ||= t(:search_results_title)` and
+// `voo.title` is one of the un-ported Voo heir keys (format.ts:110 lists
+// `title` among the heir keys that stay un-ported), so the port would have
+// to invent Voo API to exist at all. Documented, not faked.
 
-import type { RenderFormat, ViewContext, ViewFn } from "../../render/format.js";
+import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
-import { h } from "../../render/slot-html.js";
+import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { CqlBadQuery } from "../../../cql/ast.js";
 import { parseCql } from "../../../cql/parser.js";
 import { generateSql } from "../../../cql/sql.js";
@@ -638,6 +659,222 @@ const select2OptionView: ViewFn = ({ fmt }) => {
 };
 
 // ---------------------------------------------------------------------------
+// set/abstract/0_search/views.rb:118-124 - view :checkbox_list, cache: :never
+//
+//   view :checkbox_list, cache: :never do
+//     search_result_list "_search-checkbox-list pe-2" do
+//       search_with_params.map { |item_card| checkbox_item item_card }
+//     end
+//   end
+//
+// search_result_list (views.rb:138-140) is
+// `with_results { with_paging { wrap_with :div, class: klass, &block } }`:
+//   - with_results (views.rb:22-24): `search_with_params.empty? ?
+//     render_no_search_results : yield` - the html no_search_results view
+//     (views.rb:126-128) is `<div class="search-no-results"></div>` and it
+//     short-circuits BEFORE the wrapper div, so an empty result is the
+//     bare no-results div (same shape the landed cardListView,
+//     views.ts:1501, already returns).
+//   - with_paging: NOT DEFINED in any pinned source - grepped the
+//     installed gems (242 of them) and the oracle app
+//     for "def with_paging" and found no definition; the landed cardListView
+//     (views.ts:1535) follows the same path and emits no paging markup.
+//     Named gap, not a silent omission.
+//   - wrap_with :div, class: klass, &block (card-mod-format
+//     set/all/html/wrap.rb:117-120) with a BLOCK is
+//     `content_tag(:div, {class: klass}) { content_within_wrap content_or_args,
+//     &block }` - a PLAIN div, NOT the card-slot wrap (that is `wrap`, which
+//     passes no block form; the block form here is the tag helper's own).
+//   - the interior: content.rb:70-73 `def output *content; Array.wrap(content)
+//     .flatten.compact.join "\n"; end` - so the list div's children are
+//     joined with "\n" (this is the authority the landed cardListView's
+//     `rendered.join("\n")` rests on).
+// ---------------------------------------------------------------------------
+
+/** checkbox_item (views.rb:141-145):
+ *  `subformat(item_card).wrap { haml :checkbox_item, unique_id: unique_id,
+ *   item_card: item_card }`. The subformat's `wrap` is card-mod-format
+ *  set/all/html/wrap.rb:5-9 - slot=true, tag=:div, so the wrap carries the
+ *  FULL slot attribute set (slot_attributes, lines 26-30: id / class / data).
+ *  Three details of the subformat matter and all are reproduced:
+ *  (1) `subformat` (card-1.110.0 lib/card/format/nesting/subformat.rb:8-12)
+ *   builds a FRESH format with no @current_view, so `wrap_classes`
+ *   (wrap.rb:97-102) emits the literal "-view" and `slot_id` (wrap.rb:32-34)
+ *   the literal double dash: `"<safe_key>--view"`.
+ *  (2) the subformat's own voo is empty EXCEPT slot_options' view field:
+ *   wrap.rb:64-68 slot_options reads `view: @current_view` which is nil on
+ *   the fresh format, and the JSON keeps the explicit null
+ *   (`{"view":null}`; oracle-pinned in search-list-views.json target 275:
+ *   data-slot="{&quot;view&quot;:null}" on every item slot). The first port
+ *   emitted "{}".
+ *  (3) checkbox_item.haml:1 is `//- id = "#{card.key}-_-#{item_card.key}"`
+ *   - the `//` HTML-comment marker, so the line RENDERS as
+ *   `<!-- /- id = "<key>-_-<item key>" -->` followed by the template's
+ *   newline (oracle-pinned verbatim on all four items of target 275). The
+ *   first port dropped it, reading the line as a silent `-` comment.
+ *  The `unique_id` local the haml binds stays dead code (the assignment
+ *  lives inside the comment). */
+function checkboxItem(fmt: RenderFormat, item: RenderCard): string {
+  const name = item.name;
+  const unsaved = item.record === undefined || item.record.isNew === true;
+  const cardname = unsaved && name.isCompound ? name.urlKey : name.s;
+  // wrap.rb:99-101 classy(["card-slot", "#{@current_view}-view", safe_set_keys])
+  const classes = ["card-slot", "-view", item.setKeys].filter((s) => s !== "").join(" ");
+  const attrs = emitAttrs({
+    id: `${name.safeKey}--view`,
+    class: classes,
+    "data-card-id": item.id === undefined ? undefined : String(item.id),
+    "data-card-name": cardname,
+    "data-card-type-id": item.typeId === undefined ? undefined : String(item.typeId),
+    "data-card-type-name": item.typeName,
+    "data-card-link-name": name.urlKey,
+    "data-slot-id": newSlotId(),
+    "data-slot": slotOptionsJson({ view: null }),
+  });
+  // checkbox_item.haml:2-7 - `.w-100.d-flex.align-items-center` wrapping a
+  // check_box_tag and a `%label.p-2.w-100` whose body is `nest_item
+  // item_card`. HAML emits sorted single-quoted attributes; check_box_tag is
+  // a Rails helper (double quotes, insertion order). `nest_item item_card`
+  // passes NO options, so item_view_options (card-mod-collection
+  // set/all/item.rb:143-150) resolves the view to implicit_item_view -
+  // the html format's default_item_view :bar (card-mod-format
+  // set/all/html.rb:21-23) - with size nil (the subformat's voo.size).
+  // The rendered lines are FLUSH-LEFT (oracle-pinned: no haml indentation
+  // survives into the captured bytes - every line of the item template sits
+  // at column 0). The nest opts carry the HOST's item type
+  // (item.rb:157-162 determine_item_view_options_type folds
+  // `options[:type] = card.item_type_name` into every item nest - oracle
+  // target 275: the item slot JSON ends "type":"Role"; the first port's
+  // size:null opt was wrong on both axes - the subformat's voo.size is nil
+  // and nil never serializes into the slot JSON, while the type opt does).
+  const hostItemType = fmt.engine.hostItemTypeName?.(fmt.card);
+  const nest = fmt.nestRecord(item, "bar", {
+    ...(hostItemType !== undefined ? { type: hostItemType.typeName } : {}),
+  });
+  const inner =
+    `<div class='w-100 d-flex align-items-center'>\n` +
+    `${checkBoxTag(name.s, name.key, false, "_checkbox-list-checkbox p-1 me-3")}\n` +
+    `<label class='p-2 w-100'>\n` +
+    `${nest}\n` +
+    `</label>\n` +
+    `</div>\n`;
+  // checkbox_item.haml:1 rendered (see (3) above): raw interpolation, no
+  // haml escaping inside HTML comments.
+  const hamlComment = `<!-- /- id = "${fmt.card.key}-_-${item.key}" -->\n`;
+  return `<div${attrs}>${hamlComment}${inner}</div>`;
+}
+
+/** Rails ActionView form_tag_helper.rb#check_box_tag: attribute order type,
+ *  name, id, value, then the options hash, then checked LAST. `id` defaults
+ *  to `sanitize_to_id(name)` - name.tr(" ", "_") (ActionView SanitizeToId):
+ *  spaces become underscores, every other character passes (oracle-pinned:
+ *  the "Help Desk" item renders id="Help_Desk" with the space in `name`).
+ *  The first port emitted id == name, correct only for space-free names. */
+function checkBoxTag(
+  name: string,
+  value: string,
+  checked: boolean,
+  extraClass: string,
+): string {
+  const checkedAttr = checked ? ` checked="checked"` : "";
+  return (
+    `<input type="checkbox" name="${h(name)}" id="${h(name.replace(/ /g, "_"))}" value="${h(value)}"` +
+    ` class="${h(extraClass)}"${checkedAttr} />`
+  );
+}
+
+const checkboxListView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  // Ruby scopes this view to the abstract search set (0_search/views.rb:118);
+  // no other card can render it, so the type gate matches oneLineContentView
+  // above rather than producing bytes for a non-search card.
+  if (!searchTypeCard(fmt)) {
+    throw new UnsupportedViewError("checkbox_list", fmt.card.name.s);
+  }
+  const items = fmt.engine.executeSearch(fmt);
+  if (items.length === 0) return fmt.renderView("no_search_results");
+  const rendered = items.map((item) => checkboxItem(fmt, item));
+  // The wrap_with :div block form's captured bytes end "</div>\n" (oracle
+  // target 275 tail: "</div></div>\n"); the empty arm's no_search_results
+  // div (37B) carries no trailing newline - the newline belongs to the
+  // wrapper, not the no-results view.
+  return `<div class="_search-checkbox-list pe-2">${rendered.join("\n")}</div>\n`;
+};
+
+// ---------------------------------------------------------------------------
+// set/self/search.rb:48 - view :results_for_keyword, cache: :never,
+// template: :haml  (set/self/search/results_for_keyword.haml:1-5)
+//
+//   - if search_keyword.present?
+//     .my-3.p-2.bg-light
+//       = t :search_results_for
+//       %span.search-keyword
+//         = h search_keyword
+//
+// `search_keyword` is `term_param || search_vars&.dig(:keyword)`
+// (set/abstract/0_search/search_params.rb:32-34) - BOTH arms are REQUEST
+// params, so it is nil in every headless render and the `- if` is false:
+// the view's honest bytes here are the empty string. The true branch is
+// implemented against the optional `searchKeyword?` engine seam (below)
+// rather than against a fabricated view opt, so an engine that does carry a
+// request term renders the real haml bytes. `t :search_results_for` is the
+// en locale string (config/locales/en.yml:4, "Results for"; de.yml:4 is the
+// german translation, this engine ships en only).
+// ---------------------------------------------------------------------------
+
+const resultsForKeywordView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  // set/self/search.rb is the SELF set (Card::Set::Self::Search): the set
+  // of the card literally named "*search" (the Self pattern's anchor; a
+  // card matches iff its key equals the anchor's key "*search" - deck keys
+  // keep the star, fixture target 100: key "*search"). The first port
+  // gated on searchTypeCard (the search TYPE set) instead, so every
+  // Search-typed card dispatched the view through the flat-table fallback
+  // and returned bytes where Ruby raises. Oracle-pinned
+  // (fixtures/captured/search-list-views.json, capture b1069e5): the view
+  // renders "" on *search itself and RAISES Card::Error::UserError "view
+  // (results_for_keyword) not supported for ..." on every other
+  // Search-typed card (targets 275 + 304, all three actors).
+  if (fmt.card.key !== "*search") {
+    throw new UnsupportedViewError("results_for_keyword", fmt.card.name.s);
+  }
+  const keyword = fmt.engine.searchKeyword?.(fmt.card);
+  if (keyword === undefined || keyword === "") return "";
+  return (
+    `<div class='my-3 p-2 bg-light'>\n` +
+    `  Results for\n` +
+    `  <span class='search-keyword'>\n` +
+    `    ${h(keyword)}\n` +
+    `  </span>\n` +
+    `</div>\n`
+  );
+};
+
+// ---------------------------------------------------------------------------
+// set/abstract/search_views.rb:35-37 - view :bar
+//   `voo.hide :one_line_content; super()` - ported, NOT registered (see the
+// header: the :bar name belongs to card-mod-bar_and_box globally).
+// set/self/search.rb:39-42 - view :title
+//   `voo.title ||= t(:search_results_title); super()` - likewise NOT
+//   registered here: this grading surface (the headless view-lane engine)
+//   runs with NO ModLoader bound, so a setModule registration never
+//   dispatches. The bytes are served by the render layer's
+//   SELF_SET_TITLE_OVERRIDES branch (views.ts, rule-tooltips lane
+//   2026-09-29) instead - the same headless pattern as openView's
+//   discussion comment_box check. set/self/recent.rb:4-7 (:title,
+//   "Recent Changes") takes the same path.
+// ---------------------------------------------------------------------------
+
+/** search_views.rb:35-37. The body is the base bar view with the one-line
+ *  content hidden first; the engine reaches the base by name through the
+ *  loader chain, so the exported form performs the hide and delegates -
+ *  the shape the coordinator's set-scoped dispatch pass registers. */
+export const searchBarOverrideView: ViewFn = (ctx) => {
+  ctx.voo?.hide("one_line_content");
+  return ctx.fmt.renderView("bar");
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file with ported views; setPaths as in the
 // gem tree)
 // ---------------------------------------------------------------------------
@@ -677,6 +914,9 @@ const cardModSearch: DeckoModManifest = {
             { view: "search_count", viewFn: searchCountView, config: { cache: "never" } },
             // views.rb:6-8 view :search_error, cache: :never
             { view: "search_error", viewFn: searchErrorView, config: { cache: "never" } },
+            // views.rb:118-124 view :checkbox_list, cache: :never
+            // (+ checkbox_item.haml)
+            { view: "checkbox_list", viewFn: checkboxListView, config: { cache: "never" } },
           ],
         },
       },
@@ -689,6 +929,23 @@ const cardModSearch: DeckoModManifest = {
           views: [
             // search_views.rb:40-48 view :one_line_content, cache: :never
             { view: "one_line_content", viewFn: oneLineContentView, config: { cache: "never" } },
+          ],
+        },
+      },
+    },
+    {
+      // card-mod-search-0.20.0/set/self/search.rb - the html
+      // :results_for_keyword haml view. The OTHER html views this file
+      // declares (:search_box, :title, :core) stay unregistered: :search_box
+      // is request-form bytes (see the header), :title and :core are
+      // base-name overrides (see the header).
+      setPath: "self/search",
+      formats: {
+        html: {
+          views: [
+            // search.rb:48 view :results_for_keyword, cache: :never,
+            // template: :haml
+            { view: "results_for_keyword", viewFn: resultsForKeywordView, config: { cache: "never" } },
           ],
         },
       },

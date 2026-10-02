@@ -15,11 +15,16 @@ import {
   seedReference,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+import { CORPUS_DB_PATH, SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
-export const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
-export const SHARD_PATH = path.join(REPO_ROOT, "fixtures", "corpus", "shard-000000.jsonl");
+// The committed miniature corpus (fixtures/test-corpus/) by default; the
+// richer machine-local corpus only under the explicit DECKO_TS_CORPUS_V2
+// opt-in (src/testing/test-corpus-paths.ts). No presence probes, no
+// sibling-checkout fallbacks.
+export const CORPUS_DB = CORPUS_DB_PATH;
+export const SHARD_PATH = SHARD_000000_PATH;
 
 /** The codename cards the permission state resolution reads. */
 const PERMISSION_CODENAMES = ["anyone", "anyone_signed_in", "anonymous", "read", "set"];

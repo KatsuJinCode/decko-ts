@@ -2,7 +2,7 @@
 // capture (benchmarks/capture-write-conformance.rb) records, runs them
 // against the TS action engine, and compares the resulting row shapes.
 //
-// Scope (per the ask, file boundaries, and per-row normalization notes in
+// Scope (per the file boundaries and per-row normalization notes in
 // docs/write-conformance-notes.md):
 //   - The fixture is the SOURCE OF TRUTH for shape: card_actions /
 //     card_changes row counts and field/value triples must match
@@ -188,6 +188,42 @@ async function seedStandardDeck(s: ReplayStorage): Promise<void> {
     id: 18, leftId: ALL_PLUS_ID, rightId: READ_ID, content: "_left",
     typeId: LIST_TYPE_ID,
   });
+  // The bootstrapped WRITE fallbacks the recorded deck carried (*all+*create
+  // 6566 / *all+*update 6570 / *all+*delete 6572): without an applicable
+  // rule the save gate now denies (deny-on-empty fix, permissions.rb
+  // :47-49/:100-118), so the replay deck carries the rules a real deck has.
+  // All three grant [[Anyone]] — Test Bot passes through among?'s AnyoneID
+  // arm (account_holder.rb:31-37) like every actor.
+  for (const [id, codename, key] of [
+    [40, "create", "*create"],
+    [41, "update", "*update"],
+    [42, "delete", "*delete"],
+  ] as const) {
+    await s.driver.query(
+      `INSERT INTO cards
+         (id, name, key, codename, left_id, right_id, current_revision_id,
+          created_at, updated_at, creator_id, updater_id, read_rule_class,
+          read_rule_id, references_expired, trash, type_id, db_content)
+       VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, 1, 1, '*all', ?, NULL, 0, ?, ?)`,
+      [id, key, key, codename, now, now, ANYONE_ID, SETTING_TYPE_ID, null],
+    );
+  }
+  const writeRules: Array<[number, string, number]> = [
+    [43, "*all+*create", 40],
+    [44, "*all+*update", 41],
+    [45, "*all+*delete", 42],
+  ];
+  for (const [id, name, settingId] of writeRules) {
+    await insertRuleCard(s, {
+      id, leftId: ALL_ID, rightId: settingId, content: "[[Anyone]]",
+      typeId: LIST_TYPE_ID,
+    });
+    await s.driver.query(
+      `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+       VALUES (?, 'anyone', ?, 'L', NULL)`,
+      [id, ANYONE_ID],
+    );
+  }
 }
 
 /** Junction rule-card row: NULL name/key, side ids set (the 2020 convention
@@ -514,14 +550,41 @@ async function replay07(): Promise<number[]> {
 }
 
 // 08-touch-name-reference: create referer + referee, where referer content
-// includes a {{referee}} nest. The TS port's reference_events machinery
-// is deferred (later stream per docs/actions-port-notes.md) — so the
-// TS replay creates the cards but the card_references table will be
-// EMPTY. That divergence is reported, not papered over.
+// includes a {{referee}} nest. Since the reference_events machinery landed
+// (refresh-references-out.ts / refresh-references-in.ts), the replay also
+// compares the card_references rows against the fixture's ORACLE rows —
+// the only scenario in the capture whose fixture carries reference rows.
+//
+// The fixture's oracle rows (referer 1181, exactly, in id order):
+//   {ref_type: "I", referee_key: "wcc_referer+child", referee_id: NULL, is_present: NULL}
+//   {ref_type: "P", referee_key: "child",             referee_id: 1179, is_present: NULL}
+// The mechanism that produced them (lib/card/reference/all.rb, gem-read):
+//   - the compound's referee_id is Lexicon.id("WCC Referer+child"):
+//     name_to_lex needs BOTH sides ([id(left), id(right)], lexicon.rb:105-112)
+//     and lex_to_id queries {left_id, right_id, trash: false} (lexicon.rb:
+//     124-135) — no live card carries the pair, so NULL. The left partial
+//     is the referer ITSELF (self-reference drop, all.rb:93), and the right
+//     partial "child" resolves to the oracle deck's live Child card (1179;
+//     seeded here before the referer save, same role).
+//   - is_present is not written by refresh_references_out (stays NULL).
+//   - "P" partial rows exist only for the unresolvable compound's sides
+//     (all.rb:133-139) — the fixture's two rows are the whole set.
+// The replay's order is referer-first; the capture app's junction-first
+// order (and its stale left_id 1174, a card the snapshot's affected-id
+// window excludes) belongs to that app's earlier-scenario history. The
+// final-state difference — the port, like Ruby, BACKFILLS the I row when
+// the junction create runs refresh_references_in / map_referees
+// (reference_events.rb:22-25, reference.rb:26-28) — is a sequence
+// artifact, asserted as its own gem-cited arm below rather than papered
+// over: in the capture the referer's rows were written AFTER the
+// junction's map_referees had already run (nothing to backfill), while in
+// this order the backfill lands. Ruby run in THIS order does the same.
 async function replay08(): Promise<number[]> {
   const s = await freshStorage();
   await seedStandardDeck(s);
   const engine = makeEngine(s);
+  // The oracle deck's live "child" card (fixture referee_id 1179).
+  const child = await engine.createCard({ name: "Child", content: "child seed" });
   // The Ruby fixture's card set has WCC Referer as the simple parent
   // (name='WCC Referer', left/right NULL) and "WCC Referer+child" as the
   // junction child (name NULL, left/right set). Match that shape: create
@@ -530,19 +593,73 @@ async function replay08(): Promise<number[]> {
     name: "WCC Referer",
     content: "see {{WCC Referer+child}}",
   });
+
+  // Mid-state (after the referer save, before the referee exists): the
+  // oracle row shape, compared structurally (ids are DB-local).
+  interface RefRow {
+    referee_id: number | null;
+    referee_key: string;
+    ref_type: string;
+    is_present: number | null;
+  }
+  const fixtureRefs = (loadFixture("08-touch-name-reference").after.card_references as unknown as Array<
+    RefRow & { id: number; referer_id: number }
+  >).sort((a, b) => a.id - b.id);
+  const midRefs = await s.selectAll<RefRow>(
+    "SELECT referee_id, referee_key, ref_type, is_present FROM card_references WHERE referer_id = ? ORDER BY id",
+    [referer.cardId],
+  );
+  expect(midRefs.map((r) => [r.ref_type, r.referee_key]), "mid-state row set matches the oracle").toEqual(
+    fixtureRefs.map((r) => [r.ref_type, r.referee_key]),
+  );
+  expect(midRefs[0], "I row: unknown compound, oracle NULL referee_id, NULL is_present").toEqual({
+    referee_id: null,
+    referee_key: "wcc_referer+child",
+    ref_type: "I",
+    is_present: null,
+  });
+  expect(midRefs[1], "P row: right part resolves to the live Child card").toEqual({
+    referee_id: child.cardId,
+    referee_key: "child",
+    ref_type: "P",
+    is_present: null,
+  });
+  // No partial row for the left part: it is the referer itself (all.rb:93),
+  // and the fixture likewise carries no referee_key "wcc_referer" row.
+  expect(midRefs.some((r) => r.referee_key === "wcc_referer"), "self-reference dropped").toBe(false);
+
   const refereeJunction = await engine.createCard({
     name: "WCC Referer+child",
     content: "child body",
   });
+
+  // Final state: the junction create ran refresh_references_in (created
+  // card call site) — map_referees backfills the I row by key; the P row
+  // is keyed "child" and must NOT adopt the junction's id.
+  const finalRefs = await s.selectAll<RefRow>(
+    "SELECT referee_id, referee_key, ref_type, is_present FROM card_references WHERE referer_id = ? ORDER BY id",
+    [referer.cardId],
+  );
+  expect(finalRefs.map((r) => [r.ref_type, r.referee_key])).toEqual(
+    midRefs.map((r) => [r.ref_type, r.referee_key]),
+  );
+  expect(
+    finalRefs.find((r) => r.ref_type === "I")?.referee_id,
+    "map_referees backfills the I row to the newly created referee",
+  ).toBe(refereeJunction.cardId);
+  expect(
+    finalRefs.find((r) => r.ref_type === "P")?.referee_id,
+    "the P row keeps the Child card's id",
+  ).toBe(child.cardId);
+
   const junction = await s.selectOne<{
     left_id: number | null;
     right_id: number | null;
   }>("SELECT left_id, right_id FROM cards WHERE id = ?", [refereeJunction.cardId]);
-  const leftId = junction?.left_id ?? -1;
-  const rightId = junction?.right_id ?? -1;
-  await snapshotAndAssert(s, "08-touch-name-reference", [referer.cardId, leftId, rightId]);
+  expect(junction?.right_id, "junction right side is the seeded Child card").toBe(child.cardId);
+  await snapshotAndAssert(s, "08-touch-name-reference", [referer.cardId, refereeJunction.cardId]);
   s.close();
-  return [referer.cardId, leftId, rightId];
+  return [referer.cardId, refereeJunction.cardId];
 }
 
 // -----------------------------------------------------------------------

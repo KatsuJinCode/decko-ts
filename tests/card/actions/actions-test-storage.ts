@@ -172,11 +172,38 @@ export interface StandardFixture {
   joeCard: CardsRow;
 }
 
+/** One card_references row (rule card -> party), the shape the who_can
+ *  batch (view-task-rules.ts viewTaskPermissionStatements) reads. */
+export async function seedReference(
+  storage: ActionsTestStorage,
+  refererId: number,
+  refereeId: number,
+  refereeKey: string,
+): Promise<void> {
+  await storage.driver.query(
+    `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+     VALUES (?, ?, ?, 'L', NULL)`,
+    [refererId, refereeKey, refereeId],
+  );
+}
+
+/** Codename/set cards + the `*all` write-task fallback rules every real
+ *  decko deck bootstraps (cards_011 fixtures; the recorded corpus's
+ *  *all+*create 6566 / *all+*update 6570 / *all+*delete 6572). Without
+ *  them the deck is a partial seed and the write gate denies — Ruby's
+ *  fail-closed default (permissions.rb:47-49, :100-118; "RULE missing.
+ *  should not be possible" :77-85). The fallbacks grant [[Anyone]]: every
+ *  actor passes through among?'s AnyoneID arm (account_holder.rb:31-37),
+ *  so mechanics-focused tests exercise writes, not permission matrices. */
+export const SET_TYPE_ID = 300; // above every fixture's own id band (rule-content-walk owns 60-67)
+const RULE_PARTY = "anyone";
+
 /** Seed the synthetic minimum every action test needs: the type cards
  *  (RichText/basic + Cardtype/cardtype), the `*all`/`*default` setting
  *  cards, the `*all+*default` rule card whose type_id is
- *  Card.default_type_id (mod/core/set/all/type.rb:3-5), and one plain
- *  content card. Mirrors the seed-shape of
+ *  Card.default_type_id (mod/core/set/all/type.rb:3-5), one plain
+ *  content card, and the write-rule machinery (see SET_TYPE_ID). Mirrors
+ *  the seed-shape of
  *  card-1.110.0/mod/core/data/fixtures/real/cards.yml (ids 2, 3, 7, 8, 11). */
 export async function seedStandardDeck(storage: ActionsTestStorage): Promise<StandardFixture> {
   const richText = await seedCard(storage, {
@@ -191,7 +218,7 @@ export async function seedStandardDeck(storage: ActionsTestStorage): Promise<Sta
     codename: "cardtype",
     typeId: CARDTYPE_ID,
   });
-  const all = await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: CARDTYPE_ID });
+  const all = await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   const def = await seedCard(storage, {
     id: 8,
     name: "*default",
@@ -201,5 +228,27 @@ export async function seedStandardDeck(storage: ActionsTestStorage): Promise<Sta
   // cards_011 in the real seed: "*all+*default", type_id 2 (the basic type)
   await seedCard(storage, { leftId: all.id, rightId: def.id, typeId: RICH_TEXT_ID });
   const joeCard = await seedCard(storage, { id: 50, name: "Pudding", dbContent: "v1" });
+  // the write-rule machinery: Set codename card, *create/*update/*delete
+  // setting cards, Anyone, and the three *all fallbacks -> [[Anyone]].
+  await seedCard(storage, { id: SET_TYPE_ID, name: "Set", codename: "set" });
+  const createSetting = await seedCard(storage, { id: 301, name: "*create", codename: "create" });
+  const updateSetting = await seedCard(storage, { id: 302, name: "*update", codename: "update" });
+  const deleteSetting = await seedCard(storage, { id: 303, name: "*delete", codename: "delete" });
+  const anyone = await seedCard(storage, { id: 304, name: "Anyone", codename: RULE_PARTY });
+  const createRule = await seedCard(storage, {
+    id: 305, name: "*all+*create", leftId: all.id, rightId: createSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  const updateRule = await seedCard(storage, {
+    id: 306, name: "*all+*update", leftId: all.id, rightId: updateSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  const deleteRule = await seedCard(storage, {
+    id: 307, name: "*all+*delete", leftId: all.id, rightId: deleteSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  await seedReference(storage, createRule.id, anyone.id, RULE_PARTY);
+  await seedReference(storage, updateRule.id, anyone.id, RULE_PARTY);
+  await seedReference(storage, deleteRule.id, anyone.id, RULE_PARTY);
   return { storage, engine: storage.engine, richText, cardtype, joeCard };
 }

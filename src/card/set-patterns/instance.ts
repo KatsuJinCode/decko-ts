@@ -228,3 +228,19 @@ function camelize(code: string): string {
     )
     .join("");
 }
+
+/**
+ * Base#module_key's exact join in driver-backed form: the anchor codenames
+ * arrive already resolved through the ASYNC db-backed registries
+ * (set-type-assignment.ts anchorCodenameDriverBacked - Lexicon card_id +
+ * Codename[i2c], the same data Base#anchor_codenames reads in Ruby through
+ * the db), not through the sync name-environment peeks the #moduleKey
+ * getter reads. Anchorless specs take the bare camelize(code) arm exactly
+ * like #moduleKey (base.rb:59-67 module_key's anchorless branch).
+ */
+export function moduleKeyFromAnchorCodenames(
+  spec: PatternSpec,
+  anchorCodenames: readonly string[],
+): string {
+  return [spec.code, ...anchorCodenames].map(camelize).join("::");
+}

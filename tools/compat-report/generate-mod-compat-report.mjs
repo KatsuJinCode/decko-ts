@@ -25,8 +25,19 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = dirname(dirname(HERE)); // tools/compat-report -> repo root
-const GEM_DIR =
-  "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems";
+// The Ruby gem home is machine-local; it comes from the environment (the
+// standard GEM_HOME, whose gems/ subfolder holds the installed gems) and the
+// generated report records only the $GEM_HOME reference, never the absolute
+// path of the machine that produced it.
+const GEM_DIR = process.env.GEM_HOME ? join(process.env.GEM_HOME, "gems") : undefined;
+if (!GEM_DIR || !existsSync(GEM_DIR)) {
+  console.error(
+    "generate-mod-compat-report: set GEM_HOME to the Ruby gem home " +
+      "(e.g. <ruby>/lib/ruby/gems/3.3.0 -- the installed gems live under its " +
+      "gems/ subfolder) and re-run",
+  );
+  process.exit(2);
+}
 const SET_PATTERNS_DIR = join(REPO, "src", "card", "set-patterns");
 const RENDER_DIR = join(REPO, "src", "card", "render");
 const RULES_DIR = join(REPO, "src", "card", "rules");
@@ -377,7 +388,9 @@ function inventoryGem(gemPath, gemName) {
 
   return {
     gem: gemName,
-    gemPath,
+    // relative to the gems root: the report must stay portable across
+    // machines (the absolute root is machine-local)
+    gemPath: gemName,
     counts: {
       setRbFiles: rbSetFiles.length,
       libRbFiles: rbLibFiles.length,
@@ -890,7 +903,7 @@ function main() {
 
   const report = {
     generatedAt: new Date().toISOString(),
-    gemDir: GEM_DIR,
+    gemDir: "$GEM_HOME",
     repo: REPO,
     surface: {
       implementedPatterns: surface.implementedPatterns,

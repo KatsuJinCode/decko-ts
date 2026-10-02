@@ -2,7 +2,7 @@
 // loader - the bootstrap tab/pill panels: the lazy-loading :tabs/:pills
 // views every card carries (All set module) plus the static variants.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-tabs-0.20.0/): two set files (set/all/tabs.rb,
 // set/abstract/tabs.rb), two lib/ files (Card::Tab, Card::LazyTab), two haml
 // templates (set/all/tabs/tab_panel.haml, set/abstract/tab_badge.haml), one
@@ -77,7 +77,7 @@ import { scanNests } from "../../render/nest-syntax.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import type { CardRecord } from "../../fetch/card-record.js";
-import { h } from "../../render/slot-html.js";
+import { h, cgiEscape } from "../../render/slot-html.js";
 import type {
   DeckoModManifest,
 } from "../mod-manifest.js";
@@ -235,20 +235,9 @@ function itemViewOptions(ctx: ViewContext, newOptions: Record<string, string>): 
 // path.rb + set/all/path.rb:35-40, 70-72
 // ---------------------------------------------------------------------------
 
-/** Ruby CGI.escape: unreserved [A-Za-z0-9_.~-] pass through, space becomes
- *  "+", everything else %XX uppercase (Ruby 3.3 verified: '*' -> "%2A",
- *  '~' passes, '!' -> "%21"). */
-function cgiEscape(s: string): string {
-  let out = "";
-  for (const ch of s) {
-    if (/[A-Za-z0-9_.~-]/.test(ch)) out += ch;
-    else if (ch === " ") out += "+";
-    else {
-      out += `%${(ch.codePointAt(0) as number).toString(16).toUpperCase().padStart(2, "0")}`;
-    }
-  }
-  return out;
-}
+// cgiEscape is the shared slot-html.ts encoder (Ruby CGI.escape over UTF-8
+// bytes) — this file's private codepoint-hex copy predated the shared
+// helper and diverged from the oracle on every non-ASCII name.
 
 /** Rails Hash#to_param over the path query opts: nested values flatten as
  *  `key%5Bsub%5D=value` pairs with the keys SORTED alphabetically (Ruby 3.3

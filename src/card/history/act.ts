@@ -32,9 +32,10 @@ export interface ActAttributes {
  *   end
  *
  * i.e. an explicitly provided actor wins; the current user only fills a
- * blank. The port has no auth layer yet (wave 3), so the writer takes a
- * required actorId; this helper encodes the ||= fill order for callers that
- * have an optional actor (e.g. system jobs that may pre-assign one).
+ * blank. The caller supplies the actor — the engine resolves it from the
+ * session (src/card/auth) or a system job passes one explicitly; this
+ * helper only encodes the ||= fill order for callers that have an optional
+ * actor.
  */
 export function assignActor(
   actorId: number | null | undefined,

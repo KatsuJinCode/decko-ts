@@ -362,11 +362,6 @@ function rewriteNocaseCollations(sql: string): string {
         "postgres-dialect: COLLATE NOCASE followed by `>` or `<` that is part of an identifier (engine bug)",
       );
     }
-    if (opMatch === null) {
-      throw new Error(
-        "postgres-dialect: COLLATE NOCASE must be followed by a comparison operator (engine bug)",
-      );
-    }
     const op = opMatch[0].toUpperCase().replace(/\s+/g, " ");
     i += opMatch[0].length;
     while (i < n && /\s/.test(sql[i])) i += 1;

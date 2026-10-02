@@ -295,9 +295,8 @@ export POSTGRES_URL='postgres://postgres:dev@127.0.0.1:5432/postgres'
 
 ### Wiring the live conformance suite
 
-In `tests/server/drivers/postgres-conformance.test.ts`, the
-`describe.skipIf(LIVE_PG_URL === "")("conformance: PostgresDriver
-(live)", ...)` block is the landing pad. A live wire looks like:
+In `tests/server/drivers/postgres-conformance.test.ts` (the
+shared-conformance integration file). A live wire looks like:
 
 ```typescript
 import pg from "pg";
@@ -397,11 +396,11 @@ The live-PG rung must:
 
 ## Real gaps — what this dialect does NOT yet cover
 
-This section enumerates the dialect gaps named in the ask ("jsonb,
-sequence ids, schema differences between Decko's PG schema and our
-SQLite schema expectations"). Each gap cites the current evidence on
+This section enumerates the dialect gap families: jsonb,
+sequence ids, and schema differences between Decko's PG schema and our
+SQLite schema expectations. Each gap cites the current evidence on
 disk and the work item that closes it. The dialect module is the
-runtime mapper only; the **schema stream** owns DDL conversion and is
+runtime mapper only; DDL conversion belongs in the schema layer and is
 the natural home for many of these gaps.
 
 ### A. jsonb / json1

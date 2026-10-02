@@ -4,7 +4,7 @@ Port of the Decko card name algebra to TypeScript.
 
 Truth sources (read directly from the installed gems):
 
-- `cardname-0.20.0` (`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\cardname-0.20.0\lib\`):
+- `cardname-0.20.0` (`gems/cardname-0.20.0/lib/`):
   `cardname.rb` (core), `cardname/parts.rb`, `cardname/pieces.rb`,
   `cardname/variants.rb`, `cardname/contextual.rb`, `cardname/predicates.rb`,
   `cardname/manipulate.rb`, `cardname/fields.rb`, `cardname/class_methods.rb`,

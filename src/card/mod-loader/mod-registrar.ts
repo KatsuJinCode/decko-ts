@@ -34,12 +34,75 @@ import type {
 /** loader.rb:61-65: strip the extension and segment-leading NN_ prefixes,
  *  then camelize each segment ("right/07_help" -> "Right::Help" shape).
  *  Rails camelize on snake parts: capitalize the first letter of each. */
-export function setModuleShortname(setPath: string): string {
+function camelizedSegments(setPath: string): string[] {
   return setPath
     .split("/")
     .map((segment) => segment.replace(/^\d+_/, ""))
-    .map(camelize)
-    .join("::");
+    .map(camelize);
+}
+
+/** loader.rb:61-65: strip the extension and segment-leading NN_ prefixes,
+ *  then camelize each segment ("right/07_help" -> "Right::Help" shape).
+ *  Rails camelize on snake parts: capitalize the first letter of each.
+ *
+ *  KNOWN DIVERGENCE FROM RUBY, MEASURED, NOT FIXED HERE. Ruby builds the
+ *  constant chain from every path segment but
+ *  Card::Set::Helpers#shortname (set/helpers.rb:11-15, with
+ *  num_set_parts at helpers.rb:118-122 and anchor_parts_count at
+ *  class_methods.rb:37-39) keeps only `pattern + num_set_parts` of them:
+ *
+ *    set/type/bootswatch_skin.rb              -> "Type::BootswatchSkin"
+ *    set/type/bootswatch_skin/html_views.rb   -> ALSO "Type::BootswatchSkin"
+ *      (SetTemplate#to_const, set_template.rb:11-19, nests the constant
+ *       and `extend Card::Set` lands on the INNERMOST module
+ *       (set_template.rb:112-124), whose `shortname` still spans only the
+ *       pattern + its one anchor segment)
+ *    set/all/email_html.rb                    -> "All"   (:all is
+ *      ANCHORLESS, so anchor_parts_count is 0 — every set/all/* file shares
+ *      the one "All" bucket as a single registration LIST)
+ *
+ *  So a file nested inside an anchor's directory, and every set/all/*
+ *  file, get a shortname here that no card's safe_set_keys token can name.
+ *  MEASURED consequence of applying the Ruby rule today:
+ *  with the Ruby rule applied, 71 -> 53 new mod-loader failures, ~20 of
+ *  them basket assertions ("every set module from the gem tree is in the
+ *  basket" and friends) that pin the current per-path shortnames. It also
+ *  makes SetModuleBasket#recordSetPath lossy - it keys by shortname, so
+ *  every set/all/* file would collapse onto one entry and
+ *  ModLoader#viewChain's ALL-token expansion (setModuleShortnamesForCode,
+ *  which reads setPathFor(shortname)) would see a single set path.
+ *  Closing it means re-keying the basket on per-module identity rather than
+ *  on shortname, which is a separate change with its own blast radius.
+ *
+ *  What it blocks HERE: a view declared in a NESTED set file cannot be
+ *  reached by any card, because the card's token names the parent anchor
+ *  (safeKeyToModuleShortname, set-keys-to-modules.ts:107-113, already
+ *  emits the Ruby shape) and this function emits a child name nothing
+ *  looks up. That is why card-mod-bootstrap's :bar_bottom — declared in
+ *  set/type/bootswatch_skin/html_views.rb — is still unregistered.
+ *
+ *  TWO FURTHER NAMED DIVERGENCES (both measured, both pinned as it.fails
+ *  whose marks come off when the divergence closes):
+ *
+ *  1. CODENAME-KEY CHAIN WALK. Ruby's module lookup does NOT compare safe
+ *     keys: Pattern::Base#module_key (set/pattern/base.rb:21-29 +
+ *     set/pattern/class_methods.rb:45-50) builds the key from the anchor
+ *     parts' CODENAMES, camelized. The TS walker converts safe_set_keys
+ *     NAME keys (singularized, X-marked). Measured misses:
+ *     `SELF-Xfollow_default` vs registered `Self::FollowDefaults`
+ *     (follow :confirm_update_all), `SELF-Xaccount_link` vs
+ *     `Self::AccountLinks` (layout four account links), `RIGHT-follower`
+ *     vs `Right::Followers`.
+ *
+ *  2. INCLUDE_SET SEAM (base-bucket shadowing of flat abstract
+ *     registrations). computeResolvedView gives chain[0] priority over
+ *     the flat record; the chainfor narrowing keeps abstract-set views
+ *     flat ON PURPOSE (no include_set seam). So card-mod-collection's
+ *     All::Item :count (base bucket) shadows Abstract::Search's flat
+ *     :count for Search-typed cards; Ruby reaches the search module
+ *     through include_set. */
+export function setModuleShortname(setPath: string): string {
+  return camelizedSegments(setPath).join("::");
 }
 
 /** Rails camelize for lowercase snake parts ("help_text" -> "HelpText"). */
@@ -243,10 +306,26 @@ export class SettingRegistry {
  */
 export class ModViewConfigTable {
   private readonly byView = new Map<string, ModViewConfig>();
+  /** (setModule shortname, view) -> config. The per-SET dimension Ruby's
+   *  `_view_<view>__<setting>` method resolution answers through: the
+   *  setting method exists only on the set modules that declared the view
+   *  with the setting, and Ruby's method lookup takes the most specific
+   *  defining module. The flat byView map is the base-format seam only
+   *  (render-path byte compatibility); the per-card `unknown:` resolution
+   *  reads THIS table (see
+   *  ModLoader#viewUnknownSettingForCard). */
+  private readonly byModuleView = new Map<string, ModViewConfig>();
 
   register(view: string, config: ModViewConfig | undefined): void {
     if (config === undefined) return;
     this.byView.set(view, config);
+  }
+
+  /** Record the config under its contributing set module (same
+   *  registration pass as register(), keyed by the module shortname). */
+  registerForModule(setModule: string, view: string, config: ModViewConfig | undefined): void {
+    if (config === undefined) return;
+    this.byModuleView.set(`${setModule}\u0000${view}`, config);
   }
 
   /** format.rb#view_setting's mod half (render.rb:55-57 consults the
@@ -255,12 +334,20 @@ export class ModViewConfigTable {
     return this.byView.get(view);
   }
 
+  /** The config a SPECIFIC set module declared for a view (undefined when
+   *  that module did not declare it — the chain walk moves on to the next
+   *  module, Ruby's MRO semantics). */
+  configForModule(setModule: string, view: string): ModViewConfig | undefined {
+    return this.byModuleView.get(`${setModule}\u0000${view}`);
+  }
+
   entries(): ReadonlyMap<string, ModViewConfig> {
     return this.byView;
   }
 
   clear(): void {
     this.byView.clear();
+    this.byModuleView.clear();
   }
 }
 
@@ -400,33 +487,72 @@ export class SetModuleViewTable {
    *  wins (Ruby reopening). */
   private readonly byModule = new Map<string, Map<string, ViewFn>>();
 
-  /** Insertion-ordered list of (setModule, view, viewFn) tuples across all
-   *  set modules. Used by the chain walker when the per-card chain is
-   *  empty (every view applies) so the walker falls back to load order.
-   *  Format defaults to "html" — format inheritance (css/js/rss fall
-   *  back to the html chain) is a separate dimension the chain walker
-   *  applies via viewChainForFormat. */
-  private readonly order: Array<{ setModule: string; view: string; viewFn: ViewFn }> = [];
+  /** Insertion-ordered list of (setModule, view, viewFn, kind, format)
+   *  tuples across all set modules. Used by the chain walker when the
+   *  per-card chain is empty (every view applies) so the walker falls
+   *  back to the UNIVERSALLY APPLICABLE registrations in load order -
+   *  the set/all/* bucket, never a set-scoped one (see
+   *  universallyApplicableModulesFor). `format` is the manifest format
+   *  key the view was declared under (set/format.rb:120-144 files each
+   *  all-set format module under its own format class) - the anchorless
+   *  chain expansion consults it so an html registration never enters an
+   *  email_text chain and vice versa. */
+  private readonly order: Array<{
+    setModule: string;
+    view: string;
+    viewFn: ViewFn;
+    kind: SetModuleKind;
+    format: string;
+  }> = [];
 
-  /** record(view, viewFn, setModule): register a view under its set module.
-   *  A re-registration from the same set module replaces (Ruby reopening). */
-  register(setModule: string, view: string, viewFn: ViewFn): void {
+  /** record(view, viewFn, setModule, kind, format): register a view under
+   *  its set module. A re-registration from the same set module + format
+   *  replaces (Ruby reopening of the set's format module);
+   *  `kind` is the module's registrar.rb:21-29 bucket; "base" (set/all/*)
+   *  is the only kind whose views reach a card outside the set.
+   *  `format` is the manifest format key (default "html") - Ruby files
+   *  the format module per format class (set/format.rb:120-144). */
+  register(
+    setModule: string,
+    view: string,
+    viewFn: ViewFn,
+    kind: SetModuleKind = "nonbase",
+    format = "html",
+  ): void {
     let inner = this.byModule.get(setModule);
     if (inner === undefined) {
       inner = new Map<string, ViewFn>();
       this.byModule.set(setModule, inner);
     }
-    if (inner.has(view)) {
-      // Same set module re-opened (Ruby reopening): update in place.
-      // The order tuple for the FIRST registration stays as the
-      // "earliest" marker so super() walks past re-openings.
+    const first = this.order.find(
+      (e) =>
+        e.setModule === setModule && e.view === view && e.format === format,
+    );
+    if (first !== undefined) {
+      // Same set module + format re-opened (Ruby reopening of the set's
+      // format module, set/format.rb:120-124 const_get_or_set klass):
+      // update in place. The tuple's position stays as the "earliest"
+      // marker so super() walks past re-openings.
+      first.viewFn = viewFn;
       inner.set(view, viewFn);
-      const first = this.order.find((e) => e.setModule === setModule && e.view === view);
-      if (first !== undefined) first.viewFn = viewFn;
       return;
     }
     inner.set(view, viewFn);
-    this.order.push({ setModule, view, viewFn });
+    this.order.push({ setModule, view, viewFn, kind, format });
+  }
+
+  /** The view fn a set module registered for the view under ONE format
+   *  key (the anchorless chain expansion's per-format probe; the LAST
+   *  matching registration wins - Ruby reopening). Undefined when the
+   *  module never declared the view in that format. */
+  viewForFormat(setModule: string, view: string, format: string): ViewFn | undefined {
+    for (let i = this.order.length - 1; i >= 0; i--) {
+      const e = this.order[i]!;
+      if (e.setModule === setModule && e.view === view && e.format === format) {
+        return e.viewFn;
+      }
+    }
+    return undefined;
   }
 
   /** The view fn a set module registered for the given view name
@@ -435,13 +561,24 @@ export class SetModuleViewTable {
     return this.byModule.get(setModule)?.get(view);
   }
 
-  /** Every set module shortname that registered this view, in load order.
-   *  Used by viewChain when the per-card chain is empty (the view applies
-   *  globally, e.g. set/all/*). */
-  registeringModulesFor(view: string): string[] {
+  /** Every set module shortname whose registration of this view applies to
+   *  EVERY card — the set/all/* bucket, in load order. This is the
+   *  "no set applies" case, and it is Ruby's base format class:
+   *  process_base_format_modules (registrar.rb:79-84) mixes the all-set
+   *  format modules into the class every card's format inherits, so a
+   *  plain RichText card resolving :content off an empty chain gets the
+   *  base method. A set/type/*, set/right/* or set/abstract/* registration
+   *  is NOT in this list: pattern/all.rb:49-55 only reaches
+   *  modules[:nonbase_format] through the card's OWN concrete pattern
+   *  module keys (pattern/base.rb:35-38), so a card outside the set never
+   *  sees it. Returning those here is what let one registration replace a
+   *  shared view deck-wide. */
+  universallyApplicableModulesFor(view: string): string[] {
     const out: string[] = [];
     for (const e of this.order) {
-      if (e.view === view && !out.includes(e.setModule)) out.push(e.setModule);
+      if (e.view === view && e.kind === "base" && !out.includes(e.setModule)) {
+        out.push(e.setModule);
+      }
     }
     return out;
   }
@@ -458,15 +595,20 @@ export class SetModuleViewTable {
    * chain terminates when no further set module in cardChain has a
    * registration for `view` AND no fallback is requested.
    *
-   * emptyChain: when cardChain is empty, the walker falls back to every
-   * registering set module in load order (the "no set applies" case,
-   * where the only matches are from set/all/* modules).
+   * emptyChain: when cardChain is empty, the walker falls back to the
+   * UNIVERSALLY APPLICABLE registrations in load order — the set/all/*
+   * bucket and nothing else. That is the base format class Ruby resolves
+   * to when no set matches (registrar.rb:79-84 mixes the all-set format
+   * modules into the class every card's format inherits; a set-scoped
+   * module is reachable only through the card's own pattern module keys,
+   * pattern/all.rb:49-55). Returning set-scoped modules here let a single
+   * registration become the render fallthrough for every card.
    */
   chainFor(cardChain: readonly string[], view: string): ViewChainEntry[] {
     const out: ViewChainEntry[] = [];
     if (cardChain.length === 0) {
-      // Fallback: walk registering modules in load order.
-      for (const mod of this.registeringModulesFor(view)) {
+      // Fallback: the set/all/* modules, in load order.
+      for (const mod of this.universallyApplicableModulesFor(view)) {
         const viewFn = this.viewFor(mod, view);
         if (viewFn !== undefined) out.push({ setModule: mod, view, viewFn });
       }
@@ -486,8 +628,8 @@ export class SetModuleViewTable {
     this.order.length = 0;
   }
 
-  /** Every (setModule, view) pair currently registered (introspection). */
-  entries(): Array<{ setModule: string; view: string; viewFn: ViewFn }> {
+  /** Every (setModule, view, format) registration (introspection). */
+  entries(): Array<{ setModule: string; view: string; viewFn: ViewFn; format: string }> {
     return [...this.order];
   }
 }

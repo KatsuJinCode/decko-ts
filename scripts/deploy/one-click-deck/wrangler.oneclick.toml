@@ -27,4 +27,4 @@ directory = "demo-static-assets"
 [[d1_databases]]
 binding = "DB"
 database_name = "decko-one-click-db"
-database_id = "7decc9b5-e9ac-4cfe-8bff-1440cdac7cd4"
+database_id = "00000000-0000-0000-0000-000000000001"

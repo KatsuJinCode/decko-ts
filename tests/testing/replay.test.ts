@@ -214,9 +214,6 @@ describe("replay machinery over real smoke.json / cql-basic.json entries", () =>
     );
     // The diff still compares the reconstructed sentinel bytes against the fixture's array
     expect(failed.diff!.equal).toBe(false);
-    expect(failed.diff!.actualBytes).toBe(
-      failed.diff!.actualBytes // self-consistent; real content asserted via message below
-    );
     const message = formatReplayFailure(failed);
     expect(message).toContain("handler raised RuntimeError: %{func} not implemented");
     // the reconstructed sentinel bytes were diffed against the fixture's array

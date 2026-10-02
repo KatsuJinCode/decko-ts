@@ -53,32 +53,16 @@ const db = openCorpusDb(DB_PATH);
 // 1. Classify every live card.
 const classifications = classify(db);
 
-// 2. Aggregate byte totals from the cards table. We compute
-//    length(content) in SQL — content is the only sizable text column
-//    on cards in this corpus (no separate `db_content` column exists;
-//    the JSON blob's text live column is `content`).
+// 2. Aggregate byte totals from the cards table, streaming the live rows.
+//    We compute length(content) in SQL — content is the only sizable text
+//    column on cards in this corpus (no separate `db_content` column
+//    exists; the JSON blob's text live column is `content`).
 //
 // Privacy discipline: we never read the content values themselves into
 // JS objects; SQLite's length() runs server-side and returns a number.
-const byteRow = db
-  .prepare(
-    "SELECT " +
-      "  SUM(CASE WHEN trash = 0 THEN length(content) ELSE 0 END) AS live_bytes, " +
-      "  SUM(CASE WHEN trash = 0 AND id IN (SELECT id FROM cards WHERE trash = 0 AND " +
-      "    CASE WHEN read_rule_class IN ('*all','*all plus') THEN 1 ELSE 0 END = 1) " +
-      "    THEN length(content) ELSE 0 END) AS public_bytes_gross, " +
-      "  COUNT(*) AS total_rows, " +
-      "  SUM(CASE WHEN trash = 0 THEN 1 ELSE 0 END) AS live_rows " +
-      "FROM cards",
-  )
-  .get();
-
-// 3. Compute byte totals using the same classify() map so the
-//    public/private attribution matches the classifier exactly.
-//
-// We do this by streaming the {id, content} pairs of live rows and
-// bucketing them by the classifier's verdict. We never materialize
-// content values in logs — only length sums and bucket counts.
+// We bucket by the classifier's verdict so the
+// public/private attribution matches the classifier exactly, and never
+// materialize content values in logs — only length sums and bucket counts.
 let publicBytes = 0;
 let privateBytes = 0;
 let publicCards = 0;
@@ -101,7 +85,6 @@ for (const row of liveIter) {
 // At this point publicCards + privateCards == classifications.size.
 
 const totalCards = classifications.size;
-const publicCardPct = pct(publicCards, totalCards);
 const privateCardPct = pct(privateCards, totalCards);
 const publicBytePct = pct(publicBytes, publicBytes + privateBytes);
 const privateBytePct = pct(privateBytes, publicBytes + privateBytes);

@@ -36,9 +36,10 @@
 
 import type { RenderCard } from "./format.js";
 
-/** The format-block defaults (card-mod-bar_and_box set/all/bar.rb:5-6):
- *  the bar_cols / mini_bar_cols declarations on the *all set module. */
-export const DEFAULT_BAR_COLS: readonly [number, number, number] = [9, 4, 3];
+/** The format-block default (card-mod-bar_and_box set/all/bar.rb:5): the
+ *  TWO-element `mini_bar_cols 9, 3` / `bar_cols 9, 3` declaration on the
+ *  *all set module (bar.rb:5 has no third element — there is no *all
+ *  md triple). */
 export const DEFAULT_MINI_BAR_COLS: readonly [number, number] = [9, 3];
 
 /** The *rule set module's defaults (card-mod-rules set/rule/bar_view.rb:2-3):
@@ -89,9 +90,9 @@ function cardIsRule(setKeys: string): boolean {
  * Precedence:
  *   1. rule-card content for the bar_cols setting, if one exists and
  *      parses.
- *   2. the *rule set module's default (5, 4, 3) when the card matches
- *      the *rule pattern.
- *   3. the *all set module's default (9, 4, 3).
+ *   2. the *rule set module's defaults — two-col (6, 6) + md three-col
+ *      (5, 4, 3) — when the card matches the *rule pattern.
+ *   3. the *all set module's two-col default (9, 3); no md window (0s).
  */
 export type BarCols = readonly [
   number, // default left col
@@ -108,7 +109,13 @@ export function readBarCols(card: RenderCard, ruleContent?: string): BarCols {
   }
   if (cardIsRule(card.setKeys)) {
     // rule's :bar: two_cols = mini_bar_cols (6, 6); three_cols = bar_cols (5, 4, 3)
-    return [6, 6, 5, 4, 3];
+    return [
+      RULE_MINI_BAR_COLS[0],
+      RULE_MINI_BAR_COLS[1],
+      RULE_BAR_COLS[0],
+      RULE_BAR_COLS[1],
+      RULE_BAR_COLS[2],
+    ];
   }
   // *all default: bar_cols 9, 3; no three-col for the standard :bar view
   // (closed/open render via build_accordion_bar which calls prepare_bar
@@ -127,4 +134,41 @@ export function readMiniBarCols(
 ): readonly [number, number] {
   const cols = readBarCols(card, ruleContent);
   return [cols[0], cols[1]];
+}
+
+/**
+ * card-mod-bar_and_box-0.20.0 set/all/bar.rb:18-20 `view :full_bar`:
+ *   class_up "bar", full_page_card.safe_set_keys
+ *   class_up_cols %w[bar-left bar-middle bar-right], bar_cols
+ * `bar_cols` is whatever the composed format's `bar_cols` declaration holds
+ * — a TWO-element array on the *all set module (`bar_cols 9, 3`, bar.rb:5),
+ * a THREE-element array on the *rule set module (card-mod-rules
+ * set/rule/bar_view.rb sets it to 5, 4, 3) — and class_up_cols indexes it by
+ * the CLASS index across three classes. So the array Ruby indexes is NOT
+ * readBarCols' md window; it is:
+ *   - rule card:     [5, 4, 3]   (three cols, all present)
+ *   - non-rule card: [9, 3]      (two cols, index 2 is nil)
+ *   - rule card w/ stored bar_cols content: the parsed pair
+ * This reader returns exactly that array so full_bar's class_up_cols
+ * reproduces Ruby's index-for-index, INCLUDING the ragged tail: Ruby
+ * `["col", nil, cols[2].nil?].compact.join("-")` renders the BARE string
+ * "col" for a column past the end of the array, and this port must emit
+ * that rather than a "col-0" made-up number.
+ */
+export function readFullBarCols(
+  card: RenderCard,
+  ruleContent?: string,
+): readonly number[] {
+  const parsed = parseBarCols(ruleContent);
+  if (parsed !== undefined) return [parsed[0], parsed[1]];
+  if (cardIsRule(card.setKeys)) {
+    // RULE_BAR_COLS IS the *rule set module's `bar_cols` (card-mod-rules
+    // set/rule/bar_view.rb:2-3 `bar_cols 5, 4, 3`) — a three-element array,
+    // so all three classes index a real number and none collapses to "col".
+    return [RULE_BAR_COLS[0], RULE_BAR_COLS[1], RULE_BAR_COLS[2]];
+  }
+  // The *all set module declares `bar_cols 9, 3` (bar.rb:5) — the TWO-col
+  // form, which is this file's DEFAULT_MINI_BAR_COLS (bar.rb:5 has no
+  // third element, so there is no *all md triple).
+  return [DEFAULT_MINI_BAR_COLS[0], DEFAULT_MINI_BAR_COLS[1]];
 }

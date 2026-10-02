@@ -33,6 +33,23 @@
 // transformation in slotWrap (and the pointer-item slot builder, which
 // Ruby builds with the same wrap helper).
 //
+// RECALIBRATED (p22-name-form lane, 2026-10-01, bf2ac46): the url_key
+// gate `new? && compound?` is the whole general rule, and the engine
+// implements it on every slot emitter (views.ts#slotCardname,
+// pointer-list.ts#pointerListItemSlot). The compound gate is what the
+// 48-shard oracle census confirms four ways: 6,490 id-less slots carry
+// underscored COMPOUND names (virtual rule bars, unknown field phantoms),
+// 40 id-less slots carry SPACED SIMPLE names (denied pointer phantoms —
+// a simple name is never compound, so slot_cardname keeps name.s), 469
+// known slots carry spaced names (name.s), 3,145 known slots carry
+// space-free names (trivially both forms). The original BUG 2 render
+// used {{+management|open}} — a shape that only rendered a slot while
+// the round-10-era flat `open: true` unknown-view row stood; pass-20's
+// per-card-set resolution retired that row on +Articles oracle evidence
+// and the open shape emits NOTHING ever since (Ruby-faithful). The pin
+// below drives the url_key form through the CLOSED shape — the live
+// wire's actual nest — and pins the open arm's "" separately.
+//
 // Seeding shape: junction cards (the list host "Host Person+Pages", the
 // item target "Host Person+video") are stored deck-convention style —
 // NULL name/key rows resolved through left_id/right_id — exactly the
@@ -44,6 +61,10 @@ import {
   readShardLines,
 } from "./structure-corpus-seeding.js";
 import { seedCard, type RenderTestStorage } from "./render-test-storage.js";
+import {
+  phantomPointerListItem,
+  pointerListItemSlot,
+} from "../../../src/card/render/pointer-list.js";
 
 // The wide-read rule card the other render tests pin readRuleId to
 // (seeded into the shard universe via baseIds, same pattern as
@@ -199,10 +220,70 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
     async () => {
       // Trace example 2: the wanted child "Conflict Done Well+
       // management" (absent on live TOO — live renders it as a WANTED
-      // card). Live pin (Conflict_Done_Well.html): the slot carries
+      // card). Live pin (Conflict_Done_Well.html): the Project template's
+      // {{+management|closed}} nest renders the slot with
       // data-card-name="Conflict_Done_Well+management" — url_key form,
-      // case retained, underscores for spaces. The port emitted the
-      // spaced name.s form.
+      // case retained, underscores for spaces.
+      //
+      // RECALIBRATED (p22-name-form lane). The original render used
+      // {{+management|open}} — a shape that only rendered a slot while
+      // the round-10-era flat `open: true` unknown-view row stood
+      // (card-mod-comment's RIGHT-discussion-scoped declaration
+      // globalized). Pass-20's per-card-set resolution (9a0d5c1) retired
+      // that row on +Articles oracle evidence, and the open shape emits
+      // NOTHING ever since — Ruby-faithfully (see the next test). This
+      // pin's red at 46b6976/bf2ac46 (attributed by p21-left-climb,
+      // p21-fix-hosttype, p21-cql-item-typing) was therefore a PIN
+      // defect, not an engine defect: at the UNMODIFIED base the closed
+      // shape — the live wire's actual nest — already carries the
+      // url_key form (probe job-1790819018340-8ce42735). This arm pins
+      // the closed shape byte-exactly.
+      const baseIds = baseIdsWithWideReadRule();
+      storage = await createStructureSeededStorageFor(baseIds);
+      await seedCard(storage, {
+        id: CDW_HOST_ID,
+        name: "CDW Host",
+        typeId: 2,
+        dbContent: "{{+management|closed}}",
+        readRuleId: WIDE_READ_RULE_ID,
+        readRuleClass: "*all",
+      });
+      const html = await storage.engine.render("CDW Host", "open");
+      // slot_cardname: new? && compound? -> url_key — on the slot wrap
+      // AND the inner bar body (double- and single-quoted attr styles).
+      expect(html).toContain('data-card-name="CDW_Host+management"');
+      expect(html).toContain("data-card-name='CDW_Host+management'");
+      expect(html).not.toContain('data-card-name="CDW Host+management"');
+      expect(html).not.toContain("data-card-name='CDW Host+management'");
+      // data-card-link-name carries the same url_key form.
+      expect(html).toContain('data-card-link-name="CDW_Host+management"');
+      // The id-less phantom slot shape: Ruby's wrap_data omits
+      // data-card-id for a new card (the slot tag only).
+      const slotIdx = html.indexOf('id="cdw_host-management-mini_bar-view"');
+      expect(slotIdx).toBeGreaterThan(-1);
+      const slotTag = html.slice(
+        html.lastIndexOf("<div", slotIdx),
+        html.indexOf(">", slotIdx),
+      );
+      expect(slotTag).toContain("card-slot mini_bar-view");
+      expect(slotTag).not.toContain("data-card-id");
+    },
+  );
+
+  it(
+    "the open view of an unknown field nest substitutes :unknown and emits nothing for a create-denied session",
+    async () => {
+      // The +Articles oracle class that grounded the flat open:true
+      // retirement (pass-20 9a0d5c1), read through the vendored core:
+      // view/permission.rb:36-44 alter_unknown — no unknown-setting row
+      // for :open outside RIGHT-discussion — substitutes :unknown
+      // (format/error.rb:18-25 setting_view || :unknown), and
+      // card-mod-format set/all/html/error.rb:15-17 renders
+      // createable { ... } -> "" when card.ok?(:create) is false. The
+      // seeded universe proves no create grant, so the wanted-child
+      // nest emits NOTHING (probe job-1790819018340: the byte region
+      // after the content-slot open tag is empty). Pinning the ""
+      // keeps the retirement from silently regressing.
       const baseIds = baseIdsWithWideReadRule();
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
@@ -214,8 +295,51 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
         readRuleClass: "*all",
       });
       const html = await storage.engine.render("CDW Host", "open");
-      expect(html).toContain('data-card-name="CDW_Host+management"');
-      expect(html).not.toContain('data-card-name="CDW Host+management"');
+      expect(html).not.toContain("+management");
+    },
+  );
+});
+
+describe("pointer-item slot name-form quadrants (wrap.rb:50-53 compound gate)", () => {
+  // The 48-shard recapture census (all 48 corpus-v2/recapture shards,
+  // 2026-10-01) classifies every oracle data-card-name four ways, and
+  // all four agree with the single Ruby rule `new? && compound? ->
+  // url_key else name.s`: 6,490 id-less slots underscored (compound
+  // virtual rule bars + unknown field phantoms), 40 id-less slots
+  // SPACED (every one a SIMPLE-named denied pointer phantom — a simple
+  // name is never compound), 469 known slots spaced, 3,145 known slots
+  // space-free. These two pins hold the gate's both sides byte-exact at
+  // the unit surface (pointerListItemSlot) so the form-tolerant matchers
+  // elsewhere (the leftclimb TPR file lives on lane-p21-leftclimb,
+  // 65f8849, not in this tree) have a merged green to land on.
+
+  it(
+    "an unsaved SIMPLE-named phantom item displays name.s (the 40-slot id-less spaced census class)",
+    () => {
+      // Oracle: recapture-shard entry 10940 dn+*right+*read:content —
+      // the id-less mini_bar slot carries
+      // data-card-name="Role_A1, Role_A2qbarfnxwewfvc" (anonymized
+      // simple name, spaces kept). The compound gate leaves name.s.
+      const phantom = phantomPointerListItem("Role A1");
+      const slot = pointerListItemSlot(phantom, "<span>body</span>");
+      expect(slot).toContain('data-card-name="Role A1"');
+      expect(slot).toContain('data-card-link-name="Role_A1"');
+      expect(slot).not.toContain('data-card-name="Role_A1"');
+    },
+  );
+
+  it(
+    "an unsaved COMPOUND-named phantom item displays the url_key form (the id-less underscored census class)",
+    () => {
+      // Oracle: the mixed18 BW capture pins the compound phantom's
+      // underscored slot form
+      // data-card-name="BW_Oversight+ARCHETYPALLY+Human" (the shape the
+      // leftclimb TPR pins match tolerantly today); the same class holds
+      // the 6,490 id-less underscored census entries.
+      const phantom = phantomPointerListItem("BW Oversight+ARCHETYPALLY+Human");
+      const slot = pointerListItemSlot(phantom, "<span>body</span>");
+      expect(slot).toContain('data-card-name="BW_Oversight+ARCHETYPALLY+Human"');
+      expect(slot).not.toContain('data-card-name="BW Oversight');
     },
   );
 });

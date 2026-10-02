@@ -8,11 +8,12 @@
 // development, tests and CLI tooling — never for an edge deployment.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
+import { rowIdOrOmit } from "../driver.js";
 import Database from "better-sqlite3";
 
 /**
  * The better-sqlite3 v13 statement members this driver relies on, verified
- * at RUNTIME on this machine (better-sqlite3 13.0.3, Windows, node 24):
+ * at RUNTIME (better-sqlite3 13.0.3, Windows, node 24):
  * `reader` (false for writes), `columns()` (throws on non-reading
  * statements), `raw().all()` (array rows), and `run()` returning
  * `{changes, lastInsertRowId}` as number|bigint.
@@ -159,8 +160,3 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   }
 }
 
-/** SQLite reports 0 for "no insert happened"; the driver contract treats
- *  lastInsertRowId as optional, so 0 becomes "omitted". */
-function rowIdOrOmit(lastInsertRowId: number | bigint): number | bigint | undefined {
-  return BigInt(lastInsertRowId) > 0n ? lastInsertRowId : undefined;
-}

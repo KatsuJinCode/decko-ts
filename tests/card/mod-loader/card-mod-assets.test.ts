@@ -48,24 +48,42 @@ function ctxForUrls(urls: string): ViewContext {
   };
 }
 
-/** Pull the mod-registered view function out of the live views record. */
+/** Pull the mod-registered view function out of the CHAIN table.
+ *  CORRECTED 2026-09-28 (lane-chainfor): both views are declared on
+ *  set/right/group_remote.rb, a nonbase set, so they are registered
+ *  against that set module rather than written into the base-format
+ *  record the engine falls through to (the deck-wide masking defect). */
 function viewFor(name: string): ViewFn {
-  const table = loader!.viewsTable();
-  const fn = table[name];
+  const fn = loader!.viewChainTable().viewFor("Right::GroupRemote", name);
   if (fn === undefined) throw new Error(`view not registered: ${name}`);
   return fn;
 }
 
 describe("card-mod-assets mod loader", () => {
   describe("manifest shape (set/right/group_remote.rb setModule entries)", () => {
-    it("registers exactly one set module - the only gem file with portable html views", () => {
+    // cwwrite-seam lane (2026-09-28): the manifest grew the right/asset_output
+    // :not_found gate, the abstract/asset_outputter bookkeeping entry, and the
+    // type_plus_right/set/{style,script} :asset_output_url registrations (the
+    // concrete includers of the abstract, where the TS pattern surface can
+    // dispatch it). The group_remote entries below are unchanged; these three
+    // assertions updated to the new premise (the 5-entry manifest), the way
+    // the lane-A repair commit corrected stale premises toward the ported
+    // truth.
+    it("registers the five set modules: group_remote + the cwwrite-seam asset-output surfaces", () => {
       expect(cardModAssets.setModules).toBeDefined();
-      expect(cardModAssets.setModules?.length).toBe(1);
-      expect(cardModAssets.setModules?.[0]?.setPath).toBe("right/group_remote");
+      expect(cardModAssets.setModules?.length).toBe(5);
+      expect(cardModAssets.setModules?.map((m) => m.setPath)).toEqual([
+        "right/asset_output",
+        "abstract/asset_outputter",
+        "type_plus_right/set/style",
+        "type_plus_right/set/script",
+        "right/group_remote",
+      ]);
     });
 
     it("the right/group_remote format :html block lists both verdict-named views", () => {
-      const html = cardModAssets.setModules?.[0]?.formats?.html;
+      const html = cardModAssets.setModules?.find((m) => m.setPath === "right/group_remote")
+        ?.formats?.html;
       expect(html).toBeDefined();
       const viewNames = (html?.views ?? []).map((v) => v.view).sort();
       expect(viewNames).toEqual(
@@ -74,14 +92,18 @@ describe("card-mod-assets mod loader", () => {
     });
 
     it("the javascript_include_tag view carries cache: 'never' (group_remote.rb:44)", () => {
-      const view = cardModAssets.setModules?.[0]?.formats?.html?.views?.find(
+      const view = cardModAssets.setModules
+        ?.find((m) => m.setPath === "right/group_remote")
+        ?.formats?.html?.views?.find(
         (v) => v.view === "javascript_include_tag",
       );
       expect(view?.config?.cache).toBe("never");
     });
 
     it("the stylesheet_include_tag view has no cache config (group_remote.rb:50 defines none)", () => {
-      const view = cardModAssets.setModules?.[0]?.formats?.html?.views?.find(
+      const view = cardModAssets.setModules
+        ?.find((m) => m.setPath === "right/group_remote")
+        ?.formats?.html?.views?.find(
         (v) => v.view === "stylesheet_include_tag",
       );
       expect(view?.config?.cache).toBeUndefined();
@@ -97,11 +119,27 @@ describe("card-mod-assets mod loader", () => {
     });
   });
 
-  describe("the mod loader registers the views in the live views table", () => {
-    it("registers :javascript_include_tag and :stylesheet_include_tag", () => {
-      const touched = loader!.viewsTable();
-      expect(typeof touched["javascript_include_tag"]).toBe("function");
-      expect(typeof touched["stylesheet_include_tag"]).toBe("function");
+  describe("the mod loader registers the views under its SET MODULE", () => {
+    // CORRECTED 2026-09-28 (lane-chainfor). These two views are declared
+    // on set/right/group_remote.rb — a NONBASE set. Ruby keeps a nonbase
+    // set's format module in Set.modules[:nonbase_format]
+    // (set/format.rb:146-150), which a card reaches only through its own
+    // pattern module keys (pattern/all.rb:49-55, pattern/base.rb:35-38),
+    // NOT through the base format class. The flat record the engine falls
+    // through to IS that base format class, so writing a set-scoped view
+    // into it is the deck-wide masking defect (lane-chainfor): one
+    // registration answered for cards that are not in the set.
+    //
+    // The view is still REGISTERED — the assertion moved from the flat
+    // record to the chain table, not from asserted to unasserted.
+    it("registers :javascript_include_tag and :stylesheet_include_tag on Right::GroupRemote", () => {
+      const chain = loader!.viewChainTable();
+      expect(typeof chain.viewFor("Right::GroupRemote", "javascript_include_tag")).toBe("function");
+      expect(typeof chain.viewFor("Right::GroupRemote", "stylesheet_include_tag")).toBe("function");
+      // And the base-format record is untouched by them.
+      const flat = loader!.viewsTable();
+      expect(flat["javascript_include_tag"]).toBeUndefined();
+      expect(flat["stylesheet_include_tag"]).toBeUndefined();
     });
   });
 
@@ -182,23 +220,25 @@ describe("card-mod-assets mod loader", () => {
     });
   });
 
-  describe("the mod loader's reset() restores the pre-registration view table", () => {
-    it("undoes each registered view's presence in HTML_VIEWS after reset()", () => {
-      // The beforeAll registered the two views into the SHARED HTML_VIEWS
-      // record. After reset() the live record no longer carries the mod
-      // views (so a subsequent default-load won't have them). The help mod
-      // test asserts the same via afterAll; here we exercise it explicitly.
-      const table = loader!.viewsTable();
-      expect(typeof table["javascript_include_tag"]).toBe("function");
-      expect(typeof table["stylesheet_include_tag"]).toBe("function");
+  describe("the mod loader's reset() drops the mod's set-module registrations", () => {
+    it("removes both views from the chain table after reset()", () => {
+      // CORRECTED 2026-09-28 (lane-chainfor): the registrations live on
+      // the Right::GroupRemote set module, not on the shared base-format
+      // record, so reset() clears the chain table (the same
+      // restore-the-pre-load-state contract, one table over).
+      const chain = loader!.viewChainTable();
+      expect(typeof chain.viewFor("Right::GroupRemote", "javascript_include_tag")).toBe("function");
+      expect(typeof chain.viewFor("Right::GroupRemote", "stylesheet_include_tag")).toBe("function");
 
       loader!.reset();
 
-      const after = loader!.viewsTable();
-      // HTML_VIEWS has neither in its baseline (the T6 verdict named them
-      // as the missing entries), so reset() REMOVES both views.
-      expect(after["javascript_include_tag"]).toBeUndefined();
-      expect(after["stylesheet_include_tag"]).toBeUndefined();
+      const after = loader!.viewChainTable();
+      expect(after.viewFor("Right::GroupRemote", "javascript_include_tag")).toBeUndefined();
+      expect(after.viewFor("Right::GroupRemote", "stylesheet_include_tag")).toBeUndefined();
+      // The base-format record never carried them, before or after.
+      const flat = loader!.viewsTable();
+      expect(flat["javascript_include_tag"]).toBeUndefined();
+      expect(flat["stylesheet_include_tag"]).toBeUndefined();
     });
   });
 });

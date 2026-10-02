@@ -303,7 +303,7 @@ Run pattern, mirroring `benchmarks/run_ruby_bench.rb`:
 
 ```
 cd tools/oracle/decko-oracle-app
-RAILS_ENV=development /c/Ruby33-x64/bin/decko runner \
+RAILS_ENV=development decko runner \
   C:/localProjects/decko-ts/prototype/measure.rb
 ```
 

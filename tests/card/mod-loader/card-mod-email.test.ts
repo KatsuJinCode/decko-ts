@@ -16,11 +16,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
-import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { RenderFormat, UnsupportedViewError } from "../../../src/card/render/format.js";
 import {
   ModLoader,
   modEngineHost,
@@ -75,6 +76,7 @@ describe("card-mod-email through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModEmail }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("Oracle Email Probe", "email_page");
@@ -110,14 +112,60 @@ describe("card-mod-email through the mod loader (A/B)", () => {
     expect(html.endsWith("</body>\n</html>")).toBe(true);
   });
 
-  it("WITH the mod: :compact_missing renders the empty string (set/all/email_text.rb:6-8)", async () => {
+  it("WITH the mod: the html format REJECTS :compact_missing; the email_text format renders the empty string (set/all/email_text.rb:6-8)", async () => {
     const s = storage!;
-    expect(await s.engine.render("Oracle Email Probe", "compact_missing")).toBe("");
+    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the
+    // empty-string body lives in the email_text FORMAT block
+    // (email_text.rb:5-8) - EmailTextFormat's method table only. This
+    // suite loads NO format mod (all/error.rb's html :compact_missing is
+    // absent), so Ruby's html render has no method and raises
+    // unsupported-view; the pin used to receive the email_text arm's ""
+    // through the format-blind FLAT last-wins seam (the flat record now
+    // admits only html/base keys - mod-loader.ts registration seam, the
+    // census probe pins the measured rows). The email_text dispatch
+    // itself renders "" through the owning format class below.
+    await expect(s.engine.render("Oracle Email Probe", "compact_missing")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+    const card = await s.engine.prepareItemForRender("Oracle Email Probe");
+    const fmt = new RenderFormat(card!, s.engine, { formatName: "email_text" });
+    expect(fmt.renderView("compact_missing")).toBe("");
   });
 
-  it("WITH the mod: :last_action renders the empty string (set/all/email_text.rb:10-12)", async () => {
+  it("WITH the mod: the html format REJECTS :last_action; the email_text format renders the verb (set/all/email_text.rb:10-12)", async () => {
     const s = storage!;
-    expect(await s.engine.render("Oracle Email Probe", "last_action")).toBe("");
+    // the body is the real `_render_last_action_verb` delegation
+    // (email-text-remainders lane, 2026-10-01): the verb dispatch answers
+    // the base-format notify verb - card-mod-follow set/all/notify/
+    // base_views.rb:44-46's `'edite'd` fallback -> "edited" (render path
+    // reads no act rows; the engine's compiled-in base verb entry carries
+    // it here where the follow mod is not loaded).
+    //
+    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): Ruby
+    // files this all-set registration under EmailTextFormat
+    // (set/format.rb:137-139 keyed on the class define_on_format
+    // resolved; registrar.rb:79-84 mixes it into that class only), so an
+    // HTML-format render never sees it - render.rb#view_method finds no
+    // _view_last_action on HtmlFormat and raises unsupported-view. The
+    // pin used to ride the format-blind FLAT last-wins seam ("edited"
+    // through an html render - the email-remainders receipt's recorded
+    // remaining defect); the flat record now admits only html/base keys
+    // (mod-loader.ts registration seam; the census probe
+    // view-dispatch-flat-record-format-scope-census.test.ts pins the
+    // measured foreign rows). The delegation itself is proven through the
+    // format class that owns it: the chainorder suite pins
+    // email_text :last_action -> All::EmailText -> "edited" through a
+    // real email_text-format RenderFormat
+    // (view-dispatch-same-pattern-collision-order.test.ts), and the
+    // re-pin below holds the same direction in THIS suite's email-only
+    // deck.
+    await expect(s.engine.render("Oracle Email Probe", "last_action")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+    const card = await s.engine.prepareItemForRender("Oracle Email Probe");
+    expect(card).toBeDefined();
+    const fmt = new RenderFormat(card!, s.engine, { formatName: "email_text" });
+    expect(fmt.renderView("last_action")).toBe("edited");
   });
 
   it("WITH the mod: every set module from the gem tree is in the basket", () => {

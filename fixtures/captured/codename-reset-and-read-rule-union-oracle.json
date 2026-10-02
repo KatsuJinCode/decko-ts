@@ -1,0 +1,57 @@
+{
+  "capture": "codename-reset-and-read-rule-union",
+  "e4_2_a": {
+    "codename_ids_size_after": 238,
+    "codename_ids_size_before": 275,
+    "fresh_id_lookup_after_save": 605,
+    "memo_object_id_after_raw_update": 19660,
+    "memo_object_id_after_save": 39040,
+    "memo_object_id_before": 19660,
+    "memo_present_before": true,
+    "memo_unchanged_by_raw_sql": true,
+    "memo_was_reset": true,
+    "row_codename_after_raw_update": "probestalecodename",
+    "row_codename_after_save": "probelivecodename",
+    "stale_id_lookup": null,
+    "stale_key_after_reset": null,
+    "warm_read_codename_id": 6547
+  },
+  "p1_4_b": {
+    "deck_null_read_rule_rows": 2,
+    "derived_matches_stored_bytes": false,
+    "derived_matches_stored_verdict": false,
+    "derived_ok_read": true,
+    "derived_titled": "<div id=\"oracle_basic-titled-view\" class=\"card-slot titled-view ALL TYPE-rich_text SELF-oracle_basic\" data-card-id=\"605\" data-card-name=\"Oracle Basics\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Basics\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;titled&quot;,&quot;show&quot;:[&quot;titled&quot;]}\"><div class=\"d0-card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"Oracle Basics\">Oracle Basics</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/Oracle_Basics&quot;&gt;Oracle Basics&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/RichText&quot;&gt;RichText&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Basics/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/Oracle_Basics/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body d0-card-content ALL TYPE-rich_text SELF-oracle_basic\">A plain basic card for oracle capture.</div></div>",
+    "nulled_read_rule_id_row": null,
+    "public_card_id": 3,
+    "public_derived_matches_stored": true,
+    "public_derived_ok_read": true,
+    "public_derived_titled": "<div id=\"orvipveb-titled-view\" class=\"card-slot titled-view ALL TYPE-pnwfdiey SELF-orvipveb\" data-card-id=\"3\" data-card-name=\"orvipveb\" data-card-type-id=\"3\" data-card-type-name=\"orvipveb\" data-card-link-name=\"orvipveb\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;titled&quot;,&quot;show&quot;:[&quot;titled&quot;]}\"><div class=\"d0-card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"orvipveb\">orvipveb</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/orvipveb&quot;&gt;orvipveb&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/orvipveb&quot;&gt;orvipveb&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/orvipveb/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/orvipveb/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body d0-card-content ALL TYPE-pnwfdiey SELF-orvipveb\"></div></div>",
+    "public_stored_ok_read": true,
+    "public_stored_titled": "<div id=\"orvipveb-titled-view\" class=\"card-slot titled-view ALL TYPE-pnwfdiey SELF-orvipveb\" data-card-id=\"3\" data-card-name=\"orvipveb\" data-card-type-id=\"3\" data-card-type-name=\"orvipveb\" data-card-link-name=\"orvipveb\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;titled&quot;,&quot;show&quot;:[&quot;titled&quot;]}\"><div class=\"d0-card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"orvipveb\">orvipveb</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/orvipveb&quot;&gt;orvipveb&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/orvipveb&quot;&gt;orvipveb&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/orvipveb/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/orvipveb/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body d0-card-content ALL TYPE-pnwfdiey SELF-orvipveb\"></div></div>",
+    "stored_ok_read": false,
+    "stored_titled": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+    "target_stored_read_rule_id": 10
+  },
+  "probe_write_receipt": {
+    "after": {
+      "card_actions": 5018,
+      "card_acts": 4338,
+      "cards": 1363
+    },
+    "before": {
+      "card_actions": 5018,
+      "card_acts": 4337,
+      "cards": 1363
+    }
+  },
+  "provenance": {
+    "deck": "DISPOSABLE COPY of decko-oracle-app db/development.sqlite3",
+    "mechanism": "DATABASE_URL=sqlite3:<copy> decko runner; canonical deck untouched",
+    "writes": [
+      "raw UPDATE cards SET read_rule_id=NULL (2 rows)",
+      "raw UPDATE cards SET codename='probestalecodename' (1 row)",
+      "Card#update! codename='probelivecodename' on card 605 (1 act)"
+    ]
+  }
+}

@@ -3,7 +3,7 @@
 Wave 2 port of the Decko card fetch/cache layer over the SQLDatabaseDriver
 foundation. Truth source, read directly from the installed gems:
 
-- `card-1.110.0` (`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0\lib\card\`):
+- `card-1.110.0` (`gems/card-1.110.0/lib/card/`):
   `fetch.rb`, `fetch/retrieve.rb`, `fetch/store.rb`, `fetch/results.rb`,
   `fetch/card_class.rb`, `fetch/all.rb`, `cache.rb`, `cache/temporary.rb`,
   `cache/shared.rb`, `cache/class_methods.rb`, `cache/card_class.rb`,

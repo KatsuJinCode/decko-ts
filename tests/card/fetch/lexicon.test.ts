@@ -71,11 +71,18 @@ describe("DbLexicon.name (lexicon.rb#name)", () => {
     expect((await storage.engine.lexicon.name(10))?.s).toBe("Doomed");
   });
 
-  it("returns undefined when a side card is missing (lex_to_name's `name side_id or return`)", async () => {
-    // junction row pointing at a nonexistent right card (broken lexicon)
+  it("composes the EMPTY part when a side ROW is missing (lex_to_name's `name side_id or return` + Lexicon.name's `(name || '').to_name`)", async () => {
+    // junction row pointing at a nonexistent right card (broken lexicon):
+    // Lexicon.name(999) answers "" for the missing row (lexicon.rb:11-15 —
+    // `(name || "").to_name` is TRUTHY, verified live: Lexicon.name(389) =
+    // "+*default" against the corpus deck with card 388 absent), so the
+    // `or return` guard PASSES and the empty right part joins
+    // (lexicon.rb:43-47): "Left Part" + joint + "" = "Left Part+".
+    // Only a NIL side id bails the whole composition to nil
+    // (lexicon.rb:12 `return unless id.present?`).
     await seedCard(storage, { id: 10, name: "Left Part" });
     await seedCard(storage, { id: 12, name: "Left Part+Ghost", leftId: 10, rightId: 999 });
-    expect(await storage.engine.lexicon.name(12)).toBeUndefined();
+    expect((await storage.engine.lexicon.name(12))?.s).toBe("Left Part+");
   });
 
   it("returns undefined for unknown ids (Ruby's (name || '').to_name blank fallback)", async () => {

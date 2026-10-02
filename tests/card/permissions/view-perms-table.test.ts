@@ -24,6 +24,7 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   quietDenial,
@@ -41,9 +42,14 @@ describe("view perms registry (permission.rb:13-15 setting(:perms) || :read)", (
   it("resolves perms-:none views from the gems' directives", () => {
     // card-mod-format set/all/title.rb:2, base.rb:109, error.rb:14,
     // html/header.rb:5, html/head.rb:31, base.rb:35 ...
+    // (last_action LEFT this list 2026-09-29: the view-registry-directives
+    // oracle capture resolves it nil -> :read — card-mod-history's plain
+    // redefinition is operative, not card-mod-email's perms-:none one. See
+    // view-perms.ts PERMS_NONE's closing note and
+    // tests/card/permissions/view-registry-directives-oracle.test.ts.)
     for (const view of [
       "title", "blank", "denial", "header", "head", "link",
-      "name", "unknown", "errors", "not_found", "last_action", "followed",
+      "name", "unknown", "errors", "not_found", "followed",
     ]) {
       expect(resolveViewPerms(view)).toEqual({ check: false });
     }
@@ -180,16 +186,21 @@ function allowedGate() {
 }
 
 /** The distinct "Sorry, you don't have permission (X)" labels across the
- *  whole corpus capture. */
+ *  committed corpus census sample (fixtures/test-corpus/
+ *  test-corpus-shard-000000.jsonl — the builder's denial-span entries
+ *  extracted from the anonymized capture). The full-corpus census (shards
+ *  0-9, 124,632 spans, run in this test's pre-miniature history) found only
+ *  the read label; the committed sample carries the same single-label
+ *  property at fixture scale. */
 function captureCorpusDenialLabels(): Set<string> {
   const labels = new Set<string>();
   const pattern = /Sorry, you don't have permission \(([a-z_]*)\)/g;
-  for (let i = 0; i < 10; i++) {
-    const shard = `fixtures/corpus/shard-${String(i).padStart(6, "0")}.jsonl`;
-    const text = readFileSync(`${REPO_ROOT}${shard}`, "utf8");
-    for (const match of text.matchAll(pattern)) {
-      labels.add(match[1] ?? "");
-    }
+  const text = readFileSync(
+    path.join(REPO_ROOT, "fixtures", "test-corpus", "test-corpus-shard-000000.jsonl"),
+    "utf8",
+  );
+  for (const match of text.matchAll(pattern)) {
+    labels.add(match[1] ?? "");
   }
   return labels;
 }

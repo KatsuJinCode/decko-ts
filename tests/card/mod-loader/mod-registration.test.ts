@@ -71,7 +71,12 @@ describe("view registration into the live HTML_VIEWS record", () => {
     loader.reset();
     expect("help" in HTML_VIEWS).toBe(false);
     expect("help_text" in HTML_VIEWS).toBe(false);
-    expect("lead" in HTML_VIEWS).toBe(false);
+    // MERGE-PASS-18 RE-PIN (raise-leadview merge): :lead stays after reset —
+    // it is the compiled-in HTML_VIEWS entry (render/views.ts imports
+    // card-mod-help's leadView), not a loader-registered one; reset() removes
+    // only what the loader added. The graded page-lane harness binds no
+    // loader and must still dispatch :lead (the Role lead-view page class).
+    expect("lead" in HTML_VIEWS).toBe(true);
   });
 
   it("later mods override earlier views (module reopening) and reset restores exactly", () => {

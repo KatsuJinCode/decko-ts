@@ -109,8 +109,8 @@ I did not land the spike this session for two reasons:
    empty reference that the renderer would have suppressed if the
    catch had been narrower.
 
-The result: I have the spike draft, I do not have the conversion
-numbers the ask requested. Reporting `0` is honest; reporting a
+The result: the spike draft exists; the conversion numbers do not.
+Reporting `0` is honest; reporting a
 fiction to satisfy the schema would be a lie.
 
 ## 7. Recommendation
@@ -131,8 +131,8 @@ worked), but:
   ordinary test surface — it can't ride the regular
   `vitest run tests/` battery, it has to walk the raw slice
   driver at `tmp/raw-ground-truth/scripts/verify-recapture-raw.test.ts`
-  which is a 24h-timeout test the ask's "no full verification
-  driver" rule also blocks.
+  which is a 24h-timeout test — outside the "no full verification
+  driver" boundary this work runs under.
 - The mechanism I cannot fully trace is whether the legacy
   cardname resolve was actually `key`-first on the LIVE running
   Ruby, or whether the recapture walking simply emitted the
@@ -141,11 +141,11 @@ worked), but:
   the engineering fix differs (`name.ts` recompute vs
   `lexicon.ts` prefetch).
 
-The right next step (if the ask is reopened) is to make the spike
+The right next step (if this question is reopened) is to make the spike
 in `tmp/raw-ground-truth/scripts/legacy-key-spike.test.ts` (next to
 `trace-codename.test.ts` which already verifies the codehash codename
 path on a real run), land the answer on shard 0 only, then escalate
-shard 1-3 to a separate asks if the conversions hold.
+shard 1-3 separately if the conversions hold.
 
 Until then, the legacy-key class remains UNTRACED on this tree and
 the corpus verify lane continues to carry the ~265 entries as

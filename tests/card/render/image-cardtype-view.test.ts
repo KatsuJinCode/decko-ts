@@ -47,6 +47,7 @@
 import { describe, expect, it } from "vitest";
 import { formatImageCore } from "../../../src/card/render/views.js";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import { SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 
 // ---------------------------------------------------------------------------
 // the helper itself (pure function)
@@ -286,6 +287,50 @@ describe("Image-type card :content view — empty inner for non-URL content", ()
 });
 
 // ---------------------------------------------------------------------------
+// attachment-filename-case — the emitted filename's extension is DOWNCASED
+// ---------------------------------------------------------------------------
+
+describe("attachment-filename-case — emission downcases the extension", () => {
+  // Ruby re-derives every emitted attachment filename through
+  // FileCardUploader#extension (card-mod-carrierwave-0.20.0
+  // lib/carrier_wave/file_card_uploader.rb:155-162), whose whole case
+  // expression ends in `.downcase` — the identifier stored in db_content
+  // does NOT get re-cased on read, only the EMITTED url/storage filename
+  // does. The page triage's attachment-filename-case subclass (7
+  // single-diff pages; pass15-content-div-subclassifier.mjs) caught the
+  // port emitting the db_content extension verbatim:
+  //   exp: src="http://s3.amazonaws.com//files/1490/8871-medium.jpg"
+  //   act: src="http://s3.amazonaws.com//files/1490/8871-medium.JPG"
+  // for corpus card 1490 whose db_content is "(my_bucket)/1490/8871.JPG"
+  // (181 of the corpus' 1254 attachment identifiers carry an uppercase
+  // extension; all of them emit lowercase through Ruby's uploader).
+
+  it("cloud identifier with uppercase ext emits the fog URL with lowercase ext (corpus card 1490 bytes)", () => {
+    expect(formatImageCore("(my_bucket)/1490/8871.JPG", 1490, "Iris McGinnis+Image")).toBe(
+      '<img alt="Iris McGinnis+Image" src="http://s3.amazonaws.com//files/1490/8871-medium.jpg" />',
+    );
+  });
+
+  it("local identifier with uppercase ext emits /files path with lowercase ext", () => {
+    expect(formatImageCore("~6100/5026.PNG", 6100, "upcased local")).toBe(
+      '<img alt="upcased local" src="/files/6100/5026-medium.png" />',
+    );
+  });
+
+  it("explicit size variant keeps the lowercase ext (size:small shape)", () => {
+    expect(formatImageCore("(my_bucket)/431/60560.JPG", 431, "logo", "small")).toBe(
+      '<img alt="logo" src="http://s3.amazonaws.com//files/431/60560-small.jpg" />',
+    );
+  });
+
+  it("coded identifier with uppercase ext emits lowercase ext, codename case untouched", () => {
+    expect(formatImageCore(":cerulean_skin+:image/Bootstrap.PNG", undefined, "skin")).toBe(
+      '<img alt="skin" src="/files/:cerulean_skin+:image/Bootstrap-medium.png" />',
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // captured corpus pin — shard-000000 image-type card byte surface
 // ---------------------------------------------------------------------------
 
@@ -303,7 +348,7 @@ describe("captured corpus — Image-type card byte surface", () => {
     const path = await import("node:path");
     const url = new URL("../../..", import.meta.url);
     const repoRoot = url.pathname.replace(/^\//, "");
-    const shardPath = path.join(repoRoot, "fixtures/corpus/shard-000000.jsonl");
+    const shardPath = SHARD_000000_PATH; // committed miniature (fixtures/test-corpus/)
     const text = await fs.readFile(shardPath, "utf8");
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry79 = lines

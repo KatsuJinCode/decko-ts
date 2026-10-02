@@ -11,7 +11,8 @@ stream, e.g. corpus:67, and the CodeRay/core-content classes).
 ## The Ruby mechanism, end to end
 
 Render chain for the menu's help anchor (every citation from the installed
-gems under `C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/`):
+gems, written gem-relative: `gems/<gem>-<version>/...` under the Ruby gems
+directory, `gem environment gemdir`):
 
 1. `card-mod-format-0.20.0/set/all/html/menu.rb:35-37` — `view :help_link`
    = `help_link render_help_text, help_title`; `menu.rb:54-56` menu_items
@@ -132,7 +133,7 @@ render, every render (cold or warm closure) resolves help with ZERO
 additional queries, and `prepare()` re-runs only if the engine's caches
 were reset (the canary rule card leaves the render map).
 
-The coordinator's fold for the strict one-batch cold render: append the two
+The integration fold for the strict one-batch cold render: append the two
 statements (`helpRuleSidesStatement`, `settingRuleCountsStatement` — export
 them from help-popover.ts if preferred) to render.ts's existing
 `coldStatements` and run the absorber over `stats.additionalResults` after

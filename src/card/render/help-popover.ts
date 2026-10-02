@@ -47,11 +47,12 @@
 // cards + transitive sides, per-setting rule counts] - ONCE per engine
 // (canary-guarded), not per render. Warm renders (and every render after the
 // first) resolve synchronously from the enriched render-card map: zero
-// queries. The coordinator's #1282 fold appends these two statements to the
-// cold render's existing additionalStatements batch, which restores the
-// strict one-batch cold render (docs/help-popover-parity-notes.md).
+// queries. These two statements ride the cold render's existing
+// additionalStatements batch (appended, not a second batch), which
+// restores the strict one-batch cold render (docs/help-popover-parity-notes.md).
 
 import { DeckoName } from "../name.js";
+import { h } from "./slot-html.js";
 import type { SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
@@ -127,6 +128,48 @@ export function processHelpContent(fmt: RenderFormat, raw: string): string {
   return out;
 }
 
+/**
+ * The set-module `def raw_help_text` methods: card.try(:raw_help_text)
+ * resolves through the card's SET-module chain (all/help.rb:36-38), and the
+ * TypePlusRight definitions are the shape the codename-keyed
+ * SETTING_HELP_TEXT table cannot key — their membership is (left type,
+ * right setting), not a codename. Coverage: every type_plus_right
+ * `def raw_help_text` in the installed gems (grep, 2026-09-29):
+ * exactly one — card-mod-bootstrap-0.20.0
+ * set/type_plus_right/bootswatch_skin/variables.rb:6-9, the heredoc
+ *
+ *     <<-TEXT
+ *       Override bootstrap [[...scss/_variables.scss|variables]]
+ *     TEXT
+ *
+ * served to `<bootswatch skin>+*variables` SCSS field cards (the three
+ * corpus customized-skin +*variables pages book their ONLY page diff in
+ * this popover's data-bs-content: oracle renders the processed link,
+ * engine rendered the &nbsp; placeholder). Ruby's lookup precedence puts
+ * TypePlusRight ABOVE Right (pattern specificity), so the check runs
+ * after the codename table and before the *help rule-card fallback.
+ */
+function setModuleRawHelpText(
+  card: RenderCard,
+  engine: RenderEngineHelpHost,
+): string | undefined {
+  const rightKey = card.name.rightName?.key;
+  // The canonical key SINGULARIZES ("*variables" -> "*variable"); accept
+  // both spellings so a non-singularizing environment matches too.
+  if (rightKey !== "*variable" && rightKey !== "*variables") return undefined;
+  const leftKey = card.name.leftName?.key;
+  if (leftKey === undefined) return undefined;
+  const left = engine.fetchRenderCard(leftKey);
+  if (left === undefined) return undefined;
+  if (left.typeCode !== "bootswatch_skin" && left.typeName !== "BootswatchSkin") {
+    return undefined;
+  }
+  // variables.rb:6-9 heredoc, verbatim (4-space indent + trailing newline).
+  return (
+    "    Override bootstrap [[https://github.com/twbs/bootstrap/blob/v5.1.3/scss/_variables.scss|variables]]\n"
+  );
+}
+
 /** link.rb:89-109 target_and_link_text: split at the FIRST pipe that is not
  *  inside a {{nest}} span; objectify strips both sides (link.rb:113-122). */
 function dividerIndex(rawSyntax: string): number {
@@ -172,16 +215,6 @@ function explicitLinkBytes(target: string, label: string | undefined): string {
   const text = label ?? target; // links.rb html link_to: `text || opts[:href]`
   const targetAttr = type === "external-link" ? ' target="_blank"' : "";
   return `<a${targetAttr} class="${type}" href="${h(target)}">${h(text)}</a>`;
-}
-
-/** ERB::Util.html_escape (CGI.escapeHTML semantics: & < > " '). */
-function h(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/>/g, "&gt;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 // ---------------------------------------------------------------------------
@@ -270,21 +303,35 @@ export class HelpRulesResolver implements HelpRulesApi {
   /** help.rb:32-34 + :40-48: voo.help is never set on the menu surface;
    *  rule_based_help = process_content(raw_help_text, chunk_list:
    *  :references), "" when raw_help_text is nil. */
-  private ruleBasedHelp(fmt: RenderFormat, card: RenderCard): string {
+  ruleBasedHelp(fmt: RenderFormat, card: RenderCard): string {
     const raw = this.rawHelpText(card);
     if (raw === undefined) return "";
     return processHelpContent(fmt, raw);
   }
 
+  /** The HelpRulesApi member: the same chain for an arbitrary card — the
+   *  rule_help alert's body (card-mod-rules set/rule/editor.rb:24-28
+   *  rule_based_help over the rule card) and the setting-card core's
+   *  *all-rule help (p20-help-content's loader-less dispatch). */
+  ruleBasedHelpForCard(fmt: RenderFormat, card: RenderCard): string {
+    return this.ruleBasedHelp(fmt, card);
+  }
+
   /** help.rb:36-38: card.try(:raw_help_text) || card.help_rule_card&.content.
-   *  The static table answers card.try (setting-help-text.ts); the readable
-   *  *help rule card's db_content is the fallback. */
+   *  The static table answers card.try for the self/right-set definitions
+   *  (setting-help-text.ts); the set-MODULE definitions (card.try resolves
+   *  through the card's set-module chain — the TypePlusRight set module is
+   *  the one shape the codename-keyed table cannot key) answer in
+   *  setModuleRawHelpText below; the readable *help rule card's db_content
+   *  is the fallback. */
   private rawHelpText(card: RenderCard): string | undefined {
     const staticHelp = registeredSettingHelpText(
       card.record.codename,
       this.rightPartCodename(card),
     );
     if (staticHelp !== undefined) return staticHelp;
+    const setModuleHelp = setModuleRawHelpText(card, this.engine);
+    if (setModuleHelp !== undefined) return setModuleHelp;
     const ruleCard = this.helpRuleCard(card);
     return ruleCard === undefined ? undefined : ruleCard.dbContent;
   }
@@ -361,6 +408,20 @@ export class HelpRulesResolver implements HelpRulesApi {
     );
   }
 
+  /** board_rules_editor.rb:17-19 (the Rule-set :help_text view body) -
+   *  `[rule_based_help, setting_link].join(" ")`. NO wrap_help_text (no
+   *  d-none edit_link prefix) - the captured :help_text on *all+*read
+   *  (rules-views.json rule_card.views.help_text) does not carry the
+   *  d-none span. The card-mod-rules registration
+   *  reaches this through engine.helpRules.ruleHelpTextBytes(fmt). */
+  ruleHelpTextBytes(fmt: RenderFormat): string {
+    const card = fmt.card;
+    if (card.unknown === true) return "";
+    if (!this.isRuleCard(card)) return "";
+    const text = this.ruleBasedHelp(fmt, card);
+    return `${text} ${this.settingLinkBytes(card)}`.trimStart();
+  }
+
   /** help.rb:21 nest(rule_card, view: :edit_link) with the rule card's
    *  edit_link_view override (editor.rb:60-62 -> :rule_edit). Byte shape =
    *  menu.rb edit_link (link_to_view slotter attrs) with the rule_edit view;
@@ -380,6 +441,17 @@ export class HelpRulesResolver implements HelpRulesApi {
     const rightKey = card.name.rightName?.key;
     if (rightKey === undefined) return undefined;
     return this.engine.fetchRenderCard(rightKey)?.record.codename;
+  }
+
+  /** Memory peek: the static setting-help text this card's self/right set
+   *  serves (setting-help-text.ts), or undefined when none is registered.
+   *  The render engine's link-target warm pass (view-fail class V4) reads
+   *  this in the prepare phase so a rule row's popover links ([[List]]
+   *  [[Pointer]] [[Search]] — the *content options shape) resolve
+   *  known-card BEFORE the sync render, without scanning the whole static
+   *  table for renders that never show a help popover. */
+  peekStaticHelpTextFor(card: RenderCard): string | undefined {
+    return registeredSettingHelpText(card.record.codename, this.rightPartCodename(card));
   }
 
   private canaryWarm(): boolean {

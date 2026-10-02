@@ -16,21 +16,51 @@
 //
 // Deliberately in-scope: the machinery the four captured views exercise.
 // Landed since: the read-permission denial (view/permission.rb altered_view
-// -> src/card/permissions/). Deferred (docs/render-port-notes.md): view
-// caching/stubs, edit views, mod-specific view overrides, compact nest mode.
+// -> src/card/permissions/), and nest MODE (format/nesting/mode.rb - see
+// RenderFormat.nestMode / withNestMode / modalNestView). Deferred
+// (docs/render-port-notes.md): view caching/stubs, edit views, mod-specific
+// view overrides. compact nest mode: the :template arm and the compact
+// arms of mode.rb (view substitution mode.rb:71-84 + the nesting.rb:52-63
+// 200-char elision) are PORTED gem-derivative with fixture-less pins
+// ; the recorded capture
+// surface exercises none of them - the nest-mode-port census (sha-verified
+// 6a44dfdc dump copy, 97 expected-v2 shards) shows every captured one-line
+// render is a raw/nest-free arm, so the compact machinery is byte-neutral
+// on the surface (see the modalNestView docblock for the census numbers).
 
 import { DeckoName } from "../name.js";
-import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
+import {
+  CodenameNotFoundError,
+  NameNotFoundError,
+  UnsupportedIdentifierError,
+} from "../name/errors.js";
 import type { CardRecord } from "../fetch/card-record.js";
+import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
 import {
   scanNests,
   type NestOptions,
   type ParsedNest,
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
-import { h, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
-import { viewPermissionDenial, quietDenial, type CrudTask } from "../permissions/view-perms.js";
+import type { SearchResultPaging } from "./search-paging.js";
+import { cgiEscape, h, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
+import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms, viewDenialView, type CrudTask } from "../permissions/view-perms.js";
+import type { ReadViewer } from "../permissions/read-rules.js";
 import { resolveContentOverride } from "./content-overrides.js";
+import { NO_REQUEST_ORIGIN } from "./deck-origin.js";
+import { mainNestWithoutMainError } from "./errors.js";
+
+/** card-1.110.0 lib/card/env/location.rb:6-16 `card_path` — makes a
+ *  relative path site-absolute when it is not already rooted. `relative_
+ *  url_root` is `Cardio.config.relative_url_root`, nil at boot
+ *  (interpolates to ""), so the unrooted arm is "/" + rel. An already
+ *  rooted rel (`^(https?:)?/`) passes through untouched — which is why
+ *  card_url of a rooted path keeps its leading slash even with no
+ *  origin, and why clean_resource's internal-link re-root (links.rb:
+ *  74-81) restores the slash it stripped. */
+export function cardPath(relPath: string): string {
+  return /^(https?:)?\//.test(relPath) ? relPath : `/${relPath}`;
+}
 
 /** render.rb#view_method: unknown views raise Card::Error::UserError with
  *  card-mod-format set/all/error.rb#unsupported_view_error_message (en.yml:
@@ -92,6 +122,16 @@ export class Voo {
    *  the captured corpus bytes for corpus:77 + every pointer/list
    *  sibling). Undefined = data-slot's view equals requestedView. */
   slotViewOverride: string | undefined;
+  /** view/options/voo_api.rb:30-32 `define_setter` — `voo.<key> = v` writes
+   *  LIVE options, while `slot_options` (:51-56) reads the NORMALIZED ones
+   *  and slices them. The two maps are separate in Ruby, so an option a view
+   *  body assigns mid-render is readable through the accessor and INVISIBLE
+   *  in the slot JSON. Only :title has a live writer today
+   *  (card-mod-rules set/type/set/html_views/template.rb:4
+   *  `voo.title = parent.voo.nest_syntax if parent`), and the oracle pins
+   *  the consequence: the :template_link slot's data-slot carries
+   *  view/nest_name/show/home_view/name_context and NO title key. */
+  liveTitle: string | undefined;
 
   constructor(parent: Voo | undefined, requestedView: string, opts: Record<string, unknown>) {
     this.parent = parent;
@@ -113,7 +153,7 @@ export class Voo {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
     }
-    // R18: :items is an heir key too (view/options/key_lists.rb
+    // :items is an heir key too (view/options/key_lists.rb
     // keymap[:both]); inherit_options_from_parent! flows it down the voo
     // chain. The consumer is the search card_list TWO voos below the nest:
     // nest(opts.items={view:X}) -> core/content voo -> renderView("card_list")
@@ -128,13 +168,47 @@ export class Voo {
       const inheritedItems = parent.opts["items"];
       if (inheritedItems !== undefined) this.opts["items"] = inheritedItems;
     }
+    // :title is an heir key too (keymap[:both], "overrides the name of the
+    // card" - options.rb:50). Two consumers pinned it on different lanes:
+    // (1) the board-stage3 engage_tab oracle arm — the discussion nest
+    // carries title: "Discussion" and the :titled frame's header_title ->
+    // :title chain reads voo.title two voo levels down (titled ->
+    // header_title -> title) - the same inherit_options_from_parent! hop
+    // the size receipt describes (title.rb:30-31 standard_title =
+    // name_variant title_in_context(voo.title)); (2) the bar family ONE
+    // voo below the nest: field_nest(view:
+    // :accordion_bar, title: X) -> the accordion_bar voo carries the opt;
+    // its bar_left child voo's :title render must still answer voo.title
+    // (title.rb:6-8 standard_title reads voo.title) - without the
+    // inheritance the bootswatch field accordions showed the context-
+    // shortened card name where the oracle pins the title opt ("Palette
+    // and uses of colors"). A voo that SETS its own title overrides;
+    // nestless renders never set a parent title, so existing pins are
+    // untouched.
+    if (parent !== undefined && opts["title"] === undefined) {
+      const inheritedTitle = parent.opts["title"];
+      if (inheritedTitle !== undefined) this.opts["title"] = inheritedTitle;
+    }
+    // :home_view is an heir key too (keymap[:both] — "the view rendered when
+    // the card is visited from the page"). The read_form field slots pin
+    // the shape: the p20-email-views oracle (welcome_email.exp.html) puts
+    // "home_view":"read_formgroup" on the INNER :content slot's data-slot
+    // JSON — the content voo never sets its own home_view, so
+    // inherit_options_from_parent! flows the read_formgroup value down one
+    // voo level. A nested NEST always sets its own (nest.rb
+    // prepare_view_and_opts!), so the inheritance is a no-op for every
+    // nest-in-nest surface and the existing pins are untouched.
+    if (parent !== undefined && opts["home_view"] === undefined) {
+      const inheritedHomeView = parent.opts["home_view"];
+      if (inheritedHomeView !== undefined) this.opts["home_view"] = inheritedHomeView;
+    }
   }
 
   /** visibility.rb#process_visibility: inherit the parent's viz, then viz the
    *  requested view. The `optional: :show` render arg
    *  (method_delegation.rb#render_args -> optional_render_opt default) makes
    *  every delegated sub-render visible by default.
-   *  R16: the nest opts' own show/hide lists viz into the map (Ruby lines
+   *  the nest opts' own show/hide lists viz into the map (Ruby lines
    *  75-92: `process_visibility_options live_options` — hide processed
    *  before show, both DELETED from the options so slot_options' final
    *  merge re-derives them from the viz alone). Without this, a view body
@@ -163,7 +237,7 @@ export class Voo {
     }
     const requested = this.requestedView;
     // null = NO optional render opt (the show_with_page_layout main render —
-    // the page lane's captured slot has no "show" viz). JS default params
+    // the captured slot has no "show" viz). JS default params
     // apply on undefined, so the page path passes null, not undefined.
     if (optional !== undefined && optional !== null && optional !== false && !this.viz.has(requested)) {
       this.viz.set(requested, optional === "hide" || optional === false ? "hide" : "show");
@@ -297,7 +371,117 @@ export interface HelpRulesApi {
   /** The unescaped data-bs-content value; "" renders the &nbsp; placeholder
    *  (bootstrap helper.rb:48). */
   menuHelpContentBytes(fmt: RenderFormat): string;
+  /** The card-mod-rules Rule-set :help_text view body
+   *  (card-mod-rules-0.20.0 set/rule/board_rules_editor.rb:17-19):
+   *  `[rule_based_help, setting_link].join(" ")` with setting_link the
+   *  `Card.search` count (card-mod-rules set/type/setting.rb:12-14) and
+   *  rule_based_help the static-or-`*help`-rule-card processed through
+   *  chunk_list :references (card-mod-help set/all/help.rb:40-48). NO
+   *  d-none edit_link prefix (card-mod-help set/all/help.rb:18-25's
+   *  wrap_help_text is NOT called here - the Rule-set view body returns
+   *  the bytes verbatim). The :help_text registration
+   *  in card-mod-rules set/rule/board_rules_editor.rb is the canonical
+   *  consumer; expose this method so the registration lives in
+   *  viewChains (nonbase) rather than re-doing the help-popover seam's
+   *  private walks + ruleCounts map. */
+  ruleHelpTextBytes(fmt: RenderFormat): string;
+  /** card-mod-help set/all/help.rb:40-48 rule_based_help for an ARBITRARY
+   *  card: process_content(raw_help_text, chunk_list: :references) with
+   *  raw_help_text = help.rb:36-38's `card.try(:raw_help_text) ||
+   *  card.help_rule_card&.content` resolved for `card` (not the format's
+   *  own card). The card-mod-rules rule_help alert (set/rule/editor.rb
+   *  24-28) is this chain over the RULE card, and the setting-card core
+   *  (set/type/setting.rb:59-61 -> the *all rule's rule_help) resolves it
+   *  for the *all+<setting> rule card on the render layer's loader-less
+   *  dispatch (p20-help-content). */
+  ruleBasedHelpForCard(fmt: RenderFormat, card: RenderCard): string;
 }
+
+/**
+ * Nest mode (card-1.110.0 lib/card/format/nesting/mode.rb:3-15). A mode is
+ * FORMAT STATE, not a view option: it is set for the span of a
+ * `with_nest_mode` block, inherited by subformats, and consulted when a
+ * nest's view is chosen.
+ *
+ *  - "normal"   nests render in the requested view unaltered.
+ *  - "template" the view is replaced with :template_nest, which answers a
+ *               non-field nest with its own `{{nest_syntax}}` literal
+ *               (card-mod-edit set/all/template_nest.rb:2-12) - the mode
+ *               card-mod-layout set/type/layout_type.rb:12-18 turns on
+ *               around the Layout cardtype's CodeRay core, so a layout's
+ *               body is displayed as SOURCE rather than expanded.
+ *  - "edit"     view_in_edit_mode - not ported (the edit forms need the
+ *               Rails runtime; card-mod-edit's own views are out of scope
+ *               for this engine lane).
+ *  - "compact"  view_in_compact_mode - PORTED (mode.rb:71-84 substitution
+ *               + nesting.rb:52-63 elision; nest-mechanism-remainders lane
+ *               2026-10-01 — see the modalNestView docblock).
+ */
+export type NestMode = "normal" | "template" | "edit" | "compact";
+
+/**
+ * mode.rb:79-84 `configured_view_in_compact_mode` reads
+ * `view_setting(:compact, view)` — the `_view_<view>__compact` method each
+ * truthy `compact:` view opt defines (view_opts.rb:59-64; falsy/absent
+ * opts never define the method, so a later registration without the opt
+ * leaves an earlier truthy one resolving — Ruby method fallthrough). The
+ * gem carries exactly 24 truthy declarations, ALL on all-set modules (no
+ * per-set or per-format divergence exists to model), so the flat
+ * gem-derived record below is complete:
+ *
+ * - card-mod-format set/all/base.rb: name :14, key :26, linkname :27,
+ *   url :28, id_url :29, url_link :31, link :35, nav_link :39, codename
+ *   :55, id :56, type :57, created_at :61, updated_at :62, acted_at :63,
+ *   core :85, one_line_content :97, blank :109
+ * - card-mod-format set/all/title.rb: title :2 (the base-format arm; the
+ *   html :title redefinition at :15-17 declares no compact and the
+ *   base-format opt survives the lookup), title_link :16, title_no_link :20
+ * - card-mod-format set/all/error.rb:2 compact_missing
+ * - card-mod-follow set/all/notify/base_views.rb: followed :33,
+ *   follower :41, unfollow_url :49 (not registered in this port's mod deck
+ *   — unreachable, recorded for completeness)
+ *
+ * `true` keeps the requested view (mode.rb:81 `return view if
+ * compact_config == true`); a string is itself the substitute view
+ * (mode.rb:83). Views absent here fall to the mode.rb:73 known? fallback.
+ */
+const COMPACT_TRUE_VIEWS: Record<string, true | string> = {
+  name: true,
+  key: true,
+  linkname: true,
+  url: true,
+  id_url: true,
+  url_link: true,
+  link: true,
+  nav_link: true,
+  codename: true,
+  id: true,
+  type: true,
+  created_at: true,
+  updated_at: true,
+  acted_at: true,
+  core: true,
+  one_line_content: true,
+  blank: true,
+  title: true,
+  title_link: true,
+  title_no_link: true,
+  compact_missing: true,
+  followed: true,
+  follower: true,
+  unfollow_url: true,
+};
+
+/**
+ * nesting.rb:69-71 `max_char_count` reads `Card.config.max_char_count`;
+ * the railtie default is 200 (card-1.110.0 lib/cardio/railtie.rb:16). The
+ * headless port has no Cardio config surface — the default is pinned.
+ */
+const MAX_NEST_CHAR_COUNT = 200;
+
+/** The default when no format set a mode: mode.rb:18 `parent ?
+ *  parent.nest_mode : :normal` - a root format with no parent is :normal. */
+const DEFAULT_NEST_MODE: NestMode = "normal";
 
 export interface RenderFormatOptions {
   parent?: RenderFormat;
@@ -317,10 +501,58 @@ export interface RenderFormatOptions {
    *  cycle-two, nest-of-cycle all 500 at the old guard where Ruby renders
    *  the too-deep UserError at 20). Aligned 2026-09-24. */
   maxDepth?: number;
+  /** THIS format's format class name ("html" default). Ruby: `card.format
+   *  :email_text` builds an EmailTextFormat (email_text_format.rb:
+   *  EmailTextFormat < TextFormat < Format — the TEXT lineage, which does
+   *  NOT inherit the html format's method table). The name drives (a) the
+   *  view-dispatch chain (resolveView's format argument), (b) the
+   *  permission-gate denial shape (the BASE :denial is "" for nested
+   *  renders, set/all/error.rb:13-15, where the html override is the
+   *  quiet span, set/all/html/error.rb:75-77). Subformats inherit the
+   *  parent's format (mode.rb:44 "the subformat always has the same
+   *  nest_mode as its parent format" — the format class likewise). */
+  formatName?: string;
+  /** The CARD's @context_card (contextual_content.rb) an enclosing
+   *  with_context set — see RenderFormat#contextCard. Explicit here for
+   *  withFormatName's re-format (the ivar survives card.format in Ruby
+   *  because it lives on the card). */
+  contextCard?: RenderCard;
 }
 
 /** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
 export const RUBY_MAX_DEPTH = 20;
+
+/**
+ * The setting codenames whose `Right::*` set modules
+ * `include_set Abstract::VirtualSet` (card-mod-rules-0.20.0
+ * set/abstract/virtual_set.rb:1-3 `def virtual?; new?; end`):
+ * set/right/right.rb:1, right/self.rb:1, right/type.rb:1,
+ * right/type_plus_right.rb:1.
+ *
+ * Each of those files is a `pattern: right` module NAMED AFTER ITS RIGHT
+ * SIDE, so the test is "the card's right part is the `*right` / `*self` /
+ * `*type` / `*type plus right` SETTING card" — NOT "the card matches the
+ * self/type/type_plus_right SET PATTERN". The distinction is load-bearing:
+ * the `type` set pattern (03_type.rb, `applies: card.type_id != null`)
+ * applies to essentially every typed card, so reading it here made every
+ * typed nest miss virtual and grew Role+*type+*default's navbar menu by one
+ * live row the capture does not carry — the pointer's
+ * nav_link_in_dropdown items ARE nests (navbar-views.ts
+ * #dropdownMenuItems), and the oracle's post-divider tail is a single
+ * `\n<span class="denied">`.
+ *
+ * A new card in one of these four right-patterns is virtual, hence KNOWN
+ * (states.rb:65-67 `known? = real? || virtual?`), so view/permission.rb:37's
+ * `return if card.known?` short-circuits alter_unknown and the REQUESTED
+ * view renders unaltered instead of being substituted to :unknown
+ * (format/error.rb:23 `setting_view || :unknown`, whose html arm is "").
+ */
+const VIRTUAL_SET_CODENAMES: ReadonlySet<string> = new Set([
+  "right",
+  "self",
+  "type",
+  "type_plus_right",
+]);
 
 /**
  * One card's html format. Subformats (nests) are child instances holding a
@@ -335,10 +567,31 @@ export class RenderFormat {
   readonly maxDepth: number;
   /** Production nested-error semantics flag (see RenderFormatOptions). */
   readonly nestQuietErrors: boolean;
-  /** The memoized main-view body (nesting/main.rb main.rendered): set by the
-   *  page renderer after the main render; the {{_main}} nest in the layout
-   *  body emits it wrapped by wrap_main (<div id="main">). */
-  mainNestBody: string | undefined;
+  /** contextual_content.rb:1-3 `def context_card; @context_card || self; end`
+   *  — the CARD's @context_card ivar, set for the duration of a
+   *  `card.with_context(card)` block (contextual_content.rb:5-12) and read
+   *  by format/nest/fetch.rb:12 (`when "_", "_self" then
+   *  format.context_card`) to resolve BARE self-nests. Undefined here means
+   *  "no with_context is active on this render" — the Ruby fallback answer
+   *  is then the card itself. MUTABLE (a plain field, not readonly): Ruby's
+   *  with_context assigns, yields, and restores in an ensure — the
+   *  Abstract::TestContext :core seam (card-mod-email) writes it around the
+   *  super() render exactly the same way. */
+  contextCard: RenderCard | undefined;
+  /**
+   * format.rb:34 `attr_accessor :form, :error_status, :rendered` — Ruby's
+   * `@rendered`. Written by wrapper.rb:15 `@rendered = yield` (the view
+   * bytes BEFORE the wrappers, then wrapper.rb:23-27 the wrapped bytes) and
+   * by the :raw view, whose own with_wrapper lands `structure_card&.content`
+   * here (base.rb:75-77) while the :core view is still mid-render — the
+   * ORDERING that makes `{{_main}}` inside a card's own content splice the
+   * RAW SOURCE (nesting/main.rb:12 `main.rendered || main_nest_render`).
+   *
+   * The page renderer assigns the main-view body here after the main render
+   * (process_layout.rb render_with_layout -> with_wrapper), which is what
+   * the LAYOUT body's `{{_main|titled}}` then reads back.
+   */
+  rendered: string | undefined;
   voo: Voo | undefined;
   private depthCache: number | undefined;
   /** context_names.rb @initial_context_names - the parent-derived context,
@@ -347,6 +600,20 @@ export class RenderFormat {
   /** context_names.rb @context_names - the working list addNameContext
    *  mutates (see contextNames). */
   private contextNamesCache: string[] | undefined;
+  /** nesting/mode.rb @nest_mode - THIS format's own mode, or undefined when
+   *  it never ran a with_nest_mode block (the Ruby ivar is likewise unset
+   *  until with_altered_nest_mode assigns it, and `nest_mode` below falls
+   *  back to the parent). */
+  private ownNestMode: NestMode | undefined;
+  /**
+   * nesting.rb:60 `@char_count` — the compact-mode running total of
+   * rendered nest lengths on THIS format instance (a Ruby ivar: subformats
+   * start at nil, they do not inherit the parent's count). nil until the
+   * first compact-mode nest render completes, which is what makes
+   * nest_invisible? (nesting.rb:52-54) false for the first nest however
+   * long it is.
+   */
+  private charCount: number | undefined;
 
   constructor(
     card: RenderCard,
@@ -359,6 +626,130 @@ export class RenderFormat {
     this.isMain = opts.main ?? false;
     this.nestQuietErrors = opts.nestQuietErrors ?? false;
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
+    this.formatName = opts.formatName ?? opts.parent?.formatName ?? "html";
+    this.contextCard = opts.contextCard;
+  }
+
+  /** THIS format's format class name ("html" default — see
+   *  RenderFormatOptions.formatName). */
+  readonly formatName: string;
+
+  /** `card.format(:other_format)` — the SAME card rendered through another
+   *  format class (email_config.rb's `card.format(:email_text).render_core`
+   *  shape): a fresh root format over the same card carrying the other
+   *  format's name. Subformat state (nest mode, context names) does NOT
+   *  carry — Ruby's #format builds a new format instance. */
+  withFormatName(formatName: string): RenderFormat {
+    return new RenderFormat(this.card, this.engine, {
+      maxDepth: this.maxDepth,
+      nestQuietErrors: this.nestQuietErrors,
+      formatName,
+      // Ruby's @context_card lives on the CARD (contextual_content.rb:5-12
+      // assigns the ivar; format.context_card DELEGATES to it), so
+      // `card.format(:email_text)` inside a with_context block sees the
+      // same context — the email_text :core dispatch's self-nests resolve
+      // against the context card exactly like the html render's.
+      contextCard: this.contextCard,
+    });
+  }
+
+  /**
+   * nesting/mode.rb:17-19 `nest_mode`: this format's own mode if one was
+   * set, else the parent's, else :normal for a root format. A subformat
+   * READS the parent's mode but never writes it - the with_nest_mode block
+   * that sets the mode restores the previous value when it returns.
+   */
+  get nestMode(): NestMode {
+    if (this.ownNestMode !== undefined) return this.ownNestMode;
+    return this.parent?.nestMode ?? DEFAULT_NEST_MODE;
+  }
+
+  /**
+   * nesting/mode.rb:24-30 `with_nest_mode`: run `body` with `mode` as this
+   * format's nest mode, then put the prior mode back. Ruby's `ensure` also
+   * restores when the block raises, which is what keeps a failing view
+   * from poisoning the rest of the render - a nest rendered inside a
+   * with_nest_mode block that throws must not leave the mode changed.
+   *
+   * Ruby's `if new_mode == @nest_mode then yield` fast path is a
+   * no-op-equivalent: assigning the same value and restoring it produces
+   * the same observable state, so the port assigns unconditionally.
+   */
+  withNestMode<T>(mode: NestMode, body: () => T): T {
+    const previous = this.ownNestMode;
+    this.ownNestMode = mode;
+    try {
+      return body();
+    } finally {
+      this.ownNestMode = previous;
+    }
+  }
+
+  /**
+   * nesting/mode.rb:43-51 `modal_nest_view`: the view a nest renders in
+   * under the current mode. Ruby runs this on the SUBFORMAT (nest.rb:21
+   * `@view = subformat.modal_nest_view @view if @override`), whose
+   * nest_mode is the parent's (mode.rb:44) and whose card is the NEST
+   * TARGET — so the compact arm's known? check (mode.rb:73) reads the
+   * target card, passed as `nestCard`; the mode read here is this
+   * format's (the value the subformat inherits one line later).
+   *
+   * :template → :template_nest (mode.rb:47; card-mod-edit
+   * set/all/template_nest.rb re-emits the nest syntax). :edit needs the
+   * form machinery and stays unported. :compact substitutes per
+   * viewInCompactMode below.
+   *
+   * COMPACT CENSUS (re-verified by the
+   * nest-mechanism-remainders lane the same day on the sha-verified
+   * 6a44dfdc dump copy + the 97 expected-v2 shards): the substitution has
+   * ZERO observable on the recorded capture surface — every captured
+   * one-line render (30,037 divs) is a raw or nest-free arm
+   * (card-mod-content set/right/default.rb:4-7 + right/structure.rb:
+   * 14-16, card-mod-layout set/right/head.rb:11-13, card-mod-format
+   * set/type/html.rb:10-16 chunk_list :references; closed_content: zero
+   * captured entries; the five rule bars that do render one-lines carry
+   * literal `{{...}}` or nest-free truncated prose first-hand:
+   * *all+*head `{{:head|core}}`, Role+*type+*default
+   * `RichText : <p>{{+description}}</p>…`, both *guide bars truncate
+   * before their first nest at content chars 202/672). The compact arm
+   * below is therefore byte-neutral on the surface — it arms the
+   * mechanism Ruby would run the day a nest renders under a compact
+   * parent (e.g. {{X|titled}} inside a closed_content composition).
+   */
+  modalNestView(view: string, nestCard: RenderCard = this.card): string {
+    if (this.nestMode === "template") return "template_nest";
+    if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
+    return view;
+  }
+
+  /**
+   * nesting/mode.rb:71-74 `view_in_compact_mode`: the configured compact
+   * view wins; otherwise the card's known? state picks the fallback —
+   * :one_line_content for a known card (real or virtual,
+   * mod/core/set/all/states.rb:65-67 `def known?; real? || virtual?;
+   * end`), :compact_missing for an unknown one. The port's
+   * RenderCard.unknown flag (states.rb#unknown? — set exactly on the
+   * fabricated new-card records of buildUnknownNestCard, absent on
+   * virtual-known search-family cards) is that predicate.
+   */
+  private viewInCompactMode(view: string, nestCard: RenderCard): string {
+    const configured = this.configuredViewInCompactMode(view);
+    if (configured !== undefined) return configured;
+    return nestCard.unknown ? "compact_missing" : "one_line_content";
+  }
+
+  /**
+   * nesting/mode.rb:79-84 `configured_view_in_compact_mode`:
+   * `view_setting(:compact, view)` — true keeps the view (mode.rb:81), a
+   * symbol is itself the substitute (mode.rb:83), nil falls through to
+   * the known? fallback. The gem's 24 declarations are all-set (see
+   * COMPACT_TRUE_VIEWS); a future mod-level compact declaration lands in
+   * that record with its gem cite.
+   */
+  private configuredViewInCompactMode(view: string): string | undefined {
+    const compactConfig = COMPACT_TRUE_VIEWS[view];
+    if (compactConfig === true) return view;
+    return compactConfig;
   }
 
   /** view.rb#depth - the subformat chain depth (recursion guard). */
@@ -367,6 +758,27 @@ export class RenderFormat {
       this.depthCache = this.parent === undefined ? 0 : this.parent.depth + 1;
     }
     return this.depthCache;
+  }
+
+  /**
+   * format/nesting/subformat.rb#subformat + render composition: a NEW
+   * RenderFormat for the SAME card with `parent` pointing at this format -
+   * fresh voo state (the child voo's visibility inherits from the
+   * SUBFORMAT's undefined voo, not the caller's). The rules mod's
+   * current_rule_form (rule_form.rb:41-44) renders the inner :rule_form
+   * through this boundary: the captured overlay_rule/modal_rule/rule_edit
+   * slots carry show/hide lists that do NOT leak into the inner rule_form
+   * slot's JSON (rules-views.json: overlay_rule hide [menu,help]; the
+   * nested rule_form slot's show list is ["rule_form"] alone), which is
+   * Ruby's subformat isolation. Returns the subformat's renderView output.
+   */
+  subformatView(view: string, opts: Record<string, unknown> = {}): string {
+    const sub = new RenderFormat(this.card, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      nestQuietErrors: this.nestQuietErrors,
+    });
+    return sub.renderView(view, opts);
   }
 
   /**
@@ -455,9 +867,42 @@ export class RenderFormat {
     // unknown card the view is substituted BEFORE dispatch (view/permission.rb
     // #alter_unknown -> format/error.rb#view_for_unknown). The voo keeps the
     // REQUESTED view (Ruby voo @raw_view); only the dispatched view changes.
+    // permission.rb:19-23 altered_view runs `return if skip_check?` FIRST:
+    // a perms-:none view (or the skip_perms render opt) renders AS REQUESTED
+    // on an unknown card — no :unknown substitution. That skip is what makes
+    // the compact substitution's :compact_missing fallback (mode.rb:73;
+    // set/all/error.rb:2 perms: :none) reachable — without it the
+    // substituted view was itself re-substituted to :unknown.
     const effective =
-      this.card.unknown === true ? this.viewForUnknown(normalized, opts) : normalized;
-    const voo = new Voo(this.voo ?? undefined, normalized, { ...opts });
+      this.card.unknown === true && !this.unknownGateSkip(normalized, opts)
+        ? this.viewForUnknown(normalized, opts)
+        : normalized;
+    // view/options/voo_api.rb:115-119 #add_implicit_options! — the second
+    // line, `@normalized_options[:main] = true if format.main?`. The first
+    // line (`@normalized_options[:view] = @raw_view`) is the Voo's own
+    // `view` field, already carried by slotOptions()'s `view: viewField`
+    // merge. `format.main?` is html_format.rb:11-13 `!@main.nil?`, and
+    // `@main` is set by nesting/main.rb:37-39 `main!` — called on the page
+    // root format by card-mod-layout-0.20.0 set/all/process_layout.rb:19
+    // `show_with_page_layout ... main!`. So EVERY voo a MAIN format renders
+    // carries `main: true` in its normalized options, not just the `_main`
+    // nest: the page card's own `content` slot (rendered by the same format
+    // through the open view's bar_bottom -> render :content) carries it too.
+    //
+    // ORACLE CENSUS over the sha-verified expected-v2 page lane (6588
+    // records, all 48 shards): 6583 pages have a `titled` main view and
+    // emit exactly one `main:true` (the `_main` slot, which the page
+    // renderer already passes explicitly — page.ts renderView opts); the
+    // two `open` main-view pages (1316 shard 000000, 2333 shard 000001) are
+    // the only ones whose view body renders a same-format `content` slot on
+    // the page card, and both pin `"main":true` there. The 330
+    // nest_name-less data-slot entries on OTHER cards (layout-card nests,
+    // each rendered on its own subformat via nest()) carry no `main`, so
+    // the rule is scoped to the format's OWN main-ness, exactly as
+    // `format.main?` is.
+    const vooOpts: Record<string, unknown> = { ...opts };
+    if (this.isMain) vooOpts["main"] = true;
+    const voo = new Voo(this.voo ?? undefined, normalized, vooOpts);
     const previous = this.voo;
     this.voo = voo;
     try {
@@ -471,13 +916,16 @@ export class RenderFormat {
       // in src/card/permissions/view-perms.ts. Verdicts are precomputed
       // engine state (zero queries here): read through isDenied's verdict
       // map, non-read tasks through the optional isTaskDenied hook (the
-      // ported view registry carries no non-read view today — an absent
+      // first ported non-read view is :universal_edit_button, perms :update
+      // since 2026-09-28 — the ensureTaskVerdicts prepare step precomputes
+      // its verdicts when the requested view needs them; an absent
       // hook leaves those views unverified-allowed, per
       // docs/view-perms-notes.md).
       if (this.card.unknown !== true) {
         const denial = viewPermissionDenial(normalized, {
           renderOpts: opts,
           isNewCard: this.card.id === undefined,
+          formatName: this.formatName,
           taskAllowed: (task: CrudTask): boolean | undefined =>
             task === "read"
               ? !this.engine.isDenied(this.card)
@@ -496,11 +944,60 @@ export class RenderFormat {
           // the FOCAL (main, root) denial is the LOUD denial frame,
           // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
           // view still in the data-slot JSON (the 2,835-page oracle class:
-          // Azzia Zur, BW 20100614, ...). Non-main formats keep the quiet
+          // a named corpus page, BW 20100614, ...). Non-main formats keep the quiet
           // span (the bare view lane's pinned pointer-item surface; the
           // view-lane capture recorded no per-view bytes for fully denied
           // cards, so nothing graded changes there).
-          if (this.isMain) {
+          //
+          // Substitution-first applies on the main format too: error.rb:27-31
+          // is `view_setting(:denial, view) || :denial`, so a view with its
+          // own `denial:` config (the DENIAL_VIEW set in view-perms.ts —
+          // comment_box/menu/edit_link/list_of_changes/universal_edit_button/
+          // configure_button, all :blank on the ported surface) renders THAT
+          // view's bytes on the main format as well ("" for :blank). The loud
+          // frame is only the DEFAULT :denial view's focal body
+          // (html/error.rb:75-77). Mechanism of the discussion-page +bytes
+          // family: the discussion `:core` join (views.ts `render_comment_box
+          // (optional: :hide)`, card-mod-comment set/right/discussion.rb:8-10)
+          // dispatches a denied comment_box (perms :update, denial :blank) on
+          // the page's main format, so the unconditional main arm emitted the
+          // 1,377-char loud frame plus one extra closing </div> on every
+          // +discussion page where the Ruby oracle renders nothing.
+          if (this.isMain && viewDenialView(normalized) === undefined) {
+            return this.mainLoudDenialHtml(voo);
+          }
+          return denial;
+        }
+      } else if (
+        effective === normalized &&
+        !PERMS_NONE_VIEWS.has(normalized) &&
+        !renderOptSkipPerms(opts)
+      ) {
+        // permission.rb:22 `alter_unknown || denial`: when the view's
+        // `unknown:` config is `true` (the view SUPPORTS unknown —
+        // viewForUnknown returned the requested view for exactly that
+        // reason), alter_unknown answers nil and the DENIAL check still
+        // runs on the unknown card. The captured case is the layout
+        // {{*foot|core}} nest (card-mod-edit template_nest.rb:2
+        // `unknown: true`): the trashed *foot target's new card is
+        // read-denied and Ruby renders the quiet denial span where the
+        // pre-fix engine skipped its gate for unknown cards and printed
+        // the authored nest syntax. A SUBSTITUTED unknown view (config
+        // names a view, or absent -> :unknown) never reaches this arm —
+        // Ruby's view_for_unknown returns truthy there and short-circuits
+        // the denial (permission.rb:22,42-43).
+        const denial = viewPermissionDenial(normalized, {
+          renderOpts: opts,
+          isNewCard: this.card.id === undefined,
+          taskAllowed: (task: CrudTask): boolean | undefined =>
+            task === "read"
+              ? !this.engine.isDenied(this.card)
+              : this.engine.taskAllowed?.(this.card, task),
+          predicateAllowed: (predicate: string): boolean | undefined =>
+            predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
+        });
+        if (denial !== undefined) {
+          if (this.isMain && viewDenialView(normalized) === undefined) {
             return this.mainLoudDenialHtml(voo);
           }
           return denial;
@@ -519,7 +1016,7 @@ export class RenderFormat {
       // card's :content when it loads last - ruby MRO per card fixes
       // both). The cache lives on the engine (closureWarm-style) so a
       // warm render path is zero-cost.
-      const viewFn = this.engine.resolveView(this.card, effective, "html");
+      const viewFn = this.engine.resolveView(this.card, effective, this.formatName);
       if (viewFn === undefined) {
         // render.rb#view_method + error.rb#unsupported_view_error_message
         // (Ruby substitutes first, so an unsupported REQUESTED view on an
@@ -534,7 +1031,7 @@ export class RenderFormat {
 
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (Azzia Zur / BW 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / BW 20100614 / Martial Nonviolence Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
@@ -564,16 +1061,14 @@ export class RenderFormat {
       `<div class="d0-card-header card-header">` +
       `<h1 class="d0-card-header-title">` +
       `<span class="card-title" title="${h(name)}">${titleInner}</span></h1></div>`;
-    const message =
-      `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
-      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`;
+    const message = this.loudDenialMessageHtml();
     const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
     const attrs = emitAttrs({
       id: `${card.name.safeKey}-denial-view`,
       class: voo.classy(["card-slot", "denial-view", card.setKeys]),
       "data-card-id": card.id === undefined ? undefined : String(card.id),
-      "data-card-name": h(card.name.s),
+      "data-card-name": card.name.s,
       "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
       "data-card-type-name": card.typeName,
       "data-card-link-name": this.urlKey(),
@@ -581,6 +1076,30 @@ export class RenderFormat {
       "data-slot": slotOptionsJson(voo.slotOptions()),
     });
     return `<div${attrs}>${frame}</div>`;
+  }
+
+  /** html/error.rb:203-222 loud_denial_message + loud_denial's
+   *  `wrap_with(:div, ...)` wrapper, both session branches.
+   *  Ruby picks by SESSION sign-in state, not by as_id:
+   *  `when Auth.signed_in? then t(:format_need_permission_task, task:
+   *  to_task)` — en.yml: `format_need_permission_task: "You need permission
+   *  %{task}."` with format_denied_task "to %{denied_task} this" (the read
+   *  task) = the plain STRING "You need permission to read this." inside
+   *  the wrap div (golden: `<h1>Sorry!</h1>\n<div>You need permission to
+   *  read this.</div>`). The signed-out branch is sign_in_or_up_links,
+   *  whose own inner div nests inside the wrap (the captured anonymous
+   *  corpus surface, byte-pinned by the dual-lane denial pages —
+   *  untouched). The authenticated goldens all render the signed-in branch
+   *  because the capture session stays the bot (Auth.current never leaves
+   *  the runner session — capture-authenticated-pages.rb:143-153). */
+  private loudDenialMessageHtml(): string {
+    if (this.engine.pageSession?.signedIn === true) {
+      return `<div>You need permission to read this.</div>`;
+    }
+    return (
+      `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`
+    );
   }
 
   /**
@@ -595,7 +1114,26 @@ export class RenderFormat {
    */
   private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
     if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
-    const configured = UNKNOWN_VIEW_CONFIG[requested];
+    // permission.rb:38 `setting :unknown` resolves through the CARD'S SET
+    // CHAIN. With a mod deck bound, the loader's per-card chain walk is the
+    // authority for SET-SCOPED declarations (loader.viewUnknownSettingForCard
+    // -> viewChain(setKeys...), the same MRO walk the dispatcher uses);
+    // `undefined` there means no set module in the card's chain declares the
+    // setting. The ALL-SET rows of the compiled decl table still apply on
+    // top (Ruby mixes the all-set format modules into every deck's base
+    // class — registrar.rb:79-84 — and the core bar/format all-set views
+    // are compiled here rather than registered as modules). A loader-LESS
+    // engine reads the full compiled table: it transcribes the same
+    // set-scoped + all-set declarations, and the set-scoped rows are what
+    // the old flat table globalized — the exact defect this replaces.
+    const fromChain = this.engine.viewUnknownSettingForCard?.(this.card, requested);
+    const loaderBound = this.engine.modDeckBound?.() === true;
+    const configured =
+      fromChain !== undefined
+        ? fromChain
+        : loaderBound
+          ? compiledUnknownSettingForCard(this.card, requested, true)
+          : compiledUnknownSettingForCard(this.card, requested);
     if (configured === true) return requested; // permission.rb:40 unknown_setting == "true"
     if (this.isMain && this.voo === undefined) {
       // format/error.rb#page_view_for_unknown (page branch) - not ported
@@ -629,14 +1167,25 @@ export class RenderFormat {
     if (view === "content") {
       // html/views.rb#prepare_content_slot
       voo.classUp("card-slot", "d0-card-content");
+    } else if (view === "content_panel") {
+      // html/views.rb:42-45 before(:content_panel):
+      // prepare_content_slot + class_up "card-slot", "card"
+      voo.classUp("card-slot", "d0-card-content");
+      voo.classUp("card-slot", "card");
+    } else if (view === "content_with_title") {
+      // html/views.rb:34 before(:content_with_title): prepare_content_slot
+      voo.classUp("card-slot", "d0-card-content");
+    } else if (view === "conflict") {
+      // html/error.rb:39 class_up "card-slot", "error-view"
+      voo.classUp("card-slot", "error-view");
     } else if (view === "bar") {
-      // R16: the gate is set/rule SET membership (the card's right part is
+      // the gate is set/rule SET membership (the card's right part is
       // a Setting), not the rule? predicate — bar_view.rb's set covers the
       // 2-part rule shape (`*all+*autoname`) exactly like the 3-part
       // preference shape, and the oracle pins `_rule-item` on both.
       if (this.engine.cardMatchesRuleSet?.(this.card) ?? false) {
         // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
-        const categories = this.ruleSetCategories(this.rightPartCodenameForRule());
+        const categories = this.ruleSetCategories(this.rightPartCodenameForRule(), this.card);
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
         voo.classUp("card-slot", classExtra);
       }
@@ -744,14 +1293,67 @@ export class RenderFormat {
    *  exp `_category-all" data-card-name=...` got `_category-all
    *  _category-recent" ...`). CLUSTER 35's original three pins re-verified:
    *  their settings (captcha et al.) ARE recent members, so those pins
-   *  keep their bytes under the membership form. */
-  private ruleSetCategories(settingCodename: string | undefined): string[] {
+   *  keep their bytes under the membership form.
+   *
+   *  Correction to the earlier static list: recent is now the FULL
+   *  Ruby arm — items ∩ registered ∩ restriction (recentCategoryApplies) —
+   *  read from the deck's *recent settings card; the static RECENT_SETTINGS
+   *  const is retired. CLUSTER 35's pins keep their bytes (captcha et al.
+   *  are recent members under the full arm); the R16 membership correction
+   *  stands (autoname/on_* are not items). */
+  private ruleSetCategories(settingCodename: string | undefined, ruleCard: RenderCard): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
     if (FIELD_SETTINGS.has(settingCodename)) result.push("field");
-    if (RECENT_SETTINGS.has(settingCodename)) result.push("recent");
+    if (this.recentCategoryApplies(settingCodename, ruleCard)) result.push("recent");
     if (COMMON_SETTINGS.has(settingCodename)) result.push("common");
     return result;
+  }
+
+  /** setting_categories.rb:64-67 recent_settings:
+   *  `Card[:recent_settings].item_cards.map(&:codename).compact` — the
+   *  *recent settings POINTER's items (DECK DATA, not code). The item
+   *  cards' codenames equal the underscored item names for every canonical
+   *  setting name (all 21 raw-corpus row-23808 items: "*content options" ->
+   *  content_options, "*follow fields" -> follow_fields), so the derivation
+   *  reads the card's db_content lines directly; an absent card yields the
+   *  empty membership (Ruby's nil fetch carries no items), never an error. */
+  private recentSettingCodenames(): Set<string> {
+    const recentCard = this.engine.fetchRenderCard("*recent settings");
+    const content =
+      recentCard === undefined || recentCard.unknown === true
+        ? undefined
+        : recentCard.record.dbContent;
+    const items = new Set<string>();
+    for (const line of (content ?? "").split("\n")) {
+      const item = line.trim();
+      if (item === "") continue;
+      items.add(item.replace(/^\*/, "").toLowerCase().replace(/ +/g, "_"));
+    }
+    return items;
+  }
+
+  /** setting_categories.rb:9-15 categories' recent arm, in full:
+   *  recent = (recent-card items) ∩ (REGISTERED settings — set/type/set.rb
+   *  :73-85 visible_setting_codenames is Card::Setting.groups, the
+   *  setting_opts registrations) ∩ (unrestricted ∨ the set prototype's type
+   *  codename ∈ the registration's restricted_to_type — setting.rb:74-77
+   *  applies_to_cardtype). Oracle-derived verification (845+ rule-item bars
+   *  swept from the page-lane oracle bytes, 2026-09-30):
+   *  *table of contents / *comment are registered NOWHERE in the gems (no
+   *  set/self/*.rb) and pin `_category-all` alone (Number page: 0 YES /
+   *  4 NO); content_options / content_option_view are restricted to
+   *  %i[list pointer session] (card-mod-list set/self/content_options.rb:2,
+   *  content_option_view.rb:2 — the only restricted registrations), so they
+   *  carry recent exactly on list-family-prototype sets (*style+*right YES —
+   *  its *default rule card is List-typed; *all NO — BasicCs-typed). */
+  private recentCategoryApplies(settingCodename: string, ruleCard: RenderCard): boolean {
+    if (!this.recentSettingCodenames().has(settingCodename)) return false;
+    if (!REGISTERED_SETTING_CODENAMES.has(settingCodename)) return false;
+    const restrictedTo = RESTRICTED_TO_TYPE.get(settingCodename);
+    if (restrictedTo === undefined) return true;
+    const prototypeCode = this.engine.ruleSetPrototypeTypeCode?.(ruleCard);
+    return prototypeCode !== undefined && restrictedTo.has(prototypeCode);
   }
 
   // -------------------------------------------------------------------------
@@ -766,20 +1368,47 @@ export class RenderFormat {
    * subformat with fresh voo state.
    */
   nest(nest: ParsedNest): string {
-    if (nest.comment !== undefined) return nest.comment; // content.rb#content_nest comment passthrough
-    const targetName = this.resolveNestName(nest.name);
+    if (nest.comment !== undefined) return nest.comment; // content.rb#content_nest passthrough
+    // nesting.rb:12-13 `return "" if nest_invisible?` — the elision gate
+    // runs before ANY nest processing (no fetch, no view resolution): once
+    // this format's rendered-nest total exceeds max_char_count (200,
+    // railtie.rb:16), every further nest it renders is the empty string.
+    if (this.nestInvisible()) return "";
+    // format/nest/fetch.rb:10-13 fetch_card: `when "_", "_self" then
+    // format.context_card` — the BARE self-reference fetches the CARD's
+    // @context_card (contextual_content.rb:1-3 `@context_card || self`),
+    // NOT a name-absolutized target. This is the seam the Abstract::
+    // TestContext with_context wrapper drives (card-mod-email): the
+    // notification templates' `{{_|...}}` marks render the CONTEXT card's
+    // views. Any other relative form absolutizes against the card as before.
+    const rawNestName = nest.name.trim();
+    const contextTarget =
+      rawNestName === "_" || rawNestName === "_self"
+        ? (this.contextCard ?? this.card)
+        : undefined;
+    const targetName = contextTarget !== undefined ? contextTarget.name.s : this.resolveNestName(nest.name);
     // Blank reference (`{{}}`): fetch.rb#retrieve_existing skips blank marks
     // (`return unless mark.present?`) and fetch/results.rb#results then
     // returns nil (`return if card.nil?`) - no card, not even an unknown
-    // one. The nil-card nest renders through the html denial path
-    // (card-mod-format set/all/html/error.rb#quiet_denial, task :read).
-    // Corpus oracle: shard-000000 entry 636 renders its `{{}}` inside body
-    // text as the bare denied span, byte-pinned in
-    // tests/card/render/unknown-nest-blank-reference.test.ts.
+    // one. The nil card takes view/permission.rb:36-44's unknown arm: the card
+    // is unknown, so alter_unknown returns format.view_for_unknown's
+    // `setting_view || :unknown` (format/error.rb:23) - so altered_view
+    // (view/permission.rb:19-23) never reaches #denial
+    // (view/permission.rb:46-50), and the nest renders Ruby's empty-string
+    // view result. The frozen
+    // oracle splits on this input: shard-000006 entry 10488 renders its
+    // `{{}}` as nothing on BOTH its content and open surfaces, while
+    // shard-000000 entry 636 carries a denial span on open/page. Ruby's own
+    // source trace sides with 10488 (the denial arm is unreachable for a
+    // nil-card nest). Measured on the frozen corpus: this form takes 10488
+    // to full byte equality and moves 636's open surface off its captured
+    // bytes by the one 76-byte region. 636 is the anomalous capture, not
+    // this branch — the former denial span here contradicted the
+    // source-traceable behavior to match that anomaly.
     if (targetName.trim() === "") {
-      return quietDenial(); // html error.rb quiet_denial, task :read
+      return ""; // view renders the nil-card nest's empty result; see above
     }
-    const target = this.engine.fetchRenderCard(targetName);
+    const target = contextTarget ?? this.engine.fetchRenderCard(targetName);
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
@@ -803,7 +1432,7 @@ export class RenderFormat {
     // emulates Card.fetch new: {} on a miss, including the *default
     // template's type) and cannot know the nest's opt — re-type it here
     // when the type card resolves warm (explicit opts beat the template,
-    // Card.new precedence). Pinned: ronald joseph content/open (shard 40)
+    // Card.new precedence). Pinned: the personal-page content/open capture (shard 40)
     // nests `{{+agree | type:Toggle }}` — the oracle slot carries
     // data-card-type-id="51" data-card-type-name="Toggle", the
     // TYPE-toggle ... TYPE_PLUS_RIGHT-sign_up-agree set-key chain, and the
@@ -817,35 +1446,60 @@ export class RenderFormat {
       !(this.engine.cardMatchesRuleSet?.(target) ?? false)
         ? this.withNewCardContext(target, typeof nestTypeOpt === "string" ? nestTypeOpt : undefined)
         : card;
-    const view = normalizeView(nest.options.view ?? this.defaultNestView());
+    // format/nest.rb:22 `prepare`: `@view = subformat.modal_nest_view @view
+    // if @override`. Ruby computes it on the SUBformat (mode.rb:44 "the
+    // subformat always has the same nest_mode as its parent format"), so
+    // the mode consulted here is this format's - the same value the sub
+    // inherits one line later. Only nest_mode can substitute a view; a
+    // nest's own `| view:X ` opt is the input to that substitution, not a
+    // bypass of it, which is why {{_main|titled}} under :template mode
+    // still renders :template_nest.
+    const requestedView = normalizeView(nest.options.view ?? this.defaultNestView());
+    // The compact arm's known? check (mode.rb:73) reads the SUBFORMAT's
+    // card — the nest target — because Ruby runs modal_nest_view on the
+    // subformat (nest.rb:21); the mode it consults is this format's.
+    const view = this.modalNestView(requestedView, effectiveCard);
     const viewOpts: Record<string, unknown> = {
-      // nest_name = the AUTHORED reference, verbatim: card-mod-content
-      // lib/card/content/chunk/nest.rb:23 builds the chunk's options with
-      // `@options = interpret_options.merge nest_name: name,
-      // nest_syntax: in_brackets` — `name` there is the authored
-      // reference (relative "+Source Title" stays relative; authored
-      // underscores/casing stay untouched). nest.rb#prepare_view_and_opts!'s
-      // `nest_name ||= card.name` is only the fallback for programmatic
-      // nests that carry no chunk options. Both oracles pin the authored
-      // form: the raw recapture oracle (tmp/raw-ground-truth/expected/
-      // recapture-raw-shard-000005.jsonl id 9625) carries
-      // nest_name "+Source Title" for a `{{+Source Title}}` nest, and the
-      // live wire (tmp/live-wire) carries "+tag"/"+related"/"+Source
-      // Title"/"Su$tainability"/"Conflict_Done_Well+class_schedule" —
-      // authored bytes, not resolved names. The resolved name still drives
-      // data-card-name (the slot's own attribute; id 9625 shows the
-      // absolute form there). card-mod-tabs.ts#chunkRefChunks already
-      // follows this contract for its chunk walk.
-      // R16: codename marks (`{{:footer}}`) resolve in the nest_name — the
-      // page-lane oracle pins `nest_name: "*footer"` for the Default
-      // Layout's `{{:footer|content}}` chunk while relative/authored forms
-      // stay verbatim ("+Source Title", id 9625). Ruby's chunk name passes
-      // through the codename interpretation at prepare time
-      // (chunk/nest.rb:23 + the `:` codename config), so the resolved
-      // card's name is what lands in the slot JSON.
-      nest_name: nest.name.startsWith(":") ? (effectiveCard.name?.s ?? nest.name) : nest.name,
-      nest_syntax: nest.syntax,
-      ...(view === "closed" || view === "edit" ? { home_view: "open" } : { home_view: view }),
+      // nest_name = the AUTHORED reference through DeckoName.parse —
+      // verbatim for authored/relative forms (card-mod-content
+      // lib/card/content/chunk/nest.rb:23 keeps the authored string:
+      // "+Source Title" stays relative, underscores/casing untouched —
+      // raw recapture oracle id 9625; live wire "+tag"/"+related"/
+      // "Su$tainability"/"Conflict_Done_Well+class_schedule"), codename-
+      // RESOLVED for mark forms: DeckoName.parse resolves ":codename"
+      // marks through the name environment at parse time ({{:footer}} →
+      // "*footer", the R16 page-lane pin; junction parts too — the Role
+      // template card 322's {{+:description|lead}} pins
+      // nest_name "+description" in every Role page oracle: the right
+      // part is the codename "description" → card 146's name, and the
+      // RELATIVE junction form is kept — the previous
+      // effectiveCard.name.s rewrite here emitted the ABSOLUTE form for
+      // that shape). That is Ruby's fetch.rb#new_card:31 rewrite
+      // `view_opts[:nest_name] = Card::Name[cardish].to_s` with cardish's
+      // marks already resolved by the fetch: the resolved name is what
+      // lands in the slot JSON. (Parse safety: resolveNestName above
+      // already parsed this same string, so a throwing mark never
+      // reaches this line.) The resolved name still drives data-card-name
+      // (the slot's own attribute; id 9625 shows the absolute form
+      // there). card-mod-tabs.ts#chunkRefChunks already follows this
+      // contract for its chunk walk.
+      nest_name: DeckoName.parse(nest.name).s,
+      // Ruby's chunk path (chunk/nest.rb:23) sets nest_syntax = the
+      // authored bracket text in @options. Ruby's programmatic nest path
+      // omits nest_syntax entirely. The TS chunk parser mirrors the
+      // chunk path (nest-syntax.ts: interpretNest sets
+      // ParsedNest.chunkNestSyntax = stripped); programmatic nests don't
+      // set it. Gate the slot JSON on the field's presence.
+      ...(nest.chunkNestSyntax !== undefined
+        ? { nest_syntax: nest.chunkNestSyntax }
+        : {}),
+      // nest.rb:24 `view_opts[:home_view] ||= %i[closed edit].member?(view)
+      // ? :open : view` runs inside prepare_view_and_opts!, i.e. BEFORE
+      // prepare substitutes modal_nest_view - so the rule reads the
+      // REQUESTED view, not the substituted one.
+      ...(requestedView === "closed" || requestedView === "edit"
+        ? { home_view: "open" }
+        : { home_view: requestedView }),
       ...this.nestOptionEntries(nest.options),
     };
     const sub = new RenderFormat(effectiveCard, this.engine, {
@@ -853,7 +1507,7 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       // Page-path config propagates (Ruby's config is render-global): the
       // quiet nested-error semantics. The default nest view needs no
-      // threading — the lane config is engine state (defaultNestView).
+      // threading — it is engine state (defaultNestView).
       nestQuietErrors: this.nestQuietErrors,
     });
     if (this.depth >= this.maxDepth) {
@@ -865,16 +1519,68 @@ export class RenderFormat {
     // messages render verbatim (error.rb rendering_error); other errors use
     // the lib_error_rendering locale line. The focal (main) render never
     // reaches this catch — it runs on the root format, not through nest().
+    // The catch's span still feeds count_chars (nesting.rb:17): Ruby's
+    // subformat.render returns the rescued span INSIDE the block, so the
+    // quiet bytes accumulate like any other nest render; a rethrow
+    // (nestQuietErrors off) bypasses count_chars exactly as a Ruby
+    // exception bypasses it.
+    let rendered: string;
     try {
-      return sub.renderView(view, viewOpts);
+      rendered = sub.renderView(view, viewOpts);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
       const msg =
         error instanceof UnsupportedViewError
           ? error.message
           : `Error rendering: ${h(card.name.s)} (${view} view)`;
-      return `<span class="render-error alert alert-danger">${msg}</span>`;
+      rendered = `<span class="render-error alert alert-danger">${msg}</span>`;
     }
+    return this.countNestChars(rendered);
+  }
+
+  /**
+   * nesting.rb:52-54 `nest_invisible?`: `nest_mode == :compact &&
+   * @char_count && (@char_count > max_char_count)`. The `@char_count &&`
+   * guard is load-bearing — the count is nil until the FIRST compact-mode
+   * nest render completes, so the first nest renders at full length
+   * however long it is (nesting.rb:56-63 accumulates only after a render
+   * returns); the elision suppresses every SUBSEQUENT nest, it never
+   * truncates the one being rendered.
+   */
+  private nestInvisible(): boolean {
+    return (
+      this.nestMode === "compact" &&
+      this.charCount !== undefined &&
+      this.charCount > MAX_NEST_CHAR_COUNT
+    );
+  }
+
+  /**
+   * nesting.rb:56-63 `count_chars`: wrap the nest render's result —
+   * accumulate `result.length` into this format's @char_count when the
+   * format is in compact mode and the result is truthy (an empty-string
+   * render adds nothing), then return the result unchanged. Runs on the
+   * format whose nest() call produced the render, so a compact parent
+   * accumulates its direct nests while a nested subformat accumulates its
+   * own (Ruby ivars do not cross the subformat boundary).
+   */
+  private countNestChars(result: string): string {
+    if (this.nestMode !== "compact" || !result) return result;
+    this.charCount = (this.charCount ?? 0) + result.length;
+    return result;
+  }
+
+  /**
+   * permission.rb:20-22 `altered_view`'s first line — `return if
+   * skip_check?` — gating the UNKNOWN substitution exactly as it gates
+   * the denial branch: `normalized_options[:skip_perms] ||
+   * view_perms == :none` (permission.rb:25-27). Resolution sources match
+   * viewPermissionDenial's (resolveViewPerms — the same registry the
+   * read-permission wave's denial gate reads).
+   */
+  private unknownGateSkip(view: string, opts: Record<string, unknown>): boolean {
+    if (renderOptSkipPerms(opts)) return true;
+    return resolveViewPerms(view).check === false;
   }
 
   /** fetch.rb:38-49 new_card_args (R17): shape a FABRICATED new-card
@@ -890,7 +1596,7 @@ export class RenderFormat {
    *  created AS A SUBCARD of the context card, so its set-pattern chain
    *  carries TYPE_PLUS_RIGHT-<supercard type>-<tag> (the safeSetKeys
    *  rebuild with leftTypeName; the fabricated record's own set keys are
-   *  parentless). Pins: ronald joseph +agree (data-card-type-id="51",
+   *  parentless). Pins: the personal page's +agree slot (data-card-type-id="51",
    *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
    *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
    *  fabricated shape pinned rich_text). */
@@ -906,7 +1612,27 @@ export class RenderFormat {
       explicitType !== undefined && explicitType.id !== undefined
         ? (explicitType.record.codename ?? undefined)
         : target.typeCode;
-    const debugKeys = safeSetKeys({
+    // A TOGGLE-typed fabricated record must not carry the virtual
+    // resolution's *structure template: the toggle core (views.ts
+    // formatToggleCore) formats any truthy string as "yes", so the carried
+    // template rendered "yes" where the oracle renders "no" — the p21
+    // Group A regression (98 entries: every Sign up person page's `+agree
+    // | type:Toggle` slot, corpus rules agree+*right+*structure 28589
+    // template / agree+*right+*default 17695 content '0', zero +agree
+    // rows; probe-proven). The
+    // oracle byte is the toggle core of the *default rule's CONTENT
+    // (content/all.rb:17-19 standard_content's new-card branch:
+    // default_content = the *default template's db_content; '0' -> "no").
+    // The gate is the toggle core's own dispatch condition
+    // (typeCode "toggle" / typeName "Toggle") because the hazard is
+    // precisely a truthy carried template feeding formatToggleCore —
+    // non-toggle types keep the template (the BWjournal +Body structured
+    // virtual bodies; structured-child-typed-view.test.ts guards them).
+    // No *default rule / unloaded universe degrades to "" — the toggle
+    // core of "" is "no" (formatToggleCore), matching standard_content's
+    // empty tail.
+    const toggleTyped = typeCode === "toggle" || typeName === "Toggle";
+    const rebuiltSetKeys = safeSetKeys({
         name: target.name,
         typeId,
         typeName,
@@ -915,11 +1641,23 @@ export class RenderFormat {
       });
     return {
       ...target,
-      dbContent: "",
+      // content/all.rb:8-10 — an id-less warm record with content is a
+      // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
+      // *structure rule; fetch.ts:388-395 sets dbContent = the rule
+      // template). Wiping it here rendered every structured virtual nest
+      // (the pass-15 class's BWjournal +Body titled slot) with an empty
+      // body — the seven mini_bar children of Body+*right+*structure
+      // vanished with the template. A genuine new-card emulation carries
+      // dbContent "" so this keeps byte-identity for it too. Toggle-typed
+      // records substitute the *default rule content instead (the block
+      // comment above).
+      dbContent: toggleTyped
+        ? (this.engine.newCardDefaultContent?.(target.name) ?? "")
+        : (target.dbContent ?? ""),
       typeId,
       typeName,
       typeCode,
-      setKeys: debugKeys,
+      setKeys: rebuiltSetKeys,
     };
   }
 
@@ -930,14 +1668,25 @@ export class RenderFormat {
    *  (RichText-typed) and the captured slot chain still reads
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the context card's type
-   *  (the pre-R17 shape, still correct when context == left, the common
+   *  (the earlier shape, still correct when context == left, the common
    *  field-nest case). */
   private leftTypeNameFor(name: DeckoName): string | undefined {
     if (!name.isCompound) return this.card.typeName;
-    const leftName = name.leftName?.s;
+    const leftName = name.leftName;
     if (leftName === undefined) return this.card.typeName;
-    const left = this.engine.fetchRenderCard(leftName);
-    return left !== undefined && left.id !== undefined ? left.typeName : this.card.typeName;
+    const left = this.engine.fetchRenderCard(leftName.s);
+    if (left !== undefined && left.typeName !== undefined) return left.typeName;
+    // The left is not in the warm map (or carries no type yet): resolve
+    // through the engine's loaded *structure universe before the context
+    // fallback. Ruby's left_type reads the LEFT CARD's type — for a left
+    // that is itself virtual ("PlainText+*type" -> Set via the
+    // *type+*right+*structure template) the context card's type is simply
+    // the wrong card's type (the census page-22 defect:
+    // TYPE_PLUS_RIGHT-cardtype-by_name over the oracle's
+    // TYPE_PLUS_RIGHT-set-by_name).
+    const virtualLeftType = this.engine.virtualLeftTypeName?.(leftName);
+    if (virtualLeftType !== undefined) return virtualLeftType;
+    return this.card.typeName;
   }
 
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
@@ -960,11 +1709,72 @@ export class RenderFormat {
     nestTypeOpt?: string,
   ): RenderCard {
     const name = DeckoName.parse(targetName);
+    // VirtualSearch family (card-mod-search set/abstract/virtual_search.rb
+    // :11-12): a compound name whose right part is one of the 16 family
+    // rights is virtual-KNOWN on a fetch miss (`def virtual?; new?; end`,
+    // the Right-pattern override of states.rb:44-50), Search-typed
+    // (:14-16 assign_type :search_type), carrying the including file’s
+    // cql_content as its content. alter_unknown never fires for it
+    // (view/permission.rb:37 `return if card.known?`) — the requested view
+    // renders normally, which is how the GIV page’s `{{_self+*referred to
+    // by}}` nest reaches the search card_list (0 results ->
+    // no_search_results) instead of the unknown substitution. The family
+    // table + the byte-level contract live in
+    // src/card/fetch/virtual-search-cards.ts.
+    const virtualSearchCql = virtualSearchCqlFor(name);
+    if (virtualSearchCql !== undefined) {
+      const searchTypeId = engine.peekIdByCodename?.("search_type");
+      const searchTypeName =
+        searchTypeId !== undefined
+          ? engine.peekRegisteredNameForId?.(searchTypeId)
+          : undefined;
+      const record: CardRecord = {
+        id: undefined,
+        codename: undefined,
+        leftId: undefined,
+        rightId: undefined,
+        typeId: searchTypeId,
+        dbContent: virtualSearchCql,
+        trash: false,
+        creatorId: undefined,
+        updaterId: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+        currentRevisionId: undefined,
+        readRuleClass: undefined,
+        readRuleId: undefined,
+        referencesExpired: undefined,
+        name,
+        key: name.key,
+        isNew: true,
+        fromTrash: false,
+        uncacheable: false,
+      };
+      return {
+        record,
+        name,
+        key: name.key,
+        typeName: searchTypeName,
+        typeId: searchTypeId,
+        typeCode: undefined,
+        id: undefined,
+        dbContent: virtualSearchCql,
+        setKeys: safeSetKeys({
+          name,
+          typeId: searchTypeId,
+          typeName: searchTypeName,
+          leftTypeName: this.leftTypeNameFor(name),
+          isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
+        }),
+        // KNOWN (virtual) — no `unknown` flag: the view pipeline renders the
+        // requested view instead of substituting (permission.rb:37).
+      };
+    }
     // fetch.rb:47-48 new_card_args: `args[:type] = view_opts[:type] if
     // view_opts[:type]` — an explicit `| type:X ` nest opt names the new
     // card's type CARD (Card.fetch name, new: { type: X }; the explicit
     // opt wins over the *default template chain, Card.new's template
-    // precedence). R17 evidence: ronald joseph content/open (shard 40)
+    // precedence). R17 evidence: the personal-page content/open capture (shard 40)
     // nests `{{+agree | type:Toggle }}` — no +agree row exists in the
     // corpus, and the oracle's +agree slot carries data-card-type-id="51"
     // data-card-type-name="Toggle" with the TYPE-toggle set-key chain,
@@ -975,6 +1785,21 @@ export class RenderFormat {
       explicitType !== undefined && explicitType.id !== undefined
         ? { typeId: explicitType.id, typeName: explicitType.typeName }
         : engine.newCardDefaultType?.(name);
+    // content/all.rb:17-19 standard_content for a NEW card:
+    // `db_content || (new_card? ? default_content : "")` with
+    // default_content = template&.db_content (mod/core set/all/content.rb:
+    // 26-28) and template = the *default rule card for a nest-miss
+    // (templating.rb new_card_template — no *structure rule governs here,
+    // else the fetch-level virtual resolution would have produced the card
+    // and this builder would not run). The pass-15 class pins the applied
+    // form: the oracle's associative_inquiry-discussion-titled-view body is
+    // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
+    // verbatim. (The Round-9 note below — "the *default CONTENT is not
+    // applied at view time" — described the OPEN surface, whose accordion
+    // body renders the INNER :content dispatch, itself substituted to
+    // :unknown by the same alter_unknown machinery — empty regardless of
+    // dbContent. The titled surface reads dbContent directly.)
+    const defaultContent = engine.newCardDefaultContent?.(name);
     const record: CardRecord = {
       id: undefined,
       codename: undefined,
@@ -998,6 +1823,50 @@ export class RenderFormat {
       uncacheable: false,
     };
     engine.reportUnknownCard?.(name.key);
+    const setKeys = safeSetKeys({
+      name,
+      typeId: defaulted?.typeId,
+      typeName: defaulted?.typeName,
+      // the TYPE_PLUS_RIGHT anchor reads the LEFT SIDE's type off
+      // the NAME ALGEBRA (superleft.type_name), not the nesting format's
+      // context card — see leftTypeNameFor (RVW open's mini_bar items:
+      // TYPE_PLUS_RIGHT-list-working_doc_NN with RVW List-typed).
+      leftTypeName: this.leftTypeNameFor(name),
+      isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
+    });
+    // Abstract::VirtualSet (see VIRTUAL_SET_CODENAMES): a NEW card whose
+    // RIGHT SIDE is one of the four virtual-set settings is virtual and
+    // therefore KNOWN, so alter_unknown never fires for it.
+    //
+    // Live shape (corpus 6a44dfdc, page-lane shard 000000, card 105
+    // `Role+*type+*default`): the `{{+description}}` nest resolves through
+    // card-mod-edit set/all/template_nest.rb:5-8 to
+    // `Role+description+*type plus right` — a junction with NO row in the
+    // corpus. Ruby renders the :template_link slot for it; the oracle's
+    // class list carries RIGHT-Xtype_plu_right for that slot, which IS this
+    // membership test. The port substituted :unknown and rendered "" (the
+    // `<p></p>` the D2 finding recorded). Sibling card 88
+    // `Cardtype+*type+*default`, same nest, where the junction DOES exist
+    // (6554) and the same slot renders.
+    const rightName = name.rightName;
+    const rightCard = rightName === undefined ? undefined : engine.fetchRenderCard(rightName.s);
+    const rightCodename = rightCard?.record.codename;
+    const virtualSet = rightCodename !== undefined && VIRTUAL_SET_CODENAMES.has(rightCodename);
+    if (virtualSet) {
+      return {
+        record,
+        name,
+        key: name.key,
+        typeName: defaulted?.typeName,
+        typeId: defaulted?.typeId,
+        typeCode: undefined,
+        id: undefined,
+        dbContent: defaultContent ?? "",
+        setKeys,
+        // KNOWN (virtual) — no `unknown` flag: permission.rb:37 returns
+        // early and the requested view dispatches unaltered.
+      };
+    }
     return {
       record,
       name,
@@ -1006,18 +1875,8 @@ export class RenderFormat {
       typeId: defaulted?.typeId,
       typeCode: undefined,
       id: undefined,
-      dbContent: "",
-      setKeys: safeSetKeys({
-        name,
-        typeId: defaulted?.typeId,
-        typeName: defaulted?.typeName,
-        // R17: the TYPE_PLUS_RIGHT anchor reads the LEFT SIDE's type off
-        // the NAME ALGEBRA (superleft.type_name), not the nesting format's
-        // context card — see leftTypeNameFor (RVW open's mini_bar items:
-        // TYPE_PLUS_RIGHT-list-working_doc_NN with RVW List-typed).
-        leftTypeName: this.leftTypeNameFor(name),
-        isNew: true, // pattern/all.rb#patterns: new cards drop the SELF token
-      }),
+      dbContent: defaultContent ?? "",
+      setKeys,
       unknown: true,
     };
   }
@@ -1026,7 +1885,7 @@ export class RenderFormat {
    *  separately above; the remaining shark options ride into the voo.
    *  `unknown` rides too: view/permission.rb:42 reads the voo's :unknown
    *  option (the nest's `unknown:` takes precedence over view configs).
-   *  R18: `items` rides too — nest-syntax.ts folds the `item:<view>` opt
+   *  `items` rides too — nest-syntax.ts folds the `item:<view>` opt
    *  into options[:items][:view] exactly like nest.rb:54-57, but the hash
    *  never reached the voo, so item_view_options (item.rb:157-162) could
    *  not answer and every collection list hardcoded the html
@@ -1065,16 +1924,16 @@ export class RenderFormat {
    *     no override -> the railtie default :titled
    *     (card-mod-format lib/card/mod/format.rb:2). Probe evidence:
    *     Cardio.config.default_html_view == :titled at boot; implicit nests
-   *     render titled-view (ronald joseph +agree, Colleagues +associations,
+   *     render titled-view (the personal page's +agree slot, Colleagues +associations,
    *     Source +Source Title). The decks's `*all+*default html view` rule
    *     card (22769, content "content") is DEAD in 0.20.0 — no code reads
    *     it; the earlier "live wire agrees content" justification conflated
    *     the production deck's CONFIG with a deck rule.
    *   - lane P (the page render): the capture applies the production config
    *     `Cardio.config.default_html_view = :content`
-   *     (capture-dual-lane-page-and-view.rb:255, the runbook's five
-   *     production-equivalent settings #5) — implicit nests render
-   *     content-view.
+   *     (capture-dual-lane-page-and-view.rb:369 inside the config block
+   *     whose assignment is :344, the capture's production-equivalent
+   *     setting #5) — implicit nests render content-view.
    *  The engine models the process config per render lane:
    *  engine.defaultHtmlViewConfig() returns "content" while a page render
    *  is active (render.ts pageConfigActive) and "titled" otherwise. The
@@ -1083,6 +1942,39 @@ export class RenderFormat {
    *  unaffected — only the implicit resolution changes. */
   defaultNestView(): string {
     return this.engine.defaultHtmlViewConfig?.() ?? "titled";
+  }
+
+  /**
+   * `Card::Env.origin` for the surface this render is on — the value
+   * `card_url` interpolates (card-1.110.0 lib/card/env/location.rb:19-21
+   * `"#{Env.origin}#{card_path rel}"`). Ruby's origin is per-render, not
+   * a constant: serializable.rb:20-22 reads `Cardio.config.deck_origin`
+   * first (nil at boot, cardio/railtie.rb:28) and falls back to
+   * `"#{protocol}#{request&.host_with_port}"`, which is "" for a
+   * requestless runner. The capture photographs BOTH shapes —
+   * capture-dual-lane-page-and-view.rb:343 sets deck_origin for the page
+   * lane only (restored at :348; the view-function lane at :277-287 runs
+   * outside that block) — so the port resolves it from the same
+   * pageConfigActive flag `defaultNestView` uses. See
+   * render/deck-origin.ts for the oracle census.
+   */
+  envOrigin(): string {
+    return this.engine.envOriginConfig?.() ?? NO_REQUEST_ORIGIN;
+  }
+
+  /**
+   * `card_url rel` — the one helper every absolute card URL in the port
+   * routes through (location.rb:19-21): an already-absolute `rel` passes
+   * through, anything else becomes `Env.origin + card_path rel`
+   * (card_path, location.rb:6-16, prefixes the site root when `rel` is
+   * not already rooted). Modeling BOTH halves here is what makes the
+   * surface seam load-bearing: the same helper yields `/User` on the
+   * view-function lane and `https://culturesmith.com/User` on the served
+   * page, which is exactly what the frozen record pins on both lanes.
+   */
+  cardUrl(rel: string): string {
+    if (/^https?:/.test(rel)) return rel;
+    return `${this.envOrigin()}${cardPath(rel)}`;
   }
 
   /**
@@ -1164,39 +2056,119 @@ export class RenderFormat {
    *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
    *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
    *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
-  processContent(content: string): string {
+  /**
+   * content.rb:20-27 `content_nest` — the chunk-level dispatch every
+   * `{{inclusion}}` in ANY card's content goes through (chunk/nest.rb:73
+   * `@processed = format.content_nest(@options)`). The `_main` arm is part
+   * of that dispatch, not a layout-only rule: `{{_main}}` in an ordinary
+   * card's content (page 470 "AsIn Layout", an Html-typed card whose body
+   * is a whole layout template) hits main_nest and splices the main
+   * format's @rendered — which at that instant is the RAW SOURCE, because
+   * `process_content _render_raw` (base.rb:85-87) evaluated the :raw view
+   * (the with_wrapper @rendered assignment) before chunking began.
+   *
+   * The label arm (link.rb:113-122 re-parses a link label as Content) runs
+   * the same dispatch, which is why the caller uses this for both.
+   */
+  private contentNest(piece: { nest?: ParsedNest }): string {
+    if (this.isMainNest(piece)) return this.mainNest(piece);
+    return this.nest(piece.nest as ParsedNest);
+  }
+
+  processContent(
+    content: string,
+    chunkList?: "default" | "references" | "nest_only",
+  ): string {
+    // Ruby's chunk_list seam (content.rb:23 `opts[:chunk_list] ||
+    // @format.chunk_list`): when the caller passes no list, the CARD's own
+    // `def chunk_list` override decides. The gem's overrides:
+    //   - card-mod-format set/all/content.rb:5-7 the base `:default`
+    //   - card-mod-format set/type/html.rb:14-16 HTML-typed cards:
+    //     `:references` - wiki links + nests, NO URI chunks. This is why
+    //     the oracle never autolinks a URL inside ANY Html-typed card's
+    //     content (the *header / *credit+image SVG-comment URL
+    //     `...Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch`
+    //     renders plain on every page; the former unconditional default
+    //     list anchored it).
+    //   - card-mod-layout set/type/layout_type.rb:5 `include_set Type::Html`
+    //     carries the same :references to Layout-typed cards.
+    //   - card-mod-style set/abstract/01_css.rb:15-18 (Abstract::Css,
+    //     included by the css + scss cardtypes via 02_scss.rb):
+    //     `def chunk_list; :references; end # turn off autodetection of uri's`
+    //   - card-mod-script set/abstract/00_script.rb:49-53 (JavaScript/
+    //     CoffeeScript): `:nest_only`.
+    // :references = [EscapedLiteral, Nest, Link] (wiki links, no URI
+    // chunks); :nest_only = [Nest] (nests only).
+    // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
+    // oracle leaves every bare URL inside the highlighted output verbatim
+    // (0 bare-URL autolinks in the entire pass-15 page-lane oracle).
+    // MERGE-PASS-18 composition: the compile-engines chunk-list dispatch
+    // kept (code-file chunk lists never run the URI autolink pass), with
+    // bar-slots V4's context arg threaded through both expansion arms so
+    // the wikilink resolution carries this card's name context everywhere
+    // the pass runs.
+    const list =
+      chunkList ??
+      rubyChunkListForCardType(this.card.typeCode, this.card.typeName);
+    const linkPass = (text: string): string =>
+      list === "default"
+        ? expandContentLinks(text, this.engine, this.card.name, this.contextNames)
+        : list === "references"
+          ? expandWikiLinks(text, this.engine, this.card.name, this.contextNames)
+          : text;
     const pieces = scanNests(content);
     let out = "";
     let i = 0;
     while (i < pieces.length) {
       const piece = pieces[i]!;
       if (piece.kind === "nest") {
-        if (piece.nest !== undefined) out += this.nest(piece.nest);
+        if (out.endsWith("\\")) {
+          // Chunk::EscapedLiteral (card-mod-content
+          // chunk/escaped_literal.rb): a backslash immediately before the
+          // braces is the escape prefix (prefix_re \\(?:\[\[|\{\{; the
+          // backslash is an idx_char, so the chunk claims the region
+          // before Chunk::Nest ever sees it) - the braces render as the
+          // LITERAL {{...}} bytes, not a nest. interpret
+          // (escaped_literal.rb:22) replaces \X with
+          // format.escape_literal(X); the markdown format's escape_literal
+          // is the identity (markdown.rb:16-18, byte-identical to the base
+          // Format#escape_literal), so the backslash is consumed and the
+          // nest text passes through verbatim. The kramdown stash restores
+          // these bytes WITH the backslash (render/kramdown.ts
+          // kramdownToStashedHtml) exactly so this pass consumes it.
+          // Corpus oracle: *structure+*right+*guide content
+          // (expected-v2/view-lane shard-000032 row 38251) renders
+          // "icon ({{}})" - the braces survive, no blank-reference denial.
+          out = out.slice(0, -1);
+          out += piece.text;
+        } else if (piece.nest !== undefined) {
+          out += this.contentNest(piece);
+        }
         i += 1;
         continue;
       }
       const opener = matchLinkWrappedNestOpener(piece.text);
       if (opener === undefined) {
-        out += expandContentLinks(piece.text, this.engine);
+        out += linkPass(piece.text);
         i += 1;
         continue;
       }
       // The opener's prefix text still runs the plain link pass (it may
       // carry complete links of its own).
-      out += expandContentLinks(opener.prefix, this.engine);
+      out += linkPass(opener.prefix);
       let label = "";
       let tail: string | undefined;
       let j = i + 1;
       while (j < pieces.length) {
         const inner = pieces[j]!;
         if (inner.kind === "nest") {
-          if (inner.nest !== undefined) label += this.nest(inner.nest);
+          if (inner.nest !== undefined) label += this.contentNest(inner);
           j += 1;
           continue;
         }
         const closeAt = inner.text.indexOf("]]");
         if (closeAt === -1) {
-          label += expandContentLinks(inner.text, this.engine);
+          label += linkPass(inner.text);
           j += 1;
           continue;
         }
@@ -1216,7 +2188,7 @@ export class RenderFormat {
         continue;
       }
       out += this.renderLinkChunk(opener.target, label);
-      out += expandContentLinks(tail, this.engine);
+      out += linkPass(tail);
       i = j;
     }
     return out;
@@ -1247,7 +2219,11 @@ export class RenderFormat {
     const target = rawTarget.trim();
     if (/^(\/|https?:|mailto:)/.test(target)) {
       if (/^https?:/.test(target)) {
-        return `<a class="external-link" href="${h(target)}" target="_blank">${label}</a>`;
+        // links.rb add_resource_opts inserts target BEFORE class, and
+        // Rails' url_for inserts href LAST -> target, class, href (the
+        // oracle corpus carries 798 external anchors, all target-first;
+        // census mechanism "target attribute placement", page 14795).
+        return `<a target="_blank" class="external-link" href="${h(target)}">${label}</a>`;
       }
       if (/^mailto:/.test(target)) {
         return `<a class="email-link" href="${h(target)}">${label}</a>`;
@@ -1256,10 +2232,31 @@ export class RenderFormat {
       return `<a class="internal-link" href="${h(href)}">${label}</a>`;
     }
     const named = this.engine.fetchRenderCard(target);
-    const known = named !== undefined && named.unknown !== true;
+    // view-fail class V4: a map miss is NOT absence — Ruby's Card.known?
+    // (links.rb:140-144) is a live fetch. The codename registry's loaded
+    // memo confirms codenamed cards (the static help popover's
+    // [[List]]/[[Pointer]]/[[Search]]) query-free; the prepare-phase
+    // link-target warm pass seats regular cards so this miss arm rarely
+    // fires for them. Absence stays wanted-card (the People Green pin).
+    let known = named !== undefined && named.unknown !== true;
+    // view :link renders on the TARGET CARD (base.rb:35-46 link_view ->
+    // link_to_card card.name, _render_title): the href carries the
+    // RESOLVED card's name while the label/title keep the authored link
+    // text. Oracle corpus scan: every case-differing known-card anchor
+    // hrefs the real name in both directions ([[narrative]] -> /Narrative,
+    // [[Aikido]] -> /aikido for a lowercase-stored card) - census
+    // token-swap singleton, page 685 (exp href /Narrative).
+    let hrefSource = known && named?.name !== undefined ? named.name.s : target;
+    if (named === undefined) {
+      const peeked = this.engine.peekKnownCardName?.(target);
+      if (peeked !== undefined) {
+        known = true;
+        hrefSource = peeked;
+      }
+    }
     let href: string;
     try {
-      href = `/${DeckoName.parse(target).urlKey}`;
+      href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
         href = `/${target.replace(/ /g, "_")}`; // unresolved mark: plain underscore form
@@ -1267,6 +2264,12 @@ export class RenderFormat {
         throw err;
       }
     }
+    // Card::Path#handle_unknown (card-mod-format path.rb:89-96): a wanted
+    // mark whose name is not name_standardish? (path.rb:107-109) carries
+    // ?card[name]=<name> (query, path.rb:84-87) — the mindfulness oracle's
+    // href `/mytho_psychology?card%5Bname%5D=mytho-psychology` (entry 28173
+    // @12,123). Standardish wanted names (People_Green) stay bare.
+    if (!known) href += wantedHrefQuerySuffix(hrefSource);
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
       `<span class="card-title" title="${h(label || target)}">${label}</span>` +
@@ -1282,37 +2285,252 @@ export class RenderFormat {
    *  passes through unchanged (the corpus suites pin those bytes). */
   renderRaw(): string {
     const override = resolveContentOverride(this);
-    if (override !== undefined) return override;
-    return this.card.dbContent;
+    const raw = override !== undefined ? override : this.card.dbContent;
+    // Ruby reaches the same bytes through the :raw VIEW, and a view render
+    // is `with_wrapper { @rendered = yield; wrap_with_wrapper }`
+    // (render.rb:96-97 -> wrapper.rb:15). So every `_render_raw` /
+    // `render_raw` call site (base.rb:75-77 `view :raw do
+    // structure_card&.content || _render_blank end`, reached from
+    // `view :core do process_content _render_raw end` base.rb:85-87) leaves
+    // the format's @rendered holding the raw source.
+    //
+    // ORDER IS THE WHOLE MECHANISM (D6, page 470 "AsIn Layout"):
+    // `process_content _render_raw` evaluates its ARGUMENT first, so by the
+    // time the content chunker dispatches a `{{_main}}` piece the format's
+    // @rendered is the raw source, not the view bytes — and
+    // nesting/main.rb:12 `main.rendered || main_nest_render(opts)` returns
+    // it. The oracle splices the card's own 469-byte dbContent verbatim
+    // (nests and wiki links UNexpanded) inside wrap_main's <div id="main">.
+    this.rendered = raw;
+    return raw;
+  }
+
+  // -------------------------------------------------------------------------
+  // nesting/main.rb — the `_main` nest
+  // -------------------------------------------------------------------------
+
+  /**
+   * nesting/subformat.rb:18-24 `main`, with the html format's override of
+   * `main?` (card-mod-format html_format.rb:11-13 `!@main.nil?` — NOT the
+   * base `depth.zero?`):
+   *
+   *     if main? then self elsif !root? then parent.main end
+   *
+   * i.e. the nearest format flagged main (process_layout.rb:19 `main!` on
+   * the page's root format, or nest.rb:46 `sub.main! if view_opts[:main]`),
+   * else the walk up the parent chain, else NIL. The nil arm is the frozen
+   * record's view-lane CAPTURE_ERROR for 470
+   * (`NoMethodError: undefined method 'rendered' for nil`): a bare
+   * `card.format.render(:content)` has no main format, so `main.rendered`
+   * in main.rb:12 raises before any byte is produced.
+   */
+  get main(): RenderFormat | undefined {
+    if (this.isMain) return this;
+    if (this.depth > 0) return this.parent?.main;
+    return undefined;
+  }
+  /**
+   * content.rb:20-27 `content_nest`:
+   * `return main_nest(opts) if main_nest?(nest_name) && @nest_mode != :template`.
+   * `main_nest?` is an EXACT name match (nesting/main.rb:26-28
+   * `nest_name == "_main"`), on the AUTHORED reference (chunk/nest.rb:23
+   * keeps it verbatim), so only `{{_main}}` / `{{_main|view}}` take this
+   * arm. The mode gate reads the format's OWN @nest_mode ivar, not the
+   * inherited `nest_mode` — a subformat inherits its parent's mode for
+   * modal_nest_view (mode.rb:44) but content.rb:24 tests the local ivar.
+   * Layout-typed cards render their :core inside with_nest_mode :template
+   * (card-mod-layout set/type/layout_type.rb:13-17), which is what keeps
+   * every layout card's own `{{_main|...}}` an ordinary nest.
+   */
+  private isMainNest(piece: { nest?: ParsedNest }): boolean {
+    return piece.nest !== undefined && piece.nest.name === "_main" && this.ownNestMode !== "template";
+  }
+
+  /**
+   * nesting/main.rb:10-14 `main_nest`: `wrap_main { main.rendered ||
+   * main_nest_render(opts) }`. The `||` is a NIL test in Ruby — an empty
+   * string is truthy there and must NOT fall through, hence the explicit
+   * `!== undefined` rather than a truthiness check.
+   */
+  mainNest(piece: { nest?: ParsedNest }): string {
+    const main = this.main;
+    if (main === undefined) {
+      // main.rb:12 `main.rendered` on nil — the frozen record's own
+      // behaviour for this shape (view-lane shard-000000 entry 470:
+      // CAPTURE_ERROR NoMethodError). The port raises rather than inventing
+      // bytes; nestQuietErrors turns it into the quiet span upstream.
+      throw mainNestWithoutMainError();
+    }
+    const body = main.rendered !== undefined ? main.rendered : this.mainNestRender(piece);
+    return this.wrapMain(body);
+  }
+
+  /**
+   * html/wrap.rb:118-126 `wrap_main`:
+   * `return yield if no_main_wrap?; wrap_with :div, yield, id: "main"`.
+   * no_main_wrap? is `Env.ajax? || no_layout?` (params[:layout] == "none");
+   * neither applies to a page render, so the div always wraps here — the
+   * same unconditional form the pre-D6 layout path emitted.
+   */
+  private wrapMain(content: string): string {
+    return `<div id="main">${content}</div>`;
+  }
+
+  /**
+   * nesting/main.rb:16-24 `main_nest_render`:
+   * `with_nest_mode :normal { nest root.card, opts.merge(main_view: true,
+   * main: true) }`. The fallback arm fires only when the main format exists
+   * but has not rendered yet (@rendered still nil) — with the main card
+   * re-nested in the main view it re-enters the same content, so Ruby's
+   * monitor_depth (error.rb:33-39, max_depth 20) is what ends it. The
+   * captured corpus never reaches it: page 470's main format has @rendered
+   * (the :raw view, above) and every layout body's `{{_main}}` reads the
+   * main-view body the page renderer assigned. Implemented faithfully
+   * anyway, with the depth guard mirroring Ruby's.
+   */
+  private mainNestRender(piece: { nest?: ParsedNest }): string {
+    const nest = piece.nest;
+    const root = this.main;
+    if (root === undefined || nest === undefined) return "";
+    const view = nest.options.view ?? this.defaultNestView();
+    const sub = new RenderFormat(root.card, this.engine, {
+      parent: this,
+      maxDepth: this.maxDepth,
+      nestQuietErrors: this.nestQuietErrors,
+      // nest.rb:46 `sub.main! if view_opts[:main]`
+      main: true,
+    });
+    if (this.depth >= this.maxDepth) {
+      throw new Error(`nest depth exceeded (${root.card.name.s})`);
+    }
+    return this.withNestMode("normal", () =>
+      sub.renderView(this.modalNestView(view, root.card), {
+        ...(nest.chunkNestSyntax !== undefined ? { nest_syntax: nest.chunkNestSyntax } : {}),
+        ...this.nestOptionEntries(nest.options),
+        nest_name: nest.name,
+        home_view: view === "closed" || view === "edit" ? "open" : view,
+        main: true,
+        main_view: true,
+      }),
+    );
+  }
+
+  /**
+   * card-mod-layout-0.20.0 set/self/head.rb:9-17 view :core —
+   * `escape_in_main { nest root.card, view: :head }` — is reachable from a
+   * render only when that render's card content carries a nest to the head
+   * card asking for its :core view. The engine's ASYNC prepare half asks
+   * this before it seats the root card's head bytes (render.ts#seatPageHead),
+   * so the head read-set (:title / :favicon / *all+*style+*asset output /
+   * :ace / :tiny_mce) rides no render that cannot reach it.
+   *
+   * The name resolution is the SAME resolveNestName the nest machinery runs
+   * (chunk/reference.rb#referee_name: the authored mark absolutized against
+   * the referencing card), so both corpus spellings land on the head card's
+   * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
+   * (card 34758 `PCTS+*self+*head`, oracle view-lane
+   * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
+   * the port's pre 0 B).
+   *
+   * TEMPLATE NEST MODE is the whole Layout carve-out, and it is not a
+   * heuristic: `with_nest_mode :template` (card-mod-layout
+   * set/type/layout_type.rb:5, the only such call in any installed gem) makes
+   * every nest print back as its own literal, so a Layout body's CodeRay <pre>
+   * never runs the head card's :core. The oracle proves it on the two Layout
+   * cards that nest it — 314 `Classic Layout` and 2575 `home-layout` keep
+   * `{{*head|core}}` LITERAL inside a 7750 B / 907 B pre whose `[[...]]`
+   * wiki links all expand. Seating bytes for those would be cost, not parity.
+   */
+  contentNestsHeadCore(): boolean {
+    if (this.card.typeCode === "layout_type") return false;
+    for (const piece of scanNests(this.card.dbContent)) {
+      const nest = piece.nest;
+      if (nest === undefined || nest.comment !== undefined) continue;
+      // nest.rb#prepare defaults the view; a nest that names any other view
+      // never dispatches the head card's :core.
+      const view = nest.options.view;
+      if (view !== undefined && view !== "core") continue;
+      let key: string;
+      try {
+        key = DeckoName.parse(this.resolveNestName(nest.name)).key;
+      } catch {
+        continue; // an unparseable mark never reaches a card (nest.rb fetch safety)
+      }
+      if (key === "*head") return true;
+    }
+    return false;
   }
 
   /**
    * Card::Layout::CardLayout#render — the layout card's content processed
    * through the PAGE format (process_content, chunk_list: :references).
-   * Identical loop to processContent except the `_main` nest: Ruby's nest
-   * dispatch hits nesting/main.rb#main_nest — wrap_main { main.rendered }
-   * — the memoized main-view body wrapped in <div id="main"> (html/wrap.rb
-   * #wrap_main; no_main_wrap? is false for the page path). Other nests
-   * resolve against the PAGE card (the layout renders in the page's format
-   * context), including `:codename` marks ({{:header|core}} -> *header).
+   * NOT a separate loop: it IS processContent, because card_layout.rb:10
+   * calls the same `process_content` (see the body comment). The `_main`
+   * nest needs no special case here either - Ruby's nest dispatch hits
+   * nesting/main.rb#main_nest — wrap_main { main.rendered } — the main-view
+   * body the page renderer assigned, wrapped in <div id="main">
+   * (html/wrap.rb #wrap_main; no_main_wrap? is false for the page path),
+   * and processContent's nest arm is `contentNest`, which is exactly the
+   * isMainNest ? mainNest : nest pair (contentNest's own comment).
+   * Other nests resolve against the PAGE card (the layout renders in the
+   * page's format context), including `:codename` marks
+   * ({{:header|core}} -> *header).
+   *
+   * CardLayout#render passes the layout content as process_content's
+   * OVERRIDE argument (card_layout.rb:10), so `content_object` never calls
+   * render_raw (content.rb:77-82) and the main format's @rendered still
+   * holds the main-view bytes here. That is the difference from a `{{_main}}`
+   * inside the MAIN card's own content, which reads the raw source instead
+   * (mainNest above).
+   *
+   * The `_main` short-circuit is gated on the nest mode because Ruby's is:
+   * content.rb:24 `return main_nest(opts) if main_nest?(nest_name) &&
+   * @nest_mode != :template`. Under :template mode a `_main` nest is an
+   * ordinary nest, so it goes through nest() and renders :template_nest -
+   * the literal `{{_main|titled}}` - instead of splicing in the page body.
    */
   processLayoutContent(content: string): string {
-    const pieces = scanNests(content);
-    let out = "";
-    for (const piece of pieces) {
-      if (piece.kind === "text") {
-        out += expandContentLinks(piece.text, this.engine);
-      } else if (piece.nest !== undefined) {
-        if (piece.nest.name === "_main") {
-          // main_nest? -> wrap_main { main.rendered || main_nest_render }
-          const body = this.mainNestBody ?? "";
-          out += `<div id="main">${body}</div>`;
-        } else {
-          out += this.nest(piece.nest);
-        }
-      }
-    }
-    return out;
+    // There is ONE chunk walk in Ruby and this is it. card_layout.rb:10
+    // calls `@format.process_content layout_card.content, chunk_list:
+    // :references` — the SAME `process_content` every card's own body runs
+    // (card-1.110.0/lib/card/format/content.rb), and the only thing
+    // `chunk_list:` changes is the LIST of chunk classes
+    // (card-1.110.0/lib/card/content.rb:23 `chunk_list = opts[:chunk_list]
+    // // @format.chunk_list`), not the parser: Content::Parser#parse
+    // (parser.rb:18-27) scans the RAW string once, in position order, and
+    // at each position asks each registered class to `full_match` the raw
+    // remainder. So the layout body is not a second kind of render.
+    //
+    // :references = [EscapedLiteral, Nest, Link] (card-mod-content
+    // set/all/content.rb register_list; the port's own note at the
+    // processContent chunk-list table) — NO URI chunks, which is why a
+    // layout body never autolinks (the svg-comment URL
+    // `...Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch`
+    // inside every corpus layout stays plain in the oracle; the former
+    // default-list URI pass anchored it, +89 bytes on 14 page-lane
+    // entries, probe job-1790846792533).
+    //
+    // D10 (this lane's fix): the port had a SECOND, forked walk here -
+    // same nest arm, but the text arm ran only the whole-piece
+    // `expandWikiLinks` regex and never the Link-chunk-spans-a-Nest arm
+    // that processContent runs (matchLinkWrappedNestOpener, above).
+    // Ruby's Chunk::Link reaches that shape because its full_re
+    // (chunk/link.rb:14 `/\A\[\[([^\]]+)\]\]/`) is matched against the RAW
+    // remainder, and `[^\]]+` happily spans a `{{...}}`; `divider_index`
+    // (link.rb:99-109, "find the first pipe that's not inside an nest")
+    // masks each `\{\{[^}]*\}\}` run with x's to find that pipe, and
+    // `objectify` (link.rb:113-122) re-parses the label as Content when it
+    // carries a nest. A layout body with a nest INSIDE a link label
+    // therefore rendered as literal `[[/ |` + nest + `]]` in the port.
+    // Oracle witness (sha-verified corpus + expected-v2, entry-scoped):
+    // layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
+    // `<div>[[/ |{{GBA logo - admin area}}]]</div>` on page 1316 and
+    // layout 2339 on page 2333; the oracle emits
+    // `<a class="internal-link" href="/">` + rendered nest + `</a>`.
+    // Five captured layout cards carry the shape (314, 470, 2339, 2347,
+    // 11746); none carries an EscapedLiteral `\{\{`, so folding the two
+    // walks together is byte-identical everywhere else on the surface.
+    return this.processContent(content, "references");
   }
 
   /** title.rb#standard_title via #title_in_context (context_names.rb:49-55):
@@ -1322,9 +2540,59 @@ export class RenderFormat {
    *  HTML-escaped (the html-format override h()s the result). In the page's
    *  own context a junction slot ("Aikido 2+management" under the Aikido 2
    *  page) displays as the relative "+management"; the same card rendered
-   *  out of context keeps the full name. voo.title overrides are wave-3. */
+   *  out of context keeps the full name.
+   *
+   *  voo.title: an EXPLICIT title option
+   *  wins (title.rb:6-8 standard_title = name_variant title_in_context(
+   *  voo.title); the html title_in_context marks explicit titles html_safe
+   *  - title.rb:25-26 "escape titles generated from card names, but not
+   *  those set explicitly" - so they render UNESCAPED). Corpus pressure
+   *  zero corpus nests carry a |title: param, so
+   *  the only opt-carrying surfaces are the bootswatch skin field_nests
+   *  (card-mod-bootstrap set/type/bootswatch_skin/core.haml field_nest
+   *  title: opts).
+   *
+   *  bar-slots lane 2026-09-29 (view-fail class Z10): settings with an
+   *  I18n display title render THAT title
+   *  (Card::Setting#title — the `setting_title.<codename>` locale keys;
+   *  attribution training-data, the corpus pins the surface bytes) — the
+   *  oracle renders `<span class="card-title" title="Search Results">
+   *  Search Results</span>` for the *search card's :title/:closed views
+   *  where the engine rendered the raw "*search" name. Only the codenames
+   *  the corpus pins carry entries (the oracle renders RAW names for
+   *  every other setting-codename card it captures — *style, *structure,
+   *  *on create, the *read/*create rule rows — so an I18n-table miss falls
+   *  through to the plain name, byte-identical to the pre-change
+   *  behavior). The swap keys on the RESOLVED title name being a simple
+   *  star card whose codename is in the table (a rule row like *content
+   *  options+*right+*default is a junction — never simple — and keeps its
+   *  rule name).
+   *
+   *  Merge note (pass-18): both lanes landed the SAME three codenames —
+   *  this Z10 table (keyed on the resolved name's codename, here) and
+   *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
+   *  codename, consulted first at the view layer) carry identical values
+   *  ("Search Results" / "Sign In" / "Recent Changes"); whichever fires
+   *  first emits the same bytes, and the Ruby mechanism covers both
+   *  (the self-set views' `voo.title ||= t(...)` arrives HERE as voo.title
+   *  in the loader-bound world; the headless no-loader surface reads the
+   *  codename tables instead). */
   standardTitle(): string {
-    return h(this.card.name.from(...this.contextNames));
+    const explicit = this.voo?.opts["title"];
+    if (typeof explicit === "string" && explicit !== "") {
+      // title.rb:34-37 title_in_context(voo.title): the explicit title is a
+      // NAME — `title.to_name.absolute_name(card.name)` then
+      // `.from(*context_names)`. The html override (title.rb:25-29) marks
+      // the result html_safe, which skips the h() ESCAPE but not the
+      // relativization — so an explicit COMPOUND title whose parts the
+      // context supplies renders in the relative form ("welcome email+*to"
+      // under the welcome-email page renders "+*to", the read_form
+      // field-title oracle bytes), while simple titles round-trip verbatim.
+      const absolute = DeckoName.parse(explicit).absoluteName(this.card.name);
+      return absolute.from(...this.contextNames);
+    }
+    const resolved = this.card.name.from(...this.contextNames);
+    return h(settingDisplayTitle(resolved, this.engine) ?? resolved);
   }
 
   /** name/all.rb#url_key via DeckoName. */
@@ -1341,14 +2609,54 @@ export class RenderFormat {
   menuHelpContentBytes(): string {
     return this.engine.helpRules?.menuHelpContentBytes(this) ?? "";
   }
+
+  /** auth/permissions.rb:18-26 Auth.createable_types — the type editor's
+   *  select options (edit_type.rb:52-62 raw_type_options + :44-48
+   *  type_field). Sync read of the engine's prepare-phase precompute;
+   *  [] until prepared (engines without the seam answer [] — the rules
+   *  mod's documented headless divergence). */
+  createableTypes(): string[] {
+    return this.engine.createableTypes?.() ?? [];
+  }
 }
 
 /** Minimal engine surface the format needs (implemented by RenderEngine in
  *  src/card/render.ts). Kept as an interface so views.ts and format.ts never
  *  import the engine concrete class - mirrors the harness's interface-only
  *  rule in spirit. */
+/** bar-slots lane 2026-09-29 (view-fail class Z10): the setting display
+ *  titles the oracle pins (see RenderFormat#standardTitle's doc block).
+ *  The three entries are the corpus's only I18n-covered settings; every
+ *  other captured setting-codename card renders its raw name, so a miss
+ *  here falls through to the plain name (pre-change bytes). */
+const SETTING_DISPLAY_TITLES: Readonly<Record<string, string>> = {
+  search: "Search Results",
+  signin: "Sign In",
+  recent: "Recent Changes",
+};
+
+/** The display title for a resolved standard-title name when that name is
+ *  a simple star card whose codename carries an I18n title (Z10, above).
+ *  Undefined keeps the plain name. */
+function settingDisplayTitle(
+  resolved: string,
+  engine: RenderEngineLike,
+): string | undefined {
+  if (!resolved.startsWith("*") || resolved.includes("+")) return undefined;
+  const card = engine.fetchRenderCard?.(resolved);
+  const codename =
+    card?.id !== undefined ? engine.peekCodenameById?.(card.id) : undefined;
+  if (codename === undefined) return undefined;
+  return SETTING_DISPLAY_TITLES[codename];
+}
+
 export interface RenderEngineLike {
   views: Record<string, ViewFn>;
+  /** The render viewer (render.ts RenderEngine#viewer - the read-verdict
+   *  identity). Optional: engines without it answer the SIGNED-OUT surface
+   *  (the board sidebar's show_follow?/show_discussion? gates read it;
+   *  tab_visibility.rb:11-58). */
+  readonly viewer?: { signedIn?: boolean; actorId?: number };
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific
@@ -1369,8 +2677,27 @@ export interface RenderEngineLike {
   resolveView(card: RenderCard, view: string, format?: string): ViewFn | undefined;
   /** Cache-first card resolution (fetch ladder; prefetch made this free). */
   fetchRenderCard(name: string): RenderCard | undefined;
+  /** view-fail class V4 (links.rb:140-144 add_known_or_wanted_class): the
+   *  live-existence truth for a fetchRenderCard MISS — the codename
+   *  registry's loaded codehash memo confirms codenamed cards
+   *  ([[List]]/[[Pointer]]/[[Search]], the static help-text targets)
+   *  query-free, returning the registered card name for the href source.
+   *  Optional: engines without it leave map misses wanted-card. */
+  peekKnownCardName?(name: string): string | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
+  /** The seated paging record for a rendered search (search-paging.ts;
+   *  undefined = the show_paging? == false case — the :card_list view
+   *  renders no nav). */
+  searchResultPaging?(fmt: RenderFormat): SearchResultPaging | undefined;
+  /** Ruby's `search_keyword` (card-mod-search
+   *  set/abstract/0_search/search_params.rb:32-34: `term_param ||
+   *  search_vars&.dig(:keyword)`) - BOTH arms are REQUEST params, so a
+   *  headless engine has none. Optional: undefined means "no request term",
+   *  which is the truth for every engine in this repo; the only consumer is
+   *  the :results_for_keyword view (search.rb:48), whose haml guards on
+   *  `search_keyword.present?` and therefore renders the empty string. */
+  searchKeyword?(card: RenderCard): string | undefined;
   /** Read-permission verdict for a prepared card (the ok_to_read? set
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
@@ -1383,6 +2710,48 @@ export interface RenderEngineLike {
    *  view registry carries no non-read view today, so the surface is
    *  unaffected either way. */
   taskAllowed?(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined;
+  /** auth/permissions.rb:18-26 Auth.createable_types — the cardtype card
+   *  names the viewer's create verdict admits (bot-scope cardtype search
+   *  minus the non_createable_types basket codenames, then the per-type
+   *  Card.new(type: name).ok?(:create) verdict, sorted), precomputed in the
+   *  engine's prepare phase for the views whose body reaches it (the type
+   *  editor's select). Optional: engines without it answer [], which
+   *  collapses the select to the current-type push + the empty Custom
+   *  group — the rules mod's documented headless-engine divergence
+   *  (card-mod-rules.ts customTypes port). */
+  createableTypes?(): string[];
+  /** The page-chrome SESSION (Ruby Auth.current) the page surface reads —
+   *  distinct from the read-verdict viewer (Auth.as_id). Ruby keys three
+   *  page-chrome surfaces on the session, never on as_id:
+   *  - `decko.signed_in` (head_javascript.rb view :script_variables),
+   *  - the *account_links navbar branch (set/self/account_links.rb
+   *    `Auth.signed_in?`, the my-card link label/href = Auth.current.name),
+   *  - the loud-denial copy (html/error.rb:215-222 `when Auth.signed_in?`).
+   *  Live serving has session == viewer (viewerFromToken resolves both from
+   *  the same token), so engines that don't split the axes stay correct by
+   *  omitting this field: undefined = signed-out chrome (the corpus surface,
+   *  byte-identical to the pre-session render). The capture instrument
+   *  splits the axes (Card::Auth.as(actor) inside a bot session) and sets
+   *  this explicitly. */
+  readonly pageSession?: ReadViewer;
+  /** The signed-in *account_links navbar items (the <li> list), prepared on
+   *  the page path while async fetches are legal (the session account name;
+   *  known/virtual resolution for the three links — links.rb
+   *  add_known_or_wanted_class). Set = the navbar renders the signed-in
+   *  chrome verbatim; undefined = the signed-out pair. See navbar-views.ts. */
+  readonly pageSessionAccountLinksHtml?: string;
+  /** The prepared :my_card view body (account_links.rb:56-58 my_card — the
+   *  account_dropdown arm, the raw btn-group; the roles arm rides the
+   *  session roles the port does not carry yet). Set alongside
+   *  pageSessionAccountLinksHtml; undefined = the signed-out blank (the
+   *  view's denial :blank). */
+  readonly pageSessionMyCardHtml?: string;
+  /** ok?(:update) for an arbitrary card, computed on demand (the page head's
+   *  universal_edit_button perms: :update gate — card-mod-format
+   *  set/all/html/head.rb:46). Optional: engines without it render the
+   *  button only for always-ok viewers. Same false-denies contract as
+   *  taskAllowed (undefined = unverifiable = allowed). */
+  updateVerdictForCard?(card: RenderCard): Promise<boolean | undefined> | boolean | undefined;
   /** The menu help-popover resolver, when the composition installed one
    *  (help-popover.ts installHelpRules). Optional: engines without it render
    *  the help-less &nbsp; placeholder for every card. */
@@ -1393,6 +2762,14 @@ export interface RenderEngineLike {
    *  without it - the card does not exist and nothing prefetches. Optional
    *  so engines without the tracking hook still satisfy the interface. */
   reportUnknownCard?(key: string): void;
+  /** Sync resolution of a compound name's LEFT card's type through the
+   *  loaded *structure universe (the same walk the fetch layer's virtual
+   *  hook runs). The TYPE_PLUS_RIGHT anchor consumes it when the left is
+   *  not in the warm render map: Ruby's left_type reads the left card's
+   *  type — for a virtual left ("X+*type" -> Set) the context card's type
+   *  is the wrong card's type. Optional: engines without it keep the
+   *  context-card fallback. */
+  virtualLeftTypeName?(name: DeckoName): string | undefined;
   /** Enrich + memoize a card by name for an on-demand render path
    *  (the pointer/list core view reads items by name from db_content;
    *  the captured corpus bytes always resolve these to real cards, but
@@ -1410,6 +2787,25 @@ export interface RenderEngineLike {
    *  Ruby's authoritative source for SearchTypeID). Optional;
    *  engines without it fall back to a typeName check. */
   peekCodenameById?(typeId: number): string | undefined;
+  /** The id for the given codename (synchronous; the same pre-folded
+   *  codehash memo, Card::Codename.id). The VirtualSearch family’s
+   *  assign_type :search_type (virtual_search.rb:14-16) resolves the
+   *  Search type card’s id through this. Optional: engines without it
+   *  leave the virtual search card’s typeId unset. */
+  peekIdByCodename?(codename: string): number | undefined;
+  /** The registered card NAME for a codenamed id (the codehash i2name map,
+   *  codename.rb’s Lexicon.name of the id). The virtual search card’s
+   *  typeName ("Search") reads here so slot attrs carry the type card’s
+   *  actual name. Optional: engines without it leave typeName unset. */
+  peekRegisteredNameForId?(id: number): string | undefined;
+  /** The page head bytes the page renderer built for a page root
+   *  (html/show.rb head_content -> the page card’s :head view bytes,
+   *  page.ts headContent). set/self/head.rb:17’s `nest root.card,
+   *  view: :head` reads this synchronously at view time — the page path
+   *  has already built (and seats) the identical bytes for its own
+   *  <head>. Optional: engines without it (or with the root not yet
+   *  seated — non-page entry points) render "". */
+  pageHeadBytesFor?(rootKey: string): string | undefined;
   /** All rule cards whose left_id equals the host card's id (Card.search
    *  left: id, limit: 0, sorted by content+name). The set-card Rules
    *  section core override (views.ts setRulesCoreHtml) reads this to
@@ -1417,25 +2813,60 @@ export interface RenderEngineLike {
    *  return an empty list (no rule rows — a degenerate Rules section
    *  still renders the h4 header + filter form, no accordion). */
   collectRules?(host: RenderCard): RenderCard[];
+  /** The set's own *default rule card's TYPE ID from the preloaded
+   *  full-deck *default universe (defaultRuleUniverseStatement) — the
+   *  template leg's cold arm for setPrototypeTypeCode (views.ts
+   *  defaultRuleTypeCode). Ruby's rule_card(:default) cascade
+   *  (card-mod-content-0.20.0 set/all/templating.rb:27-39 template ->
+   *  new_card_template; lib/card/rule/all.rb first-hit) is a DATA lookup
+   *  with no render-warmth dependency, so a *default rule that exists in
+   *  the deck but was never warmed into the render map (no earlier page
+   *  rendered its set) must still resolve. Optional: engines without it
+   *  keep the pre-fix not-allowed verdict for cold *default legs. */
+  defaultRuleTypeIdForSetName?(setName: string): number | undefined;
   /** lib/card/rule/all.rb:32-51 — does the card satisfy rule? (its right
    *  part is a setting, its left part is a set)? The before(:bar) hook
    *  in format.ts reads this to add the _rule-item + _category-* classes
    *  the bar view needs (bar_view.rb:10). Optional; engines without it
    *  skip the rule class chain. */
   cardIsRule?(card: RenderCard): boolean;
-  /** R16: set/rule SET membership — the card's right part is a Setting
+  /** set/rule SET membership — the card's right part is a Setting
    *  (no left-type/3-part requirement; see RenderEngine#cardMatchesRuleSet).
    *  Gates the rule-bar behaviors (bar_view.rb:2-11): _rule-item classes,
    *  three-column bar cols, and the bar_nav hide split. Optional; engines
    *  without it fall back to the rule? predicate shape via cardIsRule. */
   cardMatchesRuleSet?(card: RenderCard): boolean;
-  /** R16: the find_existing_rule_card memo for virtual rule cards
+  /** card-mod-rules set/type/set.rb #prototype.type_id's codename for a
+   *  RULE card's set — the visible_settings input the categories machinery
+   *  filters the restricted settings (content_options / content_option_view)
+   *  by. Delegates to the SAME oracle-verified port the set-page board's
+   *  restricted-setting filter runs (views.ts setPrototypeTypeCode). See
+   *  RenderEngine#ruleSetPrototypeTypeCode. Optional: engines without it
+   *  answer the restricted-settings recent arm as not-allowed (never
+   *  allowed). */
+  ruleSetPrototypeTypeCode?(card: RenderCard): string | undefined;
+  /** view/permission.rb:38 `setting :unknown` for THIS card: the p20-nest-
+   *  selection fix replaces the flat by-view-name lookup with the card's
+   *  own set chain (loader.viewUnknownSettingForCard -> viewChain(setKeys,
+   *  view) entries, first DEFINED `unknown` config wins — Ruby's method
+   *  lookup takes the most specific set module that defined
+   *  `_view_<view>__unknown`). Undefined = no loader, or no module declares
+   *  the setting for this card+view (the caller then decides between
+   *  :unknown and the compiled per-set decl stand-in via modDeckBound).
+   *  Optional. */
+  viewUnknownSettingForCard?(card: RenderCard, view: string): true | string | false | undefined;
+  /** True when a mod deck is bound to this engine (the loader's chain walk
+   *  is then the authority for `setting :unknown`; the compiled decl table
+   *  must not fire — see viewForUnknown). Optional: engines without the
+   *  hook are treated as loader-less. */
+  modDeckBound?(): boolean;
+  /** the find_existing_rule_card memo for virtual rule cards
    *  (editor.rb:119-131). True = a stored rule exists for this virtual's
    *  (set, setting); false = none; undefined = not preloaded. Consumed by
    *  prepareBar's `voo.hide :bar_nav unless existing_rule_card` and the
    *  one-line-content mini_unknown gate in rule-bar-right. */
   hasExistingRuleFor?(key: string): boolean | undefined;
-  /** R16: the resolved existing-rule CARD for a virtual rule card — the
+  /** the resolved existing-rule CARD for a virtual rule card — the
    *  one-line content nest target of rule_short_content (bar_view.rb:39-44).
    *  Undefined = no existing rule (or not preloaded). */
   existingRuleFor?(key: string): RenderCard | undefined;
@@ -1452,6 +2883,15 @@ export interface RenderEngineLike {
    *  missing-setting rows fall through to quietDenial (the pre-fix
    *  behavior, deep-read-rule-deny cluster 14). */
   findSettingCard?(codename: string): RenderCard | undefined;
+  /** Synchronous render-card lookup BY ID - the render-card map is keyed
+   *  by key, so this walks the map the same way findSettingCard does. The
+   *  set-card Rules section's virtual rule-card construction resolves the
+   *  DECK's type card at the corpus-pinned template id through this
+   *  (virtual-rule-card.ts deckTypeCard): Ruby prints type_name/type_code
+   *  of the deck's card at that id, and the deck's names are what the
+   *  corpus oracle bytes carry. Optional; engines without it keep the
+   *  map's raw-deck literal (the documented degradation). */
+  findRenderCardById?(id: number): RenderCard | undefined;
   /** card-mod-rules set/type/setting.rb#set_classes_with_rules: for a
    *  setting-type card (e.g. *read, *create, *update), group the rules
    *  whose right part is this setting by the LEFT pattern class
@@ -1467,6 +2907,11 @@ export interface RenderEngineLike {
    *  dump (the pre-round-8 shape, the 3,612-line *read oracle ->
    *  empty content-view gap). */
   setClassesWithRules?(host: RenderCard): SettingClassWithRules[];
+  /** THE SELF/HEAD CORE SEAM read (render.ts preparedHeadBytesFor): the
+   *  prepare-phase head bytes for THIS render's root card, undefined when
+   *  the render is not a *head surface (or the engine predates the seam —
+   *  the stub harnesses). Optional like every engine hook here. */
+  preparedHeadBytesFor?(rootKey: string): string | undefined;
   /** Round 9 (the new-child template type): the *default rule card's type
    *  for a nest-miss child NAME — the port of Ruby's new-card type
    *  resolution. Chain: format/nest/fetch.rb#new_card -> Card.fetch new:
@@ -1481,6 +2926,15 @@ export interface RenderEngineLike {
    *  Optional; engines without it build type-less unknown cards (the
    *  pre-round-9 shape). */
   newCardDefaultType?(name: DeckoName): { typeId: number; typeName: string } | undefined;
+  /** content/all.rb:17-19 standard_content's new_card branch — the winning
+   *  *default rule card's db_content for a nest-miss new card
+   *  (default_content = template&.db_content, mod/core set/all/content.rb:
+   *  26-28). The SAME rule newCardDefaultType reads the type from.
+   *  p20-nest-selection: the pass-15 class pins the applied form — the
+   *  oracle's +discussion titled body is `discussion+*right+*default`'s
+   *  `<p> </p>` x2 verbatim. Optional; engines without it keep the
+   *  new-child dbContent "". */
+  newCardDefaultContent?(name: DeckoName): string | undefined;
   /** card-mod-collection set/all/item.rb:149-162 — the HOST card's
    *  item_type_name for its rendered item slots. Ruby's nest_item ->
    *  item_view_options -> determine_item_view_options_type folds
@@ -1493,16 +2947,60 @@ export interface RenderEngineLike {
    *  options_api.rb options_card = rule_card(:content_options) ||
    *  right_type_options || Card[:all]). Resolved per host in the prepare
    *  phase (render.ts resolveHostItemTypeName); undefined = no item type.
-   *  Optional; engines without it emit the pre-lane type-less item slots. */
+   *  Optional; engines without it emit the earlier type-less item slots. */
   hostItemTypeName?(card: RenderCard): { typeName: string; typeId: number } | undefined;
+  /** The precomputed permission verdicts for one UNKNOWN pointer/list item
+   *  (the fetch-miss item lines the prepare phase's pointer walk found):
+   *  `read` = canReadByRuleLookup on the phantom's pattern input (the
+   *  oracle's radio item renders the FULL bar while the corpus's denied
+   *  phantoms render the two-span body - the split IS Ruby's read rule),
+   *  `create` = taskVerdictForCard(:create) (the unknown/mini_unknown
+   *  views' createable gate, html/error.rb:19-21). Keyed per
+   *  (RENDERING HOST key, item key): Ruby builds the fetch-miss phantom
+   *  fresh per nest (Nest::Fetch#new_card), so each nest's own fold — its
+   *  host's item type — decides its verdict; one host's fold never answers
+   *  another host's item slot. Resolved in the prepare phase
+   *  (render.ts ensurePointerItemVerdicts); undefined = the (host, item)
+   *  pair was never walked (the legacy phantom bytes apply). */
+  pointerItemVerdict?(
+    hostKey: string,
+    key: string,
+  ): { read: boolean; create: boolean | undefined } | undefined;
+  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution
+   *  (states.rb:65 known? = real? || virtual?; states.rb:44-50 virtual?
+   *  = compound && structure.present?) for one UNKNOWN pointer/list item
+   *  whose TYPE the seat knows (the host-resolved item type). Non-
+   *  undefined => the phantom is VIRTUAL => KNOWN => Ruby's alter_unknown
+   *  returns early (view/permission.rb:33) and the denial check runs on
+   *  the requested :bar view itself — the plain quiet denial span;
+   *  undefined => the phantom stays UNKNOWN => bar's unknown: :mini_bar
+   *  substitution (bar.rb:9) — the mini_bar wrap with the two-span body.
+   *  Optional; engines without it keep the legacy phantom bytes. */
+  phantomVirtualStructure?(
+    name: DeckoName,
+    typeName: string | undefined,
+    typeId: number | undefined,
+  ): { ruleKey: string; templateContent: string; typeId?: number } | undefined;
   /** The effective `Cardio.config.default_html_view` (html.rb:17-19
    *  default_nest_view) for the CURRENT render lane: "content" while a
    *  page render is active (the production config the page capture
-   *  applies, capture-dual-lane-page-and-view.rb:255), "titled" otherwise
+   *  applies, capture-dual-lane-page-and-view.rb:344), "titled" otherwise
    *  (the railtie default, mod/format.rb:2 — the bare-render capture
    *  boot). See RenderFormat.defaultNestView for the full mechanism.
    *  Optional: engines without it take the railtie "titled" fallback. */
   defaultHtmlViewConfig?(): string;
+  /** The effective `Card::Env.origin` (card-1.110.0 lib/card/env/
+   *  serializable.rb:20-22 `Cardio.config.deck_origin ||
+   *  "#{protocol}#{request&.host_with_port}"`) for the CURRENT render
+   *  lane: the pinned deck origin while a page render is active (the
+   *  production config the page capture applies,
+   *  capture-dual-lane-page-and-view.rb:343) and "" otherwise (railtie
+   *  default nil + a requestless runner). `card_url` interpolates it, so
+   *  this is what decides `/User` vs `https://culturesmith.com/User` for
+   *  the :url / :id_url / :url_link views. See RenderFormat.envOrigin
+   *  and render/deck-origin.ts for the full mechanism.
+   *  Optional: engines without it take the requestless fallback "". */
+  envOriginConfig?(): string;
   /** card-mod-format set/type/cardtype.rb:68-70 can_configure? —
    *  `Card.fetch(card, :type, :structure, new: {}).ok? :update`: the
    *  update-ok verdict on the card's *structure rule card, NOT on the card
@@ -1522,6 +3020,43 @@ export interface RenderEngineLike {
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
    *  fog bucket host), never derivable from the corpus. */
   readonly imageCdnHost?: string | undefined;
+  /** Cardio.config.file_storage's port (card-mod-carrierwave
+   *  set/abstract/attachment/01_storage_type.rb:75-79): the attachment
+   *  storage default the deck is configured with. The file :input view's
+   *  no_upload? gate reads it live (web.rb:1-3); undefined = the deck
+   *  default :local. Deck-deployment config. */
+  readonly fileStorage?: "local" | "web" | "cloud" | "coded" | undefined;
+  /** The render-time history seam bundle (src/card/history/render-seam.ts)
+   *  for the CURRENT render, when its view is one of the history views
+   *  (RenderEngine#HISTORY_SEAM_VIEWS). The card-mod-history views read it
+   *  to fetch their own act/action/change rows — loaded in the async
+   *  prepare half (RenderEngine#prepareHistoryRender), read synchronously
+   *  here. Optional: engines without it register no history views. */
+  historyRenderReader?(): import("../history/render-seam.js").HistoryRenderReader | undefined;
+  /** The render-time ACT-SEARCH seam bundle (src/card/history/updater-seam.ts)
+   *  for the CURRENT render, when its view is one of the updater-seam views
+   *  (RenderEngine#UPDATER_SEAM_VIEWS - the two that reach :updated_by). The
+   *  :updated_by view reads it for the DISTINCT update-actor cards of the
+   *  rendered card (`Card.search(updater_of: {id: card.id})`,
+   *  history_board.rb:11) — loaded in the async prepare half
+   *  (RenderEngine#prepareUpdaterRender), read synchronously here. Optional:
+   *  an engine without it leaves the reader undefined, which the view reads
+   *  as "no updaters" (the empty-wrap shape, what a never-updated card
+   *  renders anyway). */
+  updaterRenderReader?(): import("../history/updater-seam.js").UpdaterRenderReader | undefined;
+  /** The render-time follow seam bundle (src/card/follow/follow-render-seam.ts)
+   *  for the CURRENT render, when its view is one of FOLLOW_SEAM_VIEWS. The
+   *  follow/account views read the actor session (Ruby Auth.current — the
+   *  EXPLICIT ACTOR BOUNDARY: resolved from engine.pageSession only), the
+   *  card's followed? verdict, the User+*follow editor rows, and the
+   *  closure deletions here, synchronously. Optional: engines without it
+   *  render those views' signed-out arms. */
+  followRenderBundle?(): import("../follow/follow-render-seam.js").FollowRenderBundle | undefined;
+  /** The action-level ContentDiff memo (differ.rb:79-86 - the ivar lives
+   *  on the cached Action record; engine-lifetime map). Optional: engines
+   *  without it build a fresh diff per render (the toggle flag then never
+   *  observes a prior render). */
+  readonly historyDiffMemo?: Map<number, import("../history/content-diff.js").ContentDiff>;
 }
 
 /** One (klass, rules, anchorless) row of the setting-page rule
@@ -1546,6 +3081,24 @@ export interface SettingClassWithRules {
  *  `setting :unknown` -> AbstractFormat#view's `unknown:` option, stored as
  *  `_view_<view>__unknown` setting methods). Values: `true` renders the
  *  requested view as-is; a symbol names the substituted view.
+ *
+ *  PER-CARD-SET RESOLUTION (the p20-nest-selection fix): Ruby resolves
+ *  `setting :unknown` through the CARD'S SET CHAIN — render.rb:55-57
+ *  `try Card::Set::Format.view_setting_method_name(view, setting)` dispatches
+ *  on the card's format class, so only the set modules THAT MATCH THIS CARD
+ *  contribute. A flat view-name table cannot answer both directions of the
+ *  nest-selection class at once: it globalized the discussion right's
+ *  `open: true` (making every unknown-card `|open` nest render — the 10
+ *  Research phantom `+Articles` slots) and had no `titled` answer (the 19
+ *  Project `+discussion|titled` slots substituted to :unknown and vanished).
+ *  The decls below therefore carry the SET TOKENS the declaring module's set
+ *  matches (`setKeys` membership; undefined = an all-set declaration that
+ *  reaches every card, the set/all/* bucket Ruby mixes into the base format
+ *  class). Resolution is most-specific-set-first, mirroring Ruby's method
+ *  lookup: a set-scoped decl beats an all-set decl for the same view.
+ *
+ *  All-set rows (the loader-less stand-in for the core mods' set/all
+ *  declarations):
  *  card-mod-bar_and_box-0.20.0 set/all/bar.rb: bar.rb:15 (mini_bar),
  *  bar.rb:26 (bar_left), bar.rb:35-36 (bar_menu/bar_body), bar.rb:9 (bar ->
  *  mini_bar), bar.rb:20 (full_bar -> mini_bar), bar.rb:27-28 (bar_middle/
@@ -1558,32 +3111,110 @@ export interface SettingClassWithRules {
  *  Settings persist across same-module view redefinition (the setting is a
  *  define_method on the format module; ViewDefinition only redefines the
  *  view method itself), and base-format configs inherit into html (html
- *  does not redefine titled_content/labeled_content). */
-const UNKNOWN_VIEW_CONFIG: Record<string, string | true> = {
-  mini_bar: true,
-  mini_unknown: true,
-  bar_left: true,
-  bar_menu: true,
-  bar_body: true,
-  closed: "mini_bar",
-  bar: "mini_bar",
-  full_bar: "mini_bar",
-  bar_middle: "blank",
-  bar_right: "blank",
-  titled_content: "blank",
-  labeled: "labeled",
-  labeled_content: "mini_unknown",
-  one_line_content: "mini_unknown",
-  raw_one_line_content: "mini_unknown",
-  // Round 9: `open` renders AS REQUESTED on a nest-miss new card. Oracle:
-  // raw-ground-truth 9625/13421/14382 `open` views render the absent
-  // "+Discussion" child's full open-view accordion (data-card-type-id=3
-  // from the *default rule, EMPTY body — the "*default content is not
-  // applied at view time" shape), and live blog.html/Latest_News.html show
-  // the same slot for every news item's missing discussion child. The
-  // empty-slot-not-denial requirement this pins is round 9's point 2.
-  open: true,
-};
+ *  does not redefine titled_content/labeled_content).
+ *
+ *  RETIRED: the flat table's `open: true` row. It transcribed the
+ *  discussion right's per-set declaration (below) as a global. The oracle
+ *  pins the opposite for a List-typed `+Articles` under Research
+ *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
+ *  createable -> "" for the anonymous capture session): the nest emits
+ *  NOTHING — the pass-15 class's 10 phantom `+Articles` open slots. */
+interface UnknownViewDecl {
+  view: string;
+  /** true renders the requested view; a string names the substituted view. */
+  config: string | true;
+  /** setKeys tokens the declaring set matches (whole-token membership).
+   *  undefined = all-set (applies to every card). */
+  setTokens?: readonly string[];
+}
+
+const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
+  // card-mod-comment-0.20.0 set/right/discussion.rb:1-6:
+  //   %i[open open_content titled titled_content].each do |viewname|
+  //     view viewname, unknown: true do voo.show :comment_box; super() end
+  //   end
+  // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
+  // +discussion renders its requested titled view with the *default rule's
+  // content body (the pass-15 class's 19 Project pages; oracle slot
+  // associative_inquiry-discussion-titled-view carries show:[titled,
+  // comment_box] and body <p> </p> x2 = discussion+*right+*default's
+  // db_content). The comment_box show flip itself is already open-coded in
+  // the base views (views.ts openView/titledView rightName.key ===
+  // "discussion" guards).
+  { view: "open", config: true, setTokens: ["RIGHT-discussion"] },
+  { view: "open_content", config: true, setTokens: ["RIGHT-discussion"] },
+  { view: "titled", config: true, setTokens: ["RIGHT-discussion"] },
+  { view: "titled_content", config: true, setTokens: ["RIGHT-discussion"] },
+  { view: "core", config: true, setTokens: ["RIGHT-discussion"] },
+  // all-set rows
+  { view: "mini_bar", config: true },
+  { view: "mini_unknown", config: true },
+  { view: "bar_left", config: true },
+  { view: "bar_menu", config: true },
+  { view: "bar_body", config: true },
+  { view: "closed", config: "mini_bar" },
+  { view: "bar", config: "mini_bar" },
+  { view: "full_bar", config: "mini_bar" },
+  { view: "bar_middle", config: "blank" },
+  { view: "bar_right", config: "blank" },
+  { view: "titled_content", config: "blank" },
+  { view: "labeled", config: "labeled" },
+  { view: "labeled_content", config: "mini_unknown" },
+  { view: "one_line_content", config: "mini_unknown" },
+  { view: "raw_one_line_content", config: "mini_unknown" },
+  // card-mod-edit set/all/template_nest.rb:2 `view :template_nest, cache:
+  // :never, unknown: true`. A :template-mode nest whose target does not
+  // resolve must still render :template_nest (which answers from
+  // voo.nest_syntax and needs no card) rather than :unknown.
+  { view: "template_nest", config: true },
+  // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
+  // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
+  // field nests target virtual field cards (welcome email+*to et al.);
+  // the loader-less page lane reads this compiled row where the mod
+  // registry would answer (the flat readFormgroupBody in views.ts).
+  { view: "read_formgroup", config: true },
+];
+
+/**
+ * The compiled half of `setting :unknown` for ONE card (view/permission.rb:
+ * 38). Set-scoped decls win over all-set decls (Ruby's method lookup takes
+ * the most specific module that DEFINED the `_view_<view>__unknown` method);
+ * within the same scope the last declaration wins (module reopening).
+ * Undefined = no declaration matches this card — Ruby's setting answers nil
+ * and the view substitutes to :unknown (format/error.rb:23
+ * `setting_view || :unknown`).
+ *
+ * `allSetOnly` bounds the lookup to the ALL-SET rows for a LOADER-BOUND
+ * engine: Ruby mixes the all-set format modules into the base class of
+ * EVERY deck (registrar.rb:79-84 process_base_format_modules), so their
+ * declarations hold on top of any loaded mod deck — but a set-scoped
+ * declaration (right/discussion's) must come from the deck's own module
+ * (the chain walk), never from this compiled stand-in, or it would
+ * globalize again. The all-set rows model the core bar/format modules the
+ * TS deck compiles instead of registering (there is no
+ * card-mod-bar_and_box.ts — set/all/bar.rb's views are the compiled
+ * HTML_VIEWS), so they are not "already answered" by the chain.
+ */
+function compiledUnknownSettingForCard(
+  card: { setKeys: string },
+  view: string,
+  allSetOnly = false,
+): string | true | undefined {
+  const tokens = new Set(card.setKeys.split(/\s+/).filter((t) => t !== ""));
+  if (!allSetOnly) {
+    let scoped: string | true | undefined;
+    for (const decl of UNKNOWN_VIEW_DECLS) {
+      if (decl.view !== view || decl.setTokens === undefined) continue;
+      if (decl.setTokens.some((t) => tokens.has(t))) scoped = decl.config;
+    }
+    if (scoped !== undefined) return scoped;
+  }
+  let all: string | true | undefined;
+  for (const decl of UNKNOWN_VIEW_DECLS) {
+    if (decl.view === view && decl.setTokens === undefined) all = decl.config;
+  }
+  return all;
+}
 
 /** Views with `perms: :none` - permission.rb#skip_check? short-circuits
  *  altered_view entirely, so unknown cards render them AS REQUESTED. From
@@ -1630,27 +3261,54 @@ function normalizeVisibilityList(value: unknown): string[] {
 // the bar view adds to rule cards (bar_view.rb:10 + editor.rb:54-58).
 // ---------------------------------------------------------------------------
 
-/** card-mod-rules set/type/set/setting_categories.rb:6 COMMON_SETTINGS. */
-const COMMON_SETTINGS: ReadonlySet<string> = new Set([
+/** card-mod-rules set/type/set/setting_categories.rb:6 COMMON_SETTINGS.
+ *  EXPORTED for the flat bar_setting_list body (views.ts — the graded
+ *  page-lane harness binds no loader, so the Set::Type::Set view lives on
+ *  the flat record; see barSettingListBody). */
+export const COMMON_SETTINGS: ReadonlySet<string> = new Set([
   "create", "read", "update", "delete", "structure", "default", "guide",
 ]);
 
-/** card-mod-rules set/type/set/setting_categories.rb:7 FIELD_SETTINGS. */
-const FIELD_SETTINGS: ReadonlySet<string> = new Set([
+/** card-mod-rules set/type/set/setting_categories.rb:7 FIELD_SETTINGS.
+ *  EXPORTED for views.ts barSettingListBody (same seam note). */
+export const FIELD_SETTINGS: ReadonlySet<string> = new Set([
   "default", "help", "input_type", "content_options", "content_option_view",
 ]);
 
-/** R16: recent_settings — card-mod-rules setting_categories.rb:43-45
- *  `Card[:recent_settings].item_cards` ∩ visible settings. The *recent
- *  settings card is corpus row 23808 (content cited on ruleSetCategories);
- *  its items minus the two non-corpus names are the membership here.
- *  Missing from this list (and therefore category-less beyond `all`):
- *  autoname, on_create, on_update, on_delete. */
-const RECENT_SETTINGS: ReadonlySet<string> = new Set([
-  "read", "structure", "script", "content_options", "input_type", "default",
-  "layout", "help", "thanks", "update", "guide", "head", "follow", "style",
-  "content_option_view", "create", "follow_fields", "delete", "captcha",
-  "table_of_contents", "comment",
+/** set/type/set.rb:73-85 visible_setting_codenames —
+ *  the setting_opts REGISTRY (Card::Setting.groups). Gem-complete census
+ *  across the installed gems: exactly these 23 codenames
+ *  register. *table of contents and *comment have NO set/self/*.rb in any
+ *  gem — never in the groups — so the recent intersection drops them (the
+ *  R16-era static RECENT_SETTINGS const carried both and is retired; the
+ *  corpus-derived membership lives in the deck's *recent settings card,
+ *  read live by recentSettingCodenames). */
+export const REGISTERED_SETTING_CODENAMES: ReadonlySet<string> = new Set([
+  "autoname",                                            // card-1.110.0 mod/core
+  "create", "delete", "read", "update",                  // card-mod-permissions
+  "default", "structure",                                // card-mod-content
+  "input_type",                                          // card-mod-edit
+  "follow", "follow_fields",                             // card-mod-follow
+  "guide", "help",                                       // card-mod-help
+  "on_create", "on_delete", "on_update", "thanks",       // card-mod-integrate
+  "head", "layout",                                      // card-mod-layout
+  "content_options", "content_option_view",              // card-mod-list
+  "captcha",                                             // card-mod-recaptcha
+  "script",                                              // card-mod-script
+  "style",                                               // card-mod-style
+]);
+
+/** card-mod-list set/self/content_options.rb:2 + content_option_view.rb:2 —
+ *  restricted_to_type: %i[list pointer session]. The ONLY restricted
+ *  registrations in the installed gems (setting.rb:74-77
+ *  applies_to_cardtype: an unrestricted registration applies to every
+ *  cardtype) — the same census as views.ts SETTING_RESTRICTED_TO_TYPE (the
+ *  board filter's copy; a format->views import would close a value cycle,
+ *  so the two-entry table lives here too). Compared against the set
+ *  prototype's type codename (RenderEngineLike#ruleSetPrototypeTypeCode). */
+const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["content_options", new Set(["list", "pointer", "session"])],
+  ["content_option_view", new Set(["list", "pointer", "session"])],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1659,6 +3317,51 @@ const RECENT_SETTINGS: ReadonlySet<string> = new Set([
 // anchor shape the origin bridge used to inject client-side. We emit the
 // anchor directly from the engine so the bridge can retire.
 // ---------------------------------------------------------------------------
+
+/** The INNER content of Ruby's `wrapped_title` span (card-mod-format-0.20.0
+ *  set/all/title.rb:38-42 `wrap_with :span, class: classy("card-title"),
+ *  title: title do title.to_name.parts.join wrapped_joint end`, with
+ *  `wrapped_joint` :44-46 = `wrap_with :span, (voo.joint || "+")`).
+ *
+ *  EVERY card-title span in the corpus is wrapped_title — the html :title
+ *  view (title.rb:11-22) and, through it, `link_view`'s link text
+ *  (set/all/base.rb:35-46 `link_to_card card.name, _render_title`) and the
+ *  Link chunk (card-mod-content-0.20.0 lib/card/content/chunk/link.rb:31-33
+ *  `options title: link_text || @name.to_name.fully_stripped`, :71-75
+ *  `format.nest referee_name, options.merge(view: :link)`). So the split is
+ *  not a title-view decoration: it is what every junction link's anchor
+ *  text carries, in the body content pass as much as in a title.
+ *
+ *  The split itself: `parts` are `Cardname.split_parts`
+ *  (cardname-0.20.0 lib/cardname/class_methods.rb:46-48 — a split on the
+ *  joint with surrounding whitespace CONSUMED and a limit of -1, so
+ *  leading/trailing empties are KEPT; `JOINT_RE` is `Regexp.escape joint`
+ *  — cardname.rb:38 — a literal plus sign for the default joint).
+ *  That -1 limit is why a leading-joint title (`+musings`, the relative
+ *  form `title.from(*context_names)` produces — card-1.110.0
+ *  lib/card/format/context_names.rb:49-54) renders a LEADING joint span.
+ *
+ *  The joint span carries NO class in the corpus: `classy("joint")`
+ *  (card-1.110.0 lib/card/view/classy.rb:50-53) joins "joint" with the
+ *  extra classes, but the frozen record carries 102,508 bare `<span>+</span>`
+ *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The two
+ *  `<span class="joint">+</span>` emitters in the port — card-mod-tabs.ts:326
+ *  and the rules `jointClass` override at src/card/rules/apply.ts:128-132 —
+ *  are a separate divergence; apply.ts rewrites the bare form, which is the
+ *  oracle shape.)
+ *
+ *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-lane + 48 view-lane,
+ *  sha-verified copies): 145,260 `card-title` spans, 61,309 of them
+ *  carrying a `+` in the title attribute — for 145,258 of the 145,260 the
+ *  inner content is byte-equal to this function's output; the 2 exceptions
+ *  are the `html_safe` explicit-title arm (title.rb:32-36: authored
+ *  entities survive UNESCAPED in the inner — title `Pages tagged with
+ *  &quot;Process Arts&quot;` over inner `Pages tagged with "Process Arts"`),
+ *  not joint-related. No oracle title puts whitespace next to a joint, so
+ *  the `\s*` consumption is unobserved but faithful. */
+export function wrappedTitleInner(title: string): string {
+  return title.split(/\s*\+\s*/).join("<span>+</span>");
+}
 
 /** card-mod-format set/all/content/chunk/link.rb wiki-link pass (the plain
  *  text-piece half; link-wrapped nests span pieces and go through
@@ -1686,14 +3389,61 @@ const WIKI_LINK_REGEXP = /\\?\[\[([^\[\]\n|]+?)(?:\|([^\[\]\n]+?))?\]\]/g;
 // (corpus-wide): the expected bytes carry ZERO autolinks inside an
 // existing HTML tag (0 `href="...<a` manglings across all 48 view-lane
 // shards), so the scanner skips matches between < and >.
+//
+// TRAILING WORD BOUNDARY (host + email classes; the p20-autolink lane's
+// ms.paula fix, page 11251): Ruby's prefix_re carries a `\b` after the
+// pattern for BOTH classes -- HostUri: `(?:(?!#{REJECTED_PREFIX_RE})#{HOST})\b`
+// (uri.rb:123-127) and EmailUri: `(?:(?!#{REJECTED_PREFIX_RE})#{EMAIL})\b`
+// (uri.rb:83-90). Without it the engine autolinked `ms.pa` INSIDE
+// `ms.paula` (label `ms.` + TLD `pa`, the trailing `ula` left plain) where
+// the oracle leaves the whole string plain: `a`->`u` is word->word, so
+// Ruby's `\b` fails the prefix match and no chunk registers. The Uri
+// (scheme) class carries NO `\b` in Ruby (uri.rb:38-42) and the scheme
+// regexp below has none either.
+//
+// TLD LIST (the HOST alternation is Ruby's GENERIC+COUNTRY verbatim,
+// uri.rb:103-121): the engine carried `me` (not in the gem's COUNTRY
+// list -- the gem goes md|mg) and lacked `si` (gem: sh|si|sj). Both flip
+// engine-only autolink decisions, so both were divergence, not
+// optimization: a `.me` host autolinked where the oracle leaves plain, a
+// `.si` host left plain where the oracle autolinks. The list below is the
+// gem's order with those two corrected.
 const URI_SCHEME_REGEXP =
-  /(?:irc|http|https|ftp|ssh|git|sftp|file|ldap|ldaps|mailto):[^\s<>"']*/g;
+  /(?:irc|http|https|ftp|ssh|git|sftp|file|ldap|ldaps|mailto):/g;
 const URI_HOST_REGEXP =
-  /(?:[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?\.)+(?:aero|biz|com|coop|edu|gov|info|int|mil|museum|name|net|org|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cf|cd|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|fi|fj|fk|fm|fo|fr|fx|ga|gb|gd|ge|gf|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|in|io|iq|ir|is|it|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nt|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|pt|pw|py|qa|re|ro|ru|rw|sa|sb|sc|sd|se|sg|sh|sj|sk|sl|sm|sn|so|sr|st|su|sv|sy|sz|tc|td|tf|tg|th|tj|tk|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zr|zw|eu)/g;
-const URI_EMAIL_REGEXP =
-  /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?(?:\.[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?)+/g;
-const URI_REJECTED_PREFIX = /(?:!|": "|'|]\()/;
+  /(?:[a-zA-Z\d](?:[-a-zA-Z\d]*[a-zA-Z\d])?\.)+(?:aero|biz|com|coop|edu|gov|info|int|mil|museum|name|net|org|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cf|cd|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|fi|fj|fk|fm|fo|fr|fx|ga|gb|gd|ge|gf|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|in|io|iq|ir|is|it|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nt|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|pt|pw|py|qa|re|ro|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|sk|sl|sm|sn|so|sr|st|su|sv|sy|sz|tc|td|tf|tg|th|tj|tk|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zr|zw|eu)\b/g;
+// Ruby's EmailUri PREFIX is the local part + "@" only (uri.rb:81-90: EMAIL
+// then \b AFTER the @) - the full extent comes from URI_FULL_REGEXP below,
+// so the domain is NOT part of the candidate.
+const URI_EMAIL_REGEXP = /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@\b/g;
+// uri.rb:38 REJECTED_PREFIX_RE = %w{! ": " ' ](}.map { |s| Regexp.escape s }
+// * "|" - the %w literal whitespace-splits into FIVE elements ["!", "\":",
+// "\"", "'", "]("] (the author's `": "` intent degrades into `":` plus a
+// BARE double quote), so the escaped alternation is `!|":|\"|'|\]\(`, and
+// uri.rb:54 anchors it at END: `preceding_string !~ /(?:#{REJECTED_PREFIX_RE})$/`.
+// The $ matters exactly where the oracle autolinks INSIDE authored markup:
+// a URL in the LABEL of a literal `<a href="X">URL</a>` is preceded by
+// `">` - the two-char window CONTAINS a quote but does not END with one,
+// so Ruby autolinks it (the nested-anchor oracle bytes: Technomancers,
+// USABP's `(<a href="http://abcglobal.net/"><a target=...>`), while a URI
+// inside a quoted attribute is preceded by `="` - ends with `"` - and is
+// rejected (73 quoted src="..." regions across the view-lane oracle, ZERO
+// anchored). The unanchored port regex rejected BOTH classes; the $
+// restores Ruby's split.
+const URI_REJECTED_PREFIX = /(?:!|":|"|'|]\()$/;
 const URI_TRAILING_PUNCTUATION = new Set([",", ".", ")", "!", "?", ":"]);
+/** uri.rb:43-44 + uri.rb:83/126 full_re = /\A#{URI::DEFAULT_PARSER.make_regexp(SCHEMES)}/.
+ *  THE EXTENT RULE: the prefix only SELECTS a candidate; this full URI
+ *  regexp - run over prepend_str + the content slice - decides how many
+ *  bytes the chunk consumes (the scheme/host body continues through
+ *  path/query/fragment per the RFC 2396 productions). Transcribed from
+ *  Ruby 3.3.0's URI::DEFAULT_PARSER.make_regexp (Regexp#to_s with the /x
+ *  wrapper group removed, `(?-mix:` -> `(?:`, `\h` -> `[0-9a-fA-F]`,
+ *  `(?#...)` comments and free-spacing whitespace dropped) and validated
+ *  byte-identical against the Ruby regexp on scheme+path, quoted-stop,
+ *  entity-swallow, and userinfo/host/port forms. */
+const URI_FULL_REGEXP_SOURCE =
+  '(?=(?:irc|http|https|ftp|ssh|git|sftp|file|ldap|ldaps|mailto):)([a-zA-Z][\\-+.a-zA-Z\\d]*):(?:((?:[\\-_.!~*\'()a-zA-Z\\d;?:@&=+$,]|%[a-fA-F\\d]{2})(?:[\\-_.!~*\'()a-zA-Z\\d;\\/?:@&=+$,\\[\\]]|%[a-fA-F\\d]{2})*)|(?:(?:\\/\\/(?:(?:(?:((?:[\\-_.!~*\'()a-zA-Z\\d;:&=+$,]|%[a-fA-F\\d]{2})*)@)?(?:((?:(?:[a-zA-Z0-9\\-.]|%[0-9a-fA-F][0-9a-fA-F])+|\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\\[(?:(?:[a-fA-F\\d]{1,4}:)*(?:[a-fA-F\\d]{1,4}|\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|(?:(?:[a-fA-F\\d]{1,4}:)*[a-fA-F\\d]{1,4})?::(?:(?:[a-fA-F\\d]{1,4}:)*(?:[a-fA-F\\d]{1,4}|\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}))?)\\]))(?::(\\d*))?))?|((?:[\\-_.!~*\'()a-zA-Z\\d$,;:@&=+]|%[a-fA-F\\d]{2})+))|(?!\\/\\/))(\\/(?:[\\-_.!~*\'()a-zA-Z\\d:@&=+$,]|%[a-fA-F\\d]{2})*(?:;(?:[\\-_.!~*\'()a-zA-Z\\d:@&=+$,]|%[a-fA-F\\d]{2})*)*(?:\\/(?:[\\-_.!~*\'()a-zA-Z\\d:@&=+$,]|%[a-fA-F\\d]{2})*(?:;(?:[\\-_.!~*\'()a-zA-Z\\d:@&=+$,]|%[a-fA-F\\d]{2})*)*)*)?)(?:\\?((?:[\\-_.!~*\'()a-zA-Z\\d;\\/?:@&=+$,\\[\\]]|%[a-fA-F\\d]{2})*))?)(?:\\#((?:[\\-_.!~*\'()a-zA-Z\\d;\\/?:@&=+$,\\[\\]]|%[a-fA-F\\d]{2})*))?';const URI_FULL_REGEXP = new RegExp(URI_FULL_REGEXP_SOURCE);
 
 interface UriMatch {
   start: number;
@@ -1704,77 +3454,124 @@ interface UriMatch {
   text: string;
   /** links.rb resource_type -> the class; "external-link" adds target. */
   resourceType: string;
+  /** uri.rb:63-68 @trailing_punctuation - the [,.)!:?] char chopped off
+   *  the match, re-emitted AFTER the anchor by process_uri_chunk
+   *  (uri.rb:86-89 `"#{link}#{@trailing_punctuation}"`). "" when the
+   *  match did not end in punctuation. */
+  trailing: string;
 }
 
-/** The next URI-class match at/after `from`, or undefined. Returns the
- *  earliest of the three classes (parser.rb position order; Uri before
- *  HostUri before EmailUri at ties -- the register_list order). */
+/** The next URI-class match at/after `from`, or undefined. Ruby's parser
+ *  walk (content/parser.rb#match_prefices + record_chunk + uri.rb
+ *  full_match), transcribed two-phase:
+ *
+ *  1. PREFIX SELECTION: the earliest match among the three registered
+ *     prefix_res - Uri (scheme+":"), HostUri (host body + \\b), EmailUri
+ *     (local part + "@" + \\b) - registration order breaking ties. A prefix
+ *     only SELECTS a candidate position.
+ *  2. FULL EXTENT: `full_match` (uri.rb:45-54) prepends the class's
+ *     prepend_str ("http://" host / "mailto:" email / none for schemes,
+ *     whose prefix already ends in ":") and runs URI_FULL_REGEXP anchored
+ *     at the candidate; the match MINUS the prepend is the chunk's byte
+ *     span. A full-match failure advances ONE character (parser.rb
+ *     `@position += 1`) and rescans.
+ *  3. CONTEXT VERDICT AFTER THE ADVANCE: record_chunk (parser.rb:75-99)
+ *     moves past the match end BEFORE `context_ok?` (uri.rb:47-49 - the
+ *     two preceding characters against REJECTED_PREFIX_RE, whose
+ *     bare-quote element rejects every URI inside a quoted HTML
+ *     attribute). A context-rejected candidate CONSUMES its whole span -
+ *     the span becomes plain interval text and scanning resumes at its
+ *     end, so nothing inside it (the www.youtube.com host inside the
+ *     rejected https:// URI of the What Do We Need To Know?+discussion
+ *     oracle) is ever reconsidered. The former engine guard that skipped
+ *     "URIs inside HTML tags" was a corpus approximation of exactly this
+ *     mechanism and is gone: the rejected-prefix rule IS Ruby's rule. */
 function findUriMatch(text: string, from: number): UriMatch | undefined {
-  let best: UriMatch | undefined;
-  const consider = (m: UriMatch): void => {
-    if (m.end <= m.start) return;
-    if (best === undefined || m.start < best.start) best = m;
-  };
-  const classes: Array<[RegExp, string]> = [
-    [URI_SCHEME_REGEXP, "scheme"],
-    [URI_HOST_REGEXP, "host"],
-    [URI_EMAIL_REGEXP, "email"],
+  const prefixes: Array<[RegExp, "scheme" | "host" | "email", string]> = [
+    [URI_SCHEME_REGEXP, "scheme", ""],
+    [URI_HOST_REGEXP, "host", "http://"],
+    [URI_EMAIL_REGEXP, "email", "mailto:"],
   ];
-  for (const [regexp, kind] of classes) {
-    regexp.lastIndex = from;
-    let m: RegExpExecArray | null;
-    while ((m = regexp.exec(text)) !== null) {
-      const start = m.index;
-      // context_ok? (uri.rb:53-56): the two preceding chars.
-      if (start >= 2 && URI_REJECTED_PREFIX.test(text.slice(start - 2, start))) {
-        continue;
+  let pos = from;
+  for (;;) {
+    // PREFIX SELECTION: the earliest prefix match across the three classes
+    // (registration order Uri, HostUri, EmailUri breaks ties).
+    let bestStart = -1;
+    let bestKind: "scheme" | "host" | "email" | undefined;
+    for (const [regexp, kind] of prefixes) {
+      regexp.lastIndex = pos;
+      const m = regexp.exec(text);
+      // m.index is ABSOLUTE (lastIndex seeded the scan): no pos offset.
+      if (m !== null && (bestStart === -1 || m.index < bestStart)) {
+        bestStart = m.index;
+        bestKind = kind;
       }
-      // inside an HTML tag: since the last '<' (before start) no '>' came.
-      const lastOpen = text.lastIndexOf("<", start - 1);
-      if (lastOpen !== -1 && text.lastIndexOf(">", start - 1) < lastOpen) {
-        continue;
-      }
-      let chunk = m[0];
-      let end = start + chunk.length;
-      const lastChar = chunk.slice(-1);
-      if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
-        chunk = chunk.slice(0, -1);
-        end -= 1;
-      }
-      chunk = chunk.replace(/\.$/, "");
-      chunk = chunk.replace(/(?:&nbsp;)+/g, "");
-      if (chunk === "") continue;
-      if (kind === "scheme") {
-        const scheme = chunk.slice(0, chunk.indexOf(":"));
-        const resourceType =
-          /^https?:/.test(chunk)
+      regexp.lastIndex = 0;
+    }
+    if (bestStart === -1 || bestKind === undefined) return undefined;
+    const prepend = prefixes.find(([_, kind]) => kind === bestKind)![2];
+    // FULL EXTENT (uri.rb full_match): the prefix only selects; the full
+    // URI regexp over prepend_str + slice decides the chunk's byte span.
+    const full = URI_FULL_REGEXP.exec(prepend + text.slice(bestStart));
+    if (full === null || full[0].length <= prepend.length) {
+      // parser.rb: no full match -> look at the next character
+      pos = bestStart + 1;
+      continue;
+    }
+    const end = bestStart + full[0].length - prepend.length;
+    // record_chunk advanced past the match BEFORE the context verdict: a
+    // rejected span is consumed whole (plain bytes), never re-scanned.
+    if (bestStart >= 2 && URI_REJECTED_PREFIX.test(text.slice(bestStart - 2, bestStart))) {
+      pos = end;
+      continue;
+    }
+    // uri.rb interpret, gem order: &nbsp; strip, trailing-punctuation chop
+    // (the chopped char renders after the anchor - uri.rb:86-89), single
+    // trailing-dot strip (uri.rb:69 - a REAL removal, never re-emitted).
+    let chunk = text.slice(bestStart, end);
+    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
+    const lastChar = chunk.slice(-1);
+    let trailing = "";
+    if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
+      trailing = lastChar;
+      chunk = chunk.slice(0, -1);
+    }
+    chunk = chunk.replace(/\.$/, "");
+    if (chunk === "") {
+      pos = end;
+      continue;
+    }
+    return bestKind === "scheme"
+      ? {
+          start: bestStart,
+          end,
+          href: chunk,
+          text: chunk,
+          resourceType: /^https?:/.test(chunk)
             ? "external-link"
             : /^mailto:/.test(chunk)
               ? "email-link"
-              : `${scheme}-link`;
-        consider({ start, end, href: chunk, text: chunk, resourceType });
-      } else if (kind === "host") {
-        consider({
-          start,
-          end,
-          href: `http://${chunk}`,
-          text: chunk,
-          resourceType: "external-link",
-        });
-      } else {
-        consider({
-          start,
-          end,
-          href: `mailto:${chunk}`,
-          text: chunk,
-          resourceType: "email-link",
-        });
-      }
-      break; // earliest match of this class found
-    }
-    regexp.lastIndex = 0;
+              : `${chunk.slice(0, chunk.indexOf(":"))}-link`,
+          trailing,
+        }
+      : bestKind === "host"
+        ? {
+            start: bestStart,
+            end,
+            href: `http://${chunk}`,
+            text: chunk,
+            resourceType: "external-link",
+            trailing,
+          }
+        : {
+            start: bestStart,
+            end,
+            href: `mailto:${chunk}`,
+            text: chunk,
+            resourceType: "email-link",
+            trailing,
+          };
   }
-  return best;
 }
 
 /** The combined link expander the processContent literal pieces run (the
@@ -1783,9 +3580,60 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
  *  expandWikiLinks keeps the whole-text replace shape; this wrapper walks
  *  positions so a URI before a [[wiki link]] autolinks without the wiki
  *  pass eating it (and vice versa -- the Ruby parser consumes spans in
- *  position order, single pass). */
-function expandContentLinks(text: string, engine?: RenderEngineLike): string {
-  if (!/[:.@]/.test(text)) return expandWikiLinks(text, engine);
+ *  position order, single pass).
+ *
+ *  Exported for the text_without_nests view (views.ts): Card::Content#
+ *  process_chunks runs the same chunk-list walk over the strip_nests
+ *  survivors, so the nest-free text needs this exact expander - a second
+ *  emitter here would drift from the pinned link bytes. */
+/** The gem's per-cardtype `def chunk_list` overrides, as a lookup:
+ *  card-mod-format set/type/html.rb:14-16 (:references, carried to
+ *  Layout-typed cards by card-mod-layout set/type/layout_type.rb:5
+ *  `include_set Type::Html`), card-mod-style set/abstract/01_css.rb:15-18
+ *  (:references for css + scss), card-mod-script set/abstract/00_script.rb
+ *  49-53 (:nest_only for JavaScript/CoffeeScript). Everything else answers
+ *  the base :default (card-mod-format set/all/content.rb:5-7).
+ *
+ *  Dispatch key = typeCode, FALLING BACK to the type card's NAME key.
+ *  Ruby's Type set pattern (card-1.110.0 mod/core/set_pattern/03_type.rb:
+ *  19-25) applies by type_id with anchor_name = `card.type_name` - the
+ *  set-module dispatch NEVER consults a codename, so `def chunk_list` in
+ *  set/type/html.rb binds even when the deck's HTML cardtype card carries
+ *  no codename column value (the capture deck's is exactly that shape -
+ *  bar-box-format-views-seed.json html_type_card {id 39, name "HTML"} has
+ *  no codename key). The port's typeCode is the codename codehash answer
+ *  (render.ts peekNameForId by typeId), undefined for such uncoded type
+ *  cards, so the codename-only lookup answered :default and the URI pass
+ *  autolinked the SVG comment URL Ruby leaves verbatim (the bar-box
+ *  deck_level/box `Generator: Sketch ... bohemiancoding.com` oracle
+ *  bytes). Name-key derivation mirrors Ruby's Card::Name#key (downcase,
+ *  whitespace to underscore) for these single-word type names. */
+export function rubyChunkListForCardType(
+  typeCode: string | undefined,
+  typeName: string | undefined,
+): "default" | "references" | "nest_only" {
+  const code = typeCode ?? typeName?.toLowerCase().replace(/\s+/g, "_");
+  switch (code) {
+    case "html":
+    case "css":
+    case "scss":
+    case "layout_type":
+      return "references";
+    case "java_script":
+    case "coffee_script":
+      return "nest_only";
+    default:
+      return "default";
+  }
+}
+
+export function expandContentLinks(
+  text: string,
+  engine?: RenderEngineLike,
+  context?: DeckoName,
+  titleContextNames?: readonly string[],
+): string {
+  if (!/[:.@]/.test(text)) return expandWikiLinks(text, engine, context, titleContextNames);
   let out = "";
   let pos = 0;
   for (;;) {
@@ -1801,7 +3649,21 @@ function expandContentLinks(text: string, engine?: RenderEngineLike): string {
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
       const target = uri.resourceType === "external-link" ? ` target="_blank"` : "";
-      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${h(uri.text)}</a>`;
+      // links.rb html link_to: `text = raw(text || opts[:href])` - the
+      // label is raw-marked and content_tag renders it VERBATIM (uri.rb
+      // process_text keeps the stored bytes, authored entities included).
+      // Only the href crosses the attribute boundary (Rails tag_helper
+      // html_escape): authored `&amp;` doubles to `&amp;amp;` there and a
+      // raw `&` escapes once - the Montessori exemplar's exact split. An
+      // h() on the label (the earlier code) double-escaped every entity
+      // in the visible anchor text (pass-15 "double-escape" class).
+      // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
+      // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
+      // source's chopped [,.)!:?] byte renders right behind `</a>` (the
+      // `williamscraig.com</a>.` oracle bytes) - and the SECOND trailing
+      // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
+      // not re-emitted here.
+      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
       pos = uri.end;
       continue;
     }
@@ -1810,13 +3672,153 @@ function expandContentLinks(text: string, engine?: RenderEngineLike): string {
     WIKI_LINK_REGEXP.lastIndex = 0;
     const wikiGlobal = WIKI_LINK_REGEXP.exec(rest);
     out += text.slice(pos, wikiStart);
-    out += expandWikiLinks(wikiGlobal![0], engine);
+    out += expandWikiLinks(wikiGlobal![0], engine, context, titleContextNames);
     pos = wikiStart + wikiGlobal![0].length;
   }
   return out;
 }
 
-function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
+/** content/chunk/reference.rb:11-15 referee_name: the reference target
+ *  absolutizes against the CARD WHOSE CONTENT HOLDS IT ("card.name" in
+ *  Ruby = the format's card rendering that content), so a relative target
+ *  ("_left+*members" inside Help Desk+description) fetches the real card
+ *  and renders the known-card shape. Links carry the label/title bytes
+ *  verbatim (authored form) - only the fetch/href side resolves. Parse
+ *  failures (unknown codename marks etc.) keep the authored form; the
+ *  fetch miss then decides, exactly the pre-context behavior. */
+function absolutizeWikiTarget(target: string, context: DeckoName | undefined): string {
+  if (context === undefined) return target;
+  try {
+    const parsed = DeckoName.parse(target);
+    if (parsed.isAbsolute) return target;
+    return parsed.absoluteName(context).s;
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return target;
+    }
+    throw err;
+  }
+}
+
+/** The name the Link chunk's NEST SUBFORMAT is built on. link.rb:71-75
+ *  `format.nest referee_name, options.merge(view: :link)` hands the nest the
+ *  ABSOLUTIZED target (reference.rb:11-18 `referee_raw_name.absolute_name
+ *  card.name`), and subformat.rb:57-61 `subformat_card` resolves that mark
+ *  with `Card.fetch` — so `card.name` inside the nest, the `card.name`
+ *  title_in_context absolutizes against, is the STORED name when the card
+ *  exists and the mark's own name when it does not. Unparseable marks answer
+ *  undefined (the caller keeps the authored bytes), the same guard shape as
+ *  absolutizeWikiTarget above. */
+function linkNestCardName(
+  fetchTarget: string,
+  resolvedName: DeckoName | undefined,
+): DeckoName | undefined {
+  if (resolvedName !== undefined) return resolvedName;
+  try {
+    return DeckoName.parse(fetchTarget);
+  } catch (err) {
+    if (
+      err instanceof CodenameNotFoundError ||
+      err instanceof NameNotFoundError ||
+      err instanceof UnsupportedIdentifierError
+    ) {
+      return undefined;
+    }
+    throw err;
+  }
+}
+
+/** card-mod-format set/all/title.rb:32-36 `title_in_context`, over
+ *  card-1.110.0 lib/card/format/context_names.rb:49-54:
+ *
+ *      title = title ? title.to_name.absolute_name(card.name) : card.name
+ *      newtitle = title.from(*context_names)
+ *
+ *  This is the SAME expression the :title view runs (title.rb:6-8
+ *  `standard_title = name_variant title_in_context(voo.title)`), reached on
+ *  the body-link path because link.rb:31-33 puts
+ *  `title: link_text || @name.to_name.fully_stripped` in the nest's view
+ *  options and base.rb:35-46 renders the anchor text as that view's
+ *  `_render_title`.
+ *
+ *  WHY IT MOVES ON THE PAGE SURFACE AND NOT ON THE VIEW SURFACE. The
+ *  `from` list is the nest subformat's context_names — context_names.rb:20-29
+ *  `relevant_context_names { parent ? parent.context_names : ... }`, the
+ *  PARENT format's working list filtered to THIS card's part keys. The
+ *  working list is populated only by `add_name_context`, which the :titled
+ *  view calls around its own header (context_names.rb:44-47 `naming { yield }
+ *  add_name_context name`; the port's RenderFormat#addNameContext). A bare
+ *  view-lane :content / :open render never calls it, so the list is empty,
+ *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
+ *  false ⇒ `return self`) and the title keeps its full name.
+ *
+ *  FROZEN ORACLE (the two halves of D7, entry 10488 `Steven Goldin+Menu`,
+ *  `[[steven goldin+musings]]` in its RichText body):
+ *    page lane  `<span class="card-title" title="+musings">…`
+ *    view lane  `<span class="card-title" title="steven goldin+musings">…`
+ *  for BOTH views.content and views.open. The round-trip guard in
+ *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
+ *  is why the view-lane half is not "steven goldin+musings" compressed
+ *  either: it never gets a context to compress against, and when it does get
+ *  one, `from` refuses any compression that would not absolutize back.
+ *
+ *  Unparseable titles keep the authored bytes — this is name algebra, and a
+ *  title that is not a name is not the port's to reinterpret. */
+function linkTitleInContext(
+  title: string,
+  cardName: DeckoName,
+  contextNames: readonly string[],
+): string {
+  try {
+    return DeckoName.parse(title).absoluteName(cardName).from(...contextNames);
+  } catch (err) {
+    if (
+      err instanceof CodenameNotFoundError ||
+      err instanceof NameNotFoundError ||
+      err instanceof UnsupportedIdentifierError
+    ) {
+      return title;
+    }
+    throw err;
+  }
+}
+
+/** Card::Path#handle_unknown (card-mod-format-0.20.0/lib/card/path.rb:89-96)
+ *  + #query (path.rb:84-87): when a path's mark names an UNKNOWN card that
+ *  is not "standardish" — name_standardish? (path.rb:107-109):
+ *  `name.url_key == name.tr(" ", "_")` — Ruby stashes
+ *  `opts[:card][:name] = name` so the query renders
+ *  `?card%5Bname%5D=<name>` (Hash#to_param), letting the create form
+ *  prefill the intended name. Known cards and standardish names emit the
+ *  bare url_key path. Oracle: mindfulness 28173 wanted-card href
+ *  `/mytho_psychology?card%5Bname%5D=mytho-psychology` (dash name —
+ *  url_key strips non-OK4KEY bytes, so NOT standardish); the wanted
+ *  [[People Green]] pin stays bare (People_Green IS standardish).
+ *  Returns "" when the mark carries no query bytes (unparseable marks keep
+ *  the plain-underscore fallback href, the corpus's only wanted shape). */
+function wantedHrefQuerySuffix(hrefSource: string): string {
+  try {
+    const key = DeckoName.parse(hrefSource).urlKey;
+    if (key === hrefSource.replace(/ /g, "_")) return "";
+    return `?card%5Bname%5D=${cgiEscape(hrefSource)}`;
+  } catch {
+    return "";
+  }
+}
+
+/** WIKI_LINK_REGEXP's replacement pass. `context` is the name of the card
+ *  whose content holds the links (referee_name's absolutization context);
+ *  `titleContextNames` is that card's FORMAT's working context_names list,
+ *  which is the input title_in_context relativizes against (see
+ *  linkTitleInContext below for why the list is per-nest and why it is
+ *  empty on the bare view lane). Both are optional so the nestless
+ *  to_s callers keep their current bytes. */
+function expandWikiLinks(
+  text: string,
+  engine?: RenderEngineLike,
+  context?: DeckoName,
+  titleContextNames?: readonly string[],
+): string {
   return text.replace(WIKI_LINK_REGEXP, (match, target: string, label: string | undefined) => {
     if (match.startsWith("\\")) {
       // Escaped wiki-link: drop the backslash, keep the literal brackets.
@@ -1830,7 +3832,7 @@ function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
     // and live pins internal-link for explicit targets
     // (`href="/account/signup">sign-in account`, live Brandon bio), so the
     // branches resolve here identically to renderLinkChunk.
-    // (Merge pass 2: the layout lane's b055982 collapsed every explicit
+    // (Merge pass 2: the b055982 collapsed every explicit
     // resource to one internal-link form from the PCTS/GBA nav pin; the
     // scheme-differentiated classes below carry the LATER raw-oracle pins
     // (external-link target="_blank" — clusters.4shard.after.md #17) and
@@ -1838,24 +3840,53 @@ function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
     const targetTrimmed = target.trim();
     if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
       if (/^https?:/.test(targetTrimmed)) {
-        return `<a class="external-link" href="${h(targetTrimmed)}" target="_blank">${h(
-          (label ?? targetTrimmed).trim(),
-        )}</a>`;
+        // links.rb add_resource_opts order: target, class, href (see
+        // renderLinkChunk; oracle corpus 798/798 target-first). The label
+        // rides html link_to's `raw(text)` - VERBATIM stored bytes (the
+        // URI-autolink emitter above carries the same composition; an
+        // h() here double-escaped authored entities in the label).
+        return `<a target="_blank" class="external-link" href="${h(targetTrimmed)}">${
+          (label ?? targetTrimmed).trim()
+        }</a>`;
       }
       if (/^mailto:/.test(targetTrimmed)) {
-        return `<a class="email-link" href="${h(targetTrimmed)}">${h(
-          (label ?? targetTrimmed).trim(),
-        )}</a>`;
+        return `<a class="email-link" href="${h(targetTrimmed)}">${
+          (label ?? targetTrimmed).trim()
+        }</a>`;
       }
       const href = `/${targetTrimmed.replace(/^\/+/, "")}`;
-      return `<a class="internal-link" href="${h(href)}">${h((label ?? targetTrimmed).trim())}</a>`;
+      return `<a class="internal-link" href="${h(href)}">${(label ?? targetTrimmed).trim()}</a>`;
+    }
+    // The fetch carries the CONTEXT-RESOLVED target (reference.rb:15
+    // referee_name); the label/title keep the authored bytes.
+    const fetchTarget = absolutizeWikiTarget(targetTrimmed, context);
+    const namedLink = engine?.fetchRenderCard(fetchTarget);
+    // view-fail class V4: same live-existence arm as renderLinkChunk — a
+    // map miss consults the codename registry's memo (peekKnownCardName)
+    // before declaring the anchor wanted-card. Absence stays wanted (the
+    // a personal card's `[[People Green]]` pin below is the guard). `let`:
+    // the peek arm below reassigns (bar-slots merge obligation kept).
+    let known = namedLink !== undefined && namedLink.unknown !== true;
+    // The href carries the RESOLVED card's name (view :link on the target
+    // card, base.rb:35-46 link_to_card card.name) - see renderLinkChunk;
+    // the label/title keep the authored form (oracle corpus: 25 anchors
+    // href the capitalized real name over lowercase authored text and 11
+    // the reverse).
+    let hrefSource =
+      known && namedLink?.name !== undefined ? namedLink.name.s : targetTrimmed;
+    if (namedLink === undefined && engine !== undefined) {
+      const peeked = engine.peekKnownCardName?.(targetTrimmed);
+      if (peeked !== undefined) {
+        known = true;
+        hrefSource = peeked;
+      }
     }
     let href: string;
     try {
       // link_to_card's mark path (links.rb:75-80) — the name's url_key
       // form: spaces fold to underscores, `$` folds too (live:
       // /Martial_Nonviolence, /Su_tainability).
-      href = `/${DeckoName.parse(targetTrimmed).urlKey}`;
+      href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
         href = `/${targetTrimmed.replace(/ /g, "_")}`;
@@ -1863,25 +3894,55 @@ function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
         throw err;
       }
     }
-    const displayText = (label ?? targetTrimmed).trim();
-    // add_known_or_wanted_class (links.rb:135-140): known = Card.known?(name)
-    // = real? — the engine's warm render-card map answers it (a prepared
-    // real/virtual record = known; a fetch miss = wanted). Oracle pin:
-    // sabrina mejias content, `[[People Green]]` renders WANTED-card (the
+    // Card::Path#handle_unknown (card-mod-format path.rb:89-96) — same
+    // wanted-mark query as renderLinkChunk above (mindfulness entry 28173).
+    if (!known) href += wantedHrefQuerySuffix(hrefSource);
+    // a personal card's content, `[[People Green]]` renders WANTED-card (the
     // corpus has no such row; the R17 probe shows the warm-map answer
-    // byte-matches). The earlier hardcoded known-card was the pre-R17
+    // byte-matches). The earlier hardcoded known-card was the pre-fix
     // shape (every name link claimed known).
-    const namedLink = engine?.fetchRenderCard(targetTrimmed);
-    const known = namedLink !== undefined && namedLink.unknown !== true;
+    const displayText = (label ?? targetTrimmed).trim();
+    // the span's title is NOT the authored bytes — it is
+    // title_in_context(voo.title) as run inside the nest subformat
+    // (linkTitleInContext above). The nest's `card.name` is the resolved
+    // card's stored name when the mark hit one (subformat.rb:57-61
+    // subformat_card -> Card.fetch), and its context_names are the parent
+    // format's working list filtered to that card's part keys
+    // (context_names.rb:20-29). Oracle entry 10488 page lane: the authored
+    // `[[steven goldin+musings]]` under the page card `Steven Goldin+Menu`
+    // renders `title="+musings"`; the same link on the view lane keeps
+    // `title="steven goldin+musings"` because nothing called add_name_context
+    // there. Entry 21923 `Task+discussion` is the second corpus instance
+    // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
+    const nestCard = linkNestCardName(fetchTarget, known ? namedLink?.name : undefined);
+    const nestContextNames =
+      nestCard === undefined || titleContextNames === undefined
+        ? []
+        : titleContextNames.filter((key) => nestCard.partKeys.includes(key));
+    const titleText =
+      nestCard === undefined
+        ? displayText
+        : linkTitleInContext(displayText, nestCard, nestContextNames);
     // wrapped_title (title.rb:38-44): the span's title attribute carries
     // the same bytes as the display text (voo.title — link.rb options:
-    // `title: link_text || fully_stripped name`); oracle pin: title
+    // `title: link_text || fully_stripped name`, relativized above);
+    // oracle pin: title
     // "Help Desk" display "Help Desk" over href /Help_Desk; live pin:
     // title/display "contributing to the administration..." over the
-    // underscored href.
+    // underscored href. The INNER content is the joint-split title
+    // (wrappedTitleInner): a junction link's anchor text carries
+    // `<span>+</span>` per joint — oracle entry 10488 view-lane `content`
+    // pin: `<a class="known-card" href="/Steven_Goldin+musings"><span
+    // class="card-title" title="steven goldin+musings">steven
+    // goldin<span>+</span>musings</span></a>` (D4), and the page-lane
+    // `+musings` half splits the SAME way
+    // (`title="+musings"><span>+</span>musings`): wrapped_title splits
+    // whatever title_in_context produced, so the split follows the
+    // relativization, not the authored text.
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${h(displayText)}">${h(displayText)}</span>` +
+      `<span class="card-title" title="${h(titleText)}">` +
+      `${wrappedTitleInner(h(titleText))}</span>` +
       `</a>`
     );
   });
@@ -1890,10 +3951,18 @@ function expandWikiLinks(text: string, engine?: RenderEngineLike): string {
 /** The link-wrapped-nest opener: an UNTERMINATED `[[Target|` at the end of
  *  a text piece (the nest scanner split it from its label and `]]`).
  *  Escaped openers (`\[\[`) don't match; the target charset mirrors the
- *  wiki-link pass. Returns the piece's prefix (still plain-text) and the
- *  target for renderLinkChunk. */
+ *  wiki-link pass. Whitespace MAY trail the pipe: the label side is
+ *  objectify'd (link.rb:113-122 raw.strip!) so `[[/ | {{logo}}]]` - the
+ *  space between pipe and label - is Ruby's own shape (divider_index
+ *  splits at the pipe; the label keeps its leading space until
+ *  objectify strips it), and the classic-layout oracle pins exactly that
+ *  byte shape: `[[/ | {{*logo}}]]` in the layout source renders
+ *  `<a class="internal-link" href="/">{{*logo}}</a>` INSIDE the CodeRay
+ *  output (view-lane shard-000000 entry 314, content view). Returns the
+ *  piece's prefix (still plain-text) and the target for renderLinkChunk
+ *  (which trims the target - objectify strips it too). */
 function matchLinkWrappedNestOpener(text: string): { prefix: string; target: string } | undefined {
-  const match = /(?<!\\)\[\[([^\[\]\n|]+)\|$/.exec(text);
+  const match = /(?<!\\)\[\[([^\[\]\n|]+)\|\s*$/.exec(text);
   if (match === null || match.index === undefined) return undefined;
   return { prefix: text.slice(0, match.index), target: match[1] ?? "" };
 }

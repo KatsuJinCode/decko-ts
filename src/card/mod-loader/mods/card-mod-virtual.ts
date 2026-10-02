@@ -3,7 +3,7 @@
 // cache: virtual cards never save their own row; their content is
 // materialized into a card_virtuals row keyed by (left_id, right_id)).
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-virtual-0.20.0/): one set file (set/abstract/virtual_cache.rb),
 // one lib file (lib/card/virtual.rb), no mod.yml, no views, no assets. The
 // compat report (tools/compat-report/mod-compat-report.json,

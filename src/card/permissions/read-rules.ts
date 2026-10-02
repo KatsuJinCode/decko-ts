@@ -60,8 +60,15 @@ const ANONYMOUS_CODENAME = "anonymous";
  *  Codename registered in card-mod-account data/real.yml:30-32. */
 const ADMINISTRATOR_CODENAME = "administrator";
 /** Codename of the administrator bot (Auth always_ok? `when DeckoBotID
- *  then true`, auth/permissions.rb:9 — "cannot disable"). */
-const DECKOBOT_CODENAME = "deckobot";
+ *  then true`, auth/permissions.rb:9 — "cannot disable"). Ruby derives that
+ *  constant FROM the deck's STORED codename — codename.rb:107-110
+ *  `Card.const_get_or_set("#{codename.to_s.camelize}ID")` — so the lookup
+ *  key is the stored codename string (`decko_bot` camelize→ `DeckoBot`
+ *  → `DeckoBotID`), never a guessed alternate spelling. The corpus deck
+ *  stores `decko_bot` on card id 1 (named "Decko Bot 1"); the former
+ *  `deckobot` constant here matched no row, so actor 1 silently lost the
+ *  always_ok short-circuit and was denied owner-only cards. */
+const DECKOBOT_CODENAME = "decko_bot";
 /** Codename of the *members setting — the joint name Ruby's rolehash hangs
  *  off (Self::Role.generate_rolehash searches `left: {type_id: RoleID},
  *  right_id: MembersID`, card-mod-account set/self/role.rb:33-40). */
@@ -137,7 +144,9 @@ interface PartyRuleRow {
  * port of the boot-time AnonymousID/AnyoneID constants
  * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`),
  * plus the two codenames the signed-in path compares against
- * (administrator: the always_ok? role; deckobot: the always_ok? actor).
+ * (administrator: the always_ok? role; decko_bot: the always_ok? actor —
+ * camelize-derives the DeckoBotID the `when DeckoBotID then true`
+ * short-circuit reads).
  *
  * Statement 2 (the cache): read_rule_cache.rb's SQL verbatim, with ReadID
  * and SetID as scalar subqueries on the codename cards so the statement is
@@ -443,7 +452,7 @@ async function canReadByRuleLookupDepth(
   // candidate whose anchor card has no id. The virtual cards (id ===
   // undefined) are new cards by definition, so their SELF candidate —
   // anchored on themselves — never reaches the lookup. Oracle-verified
-  // (2026-09-23 recapture deck, diagnose-capture-error probes):
+  // against the recapture deck:
   // `Card.fetch("<virtual junction>").permission_rule_id(:read)` answers the
   // `*all plus+*read` rule, skipping an existing `<name>+*self+*read` rule.
   const candidates = ruleNamesForCard(
@@ -489,12 +498,11 @@ async function canReadByRuleLookupDepth(
   // rule graph for this card. Ruby's walk cannot resolve here either —
   // permission_rule_id -> nil -> ok_to_read? denies
   // (set/all/permissions.rb:139-146 read_rules_hash[nil]) — so the port
-  // FAILS CLOSED (deny). The fail-open this replaces leaked card bodies
+  // FAILS CLOSED (deny). The fail-open this replaced leaked card bodies
   // through the catch-all whenever a more specific rule candidate could not
-  // be evaluated (trace tenth-item-trace.md bug 3: the *type plus right
-  // read rule of "+Source Content" cards granting "Anyone Signed In" never
-  // reached the verdict; the walk fell through to *all+*read and granted
-  // anonymous).
+  // be evaluated (the *type plus right read rule of "+Source Content" cards
+  // granting "Anyone Signed In" never reached the verdict; the walk fell
+  // through to *all+*read and granted anonymous).
   // Partial decks (per-shard replay seeds) simply lack the card's
   // applicable rule card, and fabricating a denial from missing data would
   // mis-deny cards the full deck renders — there the port still allows
@@ -555,28 +563,9 @@ async function readThroughLeftCard(
 }
 
 /**
- * Composed-key -> card id for the given rule-name keys — TARGET-DRIVEN
- * per-key resolution (D1 read-cost fix, 2026-09-23). The previous statement
- * seeded `resolved` from EVERY card in the deck and composed the full
- * compound-key universe, paying O(deck x recursion passes) rows read per
- * call regardless of how many keys the caller asked for; the requested keys
- * appeared only in the outer SELECT's filter. This version grows the same
- * closure but restricts EVERY arm's output to the key's own fragment set —
- * every '+'-cut contiguous segment run of the requested keys ("a+b+c"
- * needs "a", "b", "c", "a+b", "b+c", "a+b+c") — so the recursion touches
- * only indexed seeks on the requested keys' paths. Any intermediate key the
- * old universe closure built on the way to a requested key is by
- * construction one of those segment runs, so the resolvable set for the
- * requested keys is unchanged (including the old CTE's documented
- * limitation: a junction whose two sides are BOTH composed still needs a
- * simple-keyed side at each step — rule candidates are <= 3 parts, where
- * every split has a simple side).
- *
- * The seed seeks cards_key_index (COLLATE NOCASE — the column is BINARY,
- * the index NOCASE; lossless for decko's lowercase-ASCII keys, the same
- * annotation the prefetch fallback rounds use). UNION dedups (id, ckey) so
- * cycles terminate.
- *
+ * Composed-key -> rule card id for the given rule-name keys — the id-only
+ * projection of resolveRuleRowsByKeys; that function's doc carries the
+ * resolution statement, the per-driver cache, and the design history.
  * Exported for the write-side derivation too (set-read-rule.ts resolves the
  * same rule-name candidates against storage; view-task-rules.ts resolves
  * its task candidates through this same function).
@@ -600,10 +589,108 @@ export interface ResolvedRuleRow {
 }
 
 /**
- * The same target-driven composed-key resolution as resolveRuleIdsByKeys,
- * with the rule card's CONTENT column carried through the final join when
- * `withContent` is set (the id-only projection keeps the hot callers'
- * statement byte-identical — the join only exists on the delegation path).
+ * Per-driver resolution cache for resolveRuleRowsByKeys.
+ *
+ * What it holds: the deck's WHOLE composed-key rule universe (ckey ->
+ * rule card id), built ONCE per driver generation by ONE unfiltered
+ * recursive CTE, plus a lazily filled content map (rule-card id ->
+ * db_content) for withContent callers. After the first build, every call
+ * is a Map lookup with zero SQL, plus at most one small content IN-query
+ * for rule-card ids not yet content-memoized.
+ *
+ * Why the memo unit is the whole universe: every read-verdict walk
+ * resolves a DISTINCT key set (one per canReadByRuleLookupDepth ->
+ * ensureVerdicts), so a per-key-set memo cannot share work across walks.
+ * Equivalence with the per-key-set statement: any composition path that
+ * resolves a requested key k uses only contiguous '+'-segment runs of k
+ * as intermediates (each recursive step prepends/appends a stored key to
+ * a resolved ckey, and the result must equal k), so the unfiltered
+ * closure contains every row the fragment-filtered closure could produce
+ * for k — and no EXTRA row for k (a path to k cannot pass through a key
+ * that is not a segment run of k). Per ckey the closure yields exactly
+ * one (id, ckey) row: a junction card's composed key is unique (its
+ * sides are strictly simpler cards — decko's name algebra is
+ * well-founded), UNION dedups, and termination is the recursion's own
+ * strictly-simpler bound. Lookup is exact-match on canonical keys
+ * (ruleNamesForCard -> DeckoName.parse().key); keys are lowercase ASCII.
+ *
+ * Actor purity: the signature takes (driver, keys, withContent) — NO
+ * actor input. Actors apply verdicts in the callers
+ * (`state.readableRuleIds.has(rule.id)` here, `amongParties(state, ...)`
+ * in view-task-rules.ts), so two actors sharing a driver share only the
+ * rule-card lookup, never its application.
+ *
+ * withContent does NOT partition the universe: the universe is the
+ * id-only closure; content is read lazily per rule-card id into
+ * contentById (one small PK-seek IN query for the ids a call actually
+ * resolved, then memoized).
+ *
+ * Lifetime: the WeakMap key is the driver — one shared driver per server
+ * process, one fresh driver per test suite. Nothing outlives its driver.
+ *
+ * Invalidation: expireRuleResolutionCache, wired into the write path's
+ * post-save seam (CardActionEngine.expireAfterWrite) — every committed
+ * mutation routes through that method, so a save drops the universe AND
+ * the content memo and the next resolution rebuilds post-save state. No
+ * second invalidation path. (The performance history and measurements
+ * behind this shape: docs/permissions-port-notes.md.)
+ */
+interface RuleResolutionDriverCache {
+  /** ckey -> rule card id: the full composed-key universe, built once per
+   *  driver generation. Undefined until the first resolution. */
+  universe?: Map<string, number>;
+  /** Rule-card db_content per id, lazily filled by withContent calls
+   *  (null = NULL column, exactly what the old content join projected). */
+  contentById: Map<number, string | null>;
+}
+
+const ruleResolutionCaches = new WeakMap<SQLDatabaseDriver, RuleResolutionDriverCache>();
+
+/** Drop every memoized resolution for this driver — the write path's
+ *  post-save invalidation (expireAfterWrite). O(1): the whole per-driver
+ *  cache (universe + content) is dropped; the next render rebuilds the
+ *  universe once. Cheap on purpose: writes are rare, per-key dependency
+ *  tracking (which saved card touches which candidate closure) is where
+ *  bugs live. */
+export function expireRuleResolutionCache(driver: SQLDatabaseDriver): void {
+  ruleResolutionCaches.delete(driver);
+}
+
+/**
+ * The composed-key universe statement — the resolver's ONE statement per
+ * driver generation. The same closure the per-call fragment-filtered
+ * statement computes, minus the fragment filter: seed every keyed live
+ * card, compose both junction arms with no restriction, return every
+ * (id, ckey). The unary + on trash (the established planner guard) keeps
+ * the planner OFF cards_trash_index in the seed and the recursive arms;
+ * + is a value no-op.
+ */
+const RULE_KEY_UNIVERSE_STATEMENT =
+  `WITH RECURSIVE resolved(id, ckey) AS (\n` +
+  `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND +trash = 0\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id FROM resolved rs`;
+
+/**
+ * The same composed-key resolution as resolveRuleIdsByKeys, with the rule
+ * card's CONTENT carried when `withContent` is set (the content is what the
+ * _left delegation inspects; the id-only projection keeps hot callers on
+ * the shared universe with zero extra reads).
+ *
+ * Per driver, the first call builds the universe ONCE (see
+ * RuleResolutionDriverCache); every call — repeat, reordered, or a wholly
+ * different key set — is then Map lookups, plus at most one small content
+ * IN-query for rule-card ids not yet content-memoized. Every caller treats
+ * the result as read-only (`.get(key)` walks only; verified at all five
+ * call sites).
  */
 export async function resolveRuleRowsByKeys(
   driver: SQLDatabaseDriver,
@@ -611,49 +698,71 @@ export async function resolveRuleRowsByKeys(
   withContent: boolean,
 ): Promise<Map<string, ResolvedRuleRow>> {
   if (keys.length === 0) return new Map();
-  const fragments = new Set<string>();
-  for (const key of keys) {
-    const segments = key.split("+");
-    for (let i = 0; i < segments.length; i++) {
-      for (let j = i; j < segments.length; j++) {
-        fragments.add(segments.slice(i, j + 1).join("+"));
-      }
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  if (cache.universe === undefined) {
+    const result = await driver.query<{ ckey: string; id: number }>(
+      RULE_KEY_UNIVERSE_STATEMENT,
+      [],
+    );
+    // The statement's await is an expire window: a fixture seed or committed
+    // save may have dropped this entry after this call created it. Re-read
+    // the entry so the built universe lands in the LIVE cache — writing into
+    // a detached object would make every later call rebuild.
+    cache = ruleResolutionCaches.get(driver) ?? { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+    if (cache.universe === undefined) {
+      const universe = new Map<string, number>();
+      for (const row of result.rows) universe.set(row.ckey, row.id);
+      cache.universe = universe;
     }
   }
-  const fragList = [...fragments];
-  const fragParams = fragList.map(() => "?").join(", ");
-  const keyParams = keys.map(() => "?").join(", ");
-  // The unary + on j.trash (the established planner guard, the prefetch
-  // walk perf note) keeps the planner OFF cards_trash_index in the seed
-  // and the recursive arms: without it SQLite drives the joins from a
-  // full trash=0 scan instead of the per-fragment key seek and the
-  // per-row left_id/right_id seeks (the no-ANALYZE planner trap). Seek
-  // terms keep their index paths; + is a value no-op.
-  const finalSelect = withContent
-    ? `SELECT rs.ckey, rs.id, rc.db_content AS content FROM resolved rs\n` +
-      `  JOIN cards rc ON rc.id = rs.id\n` +
-      `  WHERE rs.ckey IN (${keyParams})`
-    : `SELECT rs.ckey, rs.id, NULL AS content FROM resolved rs WHERE rs.ckey IN (${keyParams})`;
-  const result = await driver.query<{ ckey: string; id: number; content: string | null }>(
-    `WITH RECURSIVE resolved(id, ckey) AS (\n` +
-      `  SELECT id, "key" FROM cards WHERE "key" COLLATE NOCASE IN (${fragParams}) AND +trash = 0\n` +
-      `  UNION\n` +
-      `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-      `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
-      `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-      `   WHERE (l.ckey || '+' || r."key") IN (${fragParams})\n` +
-      `  UNION\n` +
-      `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
-      `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
-      `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
-      `   WHERE (l."key" || '+' || r.ckey) IN (${fragParams})\n` +
-      `)\n` +
-      finalSelect,
-    [...fragList, ...fragList, ...fragList, ...keys],
-  );
+  const universe = cache.universe;
+  // The result map is built in SORTED key order: the resolution is
+  // order-insensitive (the old CTE's fragment Set + IN clause + ckey-keyed
+  // result were too), so reordered calls must produce identical maps —
+  // entry order included (pinned by
+  // tests/card/permissions/rule-resolution-memo.test.ts).
+  const ordered = [...keys].sort();
   const out = new Map<string, ResolvedRuleRow>();
-  for (const row of result.rows) {
-    out.set(row.ckey, withContent ? { id: row.id, content: row.content } : { id: row.id, content: null });
+  if (!withContent) {
+    for (const key of ordered) {
+      const id = universe.get(key);
+      if (id !== undefined) out.set(key, { id, content: null });
+    }
+    return out;
   }
+  const missing = new Set<number>();
+  for (const key of ordered) {
+    const id = universe.get(key);
+    if (id === undefined) continue;
+    out.set(key, { id, content: null });
+    if (!cache.contentById.has(id)) missing.add(id);
+  }
+  if (missing.size > 0) {
+    const ids = [...missing];
+    const result = await driver.query<{ id: number; db_content: string | null }>(
+      `SELECT id, db_content FROM cards WHERE id IN (${ids.map(() => "?").join(", ")})`,
+      ids,
+    );
+    const fetched = new Map<number, string | null>();
+    for (const row of result.rows) fetched.set(row.id, row.db_content);
+    // Same expire window as the universe build: re-read the entry so the
+    // content memo lands in the LIVE cache.
+    cache = ruleResolutionCaches.get(driver) ?? cache;
+    for (const [id, content] of fetched) cache.contentById.set(id, content);
+    // Serve this call's rows from the FETCHED data — an entry dropped
+    // mid-flight must not surface null content for one call (the _left
+    // delegation reads it); the cache write is best-effort and self-heals.
+    for (const row of out.values()) {
+      const fresh = fetched.get(row.id);
+      row.content = fresh !== undefined ? fresh : (cache.contentById.get(row.id) ?? null);
+    }
+    return out;
+  }
+  for (const row of out.values()) row.content = cache.contentById.get(row.id) ?? null;
   return out;
 }

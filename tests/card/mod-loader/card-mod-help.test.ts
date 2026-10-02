@@ -49,6 +49,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -119,13 +120,27 @@ beforeAll(async () => {
   // guide card the base :core renders dbContent verbatim (the
   // card-mod-markdown Type::Markdown override only fires when
   // card.typeName === "Markdown", card-mod-markdown.ts:88). The probe
-  // guide card here has no type set so this fixture exercises the
+  // guide card here is RichText-typed so this fixture exercises the
   // plain-text :core path.
+  //
+  // TYPE 14 -> 2 (mm-I-R lane, oracle-capture correction). The seed said
+  // Setting (14 is this fixture's *setting cardtype card), which made the
+  // port render card-mod-rules' SETTING cardtype :core - set/type/setting.rb:39-55,
+  // the "All X rules that apply to" listing - instead of the guide text,
+  // and the :guide pin has been red on that shape ever since. Ruby has no
+  // such card: a live capture of the oracle app's development deck
+  // (benchmarks/capture-readonly-rule-card-core-type-shape.rb, fixture
+  // fixtures/captured/readonly-rule-card-core-type-shape.json,
+  // card_actions 5018 == 5018 around every render) shows the deck's 450
+  // junction rows carry type_id 4/2/5/337/43/284/56/98/... and NOT the
+  // Setting type id (Card::SettingID = 278 in that deck; the *read setting
+  // itself is the Setting-typed row). A rule/compound card is therefore
+  // NOT a Setting card in Ruby, and its :core is its type's content view.
   await seedCard(s, {
     id: 22,
     leftId: 20,
     rightId: 15,
-    typeId: 14,
+    typeId: 2,
     dbContent: "Editing guidance rule text for the probe card.",
   });
 
@@ -168,19 +183,24 @@ beforeAll(async () => {
   });
   // the two compound probe cards (Right pattern matches; :popover view
   // dispatches through Card::Set::Right::Help::HtmlFormat). dbContent
-  // carries _render_core's body (RichText :core renders dbContent verbatim).
+  // carries _render_core's body (RichText :core renders dbContent
+  // verbatim). typeId 2 = RichText, the type the capture's probe cards
+  // carried (mm-I-R lane: 14 -> 2, the same Setting-vs-content correction
+  // as the guide rule card above - with typeId 14 the port answered the
+  // SETTING cardtype's :core listing and the byte pin could never match
+  // the captured popover anchor, whose data-bs-content is the dbContent).
   await seedCard(s, {
     id: 2220,
     leftId: 2200,
     rightId: 12,
-    typeId: 14,
+    typeId: 2,
     dbContent: "popover probe card body",
   });
   await seedCard(s, {
     id: 2221,
     leftId: 2201,
     rightId: 12,
-    typeId: 14,
+    typeId: 2,
     dbContent: "bare popover probe body",
   });
 }, 60_000);
@@ -199,9 +219,16 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Help Probe", "help_text")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Bare Probe", "lead")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // MERGE-PASS-18 RE-PIN (raise-leadview merge, caught at the tip gate's
+    // test-name-level diff): :lead is the compiled-in HTML_VIEWS entry
+    // (render/views.ts imports card-mod-help's leadView as the single
+    // source), so the loader-less engine dispatches it — help.rb:27-30's
+    // classUp "lead" + slot wrap around the core, with this probe's
+    // dbContent as the body (the bare probe seeds no *help rule, so the
+    // core is the plain content).
+    const leadHtml = await s.engine.render("Oracle Bare Probe", "lead");
+    expect(leadHtml).toContain("lead-view");
+    expect(leadHtml).toContain("bare probe body");
     await expect(s.engine.render("Oracle Help Probe", "guide")).rejects.toThrow(
       UnsupportedViewError,
     );
@@ -218,6 +245,7 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModHelp }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("Oracle Help Probe", "help");
@@ -333,7 +361,13 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :popover on a SIMPLE probe still resolves through the registered helper (TS does not enforce compound_only)", async () => {
+  // Inverted on purpose: the compound_only divergence (known divergence:
+  // see known-divergences-from-ruby.md) - Ruby's right pattern raises
+  // unknown-view for a SIMPLE card, and that raise is the Ruby behavior;
+  // the byte-oracle pin above keeps covering the compound
+  // case. Kept as it.fails so the shape assertions stay in the file for
+  // the day a set-scoped dispatch decides to widen.
+  it.fails("WITH the mod: :popover on a SIMPLE probe still resolves through the registered helper (TS does not enforce compound_only)", async () => {
     const s = storage!;
     // TS-side the popover view is registered as a generic view on
     // Right::Help's set module without the Ruby compound_only gate. The

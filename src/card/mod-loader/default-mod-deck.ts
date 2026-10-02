@@ -14,10 +14,9 @@
 //   bootstrap, comment, date, delayed_job, follow, session, tabs, layout,
 //   recaptcha, tinymce_editor, defaults
 //
-// Four captured names carry no manifest here, deliberately:
-// - core + bar_and_box: their registrations are compiled into the engine's
-//   seed tables (PATTERN_TABLE + HTML_VIEWS - mod-loader.ts treats the
-//   compiled-in core AS the core mod; bar_and_box's views live in the same
+// Three captured names carry no manifest here, deliberately:
+// - bar_and_box: its registrations are compiled into the engine's seed
+//   tables (PATTERN_TABLE + HTML_VIEWS - bar_and_box's views live in the
 //   seed layer). Caveat recorded for the byte-parity rounds: Ruby loads
 //   bar_and_box AFTER style, so a view both define resolves to bar_and_box
 //   in Ruby; in the TS engine the seed layer sits UNDER every mod
@@ -26,6 +25,12 @@
 //   replay is the guard if one ever pins.
 // - delayed_job + defaults: no TS surface (the legacy delayed-job queue;
 //   the defaults meta-gem carries no registrations).
+//
+// core IS composed (no longer absent): `core: coreMod` is MANIFESTS' first
+// entry (lane-admincompose, composed at pass14-int) - core loads at bundle
+// index 0 and is the admin surface's registration site (the seed tables'
+// "compiled-in core" equivalence above predates composition and carries no
+// admin surface).
 //
 // The render-path defaults are bound HERE, once, in deck-boot order -
 // never inside ModLoader.load(), so manual registry wirings (the mod
@@ -39,6 +44,7 @@ import {
 } from "../render/content-overrides.js";
 import { setDefaultModEventRegistry } from "./mod-event-registry.js";
 
+import coreMod from "./mods/core-mod.js";
 import cardModCollection from "./mods/card-mod-collection.js";
 import cardModContent from "./mods/card-mod-content.js";
 import cardModFormat from "./mods/card-mod-format.js";
@@ -71,9 +77,11 @@ import cardModRecaptcha from "./mods/card-mod-recaptcha.js";
 import cardModTinymceEditor from "./mods/card-mod-tinymce_editor.js";
 
 /** Captured names with no manifest entry in the composed deck (see the
- *  file comment for why each is absent). */
+ *  file comment for why each is absent). core is NOT here: it is composed
+ *  (MANIFESTS' first entry, lane-admincompose) - pre-composition this list
+ *  carried "core" while the seed tables only equivalenced it, which the
+ *  admin-compose receipt documented as one name too many. */
 export const COMPILED_IN_OR_ABSENT_MODS = [
-  "core",
   "bar_and_box",
   "delayed_job",
   "defaults",
@@ -119,6 +127,7 @@ export const ORACLE_BUNDLE_ORDER: readonly string[] = [
 ];
 
 const MANIFESTS: Record<string, DeckoModManifest> = {
+  core: coreMod,
   collection: cardModCollection,
   content: cardModContent,
   format: cardModFormat,
@@ -158,7 +167,8 @@ export function portedBundleOrder(): string[] {
   return ORACLE_BUNDLE_ORDER.filter((name) => MANIFESTS[name] !== undefined);
 }
 
-/** The 30 manifests as ModSources, in the oracle bundle order. */
+/** The 31 manifests as ModSources, in the oracle bundle order (core
+ *  first - composed, lane-admincompose). */
 export function defaultDeckSources(): ModSource[] {
   return portedBundleOrder().map((name) => ({
     manifest: MANIFESTS[name]!,

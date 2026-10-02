@@ -1,7 +1,7 @@
 // The card-mod-script gem (card-mod-script-0.20.0), ported through the mod
 // loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-script-0.20.0/): sixteen set files (7 abstract, 1 all, 1 right,
 // 1 self, 4 type, 2 type_plus_right), two lib/ modules, two config/
 // initializers, and data/real.yml. The T6 verdict
@@ -90,6 +90,7 @@
 import { UnsupportedViewError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
+import { modAssetsGroupListHtml } from "./card-mod-assets.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
@@ -197,10 +198,10 @@ function javascriptTag(content: string): string {
  *    card_url = Env.origin + card_path(rel); the oracle captured origin ""
  *    -> "/". The engine has no request origin - the port emits the same
  *    requestless-root bytes.
-   *  - decko.doubleClick: Card.config.double_click, set to :signed_in by this
-   *    gem's lib/card/mod/script.rb:1 (the Railtie config line);
-   *    script_variable_to_js's else branch single-quotes it
-   *    (head_javascript.rb:58-59) -> 'signed_in'.
+ *  - decko.doubleClick: Card.config.double_click, set to :signed_in by this
+ *    gem's lib/card/mod/script.rb:1 (the Railtie config line);
+ *    script_variable_to_js's else branch single-quotes it
+ *    (head_javascript.rb:58-59) -> 'signed_in'.
  *  - decko.cssPath: main_stylesheet_path = nest(param_or_rule_card(:style),
  *    view: :stylesheet_path) (card-mod-format head.rb:75-77). The
  *    :stylesheet_path view is card-mod-style's (set/type_plus_right/set/
@@ -508,6 +509,83 @@ async function prepareScriptRules(host: ModEngineHost): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// set/type_plus_right/mod/script.rb - the Mod+*script group card's html :core
+// (the Abstract::ModAssets group-list render, card-mod-assets
+// set/abstract/mod_assets.rb:171-182 via the include at mod/script.rb:4-5)
+// ---------------------------------------------------------------------------
+
+/** mod_assets.rb:27-29 mod_name: `left&.codename.to_s.sub(/^mod_/, "")` —
+ *  the mirror key (Cardio::Mod.fetch mod_name -> mod.subpath "assets",
+ *  "script"). (Shared body with card-mod-style.ts's — the same ModAssets
+ *  method.) */
+function modScriptModname(ctx: ViewContext): string {
+  const leftKey = ctx.fmt.card.name.leftName?.key ?? "";
+  return leftKey.replace(/^mod_/, "");
+}
+
+/** The mod script-asset mirrors: each mod's `assets/script` manifest
+ *  groups, transcribed from the gem trees the oracle deck loads
+ *  (mod_assets.rb:43-64: the manifest.yml groups in file order; the
+ *  remote group rides FIRST — mod_assets.rb:167-169 puts
+ *  `["group: remote", group_remote_card.urls]` ahead of the local groups
+ *  when urls are present). Item names are the asset FILE cards' names =
+ *  File.basename of each manifest path (asset_group.rb:22-30
+ *  new_asset_file_card), which is why "jquery/jquery-ui.min.js" renders
+ *  "jquery-ui.min.js" and the ../../vendor paths lose their directories.
+ *  Filesystem state the oracle capture pinned through the live render —
+ *  the mirror transcribes it exactly as ADMIN_CONFIG transcribes
+ *  config/admin.yml.
+ *
+ *  card-mod-format-0.20.0 assets/script/manifest.yml (the only ported mod
+ *  with a script manifest): remote (2 src URLs), jquery (5), decko (6).
+ *  Every OTHER ported mod ships no assets/script tree -> absent keys
+ *  render "" (Ruby: item_cards [] -> groups [] -> the haml loop emits
+ *  nothing). */
+const MOD_SCRIPT_GROUPS: Record<
+  string,
+  ReadonlyArray<readonly [string, readonly string[]]>
+> = {
+  format: [
+    [
+      "group: remote",
+      [
+        "https://code.jquery.com/jquery-3.5.1.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js",
+      ],
+    ],
+    [
+      "group: jquery",
+      [
+        "jquery-ui.min.js",
+        "jquery.ui.autocomplete.html.js",
+        "jquery.autosize.js",
+        "jquery.fileupload.js",
+        "jquery.iframe-transport.js",
+      ],
+    ],
+    [
+      "group: decko",
+      [
+        "decko.js.coffee",
+        "decko_jquery.js.coffee",
+        "slot.js.coffee",
+        "slotter.js.coffee",
+        "slot_ready.js.coffee",
+        "clicks_and_hovers.js.coffee",
+      ],
+    ],
+  ],
+};
+
+/** The Mod+*script :core body: the mirror's groups (remote first) through
+ *  the shared group_list emitter. */
+const modScriptGroupCoreView: ViewFn = (ctx) => {
+  const groups = MOD_SCRIPT_GROUPS[modScriptModname(ctx)];
+  if (groups === undefined) return "";
+  return modAssetsGroupListHtml(groups);
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -738,9 +816,40 @@ const cardModScript: DeckoModManifest = {
     // ScriptGroup + non_createable_types basket.
     passiveSetModule("type/local_script_manifest_group"),
     // set/type_plus_right/mod/script.rb - Mod+*script (AssetInputter +
-    // ModAssets): the remote_script_tags mod layer rides the merged
-    // registration below; subpath/folder_group_type_id are card methods.
-    passiveSetModule("type_plus_right/mod/script"),
+    // ModAssets): the remote_script_tags mod layer + the :core group-list
+    // render.
+    //
+    // 2026-09-29: this module now CARRIES the view. Ruby
+    // defines view :remote_script_tags in BOTH gem files
+    // (type_plus_right/set/script.rb:12-16 on Set+*script AND
+    // type_plus_right/mod/script.rb:18-26 on Mod+*script - both non-nested
+    // files, so each is its own Ruby module); the old merged registration
+    // (one entry on the set path "because the flat registry keeps one entry
+    // per view name") stopped answering for Mod+*script cards once the
+    // chainFor narrowing (26ef575) keyed dispatch off the
+    // card's own TYPE_PLUS_RIGHT token, which names THIS module for a
+    // "mod: X+*script" card. The viewFn keeps the per-layer dispatch
+    // (leftTypeCode set -> rule-card walk, mod -> group-remote src list)
+    // and still raises for cards outside the two patterns.
+    //
+    // admin-views-2 lane: view :core joins the module — Ruby hosts it on
+    // the INCLUDED Abstract::ModAssets (card-mod-assets
+    // set/abstract/mod_assets.rb:171-182, the group_list haml); this set
+    // module is where the +*script card's chain lands, so the render
+    // registers HERE (chain-scoped, kind nonbase — the flat table is
+    // untouched). Oracle-pinned byte-for-byte: mod: format :scripts nests
+    // it (fixtures/captured/admin-view-pins.json).
+    {
+      setPath: "type_plus_right/mod/script",
+      formats: {
+        html: {
+          views: [
+            { view: "remote_script_tags", viewFn: remoteScriptTagsView },
+            { view: "core", viewFn: modScriptGroupCoreView },
+          ],
+        },
+      },
+    },
     // set/type_plus_right/set/script.rb - Set+*script (AssetOutputter): the
     // merged remote_script_tags registration (the last of the two tpr files
     // in path order; the flat registry keeps one entry per view name).

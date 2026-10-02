@@ -199,7 +199,8 @@ all numbers. Overwritten on every run. Schema:
 
 - **Not a byte-parity oracle.** The harness measures time and SQL counts
   only. Byte parity with Ruby is the responsibility of the corpus replay
-  tests under `tests/card/render/` and `benchmarks/corpus-v2/replay-shard.test.ts`.
+  tests under `tests/card/render/` and `benchmarks/corpus-v2/replay-shard.bench.ts`
+  (the replay driver is out of the default suite; see its header to run it).
 - **Not a stand-in for the slow-entry profiling.** The
   `benchmarks/corpus-v2/render-perf-diagnosis-probes-2026-09/` directory
   still carries the deep-dive scripts (SQL statement shapes, EXPLAIN QUERY

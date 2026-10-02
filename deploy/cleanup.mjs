@@ -9,8 +9,9 @@
 // nothing. WITH --yes: execute them via npx wrangler, in this order
 // (worker first, then the database; each deletion is independent).
 //
-//   npx wrangler delete --name decko-ts-demo
-//       (wrangler asks for confirmation interactively — answer y)
+//   npx wrangler delete decko-ts-demo
+//       (name is a POSITIONAL: `wrangler delete [name]` in wrangler 4.135.0
+//       declares no --name flag; wrangler asks for confirmation interactively)
 //   npx wrangler d1 delete decko-ts-demo-db --skip-confirmation
 //       (verified flag; deletes the database AND its automatic backup)
 //
@@ -28,8 +29,8 @@ const PLAN = [
   {
     resource: `Worker "${WORKER_NAME}"`,
     command: "npx",
-    args: ["wrangler", "delete", "--name", WORKER_NAME],
-    note: "interactive confirmation expected (documented flag-free path)",
+    args: ["wrangler", "delete", WORKER_NAME],
+    note: "name is a POSITIONAL (`wrangler delete [name]`, wrangler 4.135.0 — no --name flag); interactive confirmation expected",
   },
   {
     resource: `D1 database "${DATABASE_NAME}" (and its automatic backup)`,

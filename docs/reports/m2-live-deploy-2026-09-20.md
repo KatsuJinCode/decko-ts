@@ -6,12 +6,13 @@ render-fix stream; see below).
 ## The deployment
 
 - **URL**: https://decko-ts-demo.jpswilner.workers.dev
-- **Worker**: `decko-ts-demo`, version 9470d16f-d19d-404f-952c-b8b67cc3418b
+- **Worker**: `decko-ts-demo` (Worker version id recorded at deploy time)
 - **Bundle**: 198.42 KiB (51.65 KiB gzip), worker startup **3 ms**
-- **D1**: `decko-ts-demo-db` (id ac0f6b00-757d-4b09-b131-997a9a3fb4d7,
-  region WNAM), 12 tables, 15 synthetic demo cards, ~200 KB — the free-tier
-  D1 allowance is 5 GB; this uses 0.004% of it
-- **R2/KV/queues/secrets**: none. Zero the site owner data, zero SourceDeck
+- **D1**: `decko-ts-demo-db` (database_id substituted at deploy time; the
+  committed configs carry the `TBD_REPLACE_AFTER_WRANGLER_D1_CREATE`
+  placeholder), region WNAM, 12 tables, 15 synthetic demo cards, ~200 KB —
+  the free-tier D1 allowance is 5 GB; this uses 0.004% of it
+- **R2/KV/queues/secrets**: none. Zero site-owner data, zero private-deck
   content — the seed (deploy/seed/seed.sql, 8.3 KB) is synthetic
   (generator-built Notes + a depth-4 compound chain + one Search card).
 
@@ -47,8 +48,7 @@ the CloudflareD1Adapter; the one Node import in the engine graph
 `wrangler d1 execute --file migrations/0001-schema.sql` →
 `--file seed/seed.sql` → `wrangler deploy` → curl smoke checks.
 Cleanup: `node deploy/cleanup.mjs --yes` removes the Worker and the D1
-database (the complete footprint). The token in use is scoped to
-Workers Scripts:Edit + D1:Edit only, and gets revoked at cleanup.
+database (the complete footprint); the deploy token is revoked at cleanup.
 
 ## Cost
 

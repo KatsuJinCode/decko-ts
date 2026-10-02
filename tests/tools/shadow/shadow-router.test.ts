@@ -29,7 +29,6 @@ import {
   compareResponses,
   createProxyServer,
   fnv1a,
-  forwardOnce,
   loadPolicy,
   shouldShadow,
 } from "../../../tools/shadow/shadow-router.mjs";
@@ -503,23 +502,19 @@ describe("proxy end-to-end", () => {
   it("replays the POST body to BOTH upstreams (same bytes)", async () => {
     ruby.setBody("ok-ruby");
     ts.setBody("ok-ts");
+    ruby.resetReceived();
     ts.resetReceived();
     const payload = Buffer.from("post-body-data-12345");
     const resp = await clientRequest(`${proxyUrl}/cards`, { body: payload });
     expect(resp.status).toBe(200);
     expect(resp.body.toString()).toBe("ok-ruby");
 
+    const rubyBodies = ruby.receivedBodies();
+    expect(rubyBodies.length).toBeGreaterThanOrEqual(1);
+    expect(rubyBodies[rubyBodies.length - 1].toString()).toBe("post-body-data-12345");
     const tsBodies = ts.receivedBodies();
     expect(tsBodies.length).toBeGreaterThanOrEqual(1);
     expect(tsBodies[tsBodies.length - 1].toString()).toBe("post-body-data-12345");
-  });
-
-  it("verifies both upstreams receive the body (Ruby also gets it)", async () => {
-    // We do not have a direct Ruby receiver assertion in this test, but the
-    // body bytes are forwarded by the same code path that forwardOnce uses
-    // for TS, so the symmetric assertion is covered by the replay test
-    // above and by forwardOnce's own contract tested below.
-    expect(typeof forwardOnce).toBe("function");
   });
 
   it("records skipped verdict when policy says no-shadow", async () => {

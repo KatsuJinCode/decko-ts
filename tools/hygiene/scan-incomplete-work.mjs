@@ -38,7 +38,7 @@ const MARKERS = [
 const DOCUMENTED_RE = /(#[A-Za-z0-9_]+|#[0-9]+|issue|Issue|upstream|deliberate|deferred|by design|tracked|port-tracker|queued)/;
 const DOCUMENTED_CONTEXT_RE = /(deferred|deferral|decided but not implemented|documented but not implemented|see docs|docs\/[a-z]|oracle|upstream|pin preserves|shipped answer|toContain|toThrow|raisedError|CAPTURE_ERROR|expect\(|%\{func\}|lib_exception|[Hh]aml|template box_|sort_by_count|REGEXP|live-PG|Live-PG|reported as|in the report)/;
 
-const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
+const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024, windowsHide: true })
   .toString("utf8").split("\0").filter(Boolean);
 
 const findings = [];

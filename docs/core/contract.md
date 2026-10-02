@@ -215,10 +215,16 @@ precedence, permission party model. Test surface: `tests/card/name/**`,
   gem.
 - **S2.1.d** `to_s` on an empty name returns `""` (Ruby nil-to_s
   semantics); `Card.fetch("")` returns nil; a `{{}}` nest reference
-  short-circuits to a denial span (`fetch/retrieve.rb:9-12`;
-  `card-mod-format-0.20.0 set/all/html/error.rb`). TS evidence:
-  `tests/card/render/unknown-nest-blank-reference.test.ts` —
-  proven on the corpus entry 636 denial-span bytes.
+  consumes the blank mark and renders the EMPTY STRING. The nil card
+  takes `view/permission.rb:36-39`'s unknown arm, where `alter_unknown`
+  answers the truthy `:unknown` view, so the denial arm
+  (`card-mod-format-0.20.0 set/all/html/error.rb:185-189`) is never
+  reached (`fetch/retrieve.rb:9-12`). TS evidence:
+  `tests/card/render/unknown-nest-blank-reference.test.ts` — proven on
+  the source-truth capture (shard-000006 entry 10488 renders its `{{}}`
+  as nothing on both its content and open surfaces). Corpus entry 636
+  (`thez+*right+*default`) carries a denial span on its open surface;
+  that is this entry's anomaly, not the rule.
 
 ### S2.2 Relative-name absolutization
 
@@ -474,13 +480,19 @@ options)` triple. Test surface: `tests/card/render/**`,
   - `src/card/render/format.ts#viewForUnknown` /
     `RenderFormat.nest` (the substitution table) — proven.
 - **R3.3.b** A blank reference `{{}}` skips fetch entirely and
-  surfaces through the html denial path as a bare
-  `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`
-  (`card-1.110.0 lib/card/fetch/retrieve.rb:9-12`;
-  `card-mod-format-0.20.0 set/all/html/error.rb:185-189`).
-  TS evidence:
-  `tests/card/render/unknown-nest-blank-reference.test.ts` +
-  corpus entry 636 (`thez+*right+*default`) — proven.
+  renders the EMPTY STRING: the nil card takes the unknown arm, where
+  `alter_unknown` (`states.rb:52-58,65-67`) answers the truthy
+  `:unknown` view, so `altered_view` (`card-1.110.0
+  lib/card/format/error.rb:27-33`) never reaches the `:denial` arm
+  (`card-1.110.0 lib/card/fetch/retrieve.rb:9-12`). TS evidence:
+  `tests/card/render/unknown-nest-blank-reference.test.ts` — proven on
+  the source-truth capture (shard-000006 entry 10488, `{{}}` rendering
+  as nothing on its content and open surfaces). Corpus entry 636
+  (`thez+*right+*default`) carries a denial span on its open surface;
+  that is this entry's anomaly, and the denial form
+  (`card-mod-format-0.20.0 set/all/html/error.rb:185-189`) is what this
+  row's behavior read as before it was adjudicated against Ruby's own
+  source trace.
 
 ### R3.4 Denial spans
 

@@ -1,7 +1,7 @@
 // The card-mod-integrate gem (card-mod-integrate-0.20.0), ported through
 // the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-integrate-0.20.0/): eight set files, no lib/, no haml, no html
 // views (the T6 verdict, tools/compat-report/mod-compat-report.json entry
 // gem === "card-mod-integrate-0.20.0": htmlViewsDeclared 0,

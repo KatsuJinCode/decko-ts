@@ -1,7 +1,7 @@
 // The card-mod-tinymce_editor gem (card-mod-tinymce_editor-0.20.0), ported
 // through the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-tinymce_editor-0.20.0/): 8 set-module .rb files + 1 no-set-module
 // helper + 1 lib/ file + 10 HAML templates, no events, no set_pattern/, no
 // mod.yml. Ported here:
@@ -62,50 +62,80 @@
 //     %r{^(/|https?:|mailto:)} (the ^ anchors the whole alternation),
 //     options = {title: link_text || name.fully_stripped}).
 //
-//   * The remaining 7 set-module files register as PASSIVE entries
+//   * The remaining set-module files register as PASSIVE
 //     (formats.html.views: [] - the set-module basket bookkeeping Ruby keeps
-//     via the source_location walk, with no view definitions):
-//     all/tinymce_editor, all/reference_editor,
-//     all/reference_editor/link_editor, all/reference_editor/nest_editor,
-//     all/reference_editor/nest_editor/nest_editor_options,
-//     all/reference_editor/nest_editor/nest_editor_tabs,
-//     all/reference_editor/nest_image (whose HTML views are the unported
-//     remainder below).
+//     via the source_location walk) EXCEPT all/reference_editor/link_editor,
+//     which registers the two link-editor views ported 2026-09-29 (the
+//     tinymce-views-port lane, below).
 //
-// NOT ported (honest remainder; the T6 compat report lists 11 html views
-// missing - tools/compat-report/mod-compat-report.json#
-// card-mod-tinymce_editor-0.20.0 classification.metrics.htmlViewsMissingNames):
+// PORTED 2026-09-29 (the tinymce-views-port lane; oracle-pinned by
+// fixtures/captured/tinymce-editor-views.json, captured live by
+// tests/card/mod-loader/oracle-capture-tinymce-editor-views.rb with the
+// in-run no-write proof card_actions 4929 -> 4929):
 //
 //   - link_editor + modal_link_editor (set/all/reference_editor/
-//     link_editor.rb:2-12): the bodies run haml :reference_editor
-//     (reference_editor.haml) + the _link_editor.haml partial, whose bytes
-//     need the card-mod-bootstrap helper layer (icon_tag, link_to,
-//     text_field_tag, check_box_tag, button_tag) and a snippet parsed from
-//     params[:tm_snippet_raw] (link_editor.rb:28-30) - no bootstrap helper
-//     surface and no request-params surface exist in the headless engine.
+//     link_editor.rb:2-12). The bytes compose HERE: the slot wrap
+//     (wrap.rb:11-14 wrapper :slot + :26-31 slot_attributes + :46-48
+//     wrap_classes - the view config's class list lands AFTER the base
+//     card-slot/view-view/set-keys list), the reference_editor.haml chrome,
+//     the _link_editor.haml partial, and the Rails tag helper byte shapes
+//     (text_field_tag / check_box_tag / button_tag + the bootstrap
+//     button_tag's btn btn-primary default, bootstrap/form.rb:14-18 +
+//     :41-44). Every params read is the ABSENT-params arm - the headless
+//     engine models no request params (the established precedent of this
+//     file's js-view port): link_snippet (link_editor.rb:28-30) gets nil ->
+//     LinkParser.defaultSnippet(); tinymce_id (reference_editor.rb:4-5) is
+//     nil -> the apply opts carry "data-tinymce-id": nil, which the tag
+//     renderer drops. The modal view's `wrap_with :modal` is
+//     set/all/html/wrap.rb:128-131's content_tag(:modal) - a LITERAL
+//     <modal> element (the registered `wrapper :modal` serves only the
+//     voo.wrap view-config path, wrapper.rb:19-31; measured live: the
+//     oracle emits <modal>...</modal> and `render :modal` renders the
+//     modal_dialog haml - two different paths).
+//
+// NOT PORTED (honest remainder, each with a named blocker; all nine views'
+// live bytes are on record in the capture fixture for the next increment):
 //
 //   - nest_editor + modal_nest_editor (set/all/reference_editor/
-//     nest_editor.rb:10-20): the same reference_editor HAML plus
-//     nest_editor_tabs -> the bootstrap `tabs` helper and a rules tab that
-//     nests view :nest_rules (nest_editor_tabs.rb:54-58) - a card-mod-rules
-//     view that is not in the TS view registry.
+//     nest_editor.rb:10-20): ~17.5KB each, and the OPTIONS tab is the
+//     blocker - _options.haml's ._templates.d-none block ALWAYS renders
+//     nest_show_and_hide_select_template (nest_editor_options.rb:83-85) =
+//     options_for_select(all_views), where all_views (card-mod-format
+//     set/all/demo.rb:40-43) is ViewDefinition.views.slice(*self.class
+//     .ancestors) - the per-card format-class ancestor slice of the LIVE
+//     Ruby view registry: 191 sorted names for the probe card, recorded in
+//     the fixture's helper_facts.all_views. The headless engine's flat
+//     last-wins render table is a different universe; embedding the
+//     captured list as a constant would fabricate deck-specific data.
+//     Everything else in the view (header, nest-name field, the bootstrap
+//     tab machinery, the view/options/rules panes with the blank-name
+//     placeholder arms - the rules tab NEVER nests :nest_rules when the
+//     snippet name is blank, nest_editor.rb:41-50 + 70-77) is reproducible.
 //
 //   - nest_content (set/all/reference_editor/nest_editor.rb:22-28, perms:
-//     :create): the known branch renders render_edit_inline and the unknown
-//     branch create_form (nest_editor.rb:92-110) - the edit/create-form
-//     machinery is a deferred surface (docs/render-port-notes.md).
+//     :create): the known branch is known_nest_content -> render_edit_inline
+//     (nest_editor.rb:92-100) and the unknown branch create_form (:102-110)
+//     - the card-mod-edit form machinery (card_form / edit_inline
+//     rails-runtime) is unported. The capture pins the double-slot-wrap +
+//     edit_inline form bytes on a known card.
 //
 //   - nest_image + modal_nest_image (set/all/reference_editor/nest_image.rb:
-//     2-11): nest_image_editor -> adapt_reference_editor_for_images (lines
-//     32-37: card.autoname + nest(name, view: :new_image)) on top of the
-//     full nest-editor HAML surface above.
+//     2-11): adapt_reference_editor_for_images (:32-37) eagerly nests view
+//     :new_image on the autonamed image card in the upload tab
+//     (nest_editor_tabs.rb:23-25) - create_form again - on top of the same
+//     all_views blocker in the options tab.
 //
 //   - new_image (nest_image.rb:13-19): body is create_form - the
-//     create-form machinery is not ported.
+//     create-form machinery is not ported. Captured on a fresh-new image
+//     card (5,992 bytes, fixture "new:image01#new_image").
 //
 //   - new_image_buttons (nest_image.rb:21-24): button_formgroup +
 //     standard_save_button - the bootstrap button-form machinery is not
-//     ported.
+//     ported. NOTE the capture's arm: on a NON-EXISTENT card the render is
+//     the UNKNOWN-view substitution (the view has no `unknown: true`, so
+//     view/permission.rb's alter_unknown replaces it; the fixture carries
+//     the unknown-link slot bytes) - the view body itself only fires on a
+//     known card.
 //
 // FORMAT-NOTE (documented divergence): Ruby scopes both ported views to
 // format :js. The mod loader's registration is format-agnostic - it walks
@@ -126,9 +156,15 @@
 // the headless engine. data/real.yml (the *tinyMCE JSON seed card) enters
 // through the standard seed path, outside this stream.
 
-import type { ViewFn } from "../../render/format.js";
+import type { ViewFn, ViewContext } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { stripTags } from "../../render/nest-syntax.js";
+import { h } from "../../render/slot-html.js";
+import { modViewSlotWrap } from "../../render/views.js";
+import {
+  buttonFormGroup,
+  standardSaveButtonBody,
+} from "../mod-form-substrate.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -334,7 +370,7 @@ export class NestParser {
 /** nest_parser.rb:26-28 empty?: raw empty, or the bare-empty-nest shape
  *  /\{\{+?\s*\|?\s*\}\}/. Ruby's `+?` is a LAZY QUANTIFIER on the literal
  *  brace (one-or-more additional "{"), not an optional "+". Verified
- *  against the target Ruby 3.3 (C:/Ruby33-x64/bin/ruby.exe, this session):
+ *  against the target Ruby 3.3:
  *    "{{+ }}" => nil      "{{ }}" => match
  *    "{{foo}}" => nil     "{{{}}" => match
  *  i.e. the gem's own default snippet "{{+ }}" is NOT empty? by this
@@ -528,6 +564,169 @@ export class LinkParser {
 }
 
 // ---------------------------------------------------------------------------
+// set/all/reference_editor/link_editor.rb - the :link_editor html views
+// (ported 2026-09-29, the tinymce-views-port lane; oracle-pinned by
+// fixtures/captured/tinymce-editor-views.json)
+// ---------------------------------------------------------------------------
+
+/** icon.rb:120-135 icon_tag :close: icon_lookup(:close) resolves the
+ *  material library first ("close" per the ICON_BASKET material map) and
+ *  universal_icon_tag prefixes the notranslate class - the captured bytes,
+ *  identical shape to the bootstrap port's popoverIcon. */
+const CLOSE_ICON = '<i class="notranslate material-icons">close</i>';
+
+/** reference_editor.rb:10-16 modal_tm_snippet_editor?:
+ *  `@tm_snippet_editor_mode != :overlay`. */
+function isModalEditorMode(editorMode: "overlay" | "modal"): boolean {
+  return editorMode !== "overlay";
+}
+
+/** The _link_editor.haml partial (link_editor.haml:1-19), byte-shaped from
+ *  the capture. The snippet drives exactly the three reads the template
+ *  makes - field? (the show/hide-prefix class), name (the link_name value;
+ *  "" renders value="", nil would omit), title (the link_title value; the
+ *  default snippet's nil omits the attribute) - and every one of them is
+ *  the DEFAULT-struct arm here: link_snippet (link_editor.rb:28-30) feeds
+ *  LinkParser.new params[:tm_snippet_raw], and the headless engine models
+ *  no request params, so Ruby's nil -> default-Link struct arm is the only
+ *  reachable one. Haml renders tag attributes single-quoted and SORTED
+ *  (haml attribute_builder.rb:59 rendered.sort!); the Rails tag helpers
+ *  inside `=` output keep double quotes and call order. */
+function linkEditorPartial(snippet: LinkParser): string {
+  // link_editor.haml:3 `class: [snippet.field? ? "show-prefix" : "hide-prefix"]`
+  const prefixClass = snippet.field ? "show-prefix" : "hide-prefix";
+  // link_editor.haml:6-9 text_field_tag "link_name", snippet.name, ...
+  // - snippet.name is "" (present) for the default struct -> value=""
+  const linkNameValue =
+    snippet.name !== undefined ? ` value="${h(snippet.name)}"` : "";
+  // link_editor.haml:12-13 check_box_tag :field, "field", snippet.field?,
+  // class: "_link-field-toggle", id: "link-editor-field" - checked false
+  // renders no checked attribute; the id comes from the explicit opt
+  // (Rails sanitizes the NAME into the id when no :id is given - here the
+  // opt wins, so id="link-editor-field", not id="field").
+  const fieldChecked = snippet.field ? " checked=\"checked\"" : "";
+  // link_editor.haml:19 text_field_tag "link_title", snippet.title, ... -
+  // the default snippet's title is nil -> NO value attribute
+  const linkTitleValue =
+    snippet.title !== undefined ? ` value="${h(snippet.title)}"` : "";
+  return (
+    `<div class='row align-items-center mb-4 ms-1'>\n` +
+    `<div class='col-9'>\n` +
+    `<div class='${prefixClass} input-group'>\n` +
+    `<div class='input-group-text text-muted _field-indicator'>\n` +
+    `+\n` +
+    `</div>\n` +
+    `<input type="text" name="link_name" id="link_name"${linkNameValue} class="form-control _link-target _autocomplete" placeholder="URL or Card name" data-options-card="*all+by name" />\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `<div class='col-3'>\n` +
+    `<input type="checkbox" name="field" id="link-editor-field" value="field"${fieldChecked} class="_link-field-toggle" />\n` +
+    `<label class='form-check-label' for='link-editor-field'>field</label>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `<div class='row align-items-center mb-4 ms-1 me-1'>\n` +
+    `<div class='col-12'>\n` +
+    `<label class='form-check-label' for='link_title'>Text to display</label>\n` +
+    `<input type="text" name="link_title" id="link_title"${linkTitleValue} class="form-control _link-title" />\n` +
+    `</div>\n` +
+    `</div>\n`
+  );
+}
+
+/** The reference_editor.haml chrome (title: "Link", editor: :link,
+ *  ref_type: :link - link_editor.rb:14-20's method with editor_mode from
+ *  the view). Byte-shaped from the capture:
+ *  - Haml tag attributes single-quoted and sorted (the footer cancel
+ *    anchor's `class data-bs-dismiss href` order is Haml's rendered.sort!);
+ *  - link_to (card-mod-format set/all/links.rb) runs content_tag :a with
+ *    the opts hash in insertion order: data-bs-dismiss, class, then href
+ *    (the path: "#" entry resolves last);
+ *  - button_tag (bootstrap form.rb:14-18) bootstrapify_button appends
+ *    "btn btn-primary" AFTER the caller's class list (situation defaults
+ *    to primary) and Rails adds name="button" type="submit" first;
+ *  - apply_tm_snippet_data (reference_editor.rb:18-24) contributes
+ *    "data-tinymce-id": tinymce_id (nil with params absent - dropped by
+ *    the tag renderer) and, in the modal mode, data-bs-dismiss="modal"
+ *    (:26-28); the apply_tm_snippet_var arms (:34-37) and
+ *    apply_tm_data_index (:30-32) all key on absent params and skip.
+ *  The trailing blank line before </div>\n</div> is the Haml source's own
+ *  blank line between the partial call and .card-footer (Haml keeps it as
+ *  a bare newline). */
+function linkEditorChrome(_ctx: ViewContext, editorMode: "overlay" | "modal"): string {
+  const modal = isModalEditorMode(editorMode);
+  // link_editor.rb:28-30 - the absent-params arm (see linkEditorPartial)
+  const snippet = LinkParser.defaultSnippet();
+  const applyLabel = modal ? "Apply and Close" : "Apply";
+  const cancelLabel = modal ? "Cancel" : "Close";
+  const applyDismiss = modal ? ` data-bs-dismiss="modal"` : "";
+  return (
+    `<div class='_nest-editor'>\n` +
+    `<div class='card-header d-flex'>\n` +
+    `<h5 class='mt-1'>\n` +
+    `Link\n` +
+    `</h5>\n` +
+    `<div class='ms-auto'>\n` +
+    `<a data-bs-dismiss="${editorMode}" class="text-dark p-1 ms-1" href="#">${CLOSE_ICON}</a>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `<div class='card-body'>\n` +
+    `<div class='form'>\n` +
+    linkEditorPartial(snippet) +
+    `\n</div>\n` +
+    `</div>\n` +
+    `<div class='card-footer p-0'>\n` +
+    `<div class='preview mx-1 my-1 form-control-feedback'>\n` +
+    `Syntax preview\n` +
+    `<input type="text" name="preview" id="preview" value="${h(snippet.raw)}" class="_link-preview w-100 text-muted" readonly="readonly" />\n` +
+    `</div>\n` +
+    `<hr class='mt-1 mb-1'>\n` +
+    `<div class='form-group-inline d-flex justify-content-center py-3'>\n` +
+    `<button name="button" type="submit"${applyDismiss} class="_link-apply btn-sm me-3 btn btn-primary">${applyLabel}</button>\n` +
+    `<a class='border-light text-dark btn btn-sm btn-secondary' data-bs-dismiss='${editorMode}' href='#'>\n` +
+    `${cancelLabel}\n` +
+    `</a>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n`
+  );
+}
+
+/** link_editor.rb:2-7 view :link_editor, cache: :never, unknown: true,
+ *  wrap: { slot: { class: "_overlay d0-card-overlay card nodblclick" } } do
+ *    link_editor :overlay
+ *  end. The wrap hash rides the viewFn (the manifest schema's wrap field
+ *  takes only the string forms): the slot wrapper (wrap.rb:11-14) emits the
+ *  card-slot div with the config's class list appended after the base
+ *  classes (views.ts modViewSlotWrap, wrap.rb:26-31 add_class). */
+const linkEditorView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "link_editor",
+    "_overlay d0-card-overlay card nodblclick",
+    linkEditorChrome(ctx, "overlay"),
+  );
+
+/** link_editor.rb:9-12 view :modal_link_editor, cache: :never,
+ *  unknown: true, wrap: { slot: { class: "nodblclick" } } do
+ *    modal_link_editor
+ *  end, where the modal_link_editor METHOD (:22-26) is
+ *  `wrap_with :modal { link_editor :modal }` - and wrap_with
+ *  (card-mod-format set/all/html/wrap.rb:128-131) is content_tag(:modal):
+ *  a LITERAL <modal> element. The registered `wrapper :modal`
+ *  (card-mod-layout set/all/modal.rb:7-13) serves only the voo.wrap
+ *  view-config path (lib/card/format/wrapper.rb:19-31 try
+ *  "wrap_with_#{wrapper}") - measured live: the oracle renders
+ *  <modal>...</modal> here while `render :modal` renders the
+ *  modal_dialog haml. The bytes below are the gem's own behavior. */
+const modalLinkEditorView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "modal_link_editor",
+    "nodblclick",
+    `<modal>${linkEditorChrome(ctx, "modal")}</modal>`,
+  );
+
+// ---------------------------------------------------------------------------
 // set/all/reference_editor/nest_image.rb - the format :js views
 // ---------------------------------------------------------------------------
 
@@ -566,6 +765,27 @@ const TINYMCE_HELP_TEXT =
   "    [[http://decko.org/TinyMCE|more]]\n";
 
 // ---------------------------------------------------------------------------
+// set/all/reference_editor/nest_image.rb - :new_image_buttons (the
+// form-substrate lane)
+// ---------------------------------------------------------------------------
+
+/** nest_image.rb:21-24 view :new_image_buttons:
+ *  `button_formgroup do [standard_save_button(no_origin_update: true)] end`
+ *  - the shared mod-form-substrate emitters: all/form.rb:38-40
+ *  button_formgroup + all/form_buttons.rb:15-22 standard_save_button, whose
+ *  no_origin_update: true caller attr rides the captured attr order
+ *  (data-disable-with, no_origin_update, class + bootstrapify's btn
+ *  btn-primary, data-cy - the reverse_merge mechanism documented in
+ *  mod-form-substrate.ts). The view body only fires on a KNOWN card (the
+ *  view has no unknown: true, so a new-card render is the unknown-view
+ *  substitution); the oracle pin renders it on a real Image card. */
+const newImageButtonsView: ViewFn = (ctx) =>
+  buttonFormGroup(
+    ctx,
+    standardSaveButtonBody(ctx, [["no_origin_update", "true"]]) ?? "",
+  );
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem set file; setPaths mirror the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -587,11 +807,30 @@ const cardModTinymceEditor: DeckoModManifest = {
     passiveSetModule("all/reference_editor"),
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb
-      // - views :link_editor + :modal_link_editor (unported, see header);
-      // the file's link_editor/link_parser.rb helper is `#! no set module`
-      // and ports as the LinkParser class above.
+      // - view :link_editor (link_editor.rb:2-7, cache: :never, unknown:
+      // true, slot wrap _overlay d0-card-overlay card nodblclick) + view
+      // :modal_link_editor (:9-12, slot wrap nodblclick) - ported
+      // 2026-09-29, oracle-pinned (see the header + the viewFn comments).
+      // The wrap HASH rides the viewFns (the schema's wrap field takes only
+      // the string forms). The file's link_editor/link_parser.rb helper is
+      // `#! no set module` and ports as the LinkParser class above.
       setPath: "all/reference_editor/link_editor",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [
+            {
+              view: "link_editor",
+              viewFn: linkEditorView,
+              config: { cache: "never", unknown: true },
+            },
+            {
+              view: "modal_link_editor",
+              viewFn: modalLinkEditorView,
+              config: { cache: "never", unknown: true },
+            },
+          ],
+        },
+      },
     },
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb
@@ -605,11 +844,18 @@ const cardModTinymceEditor: DeckoModManifest = {
     passiveSetModule("all/reference_editor/nest_editor/nest_editor_tabs"),
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb
-      // - the html views (:nest_image, :modal_nest_image, :new_image,
-      // :new_image_buttons) are the unported remainder; the format :js block
-      // (lines 40-59) ports byte-exactly.
+      // - the html views :nest_image/:modal_nest_image/:new_image are the
+      // unported remainder (blockers A/D of the tinymce-views lane:
+      // all_views + the create_form chain on the upload tab);
+      // :new_image_buttons (nest_image.rb:21-24) is PORTED - registered in
+      // the html block below (button_formgroup + standard_save_button(
+      // no_origin_update: true), the shared mod-form-substrate emitters);
+      // the format :js block (lines 40-59) ports byte-exactly.
       setPath: "all/reference_editor/nest_image",
       formats: {
+        html: {
+          views: [{ view: "new_image_buttons", viewFn: newImageButtonsView }],
+        },
         js: {
           views: [
             {

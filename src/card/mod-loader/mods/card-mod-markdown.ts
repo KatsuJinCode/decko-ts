@@ -1,7 +1,7 @@
 // The card-mod-markdown gem (card-mod-markdown-0.20.0), ported through the
 // mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-markdown-0.20.0/): ONE set file (set/type/markdown.rb), no lib/,
 // no set_pattern/, no events, plus seed data (data/real.yml - the Markdown
 // cardtype card, codename "markdown") and one migration
@@ -17,7 +17,7 @@
 //   kramdown-syntax-coderay 1.0.1): every byte the tests pin was produced by
 //   Kramdown::Document.new(text, {syntax_highlighter: :coderay,
 //   syntax_highlighter_opts: {line_numbers: false, default_lang: :ruby}}
-//   ).to_html run from C:/Ruby33-x64. The Ruby-cited internals ported:
+//   ).to_html run under Ruby 3.3. The Ruby-cited internals ported:
 //   kramdown converter/base.rb:222-240 (generate_id + the used-id "-1"
 //   suffix), converter/html.rb (block/span shapes), parser/kramdown/smart_quotes.rb:121-152
 //   (the SQ_RULES table, verbatim), typographic_symbol.rb:13-17

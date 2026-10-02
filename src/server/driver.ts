@@ -1,6 +1,9 @@
-// The one seam every storage provider plugs into. From
-// workspace docs/plans/decko-typescript-edge-port-strategy.md (v2, section 2.1).
-// Upstream proposal: decko-commons/decko#1282.
+// The one seam every storage provider plugs into. The adapter contract
+// follows the provider-adapter requirement in docs/core/architecture.md:
+// declare transaction/isolation, rollback, search, collation, generated-ID,
+// time and resource-limit behavior, and reject unsupported operations
+// explicitly rather than silently weakening semantics. Upstream proposal:
+// decko-commons/decko#1282.
 //
 // Rules: the engine never imports vendor SDKs. Adapters implement this
 // interface per provider (D1, libSQL-over-HTTP, ...). Every adapter passes
@@ -31,4 +34,14 @@ export interface SQLDatabaseDriver {
   batch(statements: SQLStatement[]): Promise<SQLQueryResult[]>;
 }
 
-// Blob storage driver (R2 / Bunny Storage / S3-compatible) — wave 2.
+/** SQL providers report the last inserted row id as 0 when the statement
+ *  inserted nothing. The driver contract treats lastInsertRowId as
+ *  optional, so 0 becomes "omitted" (undefined). Shared by the driver
+ *  adapters. */
+export function rowIdOrOmit(lastRowId: number | bigint | undefined): number | bigint | undefined {
+  if (lastRowId === undefined) return undefined;
+  return BigInt(lastRowId) > 0n ? lastRowId : undefined;
+}
+
+// No blob-storage driver (R2 / Bunny Storage / S3-compatible) exists yet;
+// SQLDatabaseDriver is the only driver seam an adapter implements today.

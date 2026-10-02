@@ -535,3 +535,25 @@ export function defaultFollowNotifyDeps(
     defaultFrom: "",
   };
 }
+
+// ---------------------------------------------------------------------------
+// Read-walk exports: the follow VIEWS walk the
+// same rule algebra the notify path resolves (follow_rule_option /
+// follow_rule_content / the preference index / the set-pattern walk).
+// The functions above were module-private for the notify stream; the
+// follow-rule read walk (src/card/follow/follow-rule-walk.ts) reuses them
+// here instead of duplicating the SQL.
+// ---------------------------------------------------------------------------
+
+export {
+  followerCandidateIds,
+  optionApplies,
+  setPatternsOf,
+  preferenceRows,
+  indexPreferenceRows,
+  enumeratedUserIds,
+  followRuleContent,
+  followRuleOption,
+  optionCodeOfLine,
+};
+export type { CardSetPattern, PreferenceIndex, PreferenceRow };

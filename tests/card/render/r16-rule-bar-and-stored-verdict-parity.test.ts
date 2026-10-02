@@ -117,6 +117,18 @@ async function seedDeck(): Promise<void> {
   await seedReference(s, 52, 7, "anyone_signed_in");
   void SETTING_TYPE_ID;
 
+  // The *recent settings card (lane p22-rules-table): the recent category
+  // membership is DECK DATA — setting_categories.rb:64-67 reads
+  // Card[:recent_settings].item_cards — so the fixture now carries the
+  // corpus's *recent settings card (row 23808's 21-item list, verbatim).
+  await seedCard(s, {
+    id: 42,
+    name: "*recent settings",
+    codename: "recent_settings",
+    typeId: LIST_TYPE_ID,
+    dbContent:
+      "*read\n*structure\n*script\n*content options\n*input type\n*default\n*layout\n*help\n*thanks\n*update\n*guide\n*head\n*follow\n*style\n*content option view\n*create\n*follow fields\n*delete\n*captcha\n*table of contents\n*comment",
+  });
   // *structure rules deny Anonymous deck-wide at RIGHT precedence
   // (*structure+*right+*read -> [[Anyone Signed In]], the corpus rule 22417):
   // the templating group's FIRST li must stay a quiet span.
@@ -143,7 +155,7 @@ beforeAll(async () => {
   const settingNames = [
     "*read", "*default", "*autoname", "*structure", "*create", "*update",
     "*delete", "*captcha", "*head", "*layout", "*style", "*script", "*help",
-    "*input type", "*guide", "*thanks", "*follow",
+    "*input type", "*guide", "*thanks", "*follow", "*recent settings",
   ];
   for (const name of settingNames) {
     try {

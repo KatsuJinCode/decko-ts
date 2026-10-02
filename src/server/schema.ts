@@ -1,9 +1,8 @@
 // Row types and table/column inventory for the CORE decko schema, derived
-// from the production MySQL truth (db/schema.mysql-reference.sql, extracted
-// from the SourceDeck 2026-09-07 mysqldump) and hand-converted to SQLite
-// in db/schema.sqlite.sql. Field names, order, and nullability mirror the
-// MySQL CREATE TABLE statements exactly. Full mapping rationale lives in
-// docs/schema-notes.md.
+// from the production MySQL schema (db/schema.mysql-reference.sql) and
+// hand-converted to SQLite in db/schema.sqlite.sql. Field names, order, and
+// nullability mirror the MySQL CREATE TABLE statements exactly. Full mapping
+// rationale lives in docs/schema-notes.md.
 //
 // Conventions:
 // * Field names are snake_case, matching the SQL column names and the Ruby

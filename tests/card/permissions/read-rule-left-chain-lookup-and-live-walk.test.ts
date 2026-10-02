@@ -33,7 +33,6 @@ import {
   seedCard,
   seedReference,
   type RenderTestStorage,
-  type SeedOptions,
 } from "../render/render-test-storage.js";
 
 // SET_TYPE_ID is the id of the card whose codename is "set" (the Set
@@ -50,37 +49,36 @@ const BASIC_TYPE_ID = 4; // the Basic cardtype row's id (Basic-typed rows)
  *  Role_A only, so the same chain must deny its child. */
 async function seedDualPathDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
-  const seed = (opts: SeedOptions): void => void seedCard(storage, opts);
 
-  seed({ id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
-  seed({ id: 2, name: "*read", codename: "read", typeId: SET_TYPE_ID });
-  seed({ id: 3, name: "Set", codename: "set", typeId: SET_TYPE_ID });
-  seed({ id: 13, name: "*self", codename: "self", typeId: SET_TYPE_ID });
-  seed({ id: 4, name: "Basic", typeId: BASIC_TYPE_ID });
-  seed({ id: 8, name: "Anonymous", codename: "anonymous", typeId: BASIC_TYPE_ID });
-  seed({ id: 9, name: "anyone", codename: "anyone", typeId: BASIC_TYPE_ID });
-  seed({ id: 11, name: "Role_A", codename: "role_a", typeId: BASIC_TYPE_ID });
+  await seedCard(storage, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 2, name: "*read", codename: "read", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 3, name: "Set", codename: "set", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 13, name: "*self", codename: "self", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 4, name: "Basic", typeId: BASIC_TYPE_ID });
+  await seedCard(storage, { id: 8, name: "Anonymous", codename: "anonymous", typeId: BASIC_TYPE_ID });
+  await seedCard(storage, { id: 9, name: "anyone", codename: "anyone", typeId: BASIC_TYPE_ID });
+  await seedCard(storage, { id: 11, name: "Role_A", codename: "role_a", typeId: BASIC_TYPE_ID });
 
-  seed({ id: 30, name: "*all+*read", leftId: 1, rightId: 2, typeId: SET_TYPE_ID, dbContent: "anyone" });
+  await seedCard(storage, { id: 30, name: "*all+*read", leftId: 1, rightId: 2, typeId: SET_TYPE_ID, dbContent: "anyone" });
   await seedReference(storage, 30, 9, "anyone");
-  seed({ id: 31, name: "*all plus+*read", rightId: 2, typeId: SET_TYPE_ID, dbContent: "_left" });
+  await seedCard(storage, { id: 31, name: "*all plus+*read", rightId: 2, typeId: SET_TYPE_ID, dbContent: "_left" });
 
-  seed({ id: 34, name: "HostB", typeId: BASIC_TYPE_ID, dbContent: "readable host" });
+  await seedCard(storage, { id: 34, name: "HostB", typeId: BASIC_TYPE_ID, dbContent: "readable host" });
   // The SELF set card row (type Set) is what the readable-rules SQL joins on
   // (read_rules.left_id = sets.id AND sets.type_id = Set); the rule hangs off it.
-  seed({ id: 39, name: "HostB+*self", leftId: 34, rightId: 13, typeId: SET_TYPE_ID });
-  seed({ id: 40, name: "HostB+*self+*read", leftId: 39, rightId: 2, typeId: SET_TYPE_ID, dbContent: "[[anyone]]" });
+  await seedCard(storage, { id: 39, name: "HostB+*self", leftId: 34, rightId: 13, typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 40, name: "HostB+*self+*read", leftId: 39, rightId: 2, typeId: SET_TYPE_ID, dbContent: "[[anyone]]" });
   await seedReference(storage, 40, 9, "anyone");
 
-  seed({ id: 33, name: "HostC", typeId: BASIC_TYPE_ID, dbContent: "locked host" });
-  seed({ id: 38, name: "HostC+*self", leftId: 33, rightId: 13, typeId: SET_TYPE_ID });
-  seed({ id: 32, name: "HostC+*self+*read", leftId: 38, rightId: 2, typeId: SET_TYPE_ID, dbContent: "[[Role_A]]" });
+  await seedCard(storage, { id: 33, name: "HostC", typeId: BASIC_TYPE_ID, dbContent: "locked host" });
+  await seedCard(storage, { id: 38, name: "HostC+*self", leftId: 33, rightId: 13, typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 32, name: "HostC+*self+*read", leftId: 38, rightId: 2, typeId: SET_TYPE_ID, dbContent: "[[Role_A]]" });
   await seedReference(storage, 32, 11, "role_a");
 
-  seed({ id: 12, name: "child", typeId: BASIC_TYPE_ID });
+  await seedCard(storage, { id: 12, name: "child", typeId: BASIC_TYPE_ID });
   // Stored compound rows WITHOUT a read_rule_id: the live walk decides.
-  seed({ id: 35, name: "HostB+child", leftId: 34, rightId: 12, typeId: BASIC_TYPE_ID, dbContent: "readable child" });
-  seed({ id: 36, name: "HostC+child", leftId: 33, rightId: 12, typeId: BASIC_TYPE_ID, dbContent: "locked child" });
+  await seedCard(storage, { id: 35, name: "HostB+child", leftId: 34, rightId: 12, typeId: BASIC_TYPE_ID, dbContent: "readable child" });
+  await seedCard(storage, { id: 36, name: "HostC+child", leftId: 33, rightId: 12, typeId: BASIC_TYPE_ID, dbContent: "locked child" });
   return storage;
 }
 

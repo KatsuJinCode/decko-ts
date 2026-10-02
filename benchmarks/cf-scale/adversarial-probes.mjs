@@ -233,7 +233,7 @@ const PROBES = [
   // ----- batch 04-routing-methods ------------------------------------------
   { id: "view-suffix-not-routed", batch: "04-routing-methods", path: "/Scale%20Page%201x/open", costClass: "point",
     checks: { status: 404, contains: ["No route for"] },
-    oracle: "deploy surface has NO view segment (deploy/worker.ts:419-421 — 'no slashes in this surface'); the ROOT worker.js:57-62 DOES route views. Ruby decko routes /name/view. Surface narrowing is deliberate; recorded so the remote diff flags regressions.",
+    oracle: "deploy surface has NO view segment (deploy/worker.ts:419-421 — 'no slashes in this surface'); the ROOT worker entry (worker.ts parsePath) DOES route views. Ruby decko routes /name/view. Surface narrowing is deliberate; recorded so the remote diff flags regressions.",
     note: "slash-path rejected" },
   { id: "post-card-405", batch: "04-routing-methods", method: "POST", path: "/Scale%20Page%201x", costClass: "point",
     checks: { status: 405, contains: ["method not allowed"] },

@@ -24,7 +24,9 @@
 //    7  AnyoneSignedIn  codename anyone_signed_in
 //    8  Administrator   codename administrator  typeId 9 (Role type)
 //    9  Role            codename role           (the Role CARDTYPE card)
-//   10  DeckoBot        codename deckobot
+//   10  Decko Bot       codename decko_bot      (real.yml:17-19's stored
+//                                                codename — the DeckoBotID
+//                                                the always_ok? case reads)
 //   14  *members        codename members        (the rolehash joint)
 //   15  *type           codename type
 //   16  *self           codename self
@@ -94,7 +96,7 @@ async function seedActorDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 7, name: "AnyoneSignedIn", codename: "anyone_signed_in" });
   await seedCard(s, { id: 8, name: "Administrator", codename: "administrator", typeId: ROLE_TYPE_ID });
   await seedCard(s, { id: 9, name: "Role", codename: "role" });
-  await seedCard(s, { id: 10, name: "DeckoBot", codename: "deckobot" });
+  await seedCard(s, { id: 10, name: "Decko Bot", codename: "decko_bot" });
   await seedCard(s, { id: 14, name: "*members", codename: "members" });
   await seedCard(s, { id: 15, name: "*type", codename: "type" });
   await seedCard(s, { id: 16, name: "*self", codename: "self" });

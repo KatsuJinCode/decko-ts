@@ -67,11 +67,21 @@ beforeAll(async () => {
   const bundle =
     outputs[0]?.output.find((chunk) => chunk.type === "chunk")?.code ?? "";
 
-  // Bundle hygiene: the Web-standard claim is executable. If the engine
-  // graph ever grows another Node import, THIS assertion fails the deploy
-  // proof instead of workerd failing at runtime with a cryptic
-  // "module not found".
-  expect(bundle).not.toContain("node:crypto");
+  // Bundle hygiene: the Web-standard claim is executable for EVERY node:
+  // specifier, not just node:crypto. The crypto-only check let a raw
+  // "node:fs" through (static import in
+  // src/card/render/coded-attachment-files.ts, hoisted to the bundle top by
+  // vite) and workerd failed the boot with `No such module "node:fs"`.
+  // Fixed 2026-09-29: that module reaches fs through a runtime
+  // process.getBuiltinModule probe with no import statement. workerd
+  // rejects any node: module unless nodejs_compat is on (deliberately not
+  // set), so this assertion — not the boot — is where a future Node import
+  // must fail the proof. The match anchors to import/require syntax so
+  // doc comments and the probe's own "node:fs" string argument never
+  // false-positive.
+  expect(
+    bundle.match(/(?:from\s*|import\s*\(\s*|import\s+|require\s*\(\s*)["']node:[a-z_]+["']/),
+  ).toBeNull();
   expect(bundle.length).toBeGreaterThan(10_000); // the engine actually came along
 
   // 2. Boot workerd via the miniflare-5-proven options path (see
@@ -214,19 +224,76 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     expect(body).toContain('data-card-name="Search"');
   });
 
-  it("GET /:card-name.json returns the card record with its type name", async () => {
+  it("GET /:card-name.json serves Ruby's json-format :molecule shape", async () => {
+    // The surfaces-batch1 lane's R3 closure (2026-09-29): the 200 body is
+    // the json format's show default :molecule — atom + items + links +
+    // ancestors + html_url + type nest + timestamps, wrapped by
+    // page_details (url + requested_at), pretty-printed — NOT the fork's
+    // former snake_case row dump. The byte pins live engine-side
+    // (tests/card/render/format-families-oracle.test.ts, fresh oracle
+    // capture fixtures/oracle-surfaces/json.jsonl).
     const response = await fetchPath("/Home.json");
     expect(response.status).toBe(200);
-    const record = (await response.json()) as {
+    expect(response.headers.get("Content-Type")).toContain("application/json");
+    const molecule = (await response.json()) as {
+      id: number;
       name: string;
-      key: string;
-      type_name: string | null;
-      db_content: string | null;
+      type: { id: number; name: string; type: string; url: string };
+      url: string;
+      codename?: string;
+      content: string;
+      items: unknown[];
+      links: unknown[];
+      ancestors: unknown[];
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      requested_at: string;
     };
-    expect(record.name).toBe("Home");
-    expect(record.key).toBe("home");
-    expect(record.type_name).toBe("Note");
-    expect(record.db_content).toContain("{{Demo Guide}}");
+    expect(molecule.name).toBe("Home");
+    expect(molecule.type.name).toBe("Note");
+    expect(molecule.url).toBe("/Home");
+    expect(molecule.html_url).toBe("/Home");
+    expect(molecule.content).toContain("{{Demo Guide}}");
+    expect(Array.isArray(molecule.items)).toBe(true);
+    expect(Array.isArray(molecule.links)).toBe(true);
+    expect(Array.isArray(molecule.ancestors)).toBe(true);
+    // Ruby Time#to_s shapes
+    expect(molecule.requested_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$/);
+    expect(molecule.created_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$/);
+  });
+
+  it("GET /:card-name.csv and /:card-name.rss serve the csv/rss format shows", async () => {
+    // The surfaces-batch1 lane's P11/P10 routes (engine_routes.rb:22
+    // `get "/:mark(.:format)"`): csv defaults :titled, rss defaults :feed
+    // with the rss_enabled config gate (default FALSE — the "RSS feeds
+    // disabled" string IS the Ruby default-state bytes).
+    //
+    // csv 500, not 200 (deploy-miniflare lane, 2026-10-02): this case
+    // originally wired `expect(csv.status).toBe(200)` with a loose body
+    // check, but that assertion was never green in any commit — born red
+    // at 6ad17162 (which added the pin and the worker's origin-prefix
+    // urlBase together), then masked behind this file's beforeAll dying at
+    // the :84 node:fs bundle assertion from d85cfa56 on. The captured Ruby
+    // shape for Home's csv is the RAISE: item_names reads the content as a
+    // newline list (collection item.rb; the csv probe — unresolvable lines
+    // become virtual items), so Home's single-HTML-line seeded content
+    // makes CSV.generate_line raise the NoMethodError recorded for
+    // Home|show_default_titled in the fresh capture — the same raise
+    // format-families-oracle.test.ts pins engine-side. Ruby answers the
+    // raise with its error page; the worker ports that as the 500 "Render
+    // error" page carrying the verbatim message.
+    const csv = await fetchPath("/Home.csv");
+    expect(csv.status).toBe(500);
+    expect(csv.headers.get("Content-Type")).toContain("text/html");
+    expect(await csv.text()).toContain(
+      "undefined method `each' for an instance of String",
+    );
+
+    const rss = await fetchPath("/Home.rss");
+    expect(rss.status).toBe(200);
+    expect(rss.headers.get("Content-Type")).toContain("application/rss+xml");
+    expect(await rss.text()).toBe("RSS feeds disabled");
   });
 
   it("GET /:card-name.json 404s unknown cards as JSON", async () => {

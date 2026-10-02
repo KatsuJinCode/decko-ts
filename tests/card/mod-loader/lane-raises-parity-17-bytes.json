@@ -1,0 +1,87 @@
+{
+  "card-mod-account/open": {
+    "view": "open",
+    "bytes": "<div id=\"oracle_account_open_probe-open-view\" class=\"card-slot open-view ALL TYPE-rich_text SELF-oracle_account_open_probe\" data-card-id=\"700\" data-card-name=\"Oracle Account Open Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Account_Open_Probe\" data-slot-id=\"48cb828c964880c7692f\" data-slot=\"{&quot;view&quot;:&quot;open&quot;,&quot;show&quot;:[&quot;open&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;]}\"><div class='accordion-item bar ALL TYPE-rich_text SELF-oracle_account_open_probe'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='accordion-button' data-bs-target='#card-oracle_account_open_probe-closed-collapse-id' data-bs-toggle='collapse' type='button'>\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Oracle Account Open Probe\">Oracle Account Open Probe</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n</button>\n</h2>\n<div class='show accordion-collapse collapse' id='card-oracle_account_open_probe-closed-collapse-id'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/Oracle_Account_Open_Probe&quot;&gt;Oracle Account Open Probe&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/RichText&quot;&gt;RichText&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Account_Open_Probe/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/Oracle_Account_Open_Probe/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div>\n</div>\n<div class='accordion-body d0-card-body'>\n<div id=\"oracle_account_open_probe-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_account_open_probe d0-card-content\" data-card-id=\"700\" data-card-name=\"Oracle Account Open Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Account_Open_Probe\" data-slot-id=\"2a75219a7fcd60335bbd\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;open&quot;,&quot;bar_bottom&quot;,&quot;content&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;content&quot;}\">probe</div>\n</div>\n</div>\n</div>\n</div>",
+    "length": 2782
+  },
+  "card-mod-account/title": {
+    "view": "title",
+    "bytes": "<span class=\"card-title\" title=\"Oracle Account Title Probe\">Oracle Account Title Probe</span>",
+    "length": 93
+  },
+  "card-mod-bootstrap/bar_middle": {
+    "view": "bar_middle",
+    "bytes": "",
+    "length": 0
+  },
+  "card-mod-bootstrap/bar_right": {
+    "view": "bar_right",
+    "bytes": "",
+    "length": 0
+  },
+  "card-mod-bootstrap/core": {
+    "view": "core",
+    "bytes": "probe",
+    "length": 5
+  },
+  "card-mod-email/core": {
+    "view": "core",
+    "bytes": "probe",
+    "length": 5
+  },
+  "card-mod-format/bar_right": {
+    "view": "bar_right",
+    "bytes": "",
+    "length": 0
+  },
+  "card-mod-permissions/core": {
+    "view": "core",
+    "bytes": "probe",
+    "length": 5
+  },
+  "card-mod-rules/bar": {
+    "view": "bar",
+    "bytes": "<div id=\"oracle_rule_bar_probe-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-oracle_rule_bar_probe\" data-card-id=\"708\" data-card-name=\"Oracle Rules Bar Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Rules_Bar_Probe\" data-slot-id=\"39c5d3322e2d626a2d1d\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;]}\"><div class='bar ALL TYPE-rich_text SELF-oracle_rule_bar_probe with-bar-menu nodblclick d-flex _card-link' data-card-id='708' data-card-link-name='Oracle_Rules_Bar_Probe' data-card-name='Oracle Rules Bar Probe' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"840c461094507f69af76\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Oracle Rules Bar Probe\">Oracle Rules Bar Probe</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Oracle_Rules_Bar_Probe\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Oracle_Rules_Bar_Probe?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Rules_Bar_Probe/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Oracle_Rules_Bar_Probe/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div>",
+    "length": 2404
+  },
+  "card-mod-rules/bar_bottom": {
+    "view": "bar_bottom",
+    "bytes": "<div id=\"oracle_rule_bar_bottom_probe-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_rule_bar_bottom_probe d0-card-content\" data-card-id=\"709\" data-card-name=\"Oracle Rules Bar Bottom Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Rules_Bar_Bottom_Probe\" data-slot-id=\"2042028772ff14e92ba4\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;bar_bottom&quot;,&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;}\">probe</div>",
+    "length": 525
+  },
+  "card-mod-rules/bar_middle": {
+    "view": "bar_middle",
+    "bytes": "",
+    "length": 0
+  },
+  "card-mod-rules/bar_right": {
+    "view": "bar_right",
+    "bytes": "",
+    "length": 0
+  },
+  "card-mod-script/core": {
+    "view": "core",
+    "bytes": "probe",
+    "length": 5
+  },
+  "card-mod-search/bar": {
+    "view": "bar",
+    "bytes": "<div id=\"oracle_search_bar_probe-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-oracle_search_bar_probe\" data-card-id=\"713\" data-card-name=\"Oracle Search Bar Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Search_Bar_Probe\" data-slot-id=\"3f1e624f2171beffecf9\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;]}\"><div class='bar ALL TYPE-rich_text SELF-oracle_search_bar_probe with-bar-menu nodblclick d-flex _card-link' data-card-id='713' data-card-link-name='Oracle_Search_Bar_Probe' data-card-name='Oracle Search Bar Probe' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"bbe2dcbab7dcf57736f9\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Oracle Search Bar Probe\">Oracle Search Bar Probe</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Oracle_Search_Bar_Probe\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Oracle_Search_Bar_Probe?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Oracle_Search_Bar_Probe/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Oracle_Search_Bar_Probe/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div>",
+    "length": 2420
+  },
+  "card-mod-search/title": {
+    "view": "title",
+    "bytes": "<span class=\"card-title\" title=\"Oracle Search Title Probe\">Oracle Search Title Probe</span>",
+    "length": 91
+  },
+  "card-mod-style/box": {
+    "view": "box",
+    "bytes": "<div class='box ALL TYPE-rich_text SELF-oracle_style_box_probe card _card-link nodblclick' data-card-id='715' data-card-link-name='Oracle_Style_Box_Probe' data-card-name='Oracle Style Box Probe' data-card-type-id='2' data-card-type-name='RichText' data-slot-id='662567d464314d3c4ba0'>\n<div class='box-top card-header text-center'>\n<a class=\"known-card\" href=\"/Oracle_Style_Box_Probe\"><span class=\"card-title\" title=\"Oracle Style Box Probe\">Oracle Style Box Probe</span></a>\n\n</div>\n<div class='box-middle card-body'>\n<div id=\"oracle_style_box_probe-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_style_box_probe d0-card-content\" data-card-id=\"715\" data-card-name=\"Oracle Style Box Probe\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Style_Box_Probe\" data-slot-id=\"b785c8dd99fd0d900f94\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;box&quot;,&quot;box_middle&quot;,&quot;content&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\">probe</div>\n</div>\n<div class='box-bottom card-footer text-center'>\n<div class=\"text-muted creator-credit\"></div>\n<div class=\"text-muted\"></div>\n</div>\n</div>\n",
+    "length": 1174
+  },
+  "card-mod-style/core": {
+    "view": "core",
+    "bytes": "probe",
+    "length": 5
+  }
+}

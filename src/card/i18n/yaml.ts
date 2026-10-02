@@ -18,7 +18,7 @@
 //
 // Reference: Ruby's i18n backend loads these via Psych YAML.load_file
 // (i18n-1.15.2/lib/i18n/backend/base.rb:261-271). The TS port parses the
-// same bytes with no npm install (per the ask's "no npm installs" rule).
+// same bytes with no npm install (this port takes no runtime npm dependency).
 
 /** A parsed YAML value. Leaves are always strings; intermediate nodes are
  *  objects with string keys (matching Ruby's Psych.load_file with

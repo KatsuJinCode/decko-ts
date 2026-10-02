@@ -38,7 +38,6 @@ import { basename } from "node:path";
 import { writeFileSync } from "node:fs";
 import {
   checksumTargetTable,
-  countAllTables,
   parseTargetSchema,
 } from "./import.mjs";
 
@@ -132,7 +131,6 @@ export async function verifyMigration(opts) {
   const { driver, importStats } = opts;
 
   const schema = parseTargetSchema(opts.ddlPath);
-  const targetCounts = await countAllTables(driver, schema.tableColumns);
 
   // 1+2. per-table parity
   const tables = {};
@@ -167,7 +165,6 @@ export async function verifyMigration(opts) {
     if (walked.resolved && (walked.name ?? "") !== "") junction.resolved += 1;
     else if (junction.unresolvedIds.length < 20) junction.unresolvedIds.push(id);
   }
-  void targetCounts;
 
   // 4. engine checks (spot-render + fixtures), when a bridge is injected
   let engine = { status: "skipped", reason: "no engine checks provider" };

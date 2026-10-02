@@ -1,0 +1,21 @@
+{
+  "no_write_proof": {
+    "actions_after": 4940,
+    "actions_before": 4940,
+    "unchanged": true
+  },
+  "registered_views": {
+    "all_content_format_view_smart_label": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-format-0.20.0/set/all/content.rb",
+        26
+      ]
+    }
+  },
+  "rendered": {
+    "Oracle Bare Smart Label Probe#smart_label": "Oracle Bare Smart Label Probe",
+    "Oracle Smart Label Probe#label": "Oracle Smart Label Probe",
+    "Oracle Smart Label Probe#smart_label": "Oracle Smart Label Probe <a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"probe description body\" class=\"ps-1 _popover_link\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>"
+  }
+}

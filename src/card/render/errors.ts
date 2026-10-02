@@ -1,7 +1,7 @@
 // Render-time error classes: TypeScript ports of the Ruby Card::Error
 // subclasses the html-format render pipeline raises. Each class preserves
 // its RUBY class name (`constructor.name`) so the corpus-v2 replay handler
-// (benchmarks/corpus-v2/replay-shard.test.ts render handler — read-only
+// (benchmarks/corpus-v2/replay-shard.bench.ts render handler — read-only
 // per the stream contract) emits the same CAPTURE_ERROR sentinel bytes the
 // Ruby capture recorded. The class name carries the colon-separator
 // because the test harness compares the literal class string, not a
@@ -107,6 +107,41 @@ export function dateError(message: string = "invalid date"): Error {
 /** Re-export for tests: the literal class name the harness expects. */
 export const DATE_ERROR_CLASS_NAME = "Date::Error";
 
+// ----------------------------------------------------------------------------
+// NoMethodError — `{{_main}}` in content with no main format
+// ----------------------------------------------------------------------------
+
+/** Ruby `NoMethodError`, raised by nesting/main.rb:12
+ *  `main.rendered || main_nest_render(opts)` when `main`
+ *  (nesting/subformat.rb:18-24) is nil: the format is at chain depth 0 and
+ *  was never flagged main (no process_layout.rb:19 `main!`, no nest.rb:46
+ *  `sub.main!`). That is a card whose content carries `{{_main}}` rendered
+ *  OUTSIDE a page render — a bare `card.format.render(:content)`.
+ *
+ *  The frozen record has exactly this: expected-v2/view-lane shard-000000
+ *  entry id 470 ("AsIn Layout", whose 469-byte dbContent is a whole layout
+ *  template) records
+ *  `CAPTURE_ERROR: NoMethodError: undefined method 'rendered' for nil` for
+ *  BOTH its :content and :open views. The message is reproduced verbatim so
+ *  the class name and message match the captured sentinel; the port raises
+ *  rather than inventing bytes for a shape Ruby cannot render. */
+class RubyNoMethodError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoMethodError";
+  }
+}
+Object.defineProperty(RubyNoMethodError, "name", { value: "NoMethodError" });
+
+/** The `{{_main}}`-with-no-main-format raise (nesting/main.rb:12). Message
+ *  and class name are the captured sentinel's, byte for byte. */
+export function mainNestWithoutMainError(): Error {
+  return new RubyNoMethodError("undefined method `rendered' for nil");
+}
+
+/** Re-export for tests: the literal class name the harness expects. */
+export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
+
 /** Test whether `content` is a valid date by the Ruby Date.parse contract.
  *  JS `new Date(str)` is stricter than Ruby's Date.parse (ISO 8601 and a
  *  few common formats vs. Ruby's many aliases) — for the captured deck
@@ -127,16 +162,59 @@ export const DATE_ERROR_CLASS_NAME = "Date::Error";
  *  20190319:render:content / :open entries (per-class-mechanisms.json
  *  handler_raised:Date::Error, 5 entries). The pre-checks below catch
  *  the compact and slashed forms Ruby accepts so the engine's
- *  prepare-phase raise skips parity with Ruby's accepted inputs. */
-export function isValidDateContent(content: string): boolean {
-  if (content === "") return false;
+ *  prepare-phase raise skips parity with Ruby's accepted inputs.
+ *
+ *  Dashed-numeric expansion (raise-leadview lane, 2026-09-29; every claim
+ *  below verified against this machine's ruby 3.3 Date.parse): Ruby parses
+ *  the dashed numeric forms `Y-M-D` with 1-4 digit years and 1-2 digit
+ *  month/day — "18-12-22" → 2018-12-22, "2010-7-19" → July 19 2010,
+ *  "999-1-1" → January 1, 0999 — where JS's ISO parser rejects every
+ *  non-padded component ("19-03-19" is Invalid Date). Two-digit (and
+ *  one-digit) years window as 00-68 → 2000+yy, 69-99 → 1900+yy
+ *  ("38-12-31" → 2038, "39-01-01" → 2039, "68-05-05" → 2068,
+ *  "69-1-1" → 1969). Month 0/13+ and impossible calendar days raise in
+ *  Ruby ("2019-13-01", "2021-02-29", "2019-05-0" → invalid date); the
+ *  UTC round-trip check below rejects the same. The pass-15 corpus holds
+ *  1,117 such date cards (shapes 99-99-99 / 9999-9-99 / 9999-9-9; the two
+ *  page-lane exemplars 20190319 "19-03-19" and 20220323 "22-03-23").
+ *  Conversely Ruby REJECTS bare-year digit strings JS accepts ("2016",
+ *  "1980", "1", "0" → invalid date — verified; the old JS fallback
+ *  rendered year-epoch dates for them), so any remaining all-digit
+ *  content that is not the 8-digit compact form raises here too.
+ *  (Ruby's bare 1-3 digit heuristics — "12" → Sep 12 of the current
+ *  year, "123" → day-of-year — are NOT ported: no corpus card carries
+ *  those shapes, and porting them would render dates Ruby renders while
+ *  the current gate raises. Honest remainder, zero graded surface.) */
+export function parseRubyDateContent(content: string): Date | null {
+  if (content === "") return null;
   // Compact YYYYMMDD — Ruby parses; JS does not.
   if (/^\d{8}$/.test(content)) {
     const y = Number(content.slice(0, 4));
     const m = Number(content.slice(4, 6));
     const d = Number(content.slice(6, 8));
-    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return true;
-    return false;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return new Date(Date.UTC(y, m - 1, d));
+    return null;
+  }
+  // Dashed numeric Y-M-D ("18-12-22", "2010-7-19", "999-1-1") — Ruby
+  // parses with the 00-68/69-99 two-digit-year window; JS rejects every
+  // non-padded component.
+  const dashMatch = /^(\d{1,4})-(\d{1,2})-(\d{1,2})$/.exec(content);
+  if (dashMatch !== null) {
+    let y = Number(dashMatch[1]);
+    const m = Number(dashMatch[2]);
+    const d = Number(dashMatch[3]);
+    if (y < 100) y += y <= 68 ? 2000 : 1900;
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    // Real-calendar check (Feb 29 on a non-leap year rolls March 1; day 0
+    // rolls to the previous month) — the round-trip rejects both, the
+    // same inputs Ruby's Date.parse raises on.
+    const date = new Date(Date.UTC(y, m - 1, d));
+    if (
+      date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d
+    ) {
+      return null;
+    }
+    return date;
   }
   // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
   // JS accepts only the US-style "M/D/YYYY" reliably.
@@ -145,15 +223,24 @@ export function isValidDateContent(content: string): boolean {
     const a = Number(slashMatch[1]);
     const b = Number(slashMatch[2]);
     const c = Number(slashMatch[3]);
-    if (a >= 1 && a <= 9999 && b >= 1 && b <= 12 && c >= 1 && c <= 31) return true;
-    return false;
+    if (a >= 1 && a <= 9999 && b >= 1 && b <= 12 && c >= 1 && c <= 31) {
+      return new Date(Date.UTC(a, b - 1, c));
+    }
+    return null;
   }
+  // Remaining all-digit strings: Ruby raises ("2016", "1980", "1", "0",
+  // "123456789" → invalid date — all verified); JS would silently render
+  // year-epoch dates for the short ones.
+  if (/^\d+$/.test(content)) return null;
   const parsed = new Date(content);
-  if (Number.isNaN(parsed.getTime())) return false;
+  if (Number.isNaN(parsed.getTime())) return null;
   // Date.parse in Ruby accepts many textual formats JS does not, but the
   // captured corpus's "invalid date" cases all carry obvious non-date
   // strings (random alphabetic content); JS's stricter check catches
-  // every one. The two edge cases JS would accept that Ruby would not
-  // ("0", "1" -> year 2000/2001) are not present in the corpus sweep.
-  return true;
+  // every one.
+  return parsed;
+}
+
+export function isValidDateContent(content: string): boolean {
+  return parseRubyDateContent(content) !== null;
 }

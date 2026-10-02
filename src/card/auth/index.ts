@@ -34,6 +34,20 @@ export {
   type AuthMigrationRunResult,
 } from "./migrations.js";
 export {
+  claimAnonymous,
+  claimUserId,
+  decodeAuthToken,
+  DEFAULT_TOKEN_EXPIRY_SECONDS,
+  encodeAuthToken,
+  PermissionDeniedError,
+  tokenExpiration,
+  validateAuthToken,
+  type ExtraTokenPayload,
+  type TokenClaimValue,
+  type TokenClaims,
+  type TokenRuntimeConfig,
+} from "./token.js";
+export {
   constantTimeEqual,
   generateSessionToken,
   SESSION_TOKEN_BYTES,
@@ -56,3 +70,40 @@ export {
   type SigninOutcome,
   type SigninSuccess,
 } from "./signin.js";
+export {
+  applyNewAccountPassword,
+  buildAccountTokenUrl,
+  confirmPasswordReset,
+  confirmAccountVerification,
+  sendResetPasswordToken,
+  type AccountFlowContext,
+  type PasswordResetConfirmation,
+  type PasswordWrite,
+  type ResetRequestOutcome,
+  type VerificationConfirmation,
+} from "./account-verify-reset-flows.js";
+// The first-run journey (Ruby Card::Auth.needs_setup? — card-1.110.0
+// lib/card/auth/setup.rb:33-52 — and the setup create from
+// card-mod-account set/type/user.rb). Its HTTP surface is the separate
+// module src/server/first-run-routes.ts, which is off unless
+// DECKO_FIRST_RUN=1.
+export {
+  checkNewAccountPassword,
+  countUserAccounts,
+  createOwnerAccount,
+  firstRunEnabled,
+  normalizeNewAccountEmail,
+  ownerCardNameFor,
+  setupWindowState,
+  SIGN_IN_PATH,
+  type CreateOwnerDeps,
+  type OwnerCreateFailure,
+  type OwnerCreateFailureReason,
+  type OwnerCreateOutcome,
+  type OwnerCreateSuccess,
+  type OwnerInputFailure,
+  type OwnerInputFailureReason,
+  type SetupWindowDeps,
+  type SetupWindowReason,
+  type SetupWindowState,
+} from "./first-run-setup.js";

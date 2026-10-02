@@ -1,0 +1,167 @@
+{
+  "provenance": {
+    "oracleAppDir": "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app",
+    "deckDb": "C:\\localProjects\\decko-ts\\tools\\oracle\\decko-oracle-app\\db\\development.sqlite3",
+    "capturedAt": "2026-09-29T21:40:59.061Z",
+    "captureTool": "tools/oracle/capture-oracle-upload-file-tree.mjs",
+    "method": "node fs readdir/readFile walk; better-sqlite3 readonly connection for the count",
+    "bootUsed": false,
+    "cardActionsCountBefore": 5018,
+    "cardActionsCountAfter": 5018,
+    "noWriteProof": true
+  },
+  "files": [
+    {
+      "path": ".keep",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "1346/5026.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "1347/5031.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "1353/1790675245.js",
+      "size": 3356,
+      "sha256": "64241c5368205db04497d1724f9555f89c1477483b61ab3f6bb596c7585bc55a"
+    },
+    {
+      "path": "1353/1790675726.js",
+      "size": 16516,
+      "sha256": "664213d33f5a1beb77e69ba69d86b4b9ce417ba53ef26fdfc584a88f5f421d11"
+    },
+    {
+      "path": "307/1790061389.js",
+      "size": 1063022,
+      "sha256": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865"
+    },
+    {
+      "path": "307/1790061390.js",
+      "size": 1063022,
+      "sha256": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865"
+    },
+    {
+      "path": "447/1790061390.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790659793.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790661047.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790661048.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790661341.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790661362.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    },
+    {
+      "path": "447/1790661394.css",
+      "size": 369645,
+      "sha256": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb"
+    }
+  ],
+  "uploadCache": [
+    {
+      "path": "1790386739-232505451132276-0001-2742/2061620260925-10464-7hkmfj.js",
+      "size": 1063024,
+      "sha256": "0d4a5014c8698787e698ebaeca93d48db00b0aaf97d460b46758e9fa5f9ac360"
+    },
+    {
+      "path": "1790386757-967392662043998-0001-5765/2061620260925-46256-271nvz.js",
+      "size": 1063024,
+      "sha256": "0d4a5014c8698787e698ebaeca93d48db00b0aaf97d460b46758e9fa5f9ac360"
+    },
+    {
+      "path": "1790386917-913802409449525-0001-0713/2061620260925-58544-mqc99c.js",
+      "size": 1063024,
+      "sha256": "0d4a5014c8698787e698ebaeca93d48db00b0aaf97d460b46758e9fa5f9ac360"
+    },
+    {
+      "path": "1790386994-17257811144043-0001-8509/2061620260925-38184-7cpwql.js",
+      "size": 1063024,
+      "sha256": "0d4a5014c8698787e698ebaeca93d48db00b0aaf97d460b46758e9fa5f9ac360"
+    },
+    {
+      "path": "1790660508-185471725919380-0001-8502/oracle_cw_probe.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "1790660591-975592098983358-0001-6374/oracle_cw_probe.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "1790660615-307707950949232-0001-7684/oracle_cw_probe.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "1790660882-150831355472157-0001-2413/diag6.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    },
+    {
+      "path": "1790660907-642799148372827-0001-8749/diag6.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    },
+    {
+      "path": "1790660930-516760929395169-0001-3145/diag6.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    },
+    {
+      "path": "1790661046-174333809046086-0001-6771/oracle_cw_probe.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "295/5023.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "295/5024.png",
+      "size": 1234,
+      "sha256": "a1111d0301d2a252e670b394ec43fd59124b39b573dd3172d7905a9dd3285d48"
+    },
+    {
+      "path": "295/5027.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    },
+    {
+      "path": "295/5028.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    },
+    {
+      "path": "295/5029.png",
+      "size": 202,
+      "sha256": "9492b353bbd5d499fc2131c83564e1af9e6fe8ea6702570a75c2bb82faf6ce2e"
+    }
+  ]
+}

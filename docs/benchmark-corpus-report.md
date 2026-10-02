@@ -199,11 +199,9 @@ write-path datapoint, not part of R1-R4.
 - **Determinism**: verified at the pipeline level (digest stability
   across Python hash seeds on a 1,934-row slice); a full byte-level
   re-run check of the 207 MB corpus was not performed.
-- **Repo checks at finish time**: `npx tsc --noEmit` over the whole repo
-  is red from concurrent in-flight work in `src/card/fetch/*` and
-  `src/cql/*` (other agents live in those directories); the benchmark
-  program's own TS (`benchmarks/**`) typechecks clean in isolation
-  (`tsc -p` with include limited to `benchmarks/**`: 0 errors), and
-  `npx vitest run` failures (10, all in `tests/cql/execution.test.ts`)
-  are likewise in the concurrently-edited CQL area, untouched by this
-  work.
+- **Repo checks at publication (2026-10-01)**: the standing verification
+  net (`tests/standing-net.json`, 68 files, run via
+  `node tools/test-queue/run-standing-net.mjs`) passes on the current
+  tree, and `npx tsc --noEmit` over the whole repo is clean (the
+  benchmark program's own TS typechecks in isolation via
+  `tsc -p` with include limited to `benchmarks/**`).

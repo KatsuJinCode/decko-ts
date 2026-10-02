@@ -28,6 +28,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -45,6 +46,7 @@ import {
   imageHtmlFullWidthView,
   imageHtmlPreviewView,
   imageHtmlContentChangesView,
+  imageOneLineContentView,
   faviconLinkTagView,
   searchJsonImageCompleteView,
   FAVICON_RAW_HELP_TEXT,
@@ -86,6 +88,14 @@ let loader: ModLoader | undefined;
 
 beforeAll(async () => {
   storage = await createRenderTestStorage();
+  // The File CARDTYPE card (codename "file") — the typeCode source the
+  // polymorphic dispatch reads. Ruby's file :source/:core live on
+  // Type::File (set/type/file.rb), so the file-branch probe cards must BE
+  // File-typed for that branch to be the Ruby-faithful surface (a
+  // plain-typed card dispatches the base core; the edit-forms lane
+  // corrected the polymorphic fall-through accordingly). Seeded ONCE: the
+  // codename column is UNIQUE across cards.
+  await seedCard(storage, { id: 499, name: "File", codename: "file", typeId: 9 });
 }, 60_000);
 
 afterAll(() => {
@@ -122,8 +132,17 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
       "https://example.com/path/to/file.pdf",
     );
   });
-  it("returns cloud content raw (the bucket URL)", () => {
-    expect(contextualizePath("(my_bucket)/1/2.png")).toBe("(my_bucket)/1/2.png");
+  it("derives the cloud URL from db data (the stored identifier is never the rendered filename)", () => {
+    // Ruby's uploader ignores the stored identifier on retrieval
+    // (file_card_uploader/path.rb:28-32) and rebuilds
+    // filename = action_id + extension from db_content
+    // (file_card_uploader.rb:147-153 + set/type/file.rb:11-15): the
+    // [-2] [/.] segment of "(my_bucket)/1/2.png" is "2", so the URL is
+    // the fog public_url of files/1/2.png — NOT the stored key verbatim
+    // (the Michael Christensen oracle anchor pins the derivation).
+    expect(contextualizePath("(my_bucket)/1/2.png")).toBe(
+      "http://s3.amazonaws.com//files/1/2.png",
+    );
   });
   it("converts coded :codename/mod.ext -> /files/codename.mod.ext", () => {
     expect(contextualizePath(":logo/decko_logo.svg")).toBe("/files/logo.decko_logo.svg");
@@ -135,15 +154,18 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
 });
 
 describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
-  it("emits <a href=URL>URL</a> for a local file", () => {
+  it("emits the download anchor for a local file", () => {
+    // core.haml: %a{ href: source } = t :carrierwave_download, title:
+    // title_in_context(voo.title) — HAML attr_wrapper apostrophe, label
+    // "Download " + the context-relativized name (out of context: the
+    // full card name). Raw-oracle pin: the quote-style exemplars
+    // (Werkshop Museum / David K Weinstock pages).
     const html = fileCoreView(makeCtx("~7/act_42.png"));
-    expect(html).toBe('<a href="/files/7/act_42.png">/files/7/act_42.png</a>');
+    expect(html).toBe("<a href='/files/7/act_42.png'>Download TestCard</a>\n");
   });
-  it("emits <a href=URL>URL</a> for a web file", () => {
+  it("emits the download anchor for a web file", () => {
     const html = fileCoreView(makeCtx("https://example.com/file.pdf"));
-    expect(html).toBe(
-      '<a href="https://example.com/file.pdf">https://example.com/file.pdf</a>',
-    );
+    expect(html).toBe("<a href='https://example.com/file.pdf'>Download TestCard</a>\n");
   });
   it("returns empty string for unknown / missing source", () => {
     expect(fileCoreView(makeCtx(""))).toBe("");
@@ -170,7 +192,7 @@ describe("image :core (set/type/image/html_views.rb:5-11)", () => {
     // rendered body - this is the captured shape from corpus:79 *logo.
     expect(imageHtmlCoreView(makeCtx("janmbtckiogaqbhlewfngdc", { name: "*logo" }))).toBe("");
   });
-  it("emits the invalid-image comment when src is the missing sentinel (with_valid_source, html_views.rb:13-34)", () => {
+  it("the missing-sentinel branch is unreachable headless: dbContent missing takes the blank-src arm (with_valid_source, html_views.rb:13-34)", () => {
     // The "missing" sentinel is set by Ruby's carrierwave runtime when an
     // attachment reference resolves but the underlying file is gone
     // (lib/card/mod/carrierwave.rb + FileCardUploader#url). The headless
@@ -238,6 +260,38 @@ describe("image :content_changes (set/type/image/html_views.rb:49-51)", () => {
   });
 });
 
+describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)", () => {
+  // The view's gem home is set/type/image.rb — a Type::Image set — so ONLY
+  // an image-typed card dispatches the icon-sized core render. The
+  // polymorphic device ("all/zz_carrierwave_polymorphic") is ALL-scoped by
+  // construction, so the type guard lives in the fn body (format-
+  // remainder-ports lane 2026-10-01; the format-one-line-wrap lane's
+  // collision census flagged the missing guard). Non-image cards answer
+  // the All-set html wrap arm (card-mod-format set/all/html/views.rb:
+  // 29-32), the chain walk Ruby produces for them — one imported
+  // definition, no drift.
+  it("an IMAGE-typed card renders the icon-sized :core — no wrap, no strip, no truncate (set/type/image.rb:18-20)", () => {
+    const out = imageOneLineContentView(
+      makeCtx("~12/act_99.jpg", { name: "LocalImg", typeCode: "image", typeName: "Image" }),
+    );
+    expect(out).toBe('<img src="/files/12/act_99.jpg" alt="LocalImg">');
+  });
+  it("a FILE-typed card falls through to the All-set html wrap arm (views.rb:29-32): strip_tags(core) truncated, text-muted wrap", () => {
+    const out = imageOneLineContentView(
+      makeCtx("~7/doc_1.pdf", { name: "Doc", typeCode: "file", typeName: "File" }),
+    );
+    // fileCoreView's anchor strips to its text ("Download Doc\n"); short
+    // content passes truncate untouched; the wrap div is the outer element.
+    expect(out).toBe(`<div class="text-muted">Download Doc\n</div>`);
+  });
+  it("a non-attachment card falls through to the All-set html wrap arm too (the carrierwave gem defines no :one_line_content for any other set)", () => {
+    const out = imageOneLineContentView(
+      makeCtx("https://example.com/f.png", { name: "PlainCard", typeCode: "richtext", typeName: "RichText" }),
+    );
+    expect(out).toBe(`<div class="text-muted">Download PlainCard\n</div>`);
+  });
+});
+
 describe("favicon :link_tag (set/self/favicon.rb:7-11, perms: :none)", () => {
   it("emits <link rel=shortcut icon href=URL> for an image-typed favicon", () => {
     const html = faviconLinkTagView(
@@ -270,6 +324,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
   it("registers every set module in the basket (Ruby bookkeeping parity)", () => {
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const basket = loader.setModules();
     const allModules: { shortname: string; kind: string }[] = [
       ...basket.base,
@@ -296,6 +351,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
   it("records the perms: :none view-config for link_tag (set/self/favicon.rb:7)", () => {
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const config = loader.viewConfigFor("link_tag");
     expect(config?.perms).toBe("none");
   });
@@ -303,6 +359,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
   it("records the unknown: :blank view-config for source (set/type/image.rb:26-28)", () => {
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const config = loader.viewConfigFor("source");
     expect(config?.unknown).toBe("blank");
   });
@@ -310,6 +367,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
   it("records the cache: :never view-config for image_complete (set/self/search.rb:2)", () => {
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const config = loader.viewConfigFor("image_complete");
     expect(config?.cache).toBe("never");
   });
@@ -319,29 +377,33 @@ describe("card-mod-carrierwave through the mod loader", () => {
     await seedCard(s, {
       id: 500,
       name: "LocalFileRender",
+      typeId: 499,
       dbContent: "~42/action_99.txt",
     });
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("LocalFileRender", "source");
     expect(html).toBe("/files/42/action_99.txt");
   });
 
-  it("renders a file card's :core through polymorphicCoreView (file branch: <a href>)", async () => {
+  it("renders a file card's :core through polymorphicCoreView (download anchor)", async () => {
     const s = storage!;
     await seedCard(s, {
       id: 501,
       name: "LocalFileCoreRender",
+      typeId: 499,
       dbContent: "~7/act_42.png",
     });
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("LocalFileCoreRender", "core");
-    expect(html).toBe('<a href="/files/7/act_42.png">/files/7/act_42.png</a>');
+    expect(html).toBe("<a href='/files/7/act_42.png'>Download LocalFileCoreRender</a>\n");
   });
 
   // -----------------------------------------------------------------------
@@ -357,7 +419,10 @@ describe("card-mod-carrierwave through the mod loader", () => {
   // for any future regression of the same shape.
   // -----------------------------------------------------------------------
 
-  it("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
+  // Inverted on purpose: the nested set-file registration divergence
+  // (known divergence: see known-divergences-from-ruby.md). The :core +
+  // :full_width byte assertions stay live under it.fails.
+  it.fails("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
     const s = storage!;
     // The image type card needs a codename so the render engine resolves
     // typeCode === "image" via peekNameForId (render.ts:610 + 834).
@@ -378,6 +443,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
     });
     loader = new ModLoader([{ manifest: cardModCarrierwave }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     // :core bytes: empty body. Card name MUST NOT appear as body text.

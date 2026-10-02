@@ -45,11 +45,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
-import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { RenderFormat, UnsupportedViewError } from "../../../src/card/render/format.js";
 import {
   ModLoader,
   modEngineHost,
@@ -194,6 +195,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModSearch }]);
     loadReport = loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     // A Search's cql name-in list matches the three item cards
@@ -271,6 +273,80 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     );
   });
 
+  // ---------------------------------------------------------------------
+  // mod-views-b lane, 2026-09-28. NO ORACLE CAPTURE of either view exists
+  // (the capture script never requested them), so these are SHAPE
+  // assertions derived from the Ruby source, NOT byte-pins, and are not
+  // reported as byte-verified anywhere.
+  // ---------------------------------------------------------------------
+
+  it("WITH the mod: :checkbox_list renders the search-checkbox-list wrapper (0_search/views.rb:118-124)", async () => {
+    const s = storage!;
+    const html = await s.engine.render("A Search", "checkbox_list");
+    // with_results yields; wrap_with :div, class: klass is a PLAIN div
+    // (card-mod-format set/all/html/wrap.rb:117-120 block form - no slot
+    // attributes), and Content#output joins the three items with "\n"
+    // (card-1.110.0 lib/card/format/content.rb:70-73). The captured oracle
+    // (search-list-views.json target 275, b1069e5) pins the wrapper's tail
+    // bytes as "</div></div>\n" - the block-form wrap_with newline lands
+    // AFTER the wrapper's close (the first shape assertion, endsWith
+    // "</div>", predated the capture and was falsified by it).
+    expect(html.startsWith('<div class="_search-checkbox-list pe-2">')).toBe(true);
+    expect(html.endsWith("</div>\n")).toBe(true);
+    // three checkbox_item haml blocks, in cql result order
+    expect(html.match(/class='w-100 d-flex align-items-center'/g)).toHaveLength(3);
+    expect(html.match(/<label class='p-2 w-100'>/g)).toHaveLength(3);
+    for (const [label, key] of [["Item One", "item_one"], ["Item Two", "item_two"], ["Item Three", "item_three"]]) {
+      // check_box_tag item_card.name, item_card.key, false (checkbox_item.haml:4)
+      expect(html).toContain(`name="${label}"`);
+      expect(html).toContain(`value="${key}"`);
+      expect(html).toContain('class="_checkbox-list-checkbox p-1 me-3"');
+    }
+    // the subformat slot wrap: no @current_view, so the literal "-view"
+    // class and the double-dash slot id (subformat.rb:8-12 + wrap.rb:32-34)
+    expect(html).toContain('id="item_one--view"');
+    expect(html).toContain("card-slot -view");
+    // items are joined by "\n" (exactly two separators for three items)
+    expect(html.split("\n</div>").length).toBeGreaterThan(1);
+  });
+
+  it("WITH the mod: :checkbox_list on an empty result set is the bare no-search-results div (views.rb:22-24 with_results)", async () => {
+    const s = storage!;
+    // with_results short-circuits BEFORE the wrapper div, so the list div
+    // is never emitted - the html no_search_results view (views.rb:126-128)
+    // stands alone.
+    expect(await s.engine.render("Empty Search", "checkbox_list")).toBe(
+      '<div class="search-no-results"></div>',
+    );
+  });
+
+  it("WITH the mod: :results_for_keyword raises off the *search card (set/self/search.rb is the SELF set - oracle-pinned)", async () => {
+    const s = storage!;
+    // self/search.rb:48 defines the view on Card::Set::Self::Search - the
+    // set of the card literally named "*search" - NOT on the search TYPE
+    // set. The oracle capture pins the truth (fixtures/captured/
+    // search-list-views.json, commit b1069e5): on the Search-typed cards
+    // "*roles+*right+*content options" (275) and "*script+*right+*content
+    // options" (304) Ruby raises Card::Error::UserError "view
+    // (results_for_keyword) not supported for ..." for all three actors;
+    // only *search itself renders ("" - the search_keyword request-param
+    // guard, search_params.rb:32-34, is false in every headless render).
+    // This test's original shape assertion ("" on "A Search") predates the
+    // capture and was falsified by it - expectation updated to the oracle,
+    // never the reverse.
+    await expect(s.engine.render("A Search", "results_for_keyword")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+  });
+
+  it("WITH the mod: the new views are refused off a non-Search card (set-scoped like the module's other views)", async () => {
+    const s = storage!;
+    await expect(s.engine.render("Item One", "checkbox_list")).rejects.toThrow(/checkbox_list/);
+    await expect(s.engine.render("Item One", "results_for_keyword")).rejects.toThrow(
+      /results_for_keyword/,
+    );
+  });
+
   it("WITH the mod: :one_line_content renders the link-item list (search_views.rb:40-48 + 0_search/views.rb:108-136)", async () => {
     const s = storage!;
     const html = await s.engine.render("A Search", "one_line_content");
@@ -321,10 +397,26 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(html).toContain("Item Two");
   });
 
-  it("WITH the mod: :select2_option renders the json hash bytes (autocomplete.rb:52-56)", async () => {
+  it("WITH the mod: the html format REJECTS :select2_option; the json format renders the hash bytes (autocomplete.rb:52-56)", async () => {
     const s = storage!;
-    const json = await s.engine.render("Item One", "select2_option");
-    expect(json).toBe('{"id":"~401","text":"Item One"}');
+    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the view
+    // lives in set/all/autocomplete.rb:52-56's `format :json` block -
+    // register_all_set_format files it under JsonFormat (set/format.rb:
+    // 137-139; registrar.rb:79-84 mixes it into THAT class only), so an
+    // HTML-format render has no method and raises unsupported-view. The
+    // pin used to receive the json bytes through the format-blind FLAT
+    // last-wins seam (the flat record now admits only html/base keys -
+    // mod-loader.ts registration seam; the census probe
+    // view-dispatch-flat-record-format-scope-census.test.ts pins the
+    // measured foreign rows). The json dispatch itself renders the hash
+    // through the owning format class below.
+    await expect(s.engine.render("Item One", "select2_option")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+    const card = await s.engine.prepareItemForRender("Item One");
+    expect(card).toBeDefined();
+    const fmt = new RenderFormat(card!, s.engine, { formatName: "json" });
+    expect(fmt.renderView("select2_option")).toBe('{"id":"~401","text":"Item One"}');
   });
 
   it("WITH the mod: every ported set module from the gem tree is in the basket", () => {
@@ -337,9 +429,11 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(abstractShortnames).toContain("Abstract::Search");
     expect(abstractShortnames).toContain("Abstract::Search::Views");
     expect(abstractShortnames).toContain("Abstract::SearchViews");
-    // the port registers no nonbase set modules (self/right/type files are
-    // method-only)
-    expect([...basket.nonbase.values()].flat()).toHaveLength(0);
+    // self/* -> nonbase bucket. The only self set module the port registers
+    // is self/search (self/search.rb:48, the :results_for_keyword haml view,
+    // added by the mod-views-b lane); the other self/right/type files are
+    // method-only.
+    expect([...basket.nonbase.values()].flat().map((m) => m.shortname)).toEqual(["Self::Search"]);
   });
 
   it("WITH the mod: the mod loader's load report lists every ported view", () => {
@@ -351,6 +445,9 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(report.registeredViews).toContain("goto_autocomplete_item");
     expect(report.registeredViews).toContain("add_autocomplete_item");
     expect(report.registeredViews).toContain("select2_option");
+    // 0_search/views.rb:118 + self/search.rb:48 (mod-views-b lane)
+    expect(report.registeredViews).toContain("checkbox_list");
+    expect(report.registeredViews).toContain("results_for_keyword");
   });
 
   it("WITH the mod: the view configs match the gem's view settings", () => {
@@ -376,7 +473,14 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(html).toContain("one body");
   });
 
-  it("WITH the mod: :count on a non-Search card delegates down the loader's view chain to card-mod-collection's count (set/format.rb:146-150 MRO)", async () => {
+  // Inverted on purpose: the include_set seam divergence (known
+  // divergence: see known-divergences-from-ruby.md) - with both mods
+  // loaded, the All::Item chain entry shadows the Abstract::Search flat
+  // :count registration; Ruby's include_set MRO gives the search module
+  // priority. The search-mod-only test above proves the same card renders
+  // the warm count when All::Item is not registered. The probe card IS
+  // Search-typed (deck-truth seed), so this is not a seed defect.
+  it.fails("WITH the mod: :count on a non-Search card delegates down the loader's view chain to card-mod-collection's count (set/format.rb:146-150 MRO)", async () => {
     const s = storage!;
     // Both mods, collection registered FIRST: the search mod's flat
     // registration wins the :count slot, and its fn hands non-Search
@@ -386,6 +490,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
       { manifest: cardModSearch },
     ]);
     bothLoader.load();
+    bindModLoaderToEngine(storage!, bothLoader);
     setDefaultModLoader(bothLoader);
     try {
       // Item One's dbContent "one body" -> the All::Item item count 1

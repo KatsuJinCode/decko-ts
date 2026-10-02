@@ -4,7 +4,7 @@ How the card ACTION layer (Set / Save / Update / Delete) works in the Ruby
 truth source and how `src/card/actions/` ports it. Every claim carries a
 `file:method` or `file:line` cite into the installed gems:
 
-- `card` — `C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0`
+- `card` — `gems/card-1.110.0`
 - `card-mod-history` — `...\gems\card-mod-history-0.20.0`
 - `card-mod-permissions` — `...\gems\card-mod-permissions-0.20.0`
 - `activerecord-7.2.3.2`

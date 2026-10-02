@@ -13,7 +13,11 @@
 // Routes (the whole surface):
 //   GET  /              -> render the "Home" card, :open view (HTML)
 //   GET  /:card-name    -> render that card, :open view (HTML)
+//   ...both of the above honor ?view=X (or ?v=X) - Ruby's card#read ->
+//   show(nil) -> view_from_params (rest.rb:100-103); a path view wins
 //   GET  /:card-name.json -> the card record as JSON
+//   GET  /:mark/view/:view  -> the same card, the named view
+//   GET  /:card-name/:view  -> ditto (engine_routes.rb:51)
 //   POST /api/query     -> { "cql": <CQL JSON> } body -> CQL result JSON
 //   GET  /_status        -> engine + database health JSON
 //   GET  /__metrics      -> per-isolate request/SQL/D1-rows aggregate
@@ -30,6 +34,10 @@ import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/
 import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
 import { RenderEngine } from "../src/card/render.js";
+import {
+  renderFormatShow,
+  type FormatEngineSurface,
+} from "../src/card/render/format-families.js";
 import { executeQuery } from "../src/cql/execute.js";
 import { CqlBadQuery } from "../src/cql/ast.js";
 import { DeckoName } from "../src/card/name.js";
@@ -102,15 +110,32 @@ function observeDriverQueries(driver: CloudflareD1Adapter, recorder: MetricsReco
   const rawQuery = driver.query.bind(driver) as ErasedQueryFn;
   (driver as { query: ErasedQueryFn }).query = async (sql, params) => {
     const result = await rawQuery(sql, params);
-    recorder.observeQuery({ rowsRead: result.rowsRead, rowsWritten: result.rowsWritten });
+    recorder.observeQuery({
+      sql,
+      rowsRead: result.rowsRead,
+      rowsWritten: result.rowsWritten,
+      // Exact iff the D1 adapter surfaced the provider's own counters
+      // (drivers/d1.ts maps meta.rows_read / meta.rows_written); an
+      // absent number leaves the recorder's ESTIMATE tally governing.
+      // The two fields were missing here and only surfaced when this lane's
+      // R4 route test made the worker part of the tsc program (tsconfig's
+      // include list has no deploy/**; nothing under src/ tests/ benchmarks/
+      // imported the worker before).
+      exact: typeof result.rowsRead === "number",
+    });
     return result;
   };
   const rawBatch = driver.batch.bind(driver);
   (driver as { batch: typeof rawBatch }).batch = async (statements) => {
     const results = await rawBatch(statements);
-    for (const result of results) {
-      recorder.observeQuery({ rowsRead: result.rowsRead, rowsWritten: result.rowsWritten });
-    }
+    results.forEach((result, index) => {
+      recorder.observeQuery({
+        sql: statements[index]?.sql ?? "",
+        rowsRead: result.rowsRead,
+        rowsWritten: result.rowsWritten,
+        exact: typeof result.rowsRead === "number",
+      });
+    });
     return results;
   };
 }
@@ -325,9 +350,93 @@ function decodeName(raw: string): string | undefined {
 // Route handlers
 // ---------------------------------------------------------------------------
 
-async function renderCardPage(deck: Deck, cardName: string): Promise<Response> {
+/** One resolved read route: the card's name plus the view to render it in.
+ *  `view` is undefined exactly when the path names no view (the bare
+ *  /:mark arm) - Ruby's show(nil), where view_from_params (the ?view=/?v=
+ *  query) fills the gap (rest.rb:92-103). The path-view arms always carry
+ *  the path's view. */
+type ParsedRoute =
+  | { readonly kind: "card"; readonly name: string; readonly view?: string }
+  /** A one-segment path whose mark decodes to nothing - the 400 the
+   *  single-segment route has always answered (not a missing route). */
+  | { readonly kind: "empty-name" }
+  /** Nothing in the grammar matches: the 404. */
+  | { readonly kind: "no-route" };
+
+/** The read-route grammar, in Ruby's own order (engine_routes.rb:19, 24, 51).
+ *
+ *  `/:mark`              line 19  - show(nil): the query param (or the
+ *                                  :open default) picks the view
+ *  `/:mark/view/:view`   line 24  - "simplifies API documentation"
+ *  `/:mark/:view`        line 51  - "for super-lazy under-achievers"
+ *
+ * The three remaining alternate GET lines are NOT here, and that is
+ * deliberate rather than forgotten:
+ *  - `new/:type` (line 22) builds a NEW card of a type (mark.rb:38-44
+ *    `view_does_not_require_name?` -> ViewOpts.unknown_ok[view]); it needs
+ *    the new-card view machinery this shell has no loader for.
+ *  - `type/:type` (line 23) renders the type's Search card (R6's page);
+ *    the CF shell has no search-card route.
+ *  - `card/:view(/:mark)` (line 25) is legacy and Ruby CONSTRAINS its view
+ *    to /new|edit/ — both of which need the same new/edit machinery as the
+ *    first entry. Unconstrained it would shadow nothing (three segments
+ *    with a literal "card" first are unambiguous), so it is left out until
+ *    the edit/new views land rather than half-served.
+ *
+ * An empty segment (a doubled slash) is not a card route, matching Rails:
+ * a path segment never goes empty in these patterns. */
+function parseCardRoute(pathname: string): ParsedRoute {
+  const segments = pathname.replace(/^\/+/, "").split("/");
+  if (segments.some((segment) => segment === "")) return { kind: "no-route" };
+
+  if (segments.length === 1) {
+    const name = decodeName(segments[0]!);
+    if (name === undefined || name === "") return { kind: "empty-name" };
+    // no view in the path: Ruby's card#read -> show(nil) - view_from_params
+    // consults the query before the :open default applies (rest.rb:92-103)
+    return { kind: "card", name };
+  }
+
+  if (segments.length === 3 && segments[1] === "view") {
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[2]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "no-route" };
+    }
+    return { kind: "card", name, view };
+  }
+
+  if (segments.length === 2) {
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[1]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "no-route" };
+    }
+    return { kind: "card", name, view };
+  }
+
+  return { kind: "no-route" };
+}
+
+/** view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
+ *  `%i[view v].each { |k| return params[k] if params[k].present? }` - the
+ *  first NON-BLANK of the two query params, nil when neither is present.
+ *  The value rides VERBATIM into the engine (Rack has already
+ *  percent-decoded it, exactly what URL.searchParams.get returns); the
+ *  underscore aliasing is a PATH-mark rule, never a params rule - so
+ *  ?view=no_such_view raises for an unregistered view the same way the
+ *  path arm does. */
+function queryViewFromUrl(url: URL): string | undefined {
+  for (const key of ["view", "v"] as const) {
+    const value = url.searchParams.get(key);
+    if (value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
+async function renderCardPage(deck: Deck, cardName: string, requestedView = OPEN_VIEW): Promise<Response> {
   try {
-    const view = await deck.render.render(cardName, OPEN_VIEW);
+    const view = await deck.render.render(cardName, requestedView);
     // Body wrapper = the live decko page shell (receipt:
     // brandonDojoTech/tmp/live-wire/Home.html line 81): everything visible
     // rides inside <article class="container flex-shrink-0" role="main"> —
@@ -346,7 +455,7 @@ async function renderCardPage(deck: Deck, cardName: string): Promise<Response> {
       `<!doctype html><html class="h-100"><head><meta charset="utf-8"><title>${escapeHtml(cardName)} — decko-ts</title>${PAGE_HEAD_TAGS}</head>` +
         `<body class="d-flex flex-column h-100">` +
         `<article class="container flex-shrink-0" role="main"><div id="main">` +
-        `<div class="card-view" data-card="${escapeHtml(cardName)}" data-view="${OPEN_VIEW}">${view}</div>` +
+        `<div class="card-view" data-card="${escapeHtml(cardName)}" data-view="${escapeHtml(requestedView)}">${view}</div>` +
         `<p><a href="/${encodeURIComponent(cardName)}.json">record JSON</a> · <a href="/_status">status</a></p>` +
         `</div></article></body></html>`,
     );
@@ -374,22 +483,84 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
   if (!readable) {
     return jsonResponse(403, { error: "permission denied", name: cardName });
   }
-  return jsonResponse(200, {
-    id: record.id ?? null,
-    name: record.name.s,
-    key: record.name.key ?? null,
-    type_id: record.typeId ?? null,
-    type_name: typeRecord?.name?.s ?? null,
-    codename: record.codename ?? null,
-    left_id: record.leftId ?? null,
-    right_id: record.rightId ?? null,
-    trash: record.trash,
-    created_at: record.createdAt ?? null,
-    updated_at: record.updatedAt ?? null,
-    creator_id: record.creatorId ?? null,
-    updater_id: record.updaterId ?? null,
-    db_content: record.dbContent ?? null,
-  });
+  // The 200 body is the RUBY JSON-FORMAT SHAPE (surfaces-batch1 lane,
+  // 2026-09-29): the json format's show default :molecule —
+  // atom + items + links + ancestors + html_url + type nest + timestamps,
+  // wrapped by page_details (url + requested_at), pretty-printed. The
+  // engine-side byte pins are tests/card/render/format-families-oracle.test.ts
+  // (fresh oracle capture, fixtures/oracle-surfaces/json.jsonl). The fork's
+  // former engine-record shape (snake_case row dump) was the R3 inventory
+  // divergence; the record row remains available over /api/query.
+  //
+  // 2026-10-02 (deploy-miniflare lane): no urlBase override. The capture's
+  // paths are RELATIVE ("/Home" — the runner oracle had no request host,
+  // format-families.ts FormatShowOptions.urlBase's documented default ""),
+  // and the miniflare deploy proof pins the captured shape. The former
+  // `urlBase: new URL(request.url).origin` prefix produced
+  // "https://<host>/Home" — a shape this port's own capture never
+  // recorded — and made the proof's molecule.url pin unpassable since the
+  // pin was written (6ad17162).
+  try {
+    const body = await renderFormatShow(formatEngineSurface(deck), cardName, "json");
+    return new Response(body, {
+      status: 200,
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return jsonResponse(500, { error: "json render failed", message });
+  }
+}
+
+/** The FormatEngineSurface wiring over the deck's engines. */
+function formatEngineSurface(deck: Deck): FormatEngineSurface {
+  return {
+    fetchRenderCard: (name: string) => deck.render.fetchRenderCard(name),
+    prepareItemForRender: (name: string) => deck.render.prepareItemForRender(name),
+    render: (name: string, view: string) => deck.render.render(name, view),
+    codenameById: async (id: number) => await deck.fetcher.codenames.nameForId(id),
+  };
+}
+
+/** The `/:mark.csv` and `/:mark.rss` route arms (engine_routes.rb:22
+ *  `get "/:mark(.:format)" => "card#read"`; the format families are the
+ *  surfaces-batch1 lane's P10/P11 ports, oracle-pinned in
+ *  tests/card/render/format-families-oracle.test.ts). */
+async function cardFormatShow(
+  deck: Deck,
+  cardName: string,
+  format: "csv" | "rss",
+): Promise<Response> {
+  const record = await deck.fetcher.fetchByName(cardName);
+  if (record === undefined || record.name === undefined) {
+    return jsonResponse(404, { error: "card not found", name: cardName });
+  }
+  const typeRecord =
+    record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+  const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
+  if (!readable) {
+    return jsonResponse(403, { error: "permission denied", name: cardName });
+  }
+  try {
+    const body = await renderFormatShow(formatEngineSurface(deck), cardName, format, {
+      // rss_enabled: Cardio.config default FALSE (lib/card/mod/format.rb:4);
+      // the fork carries no config override surface yet. No urlBase
+      // override either (see cardRecordJson): the capture's paths are
+      // relative and the deploy proof pins the captured shape.
+      rssEnabled: false,
+    });
+    const contentType =
+      format === "csv" ? "text/csv; charset=utf-8" : "application/rss+xml; charset=utf-8";
+    return new Response(body, {
+      status: 200,
+      headers: { "Content-Type": contentType },
+    });
+  } catch (error) {
+    // Ruby's csv raise becomes the 500 shape (the "Wild Card!" error page's
+    // route-level form; the csv NoMethodError raise is the oracle behavior).
+    const message = error instanceof Error ? error.message : String(error);
+    return errorPage(500, "Render error", message);
+  }
 }
 
 async function apiQuery(request: Request, deck: Deck): Promise<Response> {
@@ -516,11 +687,17 @@ export default {
 
     if (pathname === "/") {
       const deck = await getDeck(env);
-      return renderCardPage(deck, HOME_CARD_NAME);
+      // root "card#read" (engine_routes.rb:7): show(nil) - the query param
+      // picks the view, the :open default otherwise (rest.rb:92-103)
+      return renderCardPage(
+        deck,
+        HOME_CARD_NAME,
+        queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
+      );
     }
 
-    // GET /:card-name.json — the record JSON (checked before the render
-    // route so "Something.json" never renders as a card name).
+    // GET /:card-name.json — the card's json-format show (checked before
+    // the render route so "Something.json" never renders as a card name).
     if (pathname.endsWith(".json")) {
       const raw = pathname.slice(0, -".json".length).replace(/^\//, "");
       const name = decodeName(raw);
@@ -531,18 +708,59 @@ export default {
       return cardRecordJson(deck, name);
     }
 
+    // GET /:card-name.csv / .rss — the csv/rss format shows (the same
+    // `get "/:mark(.:format)"` route arm; the format URLs stay in the
+    // capture's relative shape — see cardRecordJson's 2026-10-02 note).
+    const csvSuffix = pathname.endsWith(".csv");
+    const rssSuffix = !csvSuffix && pathname.endsWith(".rss");
+    if (csvSuffix || rssSuffix) {
+      const suffix = csvSuffix ? ".csv" : ".rss";
+      const raw = pathname.slice(0, -suffix.length).replace(/^\//, "");
+      const name = decodeName(raw);
+      if (name === undefined || name === "") {
+        return jsonResponse(400, { error: "empty card name" });
+      }
+      const deck = await getDeck(env);
+      return cardFormatShow(deck, name, csvSuffix ? "csv" : "rss");
+    }
+
     // GET /:card-name — rendered :open view. Compound names ride the URL
     // the decko way: '+' is the joint, %20 (or the underscore alias) the
     // space within a part ("/Demo%20Guide+Section%20One"). No slashes in
     // this surface.
-    if (pathname.slice(1).includes("/")) {
+    //
+    // The ALTERNATE GET routes (R4) extend the same dispatch to the
+    // multi-segment forms Ruby's engine_routes.rb declares:
+    //   get ":mark/view/:view(.:format)" => "card#read"  (line 24)
+    //   get ":mark/:view(.:format)"        => "card#read"  (line 51)
+    // All three land on card#read, whose `read` -> `show` ->
+    // `view_from_params` reads params[:view] out of the PATH
+    // (decko-0.20.0 lib/card_controller/rest.rb:84-88, 100-103) — so the
+    // view name is taken verbatim and handed to the engine, which raises
+    // UnsupportedViewError for a view no module registers (the same raise
+    // Ruby hits when the template is missing). No allowlist here on
+    // purpose: a filter would silently answer 200-with-empty for a view
+    // Ruby cannot render either.
+    //
+    // The ?view=/?v= QUERY param (R4's named remainder) rides the same
+    // card#read contract: the bare /:mark arm is show(nil), so
+    // render_page's `view ||= view_from_params` (rest.rb:96, 100-103) fills
+    // the view from the query - first non-blank of params[:view],
+    // params[:v] - before the :open default. A path view (the action arg)
+    // never falls through to params. Root "/" is card#read too
+    // (engine_routes.rb:7) and gets the same treatment above.
+    const route = parseCardRoute(pathname);
+    if (route.kind === "no-route") {
       return errorPage(404, "Not found", "No route for " + pathname + " — try /<card-name> or /<card-name>.json");
     }
-    const name = decodeName(pathname.slice(1));
-    if (name === undefined || name === "") {
+    if (route.kind === "empty-name") {
       return jsonResponse(400, { error: "empty card name" });
     }
     const deck = await getDeck(env);
-    return renderCardPage(deck, name);
+    return renderCardPage(
+      deck,
+      route.name,
+      route.view ?? queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
+    );
   },
 };

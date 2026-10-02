@@ -70,6 +70,7 @@ import {
   type ActionResult,
   type Actor,
   type ActionRequest,
+  type AttachmentInput,
   type CanWriteHook,
   type CardActionSummary,
   type CreateCardInput,
@@ -103,6 +104,10 @@ import {
   type WriteTask,
 } from "../permissions/view-task-rules.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
+import {
+  ruleContentForCard,
+  ruleWalkPatternInput,
+} from "./rule-content-walk.js";
 import { isNewCard } from "../fetch/card-record.js";
 import {
   buildFollowNotifyHook,
@@ -116,11 +121,72 @@ import {
   type SavePathIntegrationHook,
 } from "../notify/index.js";
 import {
+  detectAttachmentExtension,
+  lastContentActionIdFromIdentifier,
+  localAttachmentIdentifier,
+} from "../attachments/attachment-content.js";
+import type { AttachmentStore } from "../attachments/attachment-store.js";
+import { changeValueForField, trackedFieldIndex } from "../history/change.js";
+import {
   clearReferencesOnDelete,
   refreshReferencesOut,
 } from "./refresh-references-out.js";
 import { refreshReferencesIn } from "./refresh-references-in.js";
 import { updateRefererContent } from "./update-referer-content.js";
+import {
+  runModEventStage,
+  type ModEventContext,
+  type ModEventRuntime,
+  type ModEventSaveInput,
+  type ModEventStageReport,
+  type ModEventRecaptchaVerify,
+} from "../mod-loader/mod-event-dispatch.js";
+import {
+  recaptchaSiteverifyGet,
+  RECAPTCHA_CARDIO_CONFIG_DEFAULTS,
+} from "../mod-loader/mods/card-mod-recaptcha.js";
+
+import type {
+  ModEngineHost,
+  ModEventCard,
+  ModEventFn,
+  ModEventStage,
+} from "../mod-loader/mod-manifest.js";
+import { isEditConflict } from "../mod-loader/mods/card-mod-history.js";
+import { expireRuleResolutionCache } from "../permissions/read-rules.js";
+
+/** The attachment mounts by type codename — the two sets that include
+ *  Abstract::Attachment and therefore run its events: `attachment :file`
+ *  (card-mod-carrierwave set/type/file.rb:1, File cards codename `file`)
+ *  and `attachment :image` (set/type/image.rb:1, Image cards codename
+ *  `image`). validate_file_exist's attachment_name and the multipart
+ *  route's card[<mount>] param names derive from these declarations. */
+const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
+  file: "file",
+  image: "image",
+};
+
+/** I18n :history_error_not_latest_revision - card-mod-history-0.20.0
+ *  config/locales/en.yml:2, "changes not based on latest revision". The
+ *  message detect_conflict puts on the card's :conflict error
+ *  (set/all/history/events.rb:20); the byte is the ORACLE's
+ *  (fixtures/captured/edit-forms.json conflict_probe errors_conflict). */
+const HISTORY_ERROR_NOT_LATEST_REVISION = "changes not based on latest revision";
+
+/** The janitor behaviors whose built-in call sites STAND DOWN when the
+ *  same-named event is registered at the save path's modEvents runtime —
+ *  the real batch (mod/core/set/all/reference_events.rb, ported in
+ *  core-mod.ts): Ruby has no built-in copy of these, the event IS the
+ *  code. Everything else (the trash/lexicon/type built-ins) keeps running
+ *  until its event body is ported — a registered STUB never suppresses its
+ *  built-in. */
+const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
+  "refresh_references_out",
+  "update_referer_content",
+  "update_referer_references_out",
+  "refresh_references_in",
+  "clear_references",
+]);
 
 export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
@@ -136,7 +202,11 @@ export interface CardActionEngineOptions {
    *  (saveTaskVerdictForCard — *create/*update/*delete walks with the
    *  actor's parties) runs first; a provided canWrite is then consulted
    *  per action with the card record (a new-card placeholder for creates)
-   *  and may deny further. It can never allow a write the rules denied. */
+   *  and may deny further. It can never allow a write the rules denied.
+   *  Consulted for ANONYMOUS sessions too — the hook's actor is then the
+   *  anonymous codename card (the id the write is attributed to); a
+   *  port-only seam (Ruby's permission chain has no host hook), so the
+   *  engine's contract is the only contract. */
   canWrite?: CanWriteHook;
   /** The save-path integration seam (card-mod-follow notify.rb — the
    *  integration stage runs AFTER expire, phases.rb:33-39). When empty or
@@ -157,6 +227,77 @@ export interface CardActionEngineOptions {
   notifyTransport?: NotifyTransport;
   /** Log sink for integration dispatch lines. */
   notifyLogger?: (line: string) => void;
+  /** The attachment storage seam (E4.4.a — card-mod-carrierwave's
+   *  CarrierWave::Storage::File port). Required for saves that carry an
+   *  `attachment` input; saves without one behave exactly as before. */
+  attachmentStore?: AttachmentStore;
+  /** The deck's file_storage config (Cardio.config.file_storage port;
+   *  undefined = the :local default, the oracle deck's
+   *  config_file_storage_default). Shapes validate_file_exist's web? arm:
+   *  on a :web deck a File/Image create takes its content as the source
+   *  URL ("url is missing" when blank); on :local/:cloud/:coded decks the
+   *  attachment arm always applies to creates (01_storage_type.rb:55-57 —
+   *  a NEW card's storage_type is storage_type_from_config, never from
+   *  content). The render engine's field of the same name models the same
+   *  config. */
+  fileStorage?: string;
+  /** THE ModEventFn EXECUTION SEAM (mod-loader/mod-event-dispatch.ts):
+   *  registered set-module events fire at their declared director stages
+   *  of every save this engine performs. When the runtime's registry
+   *  carries one of the real-batch janitor names (EVENT_TAKEOVER_BUILTINS),
+   *  this engine's built-in call for that behavior stands down — the
+   *  registered body IS the mechanism, Ruby's shape. Unregistered names
+   *  keep the built-in fallback, so a runtime with an empty registry (or
+   *  one without the core mod) behaves exactly as before. ABSENT (every
+   *  pre-existing caller) -> no dispatch at all, byte-identical behavior. */
+  modEvents?: ModEventRuntime;
+  /** The recaptcha config port (Cardio.config.recaptcha_* — the seven keys
+   *  card-mod-recaptcha lib/card/mod/recaptcha.rb:1-10 initializes).
+   *  ABSENT = no keys configured = recaptcha_keys? false = the guard is
+   *  off (recaptcha.rb:46-48) — the pre-port behavior, byte-identical.
+   *  The event :recaptcha validate wiring reads this when the mod's
+   *  runtime is composed (modEvents with the recaptcha registry). */
+  recaptcha?: CardActionRecaptchaConfig;
+}
+
+/** The recaptcha config + guard inputs the save path turns into the
+ *  event's guard snapshot (ModEventRecaptchaGuard). Ruby reads the same
+ *  values off Card.config / Env / Auth at validate time
+ *  (recaptcha.rb:16-23, 68-72). */
+export interface CardActionRecaptchaConfig {
+  /** Card.config.recaptcha_site_key / recaptcha_secret_key (:46-48). */
+  siteKey?: string;
+  secretKey?: string;
+  /** Cardio.config.recaptcha_minimum_score (:37; default 0.5,
+   *  lib/card/mod/recaptcha.rb:8). */
+  minimumScore?: number;
+  /** Cardio.config.recaptcha_verify_url (lib/card/mod/recaptcha.rb:9;
+   *  default the Google siteverify endpoint). */
+  verifyUrl?: string;
+  /** Auth.always_ok? (:20) — bot/bypass mode. The engine has no bot-act
+   *  surface; hosts that save under one pass true. Default false (the web
+   *  request shape, auth.rb's always_ok default). */
+  alwaysOk?: boolean;
+  /** Auth.needs_setup? (:21) — true until the deck's first admin exists.
+   *  Default false (a set-up deck; the seeded decks the engine saves into
+   *  are set up). */
+  needsSetup?: boolean;
+  /** `rule(:captcha)` for the card being saved (recaptcha.rb:22). UNDEFINED
+   *  (the default) = Ruby's mechanism: the storage walk resolves the
+   *  *captcha rule card from the deck's own rule cards (ruleContentForCard,
+   *  rule-content-walk.ts — rule/all.rb:5-15 + 66-73, the candidate walk in
+   *  pattern precedence). A function = the host's override read (resolved
+   *  per save, awaited); a plain value = a pre-resolved rule content; both
+   *  WIN over the walk (the host seam for decks whose rule cards do not
+   *  live in this engine's storage). Whatever resolves goes through
+   *  Card::Rule.toggle (rule.rb:11-13) — no resolved rule = guard off. */
+  captchaRuleContent?:
+    | unknown
+    | ((cardName: string) => unknown | Promise<unknown>);
+  /** The ::Recaptcha.get seam (recaptcha.rb:41-44). Default: the mod's
+   *  real recaptchaSiteverifyGet (a live HTTPS GET to the verify URL);
+   *  tests inject stubs. */
+  verify?: ModEventRecaptchaVerify;
 }
 
 /** Side-card resolution result for one compound name. */
@@ -184,6 +325,23 @@ export class CardActionEngine {
    *  built lazily on this engine's first gated save — the render side's
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
   private writeTaskState: ViewTaskState | undefined;
+  private readonly attachmentStore: AttachmentStore | undefined;
+  /** The deck's file_storage config port (CardActionEngineOptions.
+   *  fileStorage; undefined = :local). */
+  private readonly fileStorage: string | undefined;
+  /** The execution seam's runtime (CardActionEngineOptions.modEvents).
+   *  Undefined on every engine that does not opt in. */
+  private readonly modEvents: ModEventRuntime | undefined;
+  /** The recaptcha config port (CardActionEngineOptions.recaptcha).
+   *  Undefined = no keys configured = the captcha guard is off
+   *  (recaptcha.rb:46-48). */
+  private readonly recaptchaConfig: CardActionRecaptchaConfig | undefined;
+  /** event :recaptcha's captcha_used state (self/captcha.rb:7-13 — the
+   *  *captcha card's @captcha_used ivar, marked by the first validation in
+   *  a request, recaptcha.rb:52, and read by validate_recaptcha? :71 so
+   *  sibling cards skip). Ruby's lifetime is the request; the engine's is
+   *  the instance ("construct per request"). */
+  private captchaUsedThisRequest = false;
 
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
@@ -195,6 +353,10 @@ export class CardActionEngine {
     this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
+    this.attachmentStore = options.attachmentStore;
+    this.fileStorage = options.fileStorage;
+    this.modEvents = options.modEvents;
+    this.recaptchaConfig = options.recaptcha;
   }
 
   /** The shared entry: dispatches one request to its handler. */
@@ -230,13 +392,16 @@ export class CardActionEngine {
    */
   private async dispatchSavePathIntegrations(result: ActionResult | null): Promise<void> {
     if (result === null) return;
-    if (this.actor === null || this.actor.name === ANONYMOUS_ACTOR_NAME) return;
+    if (await this.isAnonymousSession()) return;
     const hooks = this.integrationHooks ?? [
       buildFollowNotifyHook(
         defaultFollowNotifyDeps(this.fetch, { followers: this.followerResolver }),
       ),
     ];
     if (hooks.length === 0) return;
+    // Unreachable (isAnonymousSession returned false); narrows for the
+    // actor read.
+    if (this.actor === null) return;
     const actor = { id: this.actor.id, name: this.actor.name, email: null };
     await runIntegrationHooks({
       actId: result.actId,
@@ -249,6 +414,165 @@ export class CardActionEngine {
   }
 
   // -----------------------------------------------------------------------
+  // Attachment finalization (E4.4.a — card-mod-carrierwave save events).
+  //
+  // Ruby's attachment save runs, in event order (set/abstract/attachment.rb
+  // + lib/carrier_wave/card_mount.rb): :save_original_filename (:20-24 —
+  // the action's comment carries the original filename), :write_identifier
+  // (:37-39 — self.content = attachment.db_content, the
+  // ~<card_id>/<action_id><ext> identifier), the :store phase (the row +
+  // action INSERT), then :store_attachment! (card_mount.rb:24-27 — the
+  // carrierwave store writes the bytes) and :correct_identifier (:13-17 —
+  // `update_column :db_content, attachment.db_content`, a raw column write
+  // fixing the stand-in ids the pre-insert identifier pass necessarily
+  // carried).
+  //
+  // This port inverts the same outcome into the writer's shape: the Act
+  // Writer assigns action ids by autoincrement, so the final identifier is
+  // only computable AFTER the write — exactly Ruby's reason for
+  // :correct_identifier. The engine therefore writes the rows first (the
+  // update path seeds the db_content change row with the Ruby-shaped
+  // intermediate `~<card>/<previous action><ext>` — FileCardUploader#
+  // action_id resolves last_content_action_id during prepare_to_store),
+  // then stores the bytes at <files_dir>/<card_id>/<action_id><ext>
+  // (paths.rb:14-16 + path.rb:33-39) and rewrites the identifier to the
+  // final action id. A create leaves NO change rows (first_create? — the
+  // writer's lazy backfill picks the final column value up on the first
+  // later update, history.rb:38-40), matching Ruby's create shape; an
+  // update's existing db_content change row is rewritten to the final
+  // identifier so revision selection (SelectedAction#
+  // last_content_action_id, set/type/file.rb:8-13) resolves the bytes of
+  // exactly the revision that stored them.
+  //
+  // DISCLOSED (code-read, not oracle-captured — no CarrierWave capture
+  // exists; the oracle harness performs read-side captures only, see
+  // docs/actions-port-notes.md): the change row of an update save carries
+  // the FINAL identifier here; Ruby's intermediate dance around the column
+  // write cannot be byte-verified without an oracle capture. The FINAL
+  // observable state (column + identifier parse + stored path + comment)
+  // is the pinned contract.
+  // -----------------------------------------------------------------------
+
+  /** Store one upload's bytes and rewrite the just-written rows to the
+   *  final identifier. Runs BEFORE the engine's cache expiry (the card
+   *  record the Lexicon caches must already carry the final content). */
+  private async finalizeAttachment(
+    cardId: number,
+    actionId: number,
+    attachment: AttachmentInput,
+    priorIdentifier: string | null,
+    verb: "create" | "update",
+  ): Promise<string> {
+    if (this.attachmentStore === undefined) {
+      // A programming/hosting error, not a domain rejection: an attachment
+      // input arrived on an engine constructed without a storage seam.
+      throw new Error(
+        "attachment save requires the engine's attachmentStore option (CardActionEngineOptions.attachmentStore)",
+      );
+    }
+    const ext = detectAttachmentExtension(attachment.originalFilename, attachment.bytes);
+    const stored = await this.attachmentStore.store({ cardId, actionId, ext, bytes: attachment.bytes });
+    const identifier = localAttachmentIdentifier(cardId, actionId, ext);
+
+    // :correct_identifier (attachment.rb:13-17): update_column :db_content —
+    // the raw column write, no history event, no timestamp bump.
+    await this.fetch.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
+      identifier,
+      cardId,
+    ]);
+    if (verb === "update") {
+      // The writer recorded a db_content change row (the intermediate
+      // identifier made the field "changed"); rewrite it to the final
+      // value so the action resolves to the bytes it stored.
+      const result = await this.fetch.driver.query(
+        "UPDATE card_changes SET value = ? WHERE card_action_id = ? AND field = ?",
+        [
+          changeValueForField("db_content", identifier),
+          actionId,
+          trackedFieldIndex("db_content"),
+        ],
+      );
+      if ((result.rowsAffected ?? 0) === 0 && priorIdentifier !== null) {
+        // Defensive: the expected row is missing (never observed). Insert
+        // rather than leave the action content-blind.
+        await this.fetch.driver.query(
+          "INSERT INTO card_changes (card_action_id, field, value) VALUES (?, ?, ?)",
+          [actionId, trackedFieldIndex("db_content"), changeValueForField("db_content", identifier)],
+        );
+      }
+    }
+    return identifier;
+  }
+
+  /** The attachment input's prior identifier for the update path's
+   *  intermediate seeding (see the finalizer's block comment): the
+   *  ~<card>/<previous action><ext> form FileCardUploader#action_id
+   *  produces at prepare_to_store time (:202-206 last_content_action_id;
+   *  the stand-in epoch arm exists but is unobservable here — the
+   *  intermediate is always rewritten). */
+  private attachmentIntermediateIdentifier(
+    cardId: number,
+    priorContent: string | null | undefined,
+    attachment: AttachmentInput,
+  ): string {
+    const ext = detectAttachmentExtension(attachment.originalFilename, attachment.bytes);
+    const priorAction = lastContentActionIdFromIdentifier(priorContent) ?? 0;
+    return localAttachmentIdentifier(cardId, priorAction, ext);
+  }
+
+  /** event :validate_file_exist, :validate, on: :create, skip: :allowed
+   *  (card-mod-carrierwave set/abstract/attachment.rb:26-34):
+   *
+   *    return if empty_ok?
+   *    if web?
+   *      errors.add "url is missing" if content.blank?
+   *    elsif !attachment.file.present?
+   *      errors.add attachment_name, "is missing"
+   *    end
+   *
+   *  The event lives in Abstract::Attachment, included by exactly the two
+   *  mount-typed sets (`attachment :file` set/type/file.rb:1, `attachment
+   *  :image` set/type/image.rb:1) — other types never run it. web? is
+   *  storage_type == :web (01_storage_type.rb:63-65), and a NEW card's
+   *  storage_type is storage_type_from_config (:55-57) — card[content]
+   *  never makes a create web, so on a :local deck the attachment arm
+   *  fires regardless of content. Message bytes: ActiveRecord::RecordInvalid
+   *  wraps save! failures as "Validation failed: #{full_messages.join(', ')}"
+   *  (activerecord-7.2.3.2 validations.rb:24-27 + locale/en.yml:17
+   *  record_invalid), each full message being "%{attribute} %{message}"
+   *  over the humanized attribute (activemodel-7.2.3.2 error.rb:15-56):
+   *  "File is missing" / "Image is missing"; the web arm's ONE-ARG
+   *  errors.add("url is missing") takes the default :invalid message, so
+   *  its full message computes to "Url is missing is invalid" (gem-source
+   *  computation, not live-verified).
+   *
+   *  empty_ok (attachment.rb:3,89-91 — the revision-restore arm,
+   *  :121-126) has no port surface yet: the engine's restore path runs
+   *  through UPDATE, which this create-only event never touches. */
+  private async validateFileExist(input: CreateCardInput, typeId: number): Promise<void> {
+    const typeRow = await this.fetchRowById(typeId);
+    const codename = typeRow?.codename ?? undefined;
+    const mount = codename !== undefined ? ATTACHMENT_MOUNTS[codename] : undefined;
+    if (mount === undefined) return;
+    if (this.fileStorage === "web") {
+      // the web arm: errors.add "url is missing" if content.blank?
+      const content = input.content ?? "";
+      if (content === "" || /^\s*$/.test(content)) {
+        throw new CardActionError(
+          "attachment-missing",
+          "Validation failed: Url is missing is invalid",
+        );
+      }
+      return;
+    }
+    if (input.attachment === undefined) {
+      // the attachment arm: errors.add attachment_name, "is missing"
+      const humanized = mount.charAt(0).toUpperCase() + mount.slice(1);
+      throw new CardActionError("attachment-missing", `Validation failed: ${humanized} is missing`);
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Set — Card.create! (director/card_class.rb:5-9: `card = new opts;
   // card.save!`). Junction names auto-create their side cards as subcards
   // in the same act; a name whose lex matches a trashed row revives that
@@ -256,8 +580,32 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
+    try {
+      return await this.createCardInner(input);
+    } finally {
+      this.pendingSaveInput = undefined;
+    }
+  }
+
+  private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
-    this.assertWritable();
+    // The anonymous-create arm: Ruby's create permission chain has NO
+    // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
+    // card (auth/current.rb:7-9 + auth/proxy.rb:33-35), and ok_to_create?
+    // (card-mod-permissions set/all/permissions.rb:120-125) runs for it
+    // exactly as for any other actor. The recorded site's own history is
+    // the proof the arm is live: 694 cards with creator_id = the anonymous
+    // codename card (id 15), 86 of them Signup — whose
+    // kfnvyby+*type+*create rule (6580) grants Anyone (its card_references
+    // row: referee_id 8). The acting id is the signed-in account or the
+    // Anonymous card; the RULE check (assertCanWrite) then decides
+    // allow/deny. Only a deck that cannot even form the anonymous actor
+    // (no anonymous codename card — a fragment seed; Ruby could not form
+    // Card[AnonymousID] there either) keeps the legacy signed-in-only
+    // rejection. Update and delete ride the same acting-id pattern
+    // (actingIdForWrite) — Ruby's chain rules all three tasks identically.
+    const actingId = await this.actingIdForWrite();
+    if (actingId === undefined) this.assertWritable();
     // extract_type_id! runs at Card.new time (type.rb:87-96), BEFORE the
     // validate-stage ok? check — so the permission gate sees the WOULD-BE
     // type and the *type+*create rule candidates resolve for the card
@@ -265,11 +613,26 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
-    const writer = this.newWriter();
+    const writer = this.newWriter(actingId);
     const result = await this.createInWriter(writer, input, {
       isActCard: true,
       resolvedTypeId: typeId,
     });
+    // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
+    // (Ruby's notify_followers is itself an integration event,
+    // card-mod-follow set/all/notify.rb:13-16).
+    await this.dispatchEventStage(
+      "integrate",
+      this.eventCard({
+        name,
+        id: result?.cardId,
+        key: name.key,
+        action: "create",
+        actId: result?.actId,
+        trash: false,
+        typeId,
+      }),
+    );
     await this.dispatchSavePathIntegrations(result);
     return result;
   }
@@ -285,11 +648,38 @@ export class CardActionEngine {
     opts: { isActCard: boolean; resolvedTypeId?: number },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
+    // The execution seam's validation-phase stages (director.rb:12-16
+    // VI/VP/VV). A new card has no id yet (director.rb:47 "has id" from
+    // store on) and no dirty set; every core event at these stages is a
+    // stub, so the walks fire nothing observable until those bodies
+    // land — the seams are the point.
+    const validationCard = (): ModEventCard =>
+      this.eventCard({
+        name,
+        key: name.key,
+        dbContent: input.content,
+        action: "create",
+        typeId: opts.resolvedTypeId,
+      });
+    await this.dispatchEventStage("initialize", validationCard());
+    await this.dispatchEventStage("prepare_to_validate", validationCard());
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
+    await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
+    // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
+    // :validate-stage event — its guard snapshot must exist before this
+    // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The
+    // walk's rule read evaluates on the acting (new) card with its resolved
+    // type — recaptcha.rb:22 rule(:captcha).
+    await this.prepareRecaptchaSaveInput(
+      input.recaptchaToken,
+      "create",
+      await ruleWalkPatternInput(this.fetch, { name, isNew: true, typeId }),
+    );
+    await this.dispatchEventStage("validate", validationCard());
 
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
@@ -301,6 +691,14 @@ export class CardActionEngine {
     const lex = this.lexOf(name, sides.leftId, sides.rightId);
     const trashed =
       lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+    // SP (director.rb:20): manage_trash/set_autoname's stage.
+    // add_comment (comment.rb:4-12) at the SP position — the append
+    // mutates input.content BEFORE the write branches read it (both the
+    // revival's after.db_content and the fresh INSERT compose from it).
+    await this.applyAddComment(input, "create", name, input.content ?? undefined, (c) => {
+      input.content = c;
+    });
+    await this.dispatchEventStage("prepare_to_store", validationCard());
 
     if (trashed !== undefined) {
       const before = cardFieldStateFromRow(trashed);
@@ -315,6 +713,26 @@ export class CardActionEngine {
         left_id: name.isSimple ? null : sides.leftId,
         right_id: name.isSimple ? null : sides.rightId,
       };
+      // SS (director.rb:21): the store-stage events run before the row
+      // write in Ruby (set_content mutates pre-insert, director/store.rb).
+      await this.dispatchEventStage(
+        "store",
+        this.eventCard({
+          name,
+          id: trashed.id,
+          key: name.key,
+          dbContent: input.content,
+          action: "create",
+          trash: false,
+          typeId,
+          changedFields: [
+            "name",
+            "type_id",
+            "trash",
+            ...((input.content ?? null) !== (trashed.db_content ?? null) ? ["db_content"] : []),
+          ],
+        }),
+      );
       const saved = await writer.updateCard({
         cardId: trashed.id,
         before,
@@ -353,21 +771,45 @@ export class CardActionEngine {
         verb: "create",
         codenameChanged: input.codename != null,
       });
-      // INTEGRATION (card_references write path): refresh_references_out on
-      // the revival save's content change (reference_events.rb:2-4,
-      // `on: :save, changed: :content` — the revival is a :create save).
-      await this.maybeRefreshReferencesOut({
-        cardId: trashed.id,
-        name,
-        contentBefore: trashed.db_content,
-        contentAfter: input.content ?? null,
-      });
-      // FINALIZE (card_references write path): refresh_references_in on the
-      // revival save (reference_events.rb:22-25 — changed: :name, on:
-      // :save). A :create save runs only the map_referees arm (the unmap
-      // arm needs action == :update), so dangling rows keyed to the revived
-      // name adopt the id (reference.rb:26-28).
-      await refreshReferencesIn(this.fetch.driver, trashed.id, name.key);
+      // FINALIZE (card_references write path) — the SEAM with takeover:
+      // the registered refresh_references_out / refresh_references_in
+      // bodies (core-mod.ts, reference_events.rb:2-4/:22-25) replace these
+      // built-ins when their names are registered; the revival's
+      // refresh_references_in is a :create save, so only the map_referees
+      // arm runs either way (the unmap arm needs action == :update).
+      await this.runFinalizeEvents(
+        this.eventCard({
+          name,
+          id: trashed.id,
+          key: name.key,
+          dbContent: input.content,
+          action: "create",
+          trash: false,
+          typeId,
+          changedFields: [
+            "name",
+            "type_id",
+            "trash",
+            ...((input.content ?? null) !== (trashed.db_content ?? null) ? ["db_content"] : []),
+          ],
+        }),
+        [
+          [
+            "refresh_references_out",
+            () =>
+              this.maybeRefreshReferencesOut({
+                cardId: trashed.id,
+                name,
+                contentBefore: trashed.db_content,
+                contentAfter: input.content ?? null,
+              }),
+          ],
+          [
+            "refresh_references_in",
+            () => refreshReferencesIn(this.fetch.driver, trashed.id, name.key),
+          ],
+        ],
+      );
       // FINALIZE: a revived RULE card still cascades (event
       // :cascade_read_rule, set/right/read.rb:9-14 — the revival's name is
       // changing).
@@ -385,14 +827,37 @@ export class CardActionEngine {
       };
     }
 
+    // SS (director.rb:21): store-stage events before the row write.
+    await this.dispatchEventStage(
+      "store",
+      this.eventCard({
+        name,
+        key: name.key,
+        dbContent: input.attachment !== undefined ? null : (input.content ?? null),
+        action: "create",
+        trash: false,
+        typeId,
+        changedFields: [
+          "name",
+          "type_id",
+          ...(input.attachment !== undefined || input.content != null ? ["db_content"] : []),
+          ...(input.codename != null ? ["codename"] : []),
+        ],
+      }),
+    );
     const created = await writer.createCard({
       name: name.isSimple ? name.s : null,
       key: name.isSimple ? name.key : null,
       type_id: typeId,
-      db_content: input.content ?? null,
+      // assign_set_specific_attributes (attachment.rb:90-97): an attaching
+      // save RESETS content — the identifier replaces any content argument.
+      db_content: input.attachment !== undefined ? null : (input.content ?? null),
       left_id: name.isSimple ? null : sides.leftId,
       right_id: name.isSimple ? null : sides.rightId,
       codename: input.codename ?? null,
+      // :save_original_filename (attachment.rb:20-24): the action comment
+      // carries the original upload filename on attachment creates.
+      comment: input.attachment?.originalFilename ?? null,
       // set_read_rule store event (permissions.rb:1-5): a create save always
       // derives (the new row's name/type attributes are changes). New cards
       // skip the *self pattern (pattern/all.rb:27-29), so `isNew: true`.
@@ -406,6 +871,20 @@ export class CardActionEngine {
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
     });
+    // :store_attachment! + :correct_identifier (the finalizer's block
+    // comment): bytes land at files/<card>/<action><ext> and the column
+    // carries the final identifier — BEFORE the cache expiry so the
+    // Lexicon's card record is never stale.
+    const attachmentIdentifier =
+      input.attachment !== undefined
+        ? await this.finalizeAttachment(
+            created.cardId,
+            created.actionId,
+            input.attachment,
+            null,
+            "create",
+          )
+        : null;
     await this.expireAfterWrite({
       cardId: created.cardId,
       nameAfter: name,
@@ -419,22 +898,46 @@ export class CardActionEngine {
     if (createdRow !== undefined) {
       await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), createdRow, true);
     }
-    // INTEGRATION (card_references write path): refresh_references_out on
-    // create (reference_events.rb:2-4) — fires only when content was
-    // actually set (a nil db_content on a new row is "unchanged" in Ruby's
-    // `changed: :content`).
-    await this.maybeRefreshReferencesOut({
-      cardId: created.cardId,
-      name,
-      contentBefore: null,
-      contentAfter: input.content ?? null,
-    });
-    // FINALIZE (card_references write path): refresh_references_in on the
-    // create save (reference_events.rb:22-25 — changed: :name, on: :save;
-    // :create action, so only map_referees runs): rows written earlier with
-    // this card's key and referee_id NULL — "L"/"I" rows for a not-yet-
-    // existing name and "P" partial rows — adopt the id (reference.rb:26-28).
-    await refreshReferencesIn(this.fetch.driver, created.cardId, name.key);
+    // FINALIZE — the SEAM with takeover (reference_events.rb:2-4/:22-25):
+    // the registered janitor bodies replace these built-ins when their
+    // names are registered at the runtime. refresh_references_out fires
+    // only when content was actually set (a nil db_content on a new row is
+    // "unchanged" in Ruby's `changed: :content`); refresh_references_in is
+    // a :create save, so only the map_referees arm runs either way.
+    await this.runFinalizeEvents(
+      this.eventCard({
+        name,
+        id: created.cardId,
+        key: name.key,
+        dbContent: attachmentIdentifier ?? (input.content ?? null),
+        action: "create",
+        trash: false,
+        typeId,
+        actId: created.actId,
+        changedFields: [
+          "name",
+          "type_id",
+          ...(input.attachment !== undefined || input.content != null ? ["db_content"] : []),
+          ...(input.codename != null ? ["codename"] : []),
+        ],
+      }),
+      [
+        [
+          "refresh_references_out",
+          () =>
+            this.maybeRefreshReferencesOut({
+              cardId: created.cardId,
+              name,
+              contentBefore: null,
+              contentAfter: attachmentIdentifier ?? input.content ?? null,
+            }),
+        ],
+        [
+          "refresh_references_in",
+          () => refreshReferencesIn(this.fetch.driver, created.cardId, name.key),
+        ],
+      ],
+    );
     return {
       cardId: created.cardId,
       actionId: created.actionId,
@@ -453,7 +956,24 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
-    this.assertWritable();
+    try {
+      return await this.updateCardInner(input);
+    } finally {
+      this.pendingSaveInput = undefined;
+    }
+  }
+
+  private async updateCardInner(input: UpdateCardInput): Promise<ActionResult | null> {
+    // The anonymous-update arm: same chain as create — ok_to_update?
+    // (permissions.rb:148-153 permit(:update) + the type-change clause)
+    // has NO signed-in clause; an anonymous session's Auth.as_id IS the
+    // Anonymous card (auth/current.rb:7-9 + proxy.rb:33-35). The recorded
+    // site's history proves the arm live: 1,808 live cards with
+    // updater_id = the anonymous codename card (id 15). Only a fragment
+    // seed (no anonymous codename card to act as) keeps the legacy
+    // signed-in-only rejection.
+    const actingId = await this.actingIdForWrite();
+    if (actingId === undefined) this.assertWritable();
     const row = await this.fetchRowById(input.cardId);
     // Card[id] of a missing or trashed card fetches nil (retrieval adds
     // trash = 0 — fetch/retrieval_from_db_query) and update! on nil fails;
@@ -480,27 +1000,116 @@ export class CardActionEngine {
       : undefined;
     const typeChanged = resolvedTypeId !== undefined && resolvedTypeId !== row.type_id;
     const card = await composeCardRecord(row, this.fetch.lexicon);
+    // The rename clause: Ruby evaluates the validate-stage permission check
+    // (event :check_permissions, permissions.rb:22-26) on the card with its
+    // ASSIGNED attributes — Card#name= writes the new name and re-derives
+    // left_id/right_id (name/all.rb:21-28, assign_side_ids :76-84), and
+    // assign_attributes' refresh_set_modules calls reset_patterns
+    // (mod/core/set/all/assign_attributes.rb:63-68), so the set patterns —
+    // and with them rule_lookup_keys (lib/card/set/pattern/all.rb:22-29,
+    // :66-68) — rebuild from the NEW name before ok_to_update? runs
+    // (permissions.rb:148-153). A name-changing save is therefore judged
+    // under the ASSIGNED name's anchors, not the old row's (the port's own
+    // captcha walk below already reads the assigned name). Passing the
+    // assigned name here closed the one-shot-rename over-allow; the rename
+    // clause additionally gates the sides the assigned name will CREATE —
+    // the act's new sidecards judged ok?(:create) in Ruby's validate stage
+    // (prepare_left_and_right, name_events.rb:67-72 -> prepare_new_side
+    // :137-142; check_permissions permissions.rb:22-26).
     await this.assertCanWrite(card, "update", {
       typeChanged,
       assignedTypeId: typeChanged ? resolvedTypeId : undefined,
+      assignedName:
+        input.name !== undefined ? DeckoName.parse(input.name).s : undefined,
     });
-    const writer = this.newWriter();
+    // detect_conflict (card-mod-history set/all/history/events.rb:19-22) is
+    // a :validate-stage event, so it runs after ok_to_update? and BEFORE
+    // anything persists - a stale-revision save is refused whole.
+    await this.assertNoEditConflict(row.id, input.lastActionIdBeforeEdit);
+    // save_draft (mod/core/set/all/content.rb:8-15) is a :store-stage event
+    // on :update when :draft? - `save_content_draft content; abort :success`.
+    // The abort rolls the cards row save back, so the draft's ONLY durable
+    // effect is its own act + draft action + db_content change (the writer's
+    // saveDraft, card-mod-history set/all/history.rb:88-94). The stages after
+    // :store (finalize, integrate, notify) never run on an aborted act.
+    if (input.draft === true) {
+      // save_draft (mod/core/set/all/content.rb:7-10) is a :store-stage
+      // event on :update when :draft? — by the time it runs, the whole
+      // validate stage (event :recaptcha included, recaptcha.rb:50-55) has
+      // already run, so Ruby refuses a guarded draft before the abort. The
+      // draft seam therefore runs the SAME validate walk as the full save
+      // before storing (this branch used to return before any
+      // validate-stage event, storing attacker content with zero siteverify
+      // calls — the bypass the shared walk closes). A refusal here throws
+      // before saveDraftInWriter persists anything.
+      await this.runUpdateValidationWalk(
+        row,
+        input,
+        cardFieldStateFromRow(row),
+        resolvedTypeId,
+      );
+      return this.saveDraftInWriter(this.newWriter(actingId), row, input);
+    }
+    const writer = this.newWriter(actingId);
     const result = await this.updateInWriter(writer, row, input, resolvedTypeId);
+    // II (director.rb:26): the integrate seam before the notify hooks (see
+    // the create path's note).
+    await this.dispatchEventStage(
+      "integrate",
+      this.eventCard({
+        name: result?.name,
+        id: result?.cardId ?? row.id,
+        action: "update",
+        actId: result?.actId,
+        trash: false,
+        typeId: row.type_id,
+      }),
+    );
     await this.dispatchSavePathIntegrations(result);
     return result;
   }
 
-  private async updateInWriter(
-    writer: ActWriter,
+  /** The update save's validate-stage walk (director.rb:12-16), shared by
+   *  the full update path and the DRAFT seam. Ruby runs the whole validate
+   *  stage — initialize, prepare_to_validate, the name legality/uniqueness
+   *  checks, event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55,
+   *  a :validate event) — before ANY :store-stage event, and save_draft
+   *  (mod/core/set/all/content.rb:7-10) is a :store-stage event on :update:
+   *  a guarded draft is refused in Ruby because validate already ran when
+   *  the draft aborts. Extracted so the draft seam runs the same walk
+   *  before storing (the draft branch previously returned before any
+   *  validate-stage event). The walk sees
+   *  the PRE-merge state (Ruby's card carries the ASSIGNED attributes
+   *  through these stages; this port's merges happen in the store phase —
+   *  a documented fidelity bound of the seam placement) and returns the
+   *  derived names the store phase needs. */
+  private async runUpdateValidationWalk(
     row: CardsRow,
     input: UpdateCardInput,
+    before: CardFieldState,
     preResolvedTypeId?: number,
-  ): Promise<ActionResult | null> {
-    const before = cardFieldStateFromRow(row);
-    const after: CardFieldState = { ...before };
+  ): Promise<{
+    currentName: DeckoName | undefined;
+    currentKey: string;
+    newName: DeckoName | undefined;
+    nameChanged: boolean;
+  }> {
     const currentName = await this.composedNameOf(row);
     const currentKey = this.keyOf(row, currentName);
     const newName = input.name !== undefined ? DeckoName.parse(input.name) : undefined;
+    const validationCard = (): ModEventCard =>
+      this.eventCard({
+        name: newName ?? currentName,
+        id: row.id,
+        key: currentKey,
+        dbContent: row.db_content,
+        action: "update",
+        trash: false,
+        typeId: row.type_id,
+        nameBeforeAct: currentName?.s,
+      });
+    await this.dispatchEventStage("initialize", validationCard());
+    await this.dispatchEventStage("prepare_to_validate", validationCard());
     // "name is changing" per Card::Dirty (lib/card/dirty.rb:57-60,
     // DirtyNames#name_is_changing? = `super || left_id_is_changing? ||
     // right_id_is_changing?`): the name COLUMN changed, or — the compound
@@ -528,6 +1137,43 @@ export class CardActionEngine {
       validateNameLegality(newName); // validate_legality_of_name
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
+    // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
+    // :validate-stage event — its guard snapshot must exist before this
+    // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The
+    // later add_comment SP application replaces pendingSaveInput with the
+    // comment input; this walk has already consumed the recaptcha one. The
+    // rule walk evaluates on the acting card under its ASSIGNED name and
+    // type (a type-changing save reads the would-be type, the
+    // patternInputFor convention) — recaptcha.rb:22 rule(:captcha).
+    const recaptchaWalkName = newName ?? currentName ?? DeckoName.parse("");
+    const recaptchaTypeId =
+      preResolvedTypeId !== undefined && preResolvedTypeId !== row.type_id
+        ? preResolvedTypeId
+        : row.type_id;
+    await this.prepareRecaptchaSaveInput(
+      input.recaptchaToken,
+      "update",
+      await ruleWalkPatternInput(this.fetch, {
+        name: recaptchaWalkName,
+        id: row.id,
+        isNew: false,
+        typeId: recaptchaTypeId,
+      }),
+    );
+    await this.dispatchEventStage("validate", validationCard());
+    return { currentName, currentKey, newName, nameChanged };
+  }
+
+  private async updateInWriter(
+    writer: ActWriter,
+    row: CardsRow,
+    input: UpdateCardInput,
+    preResolvedTypeId?: number,
+  ): Promise<ActionResult | null> {
+    const before = cardFieldStateFromRow(row);
+    const after: CardFieldState = { ...before };
+    const { currentName, currentKey, newName, nameChanged } =
+      await this.runUpdateValidationWalk(row, input, before, preResolvedTypeId);
 
     // extract_type_id! precedence (type.rb:81-92) — already resolved by the
     // gated act-card path (preResolvedTypeId); side/subcard callers resolve
@@ -583,6 +1229,34 @@ export class CardActionEngine {
 
     // Attribute merges.
     if (input.content !== undefined) after.db_content = input.content;
+    // add_comment (comment.rb:4-12) at the SP position — the pending
+    // content is the merged value (the requested content, else the row's
+    // current db_content, exactly Ruby's self.content on the update card);
+    // the append mutates both input.content and after.db_content BEFORE
+    // the writer call below persists them.
+    await this.applyAddComment(
+      input,
+      "update",
+      newName ?? currentName ?? DeckoName.parse(""),
+      after.db_content ?? undefined,
+      (c) => {
+        input.content = c;
+        after.db_content = c;
+      },
+    );
+    if (input.attachment !== undefined) {
+      // :write_identifier (attachment.rb:37-39) at prepare_to_store: the
+      // identifier computed BEFORE the action row exists uses
+      // last_content_action_id (FileCardUploader#action_id :202-206) — the
+      // Ruby-shaped intermediate the finalizer rewrites to the final
+      // action id right after the write. An attaching save discards any
+      // content argument (assign_set_specific_attributes :90-97).
+      after.db_content = this.attachmentIntermediateIdentifier(
+        row.id,
+        before.db_content,
+        input.attachment,
+      );
+    }
     if (resolvedTypeId !== undefined && resolvedTypeId !== before.type_id) {
       after.type_id = resolvedTypeId;
     }
@@ -608,8 +1282,20 @@ export class CardActionEngine {
           newName.rightName !== undefined
             ? await this.fetch.lexicon.id(newName.rightName)
             : undefined;
-        await assertNotOwnAncestor(this.fetch.driver, row.id, [peekedLeft, peekedRight]);
-        const sides = await this.ensureSides(writer, newName);
+        // prepare_obstructed_side (name_events.rb:144-150): a peeked side
+        // that IS this card is the OBSTRUCTED SELF side — ensureSides below
+        // restructures it (clear+recreate, the side becomes a FRESH card),
+        // so it is not a cycle edge; junction-cycle-detection.ts's own
+        // module doc names this direct case as the one Ruby restructures.
+        // Only the OTHER peeked sides can witness an ancestry cycle.
+        await assertNotOwnAncestor(
+          this.fetch.driver,
+          row.id,
+          [peekedLeft, peekedRight].filter(
+            (id): id is number => id !== undefined && id !== row.id,
+          ),
+        );
+        const sides = await this.ensureSides(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
         after.right_id = sides.rightId;
@@ -639,6 +1325,17 @@ export class CardActionEngine {
           })
         : undefined;
 
+    // The dirty set for the seam's changed:/changing: gates — Card::Dirty
+    // canonical columns (dirty.rb:8-10); the sides fold into name via
+    // nameChanged (DirtyNames, dirty.rb:57-60). Sides also move on a
+    // compound rename without a name-column change.
+    const updateChangedFields = [
+      ...(nameChanged ? ["name"] : []),
+      ...(after.left_id !== before.left_id && !nameChanged ? ["left_id"] : []),
+      ...(after.right_id !== before.right_id && !nameChanged ? ["right_id"] : []),
+      ...(after.db_content !== before.db_content ? ["db_content"] : []),
+      ...(after.type_id !== before.type_id ? ["type_id"] : []),
+    ];
     const saved = await writer.updateCard({
       cardId: row.id,
       before,
@@ -646,9 +1343,51 @@ export class CardActionEngine {
       key: nameChanged && newName !== undefined ? (newName.isSimple ? newName.key : null) : undefined,
       readRule,
       superActionId: input.superActionId ?? null,
+      // :save_original_filename (attachment.rb:20-24): the action comment
+      // carries the original upload filename on attachment updates.
+      comment: input.attachment?.originalFilename ?? null,
+      // The mount assignment is Ruby's dirty flag (write-path
+      // UpdateCardInput.dirtyFields): a re-upload whose intermediate
+      // identifier equals the current db_content is still a real save —
+      // without this the writer's no-op detection would drop it.
+      dirtyFields: input.attachment !== undefined ? ["db_content"] : undefined,
       isActCard: true,
     });
     if (saved === null) return null; // no-op save: nothing persisted
+    // SP (director.rb:20) + SS (director.rb:21): the storage-phase seams
+    // run for PERSISTED saves only — a no-op save produced no action for
+    // events to belong to (disclosed divergence: Ruby's director would
+    // walk the stages; this port pins events to persisted saves). Ruby's
+    // pre-write store mutations (set_content) stay built-in — the merge
+    // into `after` above is that port, as the file header records.
+    const storedCard = (): ModEventCard =>
+      this.eventCard({
+        name: nameChanged && newName !== undefined ? newName : currentName,
+        id: row.id,
+        key: nameChanged && newName !== undefined ? newName.key : currentKey,
+        dbContent: after.db_content,
+        action: "update",
+        actId: saved.actId,
+        trash: false,
+        typeId: after.type_id,
+        nameBeforeAct: currentName?.s,
+        changedFields: updateChangedFields,
+      });
+    await this.dispatchEventStage("prepare_to_store", storedCard());
+    await this.dispatchEventStage("store", storedCard());
+
+    // :store_attachment! + :correct_identifier — same finalization as the
+    // create path (see the finalizer's block comment), before expiry.
+    const attachmentIdentifier =
+      input.attachment !== undefined
+        ? await this.finalizeAttachment(
+            row.id,
+            saved.actionId,
+            input.attachment,
+            before.db_content ?? null,
+            "update",
+          )
+        : null;
 
     let subactions: CardActionSummary[] = [];
     if (renameSides !== undefined && renameSides.length > 0) {
@@ -668,34 +1407,63 @@ export class CardActionEngine {
       lexAfter: nameChanged ? lexAfter : undefined,
       verb: "update",
     });
-    // INTEGRATION (card_references write path): refresh_references_out on
-    // update (reference_events.rb:2-4) — `changed: :content` fires only
-    // when db_content actually changed in this save.
-    await this.maybeRefreshReferencesOut({
-      cardId: row.id,
-      name: nameAfter,
-      contentBefore: before.db_content,
-      contentAfter: after.db_content,
-    });
-    // FINALIZE (card_references write path, the rename seam): Ruby's
-    // finalize events run in definition order (reference_events.rb:7 then
-    // :22). update_referer_content (:7-10, `on: :update, changed: :name`)
-    // rewrites every referring card's content so its [[links]] /
-    // {{includes}} point at the new name — including referers of
-    // virtually-renamed descendants — and refresh_references_in (:22-25)
-    // backfills the referee_id columns (map_referees). The unmap_referees
-    // arm is gated on Ruby's skip_update_referers? (skip:
-    // :update_referer_content); this save path has no skip machinery yet,
-    // so it never fires here (refresh-references-in.ts).
-    if (nameChanged && nameAfter !== undefined && currentName !== undefined) {
-      await updateRefererContent(
-        { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
-        row.id,
-        currentName,
-        nameAfter,
-      );
-      await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key);
-    }
+    // FINALIZE (card_references write path) — the SEAM with takeover.
+    // Ruby's finalize events run in definition order (reference_events.rb:
+    // 2, :6, :15, :21): refresh_references_out (`on: :update, changed:
+    // :content`), then the rename pair — update_referer_content (:7-10,
+    // `on: :update, changed: :name`, skip: :allowed) and refresh_references_
+    // in (:22-25, backfill + the unmap arm the skip machinery now reaches).
+    // Registered REAL bodies replace these built-ins; the rename thunks
+    // keep their own nameChanged gate so the unregistered path is exactly
+    // the pre-seam behavior (update-referer-content.ts, refresh-references-
+    // in.ts).
+    await this.runFinalizeEvents(
+      this.eventCard({
+        name: nameAfter,
+        id: row.id,
+        key: nameChanged && newName !== undefined ? newName.key : currentKey,
+        dbContent: attachmentIdentifier ?? after.db_content,
+        action: "update",
+        actId: saved.actId,
+        trash: false,
+        typeId: after.type_id,
+        nameBeforeAct: currentName?.s,
+        changedFields: updateChangedFields,
+      }),
+      [
+        [
+          "refresh_references_out",
+          () =>
+            this.maybeRefreshReferencesOut({
+              cardId: row.id,
+              name: nameAfter,
+              contentBefore: before.db_content,
+              contentAfter: attachmentIdentifier ?? after.db_content,
+            }),
+        ],
+        [
+          "update_referer_content",
+          async () => {
+            if (nameChanged && nameAfter !== undefined && currentName !== undefined) {
+              await updateRefererContent(
+                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                row.id,
+                currentName,
+                nameAfter,
+              );
+            }
+          },
+        ],
+        [
+          "refresh_references_in",
+          async () => {
+            if (nameChanged && nameAfter !== undefined) {
+              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key);
+            }
+          },
+        ],
+      ],
+    );
     // STORE tail (event :set_field_read_rules, permissions.rb:7-9 — after
     // :set_read_rule, on: :update, changed: :type_id): a type-changing save
     // re-derives every field card.
@@ -720,6 +1488,72 @@ export class CardActionEngine {
       verb: "update",
       name: nameAfter,
       subactions,
+    };
+  }
+
+  /** detect_conflict + edit_conflict? (card-mod-history-0.20.0
+   *  set/all/history/events.rb:19-22, 65-72) - the stale-revision guard:
+   *  the save began at a revision that is no longer current AND the card's
+   *  last action belongs to somebody else. Ruby raises it as a VALIDATION
+   *  error (`errors.add :conflict, I18n.t(:history_error_not_latest_revision)`)
+   *  on the :validate stage, so nothing persists - the oracle probe
+   *  (fixtures/captured/edit-forms.json conflict_probe) records the message
+   *  "changes not based on latest revision" with card_actions 4881 -> 4881.
+   *
+   *  The comparison rides the ported guard `isEditConflict`
+   *  (card-mod-history.ts, events.rb:65-72 verbatim), whose three clauses
+   *  are: a before-edit id is present; it differs from last_action_id; the
+   *  last action's act actor is not the saving actor. last_action /
+   *  last_action_id read NON-DRAFT actions only (last.rb:53-55 over
+   *  card.rb:172 `has_many :actions, -> { where(draft: [nil, false]) }`),
+   *  so a draft save never trips this guard.
+   *
+   *  HTTP shape: a validation error is 422 (card-1.110.0 lib/card/error.rb:21
+   *  UserError), the same status the other validation rejections use. */
+  private async assertNoEditConflict(
+    cardId: number,
+    lastActionIdBeforeEdit: number | string | null | undefined,
+  ): Promise<void> {
+    if (lastActionIdBeforeEdit === null || lastActionIdBeforeEdit === undefined) {
+      return; // events.rb:66 - `last_action_id_before_edit &&`
+    }
+    const conflicted = await isEditConflict(
+      this.fetch.driver,
+      cardId,
+      lastActionIdBeforeEdit,
+      this.actor?.id ?? 0,
+    );
+    if (!conflicted) return;
+    throw new CardActionError("conflict", HISTORY_ERROR_NOT_LATEST_REVISION);
+  }
+
+  /** save_draft (mod/core/set/all/content.rb:8-15) - the autosave save. The
+   *  :store event records the draft's own history and then
+   *  `abort :success`, so the cards row never changes: the writer's
+   *  saveDraft (card-mod-history set/all/history.rb:88-94) is the whole
+   *  effect - clear this actor's earlier drafts, then a fresh act, an
+   *  action with draft=true + action_type :update, and one db_content
+   *  change. The result shape mirrors an ordinary update save (the route
+   *  stamps the saved name for the post-save bookkeeping either way); the
+   *  stages after :store do not run, so there is no integrate/notify pass
+   *  and no cards-row cache expiry to run. */
+  private async saveDraftInWriter(
+    writer: ActWriter,
+    row: CardsRow,
+    input: UpdateCardInput,
+  ): Promise<ActionResult> {
+    const name = await this.composedNameOf(row);
+    const saved = await writer.saveDraft({
+      cardId: row.id,
+      content: input.content ?? null,
+    });
+    return {
+      cardId: row.id,
+      actionId: saved.actionId,
+      actId: saved.actId,
+      verb: "update",
+      name,
+      subactions: [],
     };
   }
 
@@ -751,11 +1585,29 @@ export class CardActionEngine {
         verb: "update",
       });
       // FINALIZE (card_references write path): the obstacle's own save!
-      // runs refresh_references_in too (reference_events.rb:22-25). Its
-      // update_referer_content twin no-ops in Ruby as well — a trashed
-      // card's referers resolve to nil and drop out (all.rb:23 Array#
-      // compact) — so only the map arm is ported here.
-      await refreshReferencesIn(this.fetch.driver, obstacle.id, obstacleName.key);
+      // runs refresh_references_in too (reference_events.rb:22-25) —
+      // through the same seam. Its update_referer_content twin no-ops in
+      // Ruby as well — a trashed card's referers resolve to nil and drop
+      // out (all.rb:23 Array#compact) — so only the map arm is ported here.
+      await this.runFinalizeEvents(
+        this.eventCard({
+          name: obstacleName,
+          id: obstacle.id,
+          key: obstacleName.key,
+          dbContent: obstacle.db_content,
+          action: "update",
+          trash: true,
+          typeId: obstacle.type_id,
+          nameBeforeAct: obstacle.name ?? undefined,
+          changedFields: ["name"],
+        }),
+        [
+          [
+            "refresh_references_in",
+            () => refreshReferencesIn(this.fetch.driver, obstacle.id, obstacleName.key),
+          ],
+        ],
+      );
     }
   }
 
@@ -768,7 +1620,30 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async deleteCard(input: DeleteCardInput): Promise<ActionResult | null> {
-    this.assertWritable();
+    try {
+      return await this.deleteCardInner(input);
+    } finally {
+      this.pendingSaveInput = undefined;
+    }
+  }
+
+  private async deleteCardInner(input: DeleteCardInput): Promise<ActionResult | null> {
+    // The anonymous-delete arm: ok_to_delete? (permissions.rb:155-157
+    // `permit :delete`) has NO signed-in clause — the chain rules it
+    // identically to create/update. Corpus adjudication (a probe against
+    // the capture corpus): 8 trashed cards with updater_id = the anonymous
+    // codename card (id 15) — the trash save re-stamps updater_id
+    // (set_stamper, account.rb:20-23), so those rows are anonymous-actor
+    // writes on end-trashed cards. Fragment seed keeps the legacy rejection.
+    const actingId = await this.actingIdForWrite();
+    if (actingId === undefined) this.assertWritable();
+    // The execution seam's initialize stage (director.rb:14 — VI). Core's
+    // initialize-stage event (admin_tasks) is Self-scoped; without a
+    // setMember resolver the walk reports it set-not-applicable.
+    await this.dispatchEventStage(
+      "initialize",
+      this.eventCard({ name: undefined, id: input.cardId, action: "delete" }),
+    );
     const row = await this.fetchRowById(input.cardId);
     if (row === undefined) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
@@ -783,14 +1658,67 @@ export class CardActionEngine {
         `card has a codename and cannot be deleted: ${card.name?.s ?? `~${row.id}`}`,
       );
     }
+    // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
+    // :validate-stage event with NO `on:` clause — Ruby's delete! IS an
+    // update save with trash: true (trash.rb:11-21 add_to_trash ->
+    // update!), so the guard reaches the delete save exactly as it reaches
+    // create/update, and its snapshot must exist before this walk
+    // (prepareRecaptchaSaveInput no-ops without the mod/config). The walk's
+    // rule read evaluates on the card under its CURRENT name and stored
+    // type — recaptcha.rb:22 rule(:captcha). The permission check above
+    // (ok_to_delete?) already outranked: a rule-denied deck 403s in front
+    // of the guard, Ruby's chain order (permissions.rb:155-157 before the
+    // :validate stage).
     const currentName = await this.composedNameOf(row);
-    const writer = this.newWriter();
+    await this.prepareRecaptchaSaveInput(
+      input.recaptchaToken,
+      "delete",
+      await ruleWalkPatternInput(this.fetch, {
+        name: currentName ?? DeckoName.parse(""),
+        id: row.id,
+        isNew: false,
+        typeId: row.type_id,
+      }),
+    );
+    // VV (director.rb:16): the validate seam sits with the built-in
+    // validate_delete port above it (built-ins first, then dispatch — the
+    // documented intra-stage order of this seam).
+    await this.dispatchEventStage(
+      "validate",
+      this.eventCard({
+        name: currentName,
+        id: row.id,
+        key: row.key ?? undefined,
+        dbContent: row.db_content,
+        action: "delete",
+        trash: true,
+        typeId: row.type_id,
+        changedFields: ["trash"],
+      }),
+    );
+    const writer = this.newWriter(actingId);
     const saved = await writer.trashCard({
       cardId: row.id,
       before: cardFieldStateFromRow(row),
       superActionId: input.superActionId ?? null,
     });
     if (saved === null) return null;
+    // SP + SS (director.rb:20-21): persisted deletes only (see the update
+    // path's disclosure — events pin to persisted saves).
+    const deletedCard = (): ModEventCard =>
+      this.eventCard({
+        name: currentName,
+        id: row.id,
+        key: currentName?.key ?? row.key ?? undefined,
+        dbContent: row.db_content,
+        action: "delete",
+        actId: saved.actId,
+        trash: true,
+        typeId: row.type_id,
+        changedFields: ["trash"],
+      });
+    await this.dispatchEventStage("prepare_to_store", deletedCard());
+    await this.dispatchEventStage("store", deletedCard());
 
     // delete_children cascade. Ruby's subcard deletes run with
     // `validate: false` (director/store.rb:70-73), so child validate_delete
@@ -801,11 +1729,15 @@ export class CardActionEngine {
       nameAfter: currentName,
       verb: "delete",
     });
-    // INTEGRATION (card_references write path): clear_references on delete
-    // (reference_events.rb:28-31) — the referer's rows go away and the
-    // deleted id is unmapped from other cards' rows (unmap_referees,
-    // reference.rb:31-33).
-    await clearReferencesOnDelete(this.fetch.driver, row.id);
+    // FINALIZE (card_references write path) — the SEAM with takeover:
+    // clear_references (reference_events.rb:27-31) through the registered
+    // body when the name is registered; the built-in otherwise.
+    await this.runFinalizeEvents(deletedCard(), [
+      [
+        "clear_references",
+        () => clearReferencesOnDelete(this.fetch.driver, row.id),
+      ],
+    ]);
     // FINALIZE (event :cascade_read_rule, set/right/read.rb:9-14): a deleted
     // RULE card's trash is changing, so its set's members and every card
     // pointing at it re-derive (their applicable rule is gone). Read rules
@@ -821,6 +1753,9 @@ export class CardActionEngine {
       name: currentName,
       subactions,
     };
+    // II (director.rb:26): the integrate seam before the notify hooks (see
+    // the create path's note).
+    await this.dispatchEventStage("integrate", deletedCard());
     await this.dispatchSavePathIntegrations(result);
     return result;
   }
@@ -852,10 +1787,26 @@ export class CardActionEngine {
             superActionId: parentActionId,
           });
           if (saved === null) continue; // unreachable: trash always flips
-          // INTEGRATION (card_references write path): each cascaded child
-          // is its own delete save in Ruby, so its clear_references fires
-          // too (reference_events.rb:28-31).
-          await clearReferencesOnDelete(this.fetch.driver, child.id);
+          // FINALIZE — the child's own delete save, its clear_references
+          // through the same seam (reference_events.rb:27-31).
+          await this.runFinalizeEvents(
+            this.eventCard({
+              name: await this.composedNameOf(child),
+              id: child.id,
+              key: child.key ?? undefined,
+              dbContent: child.db_content,
+              action: "delete",
+              trash: true,
+              typeId: child.type_id,
+              changedFields: ["trash"],
+            }),
+            [
+              [
+                "clear_references",
+                () => clearReferencesOnDelete(this.fetch.driver, child.id),
+              ],
+            ],
+          );
           summaries.push({
             cardId: child.id,
             actionId: saved.actionId,
@@ -881,8 +1832,250 @@ export class CardActionEngine {
     return { driver: this.fetch.driver, fetch: this.fetch };
   }
 
+  // -----------------------------------------------------------------------
+  // The ModEventFn EXECUTION SEAM (mod-loader/mod-event-dispatch.ts):
+  // per-save stage dispatches over the composed runtime. Every helper here
+  // no-ops when no runtime was composed (CardActionEngineOptions.modEvents)
+  // — the default for every pre-existing caller, byte-identical behavior.
+  // -----------------------------------------------------------------------
+
+  /** The ModEventCard this save exposes to event bodies (the widened
+   *  ModEventCard surface): identity + dirty state + the act's skip/
+   *  trigger lists (skip_and_trigger.rb accessors live on the act card). */
+  private eventCard(input: {
+    name: DeckoName | undefined;
+    id?: number;
+    key?: string;
+    dbContent?: string | null;
+    action: "create" | "update" | "delete";
+    actId?: number;
+    trash?: boolean;
+    typeId?: number | null;
+    nameBeforeAct?: string;
+    changedFields?: readonly string[];
+  }): ModEventCard {
+    return {
+      name: input.name?.s ?? (input.id !== undefined ? `~${input.id}` : ""),
+      id: input.id,
+      key: input.key,
+      dbContent: input.dbContent ?? undefined,
+      action: input.action,
+      trash: input.trash,
+      typeId: input.typeId ?? null,
+      nameBeforeAct: input.nameBeforeAct,
+      changedFields: input.changedFields ?? [],
+      act: {
+        action: input.action,
+        actId: input.actId,
+        skip: this.modEvents?.skip,
+        forceSkip: this.modEvents?.forceSkip,
+        trigger: this.modEvents?.trigger,
+      },
+    };
+  }
+
+  /** Dispatch one director stage for this save (no dispatch without a
+   *  runtime). The deps pair is the same one the built-in janitors take.
+   *  The pending add_comment save input (if this save carries one) rides
+   *  the ctx so the `when: :comment` predicate sees it. */
+  private dispatchEventStage(
+    stage: ModEventStage,
+    card: ModEventCard,
+  ): Promise<ModEventStageReport | undefined> {
+    const runtime = this.modEvents;
+    if (runtime === undefined) return Promise.resolve(undefined);
+    return runModEventStage(
+      runtime,
+      stage,
+      card,
+      {
+        driver: this.fetch.driver,
+        lexicon: this.fetch.lexicon,
+      },
+      this.pendingSaveInput,
+    );
+  }
+
+  /** The pending add_comment save input of the CURRENT save (set by
+   *  applyAddComment, cleared when the public create/update entries
+   *  finish). */
+  private pendingSaveInput: ModEventSaveInput | undefined;
+
+  /**
+   * add_comment (card-mod-comment set/all/comment.rb:4-12,
+   * `event :add_comment, :prepare_to_store, on: :save, when: :comment`):
+   * invoked at the SP position — BEFORE the row write — through the
+   * REGISTERED body (Ruby: the event exists only when the comment mod is
+   * loaded; without it a comment param rides along inert). The port's
+   * stage dispatches run post-persist (the seam placement disclosed in
+   * the update path), so the body is invoked HERE, where its
+   * `self.content =` mutation can land on the pending write; the
+   * post-persist walk then sees when-false via commentApplied.
+   *
+   * The oracle capture (fixtures/oracle-surfaces/comment.jsonl) pins the
+   * appended bytes: "content\n<hr>\n<p>lines…</p>\n<div
+   * class="w-comment-author">AUTHOR.....YYYY-MM-DD HH:MM:SS UTC</div>".
+   */
+  private async applyAddComment(
+    input: { comment?: string; commentAuthor?: string },
+    action: "create" | "update",
+    name: DeckoName,
+    pendingContent: string | undefined,
+    setContent: (dbContent: string) => void,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    if (runtime === undefined || input.comment === undefined) return;
+    const registered = runtime.registry
+      .all()
+      .find((e) => e.event === "add_comment");
+    if (registered === undefined) return; // the mod is not loaded
+    const commentAuthorName =
+      this.actor !== null && !(await this.isAnonymousSession()) ? this.actor.name : undefined;
+    const saveInput: ModEventSaveInput = {
+      comment: input.comment,
+      commentAuthor: input.commentAuthor,
+      signedInActorName: commentAuthorName,
+      now: this.clock,
+      pendingContent,
+      setContent,
+      commentApplied: false,
+    };
+    this.pendingSaveInput = saveInput;
+    const card = this.eventCard({
+      name,
+      key: name.key,
+      dbContent: pendingContent,
+      action,
+    });
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "prepare_to_store",
+      skipEvent: (n) =>
+        runtime.skip?.includes(n) === true || runtime.forceSkip?.includes(n) === true,
+      saveInput,
+    };
+    await registered.fn(
+      card,
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    saveInput.commentApplied = true;
+  }
+
+  /**
+   * event :recaptcha's save-input snapshot (card-mod-recaptcha
+   * set/all/recaptcha.rb:50-55, the :validate stage): built BEFORE the
+   * validate-stage walk when the recaptcha mod is loaded (the runtime
+   * registers "recaptcha") AND a recaptcha config is composed. Ruby reads
+   * Env.params[:recaptcha_token], the config keys, the Auth state and
+   * rule(:captcha) at validate time; the port resolves the async pieces
+   * (the codename check, the captcha-rule read) here and rides
+   * them into the walk through pendingSaveInput (the dispatch's ctx
+   * saveInput). The captcha-rule read IS Ruby's candidate walk by default
+   * (ruleContentForCard over the deck's own rule cards); the config's
+   * explicit value/function remains the host override seam. Without the
+   * mod or the config nothing is set — byte-identical pre-port behavior
+   * (the guard is off: recaptcha_keys? false, recaptcha.rb:46-48, or no
+   * registered event at all).
+   */
+  private async prepareRecaptchaSaveInput(
+    recaptchaToken: string | undefined,
+    action: "create" | "update" | "delete",
+    pattern: PatternCardInput,
+  ): Promise<void> {
+    void action; // the event carries no on: — the walk's action rides card.act
+    if (this.modEvents === undefined || this.recaptchaConfig === undefined) {
+      return;
+    }
+    const registered = this.modEvents.registry
+      .all()
+      .some((e) => e.event === "recaptcha");
+    if (!registered) return; // the mod is not loaded (Ruby: no gem, no event)
+    const cfg = this.recaptchaConfig;
+    const captchaCardId = await this.fetch.codenames.id("captcha");
+    const ruleContent =
+      cfg.captchaRuleContent !== undefined
+        ? typeof cfg.captchaRuleContent === "function"
+          ? await cfg.captchaRuleContent(DeckoName.parse(pattern.name).s)
+          : cfg.captchaRuleContent
+        : await ruleContentForCard(this.fetch, pattern, "captcha");
+    const signedIn = !(await this.isAnonymousSession());
+    const saveInput: ModEventSaveInput = {
+      comment: undefined,
+      commentAuthor: undefined,
+      signedInActorName: signedIn ? this.actor?.name : undefined,
+      now: this.clock,
+      pendingContent: undefined,
+      // the recaptcha body never mutates content (setContent is the
+      // add_comment mutation point; nothing calls it on this input)
+      setContent: () => undefined,
+      commentApplied: false,
+      recaptcha: {
+        token: recaptchaToken,
+        guard: {
+          siteKey: cfg.siteKey,
+          secretKey: cfg.secretKey,
+          // the engine's save paths exist to serve controller requests —
+          // Ruby's Env.controller is true inside the same boundary
+          envController: true,
+          signedIn,
+          alwaysOk: cfg.alwaysOk ?? false,
+          needsSetup: cfg.needsSetup ?? false,
+          captchaRuleContent: ruleContent,
+          captchaCodenameExists: captchaCardId !== undefined,
+          // top-level acts only — the @supercard subcard-act context does
+          // not exist in this port (named remainder, mod header (a))
+          isSupercard: false,
+          minimumScore:
+            cfg.minimumScore ??
+            RECAPTCHA_CARDIO_CONFIG_DEFAULTS.recaptcha_minimum_score,
+          verifyUrl:
+            cfg.verifyUrl ??
+            RECAPTCHA_CARDIO_CONFIG_DEFAULTS.recaptcha_verify_url,
+        },
+        isUsed: () => this.captchaUsedThisRequest,
+        markUsed: () => {
+          this.captchaUsedThisRequest = true;
+        },
+        verify: cfg.verify ?? recaptchaSiteverifyGet,
+      },
+    };
+    this.pendingSaveInput = saveInput;
+  }
+
+  /** The FINALIZE seam with the takeover contract: dispatch the stage
+   *  first, then run each built-in behavior whose event name is not
+   *  registered at the runtime (registered REAL bodies replace the
+   *  built-in; registered STUBS never do — EVENT_TAKEOVER_BUILTINS). Each
+   *  thunk keeps its own condition gates so the unregistered path behaves
+   *  exactly as before this seam existed. */
+  private async runFinalizeEvents(
+    card: ModEventCard,
+    thunks: ReadonlyArray<readonly [string, () => Promise<void>]>,
+  ): Promise<void> {
+    if (this.modEvents === undefined) {
+      for (const [, thunk] of thunks) await thunk();
+      return;
+    }
+    await this.dispatchEventStage("finalize", card);
+    for (const [name, thunk] of thunks) {
+      if (EVENT_TAKEOVER_BUILTINS.has(name)) {
+        const registered = this.modEvents.registry.all().some((e) => e.event === name);
+        if (registered) continue; // the declaration took over
+      }
+      await thunk();
+    }
+  }
+
   /** The basic permission gate, sync half: anonymous actors are read-only
-   *  (auth/current.rb:43-47 signed_in? = current_id != AnonymousID). */
+   *  (auth/current.rb:43-47 signed_in? = current_id != AnonymousID).
+   *  No write task runs this gate for a well-formed anonymous session —
+   *  the anonymous arms ride the rule check instead (Ruby's permission
+   *  chain has no signed_in? clause for any of create/update/delete; see
+   *  createCardInner / updateCardInner / deleteCard). What remains here:
+   *  the fragment-seed case only (no anonymous codename card to act as —
+   *  Ruby could not form Card[AnonymousID] there either). */
   private assertWritable(): void {
     if (this.actor === null) {
       throw new CardActionError(
@@ -891,6 +2084,9 @@ export class CardActionEngine {
       );
     }
     if (this.actor.name === ANONYMOUS_ACTOR_NAME) {
+      // legacy belt: id-keyed identity (isAnonymousSession) owns the real
+      // decision; a named actor reaches here only with an unusable id
+      // (fragment-seed-style rejection for the session that cannot act).
       throw new CardActionError(
         "anonymous-actor",
         `write action rejected: ${ANONYMOUS_ACTOR_NAME} is read-only`,
@@ -898,46 +2094,153 @@ export class CardActionEngine {
     }
   }
 
+  /** True when the actor IS the anonymous session: no actor at all, or an
+   *  actor whose id is the anonymous codename card's id (the real
+   *  Anonymous card). Ruby keys actor identity on the ID — Auth.as runs
+   *  `@as_id = Card.id given_user` (auth/proxy.rb:11), as_id falls back to
+   *  current_id (proxy.rb:32-35), signed_in? is `current_id != AnonymousID`
+   *  (auth/current.rb:43-47) — never on a name. An earlier name-keyed
+   *  marker (any actor NAMED *anonymous) misattributed real accounts
+   *  carrying that name; only the real Anonymous card matches now. */
+  private async isAnonymousSession(): Promise<boolean> {
+    if (this.actor === null) return true;
+    const anonId = await this.anonymousActorId();
+    return anonId !== undefined && this.actor.id === anonId;
+  }
+
+  /** The id a WRITE records and runs its rule verdict for (ActWriter
+   *  actorId; Ruby records the act's actor_id = Auth.as_id — proxy.rb:33-35
+   *  falls back to current_id, AnonymousID for the signed-out session,
+   *  auth/current.rb:7-9). Signed-in: the account (id-keyed — see
+   *  isAnonymousSession; a host-supplied actor is its own account whatever
+   *  its name). Anonymous session: the anonymous codename card's id, or
+   *  undefined when the deck cannot form one (fragment seed — the legacy
+   *  gate applies). All three write tasks ride this: create (:120-125),
+   *  update (:148-153), delete (:155-157) — Ruby's permission chain has no
+   *  signed-in clause on any of them. */
+  private async actingIdForWrite(): Promise<number | undefined> {
+    if (this.actor !== null) {
+      const anonId = await this.anonymousActorId();
+      // an actor carrying the real Anonymous card's id IS the anonymous
+      // session; its acting id is that same id either way.
+      return anonId !== undefined && this.actor.id === anonId ? anonId : this.actor.id;
+    }
+    return this.anonymousActorId();
+  }
+
+  private anonymousActorIdPromise: Promise<number | undefined> | undefined;
+
+  /** The anonymous codename card's id (the corpus's 694 creator_id=15 rows
+   *  are that card's writes). Memoized: codenames are immutable within an
+   *  engine instance. */
+  private anonymousActorId(): Promise<number | undefined> {
+    this.anonymousActorIdPromise ??= Promise.resolve(
+      this.fetch.codenames.id("anonymous"),
+    );
+    return this.anonymousActorIdPromise;
+  }
+
   /** The permission gate (async half) — Ruby's event :check_permissions
    *  (card-mod-permissions set/all/permissions.rb:22-25): the ported
    *  ok_to_create? / ok_to_update? / ok_to_delete? algebra
    *  (saveTaskVerdictForCard in view-task-rules.ts) runs INSIDE the engine,
    *  against the deck's *create/*update/*delete rule cards and the actor's
-   *  own parties. A `false` verdict throws permission-denied (Ruby's
-   *  PermissionDenied); `undefined` (the rule-less-seed divergence) allows.
+   *  own parties. The algebra is deny-by-default: a `false` verdict (an
+   *  explicit denial OR missing/empty rule data — who_can -> [] ->
+   *  among? -> false, permissions.rb:47-49/:100-118) throws
+   *  permission-denied (Ruby's PermissionDenied).
    *  The optional canWrite hook then rides ON TOP as a host-side extra
    *  gate — it can deny what the rules allow, never allow what they deny.
-   *  The anonymous gate above has already rejected null/*anonymous actors
-   *  by the time this runs. */
+   *  The actor here is either a signed-in account or the anonymous session
+   *  whose verdict runs for the Anonymous card (writeViewer); the sync
+   *  gate has already rejected only the fragment-seed case (no anonymous
+   *  codename card) across all three write tasks. */
   private async assertCanWrite(
     card: CardRecord,
     task: WriteTask,
-    opts: { typeChanged?: boolean; assignedTypeId?: number } = {},
+    opts: { typeChanged?: boolean; assignedTypeId?: number; assignedName?: string } = {},
   ): Promise<void> {
-    if (this.actor === null) return; // unreachable: assertWritable ran
-    const pattern = await this.patternInputFor(card, opts.assignedTypeId);
+    const pattern = await this.patternInputFor(card, opts.assignedTypeId, opts.assignedName);
     const verdict = await saveTaskVerdictForCard(
       this.fetch,
       pattern,
       task,
       await this.writePermissionState(),
-      { typeChanged: opts.typeChanged },
+      // assignedName rides the pattern input's name for the RULE walk and
+      // opts for the RENAME clause (the sides the assigned name creates —
+      // saveTaskVerdictForCard's update branch; name_events.rb:67-72,
+      // :137-150, permissions.rb:22-26).
+      { typeChanged: opts.typeChanged, assignedName: opts.assignedName },
     );
     if (verdict === false) {
       throw new CardActionError(
         "permission-denied",
-        `actor ${this.actor.name} may not ${task} card ${card.name?.s ?? String(card.id)}`,
+        `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name?.s ?? String(card.id)}`,
       );
     }
+    // The host hook is a port-only seam — Ruby's permission chain is the
+    // :check_permissions event walk alone (permissions.rb:100-157; no
+    // can_write/host hook exists anywhere in card-1.110.0 or the perms
+    // mod) — so its contract is whatever this engine makes it: consult it
+    // for EVERY session that reaches this gate, the anonymous session
+    // included (exactly the writer class a host gates: rate limits,
+    // allowlists, moderation holds). The hook's actor for an anonymous
+    // session is the anonymous codename card — the same id the write is
+    // itself attributed to (actingIdForWrite). A fragment seed never
+    // reaches this line: assertWritable rejected it on all three tasks.
     if (this.canWrite !== undefined) {
-      const allowed = await this.canWrite(card, this.actor);
+      let hookActor: Actor;
+      // id-keyed like every identity site: the anonymous session is
+      // actor null OR the real Anonymous card's id — never a name. An
+      // account carrying the name "*anonymous" with its own id is a
+      // signed-in account and consults the hook AS ITSELF (auth/proxy.rb:11
+      // keys Auth.as on the id; auth/current.rb:43-47 signed_in? = id !=
+      // AnonymousID). The earlier name-keyed branch misrouted such
+      // accounts to the anonymous hook actor — and refused them outright
+      // on decks that cannot form the anonymous card.
+      if (this.actor !== null && !(await this.isAnonymousSession())) {
+        hookActor = this.actor;
+      } else {
+        const anonActorId = await this.anonymousActorId();
+        if (anonActorId === undefined) {
+          throw new CardActionError(
+            "anonymous-actor",
+            "write action rejected: the deck cannot form the anonymous codename card",
+          );
+        }
+        hookActor = { id: anonActorId, name: ANONYMOUS_ACTOR_NAME };
+      }
+      const allowed = await this.canWrite(card, hookActor);
       if (!allowed) {
         throw new CardActionError(
           "permission-denied",
-          `actor ${this.actor.name} may not write card ${card.name?.s ?? String(card.id)}`,
+          `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not write card ${card.name?.s ?? String(card.id)}`,
         );
       }
     }
+  }
+
+  /** The write path's permission viewer — the port of Auth.as_card for the
+   *  gated save. Signed-in: the account (unchanged). Anonymous session:
+   *  signedIn false + the Anonymous card's id —
+   *  readPermissionStateFromViewerResults (read-rules.ts:322/:325) builds
+   *  exactly Ruby's anonymous parties (account_holder.rb:27-29 parties =
+   *  all_enabled_roles << id with :40's empty roles for Anonymous → the
+   *  Anonymous id; plus Anyone from the among? :33 arm), so amongParties
+   *  (view-task-rules.ts) answers rules granting Anyone or Anonymous
+   *  exactly as account_holder.rb:31-37 does. Memoized with the state
+   *  (the actor is fixed at construction). */
+  private async writeViewer(): Promise<ReadViewer> {
+    if (this.actor !== null) {
+      const anonId = await this.anonymousActorId();
+      if (anonId !== undefined && this.actor.id === anonId) {
+        // the real Anonymous card by id: Ruby's signed_in? is
+        // `current_id != AnonymousID` (auth/current.rb:43-47)
+        return { signedIn: false, actorId: anonId };
+      }
+      return { signedIn: true, actorId: this.actor.id };
+    }
+    return { signedIn: false, actorId: await this.anonymousActorId() };
   }
 
   /** The write-task permission state: ONE batch for the actor's read
@@ -946,10 +2249,7 @@ export class CardActionEngine {
    *  built once per engine on the first gated save, memoized after. */
   private async writePermissionState(): Promise<ViewTaskState> {
     if (this.writeTaskState !== undefined) return this.writeTaskState;
-    const viewer: ReadViewer =
-      this.actor !== null && this.actor.name !== ANONYMOUS_ACTOR_NAME
-        ? { signedIn: true, actorId: this.actor.id }
-        : { signedIn: false };
+    const viewer = await this.writeViewer();
     const readResults = await this.fetch.driver.batch(readPermissionStatements(viewer));
     const readState = readPermissionStateFromViewerResults(readResults, viewer);
     const taskResults = await this.fetch.driver.batch(viewTaskPermissionStatements());
@@ -958,26 +2258,48 @@ export class CardActionEngine {
   }
 
   /** The PatternCardInput the rule walk receives — the same fields the
-   *  render side's verdictPatternInput supplies (render.ts): name, id,
-   *  typeId (the ASSIGNED type for a type-changing save, matching Ruby's
-   *  validation-time attribute state), the type card's name, and — for
-   *  compound cards, whose *type plus right anchor composes from it — the
-   *  left side's type name. Direct row reads; write-path calls are rare. */
+   *  render side's verdictPatternInput supplies (render.ts): name (the
+   *  ASSIGNED name for a name-changing save — Ruby's validate-stage check
+   *  runs on the card after name= has written the new name and
+   *  reset_patterns has rebuilt the rule lookup keys from it:
+   *  name/all.rb:21-28, assign_attributes.rb:63-68, pattern/all.rb:22-29,
+   *  so the assigned name's anchors govern), id, typeId (the ASSIGNED type
+   *  for a type-changing save, matching Ruby's validation-time attribute
+   *  state), the type card's name, and — for compound cards, whose *type
+   *  plus right composes from it — the left side's type name (for a
+   *  rename, the ASSIGNED left part's type, Ruby left_type =
+   *  superleft&.type_name || quick_type(name.left_name),
+   *  set/pattern/class_methods.rb:59-69). Direct row reads; write-path
+   *  calls are rare. */
   private async patternInputFor(
     card: CardRecord,
     assignedTypeId: number | undefined,
+    assignedName?: string,
   ): Promise<PatternCardInput> {
     const typeId = assignedTypeId ?? card.typeId;
     const typeName = typeId !== undefined && typeId !== null ? await this.typeNameOf(typeId) : undefined;
+    const assigned = assignedName !== undefined ? DeckoName.parse(assignedName) : undefined;
     let leftTypeName: string | undefined;
-    if (card.leftId !== undefined && card.leftId !== null) {
+    if (assigned !== undefined && assigned.isCompound) {
+      // a rename: the type_plus_right candidates read the ASSIGNED left
+      // part's type (fetched by name; a missing part falls to the
+      // registry's quick_type default, as Ruby's quick_type new-card arm
+      // does)
+      const leftKey = assigned.leftName?.key;
+      if (leftKey !== undefined && leftKey !== "") {
+        const leftCard = await this.fetch.fetchByName(leftKey);
+        if (leftCard !== undefined && leftCard.typeId !== null && leftCard.typeId !== undefined) {
+          leftTypeName = await this.typeNameOf(leftCard.typeId);
+        }
+      }
+    } else if (card.leftId !== undefined && card.leftId !== null) {
       const leftRow = await this.fetchRowById(card.leftId);
       if (leftRow !== undefined && leftRow.type_id !== null && leftRow.type_id !== undefined) {
         leftTypeName = await this.typeNameOf(leftRow.type_id);
       }
     }
     return {
-      name: card.name?.s ?? (card.id !== undefined ? `~${card.id}` : ""),
+      name: assigned?.s ?? card.name?.s ?? (card.id !== undefined ? `~${card.id}` : ""),
       id: card.id,
       isNew: isNewCard(card),
       typeId,
@@ -992,13 +2314,22 @@ export class CardActionEngine {
     return row?.name ?? undefined;
   }
 
-  private newWriter(): ActWriter {
-    if (this.actor === null) {
+  /** `actingId` rides in from the write entries (createCardInner /
+   *  updateCardInner / deleteCard) so an anonymous-session write records
+   *  the act under the Anonymous card's id (Ruby: the act's actor_id is
+   *  Auth.as_id, which IS AnonymousID when signed out —
+   *  auth/current.rb:7-9; the corpus's creator_id=15 rows and its
+   *  1,808 live + 8 trashed updater_id=15 rows). Undefined
+   *  actingId means the fragment-seed callers whose actor must be a
+   *  signed-in account (assertWritable has already run for them). */
+  private newWriter(actingId?: number): ActWriter {
+    const actorId = actingId ?? this.actor?.id;
+    if (actorId === undefined) {
       throw new CardActionError("anonymous-actor", "no actor for write");
     }
     return new ActWriter({
       driver: this.fetch.driver,
-      actorId: this.actor.id,
+      actorId,
       ipAddress: this.ipAddress,
       now: this.clock,
     });
@@ -1009,8 +2340,19 @@ export class CardActionEngine {
    *  become subcard creates in the SAME act. Sides dedupe by key so "A+A"
    *  resolves one card for both sides (Ruby: Director.card(sidename)
    *  returns the already-staged subcard, name_events.rb:121). Left is
-   *  resolved first (prepare_side :left runs before :right, :74-79). */
-  private async ensureSides(writer: ActWriter, name: DeckoName): Promise<ResolvedSides> {
+   *  resolved first (prepare_side :left runs before :right, :74-79).
+   *  `selfId` (the renaming row's id) arms the OBSTRUCTED branch: Ruby's
+   *  assign_side_id resolves each side through the Lexicon at name= time
+   *  (name/all.rb:87-90), so a side naming the card itself carries the
+   *  card's OWN id into the store stage, where prepare_obstructed_side
+   *  (:144-150) clears the row and recreates the side as a FRESH subcard —
+   *  never the renaming row. The create path passes no selfId: a new card
+   *  has no id and cannot obstruct itself. */
+  private async ensureSides(
+    writer: ActWriter,
+    name: DeckoName,
+    selfId?: number,
+  ): Promise<ResolvedSides> {
     const created: (CardActionSummary & { actId: number })[] = [];
     if (!name.isCompound) return { leftId: null, rightId: null, created };
     const idsByKey = new Map<string, number>();
@@ -1020,7 +2362,9 @@ export class CardActionEngine {
       const known = idsByKey.get(key);
       if (known !== undefined) return known;
       let id = await this.fetch.lexicon.id(sideName);
-      if (id === undefined) {
+      if (selfId !== undefined && id === selfId) {
+        id = await this.recreateObstructedSide(writer, sideName, selfId, created);
+      } else if (id === undefined) {
         const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
         id = sub.cardId;
         created.push(sub);
@@ -1031,6 +2375,52 @@ export class CardActionEngine {
     const leftId = await resolveSide(name.leftName);
     const rightId = await resolveSide(name.rightName);
     return { leftId, rightId, created };
+  }
+
+  /** prepare_obstructed_side (name_events.rb:144-150) + clear_name
+   *  (:121-128): the side slot resolved to the RENAMING card's own id.
+   *  Ruby moves the row out of the way with a direct, callback-bypassing
+   *  SQL update — name/key/left_id/right_id all NULL (:124) — expires the
+   *  side name (:125; for a junction self-side that name is the COMPOSED
+   *  name) and drops the lexicon state (:126; Ruby's wholesale
+   *  Lexicon.cache.reset, whose own comment says "probably overkill", is
+   *  ported as the targeted Lexicon.delete, lexicon.rb:38-41) so the fresh
+   *  side's unique-name validation finds nothing (Lexicon.id resolves
+   *  `key = ? AND trash = 0`, lexicon.rb:120-128 — the cleared row and the
+   *  evicted entry both say no), then creates the side as a FRESH subcard
+   *  of this act (:148, subcards/all.rb:15-22). The cleared columns are
+   *  all overwritten by this rename's own row write moments later (the
+   *  junction row stores name/key NULL plus the resolved side ids), so the
+   *  committed end state is exactly Ruby's. Returns the fresh side's id. */
+  private async recreateObstructedSide(
+    writer: ActWriter,
+    sideName: DeckoName,
+    selfId: number,
+    created: (CardActionSummary & { actId: number })[],
+  ): Promise<number> {
+    const row = await this.fetchRowById(selfId);
+    if (row === undefined) {
+      // not-found (the union's "no such card" code): the renaming row cannot
+      // vanish between the write entry and this call; the guard is shape.
+      throw new CardActionError(
+        "not-found",
+        `obstructed side ${sideName.s}: card ${selfId} vanished mid-rename`,
+      );
+    }
+    // clear_name (name_events.rb:124): the direct SQL — no callbacks.
+    await this.fetch.driver.query(
+      "UPDATE cards SET name = NULL, `key` = NULL, left_id = NULL, right_id = NULL WHERE id = ?",
+      [selfId],
+    );
+    // clear_name (:125-126): Card.expire + the lexicon eviction.
+    const record = newCardRecord(sideName);
+    record.id = selfId;
+    this.fetch.expireCard(record);
+    this.fetch.lexicon.deleteFor(selfId, this.lexOfRow(row));
+    // name_events.rb:148: the side becomes a FRESH subcard in this act.
+    const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
+    created.push(sub);
+    return sub.cardId;
   }
 
   /** Patch the direct subcards' super_action_id to the supercard's action
@@ -1190,6 +2580,15 @@ export class CardActionEngine {
     codenameChanged?: boolean;
   }): Promise<void> {
     const { cardId, nameAfter, nameBefore, lexBefore, lexAfter, verb } = input;
+    // The rule-resolution memo (read-rules.ts resolveRuleRowsByKeys) reads
+    // key/trash/content/left_id/right_id — every one of those can change
+    // under any committed mutation (a rule card's content, a junction's
+    // creation, a trash flag), so the save drops the whole per-driver memo
+    // here rather than trying to track which candidate closures a card
+    // touches. This is the single invalidation path: every committed save
+    // routes through this method, and the memo lives on the same driver
+    // this.fetch resolves through.
+    expireRuleResolutionCache(this.fetch.driver);
     if (nameAfter !== undefined) {
       // Card#expire — a minimal record suffices: expire reads id, name and
       // name_before_act only (cache/all.rb:66-108).

@@ -29,25 +29,58 @@ function wrapText(text: string, style: string | undefined): string {
   return `<span style="${style}">${text}</span>`;
 }
 
-/** Build a JSON-key/value group opener: `<span style="...">` plus the
+/** Build a JSON-key/value group opener: the group's own span plus the
  *  opening quote as a `:delimiter` token, exactly the way json.rb
  *  transitions from `:initial` into `:string`/`:key` via
- *  `encoder.begin_group state` then `encoder.text_token('"', :delimiter)`. */
-function beginGroup(kind: "string" | "key"): string {
-  // The kind group's wrapper spans every byte inside the string/key.
-  // The alpha table has no entry for `:string` or `:key`, so the wrapper
-  // style is undefined - the encoder therefore emits a bare `<span>`,
-  // which we mirror.
-  void styleFor(kind); // (no entry exists; we just need to confirm)
-  return "<span>";
+ *  `encoder.begin_group state` then `encoder.text_token('"', :delimiter)`.
+ *
+ *  The inline styles are the alpha stylesheet's GROUP-SCOPED rules
+ *  (coderay-1.1.3 styles/alpha.rb) - the oracle bytes pin them
+ *  (view-lane shard-000028 *Ace 33795, 2026-10-01):
+ *    `.key { color: #606 }`                (alpha.rb:97)  - key group span
+ *    `.key .delimiter { color: #404 }`     (alpha.rb:99)  - key quotes
+ *    `.key .char { color: #60f }`          (alpha.rb:98)  - key escapes
+ *    `.string { background-color:hsla(0,100%,50%,0.05) }` (alpha.rb:122)
+ *    `.string .delimiter { color: #710 }`  (alpha.rb:125) - string quotes
+ *    `.string .content { color: #D20 }`    (alpha.rb:124)
+ *    `.string .char { color: #b0b }`       (alpha.rb:123)
+ *  The key CONTENT span carries NO style (`.key .content` has no alpha
+ *  rule) but the span itself is still emitted - the oracle bytes carry
+ *  `<span>default</span>` inside the key group; the encoder emits the
+ *  span unconditionally for tokens inside a group and only the style
+ *  attribute is style-dependent. */
+const GROUP_SCOPED: Record<
+  "string" | "key",
+  { group: string; delimiter: string; content: string | undefined; char: string }
+> = {
+  key: {
+    group: "color:#606",
+    delimiter: "color:#404",
+    content: undefined, // .key .content: no alpha rule -> bare <span>
+    char: "color:#60f",
+  },
+  string: {
+    group: "background-color:hsla(0,100%,50%,0.05)",
+    delimiter: "color:#710",
+    content: "color:#D20",
+    char: "color:#b0b",
+  },
+};
+
+function groupOpener(kind: "string" | "key"): string {
+  return `<span style="${GROUP_SCOPED[kind].group}">`;
 }
 
-/** The closing delimiter + group end. Inside a group the only token with
- *  a style is the closing quote as `:delimiter` (no style), then the
- *  group closes with `</span>` (json.rb:63-64). */
-function endGroup(closingQuote: string): string {
-  void styleFor("delimiter"); // (no style entry)
-  return `${closingQuote}</span>`;
+function groupDelimiter(kind: "string" | "key", quote: string): string {
+  return `<span style="${GROUP_SCOPED[kind].delimiter}">${coderayEscape(quote)}</span>`;
+}
+
+/** Content/char tokens INSIDE a group: the span is unconditional, the
+ *  style is the group-scoped alpha rule (undefined -> bare span). */
+function groupInner(kind: "string" | "key", token: "content" | "char", text: string): string {
+  const style = GROUP_SCOPED[kind][token];
+  const escaped = coderayEscape(text);
+  return style === undefined ? `<span>${escaped}</span>` : `<span style="${style}">${escaped}</span>`;
 }
 
 /** Scan the input as JSON and return the highlighted inner HTML - i.e.
@@ -79,7 +112,7 @@ export function scanJson(input: string): string {
       if (c === '"') {
         const rest = input.slice(i);
         state = KEY_RE.test(rest.slice(1)) ? "key" : "string";
-        out += beginGroup(state) + wrapText(coderayEscape('"'), styleFor("delimiter"));
+        out += groupOpener(state) + groupDelimiter(state, '"');
         i += 1;
         continue;
       }
@@ -111,12 +144,12 @@ export function scanJson(input: string): string {
       const rest = input.slice(i);
       const plain = /^[^\\"]+/.exec(rest);
       if (plain !== null) {
-        out += wrapText(coderayEscape(plain[0]), styleFor("content"));
+        out += groupInner(state, "content", plain[0]);
         i += plain[0].length;
         continue;
       }
       if (rest.startsWith('"')) {
-        out += endGroup('"');
+        out += groupDelimiter(state, '"') + "</span>";
         i += 1;
         state = "initial";
         continue;
@@ -125,13 +158,13 @@ export function scanJson(input: string): string {
         const m = UNICODE_ESCAPE_RE.test(rest)
           ? /^\\u[a-fA-F0-9]{4}/.exec(rest)!
           : /^\\[bfnrt"\\/]/.exec(rest)!;
-        out += wrapText(coderayEscape(m[0]), styleFor("char"));
+        out += groupInner(state, "char", m[0]);
         i += m[0].length;
         continue;
       }
       if (/^\\./.test(rest)) {
         const m = /^\\./.exec(rest)!;
-        out += wrapText(coderayEscape(m[0]), styleFor("content"));
+        out += groupInner(state, "content", m[0]);
         i += m[0].length;
         continue;
       }

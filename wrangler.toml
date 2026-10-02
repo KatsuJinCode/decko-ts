@@ -1,36 +1,133 @@
 # Cloudflare Workers deploy config for decko-ts.
 # Same engine code runs on Node (LocalSqliteDriver) and Workers (D1Adapter).
 #
-# First-time deploy recipe (~2 min):
-#   1. `npx wrangler login` (one-time, opens browser to your CF account)
-#   2. `npx wrangler d1 create decko-ts`  → paste the returned database_id below
-#   3. `npx wrangler d1 execute decko-ts --file db/schema.sqlite.sql --remote`
-#      → apply schema to production D1
-#   4. (optional) `npx wrangler d1 execute decko-ts --file db/seed.sql --remote`
-#      → seed a few demo cards so the deploy shows real content
-#   5. `npx wrangler deploy`
-#   6. curl https://decko-ts.<account>.workers.dev/
+# THIS FILE IS WHAT THE "Deploy to Cloudflare" BUTTON SHIPS (see README.md).
+# The button hands this config to Cloudflare, which reads the bindings below,
+# provisions the resources on the deployer's own account, and rewrites the
+# resource ids in its fork of this repo. The database_id below is the REAL
+# database created for this repo's demo deck (commit 810264f) — a button
+# deploy still provisions its own database and rewrites the id.
 #
-# For local dev / preview with miniflare:
+# Docs (fetched 2026-10-01, workers/platform/deploy-buttons/):
+#   "Cloudflare will read the Wrangler configuration file of your source
+#    repo to determine resource requirements ... and update the Wrangler
+#    configuration where applicable for newly created resources (e.g.
+#    database IDs and namespace IDs). To ensure successful deployment,
+#    please make sure your source repository includes default values for
+#    resource names, resource IDs and any other properties for each binding."
+#
+# The id is a well-formed v4 UUID because that is the shape every D1 id
+# carries — all four D1 templates in cloudflare/templates (d1-template,
+# saas-admin-template, d1-starter-sessions-api-template, openauth-template)
+# ship the same shape. This one is not a placeholder: it is the real
+# database created for the demo deck. Wrangler validates the format;
+# provisioning a button deploy's own database overwrites the value.
+#
+# NO SECRETS LIVE IN THIS FILE, and the deploy needs none: the Worker reads
+# exactly one thing from `env`, the D1 binding. There is no [vars] secret, no
+# .dev.vars, no token — so a fork of this repo carries nothing sensitive.
+#
+# For local dev / preview with miniflare (no account, no deploy):
 #   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
+#
+# compatibility_date is deliberately left at 2026-08-01. A newer date can
+# change Workers runtime behaviour, and this port's acceptance criterion is
+# byte-for-byte parity with the Ruby oracle. Bumping it is a parity decision,
+# not a deploy-packaging one.
 
 name = "decko-ts"
-main = "worker.js"
+
+# `main` names the TypeScript SOURCE, not a compiled artifact.
+#
+# Wrangler bundles the entry with esbuild, which resolves a `.js` import
+# specifier to the sibling `.ts` file — the TypeScript ESM convention this
+# whole tree is written in. So the module graph worker.ts pulls in
+# (src/server/drivers/d1.ts, src/card/fetch.ts, src/card/render.ts) resolves
+# at bundle time, and the repo needs NO build command, NO build output
+# directory and NO committed .js in order to deploy.
+#
+# This file used to name a hand-maintained worker.js twin of worker.ts. That
+# twin's imports resolved too, so the bundle always succeeded — which is
+# exactly the trap: a hand-kept copy keeps building long after it has drifted
+# from the file it copies. Checked against the emitted bundle, the deployed
+# entry called render(name, view) with no params and routed 13 views, while
+# worker.ts routes 17 and passes its query params through; the button was
+# shipping the drifted copy. One entry, the maintained one, cannot drift.
+main = "worker.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
 [define]
 __DECKO_RUNTIME__ = "'workers'"
 
-# Update this after running `wrangler d1 create decko-ts` (step 2 above).
-# The placeholder fails loudly — Cloudflare rejects the deploy until replaced.
+# The one resource this Worker needs: a single D1 database.
+#
+#   binding        the name the Worker reads off `env` (worker.ts binds
+#                  env.DB). The D1 migration command references THIS, never
+#                  database_name, so a deployer who renames the database on
+#                  the deploy page still migrates the right one — the docs'
+#                  "Running D1 Migrations" rule, verbatim.
+#   database_name  the default name offered on the deploy page; editable there.
+#   database_id    the REAL demo database's id (created in commit 810264f);
+#                  provisioning a button deploy rewrites it.
+#   migrations_dir deploy/migrations/, applied by `npm run deploy`:
+#                    0001-schema.sql                            core schema
+#                    0002-card-text-binary-lookup-indexes.sql  additive,
+#                      CREATE INDEX IF NOT EXISTS, a no-op on a fresh db
+#                    0003-demo-seed.sql                         the 4-card
+#                      browse-only demo deck, generated from db/seed.sql
+#                    0004-demo-account-substrate.sql            the account
+#                      substrate: card-mod-account's `*account` card and its
+#                      four field cards, the User cardtype, and the Decko Bot
+#                      and Anonymous actor cards. Generated by
+#                      deploy/seed-account-system.mjs. Without it the deck has
+#                      no account system and /setup answers 404.
+#                    0005-auth-sessions.sql                     the session
+#                      table the sign-in route writes to. Generated from
+#                      db/migrations/001-auth-sessions.sql:26-37, the same
+#                      DDL the Node auth runner applies locally (that runner,
+#                      src/card/auth/migrations.ts:54-89, is Node-only). With
+#                      it, a signed-in session survives across requests.
+#                    0006-demo-role-substrate.sql            the role
+#                      substrate: the Role cardtype, the *members roles
+#                      list card and all six card-mod-account roles
+#                      (Anyone, Anyone Signed In, Administrator, Eagle,
+#                      Shark, Help Desk), transcribed from
+#                      card-mod-account-0.20.0/data/real.yml. Generated
+#                      by deploy/seed-role-substrate.mjs.
+#                  So a fresh deploy comes up with a schema, content, AND an
+#                  account system — idempotent, so re-running is a no-op.
 [[d1_databases]]
 binding = "DB"
 database_name = "decko-ts"
-database_id = "TBD_REPLACE_AFTER_WRANGLER_D1_CREATE"
+database_id = "d07bd84d-4003-4611-b5bd-a318f6807676"
+migrations_dir = "deploy/migrations"
 
 [vars]
 # LIBRARY_RUNTIME is expressed via [define]; nothing needed here yet.
+#
+# THE TWO OPT-IN FLAGS. Both are OFF unless you set them to "1" here, and the
+# one-click deploy button sets neither: a deploy from the button is a
+# read-only deck, exactly as it was before the write surface existed. Set a
+# value to "1", redeploy, and that surface turns on. Nothing else moves.
+#
+#   DECKO_WRITE_PATH = "1"
+#       Sign-in (GET /_signin plus the POST /update/*signin) and card
+#       create/update/delete. Sign-in rides this same flag because signing in
+#       mints a session row in D1. With it unset, every non-GET/HEAD verb
+#       answers 403 and the engine is never called.
+#
+#   DECKO_FIRST_RUN = "1"
+#       The first-run window at /setup: GET renders the create-owner form,
+#       POST creates the deck's first account. The window is only open while
+#       the deck has no user accounts, so it closes by itself the moment the
+#       first owner exists. Unset, /setup does not exist.
+#
+# Neither flag is a secret: they are plain [vars] values, readable by anyone
+# who can read this file, and a fork of this repo still carries nothing
+# sensitive.
+# DECKO_WRITE_PATH = "0"
+# DECKO_FIRST_RUN = "0"
 
 # Optional: bind a R2 bucket for asset hosting if/when the demo grows
 # attachments. The engine never reads from R2 directly — adapters only.

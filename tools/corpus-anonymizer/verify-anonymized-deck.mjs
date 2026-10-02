@@ -72,20 +72,6 @@ const WORD_RE = /[\p{L}\p{N}]+/gu;
 
 // Worst-offender truncation: keep top-N by leak count, group the rest.
 const TOP_OFFENDERS = 5;
-// Character-class fingerprint: collapse every char to a class token so
-// we can describe the SHAPE of a leaked token (length, casing pattern,
-// digit/letter mix) without ever recording the original bytes.
-function charClassFingerprint(s) {
-  let out = "";
-  for (const ch of s) {
-    if (/[A-Z]/.test(ch)) out += "A";
-    else if (/[a-z]/.test(ch)) out += "a";
-    else if (/[0-9]/.test(ch)) out += "0";
-    else out += "?";
-  }
-  return `${out.length}/${out}`;
-}
-
 // --- CLI --------------------------------------------------------------
 const ANON_PATH = process.argv[2] || DEFAULT_ANON_PATH;
 
@@ -134,9 +120,9 @@ const VOCAB_SORTED = Array.from(vocab).sort((a, b) => b.length - a.length);
 // anonymized cell is tested against this Set — FULL vocabulary coverage
 // in O(cell length) per cell. The previous implementation scanned the
 // vocabulary array with indexOf per cell (O(cells x vocab), timed out at
-// 40 minutes on the real corpus) AND capped tokens per cell
-// (MAX_VOCAB_GUARD), which was unsound — a leak whose token sat past the
-// cap would have passed. Whole-token membership is the privacy contract:
+// 40 minutes on the real corpus) AND capped tokens per cell, which was
+// unsound — a leak whose token sat past the cap would have passed.
+// Whole-token membership is the privacy contract:
 // a surviving ORIGINAL word token in any cell is a violation.
 
 // --- Open anonymized deck READ-ONLY -----------------------------------
@@ -190,7 +176,6 @@ const leakFpByTableCol = new Map(); // key = "table.col" -> Map<fp, count>
 const totalRowsScanned = new Map(); // key = "table" -> row count
 const totalCellsScanned = new Map(); // key = "table.col" -> cells
 
-const MAX_VOCAB_GUARD = VOCAB_SORTED.length; // retained for the report only — the scan below no longer caps or indexes the array
 const MIN_VOCAB_LEN = VOCAB_MIN_LEN;
 const VOCAB_SET = new Set(VOCAB_SORTED);
 
@@ -257,9 +242,7 @@ let junctionShapeMismatch = 0;
 const junctionMissingIds = []; // bounded: first N only
 const junctionMissingMax = 10;
 
-// Build anon id-set + (id,left_id,right_id) map in one pass for both
-// (c1) and (c2).
-const anonIds = new Set();
+// Build the anon junction map in one pass for both (c1) and (c2).
 const anonJunctionById = new Map(); // id -> { left_id, right_id }
 for (const row of anon
   .prepare(
@@ -267,16 +250,10 @@ for (const row of anon
       "WHERE left_id IS NOT NULL AND right_id IS NOT NULL",
   )
   .iterate()) {
-  anonIds.add(row.id);
   anonJunctionById.set(row.id, {
     left_id: row.left_id,
     right_id: row.right_id,
   });
-}
-for (const row of anon
-  .prepare("SELECT id FROM cards")
-  .iterate()) {
-  anonIds.add(row.id);
 }
 
 for (const row of corpusJunctionRows) {

@@ -2,14 +2,15 @@
 //
 // Proof shape:
 // 1. ORACLE REPLAY: every kramdown-conversion byte the port pins was
-//    produced by the REAL local gems (ruby 3.3.12, kramdown-2.5.2,
-//    kramdown-syntax-coderay-1.0.1, coderay-1.1.3 from
-//    C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/) running the exact option
+//    produced by the REAL local gems (ruby 3.3, kramdown-2.5.2,
+//    kramdown-syntax-coderay-1.0.1, coderay-1.1.3) running the exact option
 //    hash the Ruby view passes (card-mod-markdown-0.20.0
-//    set/type/markdown.rb:7-12). Capture scripts:
-//    C:/Users/jpswi/AppData/Local/Temp/markdown-oracle-capture.rb,
-//    markdown-oracle-capture2.rb, markdown-oracle-capture3.rb - each run as
-//    `ruby <script> > <out>.json`, bytes embedded verbatim in ORACLE below.
+//    set/type/markdown.rb:7-12). The committed regeneration script
+//    tests/card/mod-loader/oracle-capture-markdown-views.rb re-emits the
+//    ORACLE table below byte-for-byte from its pinned sources:
+//    `ruby tests/card/mod-loader/oracle-capture-markdown-views.rb
+//    cases.json` with cases.json = the ORACLE `source` strings as a JSON
+//    array (verified: all 60 cases reproduce verbatim).
 //    Three captured cases are deliberately NOT pinned because the port's
 //    honest remainder diverges there (see the mod file header):
 //    "codeblock_tokenized", "fenced_ruby" (coderay tokenizer spans), and
@@ -26,6 +27,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -231,16 +233,28 @@ afterAll(() => {
 });
 
 describe("card-mod-markdown through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: the Markdown cardtype's :core is the base raw passthrough", async () => {
+  it("WITHOUT the mod: the base core itself carries the markdown dispatch (kramdown-lane seam)", async () => {
+    // The loader-less base core no longer raw-passes Markdown-typed cards:
+    // coreViewBase dispatches typeCode "markdown" through the same
+    // kramdownToStashedHtml + processContent composition the set module
+    // registers (the graded verifier/census path binds NO mod loader, so
+    // the base seam is where the corpus-exercised dispatch lives - the
+    // same precedent as the signup/toggle/plain_text/date/image/file
+    // cores). The pre-seam raw-passthrough expectation belonged to the
+    // world where the kramdown core existed ONLY behind the loader.
     const s = storage!;
     const html = await s.engine.render("Markdown Probe", "core");
-    expect(html).toBe(MARKDOWN_PROBE_CONTENT);
+    expect(html).toBe(
+      "<p>Welcome</p>\n\n" +
+        '<h1 id="styled-heading"><em>Styled</em> heading</h1>\n\n' +
+        "<p>Body <strong>text</strong> here</p>\n",
+    );
   });
 
   it("load() registers the Type::Markdown set module and the :core view", () => {
-    const s = storage!;
     loader = new ModLoader([{ manifest: cardModMarkdown }]);
     const report = loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     expect(report.modNames).toEqual(["markdown"]);
     expect(report.registeredSetModules).toEqual(["Type::Markdown"]);
     expect(report.registeredViews).toEqual(["core"]);
@@ -250,7 +264,6 @@ describe("card-mod-markdown through the mod loader (A/B)", () => {
     const module = loader.setModules().nonbase.get("Type::Markdown")?.[0];
     expect(module?.modName).toBe("markdown");
     expect(module?.kind).toBe("nonbase");
-    void s;
   });
 
   it("WITH the mod: the Markdown cardtype's :core renders the kramdown bytes", async () => {
@@ -281,23 +294,32 @@ describe("card-mod-markdown through the mod loader (A/B)", () => {
     expect(html).toBe("plain **not converted**");
   });
 
-  it("reset() restores the pre-load :core", async () => {
+  it("reset() drops the set-module override; the base markdown dispatch keeps the same bytes", async () => {
+    // After reset() the Type::Markdown set-module registration is gone
+    // (the registration assertions above cover that), but the loader-less
+    // base core now carries the identical kramdown dispatch (kramdown-lane
+    // seam change), so the rendered bytes are the kramdown bytes in BOTH
+    // dispatch worlds - which is exactly the loader-bound/loader-less
+    // byte parity the corpus path requires.
     const s = storage!;
     loader!.reset();
     const html = await s.engine.render("Markdown Probe", "core");
-    expect(html).toBe(MARKDOWN_PROBE_CONTENT);
+    expect(html).toBe(
+      "<p>Welcome</p>\n\n" +
+        '<h1 id="styled-heading"><em>Styled</em> heading</h1>\n\n' +
+        "<p>Body <strong>text</strong> here</p>\n",
+    );
   });
 });
 
 // ---------------------------------------------------------------------------
 // 4. EXTENDED ORACLE REPLAY - entries the sections above do not cover, from
-//    a SECOND capture session (this port's verification pass, 2026-09-22):
-//    C:/Users/jpswi/AppData/Local/Temp/md-oracle-veritas/
-//    kramdown-capture{,2,3}.rb against the same installed gems, plus one
-//    full view-level capture through the live decko 0.20.0 oracle app
-//    (Temp/md-oracle-veritas/decko-view-capture.rb -> decko-view-oracle.json:
-//    a real Markdown card's :core through safe_process_content, the
-//    RichText ancestor fallback, and the escape_literal identity).
+//    a second capture pass over the same installed gems (same regeneration
+//    script as section 1: tests/card/mod-loader/
+//    oracle-capture-markdown-views.rb), plus one full view-level capture
+//    through the live decko 0.20.0 oracle app: a real Markdown card's :core
+//    through safe_process_content, the RichText ancestor fallback, and the
+//    escape_literal identity.
 //    Focus: nested lists (list.rb's group split), the per-item transparency
 //    condition, blockquote/codeblock converter indentation (html.rb inner()),
 //    fence info-string rules, coderay's own plain-content escaping, entity

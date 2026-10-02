@@ -1,0 +1,21 @@
+{
+  "_provenance": "GET /accounts/{account_id}/d1/database — same shape as cloudflare-d1-database-list-response.json, but the configured database_name is absent and only a NEAR-MISS name is present. This is the refusal fixture: the teardown must report 'not deployed', never delete the near-miss. Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "uuid": "9f2c1a44-7b3e-4d5a-8c6b-1e0d2f3a4b5c",
+      "name": "decko-one-click-db-2",
+      "created_at": "2026-09-24T09:02:55.654321Z",
+      "version": "1",
+      "jurisdiction": "us"
+    }
+  ],
+  "result_info": {
+    "count": 1,
+    "page": 1,
+    "per_page": 20,
+    "total_count": 1
+  }
+}

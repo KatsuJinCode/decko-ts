@@ -2,7 +2,7 @@
 // loader - the mod that adds the Date cardtype + the *when created /
 // *when last edited / now virtual cards.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-date-0.20.0/): five set files across four patterns, no lib/,
 // no set_pattern/, no events, no HAML templates. Ported here the
 // set-module basket - every .rb file from the gem tree registers as a

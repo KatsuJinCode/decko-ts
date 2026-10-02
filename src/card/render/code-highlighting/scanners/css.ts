@@ -1,219 +1,316 @@
-// CodeRay CSS scanner.
+// CodeRay CSS scanner - the faithful port of coderay-1.1.3
+// lib/coderay/scanners/css.rb (the exact file the deck's
+// `CodeRay.scan(content, :css).div` runs; card-mod-style
+// set/abstract/01_css.rb:37 drives it for the Css/Scss cardtypes' html
+// :core).
 //
-// Truth source: coderay-1.1.3 lib/coderay/scanners/css.rb. The scanner is
-// a state machine with states [:initial, :block, :media, :media_before_name,
-// :media_after_name]. Most relevant tokens are :tag (identifiers at the
-// top level), :operator (delimiters, braces), and :string (quoted runs).
+// The first port approximated the state machine for the corpus's
+// random-letter content (:tag runs only). The pass-15 page triage showed
+// the approximation collapses on REAL stylesheet bytes - the deck's
+// "bootstrap: core" card renders ~380KB of vendored Bootstrap SCSS
+// through this scanner and the approximation's regex set diverged from
+// css.rb at the first hex color (#f8f9fa) and stayed diverged for 1.4MB.
+// This file now ports css.rb statement for statement:
 //
-// The corpus's *css card has random-letter "content" - none of it parses
-// as CSS, so every run of identifiers lands in :tag (css.rb:65-67 matches
-// /Ident/ not followed by `(`). Each token is wrapped in
-// `<span style="color:#070;font-weight:bold">...</span>`, exactly what
-// the corpus fixture shows.
+//   RE module        css.rb:16-45   (the regex set, verbatim)
+//   setup            css.rb:50-53   (states [:initial] + value_expected=false)
+//   scan_tokens      css.rb:55-191  (the elsif chain, same order)
+//
+// and emits through the shared HtmlTokenEncoder (encoder.ts), which
+// implements coderay-1.1.3's encoders/html.rb span assembly - the group
+// semantics (begin_group :string / :function wrap their tokens' kind
+// paths through `.string .delimiter` / `.function .content`) the flat
+// first port inlined wrong. Byte gates:
+// tests/card/render/code-highlighting/coderay-byte-identity.test.ts
+// (corpus pin) + the bootstrap: core / bootstrap: functions oracle pins
+// (tests/card/render/bootstrap-code-file-pages.test.ts).
 
-import { ALPHA_STYLES } from "../alpha-style.js";
-import { coderayEscape } from "../escape.js";
+import { HtmlTokenEncoder } from "../encoder.js";
 
-function styleFor(kind: string): string | undefined {
-  for (const entry of ALPHA_STYLES) if (entry.kind === kind) return entry.style;
-  return undefined;
+/** Scan at a sticky position: every RE below runs with /y (Ruby's String#scan
+ *  inside Scanner#scan_tokens anchors at the current position and matches
+ *  THERE or not at all). */
+function at(re: RegExp, input: string, i: number): RegExpExecArray | null {
+  re.lastIndex = i;
+  return re.exec(input);
 }
 
-function wrapText(text: string, style: string | undefined): string {
-  if (style === undefined) return text;
-  return `<span style="${style}">${text}</span>`;
-}
+/** css.rb:19 Escape = `#{Unicode}|\\[^\n0-9a-fA-F]` where Unicode is
+ *  `\\#{Hex}{1,6}\b` ("differs from standard because it allows uppercase
+ *  hex too" - css.rb:18). */
+const ESC = `(?:\\\\[0-9a-fA-F]{1,6}\\b|\\\\[^\\n0-9a-fA-F])`;
+/** css.rb:22-23 String1/String2 (the source's own "TODO: buggy regexp"
+ *  comments ported as-is - the bugs ARE the bytes). */
+const STRING1 = `"(?:[^\\n\\\\"]+|\\\\\\n|${ESC})*"?`;
+const STRING2 = `'(?:[^\\n\\\\']+|\\\\\\n|${ESC})*'?`;
+/** css.rb:26 HexColor = `#(?:#{Hex}{6}|#{Hex}{3})` - 6 BEFORE 3. */
+const HEX_COLOR = `#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})`;
+/** css.rb:28 Num = `-?(?:[0-9]*\\.[0-9]+|[0-9]+)n?`. */
+const NUM = `-?(?:[0-9]*\\.[0-9]+|[0-9]+)n?`;
+/** css.rb:30-31 NMStart/NMChar -> Ident = `-?#{NMStart}#{NMChar}*`. */
+const IDENT = `-?[_a-zA-Z][-_a-zA-Z0-9]*`;
+/** css.rb:32 AtKeyword = `@#{Ident}`. */
+const AT_KEYWORD = `@${IDENT}`;
+/** css.rb:34-38 Unit (Regexp.union order) + Dimension + Percentage. */
+const UNIT = `(?:em|ex|px|in|cm|mm|pt|pc|s|dpi|dppx|deg)`;
+const DIMENSION = `${NUM}${UNIT}`;
+const PERCENTAGE = `${NUM}%`;
+/** css.rb:40 Function. */
+const FUNCTION = `(?:url|alpha|attr|counters?)\\((?:[^)\\n]|\\\\\\))*\\)?`;
+/** css.rb:42 Id - the negative lookahead keeps hex colors out of :id. */
+const ID = `(?!${HEX_COLOR}\\b(?!-))#[-_a-zA-Z0-9]+`;
+/** css.rb:43-45 Class / PseudoClass / AttributeSelector. */
+const CLASS = `\\.[-_a-zA-Z0-9]+`;
+const PSEUDO_CLASS = `::?${IDENT}`;
+const ATTRIBUTE_SELECTOR = `\\[[^\\]]*\\]?`;
+
+/** The sticky scan regexes (built once). */
+const RE_WS = /\s+/y;
+// css.rb:66 `(?>#{RE::Ident})(?!\()|\*` - atomic group (no backtrack into
+// a shorter ident) OR the bare universal-selector asterisk. This V8 build
+// has no atomic groups, so the ident match runs WITHOUT the lookahead
+// (greedy exec returns the maximal run) and the (?!\() test is explicit -
+// identical semantics: `abc(` matches NO tag, `abc` matches whole.
+const RE_IDENT_GREEDY = new RegExp(IDENT, "y");
+const RE_ASTERISK = /\*/y;
+// css.rb:91 the :block branch scans ONLY the ident alternative - no `\*`.
+const RE_BLOCK_IDENT = new RegExp(IDENT, "y");
+const RE_MEDIA_IDENT = new RegExp(IDENT, "y");
+const RE_CLASS = new RegExp(CLASS, "y");
+const RE_ID = new RegExp(ID, "y");
+const RE_PSEUDO = new RegExp(PSEUDO_CLASS, "y");
+const RE_ATTR = new RegExp(ATTRIBUTE_SELECTOR, "y");
+const RE_AT_MEDIA = /@media/y;
+// css.rb:121 `/\/\*(?:.*?\*\/|\z)/m` - the \z arm: an unterminated comment
+// runs to the end of input.
+const RE_COMMENT = /\/\*(?:[\s\S]*?\*\/|[\s\S]*)/y;
+const RE_STRING = new RegExp(`(?:${STRING1}|${STRING2})`, "y");
+const RE_FUNCTION = new RegExp(FUNCTION, "y");
+// css.rb:155 `(?: #{Dimension} | #{Percentage} | #{Num} )` - that order.
+const RE_MEASURE = new RegExp(`(?:${DIMENSION}|${PERCENTAGE}|${NUM})`, "y");
+const RE_HEX = new RegExp(HEX_COLOR, "y");
+const RE_IMPORTANT = /! *important/y;
+const RE_RGB = /(?:rgb|hsl)a?\([^()\n]*\)?/y;
+const RE_AT_KEYWORD = new RegExp(AT_KEYWORD, "y");
+// css.rb:170 `/ [ +>~:;,.=()\/] /x` - x-mode whitespace is ignored OUTSIDE
+// the class, and the class itself is {space +>~:;,.=()/}. Whitespace never
+// reaches this branch (css.rb:61 consumed it first), so the reachable
+// members are the punctuators.
+const RE_OP = /[+>~:;,.=()/]/y;
+
+type CssState = "initial" | "block" | "media" | "media_before_name" | "media_after_name";
 
 /** Scan the input as CSS and return the highlighted inner HTML. */
 export function scanCss(input: string): string {
-  let out = "";
-  let i = 0;
-  const N = input.length;
-  // States lifted verbatim from css.rb - the corpus paths only exercise
-  // :initial; :block is reached only when `{` is present (which the corpus
-  // never hits), but we implement it so the surface is complete.
-  let state: "initial" | "block" | "media" | "media_before_name" | "media_after_name" = "initial";
+  const enc = new HtmlTokenEncoder();
+  scanCssInto(enc, input);
+  return enc.toString();
+}
+
+/** css.rb:83 scan_css - the token stream into ANY encoder (html.rb:82-84
+ *  delegates a <style> body here with the html scan's live encoder, so the
+ *  :inline group stays open around the css tokens exactly as Ruby does). */
+export function scanCssInto(enc: HtmlTokenEncoder, input: string): void {
+  // css.rb:50-53 setup: @state = :initial, @value_expected = false.
+  const states: CssState[] = ["initial"];
   let valueExpected = false;
-  // Regex set pulled from css.rb RE module. The corpus only exercises
-  // the :tag branch (identifiers at the top level), so we wire up enough
-  // to keep the structure honest without over-implementing.
-  const IDENT = /^-?[a-zA-Z_][\w-]*/;
-  const CLASS = /^\.[a-zA-Z_][\w-]*/;
-  const ID = /^(?!#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b(?!-))#[a-zA-Z_][\w-]*/;
-  const PSEUDO = /^::?-?[a-zA-Z_][\w-]*/;
-  const ATTR_SEL = /^\[[^\]]*\]?/;
-  const AT_MEDIA = /^@media\b/;
-  const COMMENT = /^\/\*(?:.*?\*\/|\z)/s;
-  const STRING1 = /^"(?:[^\n\\"]+|\\\n|\\[^0-9\n][^\n]?|\\[0-9a-fA-F]{1,6})*"?/;
-  const STRING2 = /^'(?:[^\n\\']+|\\\n|\\[^0-9\n][^\n]?|\\[0-9a-fA-F]{1,6})*'?/;
-  const FUNC = /^(?:url|alpha|attr|counters?)\([^)\n]*(?:\)[^)\n]*)*\)?/;
-  const NUM = /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:em|ex|px|in|cm|mm|pt|pc|s|dpi|dppx|deg|%)?/;
-  const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})/;
-  const IMPORTANT = /^!\s*important\b/;
-  const RGB_HSL = /^(?:rgb|hsl)a?\([^()\n]*(?:\)[^()\n]*)*\)?/;
-  const AT_KEYWORD = /^@[a-zA-Z_][\w-]*/;
-  const OP = /^[+>~:;,.=()\/]/;
-  const WHITE = /^\s+/;
+  const N = input.length;
+  let i = 0;
+
+  const push = (text: string, kind: string): void => {
+    enc.textToken(text, kind);
+    i += text.length;
+  };
+
   while (i < N) {
-    // whitespace - css.rb:62 emits :space unconditionally
-    const ws = WHITE.exec(input.slice(i));
+    // css.rb:61-62 whitespace first, unconditionally :space.
+    const ws = at(RE_WS, input, i);
     if (ws !== null) {
-      out += wrapText(coderayEscape(ws[0]), styleFor("space"));
-      i += ws[0].length;
+      push(ws[0], "space");
       continue;
     }
-    let m: RegExpExecArray | null;
+
+    // css.rb:64-119 the state machine (`elsif case states.last ... end` -
+    // when a case branch consumes, the outer chain ends for this token;
+    // when NO branch matches, control falls to the generic chain below).
+    const state = states[states.length - 1];
     if (state === "initial" || state === "media") {
-      if ((m = IDENT.exec(input.slice(i))) !== null && !/^\w+\(/.test(input.slice(i))) {
-        out += wrapText(coderayEscape(m[0]), styleFor("tag"));
-        i += m[0].length;
+      // css.rb:66-68: atomic ident + (?!\(), else the bare `*`. The greedy
+      // exec returns the MAXIMAL ident; if a `(` follows it the whole
+      // branch fails (the atomic group forbids the shorter-match retry).
+      const ident = at(RE_IDENT_GREEDY, input, i);
+      if (ident !== null && input[i + ident[0].length] !== "(") {
+        push(ident[0], "tag");
         continue;
       }
-      if ((m = CLASS.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("class"));
-        i += m[0].length;
+      const star = at(RE_ASTERISK, input, i);
+      if (star !== null) {
+        push("*", "tag");
         continue;
       }
-      if ((m = ID.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("id"));
-        i += m[0].length;
+      const cls = at(RE_CLASS, input, i);
+      if (cls !== null) {
+        push(cls[0], "class");
         continue;
       }
-      if ((m = PSEUDO.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("pseudo_class"));
-        i += m[0].length;
+      const id = at(RE_ID, input, i);
+      if (id !== null) {
+        push(id[0], "id");
         continue;
       }
-      if ((m = ATTR_SEL.exec(input.slice(i))) !== null) {
-        // css.rb:80-82 splits the brackets off as :operator; the inner is
-        // :attribute_name. The corpus doesn't exercise this branch; emit a
-        // faithful pass-through so any future CSS attribute selector gets
-        // the same treatment.
-        const open = m[0][0];
-        const inner = m[0].slice(1, -1);
-        const close = m[0][m[0].length - 1] === "]" ? "]" : "";
-        out += wrapText(coderayEscape(open), styleFor("operator"));
-        if (inner.length > 0) {
-          out += wrapText(coderayEscape(inner), styleFor("attribute_name"));
-        }
-        if (close !== "") out += wrapText(coderayEscape(close), styleFor("operator"));
-        i += m[0].length;
+      const pseudo = at(RE_PSEUDO, input, i);
+      if (pseudo !== null) {
+        push(pseudo[0], "pseudo_class");
         continue;
       }
-      if ((m = AT_MEDIA.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("directive"));
-        i += m[0].length;
-        state = "media_before_name";
+      const attr = at(RE_ATTR, input, i);
+      if (attr !== null) {
+        // css.rb:80-82: opening bracket :operator, inner :attribute_name
+        // when longer than the bare brackets, closing ] :operator.
+        const m = attr[0];
+        enc.textToken(m[0], "operator");
+        if (m.length > 2) enc.textToken(m.slice(1, m.length - 1), "attribute_name");
+        if (m[m.length - 1] === "]") enc.textToken("]", "operator");
+        i += m.length;
         continue;
       }
-    }
-    if (state === "block") {
-      if ((m = IDENT.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor(valueExpected ? "value" : "key"));
-        valueExpected = false;
-        i += m[0].length;
+      const media = at(RE_AT_MEDIA, input, i);
+      if (media !== null) {
+        push(media[0], "directive");
+        states.push("media_before_name");
         continue;
       }
-    }
-    if (state === "media_before_name") {
-      if ((m = IDENT.exec(input.slice(i))) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("type"));
-        i += m[0].length;
-        state = "media_after_name";
+    } else if (state === "block") {
+      // css.rb:91-98: ident -> :value when a value is expected, else :key.
+      // The atomic + (?!\() semantics as above.
+      const ident = at(RE_BLOCK_IDENT, input, i);
+      if (ident !== null && input[i + ident[0].length] !== "(") {
+        enc.textToken(ident[0], valueExpected ? "value" : "key");
+        i += ident[0].length;
         continue;
       }
-    }
-    if (state === "media_after_name") {
+    } else if (state === "media_before_name") {
+      const ident = at(RE_MEDIA_IDENT, input, i);
+      if (ident !== null) {
+        push(ident[0], "type");
+        states[states.length - 1] = "media_after_name";
+        continue;
+      }
+    } else if (state === "media_after_name") {
+      // css.rb:108-112: `{` here transitions to :media (the case consumes
+      // it - no :block push).
       if (input[i] === "{") {
-        out += wrapText(coderayEscape("{"), styleFor("operator"));
-        state = "media";
-        i += 1;
+        push("{", "operator");
+        states[states.length - 1] = "media";
         continue;
       }
     }
-    if ((m = COMMENT.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("comment"));
-      i += m[0].length;
+
+    // css.rb:121-122 comment.
+    const comment = at(RE_COMMENT, input, i);
+    if (comment !== null) {
+      push(comment[0], "comment");
       continue;
     }
+
+    // css.rb:124-127 `{` opens a block.
     if (input[i] === "{") {
       valueExpected = false;
-      out += wrapText(coderayEscape("{"), styleFor("operator"));
-      state = "block";
-      i += 1;
+      push("{", "operator");
+      states.push("block");
       continue;
     }
+    // css.rb:129-134 `}` closes block/media.
     if (input[i] === "}") {
       valueExpected = false;
-      out += wrapText(coderayEscape("}"), styleFor("operator"));
-      if (state === "block" || state === "media") state = "initial";
-      i += 1;
+      push("}", "operator");
+      const last = states[states.length - 1];
+      if (last === "block" || last === "media") states.pop();
       continue;
     }
-    if ((m = STRING1.exec(input.slice(i))) !== null || (m = STRING2.exec(input.slice(i))) !== null) {
-      // css.rb:138-141: opening delimiter (1 char), optional content, optional
-      // closing delimiter. The :delimiter kind has no alpha entry -> bare.
-      const txt = m[0];
-      const open = txt[0];
-      const close = txt.length >= 2 ? txt[txt.length - 1] : "";
-      const inner = txt.length > 2 ? txt.slice(1, -1) : "";
-      out += `<span>`;
-      out += wrapText(coderayEscape(open), styleFor("delimiter"));
-      if (inner.length > 0) out += wrapText(coderayEscape(inner), styleFor("content"));
-      if (close !== "") out += wrapText(coderayEscape(close), styleFor("delimiter"));
-      out += `</span>`;
-      i += txt.length;
+
+    // css.rb:136-141 string - a GROUP (:delimiter/:content kind paths).
+    const str = at(RE_STRING, input, i);
+    if (str !== null) {
+      const m = str[0];
+      enc.beginGroup("string");
+      enc.textToken(m[0], "delimiter");
+      if (m.length > 2) enc.textToken(m.slice(1, m.length - 1), "content");
+      if (m.length >= 2) enc.textToken(m[m.length - 1], "delimiter");
+      enc.endGroup();
+      i += m.length;
       continue;
     }
-    if ((m = FUNC.exec(input.slice(i))) !== null) {
-      const txt = m[0];
-      const start = txt.match(/^\w+\(/)![0];
-      const lastIsParen = txt[txt.length - 1] === ")";
-      const inner = lastIsParen ? txt.slice(start.length, -1) : txt.slice(start.length);
-      out += `<span>`;
-      out += wrapText(coderayEscape(start), styleFor("delimiter"));
-      if (inner.length > 0) out += wrapText(coderayEscape(inner), styleFor("content"));
-      if (lastIsParen) out += wrapText(coderayEscape(")"), styleFor("delimiter"));
-      out += `</span>`;
-      i += txt.length;
+
+    // css.rb:143-153 function - a GROUP: `name(`/:delimiter, inner
+    // :content, closing `)`/:delimiter.
+    const fn = at(RE_FUNCTION, input, i);
+    if (fn !== null) {
+      const m = fn[0];
+      const start = /^\w+\(/.exec(m)![0];
+      enc.beginGroup("function");
+      enc.textToken(start, "delimiter");
+      if (m[m.length - 1] === ")") {
+        if (m.length > start.length + 1) {
+          enc.textToken(m.slice(start.length, m.length - 1), "content");
+        }
+        enc.textToken(")", "delimiter");
+      } else {
+        if (m.length > start.length) {
+          enc.textToken(m.slice(start.length), "content");
+        }
+      }
+      enc.endGroup();
+      i += m.length;
       continue;
     }
-    if ((m = NUM.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("float"));
-      i += m[0].length;
+
+    // css.rb:155-156 dimension | percentage | number -> :float.
+    const measure = at(RE_MEASURE, input, i);
+    if (measure !== null) {
+      push(measure[0], "float");
       continue;
     }
-    if ((m = HEX_COLOR.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("color"));
-      i += m[0].length;
+
+    // css.rb:158-159 hex color.
+    const hex = at(RE_HEX, input, i);
+    if (hex !== null) {
+      push(hex[0], "color");
       continue;
     }
-    if ((m = IMPORTANT.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("important"));
-      i += m[0].length;
+
+    // css.rb:161-162 !important.
+    const important = at(RE_IMPORTANT, input, i);
+    if (important !== null) {
+      push(important[0], "important");
       continue;
     }
-    if ((m = RGB_HSL.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("color"));
-      i += m[0].length;
+
+    // css.rb:164-165 rgb/hsl color.
+    const rgb = at(RE_RGB, input, i);
+    if (rgb !== null) {
+      push(rgb[0], "color");
       continue;
     }
-    if ((m = AT_KEYWORD.exec(input.slice(i))) !== null) {
-      out += wrapText(coderayEscape(m[0]), styleFor("directive"));
-      i += m[0].length;
+
+    // css.rb:167-168 @keyword directive.
+    const atKeyword = at(RE_AT_KEYWORD, input, i);
+    if (atKeyword !== null) {
+      push(atKeyword[0], "directive");
       continue;
     }
-    if (OP.test(input[i])) {
-      const ch = input[i];
+
+    // css.rb:170-176 the operator class; : starts a value, ; ends one.
+    const op = at(RE_OP, input, i);
+    if (op !== null) {
+      const ch = op[0];
       if (ch === ":") valueExpected = true;
       else if (ch === ";") valueExpected = false;
-      out += wrapText(coderayEscape(ch), styleFor("operator"));
-      i += 1;
+      push(ch, "operator");
       continue;
     }
-    // :error - one byte at a time
-    out += wrapText(coderayEscape(input[i]), styleFor("error"));
-    i += 1;
+
+    // css.rb:178-179 everything else is an :error, one char at a time.
+    push(input[i], "error");
   }
-  return out;
 }

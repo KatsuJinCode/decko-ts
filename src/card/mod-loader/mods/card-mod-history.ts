@@ -1,7 +1,7 @@
 // The card-mod-history gem (card-mod-history-0.20.0), ported through the
 // mod loader - the history-tracking mod (acts, actions, changes).
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-history-0.20.0/): eleven set files under set/ (set/all/history.rb
 // plus nine files in set/all/history/ and set/all/history_board.rb), twelve
 // lib/ files, one stylesheet, one admin config, locales, test data. No
@@ -41,26 +41,44 @@
 //   last_change_on and revision_attributes are built on
 // - lib/card/mod/history.rb: acts_per_page = 10
 //
-// NOT yet ported (honest remainder):
-// - eleven html views - history, act, act_legend, action_summary,
-//   action_expanded, change, last_action, last_action_verb (views.rb) and
-//   creator_credit, updated_by, board_act (history_board.rb) - plus the two
-//   json views (export.rb :history/:actions). Their bodies read act/action/
-//   change rows, diff objects, and arbitrary CQL searches AT RENDER TIME;
-//   a ViewFn is synchronous and the engine's render surface
-//   (src/card/render/format.ts RenderEngineLike) exposes prefetched cards
-//   only - there is no render-time query seam to drive these reads through.
+// The render-time blocker is GONE: the render-time query seam
+// (src/card/history/render-seam.ts + RenderEngine#prepareHistoryRender)
+// loads the act/action/changes rows a history-view render reads, and the
+// sync ViewFns read the bundle. Ported byte-first against the live oracle
+// fixtures/captured/history-views.json: :history, :act, :action_summary
+// (see the views section below).
+//
+// NOT yet ported (honest remainder, updated surfaces-batch2 2026-09-30:
+// :action_expanded and :last_action_verb ARE ported now - see the views
+// section):
+// - four html views - act_legend (bs_layout), change, last_action,
+//   board_act (history_board.rb) - plus the two json views (export.rb
+//   :history/:actions; the hash shapes are ported). :last_action nests
+//   card.last_actor by id (no id-nest surface) and reads the :acted_at view
+//   (card-mod-format base.rb:63); :change composes _render_title +
+//   _render_menu + _render_last_action - it unblocks when :last_action
+//   lands; :board_act needs the board act renderer +
+//   overlay chain. :action_expanded IS ported (one viewKind argument, the
+//   capture probe#action_expanded(update_action) pins it).
 //   Specific external deps per view: act_legend's bs_layout (defined in a
-//   gem not installed here - grep for "def bs_layout" across
-//   C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/ matches only the history mod's
+//   gem not installed here - grep for "def bs_layout" across the
+//   installed gems matches only the history mod's
 //   own four usages); content_legend's Card::Content::Diff chunk renderer
 //   IS byte-pinned here (card-1.110.0 lib/card/content/diff.rb:16-21) but
 //   the layout around it is not; last_action renders the :acted_at view
 //   (card-mod-format-0.20.0 set/all/base.rb:63 - a different mod's view,
 //   absent from the TS HTML_VIEWS registry) and nests card.last_actor by
-//   id (no id-nest surface); updated_by runs Card.search(updater_of:)
-//   (CQL parser support exists - src/cql/parser.ts:515 - but no render-time
-//   search execution surface takes a query string).
+//   id (no id-nest surface).
+//   BOTH box_bottom credit halves are ported (flat registry,
+//   src/card/render/views.ts): creator_credit (history_board.rb:2-8 -
+//   record columns + the sync lexicon peek) and updated_by
+//   (history_board.rb:10-16, :76-99 - the act search). The act search's
+//   substrate is the render-time ACT-SEARCH seam
+//   (src/card/history/updater-seam.ts + RenderEngine#prepareUpdaterRender
+//   + updaterOf below), oracle-pinned on the box/box_bottom bytes
+//   (fixtures/captured/bar-box-format-views.json, both targets, all three
+//   actor arms). It is a SECOND, narrower seam, not a general CQL surface:
+//   one named query, one card, no query string.
 // - events :detect_conflict body (errors.add + I18n) and :rollback_actions
 //   body (process_revert_actions drives update! + abort :success) - the
 //   error / abort pipeline is a later wave; edit_conflict? (the
@@ -79,6 +97,7 @@
 // - config/admin.yml (the admin views list) - no TS consumer
 
 import type { SQLDatabaseDriver } from "../../../server/driver.js";
+import { timeAgoInWords as sharedTimeAgoInWords } from "../../render/text-helpers.js";
 import { sqlDateTime } from "../../history/act.js";
 import type {
   CardActsRow,
@@ -101,7 +120,6 @@ import type {
   DeckoModManifest,
   ModEventFn,
 } from "../mod-manifest.js";
-import type { ViewFn } from "../../render/format.js";
 
 // ---------------------------------------------------------------------------
 // row shapes the reader returns (the ActiveRecord attribute surface)
@@ -840,6 +858,65 @@ export async function actionFromId(
 }
 
 // ---------------------------------------------------------------------------
+// set/all/history_board.rb:10-16 - the updated_by ACT SEARCH
+// (`Card.search(updater_of: { id: card.id })`)
+// ---------------------------------------------------------------------------
+
+/** updater_of (relational_attributes.rb:32-34) resolved all the way down,
+ *  as the SQL the gem itself runs. Printed live from the capture deck
+ *  (read-only decko runner probe, the sqlite rung, card_actions 4928 ->
+ *  4928):
+ *
+ *    SELECT DISTINCT c0.* FROM cards c0
+ *    JOIN card_acts cx1 ON c0.id = cx1.actor_id
+ *    JOIN card_actions cn2 ON cx1.id = cn2.card_act_id
+ *    JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is false
+ *    WHERE (cn2.action_type = 1 AND c3.id = '605') AND c0.trash is false
+ *
+ *  The chain: CardQuery#updater_of -> tie_act :update_action_on
+ *  (relational_attributes.rb:82-84, tying the ACT's actor_id to cards.id)
+ *  -> ActQuery#update_action_on (act_query.rb:17-19) -> ActionQuery#
+ *  update_action_on (action_query.rb:26-29) = `action_type = 1`
+ *  (action_query.rb:31-33; TYPE_OPTIONS = %i[create update delete]
+ *  (action.rb:42) and `action_type=` writes its index (action.rb:89-91), so
+ *  update IS the stored 1) + `action_on card` = a tie to the acted-on card
+ *  (action_query.rb:22-24).
+ *
+ *  Three facts the port has to keep:
+ *  - DISTINCT: one row per ACTOR card, not per act. The capture deck's
+ *    "Oracle Basics" carries TWO update actions by the same actor (actions
+ *    4973 and 4974) and the live search returned exactly one updater.
+ *  - trash on BOTH sides: c0 (the actor) and c3 (the acted-on card).
+ *  - NO permission clause: the printed SQL carries no viewable_sql and no
+ *    ok?(:read) - Card.search here is the gem's own call, unfiltered. The
+ *    read gate for this data is the view gate in front of it.
+ *
+ *  ORDER: Ruby's SQL has no ORDER BY (CardQuery#sort returns nil for an
+ *  unsorted statement), so the row order is the engine's join order -
+ *  SQLite's DISTINCT-over-join emits first occurrence in the c0 scan, i.e.
+ *  cards rowid order. The live probe confirms that reading: the deck's only
+ *  multi-updater card (1222, "Sara Test Card", updated by Decko Bot id 1
+ *  and John id 1231) returned [Decko Bot, John] - ascending id. The port
+ *  pins that order explicitly so the result is deterministic rather than
+ *  plan-dependent. */
+export async function updaterOf(
+  driver: SQLDatabaseDriver,
+  cardId: number,
+): Promise<{ id: number }[]> {
+  const result = await driver.query<{ id: number }>(
+    `SELECT DISTINCT c0.id FROM cards c0
+     JOIN card_acts cx1 ON c0.id = cx1.actor_id
+     JOIN card_actions cn2 ON cx1.id = cn2.card_act_id
+     JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash IS FALSE
+     WHERE cn2.action_type = 1 AND c3.id = ?
+       AND c0.trash IS FALSE
+     ORDER BY c0.id ASC`,
+    [cardId],
+  );
+  return result.rows;
+}
+
+// ---------------------------------------------------------------------------
 // set/all/history/events.rb - the edit_conflict? guard
 // ---------------------------------------------------------------------------
 
@@ -1011,6 +1088,744 @@ export async function actionHashList(
 }
 
 // ---------------------------------------------------------------------------
+// set/all/history/views.rb + act_listing.rb + the lib/card/act/act_renderer
+// tree - the render-time history views (the seam)
+// ---------------------------------------------------------------------------
+//
+// Three of the eleven data-bound views port byte-first against the live
+// oracle fixtures/captured/history-views.json (tools/oracle/history_capture.rb;
+// rendered by the vendored 0.20.0 gems as Anonymous):
+//   view :history        - the revisions list (acts_layout history_acts)
+//   view :act            - the single-revision view (act_listing act_from_context)
+//   view :action_summary - the diff view (action_content action, :summary)
+// surfaces-batch2 (2026-09-30) adds:
+//   view :action_expanded  - action_content action, :expanded (the SAME
+//                            capture pins it: probe#action_expanded(update_action))
+//   view :last_action_verb - the create/delete/edit verb over card.last_act
+//                            (gem-source-derived bytes, rendered-unpinned)
+// The remaining four (act_legend, change, last_action, board_act) stay the
+// named remainder - see the header
+// note. The rows these views read arrive through the render-time history
+// seam (src/card/history/render-seam.ts): loaded by
+// RenderEngine#prepareHistoryRender in the async prepare half of a render
+// whose view is one of the seam views, read synchronously here. The two
+// box_bottom credit halves (creator_credit, updated_by) are ported in the
+// FLAT registry (src/card/render/views.ts) and their act rows come from the
+// narrower act-search seam (src/card/history/updater-seam.ts).
+
+import { DeckoName } from "../../name.js";
+import { h, emitAttrs, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
+import { RenderFormat, type ViewContext, type ViewFn } from "../../render/format.js";
+import { ContentDiff } from "../../history/content-diff.js";
+import type { HistoryRenderReader } from "../../history/render-seam.js";
+
+/** The seam bundle for this render; a history view without one is an
+ *  engine-wiring bug (RenderEngine always provides it for the seam views). */
+function historyReader(ctx: ViewContext): HistoryRenderReader {
+  const reader = ctx.fmt.engine.historyRenderReader?.();
+  if (reader === undefined) {
+    throw new Error(
+      "history view rendered without the render-time history seam (RenderEngine#prepareHistoryRender)",
+    );
+  }
+  return reader;
+}
+
+/** wrap.rb #slot_wrap (the views.ts slotWrap shape): id/class/data attrs +
+ *  slot options + the format's initial name context. */
+function historySlotWrap(ctx: ViewContext, view: string, inner: string): string {
+  const { fmt, voo } = ctx;
+  const card = fmt.card;
+  const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
+  const slotOptions = voo.slotOptions();
+  if (card.unknown !== true) {
+    const initial = fmt.initialContextNames;
+    if (initial.length > 0) slotOptions["name_context"] = initial.join(",");
+  }
+  const attrs = emitAttrs({
+    id: `${card.name.safeKey}-${view}-view`,
+    class: classes,
+    "data-card-id": card.id === undefined ? undefined : String(card.id),
+    "data-card-name":
+      card.record.isNew === true && card.name.isCompound ? card.name.urlKey : card.name.s,
+    "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
+    "data-card-type-name": card.typeName,
+    "data-card-link-name": fmt.urlKey(),
+    "data-slot-id": newSlotId(),
+    "data-slot": slotOptionsJson(slotOptions),
+  });
+  return `<div${attrs}>${inner}</div>`;
+}
+
+/** Builder-style div: non-empty content is preceded by a literal newline
+ *  (the Card::Bootstrap Builder add_content shape the capture pins:
+ *  `<div class="float-end">\n{diff}</div>`, `<div>\n{name}</div>`, and the
+ *  empty `<div class="float-end"></div>`). */
+function builderDiv(content: string, klass?: string): string {
+  const attr = klass === undefined ? "" : ` class="${klass}"`;
+  return `<div${attr}>${content === "" ? "" : `\n${content}`}</div>`;
+}
+
+/** The material icon tag (icon.rb:120-129, via actionIconHtml's chain). */
+function historyIcon(name: string): string {
+  return `<i class="notranslate material-icons">${name}</i>`;
+}
+
+/** Rails DateHelper#time_ago_in_words (distance_of_time_in_words from now,
+ *  include_seconds: false): the buckets the history bytes carry. The
+ *  capture NORMALIZES this phrase (wall-clock dependent -> TIME_AGO), so
+ *  the bucket word list is shape-faithful, not byte-pinned. */
+export function timeAgoInWords(from: Date, to: Date = new Date()): string {
+  // DELEGATED to the byte-exact Rails port (render/text-helpers.ts - the
+  // full date_helper.rb:95-165 bucket table, locale pluralization). This
+  // helper was a shape-faithful copy whose capture normalized the phrase;
+  // the creator_credit pins the REAL bytes ("about 1 year",
+  // fixtures/captured/board-views.json), so the shared port wins.
+  return sharedTimeAgoInWords(from, to);
+}
+
+/** acted_at TEXT ("YYYY-MM-DD HH:MM:SS") -> Date (UTC; the canonical form
+ *  act.ts pins). */
+function parseActedAt(text: string | null): Date | undefined {
+  if (text === null || text === undefined) return undefined;
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(text);
+  if (m === null) return undefined;
+  return new Date(Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!));
+}
+
+/** act_renderer.rb:50-52 actor_and_ago. */
+function actorAndAgo(ctx: ViewContext, reader: HistoryRenderReader, act: HistoryActRow): string {
+  const actor = reader.cardInfo(Number(act.actor_id));
+  const link =
+    actor === undefined
+      ? h(String(act.actor_id))
+      : `<a class="known-card" href="/${h(DeckoName.parse(actor.name).urlKey)}">${h(actor.name)}</a>`;
+  const ago = parseActedAt(act.acted_at);
+  const editedAgo = ago === undefined ? "" : `${timeAgoInWords(ago)} ago`;
+  return `<small>${link}\n${editedAgo}</small>`;
+}
+
+/** act_renderer.rb:60-64 summary - the per-type count badge. */
+function actSummaryBadge(reader: HistoryRenderReader, actions: HistoryActionRow[]): string {
+  const counts = new Map<string, number>();
+  for (const action of reader.approvedActions(actions)) {
+    const type = actionTypeSymbol(action);
+    counts.set(type, (counts.get(type) ?? 0) + 1);
+  }
+  const parts: string[] = [];
+  for (const type of ["create", "update", "delete", "draft"] as const) {
+    const count = counts.get(type) ?? 0;
+    if (count <= 0) continue;
+    const countHtml = count > 1 ? String(count) : "";
+    parts.push(`${actionIconHtml(type)}<small> ${countHtml}</small>`);
+  }
+  return parts.join("<small class='text-muted'> | </small>");
+}
+
+/** actions.rb:81-89 revert_actions_link - the "revert to this" bytes. The
+ *  query params render in the alphabetical order Rails url_for emits
+ *  (the capture pins the exact order and %5B%5D encodings). */
+function revertActionsLink(ctx: ViewContext, actionIds: number[]): string {
+  const url = ctx.fmt.urlKey();
+  const revertParams = actionIds.map((id) => `revert_actions%5B%5D=${id}`).join("&amp;");
+  const href =
+    `/update/${h(url)}?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true` +
+    (revertParams === "" ? "" : `&amp;${revertParams}`);
+  return (
+    `<a rel="nofollow" class="_close-modal slotter" data-slotter-mode="update-modal-origin"` +
+    ` href="${href}" data-remote="true" data-method="post">revert to this</a>`
+  );
+}
+
+/** act_renderer.rb:84-89 link_to_history + :80-83 link_to_act_card - the
+ *  ABSOLUTE renderer's act_links (view :act's subheader), joined " ". */
+function absoluteActLinks(actCardName: string): string {
+  const url = DeckoName.parse(actCardName).urlKey;
+  const linkToHistory =
+    `<a class="_stop_propagation known-card" rel="nofollow" href="/${h(url)}/history?look_in_trash=true">` +
+    `${historyIcon("history")}</a>`;
+  const linkToActCard =
+    `<a class="_stop_propagation known-card" href="/${h(url)}">${historyIcon("open_in_full")}</a>`;
+  return `${linkToHistory} ${linkToActCard}`;
+}
+
+/** title_in_context (context_names.rb:49-55) for a raw NAME string:
+ *  absolute against the format's card, then relativized through the
+ *  working context names. */
+function titleInContext(fmt: RenderFormat, name: string): string {
+  const absolute = DeckoName.parse(name).absoluteName(fmt.card.name).s;
+  const from = fmt.contextNames;
+  return from.length > 0 ? DeckoName.parse(absolute).from(...from) : absolute;
+}
+
+/** relative_act_renderer.rb:12-14 relative_title - the act card's name
+ *  relativized against the act_renderer's @card (the render root). */
+function relativeTitle(ctx: ViewContext, actCardName: string): string {
+  return DeckoName.parse(actCardName).from(ctx.fmt.card.name);
+}
+
+/** differ.rb:60-66 raw_view - the content rendered through the action
+ *  card's raw view (dbContent passthrough; the structure-rule override
+ *  surface rides RenderFormat.renderRaw on a shadow card). */
+function rawViewBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+  content: string,
+): string {
+  const info = reader.actionCard(action);
+  if (info?.renderCard === undefined) return content;
+  const shadow = { ...info.renderCard, dbContent: content };
+  const sub = new RenderFormat(shadow, ctx.fmt.engine, { parent: ctx.fmt });
+  return sub.renderRaw();
+}
+
+/** differ.rb:78-86 content_diff_object - previous + current raw-viewed,
+ *  diffed with HISTORY_DIFF_ARGS (diff_format :text). */
+function contentDiffObject(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): ContentDiff {
+  const previous = reader.previousValue(action, "content");
+  const current = reader.value(action, "content");
+  const previousRaw =
+    previous === undefined || previous === null ? "" : rawViewBytes(ctx, reader, action, String(previous));
+  const currentRaw = rawViewBytes(
+    ctx,
+    reader,
+    action,
+    current === undefined || current === null ? "" : String(current),
+  );
+  const dobj = new ContentDiff(previousRaw, currentRaw, HISTORY_DIFF_ARGS);
+  // differ.rb:79 @content_diff_object ||= - the memo lives on the ACTION
+  // (the Differ module is included in Card::Action), so it survives the
+  // render; the engine's map is the Action-record stand-in.
+  ctx.fmt.engine.historyDiffMemo?.set(action.id, dobj);
+  return dobj;
+}
+
+/** The memoized diff object for one action (differ.rb:78-86) - a second
+ *  view render of the same action returns the FIRST diff object, whose
+ *  summary state (rendered or not) drives the toggle flag. */
+function memoizedContentDiff(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): ContentDiff {
+  const hit = ctx.fmt.engine.historyDiffMemo?.get(action.id);
+  if (hit !== undefined) return hit;
+  return contentDiffObject(ctx, reader, action);
+}
+
+/** actions.rb:58-79 - the summary<->expanded toggle link bytes. Shown for
+ *  :expanded always; for :summary when the diff summary omitted content
+ *  (the caller resolves the flag on the SHARED ContentDiff instance). */
+function actionContentToggleBytes(
+  ctx: ViewContext,
+  action: HistoryActionRow,
+  viewKind: "summary" | "expanded",
+): string {
+  const other = viewKind === "expanded" ? "summary" : "expanded";
+  const url = ctx.fmt.urlKey();
+  const icon = viewKind === "expanded" ? "expand_less" : "expand_more";
+  return (
+    `<a rel="nofollow" class="revision-${action.card_act_id} float-end slotter"` +
+    ` href="/${h(url)}/action_${other}?action_id=${action.id}&amp;look_in_trash=true"` +
+    ` data-remote="true">${historyIcon(icon)}</a>`
+  );
+}
+
+/** actions.rb:42-49 action_content - toggle + diff, newline-joined (the
+ *  wrap body's two-element array). ONE ContentDiff instance serves the
+ *  summary, the omits-content flag and the complete diff - Ruby's
+ *  @content_diff_object memoization (differ.rb:79-86); the flag is only
+ *  meaningful AFTER the summary rendered (summary.rb:31-33 reads the
+ *  render-time @content_omitted). */
+function actionContentBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow | undefined,
+  viewKind: "summary" | "expanded",
+): string {
+  if (action === undefined) return ""; // actions.rb:43 return "" unless action.present?
+  const value = reader.value(action, "db_content");
+  const hasContent = value !== undefined && value !== null; // differ.rb:44-46 new_content?
+  const dobj = hasContent ? memoizedContentDiff(ctx, reader, action) : undefined;
+  // actions.rb:46-48 wrap do [action_content_toggle(...), content_diff(...)]
+  // - the ARRAY evaluates the toggle FIRST: on a cold memo the flag reads
+  // the un-rendered state (Ruby nil -> no toggle); the summary below then
+  // renders and memoizes it.
+  const toggleShown = viewKind === "expanded" || (dobj !== undefined && dobj.summaryOmitsContent);
+  const toggle = toggleShown ? actionContentToggleBytes(ctx, action, viewKind) : null;
+  const summary = dobj === undefined ? null : dobj.summary;
+  const diff =
+    dobj === undefined
+      ? "<i>empty</i>" // actions.rb:51-56: "<i>empty</i>" unless diff.present?
+      : viewKind === "summary"
+        ? summary
+        : dobj.complete;
+  return toggle === null ? diff! : `${toggle}\n${diff!}`;
+}
+
+/** differ.rb:74-76 diff_object(field) - the previous-vs-value Diff for the
+ *  name/cardtype diffs (NO diff_format -> the :raw escape branch). The
+ *  :cardtype values resolve through the type-name registry (the unported
+ *  to_i.cardname branch of changes.rb interpret_field). */
+function fieldNameDiffObject(
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+  field: "name" | "cardtype",
+): ContentDiff {
+  const toText = (raw: string | number | boolean | null | undefined): string | null => {
+    if (raw === undefined || raw === null) return null;
+    if (field === "cardtype") {
+      return reader.typeNameForId(Number(raw)) ?? String(raw);
+    }
+    return String(raw);
+  };
+  const previous = toText(reader.previousValue(action, field === "name" ? "name" : "type_id"));
+  const value = toText(reader.value(action, field === "name" ? "name" : "type_id"));
+  return new ContentDiff(previous, value);
+}
+
+/** action_renderer.rb:96-108 name_changes: the action carries a name change
+ *  -> Diff.complete(old_name, new_name); otherwise old_name - the last name
+ *  value BEFORE this action, title-in-context - stands alone (the capture
+ *  pins the content-update act showing the pre-action name verbatim). */
+function nameChangesBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): string {
+  const value = reader.value(action, "name");
+  const previous = reader.previousValue(action, "name");
+  const oldName = previous === undefined || previous === null ? null : titleInContext(ctx.fmt, String(previous));
+  if (value === undefined || value === null) {
+    return oldName === null ? "" : h(oldName);
+  }
+  const newName = titleInContext(ctx.fmt, String(value));
+  // the Diff output is html-safe (the capture pins the raw <ins>/<del>
+  // bytes); its :raw branch escapes the words themselves
+  return ContentDiff.complete(oldName, newName);
+}
+
+/** action_renderer.rb:84-88 content_diff - the DELETE raw branch stays the
+ *  named remainder; every other action renders the nested :action_summary
+ *  slot on the action's card (a subformat render - no nest_name in the
+ *  slot JSON, the capture pins). */
+function nestedActionSummary(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): string {
+  const info = reader.actionCard(action);
+  if (info?.renderCard === undefined) return "";
+  const sub = new RenderFormat(info.renderCard, ctx.fmt.engine, { parent: ctx.fmt });
+  return sub.renderView("action_summary", { action_id: action.id });
+}
+
+/** action_renderer.rb:29-56 ActionRenderer#render - the container/row/ul/li
+ *  bytes with the bs_panel heading/body. The leading "\n" is the Builder
+ *  add_content separator the capture pins. */
+function actionRendererBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): string {
+  const cardInfo = reader.actionCard(action);
+  // name_diff (action_renderer.rb:62-82)
+  let nameDiff: string;
+  if (cardInfo !== undefined && DeckoName.parse(cardInfo.name).isCompound) {
+    nameDiff = h(DeckoName.parse(cardInfo.name).from(ctx.fmt.card.name));
+  } else {
+    nameDiff = nameChangesBytes(ctx, reader, action);
+  }
+  // type_diff (action_renderer.rb:90-94) - "" unless new_type?
+  let typeDiff = "";
+  const typeValue = reader.value(action, "type_id");
+  if (typeValue !== undefined && typeValue !== null) {
+    typeDiff = fieldNameDiffObject(reader, action, "cardtype").complete;
+  }
+  const contentDiff = nestedActionSummary(ctx, reader, action);
+  const panel =
+    `\n<div class="card-header">\n${builderDiv(typeDiff, "float-end")}\n${builderDiv(nameDiff)}</div>` +
+    `\n${builderDiv(contentDiff, "card-body")}`;
+  return (
+    `\n<div class="container-fluid">\n\n<div class="row">\n` +
+    `              <ul class="action-list w-100">\n` +
+    `                <li class="${actionTypeSymbol(action)}">\n` +
+    `                  ${panel}\n` +
+    `                </li>\n` +
+    `              </ul>\n</div></div>`
+  );
+}
+
+/** ActRenderer#details - approved_actions[0..20], each an ActionRenderer. */
+function actDetailsBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  actions: HistoryActionRow[],
+): string {
+  const approved = reader.approvedActions(actions).slice(0, 21);
+  return approved.map((action) => actionRendererBytes(ctx, reader, action)).join("");
+}
+
+/** actions.rb:34-40 action_from_context - voo action_id, then the render
+ *  param, then the card's last action. A non-integer or off-card id
+ *  resolves to no action (the loaded seam set covers the render root's
+ *  history family; Ruby's Action.fetch would raise NotFound for an
+ *  unknown id - the divergence is a documented remainder). */
+function actionFromContext(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+): HistoryActionRow | undefined {
+  const vooActionId = ctx.voo.opts["action_id"];
+  const param =
+    vooActionId !== undefined && vooActionId !== null ? String(vooActionId) : reader.params.actionId;
+  if (param !== undefined && param !== "") {
+    // Action.fetch (actions.rb:36): any loaded action resolves - the
+    // nested action_summary renders ids on OTHER cards of the act (the
+    // capture pins child/tag action ids under the probe's format). The
+    // on-self restriction (selected.rb action_if_on_self) is a different
+    // method this view does not call.
+    return /^\d+$/.test(param) ? reader.actionById(Number(param)) : undefined;
+  }
+  return reader.cardLastAction;
+}
+
+/** act_listing.rb:9-13 act_from_context - params act_id, else the last
+ *  action's act. A given act_id that resolves to nothing raises
+ *  Card::NotFound ("act not found"). */
+function actFromContext(ctx: ViewContext, reader: HistoryRenderReader): HistoryActRow {
+  const actId = reader.params.actId;
+  if (actId === undefined || actId === "") {
+    const last = reader.cardLastAction;
+    if (last === undefined || last.card_act_id === null) {
+      throw new Error("act_from_context: card has no last action (Ruby nil.act NoMethodError)");
+    }
+    const act = reader.actById(Number(last.card_act_id));
+    if (act === undefined) {
+      throw new Error("act_from_context: last action's act not loaded");
+    }
+    return act;
+  }
+  const act = reader.actById(Number(actId));
+  if (act === undefined) throw new Error("act not found"); // Card::NotFound
+  return act;
+}
+
+/** accordion_item.haml (card-mod-bootstrap set/all/bootstrap) - the item
+ *  bytes with the collapse id and the optional subheader. */
+function accordionItemBytes(args: {
+  headerInner: string;
+  subheader: string | null;
+  body: string;
+  collapseId: string;
+}): string {
+  const { headerInner, subheader, body, collapseId } = args;
+  let out = `<div class='accordion-item'>\n`;
+  out += `<h2 class='accordion-header nodblclick w-100'>\n`;
+  out += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
+  out += `${headerInner}\n`;
+  out += `</button>\n`;
+  out += `</h2>\n`;
+  out += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
+  if (subheader !== null) {
+    out += `<div class='accordion-subheader bg-light p-2 text-end'>\n${subheader}\n</div>\n`;
+  }
+  out += `<div class='accordion-body d0-card-body'>\n${body}
+</div>\n`;
+  out += `</div>\n`;
+  out += `</div>\n`;
+  return out;
+}
+
+/** ActRenderer#header - the bs_layout row xs [8,4] (title+badge col, then
+ *  the subtitle col). The leading "\n" is the Builder add_content
+ *  separator the capture pins. */
+function actHeaderInner(args: { title: string; badge: string; subtitle: string }): string {
+  const col1 =
+    `<div class="col-8">\n${args.title}` +
+    (args.badge === "" ? "" : `\n<span class="text-muted ps-1 badge">\n${args.badge}</span>`) +
+    `</div>`;
+  const col2 = builderDiv(args.subtitle, "col-4 text-end");
+  return `\n<div class="row w-100">\n${col1}\n${col2}</div>`;
+}
+
+/** relative_act_renderer.rb:22-34 act_links -> rollback_or_edit_link: the
+ *  autosaved-draft edit link for draft acts (byte-shape per the gem, no
+ *  capture pin), else the revert link when the act is NOT the card's
+ *  current act and the update gate passes. */
+function relativeActSubheader(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  act: HistoryActRow,
+  actions: HistoryActionRow[],
+): string | null {
+  const isCurrentAct = reader.cardLastAct !== undefined && reader.cardLastAct.id === act.id;
+  if (isCurrentAct) return null; // show_rollback_link? -> !current_act?
+  if (reader.rootUpdateAllowed === false) return null; // rollback_link's ok?(:update)
+  const revertIds = actions.filter((a) => a.draft !== 1).map((a) => a.id);
+  return `<small><div class="act-link float-end"><small>${revertActionsLink(ctx, revertIds)}</small></div></small>`;
+}
+
+/** RelativeActRenderer - one accordion item in the :history list. */
+function relativeActItemBytes(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  act: HistoryActRow,
+  actCardName: string,
+  seq: number,
+): string {
+  const actions = reader.actionsAffecting(act.id, reader.rootCardId!);
+  const title = `<span class="nr">#${seq}</span> ${actorAndAgo(ctx, reader, act)}`;
+  const subtitle =
+    Number(act.card_id) === reader.rootCardId
+      ? ""
+      : `<small>act on ${h(relativeTitle(ctx, actCardName))}</small>`;
+  const headerInner = actHeaderInner({
+    title,
+    badge: actSummaryBadge(reader, actions),
+    subtitle,
+  });
+  return accordionItemBytes({
+    headerInner,
+    subheader: relativeActSubheader(ctx, reader, act, actions),
+    body: actDetailsBytes(ctx, reader, actions),
+    collapseId: `act-id-${act.id}`,
+  });
+}
+
+/** view :history (views.rb:4-9) - the revisions list. */
+const historyView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const reader = historyReader(ctx);
+  voo.hide("help"); // frame.rb:18 with_frame
+  fmt.addNameContext(); // frame.rb:19 with_frame
+  if (reader.rootCardId === undefined) return "";
+  // act_listing.rb:69-79 pagination + the relative act_seq countdown
+  const page = Math.max(1, Number.parseInt(reader.params.page ?? "1", 10) || 1);
+  const start = (page - 1) * HISTORY_ACTS_PER_PAGE;
+  const pageActs = reader.acts.slice(start, start + HISTORY_ACTS_PER_PAGE);
+  let seq = reader.actsTotal - start; // act_list_starting_seq
+  const items: string[] = [];
+  for (const act of pageActs) {
+    const actCard = reader.cardInfo(Number(act.card_id));
+    if (actCard === undefined) {
+      seq -= 1; // clean_acts drops the act; the seq counter still steps
+      continue;
+    }
+    items.push(relativeActItemBytes(ctx, reader, act, actCard.name, seq));
+    seq -= 1;
+  }
+  // acts_layout (act_listing.rb:20-26): the legend row (draft_legend shown
+  // - relative_history passes :show), then row(12) wrapping the act
+  // accordion (a BLOCK row - no column wrap; the capture pins it).
+  // surfaces-batch3: the row composition moved to actLegendRowBytes() —
+  // the :act_legend view renders the SAME bytes (one composition, two
+  // surfaces; byte-identical to this view's previous inline shape).
+  const legendRow = actLegendRowBytes();
+  const actRow = `<div class="row">\n<div class="accordion">${items.join("")}</div></div>`;
+  const headerHtml = `<${fmt.isMain ? "h1" : "h2"} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${fmt.isMain ? "h1" : "h2"}>\n${fmt.renderView("menu")}`;
+  const frame =
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">${headerHtml}</div>` +
+    `\n\n` +
+    `<div class="d0-card-body card-body card-text">\n\n${legendRow}\n${actRow}</div>` +
+    `</div>`;
+  return historySlotWrap(ctx, "history", frame);
+};
+
+/** view :act (views.rb:11-13) - the single-revision view; act_listing with
+ *  the ABSOLUTE renderer (params[:act_context] || :absolute). NO slot wrap
+ *  (the view body is the accordion item alone - the capture pins it). */
+const actView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const act = actFromContext(ctx, reader);
+  const actCard = reader.cardInfo(Number(act.card_id));
+  if (actCard === undefined) return ""; // ActRenderer#render: @act_card or ""
+  const actions = reader.actionsOfAct(act.id);
+  const headerInner = actHeaderInner({
+    title: h(actCard.name),
+    badge: actSummaryBadge(reader, actions),
+    subtitle: actorAndAgo(ctx, reader, act),
+  });
+  return accordionItemBytes({
+    headerInner,
+    subheader: absoluteActLinks(actCard.name),
+    body: actDetailsBytes(ctx, reader, actions),
+    collapseId: `act-id-${act.id}`,
+  });
+};
+
+/** view :action_summary (views.rb:28-30) - the diff view. */
+const actionSummaryView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const action = actionFromContext(ctx, reader);
+  if (action === undefined) return ""; // actions.rb:43 (no wrap for a missing action)
+  return historySlotWrap(ctx, "action_summary", actionContentBytes(ctx, reader, action, "summary"));
+};
+
+/** views.rb:36-38 view :action_expanded - `action_content
+ *  action_from_context, :expanded`. The same action_content body as
+ *  :action_summary with the EXPANDED viewKind: the toggle is unconditional
+ *  (actions.rb:46-48 read through actionContentBytes' toggleShown - expanded
+ *  always shows the collapse anchor, pointing back at :action_summary) and
+ *  the diff arm is the ContentDiff's COMPLETE form (the <del>/<ins> full
+ *  diff, "<i>empty</i>" when no diff object). Oracle-pinned:
+ *  fixtures/captured/history-views.json probe#action_expanded(update_action)
+ *  (the expand_less toggle + the complete diff inside the standard history
+ *  slot wrap). Ported by surfaces-batch2, 2026-09-30 - the header's "one
+ *  viewKind argument away" note. */
+const actionExpandedView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const action = actionFromContext(ctx, reader);
+  if (action === undefined) return ""; // actions.rb:43 (no wrap for a missing action)
+  return historySlotWrap(ctx, "action_expanded", actionContentBytes(ctx, reader, action, "expanded"));
+};
+
+/** views.rb:54-67 view :last_action_verb, cache: :never:
+ *    return unless (act = card.last_act)
+ *    return unless (action = act.action_on card.id)
+ *    case action.action_type
+ *    when :create then "added"
+ *    when :delete then "deleted"
+ *    else link_to_view :history, "edited", class: "last-edited", rel: "nofollow"
+ *    end
+ *  act.action_on(card.id) = the act's action whose card_id is this card
+ *  (card/act.rb). The :edited anchor derives from the helper chain - the
+ *  HTML link_to_view override (card-mod-format set/all/links.rb:119-122)
+ *  slotterify's (remote: true + rel: "nofollow" reverse_merge, add_class
+ *  "slotter" -> "last-edited slotter"), then base link_to_view (:23-26)
+ *  add_to_path(view: :history), then the HTML link_to (:101-107):
+ *  opts[:href] ||= path(view: :history), interpret_data_opts folds
+ *  remote: into data-remote (delete+re-insert = last position), and
+ *  content_tag emits attributes in Rails 7.2 hash-insertion order
+ *  (actionview-7.2.3.2 tag_helper.rb:261-265 each_pair, NO sort): the
+ *  caller's class first, rel, href, data-remote last.
+ *  RENDERED-UNPINNED for this arm: no oracle capture renders the ALLOWED
+ *  body (the capture shards carry no render of the name) - the byte shape
+ *  is gem-source-derived, the same disclosed basis as the account-form
+ *  pins. Ported by surfaces-batch2, 2026-09-30.
+ *
+ *  mm-roleviews lane (2026-09-30) — TWO notes this body earned:
+ *  1. The DENIED arm IS captured. The four notification templates'
+ *  `{{_|last_action_verb}}` marks render on the notification's CONTEXT
+ *  card, which the anonymous capture cannot read, so perms.rb:46-48 +
+ *  error.rb:27-31 substitute the denial view BEFORE this body runs
+ *  (`follower notification email+*html message` pins
+ *  `<span class="denied"><!-- Sorry, you don't have permission (read)
+ *  --></span>` inside the template's own anchor). This body therefore
+ *  serves the captured bytes only through the gate, never directly.
+ *  2. The FLAT HTML_VIEWS entry for this name points at card-mod-follow's
+ *  notify variant instead (render/views.ts#lastActionVerbNotifyView): the
+ *  loader-less graded surface installs no history seam, so the flat entry
+ *  cannot carry THIS body (it would hit historyReader's engine-wiring
+ *  assertion, whose error the nest rescue would print into the page).
+ *  This registration stays the set-scoped one for the history surface,
+ *  where RenderEngine#prepareHistoryRender always provides the reader. */
+const lastActionVerbView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const act = reader.cardLastAct;
+  if (act === undefined) return ""; // views.rb:55 return unless (act = card.last_act)
+  const action = reader
+    .actionsOfAct(act.id)
+    .find((a) => a.card_id === reader.rootCardId);
+  if (action === undefined) return ""; // views.rb:56 return unless (action = act.action_on card.id)
+  const type = actionTypeFromCode(Number(action.action_type));
+  if (type === "create") return "added";
+  if (type === "delete") return "deleted";
+  const url = ctx.fmt.urlKey();
+  return (
+    `<a class="last-edited slotter" rel="nofollow" href="/${h(url)}?view=history"` +
+    ` data-remote="true">edited</a>`
+  );
+};
+
+// ---------------------------------------------------------------------------
+// surfaces-batch3 (2026-09-30): the act_legend / last_action / change ladder
+// (views.rb:15-23 / :46-53 / :36-43). board_act stays the named remainder
+// (the board act renderer + overlay chain).
+// ---------------------------------------------------------------------------
+
+/** views.rb:15-23 view :act_legend — the bs_layout row:
+ *  `bs_layout do row md: [12, 12], lg: [7, 5], class: "pb-3" do
+ *  col action_legend; col content_legend, class: "text-end" end end`.
+ *  The bs_layout DSL (card-mod-bootstrap set/all/bootstrap/wrapper.rb)
+ *  expands to the exact bytes the LIVE ORACLE CAPTURE pins — the legend row
+ *  inside probe#history (fixtures/captured/history-views.json): the row div
+ *  carries the row class, col 1 "col-md-12 col-lg-7", col 2
+ *  "col-md-12 col-lg-5 text-end", one newline between the containers. The
+ *  legend halves are the ported helpers actionLegendHtml(true) +
+ *  contentLegendHtml() (actions.rb:91-104; relative_history passes :show,
+ *  so the draft legend arm is ON). The :history view composes the SAME
+ *  bytes through this helper — one composition, two surfaces. */
+function actLegendRowBytes(): string {
+  return (
+    `<div class="row pb-3">\n<div class="col-md-12 col-lg-7">\n${actionLegendHtml(true)}</div>` +
+    `\n<div class="col-md-12 col-lg-5 text-end">\n${contentLegendHtml()}</div></div>`
+  );
+}
+
+/** views.rb:15-23 view :act_legend — the legend row alone (see
+ *  actLegendRowBytes for the composition + capture cite). */
+const actLegendView: ViewFn = () => actLegendRowBytes();
+
+/** views.rb:46-53 view :last_action:
+ *  `%(\n      <span class="last-update">\n        #{render_last_action_verb}
+ *  #{render_acted_at} ago by\n        #{nest card.last_actor, view: :link}\n
+ *  </span>\n    )` — the %() literal keeps the template's newlines and
+ *  indentation. render_acted_at is the :acted_at view (format base.rb:63,
+ *  date_view = time_ago_in_words — no variant); card.acted_at is
+ *  last.rb:1-2 `last_act.acted_at`. The actor nest renders :link — for a
+ *  known actor the link view's bytes are the known-card anchor (the same
+ *  anchor actorAndAgo emits for the act listing; the nil-card arm renders
+ *  the bare id, last.rb:65-67 last_actor = last_act.actor). Byte basis:
+ *  GEM-SOURCE-DERIVED (RENDERED-UNPINNED — no capture shard renders the
+ *  name), the same disclosed basis as :last_action_verb. */
+const lastActionView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const act = reader.cardLastAct;
+  const verb = ctx.fmt.renderView("last_action_verb");
+  const ago0 = act === undefined ? undefined : parseActedAt(act.acted_at);
+  const actedAt = ago0 === undefined ? "" : timeAgoInWords(ago0);
+  const actor =
+    act === undefined
+      ? undefined
+      : reader.cardInfo(Number(act.actor_id));
+  const actorLink =
+    actor === undefined
+      ? act === undefined
+        ? ""
+        : h(String(act.actor_id))
+      : `<a class="known-card" href="/${h(DeckoName.parse(actor.name).urlKey)}">${h(actor.name)}</a>`;
+  return (
+    `\n      <span class="last-update">\n        ${verb} ${actedAt} ago by\n        ${actorLink}\n      </span>\n    `
+  );
+};
+
+/** views.rb:36-43 view :change:
+ *  `voo.show :title_link; voo.hide :menu; wrap do [_render_title,
+ *  _render_menu, _render_last_action] end` — the default slot wrap (wrap.rb
+ *  :6-9, slot=true) around the array joined by output()'s newline; the
+ *  hidden menu renders empty. Composes :last_action — unblocks when it
+ *  lands (it lands in this commit). */
+const changeView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  voo.show("title_link");
+  voo.hide("menu");
+  // title.rb:14-16 show_view?(:title_link, :hide) ? render_title_link :
+  // render_title_no_link — the voo the :change body just viz'd decides the
+  // title arm. (The flat :title registers the no-link arm unconditionally;
+  // the toggle lives here, the one view whose Ruby body viz's it.)
+  const title = fmt.renderView("title_link");
+  const menu = voo.show("menu") ? fmt.renderView("menu") : "";
+  const lastAction = fmt.renderView("last_action");
+  return historySlotWrap(ctx, "change", [title, menu, lastAction].join("\n"));
+};
+
+// ---------------------------------------------------------------------------
 // set/all/history/events.rb - the event declarations (pinned to the manifest
 // events[] surface; bodies are stubs because the write path / DB seam
 // stays out of scope for this lane, mirroring the list mod's pattern for
@@ -1028,82 +1843,14 @@ export async function actionHashList(
 //   :finalize_action           at :finalize,      when: :finalize_action?
 //   :rollback_actions          at :prepare_to_validate, on: [:update], when: :rollback_request?
 //   :finalize_act              via `after: :finalize_action`, when: :act_card?
-// All six pinned bodies need DB write access; the fns are no-op stubs that
-// document the seam each body would call into (the host argument is reserved
-// for a future write-path composition surface).
+// All six pinned bodies need DB write access; every registration below
+// shares one not-implemented fn, and each entry's comment transcribes the
+// Ruby body plus the seam it would call into (the host argument is
+// reserved for a future write-path composition surface).
 
-/** events.rb:1-7 update_ancestor_timestamps (integrate) - `ids =
- *  history_ancestor_ids; return unless ids.present?; Card.where(id: ids)
- *  .update_all(...); ids.map { |anc_id| Card.expire anc_id.cardname }`.
- *  The DB UPDATE + cache.expire are the write-path acts/CQL seam that
- *  stays out of scope here (see header). */
-const updateAncestorTimestampsEvent: ModEventFn = (_card, _host) => {
-  // see header: history_ancestor_ids (ported above) -> DB update_all ->
-  // Card.expire (cache.invalidate + prepareEngine fetch surface).
-};
-
-/** events.rb:15-17 assign_action (initialize, when: :actionable?) -
- *  Ruby body: `@current_action = new_action` where `new_action`
- *  (events.rb:74-82) builds `Card::Action.new(act: director.need_act,
- *  action_type: action, draft: draft_action?, super_action: super_action)`.
- *  The :initialize stage runs BEFORE any other history event; the action
- *  row does not yet exist and the engine's ModEventCard surface
- *  (name/id/dbContent) cannot carry the act + super-action + draft flag.
- *  The write path lives in src/card/history/write-path.ts (ActWriter); the
- *  event fn records the declaration without reaching into write-path
- *  seams the surface cannot supply. */
-const assignActionEvent: ModEventFn = (_card, _host) => {
-  // see header: write-path (ActWriter.assignAction) is not exposed to the
-  // event fn signature; @current_action requires the act row + action_type
-  // + draft + super_action, none of which the (card, host) surface carries.
-};
-
-/** events.rb:19-22 detect_conflict (validate, on: :update, when:
- *  :edit_conflict?) - Ruby body: `errors.add :conflict, ::I18n.t
- *  (:history_error_not_latest_revision)`. The error pipeline
- *  (`Card::Error::Abort` + the `abort` callable) is a later-wave seam;
- *  the guard `edit_conflict?` IS ported above (events.rb:65-72, see
- *  isEditConflict at card-mod-history.ts:851-870). */
-const detectConflictEvent: ModEventFn = (_card, _host) => {
-  // see header: errors.add :conflict + I18n.t(:history_error_not_latest_revision)
-  // need the errors-object + I18n-in-flight seams; the edit_conflict?
-  // guard it depends on is ported (isEditConflict above).
-};
-
-/** events.rb:25-38 finalize_action (finalize, when: :finalize_action?) -
- *  Ruby body: `if changed_fields.present?` then `@current_action.update!
- *  card_id: id; store_card_changes_for_create_action if first_change?;
- *  store_card_changes unless first_create?`; else drop the empty action.
- *  The write path lives in src/card/history/write-path.ts (ActWriter);
- *  the fn records the body without attempting to call write-path seams
- *  the ModEventCard surface (name/id/dbContent, no action row) cannot
- *  supply. */
-const finalizeActionEvent: ModEventFn = (_card, _host) => {
-  // see header: write-path (ActWriter.finalizeAction) is not exposed to
-  // the event fn signature; the seam belongs to a later wave.
-};
-
-/** events.rb:40-46 rollback_actions (prepare_to_validate, on: :update,
- *  when: :rollback_request?) - the body reads `revert_actions` from
- *  Env.params, calls `process_revert_actions`, runs `update!` on the
- *  result, clears drafts, then `abort :success`. Both Env.params + the
- *  abort pipeline + the revert write path are out of scope here. */
-const rollbackActionsEvent: ModEventFn = (_card, _host) => {
-  // see header: Env.params["revert_actions"] -> process_revert_actions
-  // (set/all/history/actions.rb) -> update! -> abort :success; all three
-  // are later-wave seams.
-};
-
-/** events.rb:48-50 finalize_act (after: :finalize_action, when:
- *  :act_card?) - Ruby body: `Card::Director.act.update! card_id: id`
- *  (the act's primary-card UPDATE - the row was inserted with card_id
- *  NULL). The ActWriter already owns this UPDATE
- *  (write-path.ts:605-621 finalizeActCard); the event fn records the
- *  declaration without reaching back into the writer's private seam. */
-const finalizeActEvent: ModEventFn = (_card, _host) => {
-  // see header: write-path (ActWriter.finalizeActCard) is not exposed to
-  // the event fn signature; the seam belongs to a later wave.
-};
+/** The shared body for all six declarations - none is implemented (see
+ *  the section header). */
+const historyEventNotImplemented: ModEventFn = () => {};
 
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem set file; setPaths as in the gem tree)
@@ -1146,42 +1893,77 @@ const cardModHistory: DeckoModManifest = {
       // stubs - the write path + DB seam are out of scope for this lane.
       setPath: "all/history/events",
       events: [
+        // events.rb:1-7 update_ancestor_timestamps (integrate) - `ids =
+        // history_ancestor_ids; return unless ids.present?;
+        // Card.where(id: ids).update_all(...); ids.map { |anc_id|
+        // Card.expire anc_id.cardname }`. Needs the DB UPDATE +
+        // cache.expire (write-path acts/CQL seam).
         {
           event: "update_ancestor_timestamps",
           at: "integrate",
-          fn: updateAncestorTimestampsEvent,
+          fn: historyEventNotImplemented,
         },
+        // events.rb:15-17 assign_action (initialize, when: :actionable?) -
+        // Ruby body: `@current_action = new_action` where `new_action`
+        // (events.rb:74-82) builds `Card::Action.new(act:
+        // director.need_act, action_type: action, draft: draft_action?,
+        // super_action: super_action)`. :initialize runs before every
+        // other history event; the (card, host) surface carries neither
+        // the act row nor the draft/super-action flags. Write path:
+        // src/card/history/write-path.ts (ActWriter.assignAction).
         {
           event: "assign_action",
           at: "initialize",
           when: "actionable?",
-          fn: assignActionEvent,
+          fn: historyEventNotImplemented,
         },
+        // events.rb:19-22 detect_conflict (validate, on: :update, when:
+        // :edit_conflict?) - Ruby body: `errors.add :conflict, ::I18n.t
+        // (:history_error_not_latest_revision)`. Needs the errors-object +
+        // I18n-in-flight seams; the edit_conflict? guard IS ported above
+        // (events.rb:65-72, isEditConflict).
         {
           event: "detect_conflict",
           at: "validate",
           on: ["update"],
           when: "edit_conflict?",
-          fn: detectConflictEvent,
+          fn: historyEventNotImplemented,
         },
+        // events.rb:25-38 finalize_action (finalize, when:
+        // :finalize_action?) - Ruby body: `if changed_fields.present?`
+        // then `@current_action.update! card_id: id;
+        // store_card_changes_for_create_action if first_change?;
+        // store_card_changes unless first_create?`; else drop the empty
+        // action. Write path: ActWriter.finalizeAction.
         {
           event: "finalize_action",
           at: "finalize",
           when: "finalize_action?",
-          fn: finalizeActionEvent,
+          fn: historyEventNotImplemented,
         },
+        // events.rb:40-46 rollback_actions (prepare_to_validate, on:
+        // :update, when: :rollback_request?) - the body reads
+        // `revert_actions` from Env.params, calls
+        // `process_revert_actions` (set/all/history/actions.rb), runs
+        // `update!` on the result, clears drafts, then `abort :success`.
+        // Needs Env.params + the abort pipeline + the revert write path.
         {
           event: "rollback_actions",
           at: "prepare_to_validate",
           on: ["update"],
           when: "rollback_request?",
-          fn: rollbackActionsEvent,
+          fn: historyEventNotImplemented,
         },
+        // events.rb:48-50 finalize_act (after: :finalize_action, when:
+        // :act_card?) - Ruby body: `Card::Director.act.update! card_id:
+        // id` (the act's primary-card UPDATE - the row was inserted with
+        // card_id NULL). ActWriter.finalizeActCard
+        // (write-path.ts:605-621) already owns this UPDATE.
         {
           event: "finalize_act",
           after: "finalize_action",
           when: "act_card?",
-          fn: finalizeActEvent,
+          fn: historyEventNotImplemented,
         },
       ],
     },
@@ -1204,20 +1986,36 @@ const cardModHistory: DeckoModManifest = {
     },
     {
       // card-mod-history-0.20.0/set/all/history/views.rb - the history
-      // views; :draft_legend is the one headlessly-portable view (the
-      // other eight need render-time act/action/diff data the engine's
-      // sync ViewFn surface does not expose - see the header note)
+      // views: :draft_legend (headless) plus the seam-backed views
+      // (:history / :act / :action_summary / :action_expanded /
+      // :last_action_verb / :act_legend / :last_action / :change — the
+      // render-time query seam, src/card/history/render-seam.ts;
+      // surfaces-batch3 added the ladder trio). board_act is the one
+      // remaining named view of the mod (the board act renderer + overlay
+      // chain, all/history_board.rb).
       setPath: "all/history/views",
       formats: {
         html: {
-          views: [{ view: "draft_legend", viewFn: draftLegendView }],
+          views: [
+            { view: "draft_legend", viewFn: draftLegendView },
+            { view: "history", viewFn: historyView },
+            { view: "act", viewFn: actView },
+            { view: "action_summary", viewFn: actionSummaryView },
+            { view: "action_expanded", viewFn: actionExpandedView },
+            { view: "last_action_verb", viewFn: lastActionVerbView },
+            { view: "act_legend", viewFn: actLegendView },
+            { view: "last_action", viewFn: lastActionView },
+            { view: "change", viewFn: changeView },
+          ],
         },
       },
     },
     {
       // card-mod-history-0.20.0/set/all/history_board.rb - the board
-      // views (creator_credit / updated_by / board_act - not ported) +
-      // the board listing helpers
+      // views. :board_act is not ported; :creator_credit and :updated_by
+      // are ported in the FLAT registry (src/card/render/views.ts, the
+      // same level the mod-a lane used for creator_credit), so this
+      // manifest registers no history_board view.
       setPath: "all/history_board",
     },
   ],

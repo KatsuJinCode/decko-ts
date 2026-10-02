@@ -44,6 +44,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -137,10 +138,17 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     );
   });
 
+  // Both views are declared in the NESTED set file
+  // set/type/set/html_views.rb; the viewChain nested expansion
+  // (mod-loader.ts) reaches the nested type/set/html_views modules for the
+  // starred TYPE-Xset token — the views dispatch and the byte assertions
+  // run unmarked (the nested set-file mechanism: see
+  // known-divergences-from-ruby.md).
   it("WITH the mod: :set_label renders the pattern label for the set card (set/type/set/html_views.rb:13-15)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModRules }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     // card.label (set/type/set.rb:38-41) for the *self set of "RichText":
@@ -151,6 +159,8 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     expect(html).toBe(`<strong class="set-label">The card "RichText"</strong>`);
   });
 
+  // XFAIL(shortname rework): see :set_label - nested
+  // set/type/set/html_views.rb.
   it("WITH the mod: :input renders the literal message on set cards (set/type/set/html_views.rb:17-19)", async () => {
     const s = storage!;
     const html = await s.engine.render("RichText+*self", "input");
@@ -205,15 +215,21 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     expect(html).not.toContain("Twitter template");
   });
 
-  it("WITH the mod: :rule_help on a rule card renders the rule-instruction alert over the *all help rule (set/rule/editor.rb:24-28)", async () => {
+  it("WITH the mod: :rule_help on a rule card renders the rule-instruction alert over the registry text (help.rb:36-38's FIRST operand)", async () => {
     const s = storage!;
-    // the rule-based help chain resolves the card's *help rule card through
-    // the pattern-precedence walk (help.rb:1-4) - the seeded "*all+*help"
-    // (id 22) is the *all candidate, warmed into the render map by
-    // prepareRuleCache (the Rule::Cache analog, lib/card/rule/cache.rb:10-27)
+    // help.rb:36-38: `card.try(:raw_help_text) || card.help_rule_card&.content`
+    // — the rule card RichText+*self+*help is in the *help setting's RIGHT
+    // set (*help+*right), whose raw_help_text mattr serves the registered
+    // help text (card-1.110.0 lib/card/setting.rb:112-114 puts the SAME
+    // string on the Self and Right set modules), so the REGISTRY operand
+    // answers before the *help rule card is consulted. p20-help-content
+    // re-pinned this A/B: the old expectation ("Broad help text…", the
+    // *all+*help rule card's content) encoded card-mod-rules.ts's
+    // help-rule-card-only simplification, contradicting the chain the
+    // help-content lane's receipt pins.
     const html = await s.engine.render("RichText+*self+*help", "rule_help");
     expect(html).toBe(
-      `<div class="alert alert-info rule-instruction">Broad help text for this setting.</div>`,
+      `<div class="alert alert-info rule-instruction"><a target="_blank" class="external-link" href="http://decko.org/custom_help_text">Help text</a> people will see when editing.</div>`,
     );
   });
 
@@ -235,14 +251,20 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     expect(html).toBe(`<h5 class="title fw-bold">help</h5>`);
   });
 
-  it("WITH the mod: :one_line_content is NOT live-registered (the exported bodies await the set-scoped dispatch pass)", async () => {
+  it("WITH the mod: :one_line_content IS now live-registered (the increment-2 lane's masking fix: rule/bar_view nonbase registration in viewChains; RichText+*self+*help dispatches the rule variant - byte-correct path delegated to ruleBarRightHtml)", async () => {
     const s = storage!;
-    // card-mod-rules.ts exports ruleOneLineContentView/setOneLineContentView
-    // instead of registering: the global table would clobber card-mod-
-    // content's right/* registrations of the same name.
-    await expect(
-      s.engine.render("RichText+*self+*help", "one_line_content"),
-    ).rejects.toThrow(UnsupportedViewError);
+    // The increment-2 lane registers :one_line_content under setPath
+    // "rule/bar_view" (kind "nonbase") - the viewChains-only path that
+    // card-mod-rules.ts:1399 documents. The chain walker (mod-loader.ts:
+    // 452) dispatches for RULE-token cards; for cards without a RULE
+    // token the chain falls through to the existing right/default +
+    // right/structure + render-layer fallback. RichText+*self+*help is a
+    // 4-part rule card whose setKeys include the RULE token, so the
+    // chain dispatches the rule variant - this replaces the increment-1's
+    // "NOT live-registered" assertion which documented the open
+    // remainder the increment-2 lane closes.
+    const html = await s.engine.render("RichText+*self+*help", "one_line_content");
+    expect(html).toContain("text-muted one-line");
   });
 
   it("WITH the mod: the load report lists the ported views and NO settings (the gem defines no setting_opts)", () => {

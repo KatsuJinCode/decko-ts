@@ -153,7 +153,9 @@ describe("structureRuleUniverseStatement", () => {
     // *default universe).
     expect(statement.sql).toContain("WITH RECURSIVE name_walk(id, composed)");
     expect(statement.sql).toContain("COALESCE(w.composed, '') || '+' || COALESCE(r.\"key\", '')");
-    expect(statement.params).toEqual([]);
+    // The setting name is bound as a statement parameter, not interpolated
+    // into the SQL text.
+    expect(statement.params).toEqual(["*structure", "*structure"]);
   });
 });
 
@@ -241,7 +243,6 @@ describe("RenderEngine structured content", () => {
   });
 
   it("the universe statement folds into the cold batch: one round trip, warm re-render zero queries", async () => {
-    const s = storage!;
     const fresh = await createRenderTestStorage();
     try {
       // Minimal copy of the governed pair (engine caches are per-instance).
@@ -269,8 +270,19 @@ describe("RenderEngine structured content", () => {
       // folded *default_html_view universe; 13/6 since the 2026-09-27
       // cold-query lane: the prelude batch folds the type row and the
       // rule-walk anchor priming, so the enrich and rule-lookup point round
-      // trips became cache hits).
-      expect(cold.statements).toBe(13);
+      // trips became cache hits). The head read-set (2026-09-28
+      // async-view-handle lane) added one statement back into the SAME
+      // prelude batch (13 -> 14): card-mod-format's head views read
+      // deck-level setting cards no reference closure can reach. Round
+      // trips stay at 6. The p20-email lane added TWO always-pushed,
+      // SQL-gated prelude primes (14 -> 16, round trips still 6): the
+      // +*test_context junction probe (prefetch.ts, commits 3c79ef3/
+      // d68953e/a55b477) and the nine email field-setting anchor keys
+      // (prefetch.ts, commit 76a1887). Both carry an EXISTS gate on the
+      // root's type codename = 'email_template', so non-email decks get
+      // zero rows and byte-identical renders (the 20 other tests here
+      // pass unchanged) - the pushed statement itself is what counts.
+      expect(cold.statements).toBe(16);
       expect(cold.roundTrips).toBe(6);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();
@@ -279,12 +291,12 @@ describe("RenderEngine structured content", () => {
     } finally {
       fresh.close();
     }
-    void s;
   });
 
   it("universe parse: junction-style composed keys land in the map (driver-level)", async () => {
     const s = storage!;
-    const result = await s.fetcher.driver.query(structureRuleUniverseStatement().sql, []);
+    const universeStatement = structureRuleUniverseStatement();
+    const result = await s.fetcher.driver.query(universeStatement.sql, universeStatement.params);
     const universe = structureUniverseFromResults(result as SQLQueryResult);
     // The junction-composed rule key (NULL name row, sides composed).
     expect(universe.has("page+*type+*structure")).toBe(true);
@@ -294,19 +306,30 @@ describe("RenderEngine structured content", () => {
 
   it("candidate keys and composed universe keys agree (DeckoName.key on both sides)", () => {
     const candidate = DeckoName.parse("Doc1+*type+*structure").key;
+    expect(candidate).toBe("doc1+*type+*structure");
     // The anchor part keys through the same algorithm the rows store.
     expect(DeckoName.parse("Page+*type+*structure").key).toBe("page+*type+*structure");
-    void candidate;
   });
 
-  it("round 9: a nest-miss child renders the *default rule's type on the open view", async () => {
-    // The new-card template type chain: format/nest/fetch.rb#new_card ->
-    // Card.fetch new: -> type_id_from_template -> template&.type_id, where
-    // the template for a NEW card is the *default rule card (templating.rb
-    // new_card_template). Oracle: raw-ground-truth 9625/13421/14382 render
-    // the absent "+Discussion" child's open-view slot with
-    // data-card-type-id=3 (RichText) from the discussion+*right+*default
-    // rule card's own type.
+  it("round 9, +thing arm: a NON-discussion nest-miss child's :open substitutes :unknown (createable denies on a rule-less deck)", async () => {
+    // Ruby dispatch for an UNKNOWN child whose set chain declares no
+    // unknown-capable :open:
+    //  - `view :open` (card 0.20 mod/bar_and_box set/all/bar.rb:44
+    //    `view :open, cache: :yes`) carries NO `unknown: true`;
+    //  - view/permission.rb:21-30 alter_unknown: setting(:unknown) is nil
+    //    for this chain (only card-mod-comment set/right/discussion.rb:1-6
+    //    redeclares `view :open, unknown: true`, set RIGHT-discussion) ->
+    //    view_for_unknown substitutes :unknown;
+    //  - mod/format set/all/html/error.rb:15-21 `view :unknown do
+    //    createable { wrap { unknown_link ... } } end` with `createable =
+    //    card.ok?(:create) ? yield : ""` — this deck seeds NO *create
+    //    rules, so ok?(:create) is false and the nest renders "".
+    // The p20-nest-selection lane (9a0d5c1) retired the pre-lane GLOBAL
+    // open:true decl this test originally pinned; the corpus-proven
+    // selection is pinned independently by
+    // tests/card/render/nest-miss-unknown-view-selection-corpus-replay.
+    // The type-inheritance MECHANISM below still has its open-view pin —
+    // in the +discussion arm (the test's own cited oracle shape).
     const fresh = await createRenderTestStorage();
     try {
       await seedCard(fresh, { id: 100, name: "Page" });
@@ -331,21 +354,73 @@ describe("RenderEngine structured content", () => {
         dbContent: "<p>{{+thing|open}}</p>",
       });
       const html = await fresh.engine.render("Thing Host", "open");
+      // No child slot at all: the :unknown view rendered "" (createable
+      // deny), so nothing carrying the child's url-key form may appear.
+      expect(html).not.toContain("Thing_Host+thing");
+      // The host's own content view body is the processed db_content with
+      // the nest consumed to nothing: "<p>" + "" + "</p>".
+      expect(html).toContain("<p></p></div>");
+    } finally {
+      fresh.close();
+    }
+  });
+
+  it("round 9, +discussion arm: a nest-miss child renders the *default rule's type on the open view (RIGHT-discussion unknown:true)", async () => {
+    // The new-card template type chain: format/nest/fetch.rb#new_card ->
+    // Card.fetch new: -> type_id_from_template -> template&.type_id, where
+    // the template for a NEW card is the *default rule card (templating.rb
+    // new_card_template). Oracle: raw-ground-truth 9625/13421/14382 render
+    // the absent "+Discussion" child's open-view slot with
+    // data-card-type-id=3 (RichText) from the discussion+*right+*default
+    // rule card's own type. The open view renders on the unknown child
+    // because card-mod-comment set/right/discussion.rb:1-6 redeclares
+    // `%i[open open_content titled titled_content].each { view viewname,
+    // unknown: true }` for the RIGHT-discussion set — the port's compiled
+    // UNKNOWN_VIEW_DECLS row (format.ts), dispatch via viewForUnknown.
+    const fresh = await createRenderTestStorage();
+    try {
+      await seedCard(fresh, { id: 100, name: "Page" });
+      // The *default setting card + the *right pattern card + the set
+      // junction "discussion+*right" (NULL-key junction rows) + the rule
+      // row "discussion+*right+*default" typed Page — the type the new
+      // child inherits (the child's right part "discussion" is what the
+      // RIGHT pattern matches, any left).
+      await seedCard(fresh, { id: 102, name: "*default", codename: "default" });
+      await seedCard(fresh, { id: 101, name: "*right", codename: "right" });
+      await seedCard(fresh, { id: 300, name: "discussion" });
+      await seedCard(fresh, { id: 303, leftId: 300, rightId: 101 }); // discussion+*right
+      await seedCard(fresh, {
+        id: 304,
+        leftId: 303,
+        rightId: 102,
+        typeId: 100, // the rule card's own type = the new-child type
+      });
+      await seedCard(fresh, {
+        id: 305,
+        name: "Thing Host",
+        typeId: 100,
+        dbContent: "<p>{{+discussion|open}}</p>",
+      });
+      const html = await fresh.engine.render("Thing Host", "open");
       // The child slot renders as an open-view with the *default rule's
       // type attributes (no data-card-id: the child has no row).
-      expect(html).toContain("thing-open-view");
+      expect(html).toContain("thing_host-discussion-open-view");
       expect(html).toContain('data-card-type-id="100"');
       expect(html).toContain('data-card-type-name="Page"');
-      // The class chain carries the inherited TYPE token (safeSetKeys input).
+      // The class chain carries the inherited TYPE token plus the
+      // RIGHT-discussion set token the unknown:true decl rides.
       expect(html).toContain("TYPE-page");
-      // ...and the nest resolved contextually: <instance>+thing (round 9's
-      // absolutization), not the literal "+thing". The NAME-FORM lane's
-      // slot_cardname rule (card-mod-format wrap.rb:50-53: an UNSAVED
-      // COMPOUND card displays the url_key form — live pin
-      // Conflict_Done_Well.html) now shapes the display: url_key
-      // "Thing_Host+thing", case kept, underscore for the space. The
-      // inheritance attributes above still pin the absolute resolution.
-      expect(html).toContain('data-card-name="Thing_Host+thing"');
+      expect(html).toContain("RIGHT-discussion");
+      // ...and the nest resolved contextually: <instance>+discussion
+      // (round 9's absolutization), not the literal "+discussion". The
+      // NAME-FORM lane's slot_cardname rule (card-mod-format wrap.rb:50-53:
+      // an UNSAVED COMPOUND card displays the url_key form — live pin
+      // Conflict_Done_Well.html) shapes the display: url_key
+      // "Thing_Host+discussion", case kept, underscore for the space.
+      expect(html).toContain('data-card-name="Thing_Host+discussion"');
+      // discussion.rb:2-5 `voo.show :comment_box` before super() — the
+      // show list in the slot JSON carries it.
+      expect(html).toContain("&quot;comment_box&quot;");
     } finally {
       fresh.close();
     }

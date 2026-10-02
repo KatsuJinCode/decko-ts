@@ -5,7 +5,7 @@
 // QueryReference/Uri/ViewStub/EscapedLiteral), and the three protected
 // input views (CodeContent/HamlFile/ReadOnly).
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-content-0.20.0/): 14 set rb files across abstract/all/right/
 // self patterns (abstract/00_sources, 01_code_content, 02_code_file, haml_file,
 // lock, read_only, templated_nests; all/chunk, all/contextual_content,
@@ -68,9 +68,16 @@
 //   content-parser (the engine's parse.ts already implements these)
 // - set/all/contextual_content.rb methods (context_card/with_context/
 //   contextual_content): render-context (engine state)
-// - set/all/templating.rb methods (is_template?/is_structure?/template/
-//   assigns_type?/structure/structure_rule_card/new_card_template/
-//   dup_structure/assign_type_to?): template-resolution (rule walk)
+// - set/all/templating.rb PARTIAL remainder (assign_type_to?/assigns_
+//   type?): the retype side effect (:67-69) assigns the same id
+//   ensure_type_id assigns next (type.rb:61-66), so it has no port-side
+//   observable. The REST of templating.rb IS ported: is_template?
+//   (card-mod-edit.ts), is_structure?/structure/structure_rule_card
+//   (rules/structure.ts persisted walk; fetch/virtual-cards.ts fetch-side
+//   virtual walk), template/new_card_template/dup_structure
+//   (actions/type-resolution.ts — both new-card template legs; the corpus
+//   census behind the structure leg:
+//   tests/card/rules/structure-governance-census-probe.test.ts)
 // - set/abstract/lock.rb methods (lock/lock_cache_key/locked?/lock!/
 //   unlock!): cache-machinery (Card.cache, not ported)
 // - set/abstract/00_sources.rb methods (source_paths/find_file/
@@ -102,34 +109,7 @@ import type {
   ModSetModuleFile,
 } from "../mod-manifest.js";
 import { superView } from "../mod-view-helpers.js";
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-/** Ruby's number_to_human_size (active_support/core_ext/numeric/bytes.rb):
- *  < 1 KiB -> "X Bytes"; 1 KiB <= x < 1 MiB -> "X.Y KB" (1 decimal);
- *  1 MiB <= x < 1 GiB -> "X.Y MB"; 1 GiB <= x -> "X.Y GB" (Rails caps at
- *  GB in number_to_human_size's default; the same default decko inherits).
- *  Returns NaN-passthrough for non-finite values (the view guards the
- *  negative case explicitly). */
-function numberToHumanSize(bytes: number): string {
-  if (!Number.isFinite(bytes)) return `${bytes}`;
-  const abs = Math.abs(bytes);
-  if (abs < 1024) return `${bytes} Bytes`;
-  const UNITS = ["KB", "MB", "GB", "TB"] as const;
-  let value = abs / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < UNITS.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  // Ruby's %.1f -> one decimal, but trailing .0 trimmed (e.g. "1 KB",
-  // not "1.0 KB"; this matches ActiveSupport::NumberHelper behavior).
-  const sign = bytes < 0 ? "-" : "";
-  const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(1);
-  return `${sign}${formatted} ${UNITS[unit]}`;
-}
+import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
 // ---------------------------------------------------------------------------
 // view bodies (Ruby source cited per block)

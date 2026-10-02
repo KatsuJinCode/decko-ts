@@ -33,9 +33,28 @@ export interface AuthMigrationRunOptions {
   now?: () => Date;
 }
 
-const DEFAULT_MIGRATIONS_DIR = fileURLToPath(
-  new URL("../../../db/migrations", import.meta.url),
-);
+// The repo's db/migrations, resolved LAZILY and memoized.
+//
+// 2026-10-02 (cf-worker-write-path lane): this was a module-scope `const`. It
+// is lazy for the same reason src/card/render/bootstrap-code-files.ts moved.
+// Evaluating `new URL(..., import.meta.url)` at IMPORT time is a module-load
+// side effect, and it throws "Invalid URL string" on any runtime whose
+// import.meta.url is not absolute — a Cloudflare Workers runtime among them —
+// where the failure is the whole Worker refusing to START, before request
+// one. This module reaches the Workers graph only as a re-export of the auth
+// barrel (src/card/auth/index.ts:30-35), which the write path imports
+// (write-routes.ts:98), so the crash landed on the Deploy button's
+// worker.js. This is not a Workers special case: nothing in this module can
+// do anything without node:fs, so resolving the directory means nothing until
+// a caller actually calls runAuthMigrations — and by then the runtime is
+// known to be a Node one.
+let defaultMigrationsDir: string | undefined;
+function DEFAULT_MIGRATIONS_DIR(): string {
+  defaultMigrationsDir ??= fileURLToPath(
+    new URL("../../../db/migrations", import.meta.url),
+  );
+  return defaultMigrationsDir;
+}
 
 /** The runner's own bookkeeping table (NOT part of the migration files —
  *  the deploy stream has its own version tracking, e.g. d1_migrations). */
@@ -55,7 +74,7 @@ export async function runAuthMigrations(
   driver: SQLDatabaseDriver,
   options: AuthMigrationRunOptions = {},
 ): Promise<AuthMigrationRunResult> {
-  const migrationsDir = options.migrationsDir ?? DEFAULT_MIGRATIONS_DIR;
+  const migrationsDir = options.migrationsDir ?? DEFAULT_MIGRATIONS_DIR();
   const now = options.now ?? (() => new Date());
   await driver.query(ENSURE_BOOKKEEPING_SQL, []);
 

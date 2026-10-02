@@ -9,14 +9,13 @@
 // registers each one here with the set path + mod name injected - the same
 // bookkeeping shape view registration uses (RegisteredSetModule).
 //
-// What does NOT live here yet (the honest remainder, mirroring the
-// card-mod-integrate port's note): the EXECUTION wiring - Ruby's
-// Card::Set::Event API runs declarations at their stage during save
-// (event.rb's stage runner; the action engine's stage seams are
-// src/card/actions/card-action-engine.ts). The engine consults
-// eventsForStage at its named stages when that seam lands; until then the
-// registry is the mod-writable surface the ports pin their declarations
-// against (card-mod-integrate.ts OBSERVER_EVENT_DECLARATIONS).
+// What does NOT live here: the EXECUTION wiring - Ruby's Card::Set::Event
+// API runs declarations at their stage during save. That half is its own
+// module now: mod-event-dispatch.ts (the stage walk + Ruby's applicability
+// algebra), consulted by the save path's modEvents runtime
+// (src/card/actions/card-action-engine.ts). This registry remains the
+// mod-writable declaration surface the ports pin against
+// (card-mod-integrate.ts OBSERVER_EVENT_DECLARATIONS).
 
 import type {
   ModEventFn,
@@ -55,6 +54,15 @@ export interface RegisteredModEvent {
   readonly when?: string;
   /** `changed:` field gate, stored verbatim (see ModEventRegistration). */
   readonly changed?: readonly string[];
+  /** `changing:` — the alias of changed:, stored verbatim (see
+   *  ModEventRegistration; the execution seam treats it identically). */
+  readonly changing?: readonly string[];
+  /** `skip: :allowed` — the act's plain skip list may drop this event
+   *  (see ModEventRegistration). */
+  readonly skip?: "allowed";
+  /** `trigger: :required` — runs only when explicitly triggered (see
+   *  ModEventRegistration). */
+  readonly trigger?: "required";
   /** `after:` relative ordering, stored verbatim (see ModEventRegistration). */
   readonly after?: string;
   readonly priority?: number;

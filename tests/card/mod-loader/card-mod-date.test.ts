@@ -57,6 +57,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -267,6 +268,7 @@ describe("card-mod-date through the mod loader (A/B)", () => {
       ...[...blankLoader.setModules().nonbase.values()].flat().map((m) => m.shortname),
     ];
     blankLoader.load();
+    bindModLoaderToEngine(storage!, blankLoader);
     expect(blankShortnames).not.toContain("All::Calendar");
     expect(blankShortnames).not.toContain("Right::WhenCreated");
     expect(blankShortnames).not.toContain("Right::WhenLastEdited");

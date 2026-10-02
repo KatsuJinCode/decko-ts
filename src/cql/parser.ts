@@ -574,7 +574,9 @@ class CqlParser {
     },
 
     found_by: (q, val) => {
-      // FoundBy#found_by — needs Query.run/Card.fetch at interpretation time
+      // FoundBy#found_by — the value rides to execution (execute.ts
+      // resolveFoundByConditions resolves the target card's cql_hash and
+      // translates to the id-set constraint); interpretation records it.
       q.conditions.push({ kind: "foundBy", value: val });
     },
 

@@ -19,12 +19,14 @@
 //   SQL, and asserts the TS statement batch returns the identical rule-id
 //   set — for Anonymous AND for every one of the deck's 113 role members.
 //
-// Skips when the corpus database is absent (it is a local benchmark
-// artifact, not a repo fixture).
+// Runs against the committed miniature corpus (fixtures/test-corpus/
+// test-corpus.sqlite3 — the verbatim closure of the pinned role members)
+// by default; the richer machine-local bench corpus only under the explicit
+// DECKO_TS_CORPUS_V2 opt-in (src/testing/test-corpus-paths.ts). The union
+// math is computed from the same database it is checked against, so the
+// property holds at either scale.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import {
@@ -32,12 +34,11 @@ import {
   readPermissionStateFromViewerResults,
   type ReadViewer,
 } from "../../../src/card/permissions/index.js";
+import { CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
 
-const CORPUS_PATH = fileURLToPath(
-  new URL("../../../benchmarks/corpus-v2/bench-corpus-v2.sqlite3", import.meta.url),
-);
+const CORPUS_PATH = CORPUS_DB_PATH;
 
-const describeIfCorpus = existsSync(CORPUS_PATH) ? describe : describe.skip;
+const describeIfCorpus = describe;
 
 interface CorpusRow {
   [column: string]: unknown;
@@ -227,7 +228,7 @@ describeIfCorpus("read permission actors: corpus union math (bench-corpus-v2)", 
     const anyone = codenameId("anyone");
     const anyoneSignedIn = codenameId("anyone_signed_in");
     const administratorId = codenameId("administrator");
-    const deckobotId = codenameId("deckobot"); // absent in this deck -> -1
+    const deckobotId = codenameId("decko_bot"); // Ruby's stored bot codename (real.yml:19)
     const memberIds = (
       raw
         .prepare(

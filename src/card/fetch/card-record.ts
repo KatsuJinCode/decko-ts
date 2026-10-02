@@ -123,11 +123,16 @@ export function idString(card: CardRecord): string | undefined {
  *   lexicon; simple cards read the column.
  * - #key (name/all.rb:17-19): `left_id ? name.key : super` - same split.
  *
- * DELIBERATE DIVERGENCE (documented in docs/fetch-port-notes.md): when a
- * compound card's side cards are unresolvable the Ruby name is nil and
- * Ruby's `key` would raise composing name.key on nil; this port falls back
- * to the row's own name/key columns, which production rows (pre-2020
- * data, db/schema.sqlite.sql comments) still carry.
+ * Side resolution: a compound card whose side ROW is missing still composes
+ * a name — Ruby's Card#name (name/all.rb:16-18) is
+ * `Lexicon.lex_to_name([left_id, right_id])`, and lex_to_name joins the
+ * PUBLIC Lexicon.name of each side, which answers the EMPTY name ("",
+ * truthy — lexicon.rb:11-15) for a missing row; the join therefore yields
+ * the "+*default"-shaped empty-part name (verified live: Lexicon.name(389)
+ * = "+*default" with cards 388 absent). The fallback to the row's own
+ * name/key columns below covers only the true nil-composition shape — a
+ * NIL side id (lex [left, nil]; lexicon.rb:12 `return unless id.present?`)
+ * — which this corpus holds no rows of.
  */
 export async function composeCardRecord(row: CardsRow, lexicon: DbLexicon): Promise<CardRecord> {
   const trash = row.trash === 1;

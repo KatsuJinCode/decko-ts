@@ -102,7 +102,8 @@ export function parseTargetSchema(ddlPath) {
       pragmas.push(statement);
       continue;
     }
-    // Anything else in the DDL (none today) fails loudly at import time.
+    // Anything else in the DDL is skipped. When the schema file grows a
+    // new statement kind, extend the three patterns above so it is applied.
   }
   return { createTables, createIndexes, pragmas, tableColumns };
 }
@@ -146,8 +147,9 @@ export class LocalSqliteToolDriver {
   }
 }
 
-/** Import pragmas: speed-first for the one-shot bulk load. */
-const IMPORT_PRAGMAS = [
+/** Import pragmas: speed-first for the one-shot bulk load. Exported so
+ *  every importer in this directory opens its target with the same set. */
+export const IMPORT_PRAGMAS = [
   "PRAGMA journal_mode = WAL",
   "PRAGMA synchronous = OFF",
   "PRAGMA temp_store = MEMORY",
@@ -389,6 +391,10 @@ export async function importDump(opts) {
     stats.checksums[table].addRow(values, columns.indexOf("id"));
 
     const sql = makeInsert(table, columns);
+    // Per-row debug hook, off by default: set DECKO_MIGRATE_DEBUG=1 to
+    // emit each row's generated SQL and source column list to stderr
+    // (diagnosing column-shape drift when pointing the importer at a new
+    // source schema). Not a supported interface; output shape may change.
     if (process.env.DECKO_MIGRATE_DEBUG) {
       console.error(`push ${table} cols=${columns.length} vals=${values.length} rowCols=${JSON.stringify(row.columns)} sql=${sql.slice(0, 60)}`);
     }

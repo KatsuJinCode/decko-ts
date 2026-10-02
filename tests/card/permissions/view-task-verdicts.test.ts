@@ -54,8 +54,8 @@ import type { PatternCardInput } from "../../../src/card/set-patterns/types.js";
 const SET_TYPE_ID = 2;
 
 let storage: RenderTestStorage | undefined;
-/** A deck with NO rule cards at all: the divergence case (verdicts
- *  undefined = unverifiable, never fabricated denials). */
+/** A deck with NO rule cards at all: the deny-by-default case (Ruby's
+ *  who_can -> [] -> among? -> false; permissions.rb:47-49/:100-118). */
 let ruleless: RenderTestStorage | undefined;
 
 async function seedTaskDeck(s: RenderTestStorage): Promise<void> {
@@ -204,12 +204,17 @@ describe("ok_to_<task>? verdicts (permissions.rb:105-157)", () => {
     expect(verdicts).toEqual({ update: true, create: true, delete: true });
   });
 
-  it("degrades to unverifiable (undefined) on a rule-less deck", async () => {
+  it("denies every task on a rule-less deck (who_can -> [] -> among? -> false)", async () => {
+    // MEDIUM-2 fix (verdict-semantics lane 2026-10-01): the pre-fix port
+    // degraded to undefined-allow here; Ruby fail-closes — permitted? ->
+    // who_can -> [] -> among? -> false (permissions.rb:100-118), and a
+    // missing rule outright raises ("RULE missing. should not be
+    // possible", permissions.rb:77-85).
     const state = viewTaskStateFromResults([], await anonymousReadState(ruleless!));
     for (const task of ["update", "create", "delete"] as const) {
       expect(
         await taskVerdictForCard(ruleless!.fetcher, widgetCard(), task, state),
-      ).toBeUndefined();
+      ).toBe(false);
     }
   });
 });

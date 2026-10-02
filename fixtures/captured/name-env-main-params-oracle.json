@@ -1,0 +1,257 @@
+{
+  "capture": "name-env-main-params",
+  "no_write_proof": {
+    "card_actions": 5018,
+    "card_actions_unchanged": true,
+    "cards": 1363
+  },
+  "purpose": "contract S2.2.b: _main resolves through Card::Env.params[:main_name] with blank-extreme fill when the param is nil",
+  "ruby_truth": {
+    "app_path": "decko oracle app boots english - the bare-gem _main-with-nil-params crash (S2.2.b's pinned-synthetic reason) does not exist on this path",
+    "blank_extremes": "cardname-0.20.0 lib/cardname/contextual.rb:102-110 (#absolute -> absolutize_extremes over the resolved parts)",
+    "directive": "cardname-0.20.0 lib/cardname/contextual.rb:108 (absolutize_contextual_parts `when /^_main$/i`, result `.to_s.strip`)",
+    "params": "card-1.110.0 lib/card/name.rb#params (Card::Name.params -> Card::Env.params)"
+  },
+  "scenarios": [
+    {
+      "main_name": null,
+      "params_echo": null,
+      "rows": [
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B+extra",
+          "context": "A+B",
+          "name": "_main+extra",
+          "relative?": true
+        },
+        {
+          "absolute": "extra+A+B",
+          "context": "A+B",
+          "name": "extra+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_Main",
+          "relative?": false
+        },
+        {
+          "absolute": "A+B+B",
+          "context": "A+B",
+          "name": "_main+_right",
+          "relative?": true
+        },
+        {
+          "absolute": "A+A+B",
+          "context": "A+B",
+          "name": "_left+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "",
+          "context": null,
+          "name": "_main",
+          "relative?": true
+        }
+      ]
+    },
+    {
+      "main_name": "",
+      "params_echo": "",
+      "rows": [
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B+extra",
+          "context": "A+B",
+          "name": "_main+extra",
+          "relative?": true
+        },
+        {
+          "absolute": "extra+A+B",
+          "context": "A+B",
+          "name": "extra+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_Main",
+          "relative?": false
+        },
+        {
+          "absolute": "A+B+B",
+          "context": "A+B",
+          "name": "_main+_right",
+          "relative?": true
+        },
+        {
+          "absolute": "A+A+B",
+          "context": "A+B",
+          "name": "_left+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "",
+          "context": null,
+          "name": "_main",
+          "relative?": true
+        }
+      ]
+    },
+    {
+      "main_name": "Home Page",
+      "params_echo": "Home Page",
+      "rows": [
+        {
+          "absolute": "Home Page",
+          "context": "A+B",
+          "name": "_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Home Page+extra",
+          "context": "A+B",
+          "name": "_main+extra",
+          "relative?": true
+        },
+        {
+          "absolute": "extra+Home Page",
+          "context": "A+B",
+          "name": "extra+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Home Page",
+          "context": "A+B",
+          "name": "_Main",
+          "relative?": false
+        },
+        {
+          "absolute": "Home Page+B",
+          "context": "A+B",
+          "name": "_main+_right",
+          "relative?": true
+        },
+        {
+          "absolute": "A+Home Page",
+          "context": "A+B",
+          "name": "_left+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Home Page",
+          "context": null,
+          "name": "_main",
+          "relative?": true
+        }
+      ]
+    },
+    {
+      "main_name": "A+B",
+      "params_echo": "A+B",
+      "rows": [
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B+extra",
+          "context": "A+B",
+          "name": "_main+extra",
+          "relative?": true
+        },
+        {
+          "absolute": "extra+A+B",
+          "context": "A+B",
+          "name": "extra+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B",
+          "context": "A+B",
+          "name": "_Main",
+          "relative?": false
+        },
+        {
+          "absolute": "A+B+B",
+          "context": "A+B",
+          "name": "_main+_right",
+          "relative?": true
+        },
+        {
+          "absolute": "A+A+B",
+          "context": "A+B",
+          "name": "_left+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "A+B",
+          "context": null,
+          "name": "_main",
+          "relative?": true
+        }
+      ]
+    },
+    {
+      "main_name": " Padded Home ",
+      "params_echo": " Padded Home ",
+      "rows": [
+        {
+          "absolute": "Padded Home",
+          "context": "A+B",
+          "name": "_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Padded Home+extra",
+          "context": "A+B",
+          "name": "_main+extra",
+          "relative?": true
+        },
+        {
+          "absolute": "extra+Padded Home",
+          "context": "A+B",
+          "name": "extra+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Padded Home",
+          "context": "A+B",
+          "name": "_Main",
+          "relative?": false
+        },
+        {
+          "absolute": "Padded Home+B",
+          "context": "A+B",
+          "name": "_main+_right",
+          "relative?": true
+        },
+        {
+          "absolute": "A+Padded Home",
+          "context": "A+B",
+          "name": "_left+_main",
+          "relative?": true
+        },
+        {
+          "absolute": "Padded Home",
+          "context": null,
+          "name": "_main",
+          "relative?": true
+        }
+      ]
+    }
+  ]
+}

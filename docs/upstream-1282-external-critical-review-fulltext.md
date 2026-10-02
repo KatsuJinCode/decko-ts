@@ -1,12 +1,16 @@
 # External critical review of the decko-ts port proposal — full text record
 
+Third-party AI commentary on the port proposal, recorded so the port can be
+tracked against it. It is not binding direction: binding direction comes from
+the upstream issue thread (decko-commons/decko#1282).
+
 Provenance: linked from decko-commons/decko#1282 (Ethan's comment, 2026-09-21T20:49Z) →
-ChatGPT shared conversation "Decko TypeScript Proposal Review",
-https://chatgpt.com/s/t_6ab18bd14fac81918fd0ac18be0b27b7.
+a ChatGPT shared conversation, "Decko TypeScript Proposal Review" (the private
+share link is not reproduced here; the upstream thread is the public entry point).
 Unreachable to plain HTTP fetches (client-rendered shell); retrieved 2026-09-22 by
 rendering the share page in a browser and transcribing the DOM. This document holds
-every claim, section thesis, and gate of that review so the port can be tracked
-against it without the fragile link. Section numbers match the review's own.
+every claim, section thesis, and gate of that review. Section numbers match the
+review's own.
 
 ## Verdict paragraph (opening)
 

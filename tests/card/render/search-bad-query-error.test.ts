@@ -12,7 +12,7 @@
 //   - id=470 (ppqhuslzzya) views.open/content -> same class
 //   - id=817 (zbxggwfbwlmurtwz) views.open/content -> same class (long query)
 //
-// The replay handler (benchmarks/corpus-v2/replay-shard.test.ts — read-only
+// The replay handler (benchmarks/corpus-v2/replay-shard.bench.ts — read-only
 // per the stream contract) emits the CAPTURE_ERROR sentinel from
 // `error.constructor.name`; the port must raise a class whose
 // `constructor.name` is literally "Card::Error::BadQuery" and whose
@@ -40,7 +40,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   it("constructor.name matches the corpus sentinel's class prefix", () => {
     const err = badQuery("yzzw");
     // The replay handler reads err.constructor.name (benchmarks/corpus-v2/
-    // replay-shard.test.ts render handler fallback path) — that must be
+    // replay-shard.bench.ts render handler fallback path) — that must be
     // the Ruby class string, not the TS-local binding name.
     expect(err.constructor.name).toBe("Card::Error::BadQuery");
     expect(err.name).toBe("Card::Error::BadQuery");

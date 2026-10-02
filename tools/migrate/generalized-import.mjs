@@ -36,56 +36,14 @@ import {
 } from "./source-sqlite.mjs";
 import { classifySourceTable, mapRowToTarget } from "./schema-map.mjs";
 import { inventorySettings } from "./settings-map.mjs";
-import { parseTargetSchema } from "./import.mjs";
+import {
+  parseTargetSchema,
+  Checksum,
+  IMPORT_PRAGMAS,
+} from "./import.mjs";
 import { reconstructCardName } from "./name-reconstruct.mjs";
 
 const DEFAULT_BATCH_SIZE = 1000;
-
-const IMPORT_PRAGMAS = [
-  "PRAGMA journal_mode = WAL",
-  "PRAGMA synchronous = OFF",
-  "PRAGMA temp_store = MEMORY",
-  "PRAGMA cache_size = -65536",
-];
-
-function fnv1a(str) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-class Checksum {
-  constructor() {
-    this.sum = 0;
-    this.count = 0;
-    this.minId = undefined;
-    this.maxId = undefined;
-  }
-  addRow(values, idColumnIndex) {
-    let part = "";
-    for (let i = 0; i < values.length; i++) {
-      const v = values[i];
-      if (v === null || v === undefined) part += "\x01";
-      else if (typeof v === "number") part += "n" + v;
-      else if (typeof v === "string") part += "s" + v;
-      else if (v instanceof Uint8Array) part += "b" + Buffer.from(v).toString("hex");
-      else part += "o" + String(v);
-      part += "\x1f";
-    }
-    this.sum = (this.sum + fnv1a(part)) % 2 ** 32;
-    this.count += 1;
-    if (idColumnIndex >= 0 && idColumnIndex < values.length) {
-      const id = values[idColumnIndex];
-      if (typeof id === "number") {
-        if (this.minId === undefined || id < this.minId) this.minId = id;
-        if (this.maxId === undefined || id > this.maxId) this.maxId = id;
-      }
-    }
-  }
-}
 
 /**
  * Stream a Ruby decko SQLite source into a decko-ts SQLite target.

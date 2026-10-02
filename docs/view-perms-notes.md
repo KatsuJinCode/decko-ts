@@ -230,8 +230,8 @@ on the read/none surface (all four corpus views, the whole current registry).
   engine does not model). Reachable only for `:create`-gated views (none
   registered).
 - **Nested update-gated views** (`{{x|edit}}` inside a read-rooted render)
-  are not covered by the root-view trigger in the coordinator patch; the
-  patch's ensureTaskVerdicts would need a nest-options scan to cover them.
+  are not covered by the root-view trigger in the ensureTaskVerdicts patch;
+  that patch would need a nest-options scan to cover them.
   Unreachable on the captured surface (no edit views registered).
 - **Direct `:denial` renders** (`render(:denial)` on a denied card): Ruby
   renders the quiet span with an empty task label (`@denied_task` unset);

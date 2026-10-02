@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Welcome to your new Decko site</title>
+<link media="all" rel="stylesheet" type="text/css" href="/assets/all-style.css">
+<style>
+  /* Landing-only layout. Base typography, colors, and fonts come from the
+     bundled decko skin (/assets/all-style.css) — the same stylesheet every
+     card page loads. This block only arranges. */
+  .landing { max-width: 46rem; padding: 1.5rem 1rem 3rem; }
+  .landing h1 { margin-top: 1.5rem; }
+  .landing h2 { margin-top: 2.25rem; }
+  .landing .lead { font-size: 1.15rem; }
+  .try-list li { margin-bottom: 0.5rem; }
+  .landing code { background: rgba(0,0,0,0.06); padding: 0 0.25rem; border-radius: 3px; }
+  .footer-line { margin-top: 2.5rem; font-size: 0.9rem; opacity: 0.75; }
+</style>
+</head>
+<body class="d-flex flex-column h-100">
+<article class="container flex-shrink-0" role="main">
+<div id="main" class="landing">
+
+<h1>Welcome to your new Decko site</h1>
+
+<p class="lead">Decko is a card-based web platform: every page on a decko site
+is a <strong>card</strong>, cards link to and include each other, and together
+they form a <strong>deck</strong>. Abilities beyond the basics — search,
+formatting, comments, editing tools — come from <strong>mods</strong>, small
+packages the engine loads at boot.</p>
+
+<p>This site is a live decko deck served by the
+<a href="https://github.com/KatsuJinCode/decko-ts" rel="noopener">decko-ts</a> engine
+(a TypeScript implementation of decko) running on a Cloudflare Worker with a
+Cloudflare D1 database. Everything below links into real pages of this deck —
+click anything.</p>
+
+<h2>Try these now</h2>
+
+<ul class="try-list">
+  <li><a href="/Home">Home</a> — the deck's own home card: real content,
+      another card included inside it, and the shape every decko page
+      shares.</li>
+  <li><a href="/_status">/_status</a> — the engine and database health check,
+      served as JSON.</li>
+</ul>
+
+<p>A few pages on this demo are machine stress-tests with technical names
+(like "scale page 173x") — they exist to prove the software handles very
+large pages, and you can safely ignore them.</p>
+
+<h2>How a card works</h2>
+
+<p>Every card has a <strong>name</strong>, a <strong>type</strong>, and
+<strong>content</strong>. Take the deck's real
+<a href="/Home">Home</a> card:</p>
+
+<ul>
+  <li>Its URL is <code>/Home</code> — a card's page lives at its name
+      (longer names like "Scale Page 173x" ride URLs with
+      <code>%20</code> for the spaces, and the engine resolves each name to
+      a canonical key: <code>home</code>).</li>
+  <li>Its type is <strong>Note</strong> — the plain-content cardtype.</li>
+  <li>Its raw record is also served as JSON:
+      <a href="/Home.json">/Home.json</a> — every card has this
+      machine-readable view.</li>
+</ul>
+
+<p>Cards reference each other two ways, and the Home card shows both:</p>
+
+<ul>
+  <li><strong>Inclusions</strong> — double curly braces:
+      <code>{{Scale Page 1x}}</code> inside Home pulls a whole other card's
+      content into it, the way a dashboard embeds a panel.</li>
+  <li><strong>Links</strong> — double square brackets:
+      <code>[[another card]]</code>. This deck even contains a pointer card
+      holding 500 such links, built as a machine stress-test.</li>
+</ul>
+
+<p>And a card's content can be a <strong>query</strong> instead of prose:
+a Search-type card holds a one-line search statement and renders the live
+answer as its page.</p>
+
+<h2>Mods: abilities you can add</h2>
+
+<p>A <strong>mod</strong> is a package that plugs set patterns, views, and
+setting definitions into a running deck — in Ruby decko, a gem whose name
+starts with <code>card-mod-</code>. This engine ships ports of thirty of them
+(<code>card-mod-search</code>, <code>card-mod-markdown</code>,
+<code>card-mod-comment</code>, <code>card-mod-bootstrap</code>,
+<code>card-mod-help</code> and more), registered by the mod loader in load
+order when the engine boots.</p>
+
+<p><strong>Adding one:</strong> in a Ruby decko deck, you list the
+<code>card-mod-&lt;name&gt;</code> gem in the deck's Gemfile and boot — the
+loader picks it up in bundle order. decko-ts ports the same registration
+mechanism (<code>src/card/mod-loader.ts</code>): a mod declares its set
+patterns, views, and settings, and the loader wires them in at boot. This
+demo is a read-only surface, so mods here are part of the deployed engine
+rather than installable from the browser.</p>
+
+<h2>How this site is configured</h2>
+
+<p>Two layers, both plain files:</p>
+
+<ul>
+  <li><strong><code>decko-config.js</code></strong> — the per-deck runtime
+      config that every card page loads after the script bundle: this site's
+      root URL (<code>decko.rootUrl</code>), the stylesheet path, and the
+      visitor state (<code>decko.signed_in = false</code> — everyone is a
+      read-only visitor here). It lives beside this page in the demo's static
+      assets; edit it and redeploy.</li>
+  <li><strong>The deploy script</strong> —
+      <code>scripts/deploy/one-click-deck/one-click-deck.mjs</code> builds and
+      deploys a site like this one. Its default is a dry-run plan;
+      <code>--local</code> runs the same stack on your machine with no
+      Cloudflare account; <code>--cards N</code> sets how many sample cards
+      the seed generates (default 6,200, sized to fit inside Cloudflare D1's
+      free-tier daily write budget); <code>--execute --token &lt;t&gt;
+      --account-id &lt;id&gt;</code> performs the real deploy.</li>
+</ul>
+
+<h2>What is real here</h2>
+
+<p><strong>The engine is real.</strong> Real routing, real rendering, real
+permission checks, backed by a real Cloudflare D1 database holding 6,241
+cards. <strong>The content is sample content.</strong> Every card in this deck
+was generated by a script to exercise the read paths at scale — 6,200 Scale
+Page notes, a 32-deep inclusion chain, a 500-link pointer, a CQL search probe.
+No real member data exists anywhere in it; every name and sentence is
+synthetic. Treat it like a showroom floor: a real machine running sample
+output, safe to wander — the demo is read-only, so nothing here can be edited
+or broken by visiting.</p>
+
+<h2>Want your own content here?</h2>
+
+<p>This sample deck was generated by
+<code>scripts/deploy/one-click-deck/seed-fitting-scale.mjs</code> (the
+<code>--cards</code> flag sets the scale). To put a real deck here instead,
+the import tool <code>tools/migrate/import-deck.mjs</code> accepts any of
+three source formats:</p>
+
+<ul>
+  <li><code>--source &lt;deck.sqlite&gt;</code> — a decko SQLite database
+      file,</li>
+  <li><code>--dump &lt;dump.sql&gt;</code> — a mysqldump-style SQL text dump
+      of a deck,</li>
+  <li><code>--seed &lt;seed.sql&gt;</code> — a plain file of SQL INSERT
+      statements.</li>
+</ul>
+
+<p>It validates the source, maps it onto the schema, and emits D1-ready
+chunks your Worker can serve.</p>
+
+<p class="footer-line">decko-ts on Cloudflare Workers + D1 ·
+<a href="/_status">status</a> · <a href="/Home">the deck's own Home card</a></p>
+
+</div>
+</article>
+</body>
+</html>

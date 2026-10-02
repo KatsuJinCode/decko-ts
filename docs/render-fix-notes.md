@@ -164,10 +164,10 @@ in the driver log.
   816 permission-pending / 516 real (set-key class fragment mismatches,
   the next stream's target).
 
-## Coordinator completions on top of this stream (2026-09-21)
+## Completions on top of this stream (2026-09-21)
 
-The stream's agent was killed by a system restart before its final
-measurement pass; the coordinator finished from its on-disk state:
+The original measurement pass was cut short by a system restart; the
+work was finished from its on-disk state:
 - `composeAndCache` cross-call composition: sides cached by an earlier
   fallback round now resolve through the lexicon (warm reads), so a
   junction fetched in round N composes instead of re-fetching forever.

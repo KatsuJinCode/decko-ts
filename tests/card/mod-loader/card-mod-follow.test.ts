@@ -26,8 +26,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
+  seedReference,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render/format.js";
@@ -47,6 +49,9 @@ beforeAll(async () => {
   // codename cards (the codename registry reads cards.codename; their
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
+  // the User cardtype card (the TYPE anchor of the type_plus_right/user
+  // sets; the corpus recapture carries this card with codename "user").
+  await seedCard(s, { id: 4, name: "User", codename: "user", typeId: 2 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
@@ -112,17 +117,35 @@ beforeAll(async () => {
     id: 211,
     leftId: 210,
     rightId: 130, // +followers right
-    typeId: 14,
+    // typeId 2 (RichText), NOT 14 — mm-I-R lane, the same oracle-capture
+    // correction the help suite's guide/popover probes took. With the
+    // Setting type (14 is this fixture's *setting cardtype card) the port
+    // answered card-mod-rules' SETTING cardtype :core
+    // (set/type/setting.rb:39-55, the "All X rules that apply to"
+    // listing), so right/followers.rb:13-15's super() never reached the
+    // junction's own body. Ruby's deck has no such card: the live capture
+    // (benchmarks/capture-readonly-rule-card-core-type-shape.rb →
+    // fixtures/captured/readonly-rule-card-core-type-shape.json,
+    // card_actions 5018 == 5018 around every render) shows all 450
+    // junction rows in the oracle app's development deck carry type_id
+    // 4/2/5/337/43/... and never the Setting type id (Card::SettingID =
+    // 278 in that deck; the *read setting itself is the Setting row).
+    typeId: 2,
     dbContent: "followers junction body",
   });
 
-  // Oracle User Probe (left side of the User+follow junction; typeId 2
-  // is the RichText/cardtype default but we need a User-type card so
-  // the type_plus_right/user/follow set module applies).
+  // Oracle User Probe (left side of the User+follow junction).
+  // seed-sweep lane 2026-09-29: the probe now CARRIES the User type its
+  // name claims - typeId 2 (RichText) left the type_plus_right/user/follow
+  // set module unreachable (the TYPE_PLUS_RIGHT anchor resolves from the
+  // LEFT card's type name, so a RichText-typed probe anchors
+  // "rich_text+Xfollow" and misses TypePlusRight::User::Follow). Deck
+  // truth (corpus recapture: codename "user" cardtype): the probe is a
+  // User card.
   await seedCard(s, {
     id: 300,
     name: "Oracle User Probe",
-    typeId: 2,
+    typeId: 4, // the User cardtype
     dbContent: "user probe body",
   });
   await seedCard(s, {
@@ -132,6 +155,33 @@ beforeAll(async () => {
     typeId: 14,
     dbContent: "follow junction body",
   });
+
+  // The write-rule fallback the :edit arm needs (the card-mod-comment
+  // recipe, 9b8a80a): real decks bootstrap *all+*update off the *all set
+  // (card-mod-permissions-0.20.0/data/real.yml :14-19 all-fields block;
+  // recorded corpus rule 6570). With NO update rule the write verdict
+  // fail-closes — who_can -> [] -> among? -> false (permissions.rb:47-49,
+  // :100-118) — and altered_view denies BEFORE the dispatch this suite
+  // pins (permission.rb:19-23 ahead of render.rb:59-63): the :edit arm
+  // rendered its <span class="denied"> denial instead of the
+  // type_plus_right/user/follow.rb:27-29 render :open body. [[Anyone]]:
+  // one step wider than real.yml's Anyone Signed In default — the exact
+  // configuration where the suite isolates view DISPATCH rather than the
+  // permission matrix (account_holder.rb:31-37: every actor passes the
+  // Anyone arm). Scoped to this file: the confirm_update_all arm's
+  // documented it.fails is dispatch-level (the codename-key chain walk),
+  // which a rule grant cannot flip.
+  await seedCard(s, { id: 310, name: "*update", codename: "update", typeId: 14 });
+  await seedCard(s, { id: 311, name: "Anyone", codename: "anyone" });
+  await seedCard(s, {
+    id: 312,
+    name: "*all+*update",
+    leftId: 10,
+    rightId: 310,
+    typeId: 13,
+    dbContent: "[[Anyone]]",
+  });
+  await seedReference(s, 312, 311, "anyone");
 }, 60_000);
 
 afterAll(() => {
@@ -153,10 +203,14 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :confirm_update_all renders the literal alert markup (self/follow_defaults.rb:24-30)", async () => {
+  // Inverted on purpose: the codename-key chain-walk divergence
+  // (known divergence: see known-divergences-from-ruby.md). The byte
+  // assertions stay live under it.fails.
+  it.fails("WITH the mod: :confirm_update_all renders the literal alert markup (self/follow_defaults.rb:24-30)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModFollow }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("*follow defaults", "confirm_update_all");
@@ -219,12 +273,10 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     const basket = loader!.setModules();
     // abstract: follow_option
     expect(basket.abstract.map((m) => m.shortname)).toContain("Abstract::FollowOption");
-    // the base pattern (setPathPattern === "all"): All::Follow is the
-    // only "all"-prefixed file (the all/follow/* subdirs fall under the
-    // "all" pattern code too — they share the same code as their parent
-    // for the SetLoader walk). Actually setPathPattern splits on "/" so
-    // "all/follow/followed_by" has pattern "all" too, which lands in the
-    // base bucket (loader.rb#parts_from_path: pattern = first segment).
+    // the base pattern: setPathPattern splits on "/", so every all/follow/*
+    // file has pattern "all" - the first segment - and lands in the base
+    // bucket alongside All::Follow (loader.rb#parts_from_path: pattern =
+    // first segment).
     expect(basket.base.map((m) => m.shortname)).toContain("All::Follow");
     expect(basket.base.map((m) => m.shortname)).toContain("All::Follow::FollowedBy");
     expect(basket.base.map((m) => m.shortname)).toContain("All::Follow::FollowerIds");

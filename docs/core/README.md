@@ -17,7 +17,7 @@ The existing `docs/port-tracker.md` and stream notes are implementation history.
 - [Upstream proposal](https://github.com/decko-commons/decko/issues/1282)
 - [Ethan's response](https://github.com/decko-commons/decko/issues/1282#issuecomment-5767310016): welcomes mainline, TypeScript-first, advisory participation; legacy mods may be excluded; defer redesign.
 - [Julian's posted direction](https://github.com/decko-commons/decko/issues/1282#issuecomment-5768459870): DSL/mods are core; runtime abstraction; four parity categories; first-class Ruby; measured hosting goals.
-- [Critical review](https://chatgpt.com/s/t_6ab18bd14fac81918fd0ac18be0b27b7), adopted selectively, not as binding instructions.
+- [Critical review](../upstream-1282-external-critical-review-fulltext.md) (third-party AI commentary, full text recorded with its provenance), adopted selectively, not as binding instructions.
 
 ## Scope and evidence boundaries
 

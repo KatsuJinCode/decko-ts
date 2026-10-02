@@ -666,9 +666,43 @@ export class FetchEngine {
   installNameEnvironment(): void {
     const engine = this;
     const environment: NameEnvironment = {
+      // Card::Name.session (Card::Auth.current.name): in Ruby this is NEVER
+      // unset — signed out it answers "Anonymous" (the Anonymous card's name,
+      // auth/current.rb's current lookup), and contextual.rb#user_part
+      // (cardname 0.20.0 lib/cardname/contextual.rb) substitutes it for
+      // `_user`. The engine's render surface is the signed-out corpus lane
+      // (render.ts: "Anonymous by default"), so the environment carries the
+      // same name. UNSET was a measured divergence: the follower notification
+      // pages' `{{_user|link}}` nest resolved `_user` to the literal
+      // "_user", whose KEY ("user" — cardname.rb:106-117 simple_key splits
+      // and drops the leading underscore, and the TS port is faithful there)
+      // collided with the real User card, rendering `by User` where the
+      // oracle renders `by Anonymous`.
+      session: "Anonymous",
       lexicon: {
         name(id: number): string | undefined {
-          return engine.peekLexiconName(id);
+          // Ruby parity for codenamed cards: Lexicon.name falls back to the
+          // db row synchronously on a cache miss (lexicon.rb:71-76), so a
+          // ":codename" mark parse never fails for a registered codename no
+          // matter what the temporary cache did (within_key_counts resets
+          // the whole store mid-render). This adapter cannot load the
+          // driver, but a mark only reaches this lookup after the codename
+          // registry confirmed the id (name.ts idFromString), so the
+          // codehash memo's registered name - immune to the reset - is the
+          // port's substitute, and the same string the db fallback returns.
+          //
+          // The durable lexicon map (DbLexicon#peekDurableName) is the same
+          // substitute for EVERY warmed id, codenamed or not: each async
+          // name(id) read records its resolved name there, so an id-mark
+          // ("~393") whose Temporary entry the 10k-key reset evicted still
+          // parses to the card the db holds - Ruby's db-fallback semantics,
+          // served from the record the warm path already paid for. Live
+          // caches stay first (they carry rename/trash state the write path
+          // maintains); a miss here is an id no async read ever proved,
+          // which Ruby's db would also not answer.
+          return engine.peekLexiconName(id) ??
+            engine.lexicon.peekDurableName(id) ??
+            engine.codenames.peekRegisteredName(id);
         },
         id(key: string): number | undefined {
           return engine.peekLexiconId(key);

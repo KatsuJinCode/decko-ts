@@ -31,6 +31,34 @@ export class DbLexicon {
   private readonly driver: SQLDatabaseDriver;
   /** Card::Cache[Lexicon] (lexicon.rb#cache) - separate cache instance per class. */
   readonly cache: CardCache;
+  /**
+   * The durable id->name record of every ASYNC name(id) read - the port's
+   * substitute for Ruby's SYNCHRONOUS db fallback (lexicon.rb:71-76) at the
+   * machine's synchronous boundaries (the name-environment adapters in
+   * fetch.ts#installNameEnvironment; DeckoName.parse's id-mark resolution).
+   *
+   * Why it exists: Ruby's Lexicon.name(id) is cache-first WITH a
+   * synchronous SQL fallback, so "~393" resolves for every id the deck
+   * holds no matter what the Temporary cache did (temporary.rb
+   * #within_key_counts resets the whole store at 10,000 keys - a 47k-card
+   * deck resets it repeatedly while warmLexicon pours it through). The
+   * driver here is async, so the sync adapters can only serve warm cache
+   * entries - after the reset, an id-mark whose entry was evicted raised
+   * NameNotFoundError where Ruby resolved (the 21 `X+*members` page raises
+   * of pass15's engine-raise-divergence class: those List cards store
+   * `~id` item lines). Every async name(id) read lands the resolved name
+   * here, so the sync adapters answer what Ruby's db fallback would:
+   * misses are ids never warmed (which Ruby's db would also not answer),
+   * never wrong names.
+   *
+   * Order at the consumer: live caches first (temp/shared - they hold the
+   * rename/trash state the write path maintains), then this map, then the
+   * codename registry. Cap: the map holds one short string per deck card
+   * (47k entries for the census deck); a runaway deck clears rather than
+   * grows without bound.
+   */
+  private durableIdNames = new Map<number, string>();
+  private static readonly DURABLE_ID_NAMES_CAP = 200_000;
 
   constructor(driver: SQLDatabaseDriver, cache: CardCache) {
     this.driver = driver;
@@ -46,7 +74,33 @@ export class DbLexicon {
     if (id === undefined || id === null) return undefined; // lexicon.rb#name guard
     const lex = await this.idToLex(id);
     const name = lex === undefined ? undefined : await this.lexToName(lex);
-    return name === undefined ? undefined : DeckoName.parse(name);
+    if (name === undefined) return undefined;
+    // lexToName's non-array branch returns the LEX verbatim, and the write
+    // path caches DeckoName objects under ids (lexicon.rb:74-82
+    // write_to_temp_cache) — so `name` can be a DeckoName, not a string.
+    // The durable record is a string map (the sync parse boundary consumes
+    // it raw); storing the object leaked a non-string into
+    // DeckoName.parse's rubyStrip (the codename-mark wipe pin's
+    // TypeError). Normalize to the display string here.
+    const nameStr = typeof name === "string" ? name : name.s;
+    this.recordDurableName(id, nameStr);
+    return DeckoName.parse(nameStr);
+  }
+
+  /** The sync boundary's read of the durable map (see the field comment).
+   *  Live caches first is the CALLER's contract (fetch.ts's adapter walks
+   *  peekLexiconName -> this peek -> codenames); this method only answers
+   *  what an async name(id) read already proved the db holds. */
+  peekDurableName(id: number): string | undefined {
+    return this.durableIdNames.get(id);
+  }
+
+  private recordDurableName(id: number, name: string): void {
+    if (this.durableIdNames.has(id)) return;
+    if (this.durableIdNames.size >= DbLexicon.DURABLE_ID_NAMES_CAP) {
+      this.durableIdNames.clear();
+    }
+    this.durableIdNames.set(id, name);
   }
 
   /** lexicon.rb#id(name): registered id, undefined when unknown. Accepts a
@@ -82,8 +136,29 @@ export class DbLexicon {
     if (name.isRelativeFragment) return undefined; // lexicon.rb:24 relative_fragment?
     const lex = this.peekLex(name);
     if (lex === undefined) return undefined;
-    const id = this.cache.read(cacheKey(lex));
+    const id = this.peekStored(cacheKey(lex));
     return typeof id === "number" ? id : undefined;
+  }
+
+  /**
+   * Reads a lexicon cache entry that a layer actually HOLDS, without
+   * materializing a miss. CardCache.read (cache.rb#read) is
+   * `temp.fetch(key) { shared.read(key) }` - a shared miss writes a stored
+   * nil into temp. Every Ruby reader of the Lexicon cache is
+   * cache.fetch-shaped (lexicon.rb#lex_to_id/#id_to_lex), so in Ruby a
+   * stored nil always means "the db said no"; this sync peek is an extra
+   * reader Ruby does not have, and its misses are EVICTIONS (the Temporary
+   * max-keys reset, temporary.rb#within_key_counts) or cold entries, not
+   * answers. Materializing one would poison the async fallback:
+   * lexToId's cacheFetch would see the key exist and answer the stored nil
+   * WITHOUT the SQL query - "unknown" for a card the db has, exactly what
+   * Ruby's synchronous SQL fallback never answers (the hazard behind the
+   * 10 empty <host>+*referred_to_by / +*type+by_name census pages). The
+   * read order mirrors CardCache.read's (temp first, shared second).
+   */
+  private peekStored(key: string): unknown {
+    if (this.cache.temp.exist(key)) return this.cache.temp.read(key);
+    return this.cache.shared?.read(key);
   }
 
   /** name_to_lex over warm entries only (mirrors nameToLex line for line;
@@ -167,16 +242,30 @@ export class DbLexicon {
     return [leftId, rightId];
   }
 
-  /** lexicon.rb#lex_to_name: array lexes join their side names; a missing
-   *  side (`name side_id or return`) makes the whole name unknown. */
-  private async lexToName(lex: Lex): Promise<string | undefined> {
+  /** lexicon.rb#lex_to_name: array lexes join their side names. The guard
+   *  `name side_id or return` evaluates the PUBLIC Lexicon.name, which is
+   *  never falsy for a present id argument: a side id whose cards row is
+   *  MISSING answers the EMPTY name (lexicon.rb:11-15, `(name || "").to_name`)
+   *  — truthy — so the join CONTINUES with the empty part and a junction
+   *  whose side row is gone composes a "+*default"-shaped name (verified
+   *  live against the corpus deck: Lexicon.name(389) = "+*default" with
+   *  cards 388 absent). Only a NIL side id bails: lexicon.rb#name answers
+   *  nil for `id.present? == false` (lexicon.rb:12), making the whole
+   *  composition nil. */
+  /** Returns the name STRING for array lexes; for simple lexes the LEX
+   *  VERBATIM — which can be a DeckoName (the write path caches DeckoName
+   *  objects under ids, lexicon.rb:74-82 write_to_temp_cache). Callers
+   *  must normalize with the typeof check DbLexicon#name applies. */
+  private async lexToName(lex: Lex): Promise<string | DeckoName | undefined> {
     if (!Array.isArray(lex)) return lex;
     const sides: string[] = [];
     for (const sideId of lex) {
       if (sideId === undefined) return undefined;
       const side = await this.name(sideId);
-      if (side === undefined) return undefined;
-      sides.push(side.s);
+      // Ruby's public Lexicon.name is "" (truthy) for a missing row, so the
+      // `or return` guard passes and the empty part joins (lexicon.rb:43-47
+      // through lexicon.rb:11-15).
+      sides.push(side === undefined ? "" : side.s);
     }
     return sides.join(JOINT);
   }

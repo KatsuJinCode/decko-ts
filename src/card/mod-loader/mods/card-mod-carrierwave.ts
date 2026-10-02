@@ -1,7 +1,7 @@
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-carrierwave-0.20.0/): 17 set files, 7 lib files, 3 haml views,
 // plus CarrierWave::CardMount + the FileCardUploader/ImageCardUploader
 // machinery. The Ruby mod is fundamentally a SIDE-EFFECT surface: it mounts
@@ -67,11 +67,15 @@
 //   AGENTS.md forbids scheduled tasks without explicit scope)
 // - set/all/file_utils.rb - ClassMethods for delete_tmp_files_of_cached_uploads
 //   + draft_actions_with_attachment SQL; requires the Action model
-// - set/type/file.rb format :html views :input, :preview_editor - both
-//   delegate to haml partials (file_chooser.haml, preview_editor.haml) that
-//   depend on `card.no_upload?`, `cached_upload_card_name`,
-//   `card.selected_action_id`, `card.original_filename`, and the
-//   upload-cache-card state - none ported (all carrierwave-runtime)
+// - set/type/file.rb format :html views :input, :preview_editor - PORTED
+//   ported (2026-09-28, oracle-pinned via live renders of the booted
+//   oracle app): the file_chooser haml bytes, the config-gated
+//   text_field bytes, and the preview_editor haml bytes. The upload-cache
+//   draft LIFECYCLE (the two-step preliminary upload's events,
+//   00_upload_cache.rb) stays unported; the editor views read their editor
+//   context through render opts (the composition layer's contract — the
+//   source of the params in Ruby), with the no-param render defined by the
+//   oracle.
 // - assets/style/file.scss + assets/script/upload.js.coffee - stylesheet +
 //   upload JS widget; these are static asset surfaces, not view ports
 // - config/locales/*.yml - i18n; no TS consumer
@@ -79,9 +83,19 @@
 //   admin surface has no TS consumer
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { cloudImageUrl } from "../../render/views.js";
+import { allHtmlViewsOneLineContentView } from "./card-mod-format.js";
+import { codedSvgFileBytes } from "../../render/coded-attachment-files.js";
+import {
+  cloudImageUrl,
+  derivedCloudAttachmentSource,
+  formatFileCore,
+  HTML_VIEWS,
+} from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
+import { lastContentActionIdFromIdentifier } from "../../attachments/attachment-content.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
+import { superView } from "../mod-view-helpers.js";
+import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
 // ---------------------------------------------------------------------------
 // helpers - the URL/path resolution Ruby's carrierwave FileCardUploader.url
@@ -123,16 +137,25 @@ function storageTypeFromContent(content: string): "cloud" | "web" | "local" | "c
  *    cloud: bucket/bucket_subdir/id/action_id(-variant).ext
  *  The headless port resolves the FILES_WEB_PATH (lib/card/mod/carrierwave.rb:
  *  2 `config.files_web_path = "files"`) for local uploads and the raw URL
- *  for web/cloud. */
+ *  for web. The CLOUD arm is Ruby's render-time derivation
+ *  (derivedCloudAttachmentSource in views.ts): Ruby's uploader deliberately
+ *  ignores the stored identifier when retrieving (lib/carrier_wave/
+ *  file_card_uploader/path.rb:28-32) and rebuilds the filename from db data
+ *  — `filename = "#{action_id}#{extension}"` (file_card_uploader.rb:147-153)
+ *  with action_id = db_content.split(%r{[/.]})[-2] (set/type/file.rb:11-15)
+ *  — so the stored key is never the rendered filename (the Michael
+ *  Christensen oracle anchor: db_content `(my_bucket)/14547/61887.abr.1.doc`
+ *  renders `http://s3.amazonaws.com//files/14547/1.doc`). */
 function contextualizePath(content: string): string {
   const trimmed = content.trim();
   if (trimmed === "") return "";
   const type = storageTypeFromContent(trimmed);
   if (type === "web") return trimmed;
   if (type === "cloud") {
-    // cloud URL is the absolute bucket URL (fog returns it); the headless
-    // port returns the content as-is.
-    return trimmed;
+    // fog public_url ("#{asset_host}/#{encoded_path}", carrierwave-3.1.4
+    // storage/fog.rb:365-372) of the DERIVED retrieve path — the capture's
+    // asset host + /files/<card-id>/<action-id><ext>.
+    return derivedCloudAttachmentSource(trimmed);
   }
   if (type === "local") {
     // local: ~/card_id/action_id.ext -> /files/card_id/action_id.ext
@@ -150,9 +173,13 @@ function contextualizePath(content: string): string {
 // file-type views (set/type/file.rb base format block: lines 19-28).
 // `set/type/file.rb:47-50 def source` + `set/type/file.rb:20-22
 // view :source`: `card.attachment.url` for local/cloud, the raw
-// `card.content` for web, `""` for invalid. `set/type/file.rb:24-28
-// view :core`: wraps the source in `<a href="source">source</a>`
-// (set/type/file/core.haml:1).
+// `card.content` for web, `""` for invalid. The HTML-format `view :core`
+// is set/type/file/core.haml (`%a{ href: source } = t :carrierwave_download,
+// title: title_in_context(voo.title)`): the download label is the card name
+// relativized against the context names and HAML's attr_wrapper is the
+// apostrophe — `<a href='SRC'>Download +child</a>`. Oracle-pinned by the
+// raw corpus quote-style exemplars (Werkshop Museum / David K Weinstock
+// pages). The empty-source arm still renders "" (file.rb:34-45).
 // ---------------------------------------------------------------------------
 
 function fileSource(ctx: ViewContext): string {
@@ -161,9 +188,10 @@ function fileSource(ctx: ViewContext): string {
 }
 
 const fileCoreView: ViewFn = (ctx) => {
-  const href = fileSource(ctx);
-  if (href === "") return "";
-  return `<a href="${h(href)}">${h(href)}</a>`;
+  return formatFileCore(ctx.fmt.card.dbContent, {
+    cardName: ctx.fmt.card.name.s,
+    contextNames: ctx.fmt.contextNames,
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -193,8 +221,50 @@ function imageSource(ctx: ViewContext): string {
 }
 
 const imageInlineView: ViewFn = (ctx) => ctx.fmt.renderView("core");
-const imageOneLineContentView: ViewFn = (ctx) =>
-  ctx.fmt.renderView("core", { size: "icon" });
+/** set/type/image.rb:18-20 view :one_line_content do
+ *  `_render_core size: :icon` end — the view's GEM SCOPE is the
+ *  Type::Image set (the file lives at set/type/image.rb), so ONLY an
+ *  image-typed card dispatches it; a file/RichText/... card's
+ *  :one_line_content renders the All-set html arm instead
+ *  (card-mod-format-0.20.0 set/all/html/views.rb:29-32 — the carrierwave
+ *  gem defines no :one_line_content for any other set). The polymorphic
+ *  device below ("all/zz_carrierwave_polymorphic") is ALL-scoped by
+ *  construction (the flat-table one-fn-per-name constraint, see the
+ *  polymorphic :core note), so the type guard lives HERE in the body:
+ *  image-typed cards render the icon-sized core; every other type falls
+ *  through to the All-set wrap arm (imported — one definition, no
+ *  drift). WITHOUT the guard the device answers the icon core for
+ *  non-image cards too — a divergence a collision census over the pinned
+ *  corpus flagged ("renderView core size icon, no type guard"); this type
+ *  guard closes it on the device. The dispatch-ORDER walker is separate
+ *  work; this edit touches only this fn. */
+const imageOneLineContentView: ViewFn = (ctx) => {
+  if (ctx.fmt.card.typeCode !== "image") {
+    return allHtmlViewsOneLineContentView(ctx);
+  }
+  return ctx.fmt.renderView("core", { size: "icon" });
+};
+
+/** The Type::Image guard on the polymorphic :one_line_content fold.
+ *  Gem truth:
+ *  card-mod-carrierwave-0.20.0 set/type/image.rb:17-20 — the view lives on
+ *  the TYPE::IMAGE set (a nonbase module, dynamically included only on
+ *  Image cards' format singletons) inside a bare `format do` block, body
+ *  `_render_core size: :icon`. The all-scoped registration below exists
+ *  ONLY to win the flat view table (the polymorphic-fold device, see the
+ *  manifest note): Ruby never dispatches it for a non-image card. Once the
+ *  chain walker's ALL-token expansion orders later-registered modules
+ *  first (Ruby's include-order precedence, module.rb:15-22 +
+ *  registrar.rb:79-84), this device heads the one_line_content chain for
+ *  EVERY card — so the guard is what keeps the order fix from promoting
+ *  image bytes onto all of them: an image card answers the icon core; any
+ *  other type delegates down the chain (superView) to the next
+ *  registration — today All::Html::Views' wrap arm (card-mod-format
+ *  set/all/html/views.rb:29-32), Ruby's html-format winner. */
+const polymorphicOneLineContentView: ViewFn = (ctx) => {
+  if (ctx.fmt.card.typeCode === "image") return imageOneLineContentView(ctx);
+  return superView(ctx, "All::ZzCarrierwavePolymorphic", "one_line_content");
+};
 
 // ---------------------------------------------------------------------------
 // image html-format views (set/type/image/html_views.rb).
@@ -204,12 +274,20 @@ const imageOneLineContentView: ViewFn = (ctx) =>
  *  set/type/file.rb:34-45 handle_source: blank src short-circuits to ""
  *  (the content-view wrapper renders an empty body, e.g. corpus:79 *logo
  *  with dbContent that does not match any storage prefix).
+ *  SVG SHORT-CIRCUIT FIRST (html_views.rb:5-11 `return
+ *  card.attachment.read.html_safe if svg?`): a coded svg attachment renders
+ *  its RAW FILE BYTES, not an <img> URL — the same seam the flat registry's
+ *  formatImageCore takes (see coded-attachment-files.ts; the vendored bytes
+ *  are the decko project's own asset, sha256-verified against the oracle
+ *  deck's file, not against any capture).
  *  CLOUD content renders the live deck's image_tag byte shape —
  *  `<img alt="NAME" src="..." />` (alt first: Rails image_tag inserts
  *  :src into an options hash already carrying :alt; live + oracle
  *  receipts in views.ts cloudImageUrl). Web/local keep the headless
  *  shapes their existing pins carry. */
 const imageHtmlCoreView: ViewFn = (ctx) => {
+  const svgBytes = codedSvgFileBytes(ctx.fmt.card.dbContent);
+  if (svgBytes !== undefined) return svgBytes;
   const src = imageSource(ctx);
   if (src === "") {
     // Ruby's handle_source: blank -> "" (no comment, no leak).
@@ -246,13 +324,18 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
   return `<div class="attachment-preview" id="${h(ctx.fmt.card.name.s)}-preview">${inner}</div>`;
 };
 
-/** set/type/image/html_views.rb:49-51 view :content_changes. */
+/** set/type/image/html_views.rb:49-51 view :content_changes.
+ *  Ruby joins the pair `old_image(action) + new_image(action)` (line 56:
+ *  `[old_image(action, hide_diff), new_image(action)].compact.join`), the
+ *  two images differing through Card::Content::Diff chunk highlighting.
+ *  The diff surface is not ported (headless has no previous-action content
+ *  seam), so this view emits the structural pair from the card's current
+ *  :core bytes: a blank core renders "", otherwise the core appears twice,
+ *  once standing in for each side of the pair. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
-  const oldCore = ctx.fmt.renderView("core");
-  const newCore = ctx.fmt.renderView("core");
-  if (oldCore === "" && newCore === "") return "";
-  if (oldCore === "") return newCore;
-  return `${oldCore}${newCore}`;
+  const core = ctx.fmt.renderView("core");
+  if (core === "") return "";
+  return core + core;
 };
 
 // ---------------------------------------------------------------------------
@@ -288,6 +371,197 @@ const FAVICON_RAW_HELP_TEXT =
 const searchJsonImageCompleteView: ViewFn = () => "[]";
 
 // ---------------------------------------------------------------------------
+// cwwrite-seam port: set/type/file.rb format :html editor views (:input
+// :119-125, :preview_editor :127-129) + the Rails helpers their partials
+// emit. Oracle-pinned by live renders of the booted oracle app.
+// ---------------------------------------------------------------------------
+
+/** Rails' number_to_human_size — implemented once in
+ *  rails-number-to-human-size.ts (the oracle runner ladder pins the byte
+ *  shapes there); this mod's file chooser renders sizes through it. */
+
+/** no_upload? (set/abstract/attachment/web.rb:1-3): `web? ||
+ *  storage_type_from_config == :web`. storage_type_from_config (:75-79)
+ *  reads Cardio.config.file_storage LIVE — the engine field is its port
+ *  (RenderEngine#fileStorage; undefined = the deck default :local, the
+ *  oracle's config_file_storage_default). NOTE the from-content resolver's
+ *  stored-web cards do NOT flip this: 01_storage_type.rb:106's
+ *  `%r{/^https?:/}` regex literal carries its anchors INSIDE the %r{}
+ *  braces (it matches the literal string "/^https?:/" and no URL — the
+ *  gem's own bug), so a card with http content resolves :local via the
+ *  config and the oracle rendered the file_chooser for it (no_upload
+ *  false). The port reproduces THAT behavior: only the config gate flips
+ *  the branch. */
+function noUpload(ctx: ViewContext): boolean {
+  const engine = ctx.fmt.engine as { fileStorage?: string } | undefined;
+  return engine?.fileStorage === "web";
+}
+
+/** view :input's text_field branch (file.rb:120-121): `text_field :content,
+ *  class: "d0-card-content"` — the format's ActionView delegation lands on
+ *  Tags::TextField (form_helper.rb: text_field -> Tags::TextField#render:
+ *  caller opts first, then type/value/name/id — and decko's editor chrome
+ *  appends "form-control" to the class list). Oracle followup
+ *  view_input_web_config:
+ *  <input class="d0-card-content form-control" type="text"
+ *   value="http://example.com/oracle_cw_probe.png" name="card[content]"
+ *   id="card_content" /> */
+function textFieldContentBytes(ctx: ViewContext): string {
+  const content = ctx.fmt.card.dbContent ?? "";
+  return (
+    `<input class="d0-card-content form-control" type="text" value="${h(content)}" ` +
+    'name="card[content]" id="card_content" />'
+  );
+}
+
+/** file_chooser_action_text (file.rb:131-134):
+ *  `#{new_card? ? "Add" : "Replace"} #{humanized_attachment_name}...` —
+ *  attachment_name "file".humanize = "File" (oracle: "Replace File..." on
+ *  a stored card, "Add File..." on a new one); the image mount
+ *  humanizes to "Image" (the image html format includes File::HtmlFormat,
+ *  image/html_views.rb:2, so the SAME view runs with attachment_name
+ *  :image on image cards). */
+function fileChooserActionText(ctx: ViewContext, mount: "file" | "image" = "file"): string {
+  const card = ctx.fmt.card as { id?: number; record?: { isNew?: boolean } };
+  const isNew = card.record?.isNew === true || card.id === undefined;
+  const humanized = mount === "image" ? "Image" : "File";
+  return `${isNew ? "Add" : "Replace"} ${humanized}...`;
+}
+
+/** The file_chooser.haml bytes (set/type/file/file_chooser.haml) as the
+ *  oracle renders them — for FILE cards by default, for IMAGE cards with
+ *  the mount substituted (card.type_code rides the haml's
+ *  `card_#{card.type_code}` id / `card[#{card.type_code}]` name, so the
+ *  image chooser's input is id 'card_image' name 'card[image]').
+ *  preview for FILE cards is the format's own `def preview; "" end`
+ *  (file.rb:140-142) — the haml `= preview` line emits the bare empty
+ *  line after .choose-file. For IMAGE cards the included File::HtmlFormat
+ *  preview is OVERRIDDEN by image/html_views.rb:36-43 (the
+ *  attachment-preview div around :core medium; nil — an empty line — for
+ *  a new card without the preliminary-upload flag), so the image chooser
+ *  carries the image preview view's bytes in that line.
+ *  Attribute quoting is Haml's own for the template attrs (single-quoted)
+ *  and the Rails tag helpers' (double-quoted); icon_tag resolves through
+ *  the material library's fallback ([icon_libraries.last, icon] —
+ *  icon.rb:143-150: "cloud_upload" is not a basket key) to
+ *  `<i class="notranslate material-icons">cloud_upload</i>`. The
+ *  attachment_type_id hidden field carries the type card's DB-LOCAL id. */
+function fileChooserBytes(ctx: ViewContext, mount: "file" | "image" = "file"): string {
+  const card = ctx.fmt.card as {
+    typeId?: number;
+    id?: number;
+    record?: { isNew?: boolean };
+  };
+  const typeId = card.typeId ?? "";
+  const urlKey = ctx.fmt.urlKey();
+  // The image preview's new-card guard (image/html_views.rb:37
+  // `return if card.new_card? && !card.preliminary_upload?` — the
+  // preliminary-upload arm is the unported JS two-step flow's param):
+  // a NEW image card's `= preview` line is the bare empty line, never
+  // the wrapped (invalid-image) core.
+  const isNew = card.record?.isNew === true || card.id === undefined;
+  const previewLine =
+    mount === "image"
+      ? (isNew ? "\n" : `${imageHtmlPreviewView(ctx)}\n`)
+      : "\n";
+  return (
+    "<div class='choose-file'>\n" +
+    previewLine +
+    "<span class='btn btn-secondary fileinput-button'>\n" +
+    '<i class="notranslate material-icons">cloud_upload</i>\n' +
+    `<span>${fileChooserActionText(ctx, mount)}</span>\n` +
+    `<input class='file-upload slotter form-control' id='card_${mount}' name='card[${mount}]' type='file'>\n` +
+    `<input type="hidden" name="attachment_type_id" id="attachment_type_id" value="${typeId}" autocomplete="off" />\n` +
+    `<input class="attachment_card_name form-control" value="" autocomplete="off" type="hidden" name="card[${mount}]" id="card_${mount}" />\n` +
+    `<input type="hidden" name="file_card_name" id="file_card_name" value="${h(urlKey)}" autocomplete="off" />\n` +
+    "</span>\n" +
+    "</div>\n" +
+    "<div class='progress mb-2' id='progress' style='display: none;'>\n" +
+    "<div class='progress-bar progress-bar-success' style='width: 0%;'></div>\n" +
+    "</div>\n" +
+    "<div class='chosen-file'></div>\n"
+  );
+}
+
+/** set/type/file.rb:119-125 format :html view :input. */
+const fileInputView: ViewFn = (ctx) => {
+  if (noUpload(ctx)) return textFieldContentBytes(ctx);
+  return fileChooserBytes(ctx);
+};
+
+/** view :input for IMAGE cards. Ruby's route: image/html_views.rb:2
+ *  `format :html do include File::HtmlFormat` — the image html format
+ *  includes the file module's views, so image cards render the SAME
+ *  file_chooser with attachment_name :image (action text "Add/Replace
+ *  Image...", input named card[image], and the image preview in the
+ *  `= preview` line). Without this registration the port's image cards
+ *  fell to all/editor.rb's default rich_text input — bytes Ruby never
+ *  serves on an attachment cardtype's edit form. */
+const imageInputView: ViewFn = (ctx) => {
+  if (noUpload(ctx)) return textFieldContentBytes(ctx);
+  return fileChooserBytes(ctx, "image");
+};
+
+/** cached_upload_card_name (file.rb:144-146):
+ *  `Card::Env.params[:attachment_upload].gsub(/\[\w+\]$/, "[action_id_of_
+ *  cached_upload]")`. The editor context rides render opts (the request
+ *  params' port at the composition layer); the standard editor form posts
+ *  "card[<mount>]" names, whose gsub output is invariant:
+ *  "card[action_id_of_cached_upload]". */
+function cachedUploadCardName(ctx: ViewContext): string {
+  const raw = ctx.voo.opts["attachment_upload"];
+  const value = typeof raw === "string" && raw !== "" ? raw : "card[file]";
+  return value.replace(/\[\w+\]$/, "[action_id_of_cached_upload]");
+}
+
+/** set/type/file.rb:127-129 format :html view :preview_editor, cache:
+ *  :never — the preview_editor.haml bytes (the two-step upload's success
+ *  view, 00_upload_cache.rb:18-24). The editor context rides render opts:
+ *  original_filename (the action comment — the uploader's
+ *  `model.selected_action&.comment`, file_card_uploader.rb:194-196) and
+ *  attachment_size (the stored bytes; a missing size reads as the
+ *  zero-byte degenerate "0 Bytes"). The hidden input's value is the
+ *  selected action id — SelectedAction#last_content_action_id parsed from
+ *  the identifier (set/type/file.rb:8-13, the files lane's
+ *  lastContentActionIdFromIdentifier). */
+const filePreviewEditorView: ViewFn = (ctx) => {
+  const card = ctx.fmt.card;
+  const actionId = lastContentActionIdFromIdentifier(card.dbContent);
+  const name = typeof ctx.voo.opts["original_filename"] === "string"
+    ? (ctx.voo.opts["original_filename"] as string)
+    : "";
+  const size = typeof ctx.voo.opts["attachment_size"] === "number"
+    ? (ctx.voo.opts["attachment_size"] as number)
+    : 0;
+  return (
+    "<div class='chosen-file'>\n" +
+    `<input name='${h(cachedUploadCardName(ctx))}' type='hidden' value='${actionId ?? ""}'>\n` +
+    "<div class='d-flex'>\n" +
+    "\n" +
+    "<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n" +
+    "<div>\n" +
+    "<p class='name'>\n" +
+    `${h(name)}\n` +
+    "</p>\n" +
+    "<span class='size'>\n" +
+    `${numberToHumanSize(size)}\n` +
+    "</span>\n" +
+    "</div>\n" +
+    "<div class='align-self-end'>\n" +
+    "<button class='btn btn-danger delete cancel-upload' data-type='DELETE'>\n" +
+    '<i class="notranslate material-icons">delete</i>\n' +
+    "<span>\n" +
+    "Delete\n" +
+    "</span>\n" +
+    "</button>\n" +
+    "</div>\n" +
+    "</div>\n" +
+    "</div>\n" +
+    "</div>\n"
+  );
+};
+
+// ---------------------------------------------------------------------------
 // polymorphic dispatch (see file header note).
 // ---------------------------------------------------------------------------
 
@@ -300,12 +574,29 @@ const polymorphicSourceView: ViewFn = (ctx) => {
 };
 
 /** The carrierwave :core view dispatches on the card's typeCode: an image
- *  card renders the <img> tag (set/type/image/html_views.rb:5-11); any
- *  other carrierwave card (file, etc.) renders the <a href> anchor
- *  (set/type/file/core.haml:1). */
+ *  card renders the <img> tag (set/type/image/html_views.rb:5-11); a FILE
+ *  card renders the <a href> anchor (set/type/file/core.haml:1); every
+ *  OTHER card falls through to the BASE format core.
+ *
+ *  The fall-through is the Ruby dispatch shape: card-mod-carrierwave has NO
+ *  all-set :core (the gem's :core lives only in set/type/file.rb and
+ *  set/type/image/html_views.rb, both type-scoped) — the all-set
+ *  registration below ("all/zz_carrierwave_polymorphic") is a TS port
+ *  device (the flat view table holds ONE fn per name), so a non-attachment
+ *  card reaching this view must answer the base core, exactly as it did
+ *  before the registration existed. Routing everything non-image to the
+ *  file anchor swallowed every RichText/PlainText/... card's content once
+ *  the mod deck was bound at a serving surface (the edit-forms lane's
+ *  session2-gap-8 wiring exposed it: the XHR save response's titled slot
+ *  rendered title-only because the card body's :core answered ""). */
+const BASE_CORE: ViewFn | undefined = HTML_VIEWS["core"];
 const polymorphicCoreView: ViewFn = (ctx) => {
   if (ctx.fmt.card.typeCode === "image") return imageHtmlCoreView(ctx);
-  return fileCoreView(ctx);
+  if (ctx.fmt.card.typeCode === "file" || ctx.fmt.card.typeName === "File") {
+    return fileCoreView(ctx);
+  }
+  if (BASE_CORE === undefined) return "";
+  return BASE_CORE(ctx);
 };
 
 // ---------------------------------------------------------------------------
@@ -327,7 +618,24 @@ const cardModCarrierwave: DeckoModManifest = {
     // typeCode === "image" to route image cards to the image views.
     // The set module itself is registered in the basket for bookkeeping
     // parity with Ruby (set/abstract/loader.rb:185 + registrar.rb:21-29).
-    { setPath: "type/file" },
+    {
+      // cwwrite-seam port: set/type/file.rb format :html views :input
+      // (:119-125) + :preview_editor (:127-129, unknown: true, cache:
+      // :never). Oracle-pinned bytes; the editor context rides render opts.
+      setPath: "type/file",
+      formats: {
+        html: {
+          views: [
+            { view: "input", viewFn: fileInputView },
+            {
+              view: "preview_editor",
+              viewFn: filePreviewEditorView,
+              config: { unknown: true, cache: "never" },
+            },
+          ],
+        },
+      },
+    },
 
     // set/type/image.rb - the image type's format block. NOT ported:
     // `attachment :image, uploader: CarrierWave::ImageCardUploader`
@@ -353,6 +661,10 @@ const cardModCarrierwave: DeckoModManifest = {
             { view: "full_width", viewFn: imageHtmlFullWidthView },
             { view: "preview", viewFn: imageHtmlPreviewView },
             { view: "content_changes", viewFn: imageHtmlContentChangesView },
+            // image/html_views.rb:2 `include File::HtmlFormat` — the image
+            // html format inherits the file module's :input/:preview_editor;
+            // the chooser renders with the image mount (see imageInputView).
+            { view: "input", viewFn: imageInputView },
           ],
         },
       },
@@ -416,6 +728,27 @@ const cardModCarrierwave: DeckoModManifest = {
     // The set module is registered in the basket.
     { setPath: "self/new_image" },
 
+    // set/self/admin.rb - the admin-surface basket push:
+    // `basket[:tasks][:delete_upload_tmp_files] = { mod: :carrierwave,
+    // execute_policy: -> { Card.delete_tmp_files_of_cached_uploads } }`
+    // (lines 1-4; the commented-out :move_files entry stays unported, as
+    // in the gem). The execute_policy lambda shells at the asset pipeline
+    // and has no headless surface; the task-table strings are the mod's
+    // own en.yml:18-19 (carrierwave_task_delete_upload_tmp_files_*).
+    // Oracle-pinned: the *admin :core task table's fourth row
+    // (fixtures/captured/admin-views-2-oracle.json).
+    {
+      setPath: "self/admin",
+      basketTasks: [
+        {
+          task: "delete_upload_tmp_files",
+          mod: "carrierwave",
+          linkText: "Delete upload tmp files",
+          description: "Delete upload tmp files!",
+        },
+      ],
+    },
+
     // The polymorphic dispatch views (see file header). These are
     // registered LAST so they win the ViewRegistrationTable's
     // "later-mod-wins" race (mod-registrar.ts#register:303-309).
@@ -425,7 +758,17 @@ const cardModCarrierwave: DeckoModManifest = {
     // an image-typed favicon uses imageSource, otherwise fileSource.
     // The :inline + :one_line_content views (set/type/image.rb:74-76 +
     // 18-20) are also folded in: they delegate to :core, which now
-    // routes through the polymorphic :core below.
+    // routes through the polymorphic :core below. :one_line_content's
+    // gem scope is the TYPE-IMAGE set ONLY (set/type/image.rb:17-20, a
+    // nonbase set), yet the polymorphic-fold device heads the html
+    // one_line_content chain once the walker orders later-registered
+    // modules first — so the composed guard is load-bearing twice over:
+    // polymorphicOneLineContentView superViews non-image cards down the
+    // chain, and imageOneLineContentView (the no-drift body, imported
+    // from card-mod-format) sends any non-image card it still sees to
+    // the All-set html wrap arm — the chain answer Ruby's walk produces
+    // for them — while image cards answer the icon core (both lanes
+    // 2026-10-01; chain-dispatch-order + format-remainder-ports).
     {
       setPath: "all/zz_carrierwave_polymorphic",
       formats: {
@@ -438,7 +781,7 @@ const cardModCarrierwave: DeckoModManifest = {
             },
             { view: "core", viewFn: polymorphicCoreView },
             { view: "inline", viewFn: imageInlineView },
-            { view: "one_line_content", viewFn: imageOneLineContentView },
+            { view: "one_line_content", viewFn: polymorphicOneLineContentView },
           ],
         },
       },
@@ -458,7 +801,12 @@ export {
   imageHtmlFullWidthView,
   imageHtmlPreviewView,
   imageHtmlContentChangesView,
+  imageOneLineContentView,
   faviconLinkTagView,
   searchJsonImageCompleteView,
   FAVICON_RAW_HELP_TEXT,
+  fileInputView,
+  imageInputView,
+  filePreviewEditorView,
+  numberToHumanSize,
 };

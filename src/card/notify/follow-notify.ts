@@ -115,15 +115,9 @@ function isNotable(event: SavePathEvent): boolean {
 async function notifyFollower(
   ref: FollowerRef,
   template: EmailTemplate,
-  actor: NotifyActor,
   ctx: NotifyContext,
 ): Promise<void> {
   if (ref.followerEmail === null) return; // return unless email.present?
-  if (actor.email !== null && ref.followerEmail !== actor.email) {
-    // Template may carry the actor's identity (auth.as(left.id)) — let
-    // the auth swap resolve it. Production keeps the template's `to`
-    // unchanged.
-  }
   const notice: FollowNotice = {
     follower: ref.followerName,
     followedSet: ref.followedSetName,
@@ -175,8 +169,13 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
       // and SMTP doesn't parallelize well anyway. A worker-queue version
       // is the integrate_with_delay-delayed form (delayed_event.rb).
       for (const ref of followers) {
-        const actor = deps.authAs(ref.followerId, ref.followerName);
-        await notifyFollower(ref, template, actor, ctx);
+        // Ruby wraps each follower's delivery in Auth.as(left.id)
+        // (card-mod-follow set/right/account.rb:15-21); the port runs the
+        // per-follower resolver at the same swap point. Rendering is
+        // actor-independent, so the resolved actor is not consumed
+        // downstream.
+        deps.authAs(ref.followerId, ref.followerName);
+        await notifyFollower(ref, template, ctx);
       }
     },
   };

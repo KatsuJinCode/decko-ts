@@ -89,7 +89,7 @@ afterAll(() => {
 });
 
 describe("card-mod-help through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: :help is unsupported and :lead/:help_text do not exist", async () => {
+  it("WITHOUT the mod: :help/:help_text are unsupported; :lead dispatches compiled-in (oracle bytes)", async () => {
     const s = storage!;
     await expect(s.engine.render("Oracle Help Probe", "help")).rejects.toThrow(
       UnsupportedViewError,
@@ -97,9 +97,14 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Help Probe", "help_text")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Bare Probe", "lead")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // MERGE-PASS-18 RE-PIN (raise-leadview merge): :lead is the compiled-in
+    // HTML_VIEWS entry (render/views.ts imports card-mod-help's leadView as
+    // the single source), so the loader-less engine dispatches it — the
+    // pre-merge premise "lead is mod-only" no longer holds. The WITHOUT arm
+    // now pins the same oracle bytes the WITH arm pins (single source, the
+    // mod registration adds nothing for lead).
+    const leadHtml = normalize(await s.engine.render("Oracle Bare Probe", "lead"));
+    expect(leadHtml).toBe(FIXTURE.rendered["Oracle Bare Probe#lead"]);
   });
 
   it("WITHOUT the mod: baseline :content already matches the oracle bytes", async () => {

@@ -37,27 +37,46 @@ export class TemporaryCache {
   private store = new Map<string, unknown>();
   private reps = 0;
   private readonly maxKeys: number;
+  /** How many times within_key_counts reset this store. Ruby has the same
+   *  reset (temporary.rb#within_key_counts) but heals misses through the
+   *  synchronous db fallback; the port's cache-layer probes read this to
+   *  attribute a sync-mirror miss to the reset (the warm entries written
+   *  before the last reset are gone). */
+  private resetCountValue = 0;
 
   constructor(maxKeys: number = DEFAULT_MAX_TEMPORARY_CACHE_KEYS) {
     this.maxKeys = maxKeys;
+  }
+
+  /** Resets fired so far (temporary.rb#within_key_counts observability). */
+  get resetCount(): number {
+    return this.resetCountValue;
+  }
+
+  /** The keys currently held - cache-layer probe / test inspection. */
+  keys(): readonly string[] {
+    return [...this.store.keys()];
   }
 
   read(key: string): unknown {
     return this.store.get(key);
   }
 
-  write(key: string, value: unknown, callback?: (value: unknown) => void): void {
+  /** temporary.rb#write: store the value and RETURN it (Ruby's write is
+   *  the `@store[key] = value` assignment). */
+  write(key: string, value: unknown, callback?: (value: unknown) => void): unknown {
     this.withinKeyCounts(() => {
       this.store.set(key, value);
       this.reps += 1;
       if (callback) callback(value);
     });
+    return value;
   }
 
   /** temporary.rb#fetch: exist? ? read : write(yield) - key order matters:
    *  a stored nil is a hit. */
   fetch(key: string, compute: () => unknown, callback?: (value: unknown) => void): unknown {
-    return this.exist(key) ? this.read(key) : this.write2(key, compute(), callback);
+    return this.exist(key) ? this.read(key) : this.write(key, compute(), callback);
   }
 
   delete(key: string): void {
@@ -67,15 +86,11 @@ export class TemporaryCache {
   reset(): void {
     this.reps = 0;
     this.store = new Map();
+    this.resetCountValue += 1;
   }
 
   exist(key: string): boolean {
     return this.store.has(key);
-  }
-
-  private write2(key: string, value: unknown, callback?: (value: unknown) => void): unknown {
-    this.write(key, value, callback);
-    return value;
   }
 
   private withinKeyCounts(body: () => void): void {
@@ -179,7 +194,9 @@ export class SharedCache {
   }
 
   exist(key: string): boolean {
-    return this.store.exist ? this.store.exist(this.fullKey(key)) : this.store.read(this.fullKey(key)) !== undefined;
+    return this.store.exist
+      ? this.store.exist(this.fullKey(key))
+      : this.store.read(this.fullKey(key)) !== undefined;
   }
 
   /** shared.rb#write_attribute: mutate one attribute of a cached object. */
@@ -218,7 +235,14 @@ export class CardCache {
    *  (Cache::CardClass#after_write_to_temp_cache) writes the lexicon. */
   afterWriteToTempCache?: (value: unknown) => void;
 
-  constructor(opts: { className?: string; maxTemporaryKeys?: number; sharedStore?: SharedCacheStore; database?: string } = {}) {
+  constructor(
+    opts: {
+      className?: string;
+      maxTemporaryKeys?: number;
+      sharedStore?: SharedCacheStore;
+      database?: string;
+    } = {},
+  ) {
     this.temp = new TemporaryCache(opts.maxTemporaryKeys);
     this.shared = opts.sharedStore
       ? new SharedCache({

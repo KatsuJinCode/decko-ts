@@ -33,8 +33,6 @@
 // This module exposes the walk as a function the importer can call on
 // each NULL-name junction row. It is invoked from generalized-import.mjs.
 
-import { walkJunctionName } from "./verify.mjs";
-
 /** The fallback ladder result for one junction row: { name, key, via,
  *  resolved }. `via` records WHICH fallback produced the result (one of
  *  "in-column", "lexicon", "unresolved"). */
@@ -57,31 +55,22 @@ export async function reconstructCardName({
     return { name: sourceName, key, via: "in-column", resolved: true };
   }
 
-  // Fallback 2: junction walk on the imported target.
+  // Fallback 2: junction walk on the imported target. The row being
+  // imported may not exist there yet, so the walk starts from the two
+  // junction sides rather than from a target row id.
   if (leftId !== null && leftId !== undefined) {
-    // we need a card-id in the target; the importer supplies it via the
-    // walkJunctionName helper which reads from the imported target
-    const result = await walkJunctionName(driver, /* cardId */ null, 0, maxDepth, {
-      // override: walk from (left, right) given as parameters, not from
-      // an existing target row. The walkJunctionName helper signature
-      // takes an id; we fall through to a local walk below.
-    });
-    // The walkJunctionName helper as-is wants an id, not sides. For a
-    // pre-imported junction row the id may not yet exist; instead, do
-    // the walk directly here with the sides.
     const walked = await walkBySides(driver, leftId, rightId, 0, maxDepth);
     if (walked.resolved) {
       return { name: walked.name, key: null, via: "lexicon", resolved: true };
     }
-    void result;
   }
 
   return { name: null, key: null, via: "unresolved", resolved: false };
 }
 
 /** Recursive junction walk that takes sides (not a target row id).
- *  Imported here because the existing walkJunctionName in verify.mjs
- *  starts from a target id. We follow the same depth-cap semantics. */
+ *  Depth-capped like the id-rooted walk in verify.mjs: a cycle surfaces
+ *  as unresolved, never a hang. */
 async function walkBySides(driver, leftId, rightId, depth, maxDepth) {
   if (depth > maxDepth) return { name: null, resolved: false, depth };
   const left = await fetchSimpleName(driver, leftId, depth + 1, maxDepth);

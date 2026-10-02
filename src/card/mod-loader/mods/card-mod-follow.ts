@@ -57,20 +57,29 @@
 // - set/self/follow_fields.rb:1 setting_opts group: :other, position: 5,
 //   rule_type_editable: false. Ported.
 //
-// NOT ported (honest remainder, see viewsMissing):
-// - all/follow.rb + the all/follow/* helpers (followed_by, follower_ids,
-//   follow_link, follow_link_views, start_follow_link, stop_follow_link):
-//   follow_link_class is a Rails-runtime helper (link_to, link_opts,
-//   path, modal_link, render_link_text, FollowLink class with
-//   :data-update-foreign-slot, :data-bs-toggle, :data-bs-target modal);
-//   followed_by walks the indirect follow graph through the left card
-//   chain + follow_fields rule lookup; follower_ids caches via
-//   Card.cache (Rails.cache); follow_link_views's :follow_button +
-//   format :json :follow_status both build link_to with rails path
-//   helpers. The card-mod-comment super()-passthrough and the
-//   card-mod-edit :template_nest else-branch show how the
-//   link_to_card / path helpers would slot in if the live runtime
-//   surfaces were ported.
+// NOT ported (honest remainder, updated lane follow2 2026-09-29):
+// - all/follow/followed_by + follower_ids: the READ half the views need
+//   IS ported now (src/card/follow/follow-rule-walk.ts reusing the notify
+//   lane's algebra from src/card/notify/follower-resolver.ts) INCLUDING
+//   the *nests arm of followed_field? (the inclusion search through
+//   card_references, lane follow2); the WRITE halves that remain are the
+//   follower_ids CACHE (Card.cache / Rails.cache) and the notify lane's
+//   own indirect-follower walk (follower-resolver.ts's header gap - the
+//   notify lane reads this same machinery through its own port).
+// - follow_link.rb modal_link (:14-22): the data-bs-toggle/data-bs-target
+//   modal machinery (bootstrap-modal surface).
+// - all/follow/follow_link_views.rb format :json view :follow_status
+//   (:11-14): the GEM BODY CALLS A MISSING METHOD - `follow_link_class
+//   .link_opts` fires link_opts on the FollowLink CLASS, but
+//   follow_link.rb:36 defines link_opts only as an INSTANCE method; Ruby
+//   raises NoMethodError as written. Porting the raise would pin a guess
+//   about intent (no oracle capture exists); named here, not guessed.
+// - all/notify.rb events + the notify base/html views (:list_of_changes,
+//   :subedits, :subedit_notice, :followed, :follower, :last_action_verb,
+//   :unfollow_url): the notification EMAIL-template surface - the bodies
+//   read active_notice inherited from the email render context,
+//   Action.value walks, and card_url (all named by the token-runtime
+//   receipt too); the write-path events are the notify stream's.
 // - all/notify.rb events (silence_notifications, notify_followers_
 //   after_save, stash_followers, notify_followers_after_delete) +
 //   FollowerStash (lib/card/follower_stash.rb): all write-path /
@@ -90,11 +99,12 @@
 //   notification_template format :html do block reads (alert_class,
 //   disappear?, mformat.contextual_content). These are settings surface
 //   methods used by the email template - not render views themselves.
-// - right/follow.rb view :follow_status, :follow_item + form helpers
-//   (card_form, hidden_tags, follow_item_button/link, link_to_card) +
-//   permit/ok_to_update?/ok_to_create? permission gates. The haml
-//   follow_status.haml template renders the link_to_card + button_tag
-//   combo (rails-runtime).
+// - right/follow.rb: view :follow_status + :follow_item ARE PORTED now
+//   - the forms ride src/card/follow/follow-form-shapes.ts
+//   (the captured edit-form bytes + form_tag_helper shapes); the permit/
+//   ok_to_update?/ok_to_create? gates (:27-33, :43-49) are write-path
+//   permission overrides, not view bodies - the read-side render gate is
+//   the engine's standard view-permission machinery.
 // - right/follow_fields.rb event :follow_fields_changed - write path
 //   (integrate phase); not exercised by the render surface.
 // - self/always.rb + self/created.rb + self/edited.rb + self/never.rb
@@ -107,6 +117,21 @@
 // - self/follow_defaults.rb (DEPRECATED) views :edit_buttons (calls
 //   render_confirm_update_all + button_formgroup + 3 submit buttons -
 //   rails-runtime). The :confirm_update_all view is ported (above).
+//   2026-09-30: BOTH views are now ported (followDefaults
+//   EditButtonsView below, registered at the self/follow_defaults manifest
+//   entry) - and BOTH are UNREACHABLE for their own card, in Ruby exactly
+//   as here. 09_self.rb anchors the SELF pattern on card.name, and
+//   Cardname#safe_key (cardname-0.20.0 lib/cardname/variants.rb:19) is
+//   `key.tr("*","X")` over the SINGULARIZED key, so the card
+//   "*follow defaults" carries the token SELF-Xfollow_default while this
+//   file declares the constant FollowDefaults. Live capture (benchmarks/
+//   capture-readonly-follow-defaults-and-core-shape.rb -> fixtures/
+//   captured/readonly-follow-defaults-and-core-shape.json, card_actions
+//   5018 == 5018 around every render): safe_set_keys "ALL TYPE-list STAR
+//   SELF-Xfollow_default", ancestors grep(/FollowDefault/) = [], and :core
+//   / :confirm_update_all / :edit_buttons all render the anonymous denial
+//   span. Same marker class as the api_key RIGHT-X star below - the port
+//   raises UnsupportedViewError, which is Ruby-true.
 // - type/cardtype.rb + type/notification_template.rb + type/set.rb +
 //   type/user.rb: methods (follow_label, follow_set_card, list_direct_
 //   followers?, directly_followed_by?, follow_rule_name) + format
@@ -115,15 +140,22 @@
 //   consumed by the follow_rule walk + the cardtype-typed follow_link
 //   (rails-runtime); the notification_template format :html do block
 //   drives the email template alert_message (write path).
-// - type_plus_right/user/follow.rb view :core, :follow_tab, :ignore_tab,
-//   :errors + all the following_rules_and_options / ignore_rules /
-//   rules_and_options_by_set_pattern / a_set_pattern_hash / merge_
-//   option_hashes / current_following_rule_options_hash / suggested_
-//   following_rule_options_hash / valid_set_card helpers + the
-//   follow_editor.haml template + the type_plus_right set module's
-//   pointer item_names override. The whole tab structure depends on
-//   Card::Rule.preference_names + Card.suggestions + tabs helper +
-//   subformat(rule_card).follow_item (rails-runtime).
+// - type_plus_right/user/follow.rb: view :follow_tab + :ignore_tab ARE
+//   PORTED now - the row walk is the seam's followEditorRows
+//   (follow/follow-render-seam.ts) and the rows render the same
+//   follow_item body the right/follow set module registers. STILL NOT
+//   PORTED here: view :core (:39-43 - the signed-in arm dispatches the
+//   rules mod's :rule_editor through subformat; card-mod-rules owns
+//   rule_form, still unported) and view :errors (:65-78 - the body's
+//   meaning is card.errors state the headless engine does not model;
+//   registering the no-errors arm would mask card-mod-format's :errors
+//   chain entry on the one branch that gives the view its purpose). The
+//   suggestions arm of the editor walk (follow_editor_helper.rb:83-90,
+//   Card[:follow_suggestions] merge) IS PORTED now (lane follow2 - the
+//   seam's suggestedFollowingRuleOptions + mergeOptionHashes, gated on
+//   current_user?; the set-only suggestion arm stays unported: Ruby's
+//   a_set_only_suggestion yields to a no-block call site and raises
+//   LocalJumpError as written).
 // - assets/script/follow.js.coffee + assets/style/follow.scss:
 //   stylesheet and JS asset mods - separate surface.
 // - data/real.yml:1-50 seed cards (*follow, *following, *followers,
@@ -134,12 +166,35 @@
 //   fields): the test stream seeds its own codename cards; the email
 //   template is a write-path surface.
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
-import { HTML_VIEWS } from "../../render/views.js";
+import {
+  RenderFormat,
+  Voo,
+  type RenderCard,
+  type ViewContext,
+  type ViewFn,
+} from "../../render/format.js";
+import { modSlotWrap } from "../mod-view-helpers.js";
+import { HTML_VIEWS, lastActionVerbNotifyView } from "../../render/views.js";
+import { DeckoName } from "../../name.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
 } from "../mod-manifest.js";
+import { followOptionDescription } from "../../follow/follow-options.js";
+import {
+  buttonTag,
+  cardFormOpen,
+  CARD_FORM_CLOSE,
+  followPath,
+  hiddenTags,
+  linkTo,
+  output,
+  successTags,
+} from "../../follow/follow-form-shapes.js";
+import type {
+  FollowRenderBundle,
+  FollowTabRow,
+} from "../../follow/follow-render-seam.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -261,6 +316,355 @@ const confirmUpdateAllView: ViewFn = () =>
   `<p>You may choose to update all existing users.` +
   ` This may take a while. </p></div>`;
 
+// ===========================================================================
+// lane-follow (2026-09-28): the follow views whose bodies the follow-rule
+// read/walk + the form shapes + the actor-session seam render. Every body
+// below cites its gem lines; the bytes are RENDERED-UNPINNED (the capture
+// corpus carries no Ruby-oracle bytes for any follow view name - verified
+// against tmp/raw-ground-truth/expected/recapture-raw-shard-*.jsonl).
+// ===========================================================================
+
+// --- shared body helpers ---------------------------------------------------
+
+/** The slot wrap (set/all/html/wrap.rb:6-13 `wrap slot=true`) for bodies
+ *  composed outside a ViewFn (the subformat rows): a fresh voo, the shared
+ *  modSlotWrap emitter (byte-identical to the core slotWrap by
+ *  construction - mod-view-helpers.ts header). */
+function slotWrap(fmt: RenderFormat, view: string, inner: string): string {
+  return modSlotWrap({ fmt, voo: new Voo(undefined, view, {}) }, view, inner);
+}
+
+/** set/type/set.rb:9-15 follow_label: subclass_for_set.short_label(
+ *  name.left_name); set/all/follow.rb:6-8 default: `name`. The pattern
+ *  short labels live in src/card/set-patterns/labels.ts (selfShortLabel
+ *  returns the anchor unchanged; 09_self.rb:5-7 short_label = name). */
+function followLabelOfRuleSet(ruleSetName: string): string {
+  const name = DeckoName.parse(ruleSetName);
+  const tag = name.tagName;
+  if (tag !== undefined && tag.s.startsWith("*") && !name.isSimple) {
+    return name.leftName?.s ?? ruleSetName; // the short_label(anchor) arm
+  }
+  return ruleSetName; // all/follow.rb:6-8 the plain-card arm
+}
+
+/** right/follow.rb:111-115 follow_item_link_target: the rule set's
+ *  human mark - `set.tag.codename == :self ? setname.left :
+ *  setname.field("by name")`. The non-self arm composes
+ *  "<setname>+by name" (Name#field). */
+function followItemLinkTarget(ruleSetName: string): string {
+  const name = DeckoName.parse(ruleSetName);
+  const tag = name.tagName;
+  if (tag !== undefined && tag.s === "*self" && !name.isSimple) {
+    return name.leftName?.s ?? ruleSetName;
+  }
+  return `${ruleSetName}+by name`;
+}
+
+/** The rule set of a follow preference "Set+User+*follow":
+ *  Card::Rule#rule_set - the leading set part (parts[0..-3]); for a
+ *  2-part "Set+*follow" rule the set is the left. */
+function ruleSetNameOf(ruleCardName: string): string {
+  const name = DeckoName.parse(ruleCardName);
+  const parts = name.partNames;
+  if (parts.length >= 3) {
+    return parts.slice(0, parts.length - 2).map((p) => p.s).join("+");
+  }
+  return name.leftName?.s ?? ruleCardName;
+}
+
+/** right/follow.rb:23-25 add_follow_item?: `new_card? ||
+ *  !include_item?(condition)`. The items are the rule card's content
+ *  lines - the deck stores BARE option names (corpus truth: "Make
+ *  Contact+*self+Brandon WilliamsCraig+*follow" content "*always"). */
+function followRuleItems(card: RenderCard): string[] {
+  return card.dbContent
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+/** right/follow.rb:86-89 follow_item_hidden_tags: condkey =
+ *  add_follow_item?(condition) ? :add_item : :drop_item;
+ *  hidden_tags condition: condition, condkey => condition. */
+function followItemHiddenTags(card: RenderCard, condition: string): string {
+  const addFollowItem =
+    card.id === undefined || !followRuleItems(card).includes(condition);
+  const condkey = addFollowItem ? "add_item" : "drop_item";
+  return hiddenTags({ condition, [condkey]: condition });
+}
+
+/** right/follow.rb:91-105 follow_item_button + :99-101 class + :103-105
+ *  icon: button_tag type: :submit, "aria-label": "Left Align", class:
+ *  "btn-sm btn-item <add|delete class>"; bootstrapify_button appends
+ *  "btn btn-primary" (situation default, form.rb:33-36); icon_tag(:add |
+ *  :check) is the material-icons <i> (the literal name passes through). */
+function followItemButton(card: RenderCard, condition: string): string {
+  const add =
+    card.id === undefined || !followRuleItems(card).includes(condition);
+  const cls = add ? "btn-item-add" : "btn-item-delete btn-primary";
+  const icon = add ? "add" : "check";
+  return buttonTag(`<i class="notranslate material-icons">${icon}</i>`, {
+    class: `btn-sm btn-item ${cls}`,
+    ariaLabel: "Left Align",
+  });
+}
+
+/** right/follow.rb:107-123 follow_item_link: link_to_card(target, text);
+ *  text = option_card.description(rule_set) || rule_set.follow_label
+ *  (follow_option.rb abstract description + the created/edited overrides
+ *  live in follow-options.ts). */
+function followItemLink(ruleSetName: string, condition: string): string {
+  const target = followItemLinkTarget(ruleSetName);
+  const setLabel = followLabelOfRuleSet(ruleSetName);
+  const text = condition.startsWith("*")
+    ? followOptionDescription(condition.slice(1), setLabel)
+    : setLabel;
+  return linkTo(text, followPath(DeckoName.parse(target).urlKey));
+}
+
+/** right/follow.rb:67-78 follow_item condition, button=true - the body the
+ *  :follow_item view and the User+*follow editor rows render:
+ *  card_form action: :update, success: {view: :follow_item} (form.rb:193-200)
+ *  = success hidden tags + the [hidden_tags, (button), link].compact body
+ *  newline-joined (content.rb:68-70), wrapped by `wrap do ... end` - the
+ *  slot div (set/all/html/wrap.rb:6-13, slot=true). */
+function followItemHtml(
+  fmt: RenderFormat,
+  condition: string,
+  button: boolean,
+  wrapView: string,
+): string {
+  const card = fmt.card;
+  const form =
+    cardFormOpen({
+      formId: card.id !== undefined ? `edit_card_${card.id}` : "new_card",
+      action: followPath(card.name.urlKey, { action: "update" }),
+    }) +
+    successTags({ view: "follow_item" }) +
+    output([
+      followItemHiddenTags(card, condition),
+      button ? followItemButton(card, condition) : undefined,
+      followItemLink(ruleSetNameOf(card.name.s), condition),
+    ]) +
+    CARD_FORM_CLOSE;
+  return slotWrap(fmt, wrapView, form);
+}
+
+/** The seam accessor - undefined when the engine carries no follow seam
+ *  (the signed-out arms apply). The EXPLICIT ACTOR BOUNDARY: the session
+ *  inside the bundle was resolved from engine.pageSession and nothing else. */
+function followBundle(ctx: ViewContext): FollowRenderBundle | undefined {
+  return ctx.fmt.engine.followRenderBundle?.();
+}
+
+// --- set/right/follow.rb ----------------------------------------------------
+
+/** right/follow.rb:58-60 view :follow_status, cache: :never -
+ *  `wrap { haml :follow_status }`; follow_status.haml walks
+ *  card.item_names and renders follow_item(option == "*never" ?
+ *  "*always" : option) per item, then link_to_view :rule_form,
+ *  "more options", class: "btn update-follow-link slotter",
+ *  "data-card_key": card.set_prototype.key. The href is the mark+view
+ *  segment path (lib/card/path.rb:42-47); set_prototype.key is the set
+ *  anchor's key (the rules mod owns the full prototype machinery; this
+ *  reads the anchor name only - the anchor IS the prototype's name for
+ *  every set shape these rule cards carry). */
+const followStatusView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  const rows = followRuleItems(card)
+    .map(
+      (option) =>
+        `  <li class="list-group-item">${followItemHtml(
+          fmt,
+          option === "*never" ? "*always" : option,
+          true,
+          "follow_status", // the helper's wrap reads @current_view
+        )}</li>`,
+    )
+    .join("\n");
+  const setName = ruleSetNameOf(card.name.s);
+  const anchorKey =
+    DeckoName.parse(setName).leftName?.key ?? DeckoName.parse(setName).key;
+  const moreOptions = linkTo(
+    "more options",
+    followPath(card.name.urlKey, { view: "rule_form" }),
+    {
+      class: "btn update-follow-link slotter",
+      "data-card_key": anchorKey,
+    },
+  );
+  const body =
+    `<h4>Get notified about changes</h4>\n` +
+    `<ul class="delete-list list-group">\n${rows}\n</ul>\n` +
+    `${moreOptions}`;
+  return slotWrap(fmt, "follow_status", body);
+};
+
+/** right/follow.rb:63-65 view :follow_item -
+ *  `follow_item Env.params[:condition]`; a headless engine has no request
+ *  params (the searchKeyword seam's documented convention), so condition
+ *  is nil and follow_item's `condition ||= "*always"` arm applies
+ *  (right/follow.rb:68). The button param rides the voo opts (Ruby's
+ *  follow_item(condition, button=true) second arg when the editor rows
+ *  call it). */
+const followItemView: ViewFn = (ctx) => {
+  const condition =
+    typeof ctx.voo.opts["condition"] === "string"
+      ? (ctx.voo.opts["condition"] as string)
+      : "*always";
+  const button = ctx.voo.opts["follow_button"] !== false;
+  return followItemHtml(ctx.fmt, condition, button, "follow_item");
+};
+
+// --- set/all/follow/follow_link_views.rb (the FollowLink family) ------------
+
+/** follow_link.rb:24-34 FollowLink#button + :36-40 link_opts + :42-46
+ *  render_link_text + the subclasses (start_follow_link.rb:4-12 - *always /
+ *  "follow" / "send" / ""; stop_follow_link.rb:4-14 - *never / "following" /
+ *  "stop sending" / "unfollow" hover / "btn-item-delete"). card.followed?
+ *  picks the class (follow_link_views.rb:2-4) - the seam's followed verdict
+ *  under the SESSION actor. link_to (links.rb:101-106, href LAST); remote:
+ *  true emits data-remote="true"; path (:54-59): mark =
+ *  follow_set_card.follow_rule_name(Auth.current.name) (the seam's
+ *  followMark), action :update, success {mark: card.name, view:
+ *  success_view}, card {content: "[[#{rule_content}]]"} - Hash#to_param
+ *  query (sorted keys, Rack escape). */
+const followButtonView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const bundle = followBundle(ctx);
+  const followed = bundle?.followed === true;
+  const ruleContent = followed ? "*never" : "*always";
+  const linkText = followed ? "following" : "follow";
+  const action = followed ? "stop sending" : "send";
+  const hoverText = followed ? "unfollow" : undefined;
+  const cssClass = followed ? "btn-item-delete" : "";
+  const mark = bundle?.followMark ?? "";
+  const query: Record<string, string> = {
+    "card[content]": `[[${ruleContent}]]`,
+    "success[mark]": fmt.card.name.s,
+    "success[view]": "follow_section",
+  };
+  const href = followPath(DeckoName.parse(mark).urlKey, {
+    action: "update",
+    query,
+  });
+  const classes = ["follow-link", cssClass, "slotter btn btn-sm btn-primary"]
+    .filter((c) => c !== "")
+    .join(" ");
+  return linkTo(
+    `<span class="follow-verb">${linkText}</span>`,
+    href,
+    {
+      class: classes,
+      title: `${action} emails about changes to ${bundle?.followLabel ?? fmt.card.name.s}`,
+      "data-remote": "true",
+      "data-update-foreign-slot":
+        ".d0-card-body > .card-slot.RIGHT-Xfollower.content-view",
+      "data-hover-text": hoverText,
+    },
+  );
+};
+
+// --- set/type_plus_right/user/follow.rb (the follow/ignore editor) ----------
+
+/** follow_editor.haml (whole template):
+ *    .pointer-list-editor
+ *      %ul.delete-list.list-group
+ *        - send items_method do |rule_card, option|
+ *          %li.list-group-item
+ *            -if rule_card
+ *              = subformat(rule_card).follow_item option, show_button?
+ *            -else
+ *              no entries
+ *  The rows come from the seam (following_rules_and_options /
+ *  ignoring_rules_and_options - follow_editor_helper.rb:7-19; the
+ *  preference walk ran in prepareFollowRender, which enriched every row's
+ *  rule card so the sync fetchRenderCard hits). show_button? (:53-55):
+ *  card.current_user? || Auth.always_ok? - the session actor is the
+ *  card's left (current_user?: Auth.signed_in? && Auth.current_id ==
+ *  left.id; the headless engine's always_ok arm is the bot render). */
+function followEditorBody(
+  ctx: ViewContext,
+  rows: readonly FollowTabRow[],
+): string {
+  const { fmt } = ctx;
+  const bundle = followBundle(ctx);
+  const showButton =
+    bundle?.session !== undefined &&
+    (bundle.session.actorName === fmt.card.name.leftName?.s ||
+      bundle.session.actorId === 1); // Auth.always_ok? (the bot actor arm)
+  const lis = rows.map((row) => {
+    const ruleCard = ctx.fmt.engine.fetchRenderCard(row.ruleCardName);
+    if (ruleCard === undefined) {
+      // the walk enriched every row; a miss means the card vanished
+      // between prepare and render - Ruby would raise on nil subformat;
+      // the haml's nil rule_card arm is "no entries"
+      return `  <li class="list-group-item">no entries</li>`;
+    }
+    const sub = new RenderFormat(ruleCard, ctx.fmt.engine, { parent: fmt });
+    return `  <li class="list-group-item">${followItemHtml(
+      sub,
+      row.option,
+      showButton,
+      "follow_item",
+    )}</li>`;
+  });
+  const list =
+    lis.length > 0
+      ? `<ul class="delete-list list-group">\n${lis.join("\n")}\n</ul>`
+      : `<ul class="delete-list list-group">\n  no entries\n</ul>`;
+  return `<div class="pointer-list-editor">\n${list}\n</div>`;
+}
+
+/** user/follow.rb:45-47 view :follow_tab, cache: :never -
+ *  haml :follow_editor, items_method: :following_rules_and_options. */
+const followTabView: ViewFn = (ctx) =>
+  followEditorBody(ctx, followBundle(ctx)?.followTabRows ?? []);
+
+/** user/follow.rb:49-51 view :ignore_tab, cache: :never -
+ *  haml :follow_editor, items_method: :ignoring_rules_and_options. */
+const ignoreTabView: ViewFn = (ctx) =>
+  followEditorBody(ctx, followBundle(ctx)?.ignoreTabRows ?? []);
+
+// --- set/self/follow_defaults.rb (the deprecated editor) --------------------
+
+/** follow_defaults.rb:49-55 view :edit_buttons -
+ *  render_confirm_update_all + button_formgroup { [submit_and_update_button,
+ *  simple_submit_button, cancel_to_edit_button] }.
+ *  button_formgroup (card-mod-edit set/all/form.rb:86-88): wrap_with :div,
+ *  class: "form-group button-form-group".
+ *  submit_and_update_button (:57-63) / simple_submit_button (:65-67) /
+ *  cancel_to_edit_button (:69-71): cancel_button href: path(view: :edit,
+ *  id: card.id) - the mark+view path with id as a QUERY param
+ *  (cast_params.rb:5 casts only slot keys). cancel_button's
+ *  `return unless voo.show? :cancel_button` default-shows (viz defaults
+ *  visible). */
+const followDefaultsEditButtonsView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const confirm = fmt.renderView("confirm_update_all");
+  const submitAndUpdate = buttonTag("Submit and update all users", {
+    name: "card[trigger]",
+    value: "update_follow_rules",
+    class: "follow-updater",
+    data: { "disable-with": "Updating" },
+  });
+  const simple = buttonTag("Submit", { class: "follow" });
+  const cancel = linkTo(
+    "Cancel",
+    followPath(fmt.card.name.urlKey, {
+      view: "edit",
+      query: { id: String(fmt.card.id) },
+    }),
+  );
+  return (
+    confirm +
+    `\n<div class="form-group button-form-group">` +
+    output([submitAndUpdate, simple, cancel]) +
+    `</div>`
+  );
+};
+
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
@@ -316,7 +720,11 @@ const cardModFollow: DeckoModManifest = {
       // ported: rails-runtime (link_to, button helper, opts with
       // :data-update-foreign-slot, :data-hover-text).
       setPath: "all/follow/follow_link_views",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [{ view: "follow_button", viewFn: followButtonView, config: { cache: "never" } }],
+        },
+      },
     },
     passiveSetModule("all/follow/start_follow_link"),
     passiveSetModule("all/follow/stop_follow_link"),
@@ -332,14 +740,43 @@ const cardModFollow: DeckoModManifest = {
       formats: { html: { views: [] } },
     },
     {
-      // card-mod-follow-0.20.0/set/all/notify/base_views.rb - the base
+      // card-mod-follow-0.20.0/set/all/notify/base_views.rb - the BASE
       // format's notification views (:list_of_changes, :subedits,
       // :subedit_notice, :followed, :follower, :last_action_verb,
-      // :unfollow_url). All depend on the notification_act / active_notice
-      // state the email format sets up. NOT ported: rails-runtime (the
-      // notification email template, action walk).
+      // :unfollow_url). The bare `format do` block (base_views.rb:1) files
+      // these modules on Card::Format ITSELF (register_all_set_format keyed
+      // on the base format class, card-1.110.0 lib/card/set/format.rb:
+      // 142-144; process_base_format_modules, registrar.rb:79-84, mixes
+      // them into the class EVERY format inherits) - the notify verb is
+      // visible to EmailTextFormat/TextFormat/every format, shadowed by an
+      // own-format registration only (html's history verb,
+      // card-mod-history set/all/history/views.rb:55-65, wins IN html).
+      // Registered under the manifest's documented "base" format key
+      // (mod-manifest.ts:286-288) and surfaced through the anchorless
+      // chain walk's base tail (mod-loader.ts viewChain) - the
+      // email-text-remainders lane, 2026-10-01. The email mod's
+      // email_text :last_action DELEGATES to this verb
+      // (email_text.rb:12 `_render_last_action_verb`; see
+      // card-mod-email.ts emailTextLastActionView for the full chain
+      // read). :last_action_verb is ported single-source
+      // (render/views.ts#lastActionVerbNotifyView - the same fn the flat
+      // record carries). The REST of the family stays unregistered here:
+      // :list_of_changes/:subedits/:subedit_notice/:followed/:follower/
+      // :unfollow_url read the notification_act / active_notice state
+      // the email-delivery path sets up (rails-runtime; the flat record
+      // carries the ported bodies where they exist).
       setPath: "all/notify/base_views",
-      formats: { html: { views: [] } },
+      formats: {
+        base: {
+          views: [
+            {
+              view: "last_action_verb",
+              viewFn: lastActionVerbNotifyView,
+              config: { cache: "never" },
+            },
+          ],
+        },
+      },
     },
     {
       // card-mod-follow-0.20.0/set/all/notify/html_views.rb - format
@@ -376,7 +813,14 @@ const cardModFollow: DeckoModManifest = {
       // both the Self set and the Right set define it; here the
       // method lives on the Right side and is not view-portable.
       setPath: "right/follow",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [
+            { view: "follow_status", viewFn: followStatusView, config: { cache: "never" } },
+            { view: "follow_item", viewFn: followItemView, config: { cache: "never" } },
+          ],
+        },
+      },
     },
     {
       // card-mod-follow-0.20.0/set/right/followers.rb - include_set
@@ -472,11 +916,18 @@ const cardModFollow: DeckoModManifest = {
       // for *all users*); follow_defaults + follow_option helpers; view
       // :edit_buttons (button_formgroup + 3 submit buttons -
       // rails-runtime) + view :confirm_update_all.
-      // Ported: :confirm_update_all (the alert literal).
+      // Ported: :confirm_update_all (the alert literal) AND :edit_buttons
+      // (the confirm + button_formgroup + the three buttons). Neither is
+      // REACHABLE for this card - the singularized self-anchor token vs the
+      // FollowDefaults constant; the capture is cited in the honest
+      // remainder above. The port's raise is Ruby-true.
       setPath: "self/follow_defaults",
       formats: {
         html: {
-          views: [{ view: "confirm_update_all", viewFn: confirmUpdateAllView }],
+          views: [
+            { view: "confirm_update_all", viewFn: confirmUpdateAllView },
+            { view: "edit_buttons", viewFn: followDefaultsEditButtonsView },
+          ],
         },
       },
     },
@@ -562,6 +1013,8 @@ const cardModFollow: DeckoModManifest = {
           views: [
             { view: "one_line_content", viewFn: userFollowOneLineContentView },
             { view: "edit", viewFn: userFollowEditView },
+            { view: "follow_tab", viewFn: followTabView, config: { cache: "never" } },
+            { view: "ignore_tab", viewFn: ignoreTabView, config: { cache: "never" } },
           ],
         },
       },

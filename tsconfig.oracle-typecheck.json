@@ -1,0 +1,21 @@
+{
+  // Typecheck coverage for the direct-runner oracle core.
+  //
+  // The root tsconfig.json includes only src/, tests/ and benchmarks/, so
+  // `npm run typecheck` never looked at tools/. dual-lane-direct-runner-core.ts
+  // is TypeScript and is the file the W=8 probe's three instrument gaps live in,
+  // so it needs a real gate or "tsc 0" is vacuous for it.
+  //
+  // tests/schema/better-sqlite3.d.ts is listed explicitly because it is the
+  // ambient `declare module "better-sqlite3"`; the root tsconfig picks it up
+  // through its `include`, and overriding `include` here would otherwise drop
+  // it and report a TS7016 that has nothing to do with this lane's edits.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "tools/oracle/dual-lane-direct-runner-core.ts",
+    "tests/schema/better-sqlite3.d.ts"
+  ]
+}

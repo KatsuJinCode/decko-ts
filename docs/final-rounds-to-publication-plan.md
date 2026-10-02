@@ -2,7 +2,7 @@
 
 The round plan after the port itself is done. Everything here is downstream of
 the decko-commons#1282 conversation — Ethan's review thread and the adversarial
-review he commissioned from Astra (his ChatGPT model), preserved verbatim in
+AI review he commissioned, preserved verbatim in
 `docs/upstream-1282-external-critical-review-fulltext.md` (16-row claim table,
 21 section theses, 7 gates, lines 128-139).
 
@@ -51,16 +51,17 @@ that zero original text survives in the deployed artifact.
 ## The gate that shapes everything
 
 Ethan's first move on receiving the fork will be what he did last time: ask
-Astra for a critical review. So before he ever sees it, the fork is pre-vetted
-by Astra itself — Julian runs the actual Astra review against the packaged
-repo (ChatGPT), we patch every finding, and the review Ethan commissions
+an AI reviewer for a critical read. So before he ever sees it, the fork is
+pre-vetted by the same reviewer — the project owner runs the actual external
+review against the packaged
+repo, we patch every finding, and the review Ethan commissions
 finds little purchase. Sequence:
 
 1. **Internal adversarial pre-review** — our own reviewers run the same shape
    of attack the #1282 review used (the 7 gates + the claim-table method),
    find and fix what they can. This is preparation, not the gate.
-2. **The real Astra review** — Julian runs it against the cleaned, packaged
-   fork. Findings patched until the ground is clear.
+2. **The external AI review** — the project owner runs it against the
+   cleaned, packaged fork. Findings patched until the ground is clear.
 3. **Only then** the link goes to Ethan (Julian's send; no public action
    without his exact-package approval — standing rule).
 

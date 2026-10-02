@@ -248,6 +248,75 @@ export async function prefetchInclusionClosure(
     typeRowSlot = preludeStatements.length - 1;
   }
 
+  // p20-email-views: the Abstract::TestContext ladder (card-mod-email
+  // set/abstract/test_context.rb:16-18 `card.left.fetch(:test_context)
+  // &.first_card`) — the sync render's context lookup is warm-map-only
+  // (fetchRenderCard = renderCards.get), and the +*test context junction
+  // plus its first item sit OUTSIDE every content-reference closure (the
+  // notification templates' nests are self-references; nothing in the
+  // message content names the junction). A message-card root — the RIGHT
+  // pattern's tag keys the include_set seam covers (right/html_message,
+  // right/text_message; the subject right never renders a page) — therefore
+  // primes its junction ROW here; composing it both warms the record the
+  // render's fetch answers and (via the closure's own content-ref walk)
+  // reaches the first item card on the next round.
+  let testContextSlot = -1;
+  // DeckoName keys KEEP the star ("*html_message", not "html_message") —
+  // the same corpus-row truth the closureWarm gate below carries.
+  const rootTagKey = root.name?.isCompound === true ? DeckoName.parse(root.name.tag).key : undefined;
+  if (
+    root.leftId !== undefined &&
+    root.leftId > 0 &&
+    (rootTagKey === "*html_message" || rootTagKey === "*text_message")
+  ) {
+    preludeStatements.push({
+      sql: `SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0`,
+      params: [root.leftId],
+    });
+    testContextSlot = preludeStatements.length - 1;
+  }
+  // p20-email-views: the EmailTemplate read_form arm of the same ladder.
+  // The template's :core (= render_read_form) nests `+*test context`
+  // PROGRAMMATICALLY (views.ts emailTemplateCoreBody — html.rb:2-4 appends
+  // :test_context to edit_fields), and the template's own content never
+  // references it (the corpus templates nest only the EMAIL_FIELDS), so the
+  // closure's content-ref walk has no path to the junction either — the
+  // parent pages rendered the junction slot as an unknown card (no id, no
+  // SELF pattern class) and every field content render answered without the
+  // context. Same statement shape as the message arm, keyed on the
+  // template root's OWN id, gated to email-template roots via the type
+  // codename EXISTS (same gate shape as the field-anchor statement below)
+  // so every other page's prelude carries exactly the statement set it had
+  // before.
+  let templateTestContextSlot = -1;
+  if (root.id !== undefined && root.id > 0) {
+    preludeStatements.push({
+      sql: `SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')`,
+      params: [root.id, root.typeId ?? -1],
+    });
+    templateTestContextSlot = preludeStatements.length - 1;
+  }
+
+  // p20-email-views: the EmailTemplate read_form's field-setting anchors.
+  // The type-assignment walk (render.ts newCardDefaultType -> findAssigned-
+  // TypeName) keys each virtual field card's module key on the TAG's
+  // CODENAME (pattern/base.rb:21-29 — the anchor parts' codenames), whose
+  // sync lookup is lexicon.id(key) — warm-cache-only. Nothing in a
+  // template page's content references the *to/*from/... setting cards,
+  // so their keys never prime and every virtual field fell back to the
+  // template type (RichText) where the oracle pins List/Phrase/PlainText.
+  // One statement, gated to email-template roots via an EXISTS on the
+  // root's own type row's codename, so every other page's prelude carries
+  // exactly the statement set it had before.
+  let emailFieldAnchorSlot = -1;
+  if (root.typeId !== undefined && root.typeId > 0) {
+    preludeStatements.push({
+      sql: `SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')`,
+      params: [root.typeId],
+    });
+    emailFieldAnchorSlot = preludeStatements.length - 1;
+  }
+
   /** The root's pattern card names - the anchor parts of every rule
    *  candidate the render's findRule walk will resolve by name. */
   let anchorNames: string[] = [];
@@ -274,6 +343,11 @@ export async function prefetchInclusionClosure(
 
   const preludeSideRows: RawRow[] = [];
   const preludeTypeRows: RawRow[] = [];
+  /** The root message card's +*test context junction row (p20-email-views
+   *  prelude — see the statement's comment): composed into the cache so the
+   *  render's warm fetch answers, and SCANNED so the closure's content-ref
+   *  walk reaches the first item card. */
+  const preludeTestContextRows: RawRow[] = [];
   const additional = ctx.additionalStatements ?? [];
   let additionalResults: SQLQueryResult[] | undefined;
   if (preludeStatements.length > 0 || additional.length > 0) {
@@ -287,7 +361,17 @@ export async function prefetchInclusionClosure(
       const rows = (result.rows as CardsRow[]) ?? [];
       if (i === sidePrimeSlot) preludeSideRows.push(...rows.map(toRawRow));
       else if (i === typeRowSlot) preludeTypeRows.push(...rows.map(toRawRow));
-      else if (i === anchorSlot) {
+      else if (i === testContextSlot) preludeTestContextRows.push(...rows.map(toRawRow));
+      else if (i === templateTestContextSlot) preludeTestContextRows.push(...rows.map(toRawRow));
+      else if (i === emailFieldAnchorSlot) {
+        // Prime the read_form field-setting keys (same lex_to_id write the
+        // anchor arm makes): the type-assignment walk's sync codename
+        // lookup reads these.
+        const entries = rows
+          .filter((row) => typeof row.key === "string" && typeof row.id === "number")
+          .map((row) => ({ key: row.key as string, id: row.id as number }));
+        if (entries.length > 0) ctx.lexicon.primeIdsByKey(entries);
+      } else if (i === anchorSlot) {
         // Prime lex_to_id for every anchor name: the found id, or the
         // negative entry the lexicon's own cacheFetch would cache.
         const byKey = new Map<string, number>();
@@ -305,6 +389,45 @@ export async function prefetchInclusionClosure(
     if (anchorEntries.length > 0) ctx.lexicon.primeIdsByKey(anchorEntries);
   }
 
+  // The junction's FIRST ITEM card (test_context.rb:17 `&.first_card`):
+  // referencedNames scans nest chunks only, and the +*test context value is
+  // a plain LIST line ("User" / "*changed card"), so the closure's own
+  // content-ref walk never reaches it — one follow-up statement keyed on
+  // the junction rows' first non-empty line, run only when a junction row
+  // actually came back. A missing item row stays missing: the render's
+  // fetch then answers undefined and Ruby's `with_context nil` shape (no
+  // switch) is what fires, exactly as the verification/password-reset
+  // pages' "Decko Bot+*account" arm already pins.
+  const testContextItemKeys = new Set<string>();
+  for (const row of preludeTestContextRows) {
+    const firstItem = (row.dbContent ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line !== "");
+    if (firstItem === undefined || firstItem === "") continue;
+    try {
+      testContextItemKeys.add(DeckoName.parse(firstItem).key);
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        continue; // unresolvable item line: the render's fetch misses too
+      }
+      throw err;
+    }
+  }
+  const preludeItemRows: RawRow[] = [];
+  if (testContextItemKeys.size > 0) {
+    const placeholders = [...testContextItemKeys].map(() => "?").join(", ");
+    const itemBatch = await ctx.driver.batch([
+      {
+        sql: `SELECT * FROM cards WHERE key COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+        params: [...testContextItemKeys],
+      },
+    ]);
+    stats.batches += 1;
+    stats.statements += 1;
+    preludeItemRows.push(...(((itemBatch[0]?.rows as CardsRow[]) ?? []).map(toRawRow)));
+  }
+
   // Compose + cache the prelude rows BEFORE the root composition, so the
   // root's enrichment (type-name resolution) reads them from cache. Side
   // rows join the closure's seed set (the reached semantics: composed +
@@ -314,10 +437,21 @@ export async function prefetchInclusionClosure(
   const preludeSideComposed =
     preludeSideRows.length > 0 ? await composeAndCache(preludeSideRows, ctx, stats) : [];
   if (preludeTypeRows.length > 0) await composeAndCache(preludeTypeRows, ctx, stats);
+  const preludeTestContextComposed =
+    preludeTestContextRows.length > 0
+      ? await composeAndCache(preludeTestContextRows, ctx, stats)
+      : [];
+  const preludeItemComposed =
+    preludeItemRows.length > 0 ? await composeAndCache(preludeItemRows, ctx, stats) : [];
 
   const composed = await composeAndCache([rootRow], ctx, stats);
   stats.additionalResults = additionalResults;
-  await driveClosure([rootRow], [...composed, ...preludeSideComposed], ctx, stats);
+  await driveClosure(
+    [rootRow, ...preludeTestContextRows],
+    [...composed, ...preludeSideComposed, ...preludeTestContextComposed, ...preludeItemComposed],
+    ctx,
+    stats,
+  );
   return stats;
 }
 
@@ -553,7 +687,11 @@ async function sqlRowSideName(
   if (byId.has(id)) return undefined; // in the row set: resolve on a later pass, never query
   try {
     const viaLexicon = await ctx.lexicon.name(id);
-    return viaLexicon !== undefined && viaLexicon.s !== "" ? viaLexicon : undefined;
+    // lexicon.rb#lex_to_name's side guard reads the PUBLIC Lexicon.name,
+    // which answers the EMPTY name (truthy, lexicon.rb:11-15) for a side
+    // id whose cards row is missing - the join continues with the empty
+    // part ("+*default"-shaped names) instead of abandoning the name.
+    return viaLexicon ?? DeckoName.parse("");
   } catch {
     return undefined;
   }
@@ -608,7 +746,21 @@ async function driveClosure(
       if (content === null || content === "") continue;
       for (const ref of referencedNames(content)) {
         if (ref.relative) continue; // context-relative: render-time resolution
-        const name = DeckoName.parse(ref.name);
+        // Guard parity with collectFromRecords below: an unresolvable mark
+        // ("~861" — a TRASHED row the pointer/list item enrichment resolves
+        // through the async lexicon's no-trash-filter read, lexicon.rb
+        // #id_to_lex) must skip the reference, never unwind the whole
+        // prepare (the CB_role / WilliamsCraig Family +*members pages). The
+        // render's item path reports true fetch misses.
+        let name: DeckoName;
+        try {
+          name = DeckoName.parse(ref.name);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+            continue;
+          }
+          throw err;
+        }
         if (name.s === "" || known.has(name.key)) continue;
         pending.add(name.s);
       }
@@ -735,13 +887,27 @@ async function driveClosure(
       collectors.push((rows) => rows.map(toRawRow));
     }
     if (sideIdPairs.length > 0) {
-      const tuple = sideIdPairs.map(() => `(j.left_id = ? AND j.right_id = ?)`).join(" OR ");
-      const params = sideIdPairs.flatMap((pair) => [pair.leftId, pair.rightId]);
-      statements.push({
-        sql: `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
-        params,
-      });
-      collectors.push((rows) => rows.map(toRawRow));
+      // SQLITE_MAX_EXPR_DEPTH (default 1000) counts every OR arm toward the
+      // expression tree: the unchunked one-statement tuple died at 1019 pairs
+      // ("Expression tree is too large (maximum depth 1000)", corpus page
+      // 20120122+BW+RVW's closure round) — and the throw killed the WHOLE
+      // folded batch, permission statements included, so the prepare render
+      // died before the read-permission state resolved and the page rendered
+      // read-denied bodies unjudged (the denial-wrapper-leak class). Chunk at
+      // 400 pairs (800 params: under the depth limit and under the classic
+      // 999-variable limit). All chunks ride the SAME batch — still one round
+      // trip — and small rounds keep the single-statement shape.
+      const SIDE_ID_PAIRS_PER_STATEMENT = 400;
+      for (let start = 0; start < sideIdPairs.length; start += SIDE_ID_PAIRS_PER_STATEMENT) {
+        const chunk = sideIdPairs.slice(start, start + SIDE_ID_PAIRS_PER_STATEMENT);
+        const tuple = chunk.map(() => `(j.left_id = ? AND j.right_id = ?)`).join(" OR ");
+        const params = chunk.flatMap((pair) => [pair.leftId, pair.rightId]);
+        statements.push({
+          sql: `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
+          params,
+        });
+        collectors.push((rows) => rows.map(toRawRow));
+      }
     }
     // Side priming rides LAST in the batch; its rows are composed +
     // enriched but not content-scanned (closureRows vs sideRows below).
@@ -834,9 +1000,9 @@ function nextSideIds(rows: RawRow[], seenIds: Set<number>): number[] {
 }
 
 // ---------------------------------------------------------------------------
-// layout warm-up closure — the page lane's bounded + batched chase
+// layout warm-up closure — the served page's bounded + batched chase
 // (prefetch.ts#driveClosure's statement shapes over the warm-up's reference
-// classes; see warmup-lane.md and page.ts warmUpLayoutNests)
+// classes; see page.ts warmUpLayoutNests)
 // ---------------------------------------------------------------------------
 
 /** One chased reference: a raw name plus the REFERENCING card it resolves
@@ -874,6 +1040,18 @@ export interface WarmupClosureContext extends PrefetchContext {
   /** Prepared-map read (the render-card map): undefined when this key has
    *  no prepared card. */
   getCard: (key: string) => WarmupCard | undefined;
+  /** ENGINE-LIFETIME scan memory (the render engine's warmupScannedKeys):
+   *  card keys whose reference scan some earlier warm-up call on this
+   *  engine already performed. The per-call `scanned` set prevents
+   *  re-scanning within one call; this set prevents re-scanning ACROSS
+   *  calls - without it, a fixpoint loop that drains warm-but-unscanned
+   *  pending entries (see the no-statements branch below) re-walks the
+   *  whole layout-connected closure on every warm page render. Valid
+   *  because the deck is static per engine lifetime (the same contract
+   *  pointerListHostsDone documents) and every caller shares one scan
+   *  function (page.ts scanWarmDeps); resetCaches() and expireRenderCard
+   *  drop keys when the underlying state they describe goes away. */
+  scannedKeys?: Set<string>;
   /** The injected states.rb#virtual? hook (FetchEngine.virtualCardLookup):
    *  for a compound name whose pair join found no row, the baseline ladder's
    *  fetch returns a VIRTUAL record when a *structure rule applies — run
@@ -907,13 +1085,13 @@ export interface WarmupStats {
 }
 
 /**
- * Resolve the page lane's warm-up reference closure in BATCHED rounds:
+ * Resolve the warm-up reference closure in BATCHED rounds:
  * every round drains names already prepared, collects the reference classes
  * from newly scanned cards, and fetches everything unresolved in ONE
  * driver.batch (key IN-lists / side-key joins / side-id pair joins / side
  * priming — the driveClosure shapes, chunked to the D1 parameter ceiling).
  * Round trips therefore scale with reference DEPTH, not card count — the
- * cold-render burst the lane exists to fix.
+ * cold-render burst this batching exists to fix.
  *
  * Side cards of junction rows are composed + enriched but never scanned
  * (exactly the driveClosure reached-semantics — and the baseline chase,
@@ -981,6 +1159,15 @@ export async function prefetchWarmupClosure(
   const scanCard = (card: WarmupCard): void => {
     if (scanned.has(card.key)) return;
     scanned.add(card.key);
+    if (ctx.scannedKeys?.has(card.key)) {
+      // An earlier warm-up call on this engine already chased this card's
+      // references (see scannedKeys on the context): skip the re-scan. The
+      // per-call bookkeeping still marks it scanned so within-call pushes
+      // never loop, and the drain that removed it from pending still makes
+      // progress.
+      return;
+    }
+    ctx.scannedKeys?.add(card.key);
     for (const ref of scan(card).refs) pushRef(ref);
   };
 
@@ -1219,7 +1406,36 @@ export async function prefetchWarmupClosure(
     //    nothing either, the chase is at its fixpoint.
     if (statements.length === 0) {
       const landed = await drainVirtualChecks();
-      if (landed === 0) break;
+      if (landed === 0) {
+        // The fixpoint is reached only when NO pending name can still make
+        // progress. A pending name that is ALREADY PREPARED (renderCards
+        // hit - prepared by an EARLIER render or warm-up call on this
+        // engine: the map is engine-lifetime state, the worklist is
+        // per-call) was skipped by collect with the "prepared: next drain
+        // scans it" contract - but that next drain never runs if we break
+        // here, and the card's own references never join the chase. First
+        // reproduction (2026-09-29 page-mechanism census,
+        // render-state-fix lane): a bare view rendered before the first
+        // page render prepared the layout's *header/*main menu cards as
+        // one-level template references; this break then ate the scan of
+        // *main menu, the navbar's [[*Opportunities]] chunk stayed
+        // unprepared, and every subsequently rendered page lost the menu
+        // items to the unknown-card substitution. Continue instead: the
+        // next iteration's drain removes each prepared name from the
+        // worklist and scans it (scanCard's per-call `scanned` guard and
+        // the engine-lifetime scannedKeys memory keep the sweep finite),
+        // so the loop still terminates - and only when every remaining
+        // pending name is genuinely unresolvable.
+        let preparedPending = false;
+        for (const key of pending.keys()) {
+          if (ctx.getCard(key) !== undefined) {
+            preparedPending = true;
+            break;
+          }
+        }
+        if (!preparedPending) break;
+        continue;
+      }
       continue;
     }
 

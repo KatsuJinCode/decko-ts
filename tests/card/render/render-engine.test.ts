@@ -277,7 +277,23 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // never a deck rule, so render.ts's fold composition no longer
     // appends the *default html view universe statement - one fewer
     // prelude statement at every depth (9/10/12/16 here).
-    expect(statementsByDepth).toEqual({ 1: 9, 2: 10, 4: 12, 8: 16 });
+    // The head read-set (2026-09-28 async-view-handle lane) added one
+    // back at every depth (10/11/13/17) — the same prelude BATCH, so the
+    // round-trip line above is untouched at 2/3/5/9. card-mod-format's
+    // head views read deck-level setting cards that no reference closure
+    // can reach; the standalone form (measured before the fold) cost a
+    // round trip too, which is why it rides the batch.
+    // 2026-09-30 pass-20 integration re-pin (10/11/13/17 -> 12/13/15/19):
+    // the p20-email lane's junction-priming prelude batch (the email
+    // field-anchor prelude statement + the +*test context junction priming
+    // — the SAME prelude batch that moved junction-depth-closure.test.ts to
+    // 15/14 at the email tip) adds two folded statements per render at
+    // every depth. Measured 12/13/15/19 at the email lane tip 345bb06
+    // (queue job-1790792364473-36227f35 — the shift pre-exists the merge,
+    // so no lane interaction) and identically at the merged tip
+    // (job-1790792062952-890df2dd). The round-trip line above is untouched
+    // (2/3/5/9, still below Ruby's 4/5/7/11); warm renders stay at zero.
+    expect(statementsByDepth).toEqual({ 1: 12, 2: 13, 4: 15, 8: 19 });
     // depth 8 costs one batch per level (9 round trips) while reading
     // O(page) rows instead of the whole deck per render - the trade this
     // round's read-cost decision asked for - and lands BELOW Ruby's 11

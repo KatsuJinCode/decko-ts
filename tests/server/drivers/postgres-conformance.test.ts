@@ -1,41 +1,22 @@
-// PostgresDriver integration into the shared conformance suite
-// (tests/server/drivers/conformance.ts).
+// PostgresDriver dialect-mapping coverage over the shared conformance
+// suite's exact queries (tests/server/drivers/conformance.ts).
 //
-// Two test surfaces, each gated on what the environment can prove:
+// Exercised via FakePostgresConnection: proves every place the engine
+// emits SQL is translated to the PG-flavored form the live server
+// expects, with no live PG instance required. See
+// tests/server/drivers/postgres.test.ts for the focused dialect cases.
 //
-// 1. DIALECT-MAPPING BATTERY (runs always): exercised via
-//    FakePostgresConnection. Proves every place the engine emits SQL is
-//    translated to the PG-flavored form the live server expects, with no
-//    live PG instance required. See tests/server/drivers/postgres.test.ts
-//    for the focused dialect cases.
-//
-// 2. SHARED CONFORMANCE SUITE (skipped without a live server): the same
-//    battery every other driver passes — round-trip types, batch
-//    semantics, error propagation, schema usability after failures.
-//    These tests REQUIRE a real PostgreSQL instance that actually
-//    executes SQL. POSTGRES_URL gates this surface: when unset, the
-//    describe block skips; when set, a future stream's `pg`-client
-//    wiring connects and the suite runs.
-//
-// The live-PG wiring is NOT in this repo today (the `pg` client is not
-// a dependency). The contract this file documents:
-//
-//     $ POSTGRES_URL=postgres://user:pw@host:5432/db npx vitest run \
-//         tests/server/drivers/postgres-conformance.test.ts
-//
-//     # skipped when unset:
-//     #   describe: "conformance: PostgresDriver (live)"
-//     # dialect-mapping battery (postgres.test.ts) always runs.
-//
-// docs/postgres-dialect-notes.md "Live-PG rung" is the spec for the
-// live surface — what must pass for the driver to claim parity, what
-// the corpus replay path looks like, and how the live server is set up.
+// The SHARED CONFORMANCE SUITE itself (round-trip types, batch
+// semantics, error propagation, schema usability after failures) is not
+// runnable in this repo today: it needs the `pg` client, which is not a
+// dependency. docs/postgres-dialect-notes.md "Live-PG rung" is the spec
+// for that surface — what must pass for the driver to claim parity,
+// what the corpus replay path looks like, and how the live server is
+// set up.
 
 import { describe, it, expect } from "vitest";
 import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
 import { FakePostgresConnection } from "./fake-postgres-connection.js";
-
-const LIVE_PG_URL = process.env["POSTGRES_URL"] ?? "";
 
 describe("PostgresDriver conformance integration", () => {
   describe("dialect mapping against the shared conformance suite's exact queries (always runs)", () => {
@@ -122,45 +103,5 @@ describe("PostgresDriver conformance integration", () => {
       expect(conn.queries[0].sql).toBe("SELEC 1");
     });
   });
-
-  // ---------------------------------------------------------------------
-  // Live conformance suite — gated on POSTGRES_URL. The current repo
-  // does not carry the `pg` client; this block documents the contract
-  // and gates the surface so a future stream can plug in without
-  // touching this file's wiring.
-  // ---------------------------------------------------------------------
-  describe.skipIf(LIVE_PG_URL === "")("conformance: PostgresDriver (live)", () => {
-    it("runs the shared conformance suite against a live PostgreSQL server", () => {
-      // Live wiring path (when POSTGRES_URL is set):
-      //
-      //   import pg from "pg";
-      //   const client = new pg.Client({ connectionString: process.env.POSTGRES_URL });
-      //   await client.connect();
-      //   const conn: PostgresConnection = {
-      //     query: (sql, params) => client.query(sql, params).then(r => ({ rows: r.rows, rowCount: r.rowCount })),
-      //     release: () => client.end(),
-      //   };
-      //   const driver = new PostgresDriver({ connection: conn });
-      //   runDriverConformance("conformance: PostgresDriver (live)", () => ({
-      //     driver, dispose: () => driver.close(),
-      //   }));
-      //
-      // Without the `pg` dependency in this repo, this path is a
-      // documented contract, not an executable surface. When a future
-      // stream adds the dependency, the path above is the wiring.
-      throw new Error(
-        "Live-PG conformance wiring is documented but not implemented in this repo. " +
-          "See docs/postgres-dialect-notes.md 'Live-PG rung' for the spec.",
-      );
-    });
-  });
-
-  // Documentation test — explicitly records the env-var contract.
-  it("documents POSTGRES_URL as the live-server gate", () => {
-    expect(typeof LIVE_PG_URL).toBe("string");
-    // This test always passes; its value is the assertion that the
-    // env-var contract is visible from this file. If a future stream
-    // needs to confirm the live-skip behavior is in place, this is the
-    // assertion to grep for.
-  });
 });
+

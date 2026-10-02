@@ -6,7 +6,7 @@ seam, plus the system-actor constructors that give engine writes a real
 actor instead of caller-invented ones. Every claim carries a
 `file:line` cite into the installed gems:
 
-- `card` — `C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0`
+- `card` — `gems/card-1.110.0`
 - `card-mod-account` — `...\gems\card-mod-account-0.20.0`
 
 Ported surface: `src/card/auth/{session-store,session-token,actor,migrations,index}.ts`,
@@ -115,17 +115,17 @@ semantics live there:
 9. **No cross-stream imports.** The auth module imports only
    `src/server/driver.ts` types (+ `SQLDateTime` from `src/server/schema.ts`).
    The `sqlDateTime` formatter has a local twin here (history/act.ts owns
-   the original) on purpose: the auth layer stands alone at the seam the
-   coordinator wires.
+   the original) on purpose: the auth layer stands alone at the integration
+   seam.
 10. **Integration with the parallel writes stream is import-only.**
     `tests/card/auth/integration-imports.test.ts` imports the auth index
     STATICALLY (typechecked) and `src/card/actions/index.js` via a
     computed specifier that degrades to a documented no-op until the
-    writes stream lands — no behavior coupling; the coordinator wires
+    writes stream lands — no behavior coupling; integration wires
     `resolveActorFromToken`'s `Actor | null` into the actions' actor
     parameter at review time.
 
-## 3. The wiring seam (for the coordinator)
+## 3. The wiring seam
 
 ```ts
 import { SessionStore, actorBot, actorAnonymous, runAuthMigrations,

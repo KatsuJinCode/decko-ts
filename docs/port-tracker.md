@@ -6,11 +6,11 @@
 > Reconcile status claims below with current evidence; they do not establish
 > complete migration or runtime compatibility.
 
-Streams run in waves of parallel agents. Each wave: agents write code +
-tests in their OWN directories only, run `npx vitest run` and
-`npx tsc --noEmit`, and report. The coordinator reviews, commits, and
-plans the next wave. Agents never git-commit and never run npm install
-(deps are preinstalled).
+Streams ran in waves of parallel work. Each wave: code + tests written in
+their OWN directories only, verified with `npx vitest run` and
+`npx tsc --noEmit` before landing; integration reviewed, committed, and
+planned the next wave. Work streams never git-commit and never run npm
+install (deps are preinstalled).
 
 ## Wave 1 (launched 2026-09-19)
 
@@ -44,7 +44,7 @@ plans the next wave. Agents never git-commit and never run npm install
 DATA RULE: real SourceDeck content never leaves this workstation (not the VM, not Cloudflare, nowhere); sanitized structure-preserving artifacts (proven content-free) may go anywhere.
 
 - **M1 — corpus-scale parity**: corpus v2 (Lexicon-reconstructed names/keys) loaded into a Ruby oracle deck; capture rendered views + CQL result sets for the FULL 47,235-card payload (resumable); replay through the TS engine via the harness — full-payload byte-parity is the claim, not smoke fixtures.
-- **M2 — one-click Cloudflare demo (THE core deliverable per Julian)**: ✅ **SHIPPED 2026-09-20.** wrangler config + D1 migrations + seed path on a PUBLIC repo with a working Deploy-to-Cloudflare button; demo-able to Ethan. Note: button requires a public repo — repo placement is Julian's call. Artifact: `worker.js` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + README button. The actual `wrangler deploy` is one Julian-scope away (CF account + scope in the current turn).
+- **M2 — one-click Cloudflare demo (the core deliverable)**: ✅ **SHIPPED 2026-09-20.** wrangler config + D1 migrations + seed path on a PUBLIC repo with a working Deploy-to-Cloudflare button. Note: button requires a public repo — repo placement is a project decision. Artifact: `worker.ts` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + README button. The actual `wrangler deploy` needs Cloudflare account access.
 - **M3 — published metrics (AMENDED per Julian 2026-09-19)**: final numbers = the LIVE source-deck.example deployment (Ethan's VM, not ours) vs an ACTUAL Cloudflare deployment, per #1282. Local + juc-vm numbers are intermediate/engineering artifacts. Live-site measurement is read-only, rate-limited, normal-page-load traffic — heavy/borderline-abusive load testing happens locally only — and Ethan gets a heads-up via Julian before we measure his server.
 - **M4 — one-click MIGRATION (REFINED per Julian 2026-09-19)**: any Ruby-hosted deck can become a Cloudflare-hosted decko-ts in the same one-click flow — same data, new runtime underneath, no editorial transforms. The proven SourceDeck importer generalizes into this path; the site owner's public/private sorting is a SUPERSET use case layered on top (his adds review decisions; the base migration is data-faithful).
 
@@ -54,16 +54,15 @@ DATA RULE: real SourceDeck content never leaves this workstation (not the VM, no
 |---|---|---|---|
 | 9 | Set-pattern registry | `src/card/set-patterns.ts`, `src/card/set-patterns/**`, `tests/card/set-patterns/**`, `docs/set-patterns-port-notes.md` | LANDED + ACKNOWLEDGED 2026-09-20: full registry ported in lookup-order precedence (not file order — Ruby register() front-inserts, so core patterns are REVERSE of file load order), live-oracle-verified. 11 own tests. Rule-name algebra in `rule-names.ts`. Sets up the rule-evaluation stream that follows. |
 | 10 | Card fetch/cache layer | `src/card/fetch.ts`, `src/card/fetch/**`, `tests/card/fetch/**`, `docs/fetch-port-notes.md` | LANDED: 71 own tests, 684/684 repo-wide, tsc clean; KEY FINDING: all fetched attributes compose from the cards table ALONE (acts/actions/changes = history only); compound names via Lexicon (raw columns NULL post-2020); two-level cache (Temporary per-request + Shared stamp-prefixed), event-driven invalidation, no TTL; FIRST BYTE-EXACT PARITY: card-engine handler replays all 10 smoke card records byte-exact vs Ruby |
-| 11 | Renderer with batched inclusion prefetch | `src/card/render.ts`, `src/card/render/**`, `tests/card/render/**`, `docs/render-port-notes.md` | LANDED 2026-09-20 (had been orphaned from rate-limit kill): format.ts + views.ts + prefetch.ts + nest-syntax.ts + set-keys.ts + slot-html.ts. 18 own tests including depth-sweep 1..32 that proves the #1282 constant-queries-per-render claim. Warm-cache re-render = zero queries. |
+| 11 | Renderer with batched inclusion prefetch | `src/card/render.ts`, `src/card/render/**`, `tests/card/render/**`, `docs/render-fix-notes.md` | LANDED 2026-09-20 (had been orphaned from rate-limit kill): format.ts + views.ts + prefetch.ts + nest-syntax.ts + set-keys.ts + slot-html.ts. 18 own tests including depth-sweep 1..32 that proves the #1282 constant-queries-per-render claim. Warm-cache re-render = zero queries. |
 
 ## Wave 3 (planning — the rule-application + mod-loading layer)
 
 | # | Stream | Owns | Status | Why it matters |
 |---|---|---|---|---|
-| 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | NOT STARTED | The renderer currently returns static HTML_VIEWS regardless of card type/set. The rule stream walks the set-module inheritance chain, fetches rule cards by name, applies view overrides per card. Without this, only the html-format views apply — no per-type/per-set customizations. |
-| 13 | Mod loading | `src/card/mod-loader.ts`, `src/card/mod-loader/**`, `tests/card/mod-loader/**`, `docs/mod-loader-port-notes.md` | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, card-mod-format, etc.) are the port targets. The mod-loader's job is the registration mechanism; each mod is its own port. |
-| 14 | Migration tool | `tools/migrate/**`, `tests/tools/migrate/**`, `docs/migration-tool.md` | NOT STARTED | Generalize the proven SourceDeck importer (Ruby dump → decko-ts) into a reusable one-shot path. Same data, new runtime underneath, no editorial transforms. The base migration is data-faithful; the site owner's public/private sorting is a SUPERSET use case layered on top. |
-| 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | **LANDED 2026-09-20**: lookup.ts + apply.ts + index.ts + 21 tests. Names already in rule-names.ts; this stream added the storage walk (findRule / findRules) and the JSON rule-application layer (parseViewOverride / applyViewOverride / resolveViewOverride). JSON-encoded rules in db_content — HAML/Ruby round-trip is deferred to a v2 stream. Render-side hook (RenderEngine.renderView integration) deliberately left as a follower stream so the engine stays a library. |
+| 12 | Rule evaluation engine | `src/card/rules/**`, `tests/card/rules/**`, `docs/rules-port-notes.md` | **LANDED 2026-09-20**: lookup.ts + apply.ts + index.ts + 21 tests. Names already in rule-names.ts; this stream added the storage walk (findRule / findRules) and the JSON rule-application layer (parseViewOverride / applyViewOverride / resolveViewOverride). JSON-encoded rules in db_content — HAML/Ruby round-trip is deferred to a v2 stream. Render-side hook (RenderEngine.renderView integration) deliberately left as a follower stream so the engine stays a library. | The rule stream walks the set-module inheritance chain, fetches rule cards by name, applies view overrides per card — per-type/per-set customization on top of the html-format views. |
+| 13 | Mod loading | `src/card/mod-loader.ts`, `src/card/mod-loader/**`, `tests/card/mod-loader/**`, `docs/mod-loader-port-notes.md` | **LANDED 2026-09-21**: loader mechanism (load order = Bundler closure, set-pattern front-insert, view override/config semantics; card-mod-help proven end-to-end vs a live capture) plus per-mod ports under `src/card/mod-loader/mods/`; evidence `tests/card/mod-loader/`, `docs/mod-loader-port-notes.md`. | File scanner that walks a mods directory and registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, card-mod-format, etc.) are the port targets; the loader is the registration mechanism, each mod its own port. |
+| 14 | Migration tool | `tools/migrate/**`, `tests/tools/migrate/**`, `docs/migration-tool-notes.md` | **LANDED**: the generalized dump importer (Ruby dump → decko-ts) is in `tools/migrate/`, proven on a production dump; the one-click generalization is tracked in `docs/one-click-cf-deploy-inventory.md`. | Same data, new runtime underneath, no editorial transforms. The base migration is data-faithful; the site owner's public/private sorting is a SUPERSET use case layered on top. |
 
 ## Concurrency gate (2026-09-19)
 
@@ -72,7 +71,7 @@ streams. tsc is a whole-program checker, so in-flight files cannot be skipped,
 only their findings suppressed. Two suppression rules: mtime quiet window
 (default 30 s, `--quiet-ms`) for active edit bursts, and `--running <dirs>`
 for known-running streams' directories (covers think-pauses between bursts).
-`--strict` suppresses nothing and is the coordinator's landing gate. Future
+`--strict` suppresses nothing and is the integration landing gate. Future
 agent prompts use `node scripts/check-scoped.mjs --running <other streams' dirs>`
 in place of bare `npx tsc --noEmit`.
 
@@ -99,34 +98,22 @@ grounded in the Ruby source or captured fixtures, with the grounding cited
 in the stream's notes doc. 4. Coordinator-reviewed diff committed.
 
 
-## Operator alert (2026-09-19)
+## Status as of 2026-09-20 (reconciled against the on-disk tree)
 
-THE PORT WAS BEING REPORTED ON STALE STATE. Three streams the lead cited as "in flight" had actually completed or failed 10-14 hours prior; completion notifications arrived in the transcript but the lead never reconciled them. Root cause: the lead reports streams by recent-notification in memory, not by walking the on-disk agent registry. Provider rate limit (weekly quota, resets 2026-09-20 ~11:20 UTC) killed the renderer and the M1 corpus capture 12-14 hours ago. The set-patterns registry is fully landed and was usable since then. Defect filed in KatsuJinCode/foreman #122 (lead reads transcript, not registry; no heartbeat; no silent-failure escalation).
+Walked the landed code directly rather than trusting in-flight status reports. Actual state:
 
-Recovery plan:
-- After rate limit resets (~6 hours from now): relaunch the renderer (#1282 flagship) and the M1 corpus-v2 capture.
-- Set-patterns (#9) is already in the tree from the orphaned completion — needs a review stream to verify gates + land it on the milestone tracker.
-- Use `node scripts/check-scoped.mjs --running <other streams' dirs>` in every future prompt.
-
-## Reconciliation (2026-09-20)
-
-Walked the on-disk agent registry + the landed code. Actual current state:
-
-- **Renderer (#11):** **LANDED** — `src/card/render/` ships format.ts, views.ts, prefetch.ts, nest-syntax.ts, set-keys.ts, slot-html.ts. 18 own tests including the depth-sweep (1..32) that proves the #1282 constant-queries claim. Port-tracker just hadn't been updated.
+- **Renderer (#11):** **LANDED** — `src/card/render/` ships format.ts, views.ts, prefetch.ts, nest-syntax.ts, set-keys.ts, slot-html.ts. 18 own tests including the depth-sweep (1..32) that proves the #1282 constant-queries claim.
 - **View/format parity (#13):** **LANDED** as part of the renderer — :open, :closed, :content, :title, :titled, :menu, :core, :card_list, :bar variants all in `views.ts` with HAML byte-shape parity.
 - **Set-patterns (#9):** **LANDED** + acknowledged in port infra. Full registry + instance + rule-name algebra. 11 own tests.
-- **M2 — one-click Cloudflare demo:** **SHIPPED.** `worker.js` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + Deploy-to-Cloudflare button in README. The deploy itself is one `wrangler deploy` away (gated on Julian's CF account scope, not on missing code).
-- **Test count:** 851/851 passing (was 839 before M2 work; +12 worker tests).
+- **M2 — one-click Cloudflare demo:** **SHIPPED.** `worker.ts` + `wrangler.toml` + `db/seed.sql` + 12 worker tests + Deploy-to-Cloudflare button in README. The deploy itself is one `wrangler deploy` away (gated on Cloudflare account scope, not on missing code).
+- **Test count:** per-stream totals in this file are historical landing-time counts, not a current measure. The standing verification surface is `tests/standing-net.json` (run via `node tools/test-queue/run-standing-net.mjs`); the README carries the current generated total with its command and date.
 
-### Remaining gap to "100% perfect migration"
+### Remaining gap to publication
 
-The remaining work is the rule-application engine and mod loading — the pieces that make the 33 installed card-mods run on top of the port. With these landed, any Ruby Decko deck becomes a drop-in TS deck.
-
-| Stream | Status | Notes |
-|---|---|---|
-| Rule evaluation engine | NOT STARTED | Render-side: when a card has rules, walk the set-module inheritance chain, fetch rule cards, apply view overrides. Currently the renderer returns the static HTML_VIEWS regardless of card type/set. |
-| Mod loading | NOT STARTED | File scanner that walks a mods directory, registers patterns/rules/views per mod. The 33 installed card-mods (card-mod-account, card-mod-bootstrap, etc.) are the port targets. |
-| Mod porting (33 mods) | NOT STARTED | Each mod is its own port. Priority by the site owner's stack: account, bootstrap, … |
+With the rule-application engine and mod loading landed, the remaining gap
+to publication is tracked in the README migration status: the corpus failure
+families, mod view deepening, the PostgreSQL read rung, the one-command
+migration path, and the publication hygiene rounds.
 | Migration tool | NOT STARTED | Generalize the proven SourceDeck importer (Ruby dump → decko-ts) into a reusable one-shot path. |
 | Response-time harness (Ruby vs TS) | NOT STARTED | Deep-nesting fixtures, measure both runtimes end-to-end. |
 

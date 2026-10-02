@@ -66,6 +66,9 @@ interface StubOptions {
    *  undefined = unverifiable, the canReadByRuleLookup contract). */
   taskAllowedByTask?: Partial<Record<"create" | "update" | "delete", boolean>>;
   withTaskHook?: boolean;
+  /** The page chrome session (RenderEngineLike.pageSession): the loud
+   *  denial message branches on it (html/error.rb:199-216 Auth.signed_in?). */
+  pageSession?: { signedIn: boolean; actorId?: number };
 }
 
 function stubEngine(opts: StubOptions): RenderEngineLike {
@@ -75,6 +78,7 @@ function stubEngine(opts: StubOptions): RenderEngineLike {
     executeSearch: () => [],
     isDenied: () => opts.readDenied === true,
     resolveView: (_card, view) => HTML_VIEWS[view],
+    pageSession: opts.pageSession,
   };
   if (opts.withTaskHook !== false) {
     engine.taskAllowed = (_card, task) => opts.taskAllowedByTask?.[task];
@@ -158,6 +162,52 @@ describe("render-format view-permission gate", () => {
     );
     // alter_unknown substitutes the view; no denial span may appear.
     expect(fmt.renderView("content")).not.toContain("denied");
+  });
+
+  // R3.4.d's isMain arm (html/error.rb:75-77 focal? ? loud_denial :
+  // quiet_denial): the PAGE path constructs the format with main:true
+  // (page.ts:252-255, Ruby's show-path main!), so the denial renders the
+  // LOUD frame as the main content instead of the quiet span. The corpus
+  // pins the anonymous branch's full page bytes
+  // (focal-denial-page-corpus-replay.test.ts, 4 exemplars byte-exact);
+  // these units pin the branch ROUTING and the signed-in message bytes the
+  // corpus cannot capture (its viewer is always Anonymous) — the same bytes
+  // the live-Ruby probe tmp/wrong-goal-hunt/focal-denial-ruby-probe/
+  // signed-in-loud-denial-probe.rb extracts (loud_denial_message
+  // `when Auth.signed_in?` -> format_need_permission_task + format_denied_task
+  // = "You need permission to read this.").
+  it("renders the loud denial frame on a denied MAIN (page-focal) card", () => {
+    const fmt = new RenderFormat(card(1, "Secret Thing", "body"), stubEngine({ readDenied: true }), {
+      main: true,
+    });
+    const html = fmt.renderView("titled");
+    // the loud frame AS the content: slot id/class carry the substituted
+    // view, data-slot keeps the REQUESTED view (the oracle's dual
+    // attribution), frame header + Sorry! heading + the anonymous message.
+    expect(html).toContain('id="secret_thing-denial-view"');
+    expect(html).toContain("denial-view");
+    expect(html).toContain("&quot;view&quot;:&quot;titled&quot;");
+    expect(html).toContain("<h1>Sorry!</h1>");
+    expect(html).toContain(
+      '<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ' +
+        '<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>',
+    );
+    expect(html).not.toContain('<span class="denied">');
+  });
+
+  it("renders the signed-in loud denial message branch", () => {
+    const fmt = new RenderFormat(
+      card(1, "Secret Thing", "body"),
+      stubEngine({ readDenied: true, pageSession: { signedIn: true, actorId: 300 } }),
+      { main: true },
+    );
+    const html = fmt.renderView("titled");
+    expect(html).toContain("<h1>Sorry!</h1>");
+    expect(html).toContain("<div>You need permission to read this.</div>");
+    // sign_in_or_up_links returns nil when signed in (error.rb:145-146) —
+    // the anonymous links must not render.
+    expect(html).not.toContain("signin-link");
+    expect(html).not.toContain("signup-link");
   });
 });
 

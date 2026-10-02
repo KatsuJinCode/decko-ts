@@ -2,7 +2,7 @@
 // loader - the stylesheet/skin mod: the Css / Scss / Skin cardtypes, the
 // *style setting, and the SkinBox abstract.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-style-0.20.0/): sixteen set files across four patterns (7
 // abstract, 2 self, 5 type, 2 type_plus_right), no lib/, no set_pattern/,
 // three validate/delete events, no mod.yml. The T6 verdict
@@ -126,6 +126,7 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
+import { modAssetsGroupListHtml } from "./card-mod-assets.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
@@ -438,6 +439,64 @@ const noDeletionIfUsedBody: ModEventFn = (card: ModEventCard, _host: ModEngineHo
 };
 
 // ---------------------------------------------------------------------------
+// set/type_plus_right/mod/style.rb - the Mod+*style group card's html :core
+// (the Abstract::ModAssets group-list render, card-mod-assets
+// set/abstract/mod_assets.rb:171-182 via the include at mod/style.rb:4-5)
+// ---------------------------------------------------------------------------
+
+/** mod_assets.rb:27-29 mod_name: `left&.codename.to_s.sub(/^mod_/, "")`.
+ *  The mirror key is the mod's registry name the assets path resolves
+ *  through (Cardio::Mod.fetch mod_name -> mod.subpath "assets", "style").
+ *  (Shared body with card-mod-script.ts's — the same ModAssets method.) */
+function modStyleModname(ctx: ViewContext): string {
+  const leftKey = ctx.fmt.card.name.leftName?.key ?? "";
+  return leftKey.replace(/^mod_/, "");
+}
+
+/** The mod assets mirrors: each mod's `assets/style` folder/manifest
+ *  groups, transcribed from the gem trees the oracle deck loads
+ *  (mod_assets.rb:31-64 local_group_cards: the manifest.yml groups in
+ *  file order, or the single "local" FOLDER group whose items are the
+ *  directory listing; mod_assets.rb:167-169 puts the remote group FIRST
+ *  when group_remote_card.urls is present). Filesystem state the oracle
+ *  capture pinned through the live render — the mirror transcribes it
+ *  exactly as ADMIN_CONFIG transcribes config/admin.yml.
+ *
+ *  card-mod-format-0.20.0 has assets/style/ but NO manifest.yml -> the
+ *  single folder group "local" whose items are the six .scss files
+ *  (alphabetical, the directory order the oracle render lists). Every
+ *  OTHER ported mod ships no assets/style tree -> absent keys render ""
+ *  (Ruby: folder_group_card nil on a missing assets path -> groups []
+ *  -> the haml loop emits nothing). */
+const MOD_STYLE_GROUPS: Record<
+  string,
+  ReadonlyArray<readonly [string, readonly string[]]>
+> = {
+  format: [
+    [
+      "group: local",
+      [
+        "common.scss",
+        "logo_and_credit.scss",
+        "menu.scss",
+        "messaging.scss",
+        "misc.scss",
+        "open_and_closed.scss",
+      ],
+    ],
+  ],
+};
+
+/** The Mod+*style :core body: the remote group (mirror: absent for every
+ *  mirrored mod), then each local group's tag + item names, through the
+ *  shared group_list emitter. */
+const modStyleGroupCoreView: ViewFn = (ctx) => {
+  const groups = MOD_STYLE_GROUPS[modStyleModname(ctx)];
+  if (groups === undefined) return "";
+  return modAssetsGroupListHtml(groups);
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree,
 // path-sorted like the loader's file walk)
 // ---------------------------------------------------------------------------
@@ -653,9 +712,20 @@ const cardModStyle: DeckoModManifest = {
       // ModAssets includes (:4-5), subpath/folder ids (:7-17, exported
       // above), html views :stylesheet_include_tag (:19-24) and
       // :remote_include_tags (:26-32) - both in viewsMissing
-      // (ASSET-URL / MOD-MANIFEST).
+      // (ASSET-URL / MOD-MANIFEST). Ported: view
+      // :core - Ruby hosts it on the INCLUDED Abstract::ModAssets
+      // (card-mod-assets set/abstract/mod_assets.rb:171-182) and this set
+      // module is where the +*style card's chain lands, so the group-list
+      // render registers HERE (chain-scoped: only "mod: X+*style" cards
+      // dispatch it; the flat table is untouched - kind nonbase).
+      // Oracle-pinned byte-for-byte: mod: format :styles nests it
+      // (fixtures/captured/admin-view-pins.json).
       setPath: "type_plus_right/mod/style",
-      formats: {},
+      formats: {
+        html: {
+          views: [{ view: "core", viewFn: modStyleGroupCoreView }],
+        },
+      },
     },
     {
       // card-mod-style-0.20.0/set/type_plus_right/set/style.rb

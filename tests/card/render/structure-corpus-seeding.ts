@@ -12,7 +12,7 @@
 //     unknown-nest path, Ruby parity, no seeding needed).
 //
 // Seeding mirrors benchmarks/load-oracle-corpus.rb through the REAL decko
-// convention the corpus replay driver uses (see replay-shard.test.ts):
+// convention the corpus replay driver uses (see replay-shard.bench.ts):
 // simple cards store name + engine-computed key; junctions store NULL
 // name/key and resolve through left_id/right_id.
 
@@ -33,13 +33,16 @@ import {
   structureRuleTypesFromResults,
 } from "../../../src/card/rules/structure.js";
 import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
+import { SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 
 export { CORPUS_DB, readShardLines };
 export type { ShardLine };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
-export const SHARD_PATH = path.join(REPO_ROOT, "fixtures", "corpus", "shard-000000.jsonl");
+// The committed miniature shard by default; the private shard pair only
+// under the explicit DECKO_TS_CORPUS_V2 opt-in (test-corpus-paths.ts).
+export const SHARD_PATH = SHARD_000000_PATH;
 
 /** Codename cards the rule? predicate compares against (render.ts
  *  computeIsRule: SettingID / SetID / UserID). The permission seeding
@@ -66,7 +69,7 @@ const CORPUS_ROW_COLUMNS =
 
 /**
  * The structure-pending classification set — the EXACT oracle the corpus
- * replay driver uses (replay-shard.test.ts): the stored content of every
+ * replay driver uses (replay-shard.bench.ts): the stored content of every
  * live *structure rule card. A captured record whose content equals one of
  * these strings is Ruby's structured_content (the rule template), not
  * db_content.

@@ -437,17 +437,11 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     setDefaultModLoader(loader);
 
     const ctx = makeCtx("ALL TYPE-x RIGHT-api_key", "titled");
-    // api_key -> Type::X
-    expect(superView(ctx, "Right::ApiKey", "titled")).toBe("format:titled");
-    // Wait: the chain walker doesn't return the type-X :titled unless
-    // the type-X :titled is registered. Here it IS (typeXManifest).
-    // The walker order for "ALL TYPE-x RIGHT-api_key" is:
-    //   Right::ApiKey (most-specific), Type::X, All::Base (most-general).
+    // api_key -> Type::X. The walker order for "ALL TYPE-x RIGHT-api_key"
+    // is Right::ApiKey (most-specific), Type::X, All::Base (most-general):
     // api_key's super() returns Type::X's :titled, which itself calls
-    // super() and returns All::Base's :titled.
-    //
-    // The end-to-end: superView from Right::ApiKey returns the OUTPUT
-    // of Type::X's :titled, which is superView(Type::X) -> All::Base.
+    // super() and returns All::Base's :titled - so superView from
+    // Right::ApiKey yields Type::X's composed output.
     expect(superView(ctx, "Right::ApiKey", "titled")).toBe("format:titled");
     // Direct probe of Type::X's :titled (its body) returns All::Base's.
     expect(superView(ctx, "Type::X", "titled")).toBe("format:titled");

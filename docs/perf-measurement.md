@@ -17,22 +17,20 @@ artifact path.
 | --- | --- | --- | --- |
 | **A. persistence** | card save/delete/rename/revision/reference state reproduces Ruby's `Card::Act` + `Card::Action` + `Card::Change` + `Card::Reference` chain | corpus replay through the landed TS handlers; write conformance over the 8 Ruby scenarios; migration determinism on the 606k-row deck | `docs/parity-ledger-2026-09-22.md` rows "fetch layer + key parity", "write conformance", "migration parity + determinism" |
 | **B. semantics** | names, rules, permissions, types, nests, views, CQL produce the same answers Ruby would | oracle-replay harness (`docs/replay-harness.md`); `replayEntries(entries, registry)` byte-compares TS output vs captured Ruby truth; CQL MySQL `match` rung + structure-corpus full 465-entry sweep | `docs/parity-ledger-2026-09-22.md` PROVEN table; `tests/card/render/structure-corpus-replay.test.ts`; `tests/cql/oracle-match-replay.test.ts` |
-| **C. rendering** | HTML / JSON / CSV / XML output is byte-identical to Ruby's | corpus-v2 replay (`benchmarks/corpus-v2/replay-shard.test.ts`) — replays 48 shards, 47,235 live cards, every captured card record AND every captured rendered view, byte-comparing to the Ruby oracle; denied views are judged against the captured anonymous viewer; nothing is skipped | shard smoke 2026-09-22: 999/999 card records resolved (857 byte-exact + 142 structure-pending); 3,242 rendered views → 2,831 byte-exact (87.3%) with the rest classified into the documented failure classes, every one of them fixed and proven (`docs/parity-ledger-2026-09-22.md` "Failure classes found → their resolutions") |
-| **D. side effects** | events, emails, jobs, notifications, permissions, cache invalidation reproduce Ruby observed side effects | notify suite (`tests/card/notify/follow-notify.test.ts` etc.) against `fixtures/captured/follow-notification.json` (mail bytes) — proven byte-exact; permissions suite (`tests/card/permissions/permission-corpus-replay.test.ts`) proven byte-exact on read-permission denial bytes; `tests/card/actions/notify-save-path-wiring.test.ts` covers the engine seams + deck template resolver + interpolation resolved/unresolved split (commit `7a1ca6c`) | `docs/parity-ledger-2026-09-22.md` rows "read-permission denial bytes", "follow-notification mail bytes (real capture)"; `docs/notify-port-notes.md`; `docs/permissions-port-notes.md` |
+| **C. rendering** | HTML / JSON / CSV / XML output is byte-identical to Ruby's | corpus-v2 replay (`benchmarks/corpus-v2/replay-shard.bench.ts`) — replays 48 shards, 47,235 live cards, every captured card record AND every captured rendered view, byte-comparing to the Ruby oracle; denied views are judged against the captured anonymous viewer; nothing is skipped | shard smoke 2026-09-22: 999/999 card records resolved (857 byte-exact + 142 structure-pending); 3,242 rendered views → 2,831 byte-exact (87.3%) with the rest classified into the documented failure classes, every one of them fixed and proven (`docs/parity-ledger-2026-09-22.md` "Failure classes found → their resolutions") |
+| **D. side effects** | events, emails, jobs, notifications, permissions, cache invalidation reproduce Ruby observed side effects | notify suite (`tests/card/notify/follow-notify.test.ts` etc.) against `fixtures/captured/follow-notification.json` (mail bytes) — proven byte-exact; permissions suite (`tests/card/render/permission-corpus-replay.test.ts`) proven byte-exact on read-permission denial bytes; `tests/card/actions/notify-save-path-wiring.test.ts` covers the engine seams + deck template resolver + interpolation resolved/unresolved split (commit `7a1ca6c`) | `docs/parity-ledger-2026-09-22.md` rows "read-permission denial bytes", "follow-notification mail bytes (real capture)"; `docs/notify-port-notes.md`; `docs/permissions-port-notes.md` |
 
-The standing ledger is `docs/parity-ledger-2026-09-22.md`. Per its
-capstone doctrine, a surface proven byte-identical is recorded once
-("PROVEN byte-identical" table, lines 47–64) and is not re-run during
-development. Regression re-verification happens once, at the capstone.
+The standing ledger is `docs/parity-ledger-2026-09-22.md`: a point-in-time
+record whose PROVEN rows name the command or file that produced each
+measurement. Regression protection is the standing test net
+(`tests/standing-net.json`), not a once-only re-run.
 
 ## 2. The performance harness
 
 The committed run target for the perf harness:
 
 ```
-node C:/localProjects/decko-ts/node_modules/vitest/vitest.mjs run \
-  --root C:/localProjects/decko-ts \
-  benchmarks/perf/render-perf-harness.test.ts
+npx vitest run benchmarks/perf/render-perf-harness.test.ts
 ```
 
 **Status (landed 2026-09-23, all four budgets green):**
@@ -51,20 +49,6 @@ reference-key fix below). Measured workloads
 The harness is a budget tripwire, not a byte-parity oracle and not part
 of `npm test` (`benchmarks/perf/README-perf-harness.md`).
 
-What the harness MUST measure when it lands (per Gate 4 of the
-external review, `docs/upstream-1282-external-critical-review-fulltext.md`
-lines 134–135): per-render wall-ms, cold and warm, on the same
-synthetic chain shapes used by the Ruby R1/R2 depth-sweep
-(`benchmarks/run_ruby_bench.rb`); plus SQL statement count + round-trip
-count per render, captured through a `TimingDriver`-style wrapper
-analogous to
-`benchmarks/corpus-v2/render-perf-diagnosis-probes-2026-09/slow-entry-profiling.test.ts:35-65`
-(which counts `sqlMs`, `queries`, and emits a per-statement log with
-durations). Budgets: cold render on the seeded shard-0 subset must
-stay below the post-cache-fix steady-state of ~56 ms / entry measured
-in the corpus replay (`docs/parity-ledger-2026-09-22.md` lines 70–74).
-Warm re-render must stay below 5 ms.
-
 Run by hand today, alongside the harness, the additional
 probes and instruments are:
 
@@ -73,7 +57,7 @@ probes and instruments are:
 | warm per-entry probe | `benchmarks/corpus-v2/perf-probes-2026-09-21/warm-entry-probe.test.ts:11` | prewarm ms + per-entry wall-ms + `lastRenderStats` (batches, statements, fallbackRounds, cards); `closureWarm` cold-card audit |
 | cold/warm depth sweep (M3) | `tests/card/render/depth-sweep.test.ts:32` | every depth 1..42, RTs, statements, cold + warm wall-ms; writes `benchmarks/results/depth-sweep-ts.json` |
 | slow-entry profiler | `benchmarks/corpus-v2/render-perf-diagnosis-probes-2026-09/slow-entry-profiling.test.ts` | per-entry SQL-vs-JS split, prefetch re-run detector, slowest SQL shapes, EXPLAIN QUERY PLAN of the walk |
-| shard replay (M1) | `benchmarks/corpus-v2/replay-shard.test.ts` | full corpus replay; per-entry timing in the result JSON |
+| shard replay (M1) | `benchmarks/corpus-v2/replay-shard.bench.ts` | full corpus replay; per-entry timing in the result JSON |
 
 ## 3. The CPU profile runner
 
@@ -161,19 +145,14 @@ closure-batch walk statements + 3 folded read-permission statements +
 1 folded codename codehash (rule id resolution) + 1 folded
 structure-rule universe + 3 rule lookups. The rule chain walk is
 per-`(card, view)` cached after first render; warm renders therefore
-stay at 0/0.
-
-> Honest note on the external review's framing: the Gate 4 ask is
-> "constant queries regardless of depth." The numbers above are the
-> authoritative measured answer (`5 RT / 11 SQL`, cold). The
-> round-trip + statement totals do not vary with depth; the review's
-> earlier prose used a smaller constant; the JSON is the source of
-> truth.
+stay at 0/0. The round-trip + statement totals do not vary with depth;
+`depth-sweep-ts.json` is the source of truth for the constants.
 
 ## 5. Gate 6: worker-metrics recorder
 
 `deploy/src/worker-metrics.ts` is the per-request + isolate-aggregate
-metrics recorder the Gate 6 ask demands (`docs/upstream-1282-external-critical-review-fulltext.md`
+metrics recorder specified by Gate 6 of the upstream proposal
+(`docs/upstream-1282-external-critical-review-fulltext.md`
 lines 137–139). Wired into the Cloudflare Worker fetch handler
 (`deploy/worker.ts`); the architecture comment is at
 `deploy/src/worker-metrics.ts:6-22`:
@@ -285,10 +264,10 @@ exercises every route over HTTP).
 
 ## 7. Live deployment measurement (first numbers)
 
-2026-09-23, worker version `d9a3e8c7` at
-`https://decko-ts-demo.jpswilner.workers.dev` — the synthetic 15-card
-demo deck (zero real content, per the CF data rule). Client numbers
-from a workstation include network RTT to the edge.
+2026-09-23, worker version `d9a3e8c7` deployed as the `decko-ts-demo`
+Worker on the demo account — the synthetic 15-card demo deck (zero real
+content, per the CF data rule). Client numbers from a workstation include
+network RTT to the edge.
 
 | measure | value |
 | --- | --- |

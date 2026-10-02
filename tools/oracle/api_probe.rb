@@ -1,4 +1,10 @@
-# cql_probe.rb - one-shot battery to verify CQL operators on SQLite
+# api_probe.rb - one-shot battery exercising the CQL search operators
+# (exact name, left/right, plus trees, type/sort/limit/dir, not, content,
+# found_by, created_by) against the oracle app's card index; each query
+# prints the matched card names or the raised error.
+#
+# Run (from tools/oracle/decko-oracle-app):
+#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/api_probe.rb
 def q(label, query)
   result = Card.search(**query, return: "name")
   puts "#{label}: #{result.inspect}"

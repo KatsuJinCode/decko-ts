@@ -247,7 +247,3 @@ function stubCard(setKeys: string): RenderCard {
     setKeys,
   };
 }
-
-// keep imports used (readFileSync was previously imported for a path the
-// shard-line lookup replaces).
-void readShardLines;

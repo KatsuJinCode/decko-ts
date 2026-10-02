@@ -1,0 +1,44 @@
+{
+  "_provenance": "POST /accounts/{account_id}/d1/database/{database_id}/query — shape from the Cloudflare API reference (D1 query), fetched 2026-10-01: `result` is an array of per-statement objects with `success`, `results` and `meta { rows_read, rows_written, ... }`. READ-ONLY IN USE: the teardown sends exactly one statement, `SELECT name, type FROM sqlite_master WHERE type IN ('table','index') ORDER BY type, name`, and isReadOnlySelect() rejects anything else. The 13 tables / 33 indexes below are the counts deploy/migrations/0001-schema.sql declares (docs/one-click-cf-deploy-inventory.md:23). Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "success": true,
+      "results": [
+        { "name": "cards", "type": "table" },
+        { "name": "card_references", "type": "table" },
+        { "name": "card_acts", "type": "table" },
+        { "name": "card_actions", "type": "table" },
+        { "name": "card_changes", "type": "table" },
+        { "name": "card_revisions", "type": "table" },
+        { "name": "card_virtuals", "type": "table" },
+        { "name": "delayed_jobs", "type": "table" },
+        { "name": "sessions", "type": "table" },
+        { "name": "schema_migrations", "type": "table" },
+        { "name": "ar_internal_metadata", "type": "table" },
+        { "name": "transform_migrations", "type": "table" },
+        { "name": "sqlite_sequence", "type": "table" },
+        { "name": "cards_key_binary_index", "type": "index" },
+        { "name": "cards_codename_binary_index", "type": "index" },
+        { "name": "cards_trash_index", "type": "index" },
+        { "name": "card_references_source_id_index", "type": "index" },
+        { "name": "card_references_target_id_index", "type": "index" }
+      ],
+      "meta": {
+        "duration": 0.4,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 0,
+        "rows_read": 18,
+        "rows_written": 0,
+        "served_by_colo": "LHR",
+        "served_by_primary": true,
+        "served_by_region": "WEUR",
+        "timings": { "sql_duration_ms": 0.3 }
+      }
+    }
+  ]
+}

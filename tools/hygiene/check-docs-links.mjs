@@ -14,11 +14,11 @@ const REPO = resolve(new URL("../../", import.meta.url).pathname.replace(/^\/([A
 // docs may reference them as rebuildable artifacts.
 const IGNORED_OK = [/^benchmarks\/corpus\//, /^tmp\//, /hygiene\/out\//];
 
-const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
+const files = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024, windowsHide: true })
   .toString("utf8").split("\0").filter((f) => f.endsWith(".md"));
 
 const tracked = new Set(
-  execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
+  execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024, windowsHide: true })
     .toString("utf8").split("\0").filter(Boolean)
 );
 

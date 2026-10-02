@@ -92,20 +92,35 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // set-pattern anchor priming (the rule walk's *self/*type/*all
       // lex_to_id point queries became cache entries), and the folded
       // engine statements: 3 read-permission + codename codehash +
-      // structure universe + *default universe. R17 (A-36) rides through
-      // the prelude in merge pass 9 prep: default_nest_view is process
-      // config (html.rb:17-19), never a deck rule, so render.ts's fold
-      // composition no longer appends the *default html view universe
-      // statement - one fewer prelude statement than the cold-query lane's
-      // own tree measured) + round-0 batch (fetch shapes only) + round-1 batch (1
+      // structure universe + *default universe + the HEAD READ-SET
+      // statement. R17 (A-36) rides through the prelude in merge pass 9
+      // prep: default_nest_view is process config (html.rb:17-19), never a
+      // deck rule, so render.ts's fold composition no longer appends the
+      // *default html view universe statement - one fewer prelude
+      // statement than the cold-query lane's own tree measured). The head
+      // read-set moved the other way, 12 -> 13 statements, on the
+      // 2026-09-28 async-view-handle lane: card-mod-format's head views
+      // read deck-level setting cards that no reference closure can
+      // reach, so the prefetch rides THIS SAME prelude batch as a 13th
+      // statement rather than as a query of its own. ROUND TRIPS are
+      // unchanged at 4 - that is the cost that matters on a cold boot,
+      // and the standalone form (measured before the fold) cost one) +
+      // round-0 batch (fetch shapes only) + round-1 batch (1
       // side-id join). The rule-lookup candidates cost ZERO point queries
       // since the prelude primes their anchors. Constant in deck size;
       // +1 batch per chain LEVEL. (2026-09-23..09-26 shape was 8 round
       // trips: root + 2 enrich primes + round 0 + round 1 + 3 rule-lookup
-      // candidates.)
+      // candidates.) The p20-email-views lane added TWO prelude
+      // statements (13 -> 15), both inside the SAME batch so round trips
+      // stay at 4: the email-template read_form's field-setting anchors
+      // (prefetch.ts emailFieldAnchorSlot, commit 76a1887 — EXISTS-gated,
+      // zero rows for non-template roots) and the +*test context
+      // junction priming for email-template/message roots (the read_form
+      // nests the junction programmatically and no content reference
+      // reaches it; same batch, same EXISTS gate shape).
       const snapshot = storage.counting.snapshot();
       expect(snapshot.roundTrips).toBe(4);
-      expect(snapshot.statements).toBe(12);
+      expect(snapshot.statements).toBe(15);
     } finally {
       storage.close();
     }
@@ -187,11 +202,16 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // config (html.rb:17-19), never a deck rule, so render.ts's fold
       // composition no longer appends the *default html view universe
       // statement - one fewer prelude statement than the cold-query lane's
-      // own tree measured (13 -> 12). (The 2026-09-23..09-26 shape was
-      // 7 round trips / 15 statements: root + 2 enrich primes + round 0 +
-      // 3 rule-lookup candidates.)
+      // own tree measured (13 -> 12). The head read-set added one back
+      // (11 -> 12) on the 2026-09-28 async-view-handle lane, inside the
+      // SAME prelude batch, so round trips stay at 3. (The 2026-09-23..
+      // 09-26 shape was 7 round trips / 15 statements: root + 2 enrich
+      // primes + round 0 + 3 rule-lookup candidates.) The p20-email-views
+      // lane added TWO prelude statements (12 -> 14, see the depth-3 test
+      // above): the email field-setting anchors and the +*test context
+      // junction priming - same batch, round trips unchanged.
       expect(snapshot.roundTrips).toBe(3);
-      expect(snapshot.statements).toBe(11);
+      expect(snapshot.statements).toBe(14);
     } finally {
       storage.close();
     }

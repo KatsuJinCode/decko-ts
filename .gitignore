@@ -25,7 +25,22 @@ tools/migrate/scratch-out/
 # rebuilt on demand; never committed
 tools/corpus-anonymizer/out/
 
-# wave D build/dev-server output (M5) + scratch
+# local credentials and per-developer config (data rule: never committed).
+# .dev.vars is Cloudflare's Workers secrets file; both are read at runtime and
+# a committed copy is a published secret.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# local sqlite databases of any name: corpus copies, scratch decks, D1 exports.
+# The one intentional fixture stays tracked.
+*.sqlite3
+*.sqlite
+!fixtures/test-corpus/test-corpus.sqlite3
+
+# build/dev-server output + scratch
 dist-ts/
 tmp/
 
@@ -39,9 +54,19 @@ benchmarks/local-paths.json
 
 # worker/deploy local state (never committed)
 deploy/.wrangler/
+# the root wrangler.toml is what `npx wrangler dev` / `d1 migrations apply
+# --local` uses, so its local D1 state lands at the repo root too
+.wrangler/
 state/
 tools/hygiene/out/
 
 # one-click CF deploy generated artifacts (scripts/deploy/one-click-deck/):
 # fitting-scale seed SQL + local workerd state, rebuilt on demand, never committed
 scripts/deploy/one-click-deck/out/
+
+# root-level scratch scripts and probe dirs: rebuilt ad hoc, never committed
+/_tmp_schema.sql
+/tmp-*.mjs
+/tmp-edge-bench/
+/tmp-lane-cssparity/
+/.zcode/

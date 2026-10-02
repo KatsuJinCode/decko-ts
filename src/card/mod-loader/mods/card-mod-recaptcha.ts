@@ -3,7 +3,7 @@
 // one html view the gem declares (the T6 verdict's
 // classification.metrics.htmlViewsMissingNames is EMPTY: nothing missing).
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-recaptcha-0.20.0/), all 8 set files (compat-report "setModules":
 // 8; setModulesByPattern abstract:1, all:1, right:3, self:3):
 //   set/abstract/recaptcha_setting.rb - events validate_recaptcha_field
@@ -64,14 +64,32 @@
 //     with the gem's own interpreter (see the per-export comments).
 //
 // NOT ported here (honest remainder, see docs/mod-loader-port-notes.md):
-//   - event :recaptcha (:validate, recaptcha.rb:50-55) +
+//   - event :recaptcha (:validate, recaptcha.rb:50-55) — PORTED 2026-10-01
+//    : registered below through the
+//     mod-event seam (the add_comment pattern, card-mod-comment.ts) with
+//     the real body — the handle_recaptcha_config_errors dispatch, the
+//     captcha_used! mark, the siteverify GET and the human? verdict that
+//     refuses the save. The event's DECK-side inputs (the recaptcha config
+//     keys, the auth state, the :captcha rule content) ride the save path's
+//     guard snapshot (ModEventSaveInput.recaptcha,
+//     mod-event-dispatch.ts), which CardActionEngine builds from its
+//     recaptcha options port + the codename registry + the *captcha rule
+//     read. NAMED REMAINDERS: (a) the anonymous-save reach — Ruby's
+//     recaptcha_on? requires !Auth.signed_in? (:20), but this engine's
+//     write path is signed-in-only (CardActionEngineOptions.actor null =
+//     read-only, types.ts:14-16), so the guard-on arms are provable at the
+//     seam level (runModEventStage) until the anonymous-create permission
+//     surface lands; (b) the *captcha rule CANDIDATE WALK — PORTED
+//     2026-10-01: the engine resolves rule(:captcha)
+//     through its own storage walk by default (ruleContentForCard,
+//     actions/rule-content-walk.ts — rule/all.rb:5-15 + 66-73 over the
+//     set-patterns port's ruleNamesForCard precedence), with the config's
+//     explicit value/function kept as the host override seam; (c)
 //     validate_recaptcha_field / set_recaptcha_site_key
-//     (recaptcha_setting.rb:1-9): the save/validate/finalize event cycle
-//     has no TS surface. The events' PORTABLE pieces are the pure
-//     functions above (the content validation, the token special-cases,
-//     the `Card.config.send "recaptcha_#{codename}="` write target); the
-//     errors.add / Card.config mutation bookkeeping is persistence
-//     semantics the engine does not run.
+//     (recaptcha_setting.rb:1-9): the content-validation pure predicate is
+//     the portable piece (recaptchaFieldContentError above); the errors.add
+//     / Card.config mutation bookkeeping is persistence semantics the
+//     engine does not run.
 //   - recaptcha_response (recaptcha.rb:41-44): POSTs the token to Google's
 //     siteverify endpoint via the `recaptcha` gem (config/late/
 //     recaptcha.rb:61-68 wires Recaptcha.configure +
@@ -80,10 +98,22 @@
 //     POST (human?, recaptchaSuccess) is ported; the POST itself is the
 //     boundary.
 //   - the format :html helper registrations hidden_form_tags (89-93) /
-//     card_form_html_opts (95-99): they hook the FORM machinery (every
-//     card_form gains data-recaptcha + the token field) - the TS engine
-//     renders no forms, so there is no hook point; the token bytes they
-//     would inject are ported as recaptchaTokenHtml below.
+//     card_form_html_opts (95-99) — PORTED 2026-10-01 (captcha-remainders
+//     lane, server-side only): the override composites below
+//     (recaptchaFormOn / recaptchaFormHtmlAttrs / recaptchaHiddenFormTags)
+//     and the emission seam at the card_form home (the form substrate's
+//     CardFormShellOpts.recaptchaTokenHtml — cardFormShell appends the
+//     bytes at Ruby's `hidden + output(yield)` position, form.rb:195).
+//     NAMED REMAINDER (the consult reach): Ruby consults the overrides
+//     from EVERY card_form through the format's module chain, reading the
+//     live guard (card.recaptcha_on?) off each rendered card. The port's
+//     form-emitting view bodies compose the decoration per form by calling
+//     the composites with the SAME guard inputs the validate event's
+//     snapshot carries; no render-path engine composes a recaptcha config
+//     yet, so a live render consult is reachable only once a host wires
+//     the render engine's recaptcha config + page-session actor (the same
+//     reach shape as remainder (a)). The browser recaptcha.js.coffee stays
+//     OUT of scope (the standing P6 decision gate).
 //   - self/admin.rb's basket[:warnings] << :recaptcha_config_issues (line
 //     1) + add_recaptcha_keys_link (24-26): the warnings basket feeds the
 //     admin page machinery (no TS consumer, same call as card-mod-help's
@@ -103,7 +133,9 @@
 //   - data/real.yml: seed data outside the mod loader's surface.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import { CardActionError } from "../../actions/types.js";
+import type { DeckoModManifest, ModEventCard } from "../mod-manifest.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
 
 // ---------------------------------------------------------------------------
 // set/all/recaptcha.rb - the error-code table + the pure predicates
@@ -308,6 +340,66 @@ export function recaptchaTokenHtml(action: string, siteKey: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// set/all/recaptcha.rb format :html - the form-stage hook composites
+// (74-104). Ruby reaches them from EVERY card_form through the format's
+// module chain (the mod's format block shadows card-mod-edit's
+// hidden_form_tags / card_form_html_opts once loaded); the port's form
+// consumers call them per form and hand the results to the card_form
+// substrate (CardFormShellOpts.recaptchaTokenHtml + the htmlAttrs pairs).
+// ---------------------------------------------------------------------------
+
+/** recaptcha.rb:101-103 recaptcha?: `card.recaptcha_on? &&
+ *  opts[:recaptcha] != :off` - the gate both overrides consult, in Ruby's
+ *  operand order (the guard short-circuits the opt check). The guard
+ *  operands ride recaptchaOn (16-23, the same conjunction the validate
+ *  event's snapshot evaluates); the opt is the ported form-opts value -
+ *  Ruby's symbol :off arrives as "off" at the port's call sites (the one
+ *  Ruby opt call site passes recaptcha: :off: card-mod-account
+ *  set/self/signin.rb:121). */
+export function recaptchaFormOn(
+  recaptchaOnOpts: Parameters<typeof recaptchaOn>[0],
+  recaptchaOpt: unknown,
+): boolean {
+  return recaptchaOn(recaptchaOnOpts) && recaptchaOpt !== "off";
+}
+
+/** recaptcha.rb:95-99 card_form_html_opts override: `super;
+ *  opts["data-recaptcha"] ||= "on" if recaptcha?(opts)`. The attribute
+ *  APPENDS to the html-opts hash - every key the base card_form_html_opts
+ *  added (form.rb:218-222: class, slotter, autosave) and every caller key
+ *  precede it, and Rails emits the hash order - and ||= is
+ *  first-write-wins: an existing data-recaptcha stands. */
+export function recaptchaFormHtmlAttrs(
+  htmlAttrs: ReadonlyArray<readonly [string, string]>,
+  formRecaptcha: boolean,
+): Array<[string, string]> {
+  const copy: Array<[string, string]> = htmlAttrs.map(
+    ([key, value]) => [key, value] as [string, string],
+  );
+  if (!formRecaptcha) return copy;
+  if (copy.some(([key]) => key === "data-recaptcha")) return copy;
+  copy.push(["data-recaptcha", "on"]);
+  return copy;
+}
+
+/** recaptcha.rb:89-93 hidden_form_tags override: `return super unless
+ *  recaptcha?(opts); super + recaptcha_token(action)`. `super` is the base
+ *  hidden_form_tags (card-mod-edit set/all/form.rb:202-205 - the success
+ *  tags); the token bytes follow it, because card_form composes
+ *  `hidden + output(yield(cform))` (form.rb:195) - success tags, token
+ *  bytes, body. The form substrate's CardFormShellOpts.recaptchaTokenHtml
+ *  emits exactly this position (mod-form-substrate.ts). */
+export function recaptchaHiddenFormTags(
+  superTags: string,
+  formRecaptcha: boolean,
+  action: string,
+  siteKey: string,
+): string {
+  if (!formRecaptcha) return superTags; // the `return super` arm (:90)
+  return superTags + recaptchaTokenHtml(action, siteKey);
+}
+
+// ---------------------------------------------------------------------------
 // set/abstract/recaptcha_setting.rb - the field validation + set predicate
 // ---------------------------------------------------------------------------
 
@@ -315,8 +407,7 @@ export function recaptchaTokenHtml(action: string, siteKey: string): string {
  *  the `m` flag: Ruby's `^`/`$` are LINE anchors (match at string start/end
  *  AND around any \n), and `match?` searches for a match anywhere - so Ruby
  *  accepts content when ANY line is entirely alphanumerics/hyphens/
- *  underscores (possibly empty). Oracle-pinned with the gem's interpreter
- *  (C:/Ruby33-x64/bin/ruby.exe, 3.3):
+ *  underscores (possibly empty). Oracle-pinned with the gem's interpreter (Ruby 3.3):
  *   /^[a-zA-Z0-9\-_]*$/.match?("ok\nbad!")  => true
  *   /^[a-zA-Z0-9\-_]*$/.match?("\nok\n")    => true
  *   /^[a-zA-Z0-9\-_]*$/.match?("bad!")      => false
@@ -362,16 +453,20 @@ export const RECAPTCHA_DEPRECATED_CONFIG_NAMES: Readonly<{
   secret_key: "recaptcha_private_key",
 };
 
-/** config/late/recaptcha.rb:20-23 @defaults - the DEVELOPMENT-ONLY keys
- *  the config falls back to (line 13: "by using the defaults below
- *  (DEVELOPMENT ONLY)"). */
-export const RECAPTCHA_DEFAULTS: Readonly<{
-  site_key: string;
-  secret_key: string;
-}> = {
-  site_key: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
-  secret_key: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
-};
+/** config/late/recaptcha.rb:20-23 @defaults - the DEVELOPMENT-ONLY key pair
+ *  the resolution falls back to (line 13: "by using the defaults below
+ *  (DEVELOPMENT ONLY)"). The pair itself is deployment configuration, not
+ *  source: a host or test supplies it per call through this shape (the same
+ *  seam the Auth::Token secret uses - the caller owns the value, the module
+ *  never stores one). An uninjected run resolves `undefined`, which
+ *  using_defaults?'s `==` (line 34) still treats as equal to an absent
+ *  resolved value (nil == nil): with no +*site key card content and no
+ *  config, recaptcha_config_issues? fires exactly as it does when the
+ *  development pair is configured. */
+export interface RecaptchaDevelopmentDefaults {
+  readonly site_key?: string;
+  readonly secret_key?: string;
+}
 
 /** lib/card/mod/recaptcha.rb:1-10 - the Cardio::Railtie config defaults
  *  (the compat report's seven cardioConfigKeys). The deprecated pair and
@@ -395,11 +490,17 @@ export const RECAPTCHA_CARDIO_CONFIG_DEFAULTS: Readonly<{
   recaptcha_verify_url: "https://www.google.com/recaptcha/api/siteverify",
 };
 
-/** config/late/recaptcha.rb:32-34 using_defaults? - the site key equals
- *  the default (self/admin.rb:3-5 recaptcha_config_issues? is exactly
- *  this check). */
-export function usingDefaults(siteKey: string | undefined | null): boolean {
-  return siteKey === RECAPTCHA_DEFAULTS.site_key;
+/** config/late/recaptcha.rb:32-34 using_defaults? - the resolved site key
+ *  equals the development default (`Cardio.config.recaptcha_site_key ==
+ *  @defaults[:site_key]`; self/admin.rb:3-5 recaptcha_config_issues? is
+ *  exactly this check). The default arrives injected; passing none compares
+ *  against `undefined`, so an absent resolution still counts as using the
+ *  default (Ruby's nil == nil) and the config-issues warning fires. */
+export function usingDefaults(
+  siteKey: string | undefined | null,
+  developmentDefault?: string,
+): boolean {
+  return siteKey === developmentDefault;
 }
 
 /** config/late/recaptcha.rb:39-44 recaptcha_setting_value's precedence:
@@ -409,15 +510,17 @@ export function usingDefaults(siteKey: string | undefined | null): boolean {
  *  Ruby guards the card read behind Codename.exist? checks (50-57, "prevent
  *  breakage in migrations") - the caller passes the card value already
  *  resolved (or undefined); blank strings are skipped (56: `value if
- *  value.present?`). `which` selects the @defaults fallback (the Ruby
- *  method resolves BOTH settings through this one path; default
- *  "site_key"). */
+ *  value.present?`). `which` selects the development-default fallback (the
+ *  Ruby method resolves BOTH settings through this one path; default
+ *  "site_key"); the pair arrives injected per {@link
+ *  RecaptchaDevelopmentDefaults}. */
 export function recaptchaSettingValue(
   cardValue: string | undefined | null,
   configValue: string | undefined | null,
   deprecatedValue: string | undefined | null,
   which: "site_key" | "secret_key" = "site_key",
-): string {
+  developmentDefaults?: RecaptchaDevelopmentDefaults,
+): string | undefined {
   if (cardValue !== undefined && cardValue !== null && cardValue !== "") {
     return cardValue;
   }
@@ -431,7 +534,7 @@ export function recaptchaSettingValue(
   ) {
     return deprecatedValue;
   }
-  return RECAPTCHA_DEFAULTS[which];
+  return developmentDefaults?.[which];
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +642,116 @@ const recaptchaSettingsCoreView: ViewFn = (ctx) =>
   [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("");
 
 // ---------------------------------------------------------------------------
+// event :recaptcha (set/all/recaptcha.rb:50-55) — the A9 port through the
+// mod-event seam
+// ---------------------------------------------------------------------------
+
+/** ::Recaptcha.get (recaptcha-4.13.2 lib/recaptcha.rb:63-77): GET
+ *  `verify_url + "?" + URI.encode_www_form(verify_hash)` with the body
+ *  text returned. URI.encode_www_form is the form-urlencoded serializer
+ *  (space -> "+", everything outside the unreserved set percent-encoded) —
+ *  the encodeURIComponent post-pass reproduces its output shape; the
+ *  siteverify params are keys/tokens (no spaces), where the two serializers
+ *  agree byte-for-byte. Ruby sets use_ssl on port 443 and a 3 s timeout
+ *  (:66-73); the fetch carries no explicit timeout (the Workers runtime's
+ *  own limits apply — disclosed divergence, same request bytes). */
+export function recaptchaSiteverifyGet(
+  verifyUrl: string,
+  query: { secret: string; response: string },
+): Promise<string> {
+  const enc = (value: string): string =>
+    encodeURIComponent(value)
+      .replace(/%20/g, "+")
+      .replace(/!/g, "%21")
+      .replace(/'/g, "%27")
+      .replace(/\(/g, "%28")
+      .replace(/\)/g, "%29")
+      .replace(/\*/g, "%2A");
+  const qs = `secret=${enc(query.secret)}&response=${enc(query.response)}`;
+  return fetch(`${verifyUrl}?${qs}`).then((res) => res.text());
+}
+
+/** The event body (recaptcha.rb:50-55):
+ *   handle_recaptcha_config_errors do
+ *     :captcha.card.captcha_used!
+ *     human?
+ *   end
+ * The config-error arms (recaptcha.rb:57-66) become CardActionError throws
+ * (the port's save-refusal shape, the detect_conflict pattern —
+ * "conflict" -> 422 via write-routes): "grecaptcha-undefined" is the
+ * errors.add arm (:60), "recaptcha-token-field-missing" the raise arm
+ * (:62). human? (:9-14) POSTs the token through the injected transport
+ * (recaptcha_response, :41-44) and fails the save with the mapped messages
+ * when the verdict is not human. A non-JSON verify body raises
+ * JSON::ParserError in Ruby — JSON.parse throws the same way here. */
+export async function recaptchaEventFn(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rec = ctx.saveInput?.recaptcha;
+  if (rec === undefined) return;
+  const config = handleRecaptchaConfigErrors(rec.token);
+  if (config.kind === "add-error") {
+    throw new CardActionError("recaptcha", config.message ?? "");
+  }
+  if (config.kind === "card-error") {
+    // Ruby raises Card::Error (not a validation error) — the port carries
+    // the message on the engine's own CardActionError; write-routes maps
+    // it by code like every other refusal.
+    throw new CardActionError("recaptcha", config.message ?? "");
+  }
+  rec.markUsed(); // recaptcha.rb:52 — BEFORE the verify (:71 skips the next)
+  const body = await rec.verify(rec.guard.verifyUrl, {
+    secret: String(rec.guard.secretKey ?? ""),
+    response: rec.token ?? "",
+  });
+  const result = JSON.parse(body) as {
+    success?: unknown;
+    score?: unknown;
+    action?: unknown;
+    "error-codes"?: readonly string[];
+  };
+  // recaptcha.rb:38 `result["action"].to_sym == action.to_sym` — Card#action,
+  // the acting save's own create/update.
+  const action = card.act?.action ?? "update";
+  const verdict = humanCheck(result, rec.guard.minimumScore, action);
+  if (!verdict.human) {
+    // add_recaptcha_errors (:25-33): one errors.add per code (or the single
+    // default). The ActiveRecord failure carries them as a list — the port
+    // joins one line per added error.
+    throw new CardActionError("recaptcha", verdict.errorMessages.join("\n"));
+  }
+}
+
+/** The `when: :validate_recaptcha?` predicate (recaptcha.rb:68-72):
+ *  `return false unless Card::Codename.exist? :captcha; !@supercard &&
+ *  !:captcha.card.captcha_used? && recaptcha_on?`. Every operand rides the
+ *  save path's guard snapshot — the engine resolves the deck config, its
+ *  own auth state and the host's *captcha rule content before the validate
+ *  walk (the sync predicate cannot await the rule read; the engine can). */
+export const recaptchaModEventPredicates = {
+  validate_recaptcha: (_card: ModEventCard, ctx?: ModEventContext): boolean => {
+    const rec = ctx?.saveInput?.recaptcha;
+    if (rec === undefined) return false;
+    return validateRecaptcha({
+      captchaCodenameExists: rec.guard.captchaCodenameExists,
+      isSupercard: rec.guard.isSupercard,
+      captchaUsed: rec.isUsed(),
+      recaptchaOn: recaptchaOn({
+        siteKey: rec.guard.siteKey,
+        secretKey: rec.guard.secretKey,
+        envController: rec.guard.envController,
+        signedIn: rec.guard.signedIn,
+        alwaysOk: rec.guard.alwaysOk,
+        needsSetup: rec.guard.needsSetup,
+        captchaRuleContent: rec.guard.captchaRuleContent,
+      }),
+    });
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -557,13 +770,26 @@ const cardModRecaptcha: DeckoModManifest = {
     },
     {
       // card-mod-recaptcha-0.20.0/set/all/recaptcha.rb - event :recaptcha
-      // (:validate, 50-55) + the format :html helper block (74-104): the
-      // event is validation-cycle persistence; the helpers hook the form
-      // machinery the engine does not run. The portable bytes ride the
-      // exported RECAPTCHA_ERROR_CODES / humanCheck / recaptchaOn /
-      // recaptchaErrorMessages / recaptchaSuccess / handleRecaptchaConfigErrors
-      // / validateRecaptcha / recaptchaTokenHtml above. No views declared.
+      // (:validate, 50-55; no on: — it applies to every action, the
+      // dispatcher's absent-on rule) + the format :html helper block
+      // (74-104): the helpers hook the form machinery the engine does not
+      // run. The event body rides the exported recaptchaEventFn; the
+      // `when: :validate_recaptcha?` predicate rides
+      // recaptchaModEventPredicates above (the runtime composition merges
+      // this table beside the comment mod's, ModEventRuntime.predicates).
+      // The portable bytes ride the exported RECAPTCHA_ERROR_CODES /
+      // humanCheck / recaptchaOn / recaptchaErrorMessages / recaptchaSuccess
+      // / handleRecaptchaConfigErrors / validateRecaptcha /
+      // recaptchaTokenHtml above. No views declared.
       setPath: "all/recaptcha",
+      events: [
+        {
+          event: "recaptcha",
+          at: "validate",
+          when: "validate_recaptcha",
+          fn: recaptchaEventFn,
+        },
+      ],
     },
     {
       // card-mod-recaptcha-0.20.0/set/right/captcha.rb - assign_type
@@ -581,9 +807,13 @@ const cardModRecaptcha: DeckoModManifest = {
     },
     {
       // card-mod-recaptcha-0.20.0/set/self/admin.rb - the warnings-basket
-      // push (line 1) + admin html helpers; the portable message bytes
-      // ride recaptchaConfigIssuesMessage / usingDefaults above.
+      // push (line 1: `basket[:warnings] << :recaptcha_config_issues`) +
+      // admin html helpers; the portable message bytes ride
+      // recaptchaConfigIssuesMessage / usingDefaults above. Oracle-pinned:
+      // the *admin :warning alert's second <li>
+      // (fixtures/captured/admin-views-2-oracle.json).
       setPath: "self/admin",
+      basketWarnings: ["recaptcha_config_issues"],
     },
     {
       // card-mod-recaptcha-0.20.0/set/self/captcha.rb:1-5 setting_opts.

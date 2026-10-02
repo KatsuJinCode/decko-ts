@@ -4,7 +4,7 @@
 // columns) and the mysqldump shape (full schema) both land identically.
 
 import { describe, it, expect, afterAll } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -20,8 +20,13 @@ function makeDir(): string {
 }
 afterAll(() => {
   for (const d of dirs) {
-    // no rm; tmpdir cleanup is OS-managed on Windows
-    void d;
+    // Best-effort cleanup; every database handle is closed by the time
+    // this runs, so the removal should normally succeed.
+    try {
+      rmSync(d, { recursive: true, force: true });
+    } catch {
+      // ignore — the temp dirs live under the OS temp root either way
+    }
   }
 });
 

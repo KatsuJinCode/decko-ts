@@ -20,11 +20,11 @@
 // Those rungs require a real PostgreSQL instance. The driver is not
 // proven byte-parity without them — the doc above is the spec.
 //
-// LIVE SKIP: a real PG URL via POSTGRES_URL would route the conformance
-// suite to a live path, but this file does NOT include that path — the
-// pg client is not a dependency in this repo today, and adding it is a
-// future stream's call. The live-PG rung is documented as the path
-// forward; the in-repo test surface is the dialect-mapping battery.
+// LIVE PATH: the live-PG conformance surface is not wired in this repo —
+// the pg client is not a dependency today, and adding it is a future
+// stream's call. The live-PG rung in docs/postgres-dialect-notes.md is
+// the documented path forward; the in-repo test surface is the
+// dialect-mapping battery.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
@@ -191,24 +191,5 @@ describe("PostgresDriver (FakePostgresConnection)", () => {
       expect(conn["released"]).toBe(true);
     });
   });
-
-  describe("live-PG skip (env gate)", () => {
-    it("is skipped when POSTGRES_URL is not set; document this for the live rung", () => {
-      // The Postgres driver is intended to run against a live PG server
-      // when POSTGRES_URL is set. This repo does NOT carry the `pg`
-      // client dependency; the live-PG rung lives in a future stream
-      // (see docs/postgres-dialect-notes.md "Live-PG rung"). This test
-      // records the contract: POSTGRES_URL gates the live path, and the
-      // dialect-mapping path (everything above) runs unconditionally.
-      //
-      // If a future stream adds `pg`, the live tests plug in here.
-      if (!process.env["POSTGRES_URL"]) {
-        return;
-      }
-      throw new Error(
-        "POSTGRES_URL is set but this repo does not yet have a live-PG test path. " +
-          "See docs/postgres-dialect-notes.md 'Live-PG rung' for the spec.",
-      );
-    });
-  });
 });
+

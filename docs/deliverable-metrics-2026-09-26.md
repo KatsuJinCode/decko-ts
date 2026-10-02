@@ -156,7 +156,7 @@ The warm budget was green at landing (6.05 ms on 2026-09-23) and is red today on
 
 Also demonstrated this session (§3d): the same engine runs as a Cloudflare Worker on local workerd — zero VM, zero DB process, D1+sqlite file — and is one-click deployable to CF's free tier (scorecard: demo'd live at `decko-one-click-demo.jpswilner.workers.dev`).
 
-**Live (culturesmith.com):** Cloudflare edge in front (browser negotiated `h2`; direct curl is challenge-blocked), Rails + Postgres origin per the ask's brief — consistent with decko being a Rails/Ruby app (the oracle measured in §3a runs `card_gem 1.110.0` / `decko_gem 0.20.0` on SQLite). No origin CPU/RAM numbers were (or could be) read this session — none are invented here.
+**Live (culturesmith.com):** Cloudflare edge in front (browser negotiated `h2`; direct curl is challenge-blocked), Rails + Postgres origin — consistent with decko being a Rails/Ruby app (the oracle measured in §3a runs `card_gem 1.110.0` / `decko_gem 0.20.0` on SQLite). No origin CPU/RAM numbers were (or could be) read this session — none are invented here.
 
 **Fraction, stated plainly:** ours serves Brandon's full browsable deck from **one Node process at ~120 MB RSS on a shared 2-vCPU VM with no database process**, while the live stack keeps a Rails+Postgres origin warm enough to answer every navigation in ~0.6–1.5 s. The engine itself renders in 0.5–1 ms server-side (workerd `__metrics`) to ~30 ms warm (in-process benches).
 

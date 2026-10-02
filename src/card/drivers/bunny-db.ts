@@ -105,9 +105,9 @@ export interface BunnyDbQueryCounterLike {
 }
 
 /** Default no-op counter: zero allocation cost when the metric is not
- *  needed. A live counter is allocated on demand by the driver when
- *  options.queryCounter is not supplied AND options.includeDefaultCounter
- *  is true; otherwise the default is this singleton. */
+ *  needed. The driver falls back to this singleton whenever
+ *  options.queryCounter is not supplied; pass a BunnyDbQueryCounter to
+ *  measure. */
 export class NoopBunnyDbQueryCounter implements BunnyDbQueryCounterLike {
   recordQuery(_sql: string): void {
     /* intentionally empty */

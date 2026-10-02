@@ -20,8 +20,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
+  seedReference,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render/format.js";
@@ -75,7 +77,6 @@ beforeAll(async () => {
     id: 201,
     leftId: 200,
     rightId: 110,
-    typeId: 14, // setting type (junctions are setting-typed)
     dbContent: "discussion junction body",
   });
 
@@ -85,6 +86,38 @@ beforeAll(async () => {
     name: "Oracle Comment Probe",
     dbContent: "comment probe body",
   });
+
+  // The write-rule fallback the A/B depends on. Real decko decks bootstrap
+  // *all+*update off the *all set (card-mod-permissions-0.20.0/data/real.yml
+  // :14-19, the codename-all fields block; the recorded corpus carries it as
+  // rule 6572 per tests/card/actions/actions-test-storage.ts:190-192). With
+  // NO update rule card in the seed the write verdict fail-closes —
+  // permitVerdict denies when the deck carries no rule data (Ruby who_can ->
+  // [] -> among? -> false, set/all/permissions.rb:47-49 :100-118; missing
+  // rule -> PermissionDenied, :77-85) — and comment_box's perms-update gate
+  // (view-perms.ts VIEW_PERMS_DIRECTIVES comment_box: "update", from
+  // card-mod-comment set/all/comment.rb:46) denies BEFORE view dispatch
+  // (permission.rb:19-23 altered_view runs ahead of render.rb:59-63
+  // view_method, the only UnsupportedViewError raise). A denied comment_box
+  // renders its :blank denial (DENIAL_VIEW, view-perms.ts) — the empty
+  // string the A/B saw. The suite's pins model the anonymous actor PASSING
+  // update (the author-label arm renders only for anonymous,
+  // all/comment.rb:74-77), so this fixture grants [[Anyone]] — one step
+  // wider than real.yml's Anyone Signed In default, the exact configuration
+  // where the A/B isolates view REGISTRATION rather than the permission
+  // matrix. Scoped to this file: other render suites pin anonymous DENIALS
+  // and must keep their rule-less fixture.
+  await seedCard(s, { id: 121, name: "*update", codename: "update", typeId: 14 });
+  await seedCard(s, { id: 122, name: "Anyone", codename: "anyone" });
+  await seedCard(s, {
+    id: 123,
+    name: "*all+*update",
+    leftId: 10,
+    rightId: 121,
+    typeId: 13,
+    dbContent: "[[Anyone]]",
+  });
+  await seedReference(s, 123, 122, "anyone");
 }, 60_000);
 
 afterAll(() => {
@@ -98,8 +131,14 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     // :open / :titled / :titled_content / :core are base views (they render
     // successfully without the mod); only the mod-specific views that the
     // gem introduces are absent from the registry.
-    await expect(s.engine.render("Oracle Discussion Probe+discussion", "open_content")).rejects.toThrow(
-      UnsupportedViewError,
+    //
+    // :open_content left this list on lane-mod-a commit 7b40a70. It is
+    // declared in card-mod-format's BASE format (set/all/base.rb:93-95,
+    // `_render_core`), so it was never mod-specific — the engine just had no
+    // registration for it until the shared HTML_VIEWS table gained one. It
+    // renders now, which is the Ruby-faithful shape.
+    expect(await s.engine.render("Oracle Discussion Probe+discussion", "open_content")).toBe(
+      await s.engine.render("Oracle Discussion Probe+discussion", "core"),
     );
     await expect(s.engine.render("Oracle Discussion Probe+discussion", "input")).rejects.toThrow(
       UnsupportedViewError,
@@ -109,23 +148,40 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :comment_box renders the structural form HTML (all/comment.rb:46-53)", async () => {
+  it("WITH the mod: :comment_box renders the Rails card_form bytes (all/comment.rb:46-53)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModComment }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("Oracle Comment Probe", "comment_box");
-    // The form's literal HTML, in order. The DeckoName#urlKey keeps the
-    // original case, replacing spaces with underscores — the canonical
-    // form used by every /:url_key Rails route.
+    // The Ruby card_form shape (card-mod-edit set/all/form.rb:193-224 +
+    // comment.rb:46-53), byte-verified against the live deck by the
+    // board-stage3 lane's engage_tab oracle capture (the CREATE branch is
+    // pinned there; this probe walks the UPDATE branch of the same
+    // machinery: autosave class (form.rb:221, :update-only), the
+    // _method patch spoof (the PERSISTED-record form_for quirk),
+    // /update/<mark> (path(action: :update)), and the Rails textarea
+    // (rows, " form-control", newline-wrapped empty value). The author
+    // label renders - this engine is anonymous (comment.rb:74-77 nils it
+    // only for signed-in actors).
     expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<form action="/Oracle_Comment_Probe/update" method="post">');
-    expect(html).toContain('<textarea name="comment" rows="3"></textarea>');
+    expect(html).toContain(
+      '<form class="card-form slotter autosave" id="edit_card_210" action="/update/Oracle_Comment_Probe" accept-charset="UTF-8" data-remote="true" method="post">',
+    );
+    expect(html).toContain(
+      '<input type="hidden" name="_method" value="patch" autocomplete="off" />',
+    );
+    expect(html).toContain(
+      '<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">',
+    );
     expect(html).toContain('<div class="comment-buttons">');
     expect(html).toContain('<label>My Name is:</label>');
     expect(html).toContain('<input type="text" name="comment_author">');
-    expect(html).toContain('<button type="submit" class="comment-submit">Comment</button>');
+    expect(html).toContain(
+      '<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button>',
+    );
     expect(html).toContain('</form>');
     expect(html).toContain('</div>');
     // The hidden name field is NOT rendered for an existing card.
@@ -164,7 +220,7 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     const html = await s.engine.render("Oracle Discussion Probe+discussion", "titled_content");
     expect(html).toContain("discussion junction body");
     expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<textarea name="comment" rows="3"></textarea>');
+    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
   it("WITH the mod: discussion :core dispatches to base core AND appends comment_box (right/discussion.rb:8-10)", async () => {
@@ -176,7 +232,7 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     // render_comment_box(optional: :hide)]`).
     expect(html).toContain("discussion junction body");
     expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<textarea name="comment" rows="3"></textarea>');
+    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
   it("WITH the mod: discussion :input falls through to base input (right/discussion.rb:12-16, non-editor branch)", async () => {

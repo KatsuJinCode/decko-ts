@@ -51,6 +51,12 @@ export interface ParsedNest {
   /** comment nest: `{{#...}}` renders the comment visibly, `{{##...}}`
    *  renders nothing (nest.rb#interpret). */
   comment: string | undefined;
+  /** Chunk-only: the nest_syntax value Ruby's chunk/nest.rb:23 stores
+   *  (`@options.merge nest_syntax: in_brackets`). Undefined for
+   *  programmatic nests (the mod manifests construct ParsedNest directly
+   *  without going through interpretNest). format.ts gates the slot
+   *  JSON's nest_syntax field on this presence. */
+  chunkNestSyntax?: string;
 }
 
 /** The subset of nest options this renderer consumes. Values stay strings
@@ -170,11 +176,16 @@ function interpretNest(inBrackets: string): ParsedNest {
       comment: rawName.startsWith("##") ? "" : `<!-- ${escapeHtml(inBrackets)} -->`,
     };
   }
+  // chunk/nest.rb:23 — chunk nests merge nest_syntax: in_brackets into
+  // their @options. We carry the same value on ParsedNest.chunkNestSyntax
+  // (a top-level field, separate from options, so scanNests consumers
+  // can still assert options shape without the chunk annotation).
   return {
     syntax: stripped,
     name: rawName,
     options: parseNestOptions(optLists),
     comment: undefined,
+    chunkNestSyntax: stripped,
   };
 }
 

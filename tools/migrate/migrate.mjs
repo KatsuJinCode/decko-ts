@@ -275,6 +275,7 @@ async function runEngineVerificationSpawn(opts, reportPath) {
       encoding: "utf8",
       timeout: 15 * 60 * 1000,
       stdio: opts.quiet ? "pipe" : "inherit",
+      windowsHide: true,
       env: {
         ...process.env,
         DECKO_MIGRATE_REPORT: reportPath,

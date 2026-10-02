@@ -58,7 +58,7 @@ const rel = (p) => path.relative(repoRoot, p).replace(/\\/g, "/");
 
 if (!runVitest) {
   const tsc = spawnSync("npx", ["tsc", "--noEmit", "--pretty", "false"], {
-    cwd: repoRoot, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024,
+    cwd: repoRoot, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024, windowsHide: true,
   });
   const out = `${tsc.stdout ?? ""}${tsc.stderr ?? ""}`;
   const lines = out.split("\n").filter((l) => /\(\d+,\d+\): error TS/.test(l));
@@ -77,7 +77,7 @@ if (runVitest) {
   let out = "";
   try {
     out = execSync("npx vitest run --reporter=default 2>&1", {
-      cwd: repoRoot, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024,
+      cwd: repoRoot, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024, windowsHide: true,
     });
   } catch (e) {
     out = String(e.stdout ?? "") + String(e.stderr ?? "");

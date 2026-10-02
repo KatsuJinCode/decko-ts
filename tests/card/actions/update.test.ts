@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
-import { CardActionError, type CardActionEngine } from "../../../src/card/actions/index.js";
+import { type CardActionEngine } from "../../../src/card/actions/index.js";
 import {
   actionEngine,
   createActionsTestStorage,
@@ -219,18 +219,63 @@ describe("updateCard — junction rewire", () => {
     expect(sideAction).toMatchObject({ super_action_id: rename.id, action_type: 0 });
   });
 
-  it("rejects renames that would make the card its own DIRECT ancestor", async () => {
+  it("renames a simple card onto its own child: the self side is RESTRUCTURED (prepare_obstructed_side, name_events.rb:144-150)", async () => {
     const f = await fresh();
     const banana = await seedCard(f.storage, { name: "banana" });
-    await seedCard(f.storage, { leftId: f.joeCard.id, rightId: banana.id }); // Pudding+banana
+    const junction = await seedCard(f.storage, { leftId: f.joeCard.id, rightId: banana.id }); // Pudding+banana
+    // warm the descendant composition before the rename
+    await expect(f.engine.fetchByName("Pudding+banana")).resolves.toMatchObject({ id: junction.id });
     const engine = actionEngine(f.storage);
-    // renaming Pudding to "Pudding+x": its own id would become its left side
-    // (Ruby instead restructures via prepare_obstructed_side,
-    // name_events.rb:143-150 — the port rejects; see the notes doc)
-    await expect(
-      engine.updateCard({ cardId: f.joeCard.id, name: "Pudding+x" }),
-    ).rejects.toMatchObject({ code: "cycle" });
-    await engine.createCard({ name: "Pudding+x" }); // sanity: the name is still free
+    // renaming Pudding to "Pudding+x" makes its own id the LEFT side. Ruby
+    // does not reject this shape ("renames simple card to its own child",
+    // name_events_spec.rb:43-45): prepare_obstructed_side (name_events.rb:
+    // 144-150) clears the renaming row and the side becomes a FRESH subcard
+    // in the same act, so the cycle guard must not fire on the direct self
+    // side.
+    const result = await engine.updateCard({ cardId: f.joeCard.id, name: "Pudding+x" });
+    expect(result?.cardId).toBe(f.joeCard.id);
+
+    // The renamed row is a junction row: no stored name/key, sides point at
+    // OTHER cards — never at itself.
+    const card = await cardRow(f, f.joeCard.id);
+    expect(card).toMatchObject({ name: null, key: null });
+    const leftId = card.left_id as number;
+    const rightId = card.right_id as number;
+    expect(leftId).not.toBeNull();
+    expect(rightId).not.toBeNull();
+    expect(leftId).not.toBe(f.joeCard.id);
+    expect(rightId).not.toBe(f.joeCard.id);
+
+    // The obstructed side is a FRESH Pudding card; "x" is a fresh side too.
+    // Both resolve the new-card template type (type.rb:76-78; this deck's
+    // *all+*default rule carries the RichText type).
+    const pudding = await f.storage.selectOne<Row>("SELECT id, type_id FROM cards WHERE `key` = ?", [
+      "pudding",
+    ]);
+    const x = await f.storage.selectOne<Row>("SELECT id, type_id FROM cards WHERE `key` = ?", ["x"]);
+    expect(pudding?.id).toBe(leftId);
+    expect(x?.id).toBe(rightId);
+    expect(pudding?.type_id).toBe(2);
+    expect(x?.type_id).toBe(2);
+
+    // Lexicon end state: the old key answers the fresh side, the compound
+    // name answers the renamed row, and the descendant junction composes
+    // through the renamed row (reference_events.rb:40-47).
+    expect(await f.engine.lexicon.id("pudding+x")).toBe(f.joeCard.id);
+    expect(await f.engine.lexicon.id("pudding")).toBe(leftId);
+    expect((await f.engine.lexicon.name(f.joeCard.id))?.s).toBe("Pudding+x");
+    const composed = await f.engine.fetchByName("Pudding+x+banana");
+    expect(composed?.id).toBe(junction.id);
+    expect(composed?.name?.s).toBe("Pudding+x+banana");
+
+    // One act: the rename plus the two created sides' create actions, the
+    // sides linked as subactions (subcards/all.rb:15-22).
+    const actions = await f.storage.selectAll<Row>("SELECT * FROM card_actions ORDER BY id");
+    expect(actions).toHaveLength(3);
+    const rename = actions.find((a) => a.card_id === f.joeCard.id) as Row;
+    for (const side of actions.filter((a) => a.card_id !== f.joeCard.id)) {
+      expect(side).toMatchObject({ super_action_id: rename.id, action_type: 0 });
+    }
   });
 
   it("rejects INDIRECT cycles through the junction graph", async () => {
@@ -242,12 +287,7 @@ describe("updateCard — junction rewire", () => {
     const engine = actionEngine(f.storage);
     await expect(
       engine.updateCard({ cardId: f.joeCard.id, name: "Pudding+waffle+cake" }),
-    ).rejects.toThrowError(CardActionError);
-    try {
-      await engine.updateCard({ cardId: f.joeCard.id, name: "Pudding+waffle+cake" });
-    } catch (e) {
-      expect((e as CardActionError).code).toBe("cycle");
-    }
+    ).rejects.toMatchObject({ code: "cycle" });
     expect(junction.id).toBeGreaterThan(0); // the graph is unchanged
     expect(await f.storage.count("card_actions")).toBe(0);
   });

@@ -10,7 +10,7 @@
 //   1. INGEST the source through the matching existing module:
 //        SQLite file   -> source-sqlite.mjs (read-only keyset pagination)
 //        mysqldump text-> parse-dump.mjs (streaming INSERT parser)
-//        deck-INSERT   -> deck-seed-parser.mjs (this M5's new parser)
+//        deck-INSERT   -> deck-seed-parser.mjs (the deck-INSERT parser)
 //      All three produce the same { table, columns, values } row shape.
 //   2. MAP each row through schema-map.mjs into the target DDL column
 //      order (handles `content` -> `db_content` rename and NULL-fills
@@ -190,6 +190,10 @@ if (existsSync(stagingPath)) rmSync(stagingPath, { force: true });
 const stagingDriver = new LocalSqliteToolDriver(stagingPath);
 const stagingStartedAt = Date.now();
 let stagingStats = { rowsEmitted: 0, elapsedMs: 0, errors: [] };
+// Cards rows seen in the SOURCE stream (pre-dedup, pre-insert). Compared
+// against the staged count at validation time so the summary parity is a
+// real source-vs-staging check, not a value against itself.
+let streamedCardsCount = 0;
 
 if (sourceKind === "sqlite") {
   // Use the existing generalized-import.mjs: it already handles schema
@@ -264,6 +268,7 @@ if (sourceKind === "sqlite") {
     buffer = [];
   };
   for await (const row of rowsIter) {
+    if (row.table === "cards") streamedCardsCount += 1;
     const targetCols = tableColumns[row.table];
     if (targetCols === undefined) continue;
     const sourceColumns = row.columns ?? targetCols;
@@ -394,10 +399,9 @@ async function* readStagingRows(targetTableNames) {
     .filter((t) => targetTableSet.has(t))
     .sort();
   for (const table of sortedTables) {
-    const cols = tableColumns[table];
-    const colList = cols.map((c) => `"${c}"`).join(", ");
-    const idIdx = cols.indexOf("id");
-    let lastRowid = 0;
+  const cols = tableColumns[table];
+  const colList = cols.map((c) => `"${c}"`).join(", ");
+  let lastRowid = 0;
     for (;;) {
       const r = await stagingDriver.query(
         `SELECT rowid AS __rowid, ${colList} FROM "${table}" WHERE rowid > ? ORDER BY rowid LIMIT ?`,
@@ -411,7 +415,6 @@ async function* readStagingRows(targetTableNames) {
       }
       if (r.rows.length < 10000) break;
     }
-    void idIdx;
   }
 }
 
@@ -469,6 +472,7 @@ if (opts.apply) {
           encoding: "utf8",
           timeout: 30 * 60 * 1000,
           stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
         },
       );
       log = res.stdout ?? "";
@@ -509,11 +513,17 @@ if (opts.apply) {
 // ---------------------------------------------------------------------------
 console.log("\nvalidate: card count, junction count, integrity");
 
-const sourceCardsCount = (await stagingDriver.query("SELECT COUNT(*) AS n FROM cards", [])).rows[0]?.n ?? 0;
+const stagingCardsCount = (await stagingDriver.query("SELECT COUNT(*) AS n FROM cards", [])).rows[0]?.n ?? 0;
 const sourceJunctionsCount = (await stagingDriver.query(
   "SELECT COUNT(*) AS n FROM cards WHERE left_id IS NOT NULL AND trash = 0",
   [],
 )).rows[0]?.n ?? 0;
+// Genuine source count: rows the source stream carried for `cards`
+// (generalized-import counts them per table; the streaming ingest path
+// counts them inline above).
+const sourceCardsRows = sourceKind === "sqlite"
+  ? Number(stagingStats.counts?.cards ?? stagingCardsCount)
+  : streamedCardsCount;
 
 const report = await buildReport({
   targetDriver: stagingDriver,
@@ -522,7 +532,7 @@ const report = await buildReport({
   sourcePath,
   sourceKind,
   sourceBytes,
-  sourceCardsCount: Number(sourceCardsCount),
+  sourceCardsCount: Number(stagingCardsCount),
   sourceJunctionsCount: Number(sourceJunctionsCount),
   tableColumns,
   chunks: chunkResult.chunks,
@@ -560,7 +570,7 @@ writeReport(report, reportPath);
 
 stagingDriver.close();
 
-console.log(`  cards:      source=${sourceCardsCount} staging=${sourceCardsCount} (parity=${sourceCardsCount === Number(sourceCardsCount)})`);
+console.log(`  cards:      source=${sourceCardsRows} staging=${stagingCardsCount} (parity=${Number(stagingCardsCount) === sourceCardsRows})`);
 console.log(`  junctions:  staging=${sourceJunctionsCount}`);
 console.log(`  integrity:  orphans(left=${report.integrity.orphanLeftCount}, right=${report.integrity.orphanRightCount})`);
 console.log(`  junction walk: ${report.integrity.junctionWalk.resolved}/${report.integrity.junctionWalk.sampled} resolved`);

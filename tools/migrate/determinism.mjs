@@ -26,7 +26,6 @@
 // changed shape; a match in id sets + mismatch in hashes = importer
 // changed bytes for the same row.
 
-import { open } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 
@@ -188,6 +187,5 @@ export async function proveDeterminism({
     a.close();
     b.close();
   }
-  void open; // keep the import shape parallel to other modules
   return result;
 }

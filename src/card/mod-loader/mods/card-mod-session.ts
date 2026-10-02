@@ -3,7 +3,7 @@
 // in the request session hash instead of the database, plus the all-cards
 // location-history bookkeeping (the "previous page" redirect target).
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-session-0.20.0/): two set files, one lib file, one admin config,
 // one seed file:
 //   set/all/location_history.rb   - events :discard_deleted_locations
@@ -28,8 +28,6 @@
 // modules and the semantics that survive a headless engine:
 //   - both set modules registered in the loader's set-module basket (the
 //     port of Card::Set module registration - loader.ts phase 2)
-//   - the Session card's PURE method overrides, preserved as exported
-//     functions below (session.rb:9-19, 21-23, 47-53, 55-57)
 //   - lib/card/mod/session.rb's config value as an exported constant
 //
 // NOT ported (honest remainder - every piece needs a Rails write-path /
@@ -48,6 +46,15 @@
 //   reads Env.ajax? / Env.params[:is_main] and mutates the success object
 //   (success.card/view/redirect/target); all four are controller-runtime
 //   state with no TS counterpart
+// - set/type/session.rb:9-19 history?/followable?/recaptcha_on? (each a
+//   constant false), :47-53 ok_to_create?/ok_to_update? (constant true),
+//   :21-23 session_key ("_card_#{key}"), and :55-57 add_to_trash (merge
+//   trash: true into the delete args) - every one a one-line constant or
+//   pure transform in Ruby, with nothing to attach to here: the TS engine
+//   has no card-method-override surface through which a Session type could
+//   displace the base Card#history?/ok_to_create?/... methods, and no
+//   caller of the standalone shapes. The Ruby lines above are the record;
+//   the method-override seam that adopts them does not exist yet
 // - set/type/session.rb:25-27 session_content + :29-31 session_content= +
 //   :5-7 virtual? + :33-35 content override - ALL read/write
 //   Env.session[session_key], the request-level key-value session hash.
@@ -87,69 +94,6 @@
 import type { DeckoModManifest } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
-// set/type/session.rb - the Session card's PURE method overrides.
-//
-// These are preserved as exported functions because they are the whole of
-// session.rb's semantics that a headless engine can carry: every one is a
-// constant or a pure function of its arguments in Ruby. The TS engine has
-// no card-method-override surface (a set module cannot displace the base
-// Card#history? etc. here), so nothing dispatches to them yet - they are
-// the cited, testable transcription of the Ruby methods, ready for the
-// method-override seam when it lands.
-// ---------------------------------------------------------------------------
-
-/** session.rb:9-11 `def history?; false; end` - Session cards have no
- *  acts/changes history (nothing is stored, so there is nothing to
- *  revision). */
-export function sessionCardHistory(): false {
-  return false;
-}
-
-/** session.rb:13-15 `def followable?; false; end` - no follow triggers:
- *  a card whose content is per-user session state cannot notify others. */
-export function sessionCardFollowable(): false {
-  return false;
-}
-
-/** session.rb:17-19 `def recaptcha_on?; false; end` - never recaptcha a
- *  session-scoped write (the recaptcha check lives on persisted saves). */
-export function sessionRecaptchaOn(): false {
-  return false;
-}
-
-/** session.rb:47-49 `def ok_to_create?; true; end` - creating a Session
- *  card is always permitted (its content never reaches the database, so
- *  the create permission machinery is bypassed). */
-export function sessionOkToCreate(): true {
-  return true;
-}
-
-/** session.rb:51-53 `def ok_to_update?; true; end` - same bypass for
- *  updates. */
-export function sessionOkToUpdate(): true {
-  return true;
-}
-
-/** session.rb:21-23 `def session_key; "_card_#{key}"` - the session-hash
- *  key a Session card's content rides: the literal prefix "_card_" joined
- *  to the card's canonical key (DeckoName.key, e.g. "My Notes" ->
- *  "my_note"). Keyed per card so two Session cards cannot collide in one
- *  session. */
-export function sessionKey(key: string): string {
-  return `_card_${key}`;
-}
-
-/** session.rb:55-57 `def add_to_trash args; yield args.merge trash: true
- *  end` - Session cards trash by merging trash: true into the args the
- *  delete machinery yields with (Ruby yields to the caller's block; a
- *  pure transform here returns the merged args, which is the observable
- *  half of that contract). Non-mutating: Ruby's Hash#merge returns a NEW
- *  hash, leaving the receiver untouched. */
-export function sessionAddToTrash<T extends object>(args: T): T & { trash: true } {
-  return { ...args, trash: true };
-}
-
-// ---------------------------------------------------------------------------
 // lib/card/mod/session.rb - the Railtie config value
 // ---------------------------------------------------------------------------
 
@@ -185,12 +129,12 @@ const cardModSession: DeckoModManifest = {
     {
       // card-mod-session-0.20.0/set/type/session.rb - the Session
       // cardtype's set module: include_set Pointer (:1), the
-      // non_createable_types basket push (:3), the method overrides ported
-      // as the exported functions above (:5-19, 21-23, 25-35, 47-53,
-      // 55-57), the store/delete-in-session events (:37-45), and the
-      // before :core hook (:59-63). Only the pure methods had a headless
-      // home; the rest is the header's NOT-ported list. Registered as
-      // Type::Session (nonbase bucket).
+      // non_createable_types basket push (:3), the card-method overrides
+      // (:5-19, 21-23, 25-35, 47-53, 55-57 - the header's NOT-ported list:
+      // the TS engine has no card-method-override surface to attach them
+      // to), the store/delete-in-session events (:37-45), and the
+      // before :core hook (:59-63). Registered as Type::Session (nonbase
+      // bucket).
       setPath: "type/session",
     },
   ],

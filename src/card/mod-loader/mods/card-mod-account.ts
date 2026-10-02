@@ -2,7 +2,7 @@
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-account-0.20.0/): 22 set rb files across the all/abstract/right/
 // self/type/type_plus_right patterns, 6 HAML templates, and one lib file
 // (Cardio config keys for password validation). Most of the gem is Rails-
@@ -14,8 +14,9 @@
 // views whose bytes do not depend on any of that infrastructure:
 //
 // - set/right/account/views.rb:14-16 :token_days (an integer from
-//   Card.config.token_expiry / 1.day, default 7; verified_days /
-//   reset_password_days are aliases per views.rb:18-20)
+//   Card.config.token_expiry / 1.day, which the railtie sets to 2.days —
+//   cardio/railtie.rb:12; verified_days / reset_password_days are aliases
+//   per views.rb:18-20)
 // - set/right/account/views.rb:65-67 :token_expiry (html block, the
 //   "<p><em>#{token_expiry_sentence}</em></p>" literal string)
 // - set/self/signin.rb:139-142 :open_content (html block, _render_core -
@@ -37,16 +38,49 @@
 // type/signup/views, type/user, type_plus_right/cardtype/account,
 // type_plus_right/role/members, type_plus_right/user/email (carries :raw).
 //
-// NOT ported (honest remainder, with one-word reasons):
-// - signin core/edit/edit_buttons/open/title/reset_password_success:
-//   rails (forms, nest_mode, card_form, haml :core)
-// - signup new/new_buttons/content_formgroups: rails (card_form,
-//   multi_card_editor). :core IS ported (R17 — the invite-links haml
-//   core, see signupCoreView; set/type/signup/core.haml +
-//   views.rb:30-33 + helpers).
-// - right/account closure/verify_url/reset_password_url/token_expiry:
-//   rails (Auth::Token.encode, card_url, path, haml :closure,
-//   ok?-predicate perms directives)
+// NOT ported (honest remainder, updated lane-follow 2026-09-28):
+// - signin reset_password_success + edit_buttons ARE PORTED now
+//   (lane-follow; the frame helper's full chrome - header/panel - is
+//   DISCLOSED remainder inside resetPasswordSuccessView's comment: the
+//   body renders in the standard slot wrap).
+// - signin edit (:154-157): the base :edit form super() target is
+//   card-mod-edit's (still unported); reset_password_voo's
+//   edit_structure rides the same machinery.
+// - signin core/open/title: rails (nest_mode with_nest_mode :edit,
+//   card_form, haml :core)
+// - signup new/new_buttons/content_formgroups: rails (the base :new
+//   form, standard_create_button + multi_card_editor - card-mod-edit's
+//   surface; account_formgroups recurses into the account right's
+//   :content_formgroups whose before-block edit_structure machinery is
+//   form.rb's). :core IS ported (R17 - the invite-links haml core, see
+//   signupCoreView; set/type/signup/core.haml + views.rb:30-33 +
+//   helpers).
+// - right/account closure IS PORTED now: the haml body via
+//   the seam's closureDeletions walk (account_holder.rb:87-89), the
+//   confirmed delete link built on the Path byte rules
+//   (follow-form-shapes.ts followPath), perms :delete in the view config.
+//   The deletion ORDER is search order (rowid) - Ruby CQL's default sort
+//   is by name; no oracle capture exists to split the two orderings at
+//   corpus sizes (DISCLOSED in the receipt follow-rule-walk.md).
+// - right/account verify_url/reset_password_url: rails (card_url + the
+//   async-HMAC x sync-ViewFn boundary the token-runtime receipt names).
+//   The Auth::Token half of the gap CLOSED 2026-09-28:
+//   src/card/auth/token.ts is a byte-parity port of
+//   card-1.110.0/lib/card/auth/token.rb pinned against the real jwt gem's
+//   own output (fixtures/captured/auth-token.json), and the signing secret
+//   is injected as RenderEngine.tokenConfig, pinned in
+//   vm-staging-server.mjs from DECKO_TOKEN_SECRET. What is left here is not
+//   the secret or the token — it is that a ViewFn is SYNCHRONOUS
+//   (src/card/render/format.ts:291) while HMAC is async, plus the
+//   card_url/path/haml/perms machinery these two views wrap. That is the
+//   same structural boundary lane-asyncview owns for the five head views.
+//   The URL BUILDER half CLOSED 2026-09-29:
+//   src/card/auth/account-verify-reset-flows.ts buildAccountTokenUrl is the
+//   token_url port (path.rb action_base + the activesupport-verified
+//   to_param query + card_url) — the FLOW consumes it; the two VIEWS stay
+//   unregistered here until the async-ViewFn seam lands (a ViewFn cannot
+//   await).
+// - right/account :token_expiry html block IS ported (see tokenExpiryView).
 // - right/password core/raw: rails (input_type/form autocomplete;
 //   raw returns i18n :account_encrypted)
 // - right/salt raw: rails (i18n :account_private_data)
@@ -54,8 +88,11 @@
 // - abstract/account_holder account_tab/configs/account_details_items:
 //   rails (board_pill_sections, Auth.as_bot, all_admin_configs_grouped_by)
 // - user setup: rails (needs_setup?, Auth.as_bot, frame_and_form)
-// - type/role link_with_checkbox/configs: rails (card_form,
-//   check_box_tag, all_admin_configs_grouped_by, list_section)
+// - type/role link_with_checkbox IS PORTED now (lane-follow; the
+//   disabled_roles subformat card_form + the check_box_tag shape from
+//   form_tag_helper.rb:455-460; the actor comes from the seam session).
+//   configs (:12-24): rails (all_admin_configs_grouped_by - the core
+//   mod's admin surface, 13 views unported there)
 // - 30 events (validate_email, encrypt_password, reset_password,
 //   generate_token, set_stamper, update_role_cache, etc.): rails (event
 //   machinery, Env.params, Auth, SecureRandom, Card.cache,
@@ -72,9 +109,31 @@
 // - assets/script/toggle_visibility.js.coffee + assets/style/account.scss:
 //   rails (coffee/scss asset pipeline)
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
+import {
+  RenderFormat,
+  Voo,
+  type ViewContext,
+  type ViewFn,
+} from "../../render/format.js";
 import { h } from "../../render/slot-html.js";
+import { modSlotWrap } from "../mod-view-helpers.js";
+// set/type/role.rb's :configs view body — the all/admin.rb machinery is the
+// core mod's (core-mod.ts: allConfigs/groupedBy/section emitters), so the
+// view fn lives there and both registrations (this manifest's Type::Role
+// and the flat HTML_VIEWS entry the mod-less graded harness dispatches)
+// share the single source. No import cycle: core-mod imports no mod files.
+import { roleConfigsView } from "./core-mod.js";
+import {
+  buttonTag,
+  cardFormOpen,
+  CARD_FORM_CLOSE,
+  checkBoxTag,
+  followPath,
+  linkTo,
+  output,
+} from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
+import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
@@ -85,13 +144,27 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** set/right/account/views.rb:14-16 view :token_days, denial: :blank:
- *  `Card.config.token_expiry / 1.day`. decko's default token expiry is 7
- *  days (card-mod-account.rb does not set it; the bootstrap mod sets it
- *  per deployment - src/server/** has no token_expiry seam, so this port
- *  pins the documented decko default). The integer renders as a string
- *  (Ruby's Integer#to_s). */
+ *  `Card.config.token_expiry / 1.day`.
+ *
+ *  CORRECTED 2026-09-28 from 7 to 2. The value is not a
+ *  decko convention — it is read straight off the railtie, and the railtie
+ *  says 2: card-1.110.0/lib/cardio/railtie.rb:12 `config.token_expiry =
+ *  2.days`. The previous comment claimed card-mod-account "does not set it"
+ *  and that "the bootstrap mod sets it per deployment"; both halves are
+ *  true and together they do not produce 7. `grep -rn token_expiry` over
+ *  the whole installed gem set (card-1.110.0 + card-mod-account-0.20.0)
+ *  returns exactly four hits: this assignment (railtie.rb:12), the one read
+ *  in token.rb:33, and the two account views that render it. There is no
+ *  other assignment, so Card.config.token_expiry is 2 days in a stock
+ *  deck and :token_days is "2".
+ *
+ *  The number is no longer hardcoded: it is DEFAULT_TOKEN_EXPIRY_SECONDS
+ *  (src/card/auth/token.ts), the same value Auth::Token.expiration uses to
+ *  stamp `exp`, so the sentence on the page and the lifetime of the link it
+ *  describes cannot drift apart. The integer renders as a string (Ruby's
+ *  Integer#to_s). */
 function tokenDaysValue(): string {
-  return "7";
+  return String(DEFAULT_TOKEN_EXPIRY_SECONDS / 86400);
 }
 
 /** set/right/account/views.rb:14-16 base body - the integer-as-string. */
@@ -111,13 +184,61 @@ const resetPasswordDaysView: ViewFn = (ctx) => tokenDaysView(ctx);
  *  `"<p><em>#{token_expiry_sentence}</em></p>"`. token_expiry_sentence =
  *  `"Link will expire in #{render_token_days} days"` (views.rb:40-42); the
  *  :token_days view (views.rb:14-16) returns Card.config.token_expiry /
- *  1.day - the decko default 7. The HTML wrap is the literal string the
- *  HAML inline block emits. The base block's token_expiry (views.rb:10-12,
- *  `"(#{token_expiry_sentence}"`) is NOT registered here: HTML dispatch
- *  wins, and the base block's content is the rubric for non-html formats
- *  we don't model. */
+ *  1.day - 2, per railtie.rb:12 (see tokenDaysValue for the correction).
+ *  The HTML wrap is the literal string the HAML inline block emits. The
+ *  base block's token_expiry (views.rb:10-12, `"(#{token_expiry_sentence}"`)
+ *  is NOT registered here: HTML dispatch wins, and the base block's content
+ *  is the rubric for non-html formats we don't model. */
 const tokenExpiryView: ViewFn = () =>
-  "<p><em>Link will expire in 7 days</em></p>";
+  `<p><em>Link will expire in ${tokenDaysValue()} days</em></p>`;
+
+// ===========================================================================
+// surfaces-batch3 (2026-09-30): the html block's remaining render views.
+// ===========================================================================
+
+/** set/right/account/views.rb:50-53 (html block) view :core:
+ *  `[account_field_nest(:email, "email"),
+ *     account_field_nest(:password, "password")]` — an array body, so
+ *  output() joins the parts with a newline (content.rb:70-73,
+ *  Array.wrap(content).flatten.compact.join "\n" — the join the
+ *  head/header lane pinned). account_field_nest (views.rb:55-57) is
+ *  `field_nest field, title: title, view: :labeled`; nesting.rb:27-31
+ *  field_nest resolves `card.name.field(field)` (the LEFT card's child —
+ *  the +*account junction's fields live on its left, the member card) and
+ *  nests it with the given title + view. The member-page account area:
+ *  two labeled field nests, email then password.
+ *
+ *  NAMED REMAINDER of the same file (NOT this view): :verify_url and
+ *  :reset_password_url (views.rb:2-8) — their bodies are exactly
+ *  buildAccountTokenUrl's output
+ *  (src/card/auth/account-verify-reset-flows.ts:483-486), but a ViewFn is
+ *  synchronous while the HMAC encode is async; the flows substitute their
+ *  own tokens until the async-view boundary lands. The before
+ *  :content_formgroups hook (views.rb:60-62) is the edit-form machinery's
+ *  (E1's) surface. */
+const accountCoreView: ViewFn = (ctx) => {
+  const fieldNest = (field: string, title: string): string =>
+    ctx.fmt.nest({
+      syntax: `{{+${field}|view:labeled|title:${title}}}`,
+      name: `+${field}`,
+      options: { view: "labeled", title, extra: {} },
+      comment: undefined,
+    });
+  return [fieldNest("email", "email"), fieldNest("password", "password")].join(
+    "\n",
+  );
+};
+
+/** set/right/password.rb:53-55 view :raw — `t :account_encrypted`; en.yml:6
+ *  carries `encrypted: encrypted` under the account scope, so the bytes are
+ *  the literal string. The password hash is NEVER rendered. */
+const passwordRawView: ViewFn = () => "encrypted";
+
+/** set/right/password.rb:81-83 (html block) view :core, wrap: :em —
+ *  `render_raw` wrapped in the em tag. The port emits the wrap in-body
+ *  (byte-identical to Ruby's wrap: :em for the html format; the loader's
+ *  config.wrap field is declaration-only today). */
+const passwordCoreView: ViewFn = () => "<em>encrypted</em>";
 
 /** set/self/signin.rb:139-142 view :open_content (html block): literally
  *  `_render_core` - the html format's `_render_<view>` machinery
@@ -130,10 +251,191 @@ const tokenExpiryView: ViewFn = () =>
  *  branch fires for typeId: 14 settings). */
 const openContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
 
+// set/self/signin.rb:134-137 view :title (`voo.title ||=
+// t(:account_sign_in_title)`) - NOT registered here: the headless view-lane
+// grading engine runs with NO ModLoader bound, so a setModule registration
+// never dispatches. The bytes are served by the render layer's
+// SELF_SET_TITLE_OVERRIDES branch (views.ts, rule-tooltips lane
+// 2026-09-29) - the same headless pattern as openView's discussion
+// comment_box check.
+
 /** set/self/signin.rb:144-146 view :one_line_content: literally `""`. The
  *  no-wrap config means the body renders bare (no slot wrapper); the
  *  empty body returns the empty string. */
 const oneLineContentView: ViewFn = () => "";
+
+// ===========================================================================
+// lane-follow (2026-09-28): the account views whose bodies need the actor
+// session + the form shapes. Bytes are RENDERED-UNPINNED (no oracle
+// captures exist for these names - verified against the capture shards).
+// The actor boundary is EXPLICIT: every Auth.current walk resolves through
+// engine.pageSession (the session field) via the follow seam
+// (src/card/follow/follow-render-seam.ts) - never a global.
+// ===========================================================================
+
+/** The seam accessor (undefined = signed out; the seam's session was
+ *  resolved from engine.pageSession only). */
+function accountFollowBundle(ctx: ViewContext) {
+  return ctx.fmt.engine.followRenderBundle?.();
+}
+
+/** en.yml (card-mod-account-0.20.0 config/locales/en.yml) - the t(:...)
+ *  strings these bodies render. */
+const ACCOUNT_LOCALE = {
+  account_check_email: "Check your email for a link to reset your password",
+  account_reset_password: "Reset password",
+  account_close_account: "Permanently Close Account",
+  // en.yml:36-37 (the folded scalar): "Are you CERTAIN you want to
+  // PERMANENTLY delete the account associated with %{accounted}?"
+  account_confirm_delete_account_prefix:
+    "Are you CERTAIN you want to PERMANENTLY delete the account associated with ",
+} as const;
+
+/** set/self/signin.rb:148-151 view :reset_password_success -
+ *  `frame { t :account_check_email }`. The frame helper (card-mod-format
+ *  set/all/html/frame.rb:6-24: with_frame -> wrap(slot) { panel {
+ *  [header, frame_help, render_flash, body] } }) needs the header/panel
+ *  machinery the layout surface owns; the port renders the body inside
+ *  the standard slot wrap - the frame's full chrome is named remainder
+ *  (the DISCLOSED shape gap, not a silent drop: the manifest's not-ported
+ *  block carries it). */
+const resetPasswordSuccessView: ViewFn = (ctx) =>
+  modSlotWrap(
+    ctx,
+    "reset_password_success",
+    ACCOUNT_LOCALE.account_check_email,
+  );
+
+/** set/self/signin.rb:165-168 view :edit_buttons -
+ *  `button_tag t(:account_reset_password), situation: "primary", class:
+ *  "_close-modal-on-success"`. bootstrapify_button folds the situation
+ *  into class FIRST (form.rb:33-36: [class, "btn", "btn-\#{situation}"]). */
+const signinEditButtonsView: ViewFn = () =>
+  buttonTag(ACCOUNT_LOCALE.account_reset_password, {
+    class: "_close-modal-on-success",
+    situation: "primary",
+  });
+
+/** set/type/role.rb:8-10 view :link_with_checkbox, cache: :never ->
+ *  role_checkbox (:26-32):
+ *    name = card.disabled? ? "add_item" : "drop_item"
+ *    subformat(Auth.current.field(:disabled_roles)).card_form :update do
+ *      [check_box_tag(name, card.id, !card.disabled?, class: "_edit-item"),
+ *       render_link]
+ *    end
+ *  Auth.current IS the session actor (the pageSession boundary). The
+ *  disabled_roles card is "<actor>+*disabled roles"; disabled? reads its
+ *  item ids (roles.rb:4-6 - the +*disabled roles list). render_link is
+ *  the card's :link view (the standard anchor). card_form :update on a
+ *  NEW card: the form_for dom id is "new_card" (Rails' unpersisted-record
+ *  dom id). */
+const linkWithCheckboxView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const bundle = accountFollowBundle(ctx);
+  const actorName =
+    bundle?.session?.actorName ?? "Anonymous"; // Auth.current (AnonymousID arm)
+  const rolesName = `${actorName}+*disabled roles`;
+  const rolesCard = ctx.fmt.engine.fetchRenderCard(rolesName);
+  const disabledIds = (rolesCard?.dbContent ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const disabled = disabledIds.includes(String(fmt.card.id));
+  const name = disabled ? "drop_item" : "add_item";
+  const box = checkBoxTag(
+    name,
+    String(fmt.card.id),
+    !disabled,
+    "_edit-item",
+  );
+  const link = fmt.renderView("link");
+  const form =
+    cardFormOpen({
+      formId: rolesCard?.id !== undefined ? `edit_card_${rolesCard.id}` : "new_card",
+      action: followPath(
+        rolesCard?.name?.urlKey ?? rolesName.replace(/ /g, "_"),
+        { action: "update" },
+      ),
+      // card_form_html_opts (form.rb:218-224): "card-form" + slotter +
+      // autosave (action == :update), persistence-independent
+    }) + box + link + CARD_FORM_CLOSE;
+  const subVoo = new Voo(undefined, "link_with_checkbox", {});
+  return modSlotWrap({ fmt, voo: subVoo }, "link_with_checkbox", form);
+};
+
+/** set/right/account/views.rb:22 view :closure, perms: :delete,
+ *  template: :haml, wrap: :slot - closure.haml. The deletion walk is the
+ *  seam's closureDeletions (account_holder.rb:87-89 closure_deletions =
+ *  Auth.as_bot { Card.search left: id, not: {right: :account} }). The
+ *  confirm string interpolates %{accounted} = accounted.name (the left
+ *  card). The button's href: path(success: { mark: "~<id>", redirect:
+ *  true, view: :closed_account }) - no action, mark+? -> the mark-only
+ *  base with the success hash as the to_param query (path.rb:42-63).
+ *  perms: :delete rides VIEW_PERMS_DIRECTIVES (the M5 machinery). */
+const closureView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  const bundle = accountFollowBundle(ctx);
+  const accountedName = card.name.leftName?.s ?? "";
+  // RenderCard carries record (the cards row) - accounted_id is
+  // right/account.rb:26-28 `left_id`
+  const accountedId = card.record.leftId;
+  const deletions = bundle?.closureDeletions ?? [];
+  const confirm =
+    ACCOUNT_LOCALE.account_confirm_delete_account_prefix + accountedName + "?";
+  const deleteeLis = deletions
+    .map(
+      (d) =>
+        `      <li>${linkTo(d.name, followPath(h(d.name).replace(/ /g, "_")))}</li>`,
+    )
+    .join("\n");
+  const closeButton = linkTo(
+    ACCOUNT_LOCALE.account_close_account,
+    followPath(card.name.urlKey, {
+      query: {
+        "success[mark]": `~${accountedId}`,
+        "success[redirect]": "true",
+        "success[view]": "closed_account",
+      },
+    }),
+    {
+      class: "btn btn-primary slotter",
+      "data-method": "delete",
+      "data-remote": "true",
+      rel: "nofollow",
+      "data-confirm": confirm,
+    },
+  );
+  const body =
+    `<div id="account-closure" class="p-3">\n` +
+    `  <h2>Close Account</h2>\n\n` +
+    `  <div class="alert-danger p-4 my-3">\n` +
+    `    <strong>Warning:</strong>\n` +
+    `    this action cannot be undone\n` +
+    `  </div>\n\n` +
+    `  <p>\n` +
+    `    Closing your account entails:\n` +
+    `    <ul>\n` +
+    `      <li>Deleting your account information and personal data</li>\n` +
+    `      <li>Anonymizing your edits</li>\n` +
+    `    </ul>\n\n` +
+    `    It does\n` +
+    `    <em>not</em>\n` +
+    `    entail deleting your collaborative contributions; that would be messy and unfair to\n` +
+    `    collaborators.\n` +
+    `  </p>\n\n` +
+    `  <div class="closure-deletions">\n` +
+    `    The following cards will be permanently deleted:\n\n` +
+    `    <ul class="py-2">\n` +
+    `${deleteeLis}\n` +
+    `    </ul>\n` +
+    `  </div>\n\n` +
+    `  <div class="button-form-group py-3 justify-content-end">\n` +
+    `    ${closeButton}\n` +
+    `  </div>\n` +
+    `</div>`;
+  return modSlotWrap(ctx, "closure", body);
+};
 
 /** set/abstract/account_holder.rb:126 view :closed_account, template:
  *  :haml, served by set/abstract/closed_account.haml:
@@ -258,9 +560,9 @@ export const signupCoreHtml = (ctx: ViewContext): string => {
 function signupAccountLines(ctx: ViewContext): string[] {
   const { fmt } = ctx;
   const engine = fmt.engine;
-  // The trait fetch composes the STAR name: card.account -> "ronald joseph
-  // +*account" (right 100 = *account; oracle probe
-  // r17-junction-fetch-probe.rb — Card.fetch("ronald joseph+account") is
+  // The trait fetch composes the STAR name: card.account -> "<card>
+  // +*account" (right 100 = *account; the r17-junction-fetch-probe.rb
+  // oracle probe — Card.fetch("<card>+account") is
   // nil and the tag card "account" does not exist). The prepare phase
   // enriches both children for the signup root (render.ts).
   const account = engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
@@ -279,7 +581,7 @@ function signupAccountLines(ctx: ViewContext): string[] {
 
 /** en locale card_date_seconds: '%B %e, %Y %H:%M:%S' (%e = space-padded
  *  day-of-month). The SQL datetime string 'YYYY-MM-DD HH:MM:SS' is split
- *  literally — the capture proves no timezone shift (ronald joseph:
+ *  literally — the capture proves no timezone shift (the probe card's
  *  DB '2023-11-18 16:24:47' -> "November 18, 2023 16:24:47"). */
 function formatCardDateSeconds(sql: string | undefined): string {
   if (sql === undefined || sql === "") return "";
@@ -329,37 +631,64 @@ const setModules: ModSetModuleFile[] = [
     // reset_password_url, token_expiry, token_days + verify_days/
     // reset_password_days aliases, closure) + :49-68 html block
     // (core + before :content_formgroups + token_expiry html override).
-    // Ported: token_days + its two deprecated aliases, plus the html
-    // block's token_expiry (the literal HTML string).
+    // Ported: token_days + its two deprecated aliases, the html
+    // block's token_expiry (the literal HTML string), and — surfaces-batch3
+    // — the html block's :core (the email+password field nests).
+    // :verify_url/:reset_password_url stay unported on the async-view
+    // boundary (see accountCoreView's note).
     setPath: "right/account/views",
     formats: {
       html: {
         views: [
+          { view: "core", viewFn: accountCoreView },
           { view: "token_days", viewFn: tokenDaysView },
           { view: "verify_days", viewFn: verifyDaysView },
           { view: "reset_password_days", viewFn: resetPasswordDaysView },
           { view: "token_expiry", viewFn: tokenExpiryView },
+          { view: "closure", viewFn: closureView, config: { perms: "delete", wrap: "slot" } },
         ],
       },
     },
   },
-  { setPath: "right/email" },
+  {
+    // set/right/email.rb:5 `assign_type :phrase` (advanced_api.rb:5-8 —
+    // the trait's cards are Phrase-typed; the +*account page's phantom
+    // +*password field slot pins type-id 52 Phrase).
+    setPath: "right/email",
+    assignsType: "phrase",
+  },
   {
     // set/right/password.rb:53-55 view :raw (base, returns t :account_
-    // encrypted) + :81-95 html block (view :core wrap: :em renders raw,
-    // helper methods input_type/autocomplete?). Not ported: rails.
+    // encrypted — en.yml:6 "encrypted") + :81-95 html block (view :core
+    // wrap: :em renders raw; helper methods input_type/autocomplete?).
+    // surfaces-batch3: BOTH views ported (the visible half of every
+    // password field — a labeled render shows the "encrypted" stand-in,
+    // never the hash). Still unported: the input_type/autocomplete?
+    // helpers (edit-form machinery) + the password validation events.
+    // Ruby :3 `assign_type :phrase` (merged from the tip's batch side).
     setPath: "right/password",
+    assignsType: "phrase",
+    formats: {
+      html: {
+        views: [
+          { view: "raw", viewFn: passwordRawView },
+          { view: "core", viewFn: passwordCoreView },
+        ],
+      },
+    },
   },
   { setPath: "right/roles" },
   {
     // set/right/salt.rb:13-15 view :raw (base, returns t :account_private_
-    // data). Not ported: rails i18n.
+    // data). Not ported: rails i18n. :3 `assign_type :phrase`.
     setPath: "right/salt",
+    assignsType: "phrase",
   },
   {
     // set/right/status.rb:6-10 html format input_type method override.
-    // No ported views.
+    // No ported views. :4 `assign_type :phrase`.
     setPath: "right/status",
+    assignsType: "phrase",
   },
   // pattern: self
   { setPath: "self/anonymous" },
@@ -378,6 +707,8 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "open_content", viewFn: openContentView },
           { view: "one_line_content", viewFn: oneLineContentView },
+          { view: "reset_password_success", viewFn: resetPasswordSuccessView },
+          { view: "edit_buttons", viewFn: signinEditButtonsView },
         ],
       },
     },
@@ -385,9 +716,20 @@ const setModules: ModSetModuleFile[] = [
   // pattern: type
   {
     // set/type/role.rb:7-37 format :html do block - :link_with_checkbox,
-    // :configs + helper role_checkbox/related_by_content_items. Not
-    // ported: rails (card_form, check_box_tag, list_section).
+    // :configs + helper role_checkbox/related_by_content_items. The :configs
+    // body (roleConfigsView) lives in core-mod.ts next to the all/admin.rb
+    // machinery it drives; the flat HTML_VIEWS registry carries the SAME fn
+    // so the mod-less graded harness dispatches identical bytes.
+    // Not ported: rails (card_form, check_box_tag, list_section).
     setPath: "type/role",
+    formats: {
+      html: {
+        views: [
+          { view: "link_with_checkbox", viewFn: linkWithCheckboxView, config: { cache: "never" } },
+          { view: "configs", viewFn: roleConfigsView },
+        ],
+      },
+    },
   },
   { setPath: "type/signup" },
   {
@@ -406,6 +748,22 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: { views: [{ view: "core", viewFn: (ctx) => signupCoreHtml(ctx) }] },
     },
+  },
+  {
+    // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
+    // nests its contents INTO Type::Signup, set_template.rb:11-19). The
+    // port registers it under the SAME sign_up spelling as the parent so
+    // the viewChain nested expansion (mod-loader.ts:501-526, the
+    // `${code}/${anchor}/` prefix walk) can reach it. Registration-only
+    // entry (the basket completeness pin "every set module from the gem
+    // tree is in the basket"); its views are the signup FORM family and
+    // stay the honest rails remainder named on the parent entry: view :new
+    // (cache: :never, the invitation?-branch title), :content_formgroups
+    // (account_formgroups + multi_card_editor), :new_buttons
+    // (standard_create_button + invite_button), :core haml override (the
+    // signup_line + account_lines template that would shadow the R17
+    // ported core). surfaces-batch2 lane, 2026-09-30.
+    setPath: "type/sign_up/views",
   },
   {
     // set/type/user.rb:7-48 format :html do block - view :setup

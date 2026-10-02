@@ -5,18 +5,24 @@
 // bogus/revoked/expired token renders the exact anonymous bytes
 // (auth/current.rb:58-63 degradation).
 //
-// The server boots against a DISPOSABLE COPY of the anonymized corpus-v2
-// (benchmarks/corpus-v2/bench-corpus-v2.sqlite3, gitignored, rebuilt on
-// demand). The account used is a REAL corpus account card — holder 583,
-// the corpus-proven roleful member whose readable rule set strictly
-// contains Anonymous's (tests/card/permissions/
-// read-permission-actors-corpus.test.ts pins the set math). The corpus
-// pipeline anonymized the account's +*password and +*status contents, so
-// the fixture re-issues credentials for THAT account in the COPY with the
-// exact Ruby formula (salted SHA-1, node:crypto side) — the sanctioned
+// The server boots against a DISPOSABLE COPY of the committed miniature
+// test corpus (fixtures/test-corpus/, the default of
+// src/testing/test-corpus-paths.ts). That corpus is ANONYMIZED: card
+// names and contents are scrambled derivatives, so no real deck content
+// ships in the tree or is read here. The richer machine-local corpus
+// participates only under the explicit DECKO_TS_CORPUS_V2 opt-in and is
+// gitignored, never committed.
+//
+// The account used is corpus holder 583, an anonymized account card whose
+// readable rule set strictly contains Anonymous's (tests/card/permissions/
+// read-permission-actors-corpus.test.ts pins the set math). The fixture
+// re-issues credentials for THAT account in the COPY with the exact Ruby
+// formula (salted SHA-1, node:crypto side) — the sanctioned
 // test-issued-hash fallback; no account data is written to any corpus
 // file, and nothing is printed (emails, salts, digests, tokens stay in
-// memory).
+// memory). The private-card check asserts only PRESENCE: it picks a
+// holder-readable content card at runtime and matches a marker word drawn
+// from the fixture's own bytes — no content is hardcoded in this file.
 //
 // The fixture also renames the python-built corpus's cards.content column
 // to the engine-standard db_content (see src/card/auth/signin.ts's
@@ -25,39 +31,26 @@
 // "Default Layout") so the server's page chrome can resolve.
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { copyFileSync, existsSync, rmSync } from "node:fs";
+import { generatedPassword } from "../../../src/testing/generated-credentials.js";
+import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { createServer as netCreateServer } from "node:net";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
+import { ensureStagingServerDist } from "./staging-server-dist-bootstrap.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
-function firstExisting(paths: Array<{ path: string; exists: boolean }>): string | null {
-  for (const candidate of paths) {
-    if (candidate.exists) return candidate.path;
-  }
-  return null;
-}
-
-const REPO_CORPUS = fileURLToPath(
-  new URL("../../../benchmarks/corpus-v2/bench-corpus-v2.sqlite3", import.meta.url),
-);
-// The lane-worktree sibling of the main checkout.
-const SIBLING_CORPUS = fileURLToPath(
-  new URL("../../../../decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3", import.meta.url),
-);
-const CORPUS_PATH =
-  process.env.DECKO_TS_CORPUS_V2 ??
-  firstExisting([
-    { path: REPO_CORPUS, exists: existsSync(REPO_CORPUS) },
-    { path: SIBLING_CORPUS, exists: existsSync(SIBLING_CORPUS) },
-  ]);
+// The committed miniature corpus by default; the richer machine-local bench
+// corpus only under the explicit DECKO_TS_CORPUS_V2 opt-in
+// (test-corpus-paths.ts). No sibling-checkout fallback.
+const CORPUS_PATH = CORPUS_DB_PATH;
 
 const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "signin-endpoint-fixture.sqlite3");
-const TEST_PASSWORD = "slice1-test-password";
+const TEST_PASSWORD = generatedPassword("signinendpoint");
 const HOLDER_ID = 583;
 
 const describeIfCorpus = CORPUS_PATH !== null ? describe : describe.skip;
@@ -97,6 +90,11 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 describeIfCorpus("staging server sign-in endpoints (booted server, disposable corpus copy)", () => {
   beforeAll(async () => {
     // 1. Disposable copy of the corpus (the source stays untouched).
+    //    mkdir first: a fresh worktree has no tmp/ (the gitignored scratch
+    //    dir every endpoint fixture writes into) and copyFileSync ENOENTs
+    //    on the missing parent — the same fresh-worktree class as the
+    //    dist/ bootstrap above.
+    mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
     rmSync(FIXTURE_PATH, { force: true });
     copyFileSync(CORPUS_PATH as string, FIXTURE_PATH);
 
@@ -302,6 +300,7 @@ describeIfCorpus("staging server sign-in endpoints (booted server, disposable co
     }
 
     // 4. Boot the server on the fixture.
+    await ensureStagingServerDist();
     reservedPort = await reserveEphemeralPort();
     fixture.baseUrl = `http://127.0.0.1:${reservedPort}`;
     server = spawn(

@@ -38,19 +38,51 @@ export function wrapDiv(content: string): string {
   return DIV_OPEN + content + DIV_CLOSE;
 }
 
+/**
+ * coderay-1.1.3 lib/coderay/scanners/scanner.rb:96-98 `to_unix`:
+ *
+ *     def to_unix code
+ *       code.index(?\r) ? code.gsub(/\r\n?/, "\n") : code
+ *     end
+ *
+ * Reached from `Scanner.normalize` (scanner.rb:51-63) and applied to EVERY
+ * scan at scanner.rb:137 `super self.class.normalize(code)` — so the newline
+ * rewrite happens BEFORE any scanner regex runs, and applies to all three
+ * languages, not just :html.
+ *
+ * Why the bytes depend on it: the scanner hands each whitespace run to
+ * `text_token match, :space` (scanners/html.rb:101 `scan(/\s+/m)`), and
+ * `/\s+/m` matches the CRLF PAIR as one token. The encoder's escape table
+ * (encoders/html.rb:139) maps every control code in 0x0B-0x1F to a literal
+ * space, and 0x0D (`\r`) is in that range - so an un-normalized CRLF would
+ * emit `" \n"` where the oracle emits `"\n"`. This was the pass-15
+ * "layout-whitespace" class (60 pages): the 5 CodeRay-highlighted Layout
+ * cards whose bodies are stored with CRLF line endings each gained one
+ * space per line inside the <pre> block, and no captured coderay fixture
+ * covered CR at all, so the unit tests could not see it.
+ *
+ * `code.index(?\r)` is the guard in the Ruby original and is preserved here:
+ * a body with no CR is returned unchanged (identity, no allocation).
+ */
+function toUnix(code: string): string {
+  return code.indexOf("\r") === -1 ? code : code.replace(/\r\n?/g, "\n");
+}
+
 /** Dispatch to the right scanner based on the language hint. Unknown
  *  languages fall back to a no-op wrapper (just the DIV template with
  *  the input HTML-escaped verbatim) so the corpus's non-highlighted paths
  *  still get the CodeRay DIV shape. The corpus doesn't exercise this
  *  fallback; keep it for forward-compatibility. */
 export function highlight(content: string, lang: HighlightLanguage): string {
+  // scanner.rb:137 — normalize once, at the dispatch, for every language.
+  const code = toUnix(content);
   switch (lang) {
     case "json":
-      return wrapDiv(scanJson(content));
+      return wrapDiv(scanJson(code));
     case "css":
-      return wrapDiv(scanCss(content));
+      return wrapDiv(scanCss(code));
     case "html":
-      return wrapDiv(scanHtml(content));
+      return wrapDiv(scanHtml(code));
   }
 }
 

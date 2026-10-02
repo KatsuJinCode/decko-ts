@@ -3,7 +3,7 @@
 Stream 4, wave 1 (2026-09-19). Ground truth and deliverables:
 
 - **Production truth**: `C:\localProjects\source-deck-migration\incoming\source-deck-2026-09-07.sql` — 1.2 GB mysqldump 10.13 (MySQL 8.0.39 dump of server 8.0.45), host `private-wikirate-production-...digitalocean.com`, database `source-deck`.
-- **Engine truth**: installed gems `C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0` and `decko-0.20.0`.
+- **Engine truth**: installed gems `gems/card-1.110.0` and `decko-0.20.0`.
 - Deliverables: `db/schema.sqlite.sql` (executable port target), `db/schema.mysql-reference.sql` (verbatim extraction), `src/server/schema.ts` (row types + inventory), `tests/server/schema.test.ts` (sync + round-trip proof).
 
 ## Re-derivation recipe (the 1.2 GB dump is never read whole)

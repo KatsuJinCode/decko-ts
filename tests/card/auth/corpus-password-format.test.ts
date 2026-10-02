@@ -11,33 +11,24 @@
 // selected into a string that outlives the query, printed, or embedded in
 // an assertion message.
 //
-// The raw ground-truth corpus is a local, gitignored build
-// (tmp/raw-ground-truth/bench-corpus-raw.sqlite3). Resolution order:
-// DECKO_TS_RAW_CORPUS env var, this repo's tmp path, then the main
-// checkout's tmp path (lane worktrees are siblings of decko-ts and the
-// corpus stays in the main checkout's gitignored tmp). Skips when absent.
+// The committed miniature corpus (fixtures/test-corpus/test-corpus.sqlite3)
+// carries the pinned credential shapes by construction — the builder
+// re-issues +*password/+*salt rows in Ruby's salted-SHA-1 form with
+// deterministic generated values. The richer raw ground-truth corpus
+// (a local gitignored build, tmp/raw-ground-truth/bench-corpus-raw.sqlite3)
+// stays available as the explicit opt-in via DECKO_TS_RAW_CORPUS; no
+// sibling-checkout fallback and no presence probing (self-contained-tests
+// lane). The assertion is the same shape property at either scale.
 
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
 
-const REPO_RAW_CORPUS = fileURLToPath(
-  new URL("../../../tmp/raw-ground-truth/bench-corpus-raw.sqlite3", import.meta.url),
-);
-// The lane-worktree sibling of the main checkout.
-const SIBLING_RAW_CORPUS = fileURLToPath(
-  new URL("../../../../decko-ts/tmp/raw-ground-truth/bench-corpus-raw.sqlite3", import.meta.url),
-);
+const RAW_CORPUS_PATH = process.env.DECKO_TS_RAW_CORPUS ?? CORPUS_DB_PATH;
 
-const RAW_CORPUS_PATH =
-  process.env.DECKO_TS_RAW_CORPUS ??
-  (existsSync(REPO_RAW_CORPUS) ? REPO_RAW_CORPUS : null) ??
-  (existsSync(SIBLING_RAW_CORPUS) ? SIBLING_RAW_CORPUS : null);
+const describeIfCorpus = describe;
 
-const describeIfCorpus = RAW_CORPUS_PATH !== null ? describe : describe.skip;
-
-describeIfCorpus("corpus +*password storage shape (raw ground truth)", () => {
+describeIfCorpus("corpus +*password storage shape (fixture deck; raw opt-in via env)", () => {
   it("every stored digest is a 40-char lowercase SHA-1 hex string, zero bcrypt-shaped", () => {
     const db = new Database(RAW_CORPUS_PATH as string, { readonly: true });
     try {

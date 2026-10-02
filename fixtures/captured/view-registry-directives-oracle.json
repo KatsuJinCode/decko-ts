@@ -1,0 +1,4723 @@
+{
+  "behavior": {
+    "denial_blank_substitution_edit_link": "",
+    "denial_blank_substitution_menu": "",
+    "denial_blank_substitution_universal_edit_button": "CAPTURE_ERROR: NoMethodError: undefined method `item_cards' for nil",
+    "guarded_read_anonymous_titled_denial_basic": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+    "guarded_read_anonymous_titled_denial_set_card": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+    "guarded_update_admin_edit_inline": "<div id=\"oracle_basic-edit_inline-view\" class=\"card-slot edit_inline-view ALL TYPE-rich_text SELF-oracle_basic\" data-card-id=\"605\" data-card-name=\"Oracle Basics\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Basics\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;edit_inline&quot;,&quot;show&quot;:[&quot;edit_inline&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;,&quot;type_formgroup&quot;]}\"><form class=\"card-form slotter autosave\" id=\"edit_card_605\" action=\"/update/Oracle_Basics\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><fieldset class=\"card-editor editor\"><div class=\"editor content-editor\"><input class=\"current_revision_id form-control\" autocomplete=\"off\" type=\"hidden\" value=\"4974\" name=\"card[last_action_id_before_edit]\" id=\"card_last_action_id_before_edit\" />\n<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_basic-1\" name=\"card[content]\">\nA plain basic card for oracle capture.</textarea></div></fieldset>\n<div class=\"form-group button-form-group\"><button name=\"button\" type=\"submit\" data-disable-with=\"Submitting\" class=\"submit-button me-3 _update-history-pills btn btn-primary\" data-cy=\"save\">Save</button>\n<a class=\"cancel-button btn-sm btn btn-secondary slotter\" href=\"/Oracle_Basics\" data-remote=\"true\">Cancel</a>\n<a class=\"slotter btn btn-outline-danger ms-auto\" data-confirm=\"Are you sure you want to delete Oracle Basics?\" href=\"/delete/Oracle_Basics?success%5Bview%5D=just_deleted\" data-remote=\"true\">Delete</a></div></form></div>",
+    "guarded_update_anonymous_skip_perms": "<div id=\"oracle_basic-edit_inline-view\" class=\"card-slot edit_inline-view ALL TYPE-rich_text SELF-oracle_basic\" data-card-id=\"605\" data-card-name=\"Oracle Basics\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Basics\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;edit_inline&quot;,&quot;show&quot;:[&quot;edit_inline&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;,&quot;type_formgroup&quot;]}\"><form class=\"card-form slotter autosave\" id=\"edit_card_605\" action=\"/update/Oracle_Basics\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><fieldset class=\"card-editor editor\"><div class=\"editor content-editor\"><input class=\"current_revision_id form-control\" autocomplete=\"off\" type=\"hidden\" value=\"4974\" name=\"card[last_action_id_before_edit]\" id=\"card_last_action_id_before_edit\" />\n<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_basic-1\" name=\"card[content]\">\nA plain basic card for oracle capture.</textarea></div></fieldset>\n<div class=\"form-group button-form-group\"><button name=\"button\" type=\"submit\" data-disable-with=\"Submitting\" class=\"submit-button me-3 _update-history-pills btn btn-primary\" data-cy=\"save\">Save</button>\n<a class=\"cancel-button btn-sm btn btn-secondary slotter\" href=\"/Oracle_Basics\" data-remote=\"true\">Cancel</a>\n<a class=\"slotter btn btn-outline-danger ms-auto\" data-confirm=\"Are you sure you want to delete Oracle Basics?\" href=\"/delete/Oracle_Basics?success%5Bview%5D=just_deleted\" data-remote=\"true\">Delete</a></div></form></div>",
+    "guarded_update_anonymous_underscore_form": "<div id=\"oracle_basic-edit_inline-view\" class=\"card-slot edit_inline-view ALL TYPE-rich_text SELF-oracle_basic\" data-card-id=\"605\" data-card-name=\"Oracle Basics\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Basics\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;edit_inline&quot;,&quot;show&quot;:[&quot;edit_inline&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;,&quot;type_formgroup&quot;]}\"><form class=\"card-form slotter autosave\" id=\"edit_card_605\" action=\"/update/Oracle_Basics\" accept-charset=\"UTF-8\" data-remote=\"true\" method=\"post\"><input name=\"utf8\" type=\"hidden\" value=\"&#x2713;\" autocomplete=\"off\" /><input type=\"hidden\" name=\"_method\" value=\"patch\" autocomplete=\"off\" /><fieldset class=\"card-editor editor\"><div class=\"editor content-editor\"><input class=\"current_revision_id form-control\" autocomplete=\"off\" type=\"hidden\" value=\"4974\" name=\"card[last_action_id_before_edit]\" id=\"card_last_action_id_before_edit\" />\n<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"oracle_basic-1\" name=\"card[content]\">\nA plain basic card for oracle capture.</textarea></div></fieldset>\n<div class=\"form-group button-form-group\"><button name=\"button\" type=\"submit\" data-disable-with=\"Submitting\" class=\"submit-button me-3 _update-history-pills btn btn-primary\" data-cy=\"save\">Save</button>\n<a class=\"cancel-button btn-sm btn btn-secondary slotter\" href=\"/Oracle_Basics\" data-remote=\"true\">Cancel</a>\n<a class=\"slotter btn btn-outline-danger ms-auto\" data-confirm=\"Are you sure you want to delete Oracle Basics?\" href=\"/delete/Oracle_Basics?success%5Bview%5D=just_deleted\" data-remote=\"true\">Delete</a></div></form></div>",
+    "none_perms_admin_title": "<span class=\"card-title\" title=\"Oracle Basics\">Oracle Basics</span>",
+    "none_perms_anonymous_title": "<span class=\"card-title\" title=\"Oracle Basics\">Oracle Basics</span>",
+    "none_perms_anonymous_url": "/Oracle_Basics"
+  },
+  "capture": "view-registry-directives",
+  "deck_artifacts": {
+    "guarded_update_anonymous_default_denial": "CAPTURE_ERROR: NoMethodError: undefined method `item_cards' for nil",
+    "update_permission_check_itself": "CAPTURE_ERROR: NoMethodError: undefined method `item_cards' for nil"
+  },
+  "no_write_proof": {
+    "card_actions": 5018,
+    "card_actions_unchanged": true,
+    "cards": 1363
+  },
+  "normalizations": [
+    "data-slot-id 20-hex -> RANDOMIZED (capture.rb convention)"
+  ],
+  "purpose": "contract R3.1.a/R3.1.b/R3.4.b: live html view registry - directive table (perms/denial/unknown), view_method callables, skip_perms + underscore render forms, denial substitution",
+  "ruby_truth": {
+    "denial": "permission.rb:46-50 -> lib/card/format/error.rb:27-31",
+    "menu_denial_blank": "card-mod-format-0.20.0 set/all/html/menu.rb:8",
+    "skip_check": "permission.rb:25-27",
+    "underscore_form": "lib/card/format/method_delegation.rb:5-9,48-55",
+    "view_method": "lib/card/format/render.rb:59-66",
+    "view_perms": "card-1.110.0 lib/card/view/permission.rb:13-15"
+  },
+  "survey": [
+    {
+      "name": "Oracle Basics",
+      "type": "RichText",
+      "view_count": 191,
+      "views": {
+        "accordion_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "acted_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_expanded": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_summary": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bad_address": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "bar_body": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "bar_left": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "bar_right": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "blank": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "board": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "board_act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "board_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "board_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "box": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_top": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "card_select": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "cardboard": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "carousel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "change": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "close_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "closed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "closed_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "closed_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "codename": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "comment_box": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "compact_missing": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "conflict": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "conflict_tracker": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_formgroups": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_panel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_with_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "core": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "count": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "created_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "creator_credit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "debug_server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "demo": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "denial": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "draft_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_in_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_link": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_name_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_rules": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_structure": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "email_page": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "engage_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "errors": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "expanded_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "favicon_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "flash": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "follow_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "follow_section": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "followed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "follower": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "full_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "full_page_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "goto_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "guide_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "head": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "header_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "help": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_text": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "hidden_content_field": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "history": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "history_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "icons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "input": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "javascript_include_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "javascript_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "just_deleted": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "key": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "labeled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "labeled"
+        },
+        "labeled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "last_action": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "last_action_verb": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "lead": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "linkname": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "list_of_changes": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "menu": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "menu_block": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "meta_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "mini_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "mini_unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_footer": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "name_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "name_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nav_link_in_dropdown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "navbar_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nest_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_fields": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_in_modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_in_modal_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "not_found": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "open": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "page_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "page_title_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "pills": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pills_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pop_out_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "raw": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "raw_one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "read_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "read_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "related_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "rss_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "rules_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "script_calls": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "script_variables": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "short_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "simple_new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "smart_label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "stylesheet_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "subedit_notice": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "subedits": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "tabs": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "tabs_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "template_nest": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "text_without_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_no_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "titled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "titled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "type_info": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "unfollow_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "universal_edit_button": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": "blank"
+        },
+        "unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "updated_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "updated_by": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "url_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "view_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        }
+      }
+    },
+    {
+      "name": "*read",
+      "type": "bxyzzfy",
+      "view_count": 192,
+      "views": {
+        "accordion_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "acted_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_expanded": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_summary": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bad_address": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "bar_body": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "bar_left": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "bar_right": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "blank": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "board": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "board_act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "board_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "board_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "box": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_top": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "card_select": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "cardboard": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "carousel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "change": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "close_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "closed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "closed_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "closed_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "codename": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "comment_box": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "compact_missing": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "conflict": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "conflict_tracker": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_formgroups": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_panel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_with_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "core": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "count": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "created_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "creator_credit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "debug_server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "demo": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "denial": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "draft_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_in_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_link": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_name_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_rules": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_structure": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "email_page": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "engage_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "errors": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "expanded_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "favicon_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "flash": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "follow_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "follow_section": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "followed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "follower": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "full_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "full_page_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "goto_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "guide_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "head": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "header_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "help": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_text": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "hidden_content_field": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "history": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "history_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "icons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "input": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "javascript_include_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "javascript_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "just_deleted": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "key": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "labeled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "labeled"
+        },
+        "labeled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "last_action": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "last_action_verb": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "lead": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "linkname": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "list_of_changes": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "menu": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "menu_block": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "meta_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "mini_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "mini_unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_footer": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "name_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "name_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nav_link_in_dropdown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "navbar_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nest_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_fields": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_in_modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_in_modal_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "not_found": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "open": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "page_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "page_title_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "pills": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pills_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pop_out_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "raw": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "raw_one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "read_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "read_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "related_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "rss_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "rule_help": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "rules_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "script_calls": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "script_variables": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "short_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "simple_new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "smart_label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "stylesheet_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "subedit_notice": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "subedits": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "tabs": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "tabs_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "template_nest": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "text_without_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_no_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "titled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "titled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "type_info": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "unfollow_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "universal_edit_button": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": "blank"
+        },
+        "unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "updated_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "updated_by": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "url_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "view_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        }
+      }
+    },
+    {
+      "name": "*all",
+      "type": "pnwfdiey",
+      "view_count": 202,
+      "views": {
+        "accordion_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "acted_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_expanded": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_summary": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "add_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "bad_address": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "bar_body": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "bar_left": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "bar_right": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "blank": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "board": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "board_act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "board_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "board_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "box": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_top": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "card_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "card_select": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "cardboard": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "carousel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "change": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "checkbox_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "close_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "closed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "closed_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "closed_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "codename": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "comment_box": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "compact_missing": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "configure_button": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "can_configure?",
+          "unknown": null
+        },
+        "configure_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "can_configure?",
+          "unknown": null
+        },
+        "conflict": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "conflict_tracker": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_formgroups": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_panel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_with_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "core": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "count": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "created_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "creator_credit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "debug_server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "demo": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "denial": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "draft_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_in_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_link": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_name_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_rules": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_structure": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "email_page": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "engage_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "errors": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "expanded_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "favicon_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "flash": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "follow_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "follow_section": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "followed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "follower": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "full_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "full_page_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "goto_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "guide_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "head": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "header_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "help": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_text": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "hidden_content_field": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "history": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "history_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "icons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "input": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "javascript_include_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "javascript_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "just_deleted": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "key": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "labeled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "labeled"
+        },
+        "labeled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "last_action": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "last_action_verb": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "lead": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "linkname": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "list_of_changes": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "menu": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "menu_block": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "meta_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "mini_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "mini_unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_footer": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "name_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "name_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nav_link_in_dropdown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "navbar_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nest_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_fields": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_in_modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_in_modal_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "no_search_results": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "not_found": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "open": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "page_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "page_title_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "paging": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pills": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pills_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pop_out_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "raw": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "raw_one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "read_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "read_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "related_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "rss_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "rules_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "script_calls": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "script_variables": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "search_count": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "search_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "short_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "simple_new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "smart_label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "stylesheet_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "subedit_notice": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "subedits": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "tabs": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "tabs_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "template_nest": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "text_without_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_no_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "titled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "titled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "type_info": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "unfollow_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "universal_edit_button": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": "blank"
+        },
+        "unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "updated_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "updated_by": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "url_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "view_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        }
+      }
+    },
+    {
+      "name": "RichText",
+      "type": "orvipveb",
+      "view_count": 191,
+      "views": {
+        "accordion_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "act_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "acted_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_expanded": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "action_summary": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "add_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bad_address": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "bar_body": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "bar_left": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "bar_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "bar_right": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "blank": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "board": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "board_act": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "board_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "board_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "box": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_bottom": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_middle": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "box_top": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "card_select": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "cardboard": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "carousel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "change": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "close_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "closed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "closed_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "closed_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "codename": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "comment_box": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "compact_missing": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "conflict": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "conflict_tracker": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_formgroups": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "content_panel": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "content_with_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "core": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "count": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "created_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "creator_credit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "debug_server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "demo": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "denial": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "draft_legend": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_in_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": true
+        },
+        "edit_inline_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_link": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_name_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_rules": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "edit_structure": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "edit_type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "edit_type_row": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "email_page": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "engage_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "errors": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "expanded_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "favicon_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "flash": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "follow_button": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "follow_section": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "followed": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "follower": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "full_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_bar"
+        },
+        "full_page_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "goto_autocomplete_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "guide_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "head": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "header_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "help": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "help_text": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "hidden_content_field": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "history": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "history_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "icons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "id_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "input": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "javascript_include_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "javascript_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "just_deleted": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "key": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "labeled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "labeled"
+        },
+        "labeled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "last_action": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "last_action_verb": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "lead": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "linkname": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "list_of_changes": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "menu": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "menu_block": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "meta_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "mini_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "mini_unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_footer": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "modal_link_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "modal_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "name": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "name_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": null
+        },
+        "name_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_item": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "nav_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nav_link_in_dropdown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "navbar_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "nest_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "nest_editor": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "nest_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_fields": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_image_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_in_modal": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "new_in_modal_buttons": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "new_type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "not_found": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "open": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_bar": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "open_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_guide": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_header": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_help_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "overlay_menu": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "overlay_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "page_title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "page_title_tag": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "pills": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pills_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "pop_out_modal_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "raw": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "raw_one_line_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "mini_unknown"
+        },
+        "read_form": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "read_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "related_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "rss_links": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "rules_tab": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "script_calls": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "script_variables": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "server_error": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "short_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "simple_new": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "create",
+          "unknown": true
+        },
+        "smart_label": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "stylesheet_tags": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": true
+        },
+        "subedit_notice": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "subedits": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "tabs": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "tabs_static": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "template_nest": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "text_without_nests": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "title": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "title_no_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "titled": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "titled_content": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": "blank"
+        },
+        "type": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": true
+        },
+        "type_formgroup": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "type_info": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "unfollow_url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "universal_edit_button": {
+          "denial": "blank",
+          "method_parameters": [],
+          "perms": "update",
+          "unknown": "blank"
+        },
+        "unknown": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "updated_at": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "updated_by": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        },
+        "url": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "url_link": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": "none",
+          "unknown": null
+        },
+        "view_list": {
+          "denial": null,
+          "method_parameters": [],
+          "perms": null,
+          "unknown": null
+        }
+      }
+    }
+  ]
+}

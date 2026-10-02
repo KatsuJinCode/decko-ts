@@ -22,9 +22,8 @@
 // search_box.haml bytes (haml single-quoted div class).
 
 import { DeckoName } from "../name.js";
-import { UnsupportedViewError } from "./format.js";
+import { UnsupportedViewError, wrappedTitleInner } from "./format.js";
 import type { RenderFormat, ViewContext, ViewFn } from "./format.js";
-import { scanNests } from "./nest-syntax.js";
 import { h } from "./slot-html.js";
 
 /** Abstract::List member cardtypes (item_cards content iteration). */
@@ -38,11 +37,13 @@ function wrapNavItem(inner: string): string {
 }
 
 /** The card-title span a link carries: the voo `title` option (the
- *  [[target|label]] label) when set, else the card's title view. */
+ *  [[target|label]] label) when set, else the card's title view. The label
+ *  arm is wrapped_title (title.rb:38-42) - the joint span per "+" rides the
+ *  span itself (format.ts#wrappedTitleInner). */
 function linkTitleSpan(ctx: ViewContext): string {
   const label = ctx.voo.opts["title"];
   if (typeof label === "string") {
-    return `<span class="card-title" title="${h(label)}">${h(label)}</span>`;
+    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
   return ctx.fmt.renderView("title");
 }
@@ -66,8 +67,16 @@ const navbarLinksView: ViewFn = (ctx) => {
   if (fmt.card.key === "*account_link") {
     // set/self/account_links.rb: the navbar_items METHOD override —
     // navbar_item_views (my_card/sign_out/sign_up/sign_in) rendered and
-    // li-wrapped when present. Anonymous: sign_up + sign_in (my_card and
-    // sign_out are signed_in?-gated, denial :blank -> dropped).
+    // li-wrapped when present. Signed-in session: the prepared my_card +
+    // sign_out items (set/self/account_links.rb's own navbar_items override,
+    // card-mod-layout); the prepared string is the shared navbar_items
+    // product both this view and :core render. Signed out: sign_up +
+    // sign_in (my_card and sign_out are signed_in?-gated, denial :blank ->
+    // dropped).
+    const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    if (signedInItems !== undefined) {
+      return `<ul class="navbar-nav">${signedInItems}</ul>`;
+    }
     const links = [
       `<a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a>`,
       `<a class="nav-link signin-link known-card" href="/*signin">Sign in</a>`,
@@ -158,11 +167,6 @@ function nestItemName(ctx: ViewContext, name: string, view: string): string {
   return nestResolvedName(ctx, name, view, undefined);
 }
 
-/** nestChunkTarget: nest the [[target|label]] chunk with view :nav_item. */
-function nestChunkTarget(ctx: ViewContext, piece: { target?: string; label?: string }): string {
-  return nestResolvedName(ctx, piece.target ?? "", "nav_item", piece.label);
-}
-
 function nestResolvedName(
   ctx: ViewContext,
   rawName: string,
@@ -184,20 +188,6 @@ function nestResolvedName(
     comment: undefined,
   };
   return fmt.nest(nest);
-}
-
-/** The [[target|label]] pieces of a card's content (the reference chunks
- *  the navbar chunk-walk renders). */
-function nestChunksOf(fmt: RenderFormat): Array<{ text?: string; target?: string; label?: string }> {
-  const pieces: Array<{ text?: string; target?: string; label?: string }> = [];
-  for (const piece of scanNests(fmt.card.dbContent)) {
-    if (piece.kind === "nest" && piece.nest !== undefined) {
-      pieces.push({ target: piece.nest.name, label: piece.nest.options.title });
-    } else if (piece.kind === "text") {
-      pieces.push({ text: piece.text });
-    }
-  }
-  return pieces;
 }
 
 /** card-mod-search set/self/search view :search_box (search_box.haml +
@@ -226,12 +216,92 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
 
 /** set/self/account_links.rb view :core: wrap_with(:div, id: "logging",
  *  class: signed_in? ? "logged-in" : "logged-out") { navbar_items.join "\n" }.
- *  Anonymous: the sign_up + sign_in lis (my_card/sign_out are
- *  signed_in?-gated with denial :blank — dropped from the compact). */
+ *  Session-aware: a signed-in chrome session renders the prepared signed-in
+ *  items (the same navbar_items the :navbar_links view renders — Ruby's
+ *  navbar_items METHOD is shared by both views); otherwise the sign_up +
+ *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
+ *  dropped from the compact). */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
+  const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  if (signedInItems !== undefined) {
+    return `<div id="logging" class="logged-in">${signedInItems}</div>`;
+  }
   const links = [
     `<li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>`,
     `<li class="nav-item"><a class="nav-link signin-link known-card" href="/*signin">Sign in</a></li>`,
   ].join("\n");
   return `<div id="logging" class="logged-out">${links}</div>`;
+}
+
+/** The signed-in *account_links navbar_items — the port of
+ *  card-mod-layout set/self/account_links.rb's navbar_items method override
+ *  (navbar_item_views %i[my_card sign_out sign_up sign_in] with
+ *  signed_in?-gated perms; signed in: my_card + sign_out, the sign_up/
+ *  sign_in denials render :blank and drop from the compact) joined "\n":
+ *
+ *  - my_card (account_dropdown.rb:7-12 account_dropdown — can_disable_roles?
+ *    is false for the capture session, whose actor holds no roles):
+ *    split_dropdown_button(link_to_mycard) { account_dropdown_items }
+ *    (dropdown.rb:14-22) = the btn-group div joining [main, toggle, list]
+ *    with "\n"; the toggle is split_dropdown_button_toggle's reverse_merge
+ *    shape (dropdown.rb:28-38); the list is dropdown_list's
+ *    `<ul class="dropdown-menu dropdown-menu-right" role="menu">` with the
+ *    items li-wrapped and "\n"-joined (dropdown.rb:42-53).
+ *  - the Account item's mark is [Auth.current, :account_settings]
+ *    (account_dropdown.rb:21) — Card::Name[[a, :sym]] composes the junction
+ *    with the codename-resolved setting name (name.rb:77 Codename.name!);
+ *    its href is the NAME path form ("/Decko_Bot_1+*account_settings").
+ *  - sign_out (account_links.rb view :sign_out + the Account dropdown item):
+ *    link_to_card :signin, "Sign out", path: {action: :delete} — the
+ *    "/delete/*signin" action path.
+ *
+ *  The known/wanted classes are inputs (RenderEngine.prepareSessionAccountLinks
+ *  resolves them while async fetches are legal); the byte shapes here are
+ *  pinned against the authenticated goldens (every capture's navbar block).
+ *  Remainder (no golden pins it): the roles dropdown items
+ *  (account_dropdown_roles — special_roles? when the session actor holds
+ *  2+ roles) render []; the capture's bot session holds none.
+ */
+export function signedInAccountLinksInnerHtml(
+  actorName: string,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+): string {
+  const namePath = actorName.replace(/ /g, "_");
+  const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
+  const myCardLi =
+    `<li class="nav-item">` +
+    myCardDropdownInnerHtml(actorName, known, []) +
+    `</li>`;
+  const signOutLi =
+    `<li class="nav-item"><a class="nav-link signout-link ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>`;
+  return `${myCardLi}\n${signOutLi}`;
+}
+
+/** account_dropdown.rb:7-12 account_dropdown (the RAW btn-group, no
+ *  navbar <li>) — split_dropdown_button(link_to_mycard) { items }: the
+ *  btn-group div joining [main, toggle, list] with "\n"; the list is
+ *  dropdown_list's `<ul class="dropdown-menu dropdown-menu-right"
+ *  role="menu">` with the items li-wrapped and ""-joined. `roleItems`
+ *  carries the roles-dropdown entries (account_dropdown.rb:26-35) — the
+ *  port's session machinery carries no roles runtime yet, so callers pass
+ *  [] (the capture sessions hold none either; special_roles? gates the
+ *  block on 2+ roles). The :my_card and
+ *  :edit_inline views compose through this. */
+export function myCardDropdownInnerHtml(
+  actorName: string,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  roleItems: string[],
+): string {
+  const namePath = actorName.replace(/ /g, "_");
+  const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
+  return (
+    `<div class="btn-group">` +
+    `<a id="my-card-link" class="nav-link my-card ${knownClass(known.actor)}" href="/${namePath}">${h(actorName)}</a>\n` +
+    `<a href="#" class="dropdown-toggle dropdown-toggle-split nav-link" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="visually-hidden">Toggle Dropdown</span></a>\n` +
+    `<ul class="dropdown-menu dropdown-menu-right" role="menu">` +
+    `<li><a class="dropdown-item ${knownClass(known.accountSettings)}" href="/${namePath}+*account_settings">Account</a></li>\n` +
+    `<li><a class="dropdown-item ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>` +
+    roleItems.join("") +
+    `</ul></div>`
+  );
 }

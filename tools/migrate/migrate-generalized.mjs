@@ -23,7 +23,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { LocalSqliteToolDriver } from "./import.mjs";
 import { verifyMigration } from "./verify.mjs";
 import { importFromSqlite } from "./generalized-import.mjs";
@@ -345,5 +344,3 @@ if (opts.determinism && determinismResult !== undefined && !determinismResult.al
   exitCode = 1;
 }
 process.exit(exitCode);
-
-void spawnSync; // unused but kept as a placeholder for future shell-out

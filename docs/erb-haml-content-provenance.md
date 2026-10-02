@@ -36,7 +36,7 @@ Across every installed mod (`card-mod-account`, `card-mod-bootstrap`,
 `data/real.yml` files contain **zero** Ruby ERB markers. The grep that
 sweeps for `<%[^a-zA-Z]` and `%>` returns no hits.
 
-The seed loader (`C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/cardio/seed.rb:36`)
+The seed loader (`gems/card-1.110.0/lib/cardio/seed.rb:36`)
 calls `ActiveRecord::FixtureSet.create_fixtures`, which reads plain YAML
 without ERB evaluation. ERB evaluation is not a Rails default for fixture
 loaders.
@@ -201,18 +201,18 @@ for mod in card-mod-account card-mod-ace_editor card-mod-api_key \
            card-mod-rules card-mod-script card-mod-search \
            card-mod-session card-mod-style card-mod-tabs \
            card-mod-tinymce_editor card-mod-virtual; do
-  for f in "/c/Ruby33-x64/lib/ruby/gems/3.3.0/gems/${mod}-0.20.0/data/real.yml"; do
+  for f in "$(gem environment gemdir)/gems/${mod}-0.20.0/data/real.yml"; do
     [ -f "$f" ] && grep -cE "<%|%>" "$f"
   done
 done
 # (output: all zero)
 
 # 2. Loader path: real.yml is plain YAML, no ERB
-cat /c/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/cardio/seed.rb
+cat $(gem environment gemdir)/gems/card-1.110.0/lib/cardio/seed.rb
 # (line 36: ActiveRecord::FixtureSet.create_fixtures, no ERB)
 
 # 3. Content save path: no ERB transform
-cat /c/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/card/content/all.rb
+cat $(gem environment gemdir)/gems/card-1.110.0/lib/card/content/all.rb
 # (line 10: content= assigns verbatim via standardize_content)
 
 # 4. Corpus sweep — 0 real ERB hits in 47,232 records

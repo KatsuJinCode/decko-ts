@@ -27,10 +27,10 @@
 // setting codenames; the lookup takes the card's own codename (self set) or
 // its right part's codename (right set).
 //
-// COVERAGE: exactly the settings the captured corpus deck exercises
-// (fixtures/corpus/shard-0000{0..4}.jsonl menu bytes), sourced verbatim from
-// the installed gems. Settings whose registration carries no `help_text:`
-// (e.g. *default - card-mod-content set/self/default.rb has only
+// COVERAGE: the settings the captured corpus deck exercises whose gems carry
+// a help_text/raw_help_text (fixtures/corpus-v2/recapture menu bytes + the
+// pass-15 view-fail dump). Settings whose registration carries no
+// `help_text:` (e.g. *default - card-mod-content set/self/default.rb has only
 // short_help_text; *guide self - card-mod-help set/self/guide.rb) are
 // correctly ABSENT: their cards fall through to the rule-card branch and
 // render the nbsp placeholder when no readable *help rule exists (the
@@ -114,6 +114,58 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["delete", { self: "Who can delete cards", right: "Who can delete cards" }],
   // card-mod-layout-0.20.0 set/self/head.rb (setting_opts help_text)
   ["head", { self: "head tag content", right: "head tag content" }],
+  // --- rule-tooltips lane (2026-09-29) extensions, sourced verbatim from the
+  // --- installed gems the same way; the pass-15 view-fail H4 class showed the
+  // --- captured corpus exercising these settings' menus too.
+
+  // card-mod-style-0.20.0 set/self/style.rb:3-5 (setting_opts help_text -
+  // registered on BOTH the Self and Right set modules, setting.rb:25-33)
+  ["style", {
+    self: "Skin (collection of stylesheets) for card's page. [[http://decko.org/skins|more]]",
+    right: "Skin (collection of stylesheets) for card's page. [[http://decko.org/skins|more]]",
+  }],
+  // card-mod-script-0.20.0 set/right/script.rb (format-level def, Right set
+  // only - the self set's script.rb registers no help_text)
+  ["script", {
+    right: "JavaScript (or CoffeeScript) for card's page.",
+  }],
+  // card-mod-integrate-0.20.0 set/self/{on_create,on_update,on_delete}.rb
+  // (setting_opts help_text - Self and Right set modules)
+  ["on_create", { self: "Configure events to be executed when card is created", right: "Configure events to be executed when card is created" }],
+  ["on_update", { self: "Configure events to be executed when card is updated", right: "Configure events to be executed when card is updated" }],
+  ["on_delete", { self: "Configure events to be executed when card is deleted", right: "Configure events to be executed when card is deleted" }],
+  // card-mod-ace_editor-0.20.0 set/self/ace.rb (format-level def, Self set
+  // only; the corpus card is named "*Ace", codename "ace")
+  ["ace", {
+    self: "Configure [[https://ace.c9.io/|ace]], Decko's default code editor, using these available [[https://github.com/ajaxorg/ace/wiki/Configuring-Ace|options]].",
+  }],
+  // card-mod-carrierwave-0.20.0 set/self/favicon.rb (format-level def, Self
+  // set only; *favicon is an Image-typed card, codename "favicon")
+  ["favicon", {
+    self: "A favicon (or shortcut icon) is a small image used by browsers to help identify your website. [[http://www.decko.org/favicon|How to customize your favicon]]",
+  }],
+  // card-mod-follow-0.20.0 set/right/follow.rb:39-41 (card-level def, Right
+  // set only)
+  ["follow", {
+    right: "Get notified about changes",
+  }],
+  // card-mod-help-0.20.0 set/right/guide.rb (format-level def, Right set
+  // only; set/self/guide.rb registers only short_help_text, so the *guide
+  // card itself correctly stays absent -> nbsp placeholder)
+  ["guide", {
+    right: "Appears in the full editor view to guide users.",
+  }],
+  // card-mod-bootstrap-0.20.0 set/type_plus_right/bootswatch_skin/variables.rb
+  // (card-level heredoc def: "    Override bootstrap [[...]]\n" - <<-TEXT keeps
+  // the content's own indentation, terminator excluded). Ruby defines this on
+  // the TypePlusRight::BootswatchSkin::Variables set (left card's TYPE is
+  // Bootswatch skin); this registry keys by right codename only, which serves
+  // the same string to every *variables-right card. The corpus's
+  // *variables-right cards are all bootswatch skins (checked via the fresh-
+  // process replay's zero-new-failures gate).
+  ["variables", {
+    right: "    Override bootstrap [[https://github.com/twbs/bootstrap/blob/v5.1.3/scss/_variables.scss|variables]]\n",
+  }],
 ]);
 
 /** The static raw_help_text a card serves: its OWN codename's self-set string

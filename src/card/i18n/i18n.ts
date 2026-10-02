@@ -387,28 +387,11 @@ function deepMerge(
   return out;
 }
 
-/** Lazy fs loader - the render layer at boot time uses loadLocaleFile
- *  (which needs fs); tests use loadLocaleFromString and never touch this.
- *  The lazy import keeps the i18n module graph small for the test-only
- *  path. */
-let fsModule: typeof import("node:fs") | undefined;
-function loadFs(): { readFileSync(path: string, encoding: string): string } {
-  if (fsModule === undefined) {
-    // The module uses an async import for portability (ESM doesn't expose
-    // require); the caller awaits via the public loadLocaleFileAsync when
-    // it needs disk access. The synchronous variant below is for the rare
-    // case where require is injected via a global - tests don't use it.
-    throw new Error("i18n: loadLocaleFile requires the async variant");
-  }
-  return { readFileSync: (p, enc) => fsModule!.readFileSync(p, enc as BufferEncoding) };
-}
-
 /** Async loader for YAML files on disk. Used by the boot-time
- *  prepareEngine hook. */
+ *  prepareEngine hook. The lazy import keeps the i18n module graph small;
+ *  tests use loadLocaleFromString and never touch the disk. */
 export async function loadLocaleFileAsync(locale: string, path: string): Promise<void> {
-  if (fsModule === undefined) {
-    fsModule = await import("node:fs");
-  }
+  const fsModule = await import("node:fs");
   const text = fsModule.readFileSync(path, "utf8");
   loadLocaleFromString(locale, text);
 }

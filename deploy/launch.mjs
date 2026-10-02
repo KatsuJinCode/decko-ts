@@ -23,7 +23,7 @@
 // Cloudflare account, no network) with the SAME artifacts the remote path
 // uses, applies the schema + seed through the CloudflareD1Adapter (the
 // adapter the worker runs on), and runs the same smoke battery against the
-// local D1. This is the path the ask names "must work end-to-end today."
+// local D1. This is the path that must work end-to-end today.
 //
 // What it does NOT do
 // ===================
@@ -388,7 +388,23 @@ if (flags.local) {
   const outputs = (Array.isArray(viteResult) ? viteResult : [viteResult]);
   const bundle = outputs[0]?.output.find((chunk) => chunk.type === "chunk")?.code ?? "";
   if (bundle.length < 10_000) throw new Error("bundle suspiciously small (<10 KB) — worker graph did not come along");
-  if (bundle.includes("node:crypto")) throw new Error("bundle contains raw node:crypto — the alias did not apply");
+  // Hygiene: the Web-standard claim covers EVERY node: specifier, not just
+  // node:crypto — a crypto-only check let a raw "node:fs" through (hoisted
+  // from src/card/render/coded-attachment-files.ts; fixed 2026-09-29 by
+  // gating that module's fs access behind a runtime probe), and workerd
+  // rejects ANY node: module unless nodejs_compat is on, which this deploy
+  // deliberately is not. The match is anchored to import/require syntax
+  // (from "node:x" | import("node:x") | require("node:x")) so doc comments
+  // and the runtime probe's own string argument never false-positive.
+  const nodeImport = bundle.match(
+    /(?:from\s*|import\s*\(\s*|import\s+|require\s*\(\s*)["']node:[a-z_]+["']/,
+  );
+  if (nodeImport !== null) {
+    throw new Error(
+      `bundle imports a Node builtin (${nodeImport[0].trim()}) — ` +
+        "workerd will refuse to boot it (no nodejs_compat on this deploy)",
+    );
+  }
 
   // -- Boot workerd ----------------------------------------------------
   const mf = new Miniflare(

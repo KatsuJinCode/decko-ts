@@ -15,6 +15,20 @@
 //   allowed when it EXISTS (`part_card&.new_card?` false), otherwise
 //   denied when the virtual new part fails its own ok?(:create).
 // - ok_to_delete? (:155-157): `permit :delete`.
+// - A RENAME'S created sides: check_permissions (:22-26) is a :validate
+//   event and runs ok? on EVERY card of a save act — the renamed card
+//   gets ok?(:update) (action_for_permission_check :197-199), but a
+//   rename onto a compound name also CREATES its missing sides in the
+//   same act (prepare_left_and_right, mod/core/set/all/name_events.rb
+//   :67-72 -> prepare_new_side :137-142 adds each missing side as a
+//   subcard; subcards validate through the same director walk,
+//   lib/card/director/all.rb:67-69), and a new sidecard's action IS
+//   :create — so each created side is judged ok?(:create), the FULL
+//   junction walk (permit(:create) under the template-resolved type +
+//   ok_to_create_side). A rename that would create a side the actor
+//   cannot create aborts whole. Sides that already exist are created by
+//   nobody and checked by nobody (prepare_new_side's `!Card[side_id]&.real?`
+//   early-return) — the walk gates exactly what the act creates.
 // - permit (:113-124) -> permitted? (:105-110):
 //   `Auth.as_card.among? who_can(action)` (the always_ok?/read_only
 //   short-circuits bracket it; read_only is a deck config the port does
@@ -42,8 +56,11 @@
 // ensureVerdicts model in src/card/render.ts).
 
 import type { SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import { resolveTypeId } from "../actions/type-resolution.js";
+import { CardActionError } from "../actions/types.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
+import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import type { ReadPermissionState } from "./read-rules.js";
@@ -105,11 +122,14 @@ interface TaskRuleRow {
  * who_can maps plus the actor facts it inherits from the read state
  * (alwaysOk = Auth.always_ok?, viewerParties = Auth.as_card parties).
  *
- * hasTaskRules gates the rule-less/partial-seed divergence exactly like
- * the read side's hasReadRules (read-rules.ts): a deck with no *update
- * rule cards at all carries no permission data for the task, and the
- * verdict degrades to "unverifiable" (undefined = allow) instead of
- * fabricating denials from missing data.
+ * hasTaskRules records whether the deck carries ANY rule cards for the
+ * task; it no longer gates an allow. Ruby DENIES when the applicable rule
+ * is missing or empty — permitted? -> who_can -> among? on [] -> false
+ * (permissions.rb:100-118; account_holder.rb:31-37 any? on []), and a
+ * rule id that does not resolve is "should not be possible" ->
+ * PermissionDenied (permissions.rb:77-85). The port previously degraded
+ * to undefined-allow here; that divergence is closed: deny-on-empty,
+ * Ruby's fail-closed default.
  */
 export interface ViewTaskState {
   readonly alwaysOk: boolean;
@@ -162,9 +182,11 @@ function isWriteTask(task: string): task is WriteTask {
 
 /**
  * ok_to_<task>? for one card (format/error.rb:5-8 + permissions.rb
- * :105-157): undefined = unverifiable (the documented rule-less /
- * partial-seed divergence — the port allows rather than fabricating a
- * denial from missing rule data, mirroring canReadByRuleLookup).
+ * :105-157). Deny-by-default: a deck with no applicable rule card — or an
+ * applicable rule with no parties — DENIES, exactly as Ruby's
+ * who_can -> [] -> among? -> false (permissions.rb:47-49, :100-118;
+ * account_holder.rb:31-37). The READ side keeps its own lookup contract
+ * (read-rules.ts); only the write-task algebra is fail-closed.
  */
 export async function taskVerdictForCard(
   fetcher: FetchEngine,
@@ -197,9 +219,9 @@ export async function allTaskVerdictsForCard(
   depth = 0,
 ): Promise<Record<WriteTask, boolean | undefined>> {
   const out: Record<WriteTask, boolean | undefined> = {
-    update: undefined,
-    create: undefined,
-    delete: undefined,
+    update: false, // deny-by-default: no applicable rule -> among?([]) -> false
+    create: false,
+    delete: false,
   };
   if (state.alwaysOk) {
     return { update: true, create: true, delete: true }; // permitted? :108-109
@@ -221,7 +243,7 @@ export async function allTaskVerdictsForCard(
     const firstResolved = names
       .map((key) => resolved.get(key))
       .find((ruleId) => ruleId !== undefined);
-    if (firstResolved === undefined) continue; // divergence: no applicable rule card in the seed
+    if (firstResolved === undefined) continue; // no applicable rule card -> deny (already false)
     // permissions.rb:148-153 update == permit(:update) at render time.
     if (task !== "create") {
       out[task] = amongParties(state, task, firstResolved);
@@ -248,17 +270,27 @@ export async function allTaskVerdictsForCard(
  * The caller supplies typeChanged (the engine knows the would-be type from
  * the request; a render never does).
  *
- * undefined = unverifiable (the documented rule-less divergence — the port
- * allows rather than fabricating a denial from missing rule data); the
- * engine gate denies only on `false`, exactly like the render gate's
- * `taskAllowed(task) !== false` contract.
+ * Deny-by-default on missing rule data (taskVerdictForCard above): the
+ * engine gate denies on `false`, and the render gate's
+ * `taskAllowed(task) !== false` contract now hides edit affordances on
+ * rule-less decks exactly as Ruby's ok_to_update? denial does.
+ *
+ * The rename clause (opts.assignedName): when the save assigns a name,
+ * the update verdict additionally walks the sides that name will CREATE —
+ * the act's new sidecards judged ok?(:create) in Ruby (see the module
+ * doc's rename paragraph; name_events.rb:67-72/:137-150, permissions.rb
+ * :22-26/:120-137). Walking an unchanged name is a no-op: an existing
+ * card's sides exist, and existing sides are skipped — Ruby's
+ * prepare_new_side only creates (and its validate stage only judges)
+ * what is missing, so legitimate renames — including renames onto names
+ * whose sides all exist — stay judged by permit(:update) alone.
  */
 export async function saveTaskVerdictForCard(
   fetcher: FetchEngine,
   card: PatternCardInput,
   task: WriteTask,
   state: ViewTaskState,
-  opts: { typeChanged?: boolean } = {},
+  opts: { typeChanged?: boolean; assignedName?: string } = {},
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
   if (task !== "update") {
@@ -266,8 +298,35 @@ export async function saveTaskVerdictForCard(
   }
   const update = await permitVerdict(fetcher, card, "update", state); // permit(:update) :148
   if (update !== true) return update; // false = denied; undefined = unverifiable
-  if (opts.typeChanged !== true) return true; // :150 — type is not changing
-  return permitVerdict(fetcher, card, "create", state); // :151 — permitted?(:create), same card
+  if (opts.typeChanged === true) {
+    // :151 — permitted?(:create), same card
+    const create = await permitVerdict(fetcher, card, "create", state);
+    if (create !== true) return create;
+  }
+  if (opts.assignedName === undefined) return true; // no name spec: no sides are created
+  return renameCreatedSidesVerdict(fetcher, card, opts.assignedName, state);
+}
+
+/**
+ * The rename clause's walk — the sides of the ASSIGNED name that the
+ * act will create, each judged exactly as the create path judges a
+ * virtual side (ok_to_create? :120-137 on the act's new sidecard). The
+ * card's own id matters for the OBSTRUCTED self-side: renaming a card
+ * onto a name one of whose sides IS the card (Pod -> Crib+Pod) clears
+ * and recreates that side in Ruby (prepare_obstructed_side,
+ * name_events.rb:144-150), so it is create-checked like a missing side,
+ * not skipped like a bystander. A simple assigned name creates no sides
+ * (prepare_left_and_right's `return if name.simple?`, :68).
+ */
+async function renameCreatedSidesVerdict(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  assignedName: string,
+  state: ViewTaskState,
+): Promise<boolean | undefined> {
+  const name = DeckoName.parse(assignedName);
+  if (!name.isCompound) return true; // name_events.rb:68
+  return createSidesAllowed(fetcher, { name }, state, 0, card.id ?? undefined);
 }
 
 /** permitted? (:105-110) — the applicable rule card's item ids against the
@@ -280,16 +339,18 @@ function amongParties(state: ViewTaskState, task: WriteTask, ruleId: number): bo
 
 /** permit(action) for one task: resolve the card's applicable rule card
  *  (permission_rule_id :55-61 — first candidate that exists) and run the
- *  party check. undefined = no applicable rule card in the seed (the
- *  divergence documented on canReadByRuleLookup — a card whose rule is
- *  absent cannot honestly be denied). */
+ *  party check. NO undefined-allow: a deck with no rule cards for the
+ *  task, or a card none of whose candidates resolve, DENIES — Ruby's
+ *  who_can -> [] -> among? -> false (permissions.rb:47-49, :100-118), and
+ *  a rule id that does not resolve is "should not be possible" ->
+ *  PermissionDenied (permissions.rb:77-85). Fail-closed. */
 async function permitVerdict(
   fetcher: FetchEngine,
   card: PatternCardInput,
   task: WriteTask,
   state: ViewTaskState,
 ): Promise<boolean | undefined> {
-  if (!state.hasTaskRules[task]) return undefined; // no rule data for the task at all
+  if (!state.hasTaskRules[task]) return false; // no rule data for the task at all -> deny
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
   );
@@ -299,33 +360,85 @@ async function permitVerdict(
     if (ruleId === undefined) continue;
     return amongParties(state, task, ruleId);
   }
-  return undefined;
+  return false; // no applicable rule card -> deny (who_can -> [] semantics)
 }
 
 /** ok_to_create? :123-125 + ok_to_create_side :127-137 — junction sides:
  *  a side is allowed when its part card EXISTS; a missing part is checked
  *  as a virtual new card (send(side, new: {}) -> part_card.ok?(:create)).
  *  `side == :left && superleft` (:128) never short-circuits here: a render
- *  carries no supercard. Depth-bounded: part names strictly shrink. */
+ *  carries no supercard. UNBOUNDED like Ruby (:127-137 has no depth bound;
+ *  the recursion terminates because each side's name strictly shrinks) —
+ *  every prefix of a deep name is checked, so no part escapes the walk.
+ *  selfId (the rename clause's obstructed-self comparison): a fetched
+ *  part whose id IS the renamed card is not a bystander — Ruby clears and
+ *  recreates it in the same act (prepare_obstructed_side,
+ *  name_events.rb:144-150) — so it is create-checked like a missing side.
+ *  The create path passes no selfId: `existing.id !== undefined` then,
+ *  identical to this walk's historical behavior. */
 async function createSidesAllowed(
   fetcher: FetchEngine,
   card: PatternCardInput,
   state: ViewTaskState,
   depth: number,
+  selfId?: number,
 ): Promise<boolean | undefined> {
   const name = DeckoName.parse(card.name);
-  if (!name.isCompound || depth >= 4) return true;
-  let sawUnverifiable = false;
+  if (!name.isCompound) return true;
   for (const partName of [name.leftName, name.rightName]) {
     if (partName === undefined) continue;
     const partKey = partName.key;
     if (partKey === "") continue;
     const existing = (await fetcher.fetchByName(partKey)) ?? undefined;
-    if (existing !== undefined && existing.id !== undefined) continue; // part_card.new_card? false
-    const virtualPart: PatternCardInput = { name: partName.s, isNew: true };
+    if (existing !== undefined && existing.id !== undefined && existing.id !== selfId) {
+      continue; // part_card.new_card? false (a real bystander side)
+    }
+    const virtualPart = await virtualSidePart(fetcher, partName.s);
     const verdict = await taskVerdictForCard(fetcher, virtualPart, "create", state, depth + 1);
     if (verdict === false) return false; // deny_because you_cant("create ...") (:134-135)
-    if (verdict === undefined) sawUnverifiable = true;
+    // deny-by-default means the recursion can no longer return an
+    // unverifiable undefined: a part with no applicable rule DENIES.
   }
-  return sawUnverifiable ? undefined : true;
+  return true;
+}
+
+/** The missing side's VIRTUAL card with its WOULD-BE type (ok_to_create_side's
+ *  `send side, new: {}`, permissions.rb:130). Ruby resolves the part's type at
+ *  Card.new time — newish -> handle_type -> ensure_type_id (initialize.rb:54;
+ *  type.rb:58-69 type_id_from_code || type_id_from_template, the *default
+ *  template chain) — BEFORE the validate-stage ok? check, so the part carries
+ *  a real type_id and the *type pattern applies to it (03_type.rb
+ *  #pattern_applies?: !!card.type_id): Basic+*type+*create is among the
+ *  part's candidates. The port resolves the same type the write path assigns
+ *  when it physically creates the side (createInWriter -> resolveTypeId) —
+ *  the gate and the write cannot diverge. A type that cannot resolve mirrors
+ *  type_id_or_error (type.rb:106-112): the error belongs to the save, not the
+ *  permission walk, so the part proceeds TYPELESS — which drops the *type
+ *  candidate exactly like Ruby's nil type_id does. (The fetch layer raises
+ *  CodenameNotFoundError for a missing codename card where Ruby's
+ *  Card.fetch returns nil — e.g. no *default card in the seed; same
+ *  typeless-part walk. Driver failures propagate.) */
+async function virtualSidePart(
+  fetcher: FetchEngine,
+  partName: string,
+): Promise<PatternCardInput> {
+  try {
+    const typeId = await resolveTypeId(fetcher, { name: partName });
+    const typeCard = await fetcher.fetchById(typeId, { skipModules: true });
+    return {
+      name: partName,
+      isNew: true,
+      typeId,
+      typeName: typeCard?.name?.s,
+    };
+  } catch (error) {
+    if (
+      error instanceof CardActionError ||
+      error instanceof CodenameNotFoundError ||
+      error instanceof NameNotFoundError
+    ) {
+      return { name: partName, isNew: true }; // type unresolvable -> *type pattern dropped
+    }
+    throw error;
+  }
 }

@@ -10,7 +10,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { hashTable, proveDeterminism } from "../../../tools/migrate/determinism.mjs";
-import { LocalSqliteToolDriver } from "../../../tools/migrate/import.mjs";
 import { importFromSqlite } from "../../../tools/migrate/generalized-import.mjs";
 
 function makeSourceDb(): string {
@@ -60,33 +59,28 @@ describe("proveDeterminism", () => {
     const srcPath = makeSourceDb();
     const freshA = join(REPO_ROOT, `det-A-${Date.now()}.sqlite`);
     const freshB = join(REPO_ROOT, `det-B-${Date.now()}.sqlite`);
-    try {
-      const result = await proveDeterminism({
-        importFn: ({ driver, ddlPath }) =>
-          importFromSqlite({
-            sourcePath: srcPath,
-            driver,
-            ddlPath,
-            batchSize: 100,
-          }),
-        ddlPath: DDL_PATH,
-        freshPathA: freshA,
-        freshPathB: freshB,
-        tableList: ["cards", "card_references"],
-      });
-      expect(result.allTablesDeterministic).toBe(true);
-      expect(result.tables["cards"]?.countA).toBe(50);
-      expect(result.tables["cards"]?.countB).toBe(50);
-      expect(result.tables["cards"]?.idsMatch).toBe(true);
-      expect(result.tables["cards"]?.hashesMatch).toBe(true);
-      expect(result.tables["cards"]?.totalHashA).toBe(
-        result.tables["cards"]?.totalHashB,
-      );
-      expect(result.tables["card_references"]?.countA).toBe(20);
-      expect(result.tables["card_references"]?.hashesMatch).toBe(true);
-    } finally {
-      // best-effort cleanup (no rm: leave the temp dirs; they are OS-managed)
-      void LocalSqliteToolDriver;
-    }
+    const result = await proveDeterminism({
+      importFn: ({ driver, ddlPath }) =>
+        importFromSqlite({
+          sourcePath: srcPath,
+          driver,
+          ddlPath,
+          batchSize: 100,
+        }),
+      ddlPath: DDL_PATH,
+      freshPathA: freshA,
+      freshPathB: freshB,
+      tableList: ["cards", "card_references"],
+    });
+    expect(result.allTablesDeterministic).toBe(true);
+    expect(result.tables["cards"]?.countA).toBe(50);
+    expect(result.tables["cards"]?.countB).toBe(50);
+    expect(result.tables["cards"]?.idsMatch).toBe(true);
+    expect(result.tables["cards"]?.hashesMatch).toBe(true);
+    expect(result.tables["cards"]?.totalHashA).toBe(
+      result.tables["cards"]?.totalHashB,
+    );
+    expect(result.tables["card_references"]?.countA).toBe(20);
+    expect(result.tables["card_references"]?.hashesMatch).toBe(true);
   }, 120_000);
 });

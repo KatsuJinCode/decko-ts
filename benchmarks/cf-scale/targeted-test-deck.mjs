@@ -162,7 +162,9 @@ const summary = {
   refs: refs.length,
   totalRows: cards.length + refs.length,
   bytes,
-  file: TARGET,
+  // Repo-relative, not absolute: this manifest is checked in, so an absolute
+  // path would bake the generating machine's directory layout into the tree.
+  file: "deploy/cf-scale-deck/seed.sql",
 };
 console.log(JSON.stringify(summary, null, 2));
 writeFileSync(join(OUT_DIR, "deck-manifest.json"), JSON.stringify({ ...summary, dimensions: { ordinary: ORDINARY, chainDepth: 32, pointerItems: 500, largeCards: 5, compounds: 50, denied: 50, modProbes: 100 } }, null, 2));

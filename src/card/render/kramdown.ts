@@ -1,5 +1,5 @@
 // kramdown 2.5.2 subset converter - EXTRACTED from card-mod-markdown.ts
-// (tails-lane, 2026-09-27) so non-mod code paths (the rule-bar one-line's
+// so non-mod code paths (the rule-bar one-line's
 // base one_line_content render) can convert Markdown rule-card cores
 // without importing the mod module (which registers views and would close
 // a views -> rule-bar-right -> markdown-mod -> views import cycle). The
@@ -7,12 +7,11 @@
 // re-imports kramdownToHtml from here.
 
 import { highlight } from "./code-highlighting/index.js";
-import { scanNests } from "./nest-syntax.js";
 
 // ---------------------------------------------------------------------------
 // kramdown 2.5.2 subset - block parsing
-// (oracle: C:/Users/jpswi/AppData/Local/Temp/md-oracle-veritas/
-//  kramdown-capture{,2,3}.rb re-run against the installed kramdown-2.5.2 +
+// (oracle: the kramdown-capture{,2,3}.rb probe scripts re-run against
+//  the installed kramdown-2.5.2 +
 //  kramdown-syntax-coderay-1.0.1 + coderay-1.1.3, plus the view-level
 //  decko-view-capture.rb through the live decko 0.20.0 oracle app; the
 //  internals below were cross-read against the gems' own sources -
@@ -1037,9 +1036,11 @@ function escapeHtmlCoderay(s: string): string {
 }
 
 /** ESCAPE_TEXT_RE: <, >, & outside entities (entity refs reach the
- *  html_entity parser first and never land here unhandled). */
+ *  html_entity parser first and never land here unhandled). The two
+ *  Ruby regexes (ESCAPE_TEXT_RE and ESCAPE_ALL_RE) reduce to the same
+ *  replacement, so this is escapeHtmlAll's implementation. */
 function escapeHtmlText(s: string): string {
-  return s.replace(/[<>&]/g, (m) => (m === "<" ? "&lt;" : m === ">" ? "&gt;" : "&amp;"));
+  return escapeHtmlAll(s);
 }
 
 /** ESCAPE_ATTRIBUTE_RE: <, >, &, " (html_attributes, utils/html.rb:44-49). */
@@ -1053,17 +1054,55 @@ function escapeAttribute(s: string): string {
 
 // ---------------------------------------------------------------------------
 // markdown.rb:6-13 safe_process_content { Kramdown::Document.new(...).to_html }:
-// stash nests (content.rb:142-144), convert the literal remainder, unstash
-// (content.rb:151-153). Moved from card-mod-markdown.ts with the converter so
-// both the mod's view and the bare render paths share one implementation.
-// The caller runs the returned bytes through processContent (content.rb:22 -
-// the restored nests process).
+// stash references (content.rb:9-16 - chunk_list: :references, "Break out
+// references (nests / links) into separate chunks"), convert the literal
+// remainder, unstash (content.rb:151-153). Moved from card-mod-markdown.ts
+// with the converter so both the mod's view and the bare render paths share
+// one implementation. The caller runs the returned bytes through
+// processContent (content.rb:22 - the restored chunks process).
 // ---------------------------------------------------------------------------
 export function kramdownToStashedHtml(raw: string): string {
-  const pieces = scanNests(raw);
+  // The stash walk is ONE left-to-right pass over the raw content in Ruby's
+  // chunk order (content.rb:104 without_references stashes Chunk::Nest +
+  // Chunk::Link + Chunk::EscapedLiteral; stash_chunks content.rb:137-146
+  // burns the {{<i>}} placeholders over the ONE shared stash array in
+  // document order):
+  //
+  //   EscapedLiteral (card-mod-content chunk/escaped_literal.rb:13-16,
+  //   prefix_re \\(?:\[\[|\{\{), FULL_RE \{\{[^}]*\}\} / \[\[[^\]]*\]\])
+  //   stashed WHOLE, backslash included (chunk.text): kramdown must never
+  //   see the escaped braces - its own \{ escape (ESCAPED_CHARS) would eat
+  //   the backslash and leave a re-formed `{{<i>}}` the unstash would
+  //   wrongly restore through, and the final process_content must receive
+  //   the backslash so its own EscapedLiteral pass consumes it
+  //   (escaped_literal.rb:22, escape_literal identity per markdown.rb:16-18).
+  //   The escape pattern leads the alternation and wins by position: a
+  //   `\{{` nest's backslash starts one char before the nest's braces.
+  //
+  //   Nest (nest.rb full_re \{\{([^{}]*)\}\}) and Link (link.rb:14 full_re
+  //   \[\[([^\]]+)\]\] - the [^\]\n charset here is this port's existing
+  //   link-stash shape): stashed verbatim; the unstash restores them and
+  //   process_content renders them through the normal nest/link passes.
+  //   Without the link stash kramdown's emphasis parser consumes the stars
+  //   inside link marks whose card names carry them
+  //   (`[[*guide|*guide rules]]` -> `<em>` mangling; the oracle's
+  //   *all+*guide core render pins the intact link, captured 2026-09-29 in
+  //   fixtures/captured/edit-views.json).
+  type StashPiece = { kind: "text"; text: string } | { kind: "ref"; text: string };
+  const merged: StashPiece[] = [];
+  const REF_PATTERN =
+    /\\(?:\{\{[^{}]*\}\}|\[\[[^\]\n]+\]\])|\{\{[^{}]*\}\}|\[\[[^\]\n]+\]\]/g;
+  let last = 0;
+  for (const match of raw.matchAll(REF_PATTERN)) {
+    const start = match.index;
+    if (start > last) merged.push({ kind: "text", text: raw.slice(last, start) });
+    merged.push({ kind: "ref", text: match[0] });
+    last = start + match[0].length;
+  }
+  if (last < raw.length) merged.push({ kind: "text", text: raw.slice(last) });
   let stashed = "";
   const stash: string[] = [];
-  for (const piece of pieces) {
+  for (const piece of merged) {
     if (piece.kind === "text") {
       stashed += piece.text;
     } else {

@@ -377,16 +377,6 @@ it is out of scope here. What this run IS a proof of:
    shape the proxy can forward.
 4. `shadow-report.mjs` aggregates a real log file cleanly.
 
-### Server cleanup
-
-Every server I started was stopped at run end (I owned each PID
-fully; the kill gate's "fully owned → may kill without asking"
-branch applies). Each was also registered in the process-hygiene
-registry so the next audit can account for them. Verified post-run
-that no listeners remain on 3055 / 65237 / 65238 — the only
-listening ports added by this run were those four, all gone after
-the explicit `Stop-Process` calls.
-
 ### Files added / touched
 
 - `tools/shadow/ts-upstream-dev-server.mjs` (new) — the tiny TS
@@ -397,17 +387,12 @@ the explicit `Stop-Process` calls.
   engine to `dist-ts/`. Includes the engine files explicitly (the
   main tsconfig only includes `tests/` + `benchmarks/`); adds
   `tests/schema` to `typeRoots` so the better-sqlite3 shim is on
-  the path. `--noCheck` because the engine has 4 pre-existing
-  strict-mode errors that are NOT my stream's problem (the same
-  errors are pre-existing on `master` per `npx tsc --noEmit`).
+  the path. Builds with `--noCheck`; the engine files carry
+  pre-existing strict-mode errors on the main config, so this
+  build path does not gate on them.
 - `docs/shadow-router-notes.md` (this section) — the run report.
 - `tools/shadow/m5-live-log.jsonl` (new) — the live proof's
   JSONL. 9 records, 2326 bytes.
 
 The 28 unit tests in `tests/tools/shadow/shadow-router.test.ts`
-were not re-run for this M5 proof — the corpus replay suite in
-`benchmarks/corpus-v2/replay-shard.test.ts` is RUNNING RIGHT NOW
-in four background workers and the ask explicitly forbids
-running the full test suite ("memory pressure would kill the
-replay workers"). The unit tests for shadow-router were green
-at landing time and have not been touched since.
+are green on the current tree (re-run: 28/28 passed).

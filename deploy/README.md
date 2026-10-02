@@ -12,12 +12,32 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | --- | --- |
 | `wrangler.toml` | Worker + D1 binding config (`main = worker.ts`) |
 | `worker.ts` | thin Workers HTTP entry over the engine (Web-standard only) |
+| `src/worker-metrics.ts` | per-request + isolate-aggregate metrics recorder; backs `GET /__metrics` and the `X-Render-Metrics` header |
 | `shims/node-crypto-shim.ts` | bundle-time replacement for the engine's one `node:crypto` import |
 | `sync-migrations.mjs` | regenerates `migrations/0001-schema.sql` from `db/schema.sqlite.sql` |
 | `migrations/0001-schema.sql` | the core schema, D1-ready (generated) |
+| `migrations/0002-card-text-binary-lookup-indexes.sql` | backfill of the BINARY key/codename indexes for already-provisioned databases; fresh databases never run it (not generated) |
+| `migrations/0003-demo-seed.sql` | the 4-card demo deck, generated from `db/seed.sql`; this is what the ROOT `wrangler.toml` one-click chain applies |
+| `migrations/0004-demo-account-substrate.sql` | the account substrate (`*account` + its four field cards, the `User` cardtype, the Decko Bot and Anonymous actor cards, and Decko Bot's own account). Idempotent — applying it twice inserts nothing. Generated |
+| `seed-account-system.mjs` | regenerates `migrations/0004-demo-account-substrate.sql` |
 | `seed.mjs` | regenerates `seed/seed.sql` (synthetic demo deck) |
 | `seed/seed.sql` | 15 synthetic cards, < 10 KB (generated) |
+| `launch.mjs` | earlier one-command orchestrator, superseded by `scripts/deploy/one-click-deck/`; dry-run/`--local` only, carries no write-budget gate of its own |
 | `cleanup.mjs` | deletes the Worker + D1 database (`--yes` to execute) |
+| `wrangler.scale.toml` | the separate scale-test Worker + D1 binding (`decko-ts-scale-test`); carries a placeholder `database_id` |
+| `cf-scale-deck/seed.sql` | the scale-test deck (2,279 cards + 531 refs), generated |
+| `bunny-worker-src/` | the Bunny.net edge variant of the same engine surface — the other edge, not Cloudflare |
+| `bunny-origin/` | VM origin for the Bunny path (server, nginx conf, systemd unit) |
+
+### Which chain is which (they are NOT interchangeable)
+
+This directory's own step list below applies `migrations/0001` +
+`migrations/0002` + `seed/seed.sql` — the 15-card DEV deck, whose ids are
+1..5, 10..18, 20. The one-click Deploy button applies the ROOT
+`wrangler.toml` chain instead: `migrations/0001` + `0002` + `0003` + `0004`,
+the 4-card deck plus the account substrate. The two seed files occupy the SAME
+ids, so never apply both to one database. `0004`'s own ids start at 1101 so it
+is safe on top of either.
 
 ## One-click deploy (operator: run from `deploy/`)
 
@@ -74,6 +94,14 @@ CQL result JSON), `GET /_status` (engine + database health).
 
 ## Cleanup (zero leftovers)
 
+The one exception to "run everything from this directory": the cleanup
+script names the two resources it removes explicitly (`wrangler delete
+--name decko-ts-demo`, `wrangler d1 delete decko-ts-demo-db`), so the
+deletions do not depend on which `wrangler.toml` cwd resolves. It is
+written repo-root-relative here; from inside `deploy/`, drop the `deploy/`
+prefix. It is also the only script here that talks to a real account, and
+only with `--yes`.
+
 ```sh
 node deploy/cleanup.mjs          # prints the plan, touches nothing
 node deploy/cleanup.mjs --yes    # deletes the Worker and the D1 database
@@ -84,12 +112,14 @@ That is the complete footprint — no KV, no R2, no queues, no secrets.
 
 ## Storage budget
 
-D1 free tier: **5 GB total**, 5 GB per-database. This deploy uses the
-schema DDL plus an **8 KB** seed — effectively zero. The demo deck is
-synthetic and always will be: no real member content is deployed to
-Cloudflare, ever (milestone data rule). **R2 is not used at all** — the
-engine stores everything in SQL, and this deploy binds no object storage,
-so there are no file uploads and no assets bucket.
+D1 on the free plan: **5 GB of storage per account**, in databases of
+**500 MB each** (Cloudflare's published D1 limits, checked 2026-10-02 at
+`developers.cloudflare.com/d1/platform/limits/`). This deploy writes the
+schema DDL plus an **8 KB** seed — effectively zero against either ceiling.
+The demo deck is synthetic and always will be: no real member content is
+deployed to Cloudflare, ever (milestone data rule). **R2 is not used at
+all** — the engine stores everything in SQL, and this deploy binds no
+object storage, so there are no file uploads and no assets bucket.
 
 ## Local proof (no account)
 
@@ -106,4 +136,11 @@ node deploy/sync-migrations.mjs   # after db/schema.sqlite.sql changes
 node deploy/seed.mjs              # after editing the demo deck definition
 ```
 
-Both fail loudly if the seed exceeds its 1 MB budget (it is ~8 KB).
+`seed.mjs` carries a self-imposed size tripwire: it exits non-zero if the
+generated `seed/seed.sql` reaches 1 MB (currently 8,346 bytes). That 1 MB
+is this repo's own demo-deck budget, not a platform limit — the D1 free
+plan allows far more per database. `sync-migrations.mjs` has no size check
+and no error handling at all: it copies `db/schema.sqlite.sql` (minus
+`PRAGMA` lines) and `db/seed.sql` byte-for-byte into `migrations/`, prints
+both sha256 pairs, and resolves its paths relative to its own location, so
+it runs from any directory.

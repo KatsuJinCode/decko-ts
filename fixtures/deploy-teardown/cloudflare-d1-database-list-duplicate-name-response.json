@@ -1,0 +1,28 @@
+{
+  "_provenance": "GET /accounts/{account_id}/d1/database — same shape as cloudflare-d1-database-list-response.json, but TWO entries share the exact configured name. Cloudflare enforces unique database names per account, so this is an account in a state the teardown does not model; the teardown must refuse (--ambiguous-database-name) rather than pick one. Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "uuid": "9f2c1a44-7b3e-4d5a-8c6b-1e0d2f3a4b5c",
+      "name": "decko-one-click-db",
+      "created_at": "2026-09-23T18:41:07.123456Z",
+      "version": "1",
+      "jurisdiction": "us"
+    },
+    {
+      "uuid": "5b1d9f30-8a4c-4e7d-9f2b-3c6a5d4e3f2a",
+      "name": "decko-one-click-db",
+      "created_at": "2026-09-25T14:12:00.000000Z",
+      "version": "1",
+      "jurisdiction": "us"
+    }
+  ],
+  "result_info": {
+    "count": 2,
+    "page": 1,
+    "per_page": 20,
+    "total_count": 2
+  }
+}

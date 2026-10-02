@@ -1,4 +1,4 @@
-# Notify port notes (Astra category 4 — side-effect parity)
+# Notify port notes (side-effect parity)
 
 This file documents the TS port of Deco's mail + follow-notification
 machinery: the Ruby surface, the seam the port introduces, the
@@ -16,7 +16,7 @@ trees do not interact directly with notification rendering.
 
 ### Mail machinery (`Card::Mailer`)
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0\lib\card\mailer.rb`
+`gems/card-1.110.0/lib/card/mailer.rb`
 
 - Lines 5-7: `Card::Mailer < ActionMailer::Base` — the mailer class is
   an `ActionMailer` subclass. ActionMailer is a Rails primitive, not a
@@ -40,7 +40,7 @@ class.
 
 ### EmailTemplate rendering
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-email-0.20.0\set\type\email_template.rb`
+`gems/card-mod-email-0.20.0/set/type/email_template.rb`
 
 - Lines 1-7: `def deliver(context=nil, fields={}, opts={})` —
   `mail = format.mail context, fields, opts; mail.deliver`. The actual
@@ -72,12 +72,12 @@ class.
 
 ### Format variants
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-email-0.20.0\lib\card\format\email_html_format.rb`
+`gems/card-mod-email-0.20.0/lib/card/format/email_html_format.rb`
 
 - A subclass of `Card::Format::HtmlFormat`; turns off view caching
   (line 5-7), aliases `format "email"` to `format "email_html"` (line 3).
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-email-0.20.0\lib\card\format\email_text_format.rb`
+`gems/card-mod-email-0.20.0/lib/card/format/email_text_format.rb`
 
 - A subclass of `Card::Format::TextFormat` with `chunk_list =
   :references` (turns off URI autodetection in the body, line 5-7).
@@ -87,7 +87,7 @@ The notify notification template card uses the email_text format.
 
 ### Notify trigger machinery
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-follow-0.20.0\set\all\notify.rb`
+`gems/card-mod-follow-0.20.0/set/all/notify.rb`
 
 - Lines 8-11: the central event
   `event :notify_followers_after_save, :integrate_with_delay,
@@ -118,7 +118,7 @@ The notify notification template card uses the email_text format.
 
 ### Account-side hook
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-follow-0.20.0\set\right\account.rb`
+`gems/card-mod-follow-0.20.0/set/right/account.rb`
 
 - Lines 1-7: `send_change_notice(act, followed_set, follow_option)`.
   Returns immediately when `email.blank?` or the act's changes are
@@ -130,7 +130,7 @@ The notify notification template card uses the email_text format.
 
 ### Notification template type
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-follow-0.20.0\set\type\notification_template.rb`
+`gems/card-mod-follow-0.20.0/set/type/notification_template.rb`
 
 - Lines 1-3: `card_reader :contextual_class, card_reader :disappear,
   card_reader :message` — the three field slots every notification
@@ -144,7 +144,7 @@ The notify notification template card uses the email_text format.
 
 ### Follower stash + lookup machinery
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-follow-0.20.0\lib\card\follower_stash.rb`
+`gems/card-mod-follow-0.20.0/lib/card/follower_stash.rb`
 
 - Lines 5-13: `FollowerStash.initialize` takes the act's primary card,
   walks `each_direct_follower_id_with_reason` (per-card), then
@@ -156,7 +156,7 @@ The notify notification template card uses the email_text format.
   rule on the card, checking each named field for either the field
   itself or a `*nests` inclusion.
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-follow-0.20.0\set\all\follow.rb`
+`gems/card-mod-follow-0.20.0/set/all/follow.rb`
 
 - Lines 1-13: `followable?` default `true`, plus the per-card-type
   override hook (Cardtype/Set/etc. override to `false` for non-data
@@ -174,7 +174,7 @@ The notify notification template card uses the email_text format.
 
 ### Account email machinery
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-account-0.20.0\set\right\email.rb`
+`gems/card-mod-account-0.20.0/set/right/email.rb`
 
 - Lines 10-20: a `+*email` card is `assign_type :phrase`,
   `require_field :email`, and validates via `event :validate_email,
@@ -183,14 +183,14 @@ The notify notification template card uses the email_text format.
 - Lines 29-31: `own_email?` is "this is my own +*email card vs. another
   user's"; `ok_to_read?` denies anyone but the owner + super-users.
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-account-0.20.0\set\right\account.rb`
+`gems/card-mod-account-0.20.0/set/right/account.rb`
 
 - Lines 4-9: `+account` carries the account-card pointer; the user
   card itself is the `left` of `+account`.
 - Lines 11-12: `+status` carries one of `STATUS_OPTIONS` (active /
   unapproved / unverified / blocked).
 
-`C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-mod-account-0.20.0\set\right\account\events.rb`
+`gems/card-mod-account-0.20.0/set/right/account/events.rb`
 
 - Lines 23-26: the `event :send_welcome_email` and friends are
   account-level events that fire ON the account card itself, not on
@@ -227,9 +227,9 @@ src/card/notify/
 
 ### Save-path hook interface
 
-The save path is owned by the actions stream and is **read-only** for
-this stream. The hook interface is defined here; the registration is
-wired by the coordinator (the engine-side change). Doc for that
+The save path is owned by the action engine and is **read-only** for
+the notify work. The hook interface is defined here; the registration is
+the engine-side change. Doc for that
 registration is in "Save-path registration line" below.
 
 ```ts
@@ -254,14 +254,14 @@ Mapping to Ruby's `event :name, :stage, on: :save, when: :when?` API
 | implicit `on: :save`  | implied by `expandActionResultToSavePathEvents` (the dispatcher walks verbs) |
 | `priority:`           | not yet modeled — the port runs sequentially; future work can add `priority` to the hook for ordering |
 
-### Save-path registration line (coordinator)
+### Save-path registration line
 
-The actions stream owns CardActionEngineOptions; this stream DEFINES
-the dispatch helper and the hook. The coordinator's registration in
+The action engine owns CardActionEngineOptions; the notify work DEFINES
+the dispatch helper and the hook. The registration in
 the action engine's post-save promise chain must call:
 
 ```ts
-// in src/card/actions/card-action-engine.ts (coordinator-owned file):
+// in src/card/actions/card-action-engine.ts:
 // inside the createCard/updateCard/deleteCard functions, AFTER
 // `await this.expireAfterWrite(...)` (the last write-path step in
 // write-path.ts:759-795 — Card#expire, the integration stage in

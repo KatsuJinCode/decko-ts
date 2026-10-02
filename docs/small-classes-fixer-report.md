@@ -1,7 +1,6 @@
 # Small-classes fix report (parens, codename, missing-view, etc.)
 
 Date: 2026-09-24
-Lane: small-classes-fixer
 Companion doc: `docs/oracle-env-capture-error-still-raised.md`
 
 ## Summary
@@ -9,7 +8,7 @@ Companion doc: `docs/oracle-env-capture-error-still-raised.md`
 Ran the RAW oracle verify driver (`tmp/raw-ground-truth/scripts/verify-recapture-raw.test.ts`)
 under `tmp/slice-replay.lock` over the first 4 expected shards
 (recapture-raw-shard-000000..000003, 1489 entries) once before and once after
-this lane's edits. The lock was held with the standard `.claim` sentinel pattern.
+these edits. The lock was held with the standard `.claim` sentinel pattern.
 
 The 4-shard sample is smaller than the 48-shard baseline the per-class-mechanisms
 report references; counts are normalized for comparison.
@@ -40,7 +39,7 @@ Bug: `src/card/fetch/retrieve.ts:272` passed `mark.name.key` to
 `lexicon.id(...)`. For names where `name.key` and the stored key diverge --
 parenthesized names like `Organizer(s)` where the canonical key collapses
 `organizer(s)` → `organizer_` -- the `lexQuery` helper then ran
-`DeckoName.parse(lex).key` (where `lex` was `organizer_` after my own change
+`DeckoName.parse(lex).key` (where `lex` was `organizer_` once the fix
 passed it through the chain), which produced `organizer` instead of
 `organizer_`. Result: SQL `WHERE key='organizer'` never matched the
 seedCard-written `organizer_`, and the junction lookup returned null.
@@ -83,9 +82,9 @@ fine when the codehash is loaded -- but `closureWarm` runs BEFORE the
 rendering engine folds the codehash into the cold batch (it happens in
 `parseRuleTypeIds`, after `closureWarm` in the cold path). The render-path
 ordering is the regression; the doc says `codehash` is loaded in
-`render.ts:1602-1613` (`ensureReadPermission` -> `parseRuleTypeIds`). I
-am NOT going to fix that ordering here because `src/card/render.ts` is
-another lane's territory and the fix belongs there.
+`render.ts:1602-1613` (`ensureReadPermission` -> `parseRuleTypeIds`). Not
+fixed here; the ordering lives in `src/card/render.ts` and the fix belongs
+there.
 
 ### 3. NameNotFoundError (id-lookup closure gap)
 
@@ -94,7 +93,7 @@ followed `left_id`, `right_id`, and `type_id`. Implementation:
 `tmp/raw-ground-truth/scripts/raw-corpus-seeding.ts:130-159`. Chunked
 at 500 ids to stay under SQLite's `SQLITE_MAX_VARIABLE_NUMBER` (default 999);
 the unbounded IN clause raised `too many SQL variables` on the first
-attempt (raw write-up down to me).
+attempt.
 
 After: `handler_raised:NameNotFoundError` 6 → 0 across the 4 shards sampled.
 
@@ -102,11 +101,9 @@ After: `handler_raised:NameNotFoundError` 6 → 0 across the 4 shards sampled.
 
 Registered `name`, `linkname`, `add_button`, `add_link`, `add_url` in the
 flat `HTML_VIEWS` table at `src/card/render/views.ts:1080-1107`. The mod
-loader's chain-aware registry carries the chain entries (in
-`card-mod-format.ts` and the new `cardtype` block at
-`tmp/raw-ground-truth/scripts/raw-corpus-seeding.ts` -- wait that's the
-wrong reference; the chain entries are in
-`src/card/mod-loader/mods/card-mod-format.ts`); the verify driver creates
+loader's chain-aware registry carries the chain entries in
+`src/card/mod-loader/mods/card-mod-format.ts` (including the new
+`cardtype` block); the verify driver creates
 its engine with the default mod loader bound, but the chain resolution
 returns no entries when the chain walker does not match setKeys that
 include the right pattern token. The flat registration closes the gap
@@ -158,15 +155,15 @@ in different environments.
 1. CodenameNotFoundError regression (8 → 30 across 4 shards): the closure
    now seeds the codename cards, but the renderer's `closureWarm` runs
    `DeckoName.parse` on every content ref BEFORE the codehash is folded into
-   the cold batch. The fix belongs in `src/card/render.ts` (different
-   lane) -- the parser needs to be tolerant of unresolved codename marks
+   the cold batch. The fix belongs in `src/card/render.ts` -- the parser
+   needs to be tolerant of unresolved codename marks
    when called from the warm-closure walk, OR `closureWarm` must run
    AFTER `ensureReadPermission` + `parseRuleTypeIds` so the codehash is
    loaded by the time the ref walk hits `:codename` shapes.
 
 2. `handler_raised:Card` still has 1 entry across the 4 shards. The
    remaining message is a different UserError stem than `linkname` /
-   `add_button` / `name`. The next lane to touch the view registry
+   `add_button` / `name`. The next change to the view registry
    should run trace-failures.cjs to extract the exact stem and add it
    to `HTML_VIEWS`.
 
@@ -191,5 +188,3 @@ in different environments.
   card_references.referee_id walk; Fix #5: *read rule content walk)
 - `docs/oracle-env-capture-error-still-raised.md` (Fix #7: oracle-env
   exclusion doc)
-
-No commits made; report-only.

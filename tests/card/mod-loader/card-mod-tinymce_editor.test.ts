@@ -1,7 +1,6 @@
 // The card-mod-tinymce_editor mod loader test.
 //
-// The gem (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
-// card-mod-tinymce_editor-0.20.0/) ports three surfaces headlessly:
+// The gem (card-mod-tinymce_editor-0.20.0) ports three surfaces headlessly:
 //
 //   1. the two format :js views of set/all/reference_editor/nest_image.rb
 //      (:change_create_to_update :41-43, :open_nest_editor :45-50) - proven
@@ -27,10 +26,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createRenderTestStorage,
+  bindModLoaderToEngine,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
-import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { RenderFormat, UnsupportedViewError } from "../../../src/card/render/format.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
 import {
@@ -181,8 +181,8 @@ describe("NestParser (lib/card/reference/nest_parser.rb)", () => {
   it("empty?: the shipped regex's +? is a lazy quantifier on the brace (:26-28)", () => {
     // Ruby's regex /\{\{+?\s*\|?\s*\}\}/ reads as: "{{" PLUS one-or-more
     // additional "{" (lazy), so the + counts BRACES, not the +-joint.
-    // Verified against the target Ruby 3.3 this session
-    // (C:/Ruby33-x64/bin/ruby.exe -e '...'):
+    // Verified against the target Ruby 3.3 interpreter
+    // (`ruby -e '...'`):
     //   "{{+ }}" => nil      "{{ }}" => match
     //   "{{foo}}" => nil     "{{{}}" => match
     // i.e. the gem's own default snippet is NOT empty?, while a pipe-less
@@ -313,21 +313,58 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     ).rejects.toThrow(UnsupportedViewError);
   });
 
-  it("WITH the mod: :change_create_to_update emits Ruby's exact bytes (nest_image.rb:41-43)", async () => {
+  it("WITH the mod: the html format REJECTS :change_create_to_update; the js format emits Ruby's exact bytes (nest_image.rb:41-43)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModTinymceEditor }]);
     loader.load();
+    // BIND the loader to the engine (flat-table-format-scope lane,
+    // 2026-10-01): the suite's pre-fix pins rode the format-blind flat
+    // seam through the SHARED HTML_VIEWS object with NO loader bound
+    // (engine.modLoader stayed undefined, so renderView never walked a
+    // chain). The format-scoped dispatch the flipped pins assert needs
+    // the chain: bindModLoaderToEngine wires engine.modLoader + the
+    // process default (render-test-storage.ts:143-149), the same seam
+    // the card-mod-email/card-mod-search A/B suites use.
+    bindModLoaderToEngine(storage, loader);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
+
+    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the view
+    // lives in set/all/reference_editor/nest_image.rb:41-43's
+    // `format :js` block - register_all_set_format files it under
+    // JsFormat (set/format.rb:137-139; registrar.rb:79-84 mixes it into
+    // THAT class only), so an HTML-format render has no method and
+    // raises unsupported-view. The pin used to receive the js bytes
+    // through the format-blind FLAT last-wins seam (the flat record now
+    // admits only html/base keys - mod-loader.ts registration seam; the
+    // census probe view-dispatch-flat-record-format-scope-census.test.ts
+    // pins the measured foreign rows). The js dispatch itself renders
+    // the bytes through the owning format class below.
+    await expect(
+      s.engine.render("TinyMCE Probe", "change_create_to_update"),
+    ).rejects.toThrow(UnsupportedViewError);
 
     // tinymce_id's params-present branch needs Env.params; the headless
     // render has none, so Ruby's absent-params default branch is the
     // reachable one (nest_image.rb:52-58). One line, no trailing newline.
-    const html = await s.engine.render("TinyMCE Probe", "change_create_to_update");
-    expect(html).toBe('nest.changeCreateToUpdate($(".tinymce-textarea").attr("id"));');
+    const card = await s.engine.prepareItemForRender("TinyMCE Probe");
+    expect(card).toBeDefined();
+    const fmt = new RenderFormat(card!, s.engine, { formatName: "js" });
+    expect(fmt.renderView("change_create_to_update")).toBe(
+      'nest.changeCreateToUpdate($(".tinymce-textarea").attr("id"));',
+    );
   });
 
-  it("WITH the mod: :open_nest_editor emits the strip_heredoc'd JS (nest_image.rb:45-50)", async () => {
+  it("WITH the mod: the html format REJECTS :open_nest_editor; the js format emits the strip_heredoc'd JS (nest_image.rb:45-50)", async () => {
     const s = storage!;
+    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the
+    // second `format :js` view of nest_image.rb (45-50) - same
+    // JsFormat-only filing as :change_create_to_update above; the html
+    // pin used to ride the flat seam and now raises unsupported-view,
+    // with the js dispatch holding the bytes through the owning class.
+    await expect(
+      s.engine.render("TinyMCE Probe", "open_nest_editor"),
+    ).rejects.toThrow(UnsupportedViewError);
+
     // card.name.tag - the rightmost name part (cardname parts.rb #tag; the
     // shared DeckoName.tag carries it, name.ts:405-407)
     expect(DeckoName.parse("A+B").tag).toBe("B");
@@ -336,20 +373,25 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     // the heredoc body's 6-space indent is stripped; the trailing newline
     // is heredoc content; the interpolation is `{{+#{card.name.tag}|
     // view: content; size: medium}}` verbatim
-    const html = await s.engine.render("TinyMCE Probe", "open_nest_editor");
-    expect(html).toBe(
+    const card = await s.engine.prepareItemForRender("TinyMCE Probe");
+    const fmt = new RenderFormat(card!, s.engine, { formatName: "js" });
+    expect(fmt.renderView("open_nest_editor")).toBe(
       'tm = tinymce.get($(".tinymce-textarea").attr("id"));\n' +
         'nest.insertNest(tm, "{{+TinyMCE Probe|view: content; size: medium}}");\n',
     );
   });
 
-  it("WITH the mod: the load report lists both ported views", () => {
+  it("WITH the mod: the load report lists the ported views", () => {
     const report = loader!.load();
     expect(report.registeredViews).toContain("change_create_to_update");
     expect(report.registeredViews).toContain("open_nest_editor");
-    // the mod declares exactly two view definitions (both js); the html
-    // remainder stays unregistered
-    expect(report.registeredViews).toHaveLength(2);
+    // the two js views plus the tinymce-views-port lane's two html link
+    // editors (link_editor, modal_link_editor - see
+    // card-mod-tinymce-editor-views.test.ts for their byte pins), plus the
+    // form-substrate lane's :new_image_buttons port (nest_image.rb:21-24;
+    // merge-resolution count: HEAD's 4 + the lane's port = 5)
+    expect(report.registeredViews).toContain("new_image_buttons");
+    expect(report.registeredViews).toHaveLength(5);
   });
 
   it("WITH the mod: both views carry Ruby's unknown: true config (nest_image.rb:41,45)", () => {

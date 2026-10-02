@@ -49,11 +49,17 @@ import {
 } from "../../../src/testing/replay.js";
 import { UnsupportedViewError } from "../../../src/card/render.js";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import {
+  CORPUS_DB_PATH,
+  SHARD_000000_PATH,
+} from "../../../src/testing/test-corpus-paths.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
-const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
-const SHARD_PATH = path.join(REPO_ROOT, "fixtures", "corpus", "shard-000000.jsonl");
+// Committed miniature corpus by default; richer machine-local corpus under
+// the explicit DECKO_TS_CORPUS_V2 opt-in (test-corpus-paths.ts).
+const CORPUS_DB = CORPUS_DB_PATH;
+const SHARD_PATH = SHARD_000000_PATH;
 
 interface ShardLine {
   id: number;

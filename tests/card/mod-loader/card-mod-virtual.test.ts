@@ -266,8 +266,8 @@ describe("card-mod-virtual: the events surface through the loader (virtual_cache
       fetchById: async () => undefined,
       cacheFetchedRecord: async () => undefined,
     } as never; // structural - ModEngineHost's full surface unused
-    expect(() => save?.fn(fakeCard, fakeHost)).not.toThrow();
-    expect(() => del?.fn(fakeCard, fakeHost)).not.toThrow();
+    expect(() => save?.fn(fakeCard, fakeHost, {} as never)).not.toThrow();
+    expect(() => del?.fn(fakeCard, fakeHost, {} as never)).not.toThrow();
   });
 
   it("reset() drops both events from the registry (loader round-trip)", () => {

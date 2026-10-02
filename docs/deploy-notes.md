@@ -61,6 +61,24 @@ graph is engine-relative; the other Node users — `src/testing/*`,
 `libsql-http.ts`'s Buffer — are not on the worker's import path). Workers
 have no `node:crypto` without the `nodejs_compat` flag.
 
+**Correction 2026-09-29 (workerd-boot lane): the 2026-09-20 audit was wrong
+and the crypto-only guard inherited the error.**
+`src/card/render/coded-attachment-files.ts` statically imported `node:fs`
+(plus `node:path`/`node:url`) and IS on the worker import path
+(`views.ts` -> `codedSvgFileBytes`); vite hoisted those imports to the
+bundle top, so workerd refused the script at load with
+`No such module "node:fs"` — `deploy/launch.mjs --local` and the whole
+miniflare deploy suite were dead at boot on every revision that carried the
+module. Fixed in src this time (authorized for this lane): the module
+reaches fs through a runtime `process.getBuiltinModule` probe (Node >= 22.3;
+no import statement, so no bundler can emit a node: specifier from it),
+resolves the vendored mod dirs with plain `new URL` against
+`import.meta.url`, and yields `undefined` on runtimes that have neither
+(workerd exposes no `process` and no `import.meta.url` for booted scripts —
+both probed via miniflare) so the caller's image-URL branch takes over.
+The bundle hygiene check in BOTH `launch.mjs` and the deploy suite now
+rejects every quoted `node:<module>` specifier, not just `node:crypto`.
+
 Route-around (deploy path only): `wrangler.toml` declares
 
 ```toml
@@ -72,8 +90,10 @@ and `shims/node-crypto-shim.ts` implements `randomBytes` over Web Crypto
 `crypto.getRandomValues`, preserving the pinned contract
 (`randomBytes(10).toString("hex")` = exactly 20 lowercase hex chars, the
 replay-harness slot-id shape). No `nodejs_compat` flag is set — the deploy
-is Web-standard-only and the tests pin that (the bundle must not contain
-`node:crypto`). Both bundlers were verified: wrangler 4.135.0 `--dry-run`
+is Web-standard-only and the tests pin that (since 2026-09-29 the bundle
+must contain no `node:` specifier at all; before then a crypto-only check
+missed the `node:fs` import that broke the boot — see the correction
+above). Both bundlers were verified: wrangler 4.135.0 `--dry-run`
 (the real production bundle: shim present, no `node:crypto` module code) and
 the vite test bundle with the same alias.
 
@@ -136,8 +156,9 @@ with an explanation instead of producing a broken seed).
 
 1. Bundle `deploy/worker.ts` with the production alias (vite, test-only
    tooling; miniflare 5 ships no TS bundler and workerd executes JS only).
-2. Assert the bundle contains no `node:crypto` and actually includes the
-   engine.
+2. Assert the bundle contains no quoted `node:<module>` specifier (any
+   module — widened 2026-09-29 from a node:crypto-only check that let the
+   boot-breaking `node:fs` through) and actually includes the engine.
 3. Boot workerd, apply `deploy/migrations/0001-schema.sql` +
    `deploy/seed/seed.sql` through `CloudflareD1Adapter` (the same adapter
    the worker runs on).
@@ -164,7 +185,9 @@ deploy binds no object storage, and there are no file uploads.
 `node deploy/cleanup.mjs` prints the plan (two resources);
 `--yes` executes:
 
-- `npx wrangler delete --name decko-ts-demo` (interactive confirmation)
+- `npx wrangler delete decko-ts-demo` (the name is a POSITIONAL:
+  `wrangler delete [name]` — wrangler 4.135.0 declares no `--name` flag;
+  interactive confirmation expected)
 - `npx wrangler d1 delete decko-ts-demo-db --skip-confirmation` (flag
   verified against the Cloudflare D1 command docs)
 

@@ -13,19 +13,27 @@
 //     CLOUDFLARE_* credentials so a local run cannot accidentally reach
 //     the account.
 //
-//   --execute --token <CF_API_TOKEN> --account-id <ACCOUNT_ID> — the REAL
-//     one-click run on a Cloudflare account. EVERY D1 write step goes
-//     through the write-budget gate first: the step's exact row count is
-//     declared, checked against the 80,000-row guard (80% of the 100,000
-//     rows/day free tier), and the run REFUSES (exit 2, "--budget-exceeded")
-//     rather than cross it. NOTE (2026-09-23 incident): all CF-account
-//     writes are FROZEN pending Julian's go — until he says go, this mode
-//     exists but is not to be run.
+//   --execute --token <CF_API_TOKEN> --account-id <ACCOUNT_ID>
+//       --i-understand-this-writes-to-my-cloud-account
+//     — the REAL one-click run against a Cloudflare account. This mode
+//     creates a D1 database and a Worker on the account you name, and writes
+//     tens of thousands of rows into the account's D1 database. Every D1
+//     write step goes through the write-budget gate first: the step's exact
+//     row count is declared, checked against the 80,000-row guard (80% of
+//     the 100,000 rows/day free tier), and the run REFUSES (exit 2,
+//     "--budget-exceeded") rather than cross it.
 //
-// Budget rule encoded here (the 2026-09-23 incident ruling): arithmetic
-// BEFORE every write; the tool never suggests the paid plan; anything that
-// would span multiple UTC days comes to the operator as an explicit
-// decision, never piecemeal.
+//     --execute additionally REFUSES to start unless you also pass
+//     --i-understand-this-writes-to-my-cloud-account. That flag is enforced:
+//     it is the difference between a tool that can write to someone's
+//     account and a tool that announces it and asks once. It is a real gate,
+//     not a note in the output — run --execute without it and the process
+//     exits before any network call.
+//
+// Budget rule encoded here: arithmetic BEFORE every write; the tool never
+// suggests the paid plan; anything that would span multiple UTC days is
+// refused rather than executed piecemeal, and the refusal is the tool's
+// decision to surface, not the caller's to overrule by re-running.
 //
 // Platform rule: all platform-specific operations live in platform-ops.mjs
 // (dual-path or a LOUD PLATFORM-OPS error — never a silent no-op).
@@ -63,6 +71,7 @@ const EXIT_PLATFORM_OPS = 3;
 function parseArgs(argv) {
   const args = {
     execute: false,
+    accountWritesUnderstood: false,
     local: false,
     dryRun: false,
     token: process.env.CF_API_TOKEN ?? process.env.CLOUDFLARE_API_TOKEN ?? null,
@@ -79,6 +88,8 @@ function parseArgs(argv) {
     const next = () => argv[++i];
     switch (a) {
       case "--execute": args.execute = true; break;
+      case "--i-understand-this-writes-to-my-cloud-account":
+        args.accountWritesUnderstood = true; break;
       case "--local": args.local = true; break;
       case "--dry-run": args.dryRun = true; break;
       case "--token": args.token = next(); break;
@@ -115,11 +126,18 @@ MODES
                               the 'wrangler dev' command. Add --serve to boot
                               the dev server in this terminal.
   --execute --token <t> --account-id <id>
-                              REAL RUN on a Cloudflare account. Every D1 write
-                              step passes the write-budget gate (refuses at
-                              80% of the 100,000 rows/day free tier, exit 2
-                              '--budget-exceeded'). FROZEN until Julian says
-                              go after the 2026-09-23 incident.
+                              REAL RUN against a Cloudflare account. Creates
+                              a D1 database and a Worker on that account and
+                              writes tens of thousands of rows into its D1
+                              database. Every D1 write step passes the
+                              write-budget gate (refuses at 80% of the
+                              100,000 rows/day free tier, exit 2
+                              '--budget-exceeded').
+                              REQUIRED alongside --execute:
+                              --i-understand-this-writes-to-my-cloud-account
+                              Without it the run stops before any network
+                              call. Pass it only when you have looked at the
+                              dry-run plan and want those writes made.
 
 OPTIONS
   --cards <n>                 Scale Pages in the fitting-scale seed
@@ -242,7 +260,7 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
         `Exact: ${plan.cardRows} single-row card INSERTs + ${plan.refRows} single-row ref INSERTs ` +
         `= ${plan.seedRows} rows. Ref density = corpus ratio 1,112,560/93,700 = ` +
         `${plan.refsPerCard.toFixed(6)} refs/card. Chunked at ${REMOTE_CHUNK_STATEMENTS} statements ` +
-        `(the size the 2026-09-23 incident proved survives the remote D1 endpoint).`,
+        `(the chunk size verified against the remote D1 endpoint's per-request limits).`,
       remoteCommands: () => [
         `for f in ${seedChunks}/chunk-*.sql: npx wrangler d1 execute ${dbName} --remote --config ${relToRepo(CONFIG_TOML)} --file $f`,
       ],
@@ -319,7 +337,7 @@ function printStepGuard(ledger, step, pendingRows = 0) {
 function dryRun({ args, plan, ledger, steps, remoteChunkCount }) {
   console.log(`
 ================ DRY RUN — executes NOTHING remote ================
-mode           : dry-run (default; add --execute to go live — FROZEN until Julian says go)
+mode           : dry-run (default; --execute plus --i-understand-this-writes-to-my-cloud-account makes the writes for real)
 token          : ${maskToken(args.token)} (only used by --execute)
 account        : ${args.accountId ?? "(none needed for dry-run)"}
 worker         : ${args.workerName}
@@ -479,9 +497,26 @@ Then (reads only):
   }
 }
 
-/** --execute: the REAL account run. Implemented in full; FROZEN until the
- * operator says go (2026-09-23 incident). */
+/** --execute: the REAL account run.
+ *
+ *  Guarded by an ENFORCED confirmation, not by a note in the output. This
+ *  mode creates billable-adjacent resources on someone else's Cloudflare
+ *  account and writes tens of thousands of rows into its D1 database, so it
+ *  refuses to start without --i-understand-this-writes-to-my-cloud-account.
+ *  The check runs first, before the token is read and before any network
+ *  call, so an --execute with no confirmation is a no-op that costs nothing
+ *  and touches nothing. The budget gate below then bounds the writes
+ *  themselves.
+ */
 async function executeMode({ args, plan, ledger, steps, remoteFiles }) {
+  if (!args.accountWritesUnderstood) {
+    fail(
+      "--execute creates a D1 database and a Worker on the account you name and writes " +
+        "tens of thousands of rows into its D1 database. Re-run with " +
+        "--i-understand-this-writes-to-my-cloud-account to confirm that is what you want. " +
+        "Run the command with no flags first to see the full plan and every write count.",
+    );
+  }
   if (!args.token) fail("--execute needs --token (a CF API token with D1 + Workers permissions)");
   if (!args.accountId) fail("--execute needs --account-id");
   console.log(`\n===== LIVE RUN — every D1 write step passes the budget gate first =====`);
@@ -572,6 +607,18 @@ async function main() {
   if (args.execute && args.dryRun) args.execute = false;
   if (!Number.isInteger(args.cards) || args.cards < 1) {
     fail(`--cards must be a positive integer (got ${args.cards})`);
+  }
+  // The account-writes confirmation is checked FIRST, before the plan is
+  // turned into seed files and long before any network call, so an
+  // unconfirmed --execute does no work at all. executeMode re-checks it
+  // because that function is the thing that actually writes.
+  if (args.execute && !args.accountWritesUnderstood) {
+    fail(
+      "--execute creates a D1 database and a Worker on the account you name and writes " +
+        "tens of thousands of rows into its D1 database. Re-run with " +
+        "--i-understand-this-writes-to-my-cloud-account to confirm that is what you want. " +
+        "Run the command with no flags first to see the full plan and every write count.",
+    );
   }
 
   const plan = planSeed({ scalePages: args.cards });

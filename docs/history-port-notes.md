@@ -4,7 +4,7 @@ How the card HISTORY/WRITE PATH (card_acts / card_actions / card_changes)
 works in the Ruby truth source and how `src/card/history/` ports it. Every
 claim carries a `file:method` cite into the installed gems:
 
-- `card` — `C:\Ruby33-x64\lib\ruby\gems\3.3.0\gems\card-1.110.0`
+- `card` — `gems/card-1.110.0`
 - `card-mod-history` — `...\gems\card-mod-history-0.20.0`
 - ActiveRecord/ActiveModel — `...\gems\activerecord-7.2.3.2` /
   `...\gems\activemodel-7.2.3.2`

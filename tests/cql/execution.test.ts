@@ -672,14 +672,19 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
 });
 
 describe("deferred keys surface honestly at execution time", () => {
-  it("found_by rejects with the generator's wave-2 pointer", async () => {
+  // Re-pinned by the pass-17 integration (lane-cql-found-by): the wave-2
+  // deferral is gone — string found_by values resolve via
+  // resolveFoundByConditions. The unsupported hash-value shape refuses
+  // loudly at execution (execute.ts), never a silent empty.
+  it("found_by's unsupported hash-value shape refuses loudly at execution", async () => {
     await expect(executeQuery(driver, { found_by: { id: 5 } })).rejects.toThrow(
-      /found_by requires runtime query execution/,
+      /found_by hash values \(Query\.run \+ result-card cql_hash subqueries\) are not supported/,
     );
   });
 
   it("found_by's refusal is CqlBadQuery (the 400-mappable class, not a crash)", async () => {
-    // The refusal is BY DESIGN (deferred wave 2), so it must ride the
+    // The refusal is BY DESIGN (the unsupported hash-value shape refuses
+    // rather than guessing), so it must ride the
     // BadQuery class the API layer maps to 400 "bad CQL" — a plain Error
     // surfaced as 500 "CQL execution failed", indistinguishable from an
     // engine crash (the probe battery's api-query-found-by-refused).

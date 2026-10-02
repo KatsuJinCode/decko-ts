@@ -44,6 +44,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -208,6 +209,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModScript }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("Oracle Head Probe", "script_variables");
@@ -377,6 +379,10 @@ describe("card-mod-script through the mod loader (A/B)", () => {
       "script_calls",
       "javascript_include_tag",
       "remote_script_tags",
+      // type_plus_right/mod/script.rb's :core (the Abstract::ModAssets
+      // group-list render) — ported admin-views-2 lane, oracle-pinned
+      // through mod: format :scripts (admin-view-pins.json)
+      "core",
     ]) {
       expect(report.registeredViews).toContain(view);
     }

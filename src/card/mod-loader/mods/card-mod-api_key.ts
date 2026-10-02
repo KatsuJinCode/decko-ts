@@ -2,7 +2,7 @@
 // loader - the structure + every mod-specific view the headless render path
 // can faithfully emit.
 //
-// The gem's tree (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/
+// The gem's tree (the installed
 // card-mod-api_key-0.20.0/):
 //   set/right/api_key.rb          - the *api_key right set's events, methods,
 //                                   and format-block views (:core/:current/
@@ -125,9 +125,17 @@ function coreTopView(): "current" {
 
 /** api_key.rb:96-98 `def generate_button_hidden_tags; {card: {trigger:
  *  :generate_api_key}}; end`. Rails' nested-param convention produces
- *  `name="card[trigger]"`. */
+ *  `name="card[trigger]"`, and hidden_field_tag (form_tag_helper.rb:264
+ *  shape: type, name, id, value, autocomplete LAST) derives the dom id with
+ *  `sanitize_to_id` - `name.delete("]").tr("^-a-zA-Z0-9:.", "_")` - so
+ *  "card[trigger]" becomes "card_trigger". The captured bytes carry
+ *  id="card_trigger" (fixtures/captured/api-key-views.json, probe
+ *  "Oracle ApiKey Account+*api key"). */
 function generateButtonHiddenTags(): string {
-  return `<input type="hidden" name="card[trigger]" value="${GENERATE_API_KEY_TRIGGER}" />`;
+  return (
+    `<input type="hidden" name="card[trigger]" id="card_trigger"` +
+    ` value="${GENERATE_API_KEY_TRIGGER}" autocomplete="off" />`
+  );
 }
 
 /** api_key.rb:100-102 `def generate_button_text; card.content.present? ?
@@ -143,20 +151,25 @@ function generateButtonSituation(): "primary" {
   return "primary";
 }
 
-/** The form's POST action: the card-mod-format path helper renders
- *  `card_path(card, format: :html, view: :edit)` - the api_key card's URL
- *  with the edit view. The TS port has no path helper; the byte shape is
- *  `/<card_key>?view=edit`. */
-function cardEditPath(cardName: string): string {
-  const key = cardName.replace(/\s+/g, "_").toLowerCase();
-  return `/${key}?view=edit`;
+/** The form's POST action: `card_form :update` (card-mod-format set/all/
+ *  form.rb:193-224) renders the UPDATE path for the card - `path(action:
+ *  :update)` per lib/card/path.rb:34-63, i.e. `/update/<url_key>`. The
+ *  captured bytes carry `/update/Oracle_ApiKey_Account+*api_key` (the
+ *  card's url_key, case preserved - path.rb:56-59 interpret_mark ->
+ *  url_key). */
+function cardUpdatePath(urlKey: string): string {
+  return `/update/${urlKey}`;
 }
 
-/** The token endpoint URL: `card_path(card, format: :json, view: :token)`
- *  - the same card URL with json + token. */
-function cardTokenPath(cardName: string): string {
-  const key = cardName.replace(/\s+/g, "_").toLowerCase();
-  return `/${key}.json?view=token`;
+/** The token endpoint URL: `path(format: :json, view: :token)` (api_key.rb:77-79)
+ *  rendered by Card::Path (card-mod-format-0.20.0 lib/card/path.rb:12-88):
+ *  the `standard` arm is `base + extension + query + anchor`; with no
+ *  action and both mark and view present, base is `"#{mark}/#{view}"`
+ *  (path.rb:36-42), mark is the card's url_key (path.rb:59-66), extension is
+ *  `".json"` (path.rb:68-72) and query is EMPTY - base already consumed
+ *  :view and extension already consumed :format (path.rb:84-88). */
+function cardTokenPath(urlKey: string): string {
+  return `/${urlKey}/token.json`;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,15 +189,30 @@ function cardTokenPath(cardName: string): string {
  *  The top section is conditional on card.content (api_key.rb:113 - the
  *  `if card.content.present?` guard before `render core_top_view`). The
  *  buttons section renders unconditionally (the generate button is shown
- *  even when no key exists yet - that's the "Generate API Key" branch). */
+ *  even when no key exists yet - that's the "Generate API Key" branch).
+ *
+ *  BYTES (Haml's emit rules, read off the captured oracle rather than
+ *  assumed - fixtures/captured/api-key-views.json "…#titled_content"):
+ *   - Haml writes STATIC attribute values with single quotes (the dynamic
+ *     `= text_field_tag` output keeps its own double quotes)
+ *   - every template line is newline-terminated, including the last
+ *   - a `= render X` line appends its own newline AFTER X's output, so a
+ *     nested template that already ends in "\n" produces the blank line the
+ *     capture shows between the current-api-key div and the top's close
+ *   - the `= render_buttons` line's callee is a set-DSL view (Ruby method
+ *     body, no trailing newline), so no blank line appears there. */
 const coreView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
   let top = "";
   if (card.dbContent.length > 0) {
-    top = `<div class="api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100">${ctx.fmt.renderView(coreTopView())}</div>`;
+    top =
+      `<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n` +
+      `${ctx.fmt.renderView(coreTopView())}\n</div>\n`;
   }
-  const buttons = `<div class="api-key-buttons d-flex my-2 py-3 justify-content-between w-100">${ctx.fmt.renderView("buttons")}</div>`;
-  return `<div class="api-key-core p-1">${top}${buttons}</div>`;
+  const buttons =
+    `<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n` +
+    `${ctx.fmt.renderView("buttons")}\n</div>\n`;
+  return `<div class='api-key-core p-1'>\n${top}${buttons}</div>\n`;
 };
 
 /** api_key.rb:72 `view :current, unknown: true, template: :haml`. The
@@ -196,15 +224,20 @@ const coreView: ViewFn = (ctx) => {
  *      = text_field_tag :current_api_key, card.content, readonly: true
  *
  *  Rails text_field_tag with readonly: true emits an <input type="text"
- *  readonly="readonly" />. The TS port emits the same shape. */
+ *  readonly="readonly" /> in the helper's own attribute order (type, name,
+ *  id, value, extras LAST - form_tag_helper.rb:264). The template's
+ *  single-quoted div/label and its line newlines are Haml's, per coreView's
+ *  byte note; the capture confirms all three (value order, quote style,
+ *  the label text on its own line). */
 const currentView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
   const value = card.dbContent;
   return (
-    `<div class="current-api-key nodblclick">` +
-    `<label for="current_api_key">${LOCALE.api_key_label}</label>` +
-    `<input type="text" id="current_api_key" name="current_api_key" value="${value}" readonly="readonly" />` +
-    `</div>`
+    `<div class='current-api-key nodblclick'>\n` +
+    `<label for='current_api_key'>\n${LOCALE.api_key_label}\n</label>\n` +
+    `<input type="text" name="current_api_key" id="current_api_key"` +
+    ` value="${value}" readonly="readonly" />\n` +
+    `</div>\n`
   );
 };
 
@@ -220,15 +253,14 @@ const currentView: ViewFn = (ctx) => {
  *  raises NoMethodError - the headless port returns "" so callers don't
  *  crash during composition; mod-view-helpers.ts:74-79 documents the
  *  fallback). */
-const titledView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
-const titledContentView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
-const contentView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
+const superApiKeyView: ViewFn = (ctx) => superView(ctx, "Right::ApiKey", ctx.voo.requestedView);
 
 /** api_key.rb:77-79 `view :token_link do link_to t(:api_key_get_jwt_token),
- *  path: {format: :json, view: :token} end`. The link href is the
- *  api_key card's URL with format: :json + view: :token. */
+ *  path: {format: :json, view: :token} end`. link_to appends the href LAST
+ *  (card-mod-format lib/card/format/links.rb:101-106), so the anchor is
+ *  class-less with the path as its only attribute. */
 const tokenLinkView: ViewFn = (ctx) => {
-  const href = cardTokenPath(ctx.fmt.card.name.s);
+  const href = cardTokenPath(ctx.fmt.urlKey());
   return `<a href="${href}">${LOCALE.api_key_get_jwt_token}</a>`;
 };
 
@@ -239,23 +271,37 @@ const buttonsView: ViewFn = (ctx) => ctx.fmt.renderView("generate_button");
 
 /** api_key.rb:85-94 `view :generate_button, perms: :update, unknown: true
  *  do card_form :update do [hidden_tags(...), submit_button(text: ...,
- *  situation: :primary, disable_with: ...)] end end`. The TS port emits
- *  the same form structure: a POST form with the hidden trigger input
- *  and a primary-class submit button. The Rails `card_form :update`
- *  helper emits <form action="..." method="post" class="card-form
- *  update-form"> with a hidden CSRF token (Rails' protect_from_forgery
- *  default) - the CSRF token is omitted here because the headless render
- *  path does not model sessions, and the structural tests assert the
- *  trigger + button bytes (the same way the HAML template the mod
- *  replaces asserted them). */
+ *  situation: :primary, disable_with: ...)] end end`.
+ *
+ *  The form tag is card-mod-format's `card_form` (set/all/form.rb:193-224),
+ *  NOT an api_key-local form: the class list ("card-form" + "slotter" +
+ *  "autosave" on :update - form.rb:218-224), the dom id (form_for's
+ *  "edit_card_<id>" persisted / "new_card" unsaved), the utf8 enqueuer and
+ *  the `_method=patch` spoof (the PERSISTED-record quirk) all come from the
+ *  shared helper - the same shape card-mod-comment emits for its
+ *  :comment_box and the same bytes the oracle capture carries.
+ *
+ *  The view's own array rides output()'s "\n" join (form.rb:198 `hidden +
+ *  output(yield(cform))`), which is the newline between the last hidden
+ *  input and the submit button. submit_button (form_elements.rb:59-64)
+ *  emits name "button", the type, the data-disable-with, and the
+ *  bootstrapified class LAST - the captured attribute order. */
 const generateButtonView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
-  const text = generateButtonText(card.dbContent);
-  const action = cardEditPath(card.name.s);
-  const hidden = generateButtonHiddenTags();
-  const buttonClass = `btn btn-${generateButtonSituation()}`;
-  const submit = `<button type="submit" class="${buttonClass}" data-disable-with="${LOCALE.api_key_generating}">${text}</button>`;
-  return `<form action="${action}" method="post" class="card-form update-form">${hidden}${submit}</form>`;
+  const isNew = card.id === undefined;
+  const formId = isNew ? "new_card" : `edit_card_${card.id}`;
+  const spoof = isNew
+    ? ""
+    : `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
+  const opener =
+    `<form class="card-form slotter${isNew ? "" : " autosave"}" id="${formId}"` +
+    ` action="${cardUpdatePath(ctx.fmt.urlKey())}" accept-charset="UTF-8"` +
+    ` data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />${spoof}`;
+  const submit =
+    `<button name="button" type="submit" data-disable-with="${LOCALE.api_key_generating}"` +
+    ` class="btn btn-${generateButtonSituation()}">${generateButtonText(card.dbContent)}</button>`;
+  return `${opener}${generateButtonHiddenTags()}\n${submit}</form>`;
 };
 
 // ---------------------------------------------------------------------------
@@ -314,9 +360,9 @@ const cardModApiKey: DeckoModManifest = {
             // api_key.rb:72 view :current, unknown: true, template: :haml
             { view: "current", viewFn: currentView, config: { unknown: true } },
             // api_key.rb:73-75 view :titled, :titled_content, :content, unknown: true
-            { view: "titled", viewFn: titledView, config: { unknown: true } },
-            { view: "titled_content", viewFn: titledContentView, config: { unknown: true } },
-            { view: "content", viewFn: contentView, config: { unknown: true } },
+            { view: "titled", viewFn: superApiKeyView, config: { unknown: true } },
+            { view: "titled_content", viewFn: superApiKeyView, config: { unknown: true } },
+            { view: "content", viewFn: superApiKeyView, config: { unknown: true } },
             // api_key.rb:77-79 view :token_link
             { view: "token_link", viewFn: tokenLinkView },
             // api_key.rb:81-83 view :buttons, perms: :update, unknown: true

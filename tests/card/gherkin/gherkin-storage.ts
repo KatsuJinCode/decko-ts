@@ -179,7 +179,12 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
     codename: "cardtype",
     typeId: TYPE_IDS.cardtype,
   });
-  await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: TYPE_IDS.cardtype });
+  // *all is TYPED SET (typeId 300, the Set codename card seeded below) —
+  // the who_can batch joins rule rows' left cards on sets.type_id = the
+  // 'set' codename card's id (view-task-rules.ts
+  // viewTaskPermissionStatements), so the fallback rules resolve only when
+  // the set card is typed Set (the fixture's shape)
+  await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: 300 });
   await seedCard(storage, {
     id: 8,
     name: "*default",
@@ -187,6 +192,26 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
     typeId: TYPE_IDS.cardtype,
   });
   await seedCard(storage, { leftId: 7, rightId: 8, typeId: TYPE_IDS.richText });
+  // the write-rule machinery every real decko deck bootstraps (mirrors
+  // actions-test-storage.ts seedStandardDeck rows 300-307): under the
+  // deny-by-default write gate a rule-less deck refuses every save
+  // (who_can -> [] -> among? -> false, permissions.rb:47-49/:100-118) —
+  // the scenarios' creates/updates/deletes need the *all fallbacks ->
+  // [[Anyone]].
+  await seedCard(storage, { id: 300, name: "Set", codename: "set" });
+  await seedCard(storage, { id: 301, name: "*create", codename: "create" });
+  await seedCard(storage, { id: 302, name: "*update", codename: "update" });
+  await seedCard(storage, { id: 303, name: "*delete", codename: "delete" });
+  await seedCard(storage, { id: 304, name: "Anyone", codename: "anyone" });
+  await seedCard(storage, { id: 305, leftId: 7, rightId: 301, typeId: 300, dbContent: "[[Anyone]]" });
+  await seedCard(storage, { id: 306, leftId: 7, rightId: 302, typeId: 300, dbContent: "[[Anyone]]" });
+  await seedCard(storage, { id: 307, leftId: 7, rightId: 303, typeId: 300, dbContent: "[[Anyone]]" });
+  for (const ruleId of [305, 306, 307]) {
+    await storage.driver.query(
+      "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (?, 'anyone', 304, 'L', NULL)",
+      [ruleId],
+    );
+  }
 }
 
 /** Seed an extended deck: standard + the Phrase and Pointer type cards

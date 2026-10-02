@@ -1,0 +1,184 @@
+{
+  "captured_at": "2026-09-30T05:51:28Z",
+  "probes": {
+    "constants": {
+      "SettingID": 278,
+      "SetID": 259,
+      "ListTypeID": 4
+    },
+    "rule_card": "ABSENT",
+    "setting_card": {
+      "id": 6547,
+      "name": "*read",
+      "type_id": 278,
+      "type_name": "bxyzzfy",
+      "safe_set_keys": "ALL TYPE-bxyzzfy STAR SELF-Xread",
+      "core": "CAPTURE_ERROR: NoMethodError: undefined method `match?' for nil"
+    },
+    "rule_card_type": "ABSENT",
+    "list_card": {
+      "id": 1,
+      "name": "Decko Bot",
+      "type_id": 2,
+      "type_name": "RichText",
+      "safe_set_keys": "ALL TYPE-rich_text SELF-decko_bot",
+      "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+    },
+    "junction_type_histogram": [
+      {
+        "type_id": 4,
+        "n": 132
+      },
+      {
+        "type_id": 2,
+        "n": 91
+      },
+      {
+        "type_id": 5,
+        "n": 77
+      },
+      {
+        "type_id": 337,
+        "n": 44
+      },
+      {
+        "type_id": 43,
+        "n": 28
+      },
+      {
+        "type_id": 284,
+        "n": 22
+      },
+      {
+        "type_id": 56,
+        "n": 20
+      },
+      {
+        "type_id": 98,
+        "n": 9
+      },
+      {
+        "type_id": 39,
+        "n": 7
+      },
+      {
+        "type_id": 37,
+        "n": 6
+      },
+      {
+        "type_id": 58,
+        "n": 5
+      },
+      {
+        "type_id": 65,
+        "n": 4
+      },
+      {
+        "type_id": 282,
+        "n": 3
+      },
+      {
+        "type_id": 41,
+        "n": 2
+      }
+    ],
+    "junction_rows": [
+      {
+        "id": 10,
+        "left": "*all",
+        "right": "*read",
+        "type_id": 4,
+        "db_content": "Anyone",
+        "reconstructed_name": "*all+*read",
+        "render": "UNRESOLVED"
+      },
+      {
+        "id": 11,
+        "left": "*all",
+        "right": "*default",
+        "type_id": 2,
+        "db_content": "",
+        "reconstructed_name": "*all+*default",
+        "render": "UNRESOLVED"
+      },
+      {
+        "id": 14,
+        "left": "Cardtype",
+        "right": "description",
+        "type_id": 2,
+        "db_content": "<p>\n  Every card has a type, which shapes the kind of inform",
+        "reconstructed_name": "Cardtype+description",
+        "render": {
+          "type_id": 2,
+          "safe_set_keys": "ALL ALL_PLUS TYPE-rich_text RIGHT-kfnvyby TYPE_PLUS_RIGHT-pnwfdiey-kfnvyby SELF-orvipveb-kfnvyby",
+          "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+        }
+      },
+      {
+        "id": 19,
+        "left": "User",
+        "right": "description",
+        "type_id": 2,
+        "db_content": "{{_l|name}} cards can support accounts, profile pages, and m",
+        "reconstructed_name": "User+description",
+        "render": {
+          "type_id": 2,
+          "safe_set_keys": "ALL ALL_PLUS TYPE-rich_text RIGHT-kfnvyby TYPE_PLUS_RIGHT-setting-kfnvyby SELF-guwg-kfnvyby",
+          "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+        }
+      },
+      {
+        "id": 29,
+        "left": "Cardtype",
+        "right": "*type",
+        "type_id": 5,
+        "db_content": "",
+        "reconstructed_name": "Cardtype+*type",
+        "render": "UNRESOLVED"
+      },
+      {
+        "id": 31,
+        "left": "Cardtype",
+        "right": "*self",
+        "type_id": 5,
+        "db_content": "",
+        "reconstructed_name": "Cardtype+*self",
+        "render": {
+          "type_id": 5,
+          "safe_set_keys": "ALL ALL_PLUS TYPE-pnwfdiey RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-pnwfdiey-Xself SELF-orvipveb-Xself",
+          "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+        }
+      },
+      {
+        "id": 34,
+        "left": "RichText",
+        "right": "description",
+        "type_id": 2,
+        "db_content": "<p>Basic cards are for rich text, and are the default type f",
+        "reconstructed_name": "RichText+description",
+        "render": {
+          "type_id": 2,
+          "safe_set_keys": "ALL ALL_PLUS TYPE-rich_text RIGHT-kfnvyby TYPE_PLUS_RIGHT-orvipveb-kfnvyby SELF-rich_text-kfnvyby",
+          "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+        }
+      },
+      {
+        "id": 36,
+        "left": "Number",
+        "right": "description",
+        "type_id": 2,
+        "db_content": "<p>Can contain only numerical values.</p>",
+        "reconstructed_name": "Number+description",
+        "render": {
+          "type_id": 2,
+          "safe_set_keys": "ALL ALL_PLUS TYPE-rich_text RIGHT-kfnvyby TYPE_PLUS_RIGHT-rich_text-kfnvyby SELF-Xmate-kfnvyby",
+          "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+        }
+      }
+    ]
+  },
+  "card_actions": {
+    "before_render": 5018,
+    "after_render": 5018
+  }
+}

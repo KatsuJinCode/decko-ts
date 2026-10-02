@@ -55,8 +55,8 @@ Three things are deliberately NOT compared:
 
 Deliberate omissions, not gaps:
 
-- **Draft saves** (`saveDraft` on the writer). The ask listed "save on a
-  read-rule-affected card" instead; the save-draft code path is
+- **Draft saves** (`saveDraft` on the writer). The battery covers "save on a
+  read-rule-affected card" instead (scenario 7); the save-draft code path is
   exercised separately in tests/card/history/write-path.test.ts.
 - **Save on an already-trashed card** (no-op trash flip). The act
   writer treats this as no changed fields and returns null; covered by
@@ -86,7 +86,7 @@ cd C:/localProjects/decko-ts/tools/oracle/decko-oracle-app
 cp db/development.sqlite3 db/write-conformance.sqlite3
 RAILS_ENV=development \
   DATABASE_URL=sqlite3:db/write-conformance.sqlite3 \
-  C:/Ruby33-x64/bin/bundle exec decko runner \
+  bundle exec decko runner \
   C:/localProjects/decko-ts/benchmarks/capture-write-conformance.rb
 ```
 
@@ -163,9 +163,9 @@ row, normalizing DB-local integer ids (fields 1/4/5) to `<int>`.
   same card.
 - Ruby's snapshot also includes the prior scenarios' actions because
   the capture script snapshots by `WHERE card_id IN (affected_ids)`
-  rather than "actions since the previous snapshot" — by design, this
-  matches the ask's "After EACH operation, dump the affected rows"
-  wording. The TS replay therefore replays all four ops to match.
+  rather than "actions since the previous snapshot" — by design, the
+  affected rows are dumped after each operation. The TS replay therefore
+  replays all four ops to match.
 
 ### 07 read-rule-affected-save — passes (with documented divergence on read_rule_id)
 - TS: 2 cards (target WCC ReadRule + rule card WCC ReadRule+*self+*read),
@@ -226,22 +226,22 @@ deferred to later streams and called out in their respective notes.
 
 ## File map
 
-| File | Stream | Role |
+| File | Added in | Role |
 |---|---|---|
-| `benchmarks/capture-write-conformance.rb` | this ask | Ruby capture script |
-| `fixtures/write-conformance/01-create-simple.jsonl` | this ask | scenario 1 fixture |
-| `fixtures/write-conformance/02-create-junction.jsonl` | this ask | scenario 2 fixture |
-| `fixtures/write-conformance/03-update-content.jsonl` | this ask | scenario 3 fixture |
-| `fixtures/write-conformance/04-rename-simple.jsonl` | this ask | scenario 4 fixture |
-| `fixtures/write-conformance/05-type-change.jsonl` | this ask | scenario 5 fixture |
-| `fixtures/write-conformance/06-delete.jsonl` | this ask | scenario 6 fixture |
-| `fixtures/write-conformance/07-read-rule-affected-save.jsonl` | this ask | scenario 7 fixture |
-| `fixtures/write-conformance/08-touch-name-reference.jsonl` | this ask | scenario 8 fixture |
-| `tests/card/conformance/write-path.test.ts` | this ask | TS replay + comparison |
-| `docs/write-conformance-notes.md` | this ask | this document |
-| `db/schema.sqlite.sql` | schema stream | DDL loaded by the replay |
-| `src/server/drivers/local-sqlite.ts` | driver stream | in-memory SQLDatabaseDriver |
-| `src/card/actions/card-action-engine.ts` | actions stream | the engine under test |
-| `src/card/history/write-path.ts` | history stream | the ActWriter under test |
-| `src/card/history/action.ts` | history stream | action_type code constants |
-| `src/card/history/change.ts` | history stream | TRACKED_FIELDS ordering, value serialization |
+| `benchmarks/capture-write-conformance.rb` | the conformance battery | Ruby capture script |
+| `fixtures/write-conformance/01-create-simple.jsonl` | the conformance battery | scenario 1 fixture |
+| `fixtures/write-conformance/02-create-junction.jsonl` | the conformance battery | scenario 2 fixture |
+| `fixtures/write-conformance/03-update-content.jsonl` | the conformance battery | scenario 3 fixture |
+| `fixtures/write-conformance/04-rename-simple.jsonl` | the conformance battery | scenario 4 fixture |
+| `fixtures/write-conformance/05-type-change.jsonl` | the conformance battery | scenario 5 fixture |
+| `fixtures/write-conformance/06-delete.jsonl` | the conformance battery | scenario 6 fixture |
+| `fixtures/write-conformance/07-read-rule-affected-save.jsonl` | the conformance battery | scenario 7 fixture |
+| `fixtures/write-conformance/08-touch-name-reference.jsonl` | the conformance battery | scenario 8 fixture |
+| `tests/card/conformance/write-path.test.ts` | the conformance battery | TS replay + comparison |
+| `docs/write-conformance-notes.md` | the conformance battery | this document |
+| `db/schema.sqlite.sql` | the core schema | DDL loaded by the replay |
+| `src/server/drivers/local-sqlite.ts` | the server driver layer | in-memory SQLDatabaseDriver |
+| `src/card/actions/card-action-engine.ts` | the action engine | the engine under test |
+| `src/card/history/write-path.ts` | the history layer | the ActWriter under test |
+| `src/card/history/action.ts` | the history layer | action_type code constants |
+| `src/card/history/change.ts` | the history layer | TRACKED_FIELDS ordering, value serialization |

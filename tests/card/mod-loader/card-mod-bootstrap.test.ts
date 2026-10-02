@@ -22,8 +22,8 @@
 //                                        events.rb
 //   copy_theme                           set/type/bootswatch_skin/    :prepare_to_store
 //                                        events.rb
-//   validate_theme_template              set/type/bootswatch_skin/    not in TS enum -
-//                                        events.rb                    recorded without `at`
+//   validate_theme_template              set/type/bootswatch_skin/    :validate
+//                                        events.rb
 //
 // What this test does NOT cover (the honest remainder, see the source
 // file's header comment and the result's viewsMissing list):
@@ -46,6 +46,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -84,8 +85,13 @@ beforeAll(async () => {
   await seedCard(s, { id: 205, name: "Progress Empty", dbContent: "" });
   // Card for :icons (the icons view does not read the card's content).
   await seedCard(s, { id: 210, name: "Icon Reference", dbContent: "" });
-  // Card for :one_line_content (any name works - the view ignores content).
-  await seedCard(s, { id: 220, name: "Bootswatch Skin Probe", dbContent: "skin content" });
+  // Card for :one_line_content. UNWRAPPED 2026-09-30 (surfaces-batch2):
+  // the override now dispatches through Type::BootswatchSkin::HtmlViews,
+  // and Ruby's set membership is type-scoped (html_views.rb:18-20 applies
+  // to bootswatch_skin-typed cards) — the probe carries the skin type like
+  // the other skin probes (it was untyped back when the view was
+  // unreachable and the type could not matter).
+  await seedCard(s, { id: 220, name: "Bootswatch Skin Probe", dbContent: "skin content", typeId: 500 });
   // Cards for :input (bootswatch_skin-typed). The bootswatch_skin type
   // card is seeded as a codename so the probe's typeId resolves to the
   // typeCode "bootswatch_skin" (render.ts:928-930). The probe has no
@@ -206,6 +212,8 @@ describe("card-mod-bootstrap through the mod loader", () => {
       const s = storage!;
       loader = new ModLoader([{ manifest: cardModBootstrap }]);
       loader.load();
+      bindModLoaderToEngine(storage!, loader!);
+      s.engine.modLoader = loader;
     });
 
     it("renders the div.progress > div.progress-bar structure for numeric content", async () => {
@@ -338,6 +346,11 @@ describe("card-mod-bootstrap through the mod loader", () => {
   // -----------------------------------------------------------------------
 
   describe(":one_line_content", () => {
+    // The override is declared in the NESTED set file
+    // set/type/bootswatch_skin/html_views.rb; the viewChain nested
+    // expansion (mod-loader.ts) reaches Type::BootswatchSkin::HtmlViews
+    // for the starred TYPE token, so the render dispatches (the nested
+    // set-file mechanism: see known-divergences-from-ruby.md).
     it("renders the empty string (the bootswatch_skin override)", async () => {
       // bootswatch_skin.rb:116-118 / html_views.rb:18-20:
       //   view :one_line_content do
@@ -405,10 +418,17 @@ describe("card-mod-bootstrap through the mod loader", () => {
   // -----------------------------------------------------------------------
 
   describe(":customize_button", () => {
+    // The view is declared in the NESTED set file
+    // set/type/bootswatch_skin/html_views.rb (registers as
+    // "Type::BootswatchSkin::HtmlViews" per mod-registrar.ts#setModuleShortname);
+    // the viewChain nested expansion reaches it for the starred TYPE token,
+    // so the three tests below run their byte assertions unmarked (the
+    // nested set-file mechanism: see known-divergences-from-ruby.md).
     beforeAll(() => {
       const s = storage!;
       loader = new ModLoader([{ manifest: cardModBootstrap }]);
       loader.load();
+      bindModLoaderToEngine(storage!, loader!);
     });
 
     it("renders the button-link with the literal card/create URL when the skin has no parent", async () => {
@@ -535,6 +555,7 @@ describe("card-mod-bootstrap through the mod loader", () => {
       const s = storage!;
       loader = new ModLoader([{ manifest: cardModBootstrap }]);
       loader.load();
+      bindModLoaderToEngine(storage!, loader!);
       await s.engine.prepareItemForRender("Oracle Carousel Item One");
       await s.engine.prepareItemForRender("Oracle Carousel Item Two");
       await s.engine.prepareItemForRender("Oracle Carousel Item Three");
@@ -691,10 +712,11 @@ describe("card-mod-bootstrap through the mod loader", () => {
       expect(copy?.setPath).toBe("type/bootswatch_skin/events");
       expect(copy?.at).toBe("prepare_to_store");
       expect(copy?.on).toEqual(["create"]);
-      // set/type/bootswatch_skin/events.rb:14-18 (no `at` field because
-      // :validate is not in the TS ModEventStage enum).
+      // set/type/bootswatch_skin/events.rb:14-18 (:validate is in the
+      // ModEventStage union, mod-manifest.ts:158-169).
       const validate = registry.forEvent("validate_theme_template");
       expect(validate?.setPath).toBe("type/bootswatch_skin/events");
+      expect(validate?.at).toBe("validate");
       expect(validate?.on).toEqual(["create"]);
       // The event carries registration order: 3 events come from
       // type/bootswatch_skin/events and 1 from abstract/skin_field.

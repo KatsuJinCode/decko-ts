@@ -1,20 +1,20 @@
 // write-budget.mjs — the D1 free-tier write-budget gate for the one-click
-// CF deploy (the 2026-09-23 incident rule, in code).
+// Cloudflare deploy.
 //
-// Incident being guarded against: a scripted import wrote ~1.2M D1 rows in
-// one day against the free tier's 100,000 rows-written/day (13 days of the
-// entire daily budget) and repeated COUNT verifications burned ~5-6M of the
-// 5M rows-read/day. Before ANY D1 write step, this module DECLARES the step's
-// exact row count, computes it against the limit, and REFUSES the step if it
-// would cross the guard (80% of the daily limit = 20% headroom, per
-// Julian's 2026-09-23 ruling).
+// Why this module exists: a bulk deck import written around 1.2M D1 rows in
+// a single day against the free tier's 100,000 rows-written/day — about 13
+// days of the entire daily budget — and repeated COUNT verifications read
+// through much of the 5M rows-read/day allowance. Before ANY D1 write step,
+// this module DECLARES the step's exact row count, computes it against the
+// limit, and REFUSES the step if it would cross the guard (80% of the daily
+// limit, leaving 20% headroom).
 //
 // Accounting conventions (stated, not hidden):
 // * One single-row INSERT statement = 1 row written. The fitting-scale seed
 //   is built exclusively from single-row INSERTs, so chunk row counts are
 //   exact by construction.
 // * The arithmetic counts TABLE ROWS only — the same convention as the
-//   incident arithmetic (93,700 cards + 1,112,560 refs = 1,206,260). If D1's
+//   import's own arithmetic (93,700 cards + 1,112,560 refs = 1,206,260). If D1's
 //   rows_written metric also counts index-entry writes, the 20% headroom
 //   absorbs the delta; the /_status + __metrics probe after the run is what
 //   reports the platform's own number.
@@ -30,7 +30,7 @@ import { dirname } from "node:path";
 /** Cloudflare D1 free tier, rows written per UTC day. */
 export const D1_FREE_DAILY_ROW_WRITES = 100_000;
 /** Guard: refuse any step that would take cumulative writes past this
- * fraction of the daily limit (Julian's 20%-headroom ruling, 2026-09-23). */
+ * fraction of the daily limit, leaving 20% headroom. */
 export const GUARD_FRACTION = 0.8;
 export const GUARD_ROW_LIMIT = D1_FREE_DAILY_ROW_WRITES * GUARD_FRACTION; // 80,000
 
@@ -50,7 +50,7 @@ export class WriteBudgetLedger {
    * @param {object} opts
    * @param {string} opts.ledgerPath  JSON file persisting today's committed writes.
    * @param {number} [opts.spentTodayExternal] rows already written today by
-   *        operations outside this tool (reported by the operator via
+   *        operations outside this tool (supplied by the caller via
    *        --spent-today). Always counted; never guessed.
    * @param {"dry-run"|"local"|"execute"} opts.mode
    */
@@ -115,8 +115,8 @@ export class WriteBudgetLedger {
         ? null
         : `step "${label}" would write ${rows} rows -> ${projected} total today, ` +
           `past the ${GUARD_ROW_LIMIT} guard (80% of the ${D1_FREE_DAILY_ROW_WRITES}/day ` +
-          `free-tier limit). Lower --cards, split across UTC days, or get an explicit ` +
-          `operator decision; this tool does not proceed past the guard.`,
+          `free-tier limit). Lower --cards, or split the run across UTC days; this ` +
+          `tool does not proceed past the guard.`,
     };
   }
 

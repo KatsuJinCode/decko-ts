@@ -12,9 +12,12 @@
 // findings exist (a rotatable secret or private content is IN the tree or
 // history and must be handled before publication).
 //
-// Findings are written (values redacted) to tools/hygiene/out/<mode>-<ts>.json.
-// The scanner itself contains no secret values: known-secret entries are
-// short low-entropy PREFIXES used as tripwires, plus structural patterns.
+// Findings are written to tools/hygiene/out/<mode>-<ts>.json (gitignored).
+// A report record never embeds private needle text or the label that names
+// it: private-content findings cite the registry entry by ordinal
+// (private-content:needle#N), and every other match is redacted to a short
+// prefix. The scanner itself contains no secret values: known-secret entries
+// are short low-entropy PREFIXES used as tripwires, plus structural patterns.
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync, statSync } from "node:fs";
@@ -116,7 +119,7 @@ const GATE_SELF_EXEMPT = new Set([
 ]);
 
 function listTrackedFiles() {
-  const out = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024 })
+  const out = execFileSync("git", ["ls-files", "-z"], { cwd: REPO, maxBuffer: 64 * 1024 * 1024, windowsHide: true })
     .toString("utf8");
   return out.split("\0").filter(Boolean);
 }
@@ -154,7 +157,7 @@ function scanWorktree(report) {
 function scanHistory(report) {
   const revList = execFileSync(
     "git", ["rev-list", "--objects", "--all"],
-    { cwd: REPO, maxBuffer: 256 * 1024 * 1024 }).toString("utf8");
+    { cwd: REPO, maxBuffer: 256 * 1024 * 1024, windowsHide: true }).toString("utf8");
   const pathByOid = new Map();
   const oids = new Set();
   for (const line of revList.split("\n")) {
@@ -169,7 +172,7 @@ function scanHistory(report) {
 
   const batch = execFileSync(
     "git", ["cat-file", "--batch-all-objects", "--batch", "--unordered"],
-    { cwd: REPO, maxBuffer: 1024 * 1024 * 1024 });
+    { cwd: REPO, maxBuffer: 1024 * 1024 * 1024, windowsHide: true });
   // Parse "<oid> blob <size>\n<content>\n" frames.
   let pos = 0;
   let blobs = 0;
@@ -247,11 +250,17 @@ function scanText(text, filePath, where, report, isGateScript = false) {
   }
 
   for (const p of isGateScript ? [] : PRIVATE_CONTENT) {
+    const slot = PRIVATE_CONTENT.indexOf(p);
     let idx = lower.indexOf(p.needle);
     let hits = 0;
     while (idx !== -1 && hits < 50) {
       hits += 1;
-      record({ severity: "severe", id: "private-content:" + p.needle, description: p.label, line: lineOf(text, idx), sample: redact(text.slice(Math.max(0, text.lastIndexOf("\n", idx)) + 1, idx + 60).trim()) });
+      // The report record carries neither the needle text nor its human
+      // label: both name real private identities, and the report is written
+      // to disk. A finding cites the registry entry by ordinal instead; the
+      // path and line let a reader resolve the hit against the registry
+      // that lives in this gate script.
+      record({ severity: "severe", id: `private-content:needle#${slot}`, line: lineOf(text, idx) });
       idx = lower.indexOf(p.needle, idx + p.needle.length);
     }
   }

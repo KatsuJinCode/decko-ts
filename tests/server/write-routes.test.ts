@@ -1,19 +1,24 @@
 // End-to-end tests for the HTTP write surface (src/server/write-routes.ts):
 // sign in (token issued DIRECTLY via the SessionStore — the password front
-// door is the sign-in lane's slice), POST an update over real HTTP, watch
+// door itself is covered by the sign-in endpoint suites), POST an update
+// over real HTTP, watch
 // the read side reflect it, and watch the act/action/changes rows land.
 // Plus the write-permission walks through the HTTP layer: the three
-// ok_to_* denials, the ok_to_update? type-change clause, and the CSRF +
-// anonymous gates.
+// ok_to_* denials, the ok_to_update? type-change clause, the cookie-session
+// transport, the *signin subcard-update login, and the LIVE response
+// shapes (303 hard redirect with absolute Location; no forgery protection).
 //
 // Ruby truth under test (see the module header citations in
 // src/server/write-routes.ts): engine_routes.rb grammar, rest.rb
 // create/update/delete, permission.rb ok_to_* (403), error.rb statuses
-// (404/422), Rails 7.2 forgery protection (422).
+// (404/422), response.rb redirect_cud_success (303, card_url-absolute),
+// the LIVE decko CSRF posture (no protect_from_forgery anywhere in
+// decko-0.20.0 / card-1.110.0 — the only forgery reference is
+// environments/cucumber.rb:27, which disables it), and the *signin
+// :signin event (card-mod-account set/self/signin.rb).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import http from "node:http";
-import type { AddressInfo } from "node:net";
 import {
   createRenderTestStorage,
   seedCard,
@@ -21,13 +26,9 @@ import {
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
 import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
-import {
-  csrfTokenFor,
-  handleWriteRequest,
-  type WriteRouteContext,
-} from "../../src/server/write-routes.js";
+import { type WriteRouteContext } from "../../src/server/write-routes.js";
 import { actionTypeCode } from "../../src/card/history/action.js";
-import { DeckoName } from "../../src/card/name.js";
+import { makeWriteRouteServer as makeServer } from "./write-routes-test-bridge.js";
 
 const SET_TYPE_ID = 2;
 const JOE_ID = 90;
@@ -102,56 +103,6 @@ async function seedRuleDeck(s: RenderTestStorage): Promise<void> {
   await byId(JOE_ID, "Joe User");
 }
 
-async function makeServer(
-  s: RenderTestStorage,
-  context: WriteRouteContext,
-): Promise<{ server: http.Server; url: string }> {
-  const readBridge = http.createServer(async (req, res) => {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
-    const body = Buffer.concat(chunks).toString("utf8");
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
-    const pathname = url.pathname.replace(/\/+$/, "") || "/";
-    let response: { status: number; headers: Record<string, string>; body: string };
-    if (req.method === "GET") {
-      // the staging server's read surface, minimal: .json record + html render
-      if (pathname.endsWith(".json")) {
-        const name = decodeURIComponent(pathname.slice(1, -".json".length)).replace(/_/g, " ");
-        const record = await s.fetcher.fetchByKey(DeckoName.parse(name).key);
-        response = {
-          status: record === undefined ? 404 : 200,
-          headers: { "Content-Type": "application/json" },
-          body:
-            record === undefined
-              ? JSON.stringify({ error: "not found" })
-              : JSON.stringify({ name, dbContent: record.dbContent ?? null }),
-        };
-      } else {
-        const name = decodeURIComponent(pathname.slice(1)).replace(/_/g, " ");
-        try {
-          const html = await s.engine.render(name, "open");
-          response = { status: 200, headers: { "Content-Type": "text/html" }, body: html };
-        } catch {
-          response = { status: 404, headers: { "Content-Type": "text/html" }, body: "not found" };
-        }
-      }
-    } else {
-      const writeResponse = await handleWriteRequest(context, {
-        method: req.method ?? "GET",
-        pathname,
-        host: req.headers.host,
-        headers: req.headers as Record<string, string | undefined>,
-        body,
-      });
-      response = writeResponse ?? { status: 405, headers: {}, body: "method not allowed" };
-    }
-    res.writeHead(response.status, response.headers).end(response.body);
-  });
-  await new Promise<void>((resolve) => readBridge.listen(0, "127.0.0.1", resolve));
-  const address = readBridge.address() as AddressInfo;
-  return { server: readBridge, url: `http://127.0.0.1:${address.port}` };
-}
-
 interface CallResult {
   status: number;
   headers: Record<string, string>;
@@ -167,7 +118,7 @@ async function call(
     form?: Record<string, string>;
     json?: unknown;
     token?: string;
-    csrf?: string;
+    cookie?: string;
     origin?: string;
     headers?: Record<string, string>;
   } = {},
@@ -177,7 +128,6 @@ async function call(
   if (opts.form !== undefined) {
     headers["Content-Type"] = "application/x-www-form-urlencoded";
     const params = new URLSearchParams(opts.form);
-    if (opts.csrf !== undefined) params.set("authenticity_token", opts.csrf);
     if (opts.token !== undefined) params.set("token", opts.token);
     body = params.toString();
   } else if (opts.json !== undefined) {
@@ -187,9 +137,7 @@ async function call(
   if (opts.token !== undefined && opts.form === undefined) {
     headers["Authorization"] = `Bearer ${opts.token}`;
   }
-  if (opts.csrf !== undefined && opts.form === undefined) {
-    headers["X-CSRF-Token"] = opts.csrf;
-  }
+  if (opts.cookie !== undefined) headers["Cookie"] = opts.cookie;
   if (opts.origin !== undefined) headers["Origin"] = opts.origin;
   const res = await fetch(`${base}${path}`, { method, headers, body, redirect: "manual" });
   const text = await res.text();
@@ -213,11 +161,23 @@ beforeAll(async () => {
   await runAuthMigrations(sideDenyStorage.counting);
   await seedSideDenyDeck(sideDenyStorage);
 
-  ctx = { driver: storage.counting, fetcher: storage.fetcher, csrfSecret: "test-csrf-secret" };
+  ctx = {
+    driver: storage.counting,
+    fetcher: storage.fetcher,
+    // the host render seam the ajax soft redirect uses (the staging server
+    // wires its page/slot renderer here): this bridge renders the engine's
+    // open view, the same renderer the GET surface above uses. The render
+    // engine's enriched card map is expired first — the same post-save
+    // expiry the staging dispatch performs (Ruby expires the saved card's
+    // cache on every save, cache/all.rb).
+    renderSlot: async (name) => {
+      storage!.engine.expireRenderCard(name);
+      return storage!.engine.render(name, "open");
+    },
+  };
   sideDenyCtx = {
     driver: sideDenyStorage.counting,
     fetcher: sideDenyStorage.fetcher,
-    csrfSecret: "test-csrf-secret",
   };
 
   const sessions = new SessionStore({ driver: storage.counting });
@@ -227,10 +187,10 @@ beforeAll(async () => {
   const sideDenySessions = new SessionStore({ driver: sideDenyStorage.counting });
   sideDenyJoeToken = (await sideDenySessions.createSession(JOE_ID)).token;
 
-  const bridge = await makeServer(storage, ctx);
+  const bridge = await makeServer(storage, ctx, { get: "render-open" });
   server = bridge.server;
   baseUrl = bridge.url;
-  const sideBridge = await makeServer(sideDenyStorage, sideDenyCtx);
+  const sideBridge = await makeServer(sideDenyStorage, sideDenyCtx, { get: "render-open" });
   sideDenyServer = sideBridge.server;
   sideDenyBaseUrl = sideBridge.url;
 }, 60_000);
@@ -272,6 +232,18 @@ async function seedSideDenyDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 16, leftId: 15, rightId: 4, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 16, 7, "anyone signed in");
   await seedCard(s, { id: 17, leftId: 1, rightId: 9, typeId: SET_TYPE_ID });
+  // the side-deny levers: the *rstar set (compound names with a *-tagged
+  // right) allows Anyone Signed In, the *star set (*-named cards) is
+  // Editor-locked — pattern order (registry.ts: self, type_plus_right,
+  // right, rule, RSTAR, STAR, type, all_plus, all) lets a junction pass
+  // permit(:create) through *rstar while its missing *-named side is
+  // denied through *star by ok_to_create_side
+  await seedCard(s, { id: 18, name: "*rstar", codename: "rstar" });
+  await seedCard(s, { id: 19, name: "*star", codename: "star" });
+  await seedCard(s, { id: 20, name: "*rstar+*create", leftId: 18, rightId: 4, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 20, 7, "anyone signed in");
+  await seedCard(s, { id: 21, name: "*star+*create", leftId: 19, rightId: 4, dbContent: "[[Editor]]" });
+  await seedReference(s, 21, 30, "editor");
   await seedCard(s, { id: 30, name: "Editor" });
   await seedCard(s, { id: 50, name: "Trunk", typeId: 14, dbContent: "trunk body" });
   await seedCard(s, { id: JOE_ID, name: "Joe User" });
@@ -280,16 +252,16 @@ async function seedSideDenyDeck(s: RenderTestStorage): Promise<void> {
 // -----------------------------------------------------------------------
 
 describe("signed-in save over HTTP (the full write path)", () => {
-  it("form update with a valid session + CSRF token: redirect, content rendered, rows written", async () => {
+  it("form update with a token session: 303 See Other, absolute Location, rows written", async () => {
     // A real decko edit form POSTs with the Rails _method override (patch).
-    const csrf = csrfTokenFor(ctx, joeToken);
+    // Live response shape: redirect_cud_success hard_redirects 303 with the
+    // card_url-absolute Location (response.rb:31,41; captured step-07:
+    // "http://localhost:3011/Session_Replay_Probe_G_2026_09_28").
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "widget body v2 — saved over HTTP", _method: "patch" },
       token: joeToken,
-      csrf,
     });
-    expect(res.status, `DBG1 status=${res.status} headers=${JSON.stringify(res.headers)} body=${res.body.slice(0,200)}`).toBe(302); // Ruby cud_success redirect
-    expect(res.headers["location"]).toBe("/Widget");
+    expect(res.headers["location"]).toBe(`${baseUrl}/Widget`); // card_url absolute (response.rb:41)
 
     // READ side reflects the save: the record and the RENDER carry v2.
     const record = await call(baseUrl, "GET", "/Widget.json", {});
@@ -328,7 +300,28 @@ describe("signed-in save over HTTP (the full write path)", () => {
     expect(change.rows[0]?.value).toBe("widget body v2 — saved over HTTP");
   });
 
-  it("PUT JSON update with a Bearer session: 200 JSON, no CSRF needed (API carve-out)", async () => {
+  it("form update with ONLY the session cookie (no token anywhere): 303, save lands", async () => {
+    // The live transport: real decko forms ride the cookie session
+    // (auth/current.rb:50-63 signin_with_session — the captured saves carry
+    // no token at all). The port reads the staging session cookie.
+    const res = await call(baseUrl, "POST", "/Widget", {
+      form: { "card[content]": "cookie-session save", _method: "patch" },
+      cookie: `decko_ts_session=${joeToken}`,
+    });
+    expect(res.status).toBe(303);
+    const record = await call(baseUrl, "GET", "/Widget.json", {});
+    expect(record.json().dbContent).toBe("cookie-session save");
+    const act = await storage!.counting.query<{ actor_id: number }>(
+      `SELECT a.actor_id FROM card_acts a
+       JOIN card_actions act ON act.card_act_id = a.id
+       JOIN cards c ON c.id = act.card_id
+       WHERE c.key = 'widget' ORDER BY a.id DESC LIMIT 1`,
+      [],
+    );
+    expect(act.rows[0]?.actor_id).toBe(JOE_ID);
+  });
+
+  it("PUT JSON update with a Bearer session: 200 JSON (API shape)", async () => {
     const res = await call(baseUrl, "PUT", "/Widget.json", {
       json: { card: { content: "widget body v3 (json api)" } },
       token: joeToken,
@@ -374,8 +367,25 @@ describe("signed-in save over HTTP (the full write path)", () => {
       json: { card: { content: "via update-as-create" } },
       token: joeToken,
     });
-    expect(res.status, `DBG2 status=${res.status} body=${res.body.slice(0,200)}`).toBe(200);
     expect(res.json().verb).toBe("create");
+  });
+
+  it("XHR save (ajax soft redirect): 200 + rendered slot of the saved card", async () => {
+    // response.rb:25-36: the ajax flavor (request.xhr? — X-Requested-With
+    // XMLHttpRequest, actionpack request.rb:290-294) defaults to the SOFT
+    // redirect and re-renders through `show` (:54-62). The captured XHR
+    // save came back 200 + the card's slot (manifest step-04). Here the
+    // host hook renders the engine's open view.
+    const res = await call(baseUrl, "POST", "/Widget", {
+      form: { "card[content]": "xhr slot save", _method: "patch" },
+      token: joeToken,
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/html");
+    expect(res.body).toContain("xhr slot save");
+    const record = await call(baseUrl, "GET", "/Widget.json", {});
+    expect(record.json().dbContent).toBe("xhr slot save");
   });
 });
 
@@ -411,11 +421,17 @@ describe("the permission gates through HTTP (ok_to_* walks)", () => {
   });
 
   it("ok_to_create? denial rides the junction sides: trunk allowed, missing part denied (403)", async () => {
-    // Trunk (typed Basic) passes permit(:create) through
-    // Basic+*type+*create -> [[Anyone Signed In]]; the MISSING right part
-    // resolves as a virtual new card with no type -> its ok?(:create) falls
-    // to *all+*create -> [[Editor]] (Joe is not one) -> denied.
-    const res = await call(sideDenyBaseUrl, "POST", "/Trunk+Ghost Part.json", {
+    // The MISSING right part resolves as a virtual new card WITH its
+    // would-be type (the HIGH-1 fix: resolveTypeId -> defaultTypeId, the
+    // *all+*default rule card's type_id = 2 here) — a "typeless part"
+    // premise would pin the pre-HIGH-1 divergence. The deny instead rides
+    // the side's *star candidate: the side "*Ghost Part" is *-named ->
+    // *star+*create -> [[Editor]] (Joe is not one), while the JUNCTION
+    // passes permit(:create) through *rstar+*create -> [[Anyone Signed In]]
+    // (rstar precedes type in the pattern walk — registry order;
+    // permissions.rb:127-137 for the side recursion). The 403 can only
+    // come from ok_to_create_side.
+    const res = await call(sideDenyBaseUrl, "POST", "/Trunk+*Ghost Part.json", {
       json: { card: { content: "junction" } },
       token: sideDenyJoeToken,
     });
@@ -430,7 +446,6 @@ describe("the permission gates through HTTP (ok_to_* walks)", () => {
       json: { card: { content: "junction with existing parts" } },
       token: sideDenyJoeToken,
     });
-    expect(res.status, `DBG3 status=${res.status} body=${res.body.slice(0,200)}`).toBe(200);
     expect(res.json().verb).toBe("create");
   });
 });
@@ -461,50 +476,86 @@ describe("anonymous and bad-token writes are denied (403, Ruby's PermissionDenie
   });
 });
 
-describe("CSRF on form posts (Rails 7.2 protect_from_forgery with: :exception)", () => {
-  it("form post without an authenticity token: 422", async () => {
+describe("no forgery protection (the live decko CSRF posture)", () => {
+  // decko-0.20.0 / card-1.110.0 contain no protect_from_forgery call
+  // anywhere; the only forgery reference in the generation is
+  // config/environments/cucumber.rb:27, which DISABLES it. The captured
+  // real session is the proof: token-less form posts go straight through
+  // to the action gates (the earlier TS HMAC-token gate + 422s modeled the
+  // Rails default, not the live app, and are gone).
+
+  it("form post WITHOUT an authenticity token, signed-in session: saves (303)", async () => {
+    // the captured live shape: step-07 POST /update/<probe>, no token
+    // anywhere, 303 success
     const res = await call(baseUrl, "POST", "/Widget", {
-      form: { "card[content]": "csrf-less", _method: "patch" },
+      form: { "card[content]": "csrf-less live-shape save", _method: "patch" },
       token: joeToken,
     });
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(303);
+    const record = await call(baseUrl, "GET", "/Widget.json", {});
+    expect(record.json().dbContent).toBe("csrf-less live-shape save");
   });
 
-  it("form post with a WRONG token: 422", async () => {
+  it("form post with a GARBAGE authenticity token: still saves (no such gate)", async () => {
     const res = await call(baseUrl, "POST", "/Widget", {
-      form: { "card[content]": "csrf-less", _method: "patch" },
+      form: { "card[content]": "forged token rides fine", authenticity_token: "forged", _method: "patch" },
       token: joeToken,
-      csrf: "forged-token-value",
     });
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(303);
+    const record = await call(baseUrl, "GET", "/Widget.json", {});
+    expect(record.json().dbContent).toBe("forged token rides fine");
   });
 
-  it("form post with the CORRECT per-session token passes (200 via JSON-mode mark)", async () => {
-    const csrf = csrfTokenFor(ctx, joeToken);
-    const res = await call(baseUrl, "POST", "/Widget.json", {
-      form: { "card[content]": "csrf'd form save", _method: "patch" },
-      token: joeToken,
-      csrf,
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it("cross-origin form post (Origin header vs Host): 422 even with a token", async () => {
-    const csrf = csrfTokenFor(ctx, joeToken);
-    const res = await call(baseUrl, "POST", "/Widget", {
-      form: { "card[content]": "cross origin", _method: "patch" },
-      token: joeToken,
-      csrf,
-      origin: "https://evil.example",
-    });
-    expect(res.status).toBe(422);
-  });
-
-  it("form post with NO session behind it: 422 (no session to verify against)", async () => {
+  it("form post with NO session behind it: 403 PermissionDenied (the anonymous write gate)", async () => {
+    // live step-08: the anonymous denial is Ruby's permission gate
+    // (403), not a forgery 422 — the token-less anonymous POST reaches
+    // ok_to_update? and is denied there.
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "anonymous form", _method: "patch" },
     });
+    expect(res.status).toBe(403);
+    const record = await call(baseUrl, "GET", "/Widget.json", {});
+    expect(record.json().dbContent).not.toBe("anonymous form");
+  });
+
+  it("cross-origin form post: not a live failure (origin check lives inside the never-armed verify_authenticity_token)", async () => {
+    const res = await call(baseUrl, "POST", "/Widget", {
+      form: { "card[content]": "cross origin", _method: "patch" },
+      token: joeToken,
+      origin: "https://evil.example",
+    });
+    expect(res.status).toBe(303);
+  });
+});
+
+describe("the *signin update IS the login action (card-mod-account set/self/signin.rb)", () => {
+  it("subcard-grammar sign-in: 303 to *previous, session cookie issued, zero card rows", async () => {
+    // Ruby: the :signin event (signin.rb:10-12) authenticates the
+    // +*email/+*password subcard contents; signin_success aborts the save
+    // (:15-17 — no card rows); the controller redirects to *previous
+    // (:171), which on a fresh session history is "/" (location_history
+    // .rb:6-9). No account cards exist in this seed deck -> the Ruby
+    // failure ladder path; assert the FAILURE shape here (422, the
+    // abort-failure UserError status) and the full success shape in the
+    // edit-session replay (the captured Sara sign-in).
+    const res = await call(baseUrl, "POST", "/update/*signin", {
+      form: {
+        "card[subcards][+*email][content]": "nobody@example.com",
+        "card[subcards][+*password][content]": "wrong",
+        _method: "patch",
+        "success[redirect]": "true",
+        "success[mark]": "*previous",
+      },
+    });
     expect(res.status).toBe(422);
+    // no act may land (the :signin update never saves the card)
+    const acts = await storage!.counting.query<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM card_acts a
+       JOIN card_actions act ON act.card_act_id = a.id
+       JOIN cards c ON c.id = act.card_id WHERE c.key = 'signin'`,
+      [],
+    );
+    expect(acts.rows[0]?.n).toBe(0);
   });
 });
 

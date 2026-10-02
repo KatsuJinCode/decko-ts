@@ -3,9 +3,8 @@
 The exact commands for the ONE-CLICK CLOUDFLARE DEPLOYMENT demo, in two
 parts: (a) the local demo — real workerd, real D1 semantics, ZERO Cloudflare
 account, zero network to Cloudflare — and (b) the real one-click demo on a
-free Cloudflare account, run only when Julian says go (the 2026-09-23
-incident froze all CF-side writes; nothing in part (b) has been executed
-yet).
+free Cloudflare account, which needs someone with access to that account to
+run. Nothing in part (b) has been executed.
 
 Tool: `scripts/deploy/one-click-deck/one-click-deck.mjs` (see
 `docs/one-click-cf-deploy-inventory.md` for the inventory + the exact
@@ -23,17 +22,18 @@ counted as spent.
 
 ## Part (a) — the LOCAL demo (no Cloudflare account, do this today)
 
-Prereqs: Node 24, this repo, a global `wrangler` on PATH (4.135.0 present
-here; without it, first `npx` fetches it from npm — a tooling download, not a
-CF call). Do NOT set `CLOUDFLARE_API_TOKEN` in the shell; the tool strips it
-from its own children and the dev server needs none.
+Prereqs: Node 24, this repo, and `wrangler`. If `wrangler` is not already on
+PATH, the first `npx` fetches it from npm — a tooling download, not a CF call.
+Do NOT set `CLOUDFLARE_API_TOKEN` in the shell; the tool strips it from its own
+children and the dev server needs none.
 
 ### a1. See the plan first (dry-run — the default; executes nothing remote)
 
 ```sh
-cd C:\localProjects\decko-ts
 node scripts/deploy/one-click-deck/one-click-deck.mjs
 ```
+
+Run from the repository root.
 
 Prints every step of the flow with its exact D1 write count and the guard
 verdict. Expected: seed = 6,200 Scale Pages → 6,241 card rows + 73,617 ref
@@ -102,18 +102,19 @@ read, 0 rows written, 1 cold start. See inventory doc §5 for the full record
 including the three defects validation caught and fixed.
 
 Stop the server with Ctrl+C in its terminal. If a stale workerd ever keeps
-the `out/local-state` sqlite files locked after a kill, verify the PID's
-command line first (`Get-CimInstance Win32_Process`) and stop that exact PID
-— never by name.
+the `out/local-state` sqlite files locked after a kill, identify the process
+by its command line first, confirm it is that dev server, and stop that one
+process by its exact process id — never by name.
 
 ---
 
-## Part (b) — the REAL one-click demo on a free account (only when Julian says go)
+## Part (b) — the REAL one-click demo on a free account (needs account access)
 
 Preconditions, all four required:
 
-1. Julian's explicit go in the current turn (the freeze is the standing
-   state until then).
+1. Someone who owns the target account decides to run it. Part (b) writes to
+   a real Cloudflare account; it is not something a tool should start on its
+   own.
 2. A FREE Cloudflare account + an API token with D1 edit + Workers Scripts
    edit permissions for it.
 3. The account id.
@@ -166,10 +167,10 @@ The account then rests until the UTC reset — no trickle, no retries.
   92-row headroom).
 - Teardown later (deletes Worker + D1 database) also CONSUMES WRITES on that
   account's day — a `wrangler delete` for `decko-one-click-demo` +
-  `wrangler d1 delete decko-one-click-db` is an operator decision, planned
-  and gated like any other write, not a casual cleanup.
-- The FROZEN resources stay frozen: `decko-ts-demo-db` (ac0f6b00, partial
-  import), worker `decko-ts-demo`, `decko-ts-scale-test-db` (c5061dce),
-  worker `decko-ts-scale-test`. This demo creates NONE of them and touches
-  NONE of them; it uses fresh names (`decko-one-click-demo`,
-  `decko-one-click-db`) precisely so the freeze line stays clean.
+  `wrangler d1 delete decko-one-click-db` is a decision to be made
+  deliberately, planned and gated like any other write, not a casual cleanup.
+- Four pre-existing resources are out of scope for this demo and are neither
+  created nor touched by it: `decko-ts-demo-db` (the partial-import
+  database), worker `decko-ts-demo`, `decko-ts-scale-test-db`, and worker
+  `decko-ts-scale-test`. This demo uses fresh names
+  (`decko-one-click-demo`, `decko-one-click-db`) for exactly that reason.

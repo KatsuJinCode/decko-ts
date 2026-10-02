@@ -1,47 +1,50 @@
 // CodeRay HTML scanner.
 //
-// Truth source: coderay-1.1.3 lib/coderay/scanners/html.rb. State machine
-// over [:initial, :attribute, :attribute_equal, :attribute_value,
-// :attribute_value_string, :in_special_tag]. The corpus's layout_type
-// cards exercise the :initial branch (tags, plain text, doctype) and the
-// <script>/<style> special-tag branch (which scans the body as JS or CSS
-// inside a `<span style="background-color:hsla(0,0%,0%,0.07);color:black">`
-// wrapper - the alpha `:inline` style).
+// Truth source: coderay-1.1.3 lib/coderay/scanners/html.rb - the state
+// machine over [:initial, :attribute, :attribute_equal, :attribute_value,
+// :attribute_value_string, :in_special_tag], one `encoder.text_token` per
+// match. The spans those tokens are wrapped in are NOT this file's
+// business: encoder.ts owns the whole span assembly, the way
+// encoders/html.rb does.
 //
-// We don't implement JS/CSS token highlighting inside <script>/<style>
-// blocks - CodeRay's corpus fixtures pass the body verbatim inside the
-// :inline wrapper. That keeps the byte output stable on the corpus; if a
-// future corpus entry exercises actual JS token highlighting, the
-// scanners can be plugged in here.
+// html.rb:76-84 scan_java_script / scan_css - the sub-scanner
+// delegations: a <script> body tokenizes through Scanners::JavaScript and a
+// <style> body through Scanners::CSS, both writing into the SAME encoder
+// (`:tokens => encoder`), so the :inline group stays open around the
+// body's tokens (html.rb:238-244) and the body's keyword/string tokens
+// resolve through the encoder's group-aware kind paths. Both sub-scanners
+// are ported (java-script.ts, css.ts#scanCssInto); the body's token stream
+// is no longer the single coarse :ident token the pre-2026-10-01 port
+// emitted (that divergence WAS byte-exact for identifier-only fixture
+// bodies but dropped the Classic_Layout oracle's
+// `<span style="color:#080;font-weight:bold">var</span>`).
 
-import { ALPHA_STYLES } from "../alpha-style.js";
-import { coderayEscape } from "../escape.js";
+import { HtmlTokenEncoder } from "../encoder.js";
+import { scanJavaScriptInto } from "./java-script.js";
+import { scanCssInto } from "./css.js";
 
-function styleFor(kind: string): string | undefined {
-  for (const entry of ALPHA_STYLES) if (entry.kind === kind) return entry.style;
-  return undefined;
-}
-
-function wrapText(text: string, style: string | undefined): string {
-  if (style === undefined) return text;
-  return `<span style="${style}">${text}</span>`;
-}
-
-/** Scan the input as HTML and return the highlighted inner HTML. */
+/** Scan the input as HTML and return the highlighted inner HTML (the
+ *  content `div` wraps in its <div class="CodeRay"> template). */
 export function scanHtml(input: string): string {
-  let out = "";
+  const enc = new HtmlTokenEncoder();
   let i = 0;
   const N = input.length;
-  let state: "initial" | "attribute" | "attribute_equal" | "attribute_value" | "attribute_value_string" | "in_special_tag" = "initial";
+  let state:
+    | "initial"
+    | "attribute"
+    | "attribute_equal"
+    | "attribute_value"
+    | "attribute_value_string"
+    | "in_special_tag" = "initial";
   let inTag: string | undefined = undefined;
-  let inAttribute: string | undefined = undefined;
+  let inAttribute: "script" | "style" | undefined = undefined;
   let plainStringContent: RegExp | undefined = undefined;
 
   // Regexes pulled from html.rb. The CDATA branch is rare in real decks;
   // the corpus doesn't exercise it, but we keep the shape for parity.
-  // NB: no `m` flag - it would make `^` match line starts in the *current*
-  // slice (after a `\n` in the source), so a regex like /^<\// would
-  // re-match `</body>` mid-document, looping on the corpus's nested tags.
+  // NB: no `m` flag on the anchored ones - it would make `^` match line
+  // starts in the *current* slice (after a `\n` in the source), so a
+  // regex like /^<\// would re-match `</body>` mid-document.
   const CDATA_OPEN = /^<!\[CDATA\[/;
   const CDATA_BODY = /^.*?\]\]>/s;
   const COMMENT = /^<!--(?:.*?-->|.*)/s;
@@ -55,7 +58,6 @@ export function scanHtml(input: string): string {
   const TAG_END = /^\/?>/;
   const ATTR_NAME = /^[\w.:-]+/;
   const ATTR_EQ = /^=/;
-  const ATTR_VALUE_BARE = /^[\w.:-]+/;
   const QUOTE = /^["']/;
   const WHITE = /^\s+/;
   const STR_CONTENT_DQ = /^[^&">\n]+/;
@@ -66,7 +68,7 @@ export function scanHtml(input: string): string {
     if (state !== "in_special_tag") {
       const ws = WHITE.exec(rest);
       if (ws !== null) {
-        out += wrapText(coderayEscape(ws[0]), styleFor("space"));
+        enc.textToken(ws[0], "space");
         i += ws[0].length;
         continue;
       }
@@ -74,50 +76,50 @@ export function scanHtml(input: string): string {
     let m: RegExpExecArray | null;
     if (state === "initial") {
       if ((m = CDATA_OPEN.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("inline_delimiter"));
+        enc.textToken(m[0], "inline_delimiter");
         i += m[0].length;
         const body = CDATA_BODY.exec(rest.slice(m[0].length));
         if (body !== null) {
-          out += wrapText(coderayEscape(body[0].slice(0, -3)), styleFor("plain"));
-          out += wrapText(coderayEscape("]]>"), styleFor("inline_delimiter"));
+          enc.textToken(body[0].slice(0, -3), "plain");
+          enc.textToken("]]>", "inline_delimiter");
           i += body[0].length;
         } else {
           const tail = /^.+/.exec(rest.slice(m[0].length));
           if (tail !== null) {
-            out += wrapText(coderayEscape(tail[0]), styleFor("error"));
+            enc.textToken(tail[0], "error");
             i += tail[0].length;
           }
         }
         continue;
       }
       if ((m = COMMENT.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("comment"));
+        enc.textToken(m[0], "comment");
         i += m[0].length;
         continue;
       }
       if ((m = DOCTYPE.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("doctype"));
+        enc.textToken(m[0], "doctype");
         i += m[0].length;
         continue;
       }
       if ((m = XML_PI.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("preprocessor"));
+        enc.textToken(m[0], "preprocessor");
         i += m[0].length;
         continue;
       }
       if ((m = PI.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("comment"));
+        enc.textToken(m[0], "comment");
         i += m[0].length;
         continue;
       }
       if ((m = CLOSE_TAG.exec(rest)) !== null) {
         inTag = undefined;
-        out += wrapText(coderayEscape(m[0]), styleFor("tag"));
+        enc.textToken(m[0], "tag");
         i += m[0].length;
         continue;
       }
       if ((m = OPEN_TAG.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("tag"));
+        enc.textToken(m[0], "tag");
         i += m[0].length;
         inTag = m[1]; // 'script' | 'style' | undefined
         if (m[2] !== undefined) {
@@ -129,96 +131,86 @@ export function scanHtml(input: string): string {
         continue;
       }
       if ((m = PLAIN.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("plain"));
+        enc.textToken(m[0], "plain");
         i += m[0].length;
         continue;
       }
       if ((m = ENTITY.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("entity"));
+        enc.textToken(m[0], "entity");
         i += m[0].length;
         continue;
       }
-      if (/^[<>&]/.test(rest)) {
-        inTag = undefined;
-        out += wrapText(coderayEscape(rest[0]), styleFor("error"));
-        i += 1;
-        continue;
-      }
-      // Should not reach here, but advance to avoid infinite loop on
-      // unhandled bytes.
-      out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+      // html.rb:141 `elsif match = scan(/[<>&]/)` -> `text_token getch, :error`
+      inTag = undefined;
+      enc.textToken(rest[0], "error");
       i += 1;
       continue;
     }
     if (state === "attribute") {
       if ((m = TAG_END.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("tag"));
+        enc.textToken(m[0], "tag");
         inAttribute = undefined;
         state = inTag !== undefined ? "in_special_tag" : "initial";
         i += m[0].length;
         continue;
       }
       if ((m = ATTR_NAME.exec(rest)) !== null) {
-        inAttribute = m[0].toLowerCase();
-        out += wrapText(coderayEscape(m[0]), styleFor("attribute_name"));
+        // html.rb:163 `in_attribute = IN_ATTRIBUTE[match]` - IN_ATTRIBUTE
+        // is a case-insensitive WordList holding the EVENT_ATTRIBUTES
+        // (all :script) and `style` (:style); everything else is nil.
+        inAttribute = attributeScriptOrStyle(m[0]);
+        enc.textToken(m[0], "attribute_name");
         state = "attribute_equal";
         i += m[0].length;
         continue;
       }
       inTag = undefined;
-      out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+      enc.textToken(rest[0], "error");
       i += 1;
       continue;
     }
     if (state === "attribute_equal") {
       if ((m = ATTR_EQ.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("operator"));
+        enc.textToken(m[0], "operator");
         state = "attribute_value";
         i += m[0].length;
         continue;
       }
-      // No '=' - back to attribute scanning (html.rb:166-169)
+      // html.rb:169 `else state = :attribute; next` - no '=', so the state
+      // rewinds and the SAME bytes are re-examined as an attribute.
       state = "attribute";
       continue;
     }
     if (state === "attribute_value") {
-      if ((m = ATTR_VALUE_BARE.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("attribute_value"));
+      if ((m = ATTR_NAME.exec(rest)) !== null) {
+        enc.textToken(m[0], "attribute_value");
         state = "attribute";
         i += m[0].length;
         continue;
       }
       if ((m = QUOTE.exec(rest)) !== null) {
         const openChar = m[0];
-        // Special: script=... or style=... -> begin_group :string + scan JS/CSS
-        // (html.rb:178-200). For the corpus we don't tokenize inside; we just
-        // emit the :string group with bare :delimiter + bare :content (no
-        // alpha entry), matching what CodeRay would emit for a non-keyword
-        // attribute string. If the attribute is script/style, we additionally
-        // wrap the body in :inline per the upstream behavior (the corpus
-        // fixture html-layout-corpus-314.html shows exactly this for <script>).
+        enc.beginGroup("string");
+        enc.textToken(openChar, "delimiter");
         if (inAttribute === "script" || inAttribute === "style") {
-          out += `<span>`;
-          out += wrapText(coderayEscape(openChar), styleFor("delimiter"));
-          i += m[0].length;
-          // body: scan_until quote
-          const untilPattern = openChar === '"' ? /(?="|\z)/ : /(?='|\z)/;
-          const until = untilPattern.exec(rest.slice(m[0].length));
-          const bodyEnd = until !== null ? m[0].length + until.index : N;
-          const body = input.slice(i, bodyEnd);
-          if (body.length > 0) {
-            out += wrapText(coderayEscape(body), styleFor("inline"));
-            i += body.length;
+          // html.rb:183-193: Ruby hands the body to the JavaScript/CSS
+          // sub-scanner, the closing quote a :delimiter inside the same
+          // :string group. On this attribute-value path the port emits the
+          // body as ONE :ident token (unstyled - the sub-scanner delegation
+          // is wired only into the <script>/<style> tag-body path below).
+          const bodyEnd = scanUntilQuote(input, i + m[0].length, openChar);
+          const body = input.slice(i + m[0].length, bodyEnd);
+          if (body.length > 0) enc.textToken(body, "ident");
+          if (input[bodyEnd] === openChar) {
+            enc.textToken(openChar, "delimiter");
+            i = bodyEnd + 1;
+          } else {
+            i = bodyEnd;
           }
-          const close = rest[i] === openChar ? openChar : "";
-          if (close !== "") {
-            out += wrapText(coderayEscape(close), styleFor("delimiter"));
-            i += 1;
-          }
-          out += `</span>`;
+          enc.endGroup();
+          state = "attribute";
+          inAttribute = undefined;
         } else {
-          out += `<span>`;
-          out += wrapText(coderayEscape(openChar), styleFor("delimiter"));
           state = "attribute_value_string";
           plainStringContent = openChar === '"' ? STR_CONTENT_DQ : STR_CONTENT_SQ;
           i += m[0].length;
@@ -226,100 +218,161 @@ export function scanHtml(input: string): string {
         continue;
       }
       if ((m = TAG_END.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("tag"));
+        enc.textToken(m[0], "tag");
         state = "initial";
         i += m[0].length;
         continue;
       }
-      out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+      enc.textToken(rest[0], "error");
       i += 1;
       continue;
     }
     if (state === "attribute_value_string") {
       if ((m = plainStringContent!.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("content"));
+        enc.textToken(m[0], "content");
         i += m[0].length;
         continue;
       }
       if (/^['"]/.test(rest)) {
-        out += wrapText(coderayEscape(rest[0]), styleFor("delimiter"));
-        out += `</span>`;
+        enc.textToken(rest[0], "delimiter");
+        enc.endGroup();
         state = "attribute";
         i += 1;
         continue;
       }
       if ((m = ENTITY.exec(rest)) !== null) {
-        out += wrapText(coderayEscape(m[0]), styleFor("entity"));
+        enc.textToken(m[0], "entity");
         i += m[0].length;
         continue;
       }
       if (rest[0] === "&") {
-        out += wrapText(coderayEscape("&"), styleFor("content"));
+        enc.textToken("&", "content");
         i += 1;
         continue;
       }
       if (/^[\n>]/.test(rest)) {
-        out += `</span>`;
+        // html.rb:222-226: the value never closed, so the group ends HERE
+        // and the offending byte is an :error token OUTSIDE it. The
+        // loop-top :space check has already taken a newline, so this is
+        // reached on '>' in the ordinary path.
+        enc.endGroup();
         state = "initial";
-        out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+        enc.textToken(rest[0], "error");
         i += 1;
         continue;
       }
-      out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+      enc.textToken(rest[0], "error");
       i += 1;
       continue;
     }
     if (state === "in_special_tag") {
       if (inTag === "script" || inTag === "style") {
-        // leading newline + indent is :space (html.rb:228)
-        if ((m = /^[ \t]*\n/.exec(rest)) !== null) {
-          out += wrapText(coderayEscape(m[0]), styleFor("space"));
-          i += m[0].length;
+        // leading newline + indent is :space (html.rb:226)
+        const leading = /^[ \t]*\n/.exec(rest);
+        if (leading !== null) {
+          enc.textToken(leading[0], "space");
+          i += leading[0].length;
         }
-        // <!-- ... --> inside script/style (html.rb:229-235)
-        const cm = /^(\s*<!--)(?:(.*?)(-->)|(.*))/s.exec(rest);
-        let body = "";
+        // html.rb:227-233: a `<!-- ... -->` comment inside the body is
+        // tokenized as a comment; otherwise scan_until the closing tag
+        // (whose second alternative is end-of-input).
+        const cm = /^(\s*<!--)(?:(.*?)(-->)|(.*))/s.exec(input.slice(i));
+        let body: string;
         let closing: string | undefined;
         if (cm !== null) {
           body = cm[2] ?? cm[4] ?? "";
           closing = cm[3];
-          out += wrapText(coderayEscape(cm[1]), styleFor("comment"));
+          enc.textToken(cm[1], "comment");
           i += cm[1].length;
-          if (body.length > 0) {
-            i += body.length;
-          }
+          if (body.length > 0) i += body.length;
           if (closing !== undefined && closing !== "") {
-            out += wrapText(coderayEscape(closing), styleFor("comment"));
+            enc.textToken(closing, "comment");
             i += closing.length;
           }
         } else {
-          // scan_until the closing tag (html.rb:234). The Ruby scanner
-          // uses \z (end-of-input) as the second alternative; JS regex
-          // doesn't honor `\z` reliably when alternated against a
-          // non-capturing group, so we explicitly match either the
-          // lookahead OR end-of-input by checking the result.
           const untilRe = new RegExp(`(?=(?:\\n\\s*)?</${inTag}>)`);
-          const until = untilRe.exec(rest);
-          body = until !== null ? rest.slice(0, until.index) : rest;
+          const until = untilRe.exec(input.slice(i));
+          body = until !== null ? input.slice(i, i + until.index) : input.slice(i);
           closing = "";
           if (body.length > 0) i += body.length;
         }
         if (body.length > 0) {
-          // Wrap script/style body in :inline alpha style (html.rb:237-244).
-          out += wrapText(coderayEscape(body), styleFor("inline"));
+          // html.rb:237-244 wraps the body in an :inline GROUP and hands it
+          // to the sub-scanner (html.rb:76-80 scan_java_script /
+          // html.rb:82-84 scan_css - `tokenize code, :tokens => encoder`):
+          // the body's OWN token stream flows into this encoder, so its
+          // keyword/string/comment spans nest INSIDE the :inline group.
+          enc.beginGroup("inline");
+          if (inTag === "script") {
+            scanJavaScriptInto(enc, body);
+          } else {
+            scanCssInto(enc, body);
+          }
+          enc.endGroup();
         }
         state = "initial";
         continue;
       }
-      // Unknown special tag - upstream raises (html.rb:249). We surface it
-      // as :error so a malformed input doesn't hang the render.
-      out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+      // html.rb:249 raises for an unknown special tag. The port cannot
+      // reach this state with an unrecognized inTag (only script/style
+      // enter it), so the guard is a single-byte :error rather than a
+      // throw - a malformed input must not hang a render.
+      enc.textToken(rest[0], "error");
       i += 1;
       continue;
     }
-    // Fallback (should not reach).
-    out += wrapText(coderayEscape(rest[0]), styleFor("error"));
+    // Unreachable: every state above either continues or falls through to
+    // the next iteration. Guard anyway so a future edit cannot spin.
+    enc.textToken(rest[0], "error");
     i += 1;
   }
-  return out;
+  // html.rb:236 `encoder.end_group :string if state == :attribute_value_string`
+  // - an input that ends mid-value still closes its group.
+  if (state === "attribute_value_string") enc.endGroup();
+  // html.rb:195-198 finish - close any group the stream left open (the
+  // script-body delegation's :key case; java_script.rb:215 only closes
+  // :string/:regexp).
+  enc.closeAllGroups();
+  return enc.toString();
 }
+
+/** html.rb `scan_until(/(?="|\z)/)` / `/(?='|\z)/` - the offset of the
+ *  closing quote, or the end of input. */
+function scanUntilQuote(input: string, from: number, quote: string): number {
+  for (let k = from; k < input.length; k++) {
+    if (input[k] === quote) return k;
+  }
+  return input.length;
+}
+
+/** html.rb IN_ATTRIBUTE: a case-insensitive WordList holding the
+ *  EVENT_ATTRIBUTES (all :script) plus `style` (:style). Only those two
+ *  outcomes are observable - a name outside both sets and a name inside
+ *  EVENT_ATTRIBUTES take the same branch in the scanner - so the port
+ *  matches on the attribute name instead of carrying the 70-name list. */
+function attributeScriptOrStyle(name: string): "script" | "style" | undefined {
+  const lower = name.toLowerCase();
+  if (lower === "style") return "style";
+  if (lower === "script" || EVENT_ATTRIBUTES.has(lower)) return "script";
+  return undefined;
+}
+
+/** html.rb:19-38 EVENT_ATTRIBUTES - the names IN_ATTRIBUTE maps to
+ *  :script. Listed for parity with the Ruby source. */
+const EVENT_ATTRIBUTES: ReadonlySet<string> = new Set([
+  "onabort", "onafterprint", "onbeforeprint", "onbeforeunload", "onblur",
+  "oncanplay", "oncanplaythrough", "onchange", "onclick", "oncontextmenu",
+  "oncuechange", "ondblclick", "ondrag", "ondragdrop", "ondragend",
+  "ondragenter", "ondragleave", "ondragover", "ondragstart", "ondrop",
+  "ondurationchange", "onemptied", "onended", "onerror", "onfocus",
+  "onformchange", "onforminput", "onhashchange", "oninput", "oninvalid",
+  "onkeydown", "onkeypress", "onkeyup", "onload", "onloadeddata",
+  "onloadedmetadata", "onloadstart", "onmessage", "onmousedown",
+  "onmousemove", "onmouseout", "onmouseover", "onmouseup", "onmousewheel",
+  "onmove", "onoffline", "ononline", "onpagehide", "onpageshow",
+  "onpause", "onplay", "onplaying", "onpopstate", "onprogress",
+  "onratechange", "onreadystatechange", "onredo", "onreset", "onresize",
+  "onscroll", "onseeked", "onseeking", "onselect", "onshow",
+  "onstalled", "onstorage", "onsubmit", "onsuspend", "ontimeupdate",
+  "ontoggle", "onvolumechange", "onwaiting",
+]);

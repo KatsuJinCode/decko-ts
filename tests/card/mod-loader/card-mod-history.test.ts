@@ -218,18 +218,36 @@ describe("card-mod-history manifest structure", () => {
     ]);
   });
 
-  it("registers only :draft_legend - the one headlessly-portable html view - with no view config", () => {
+  it("registers :draft_legend plus the three seam-backed views (:history/:act/:action_summary) with no view config", () => {
     // views.rb:24-26 `view :draft_legend do ... end` declares no settings;
-    // the T6 verdict lists 12 missing html views - the other eleven need
-    // render-time act/action/diff data the sync ViewFn surface cannot
-    // reach (see the port file header).
+    // the seam (src/card/history/render-seam.ts +
+    // RenderEngine#prepareHistoryRender) unblocked three of the eleven
+    // data-bound views (:history/:act/:action_summary - the live-oracle
+    // byte surface; :action_expanded/:last_action_verb added by
+    // surfaces-batch2 2026-09-30; :act_legend/:last_action/:change added
+    // by surfaces-batch3 2026-09-30); board_act stays the named remainder
+    // (see the port file header).
     const viewsModule = (cardModHistory.setModules ?? []).find(
       (m) => m.setPath === "all/history/views",
     );
     expect(viewsModule).toBeDefined();
     const views = viewsModule!.formats?.["html"]?.views ?? [];
-    expect(views.map((v) => v.view)).toEqual(["draft_legend"]);
-    expect(views[0]!.config).toBeUndefined();
+    // surfaces-batch2 (2026-09-30) added :action_expanded (the capture's
+    // probe#action_expanded(update_action) pins it) and :last_action_verb
+    // (gem-source-derived); surfaces-batch3 (2026-09-30) added the ladder
+    // trio :act_legend (capture-pinned) / :last_action / :change.
+    expect(views.map((v) => v.view)).toEqual([
+      "draft_legend",
+      "history",
+      "act",
+      "action_summary",
+      "action_expanded",
+      "last_action_verb",
+      "act_legend",
+      "last_action",
+      "change",
+    ]);
+    expect(views.every((v) => v.config === undefined)).toBe(true);
     // no other set module registers views
     for (const m of cardModHistory.setModules ?? []) {
       if (m.setPath !== "all/history/views") {
@@ -262,10 +280,28 @@ describe("card-mod-history manifest structure", () => {
       "All::History::Views",
       "All::HistoryBoard",
     ]);
-    expect(report.registeredViews).toEqual(["draft_legend"]);
+    expect(report.registeredViews).toEqual([
+      "draft_legend",
+      "history",
+      "act",
+      "action_summary",
+      "action_expanded",
+      "last_action_verb",
+      "act_legend",
+      "last_action",
+      "change",
+    ]);
     expect(report.registeredSettings).toEqual([]);
     expect(report.registeredPatternCodes).toEqual([]); // no set_pattern/ tree
     expect(typeof liveRecord["draft_legend"]).toBe("function");
+    expect(typeof liveRecord["history"]).toBe("function");
+    expect(typeof liveRecord["act"]).toBe("function");
+    expect(typeof liveRecord["action_summary"]).toBe("function");
+    expect(typeof liveRecord["action_expanded"]).toBe("function");
+    expect(typeof liveRecord["last_action_verb"]).toBe("function");
+    expect(typeof liveRecord["act_legend"]).toBe("function");
+    expect(typeof liveRecord["last_action"]).toBe("function");
+    expect(typeof liveRecord["change"]).toBe("function");
 
     const basket = loader.setModules();
     expect(basket.nonbase.size).toBe(0);
@@ -449,12 +485,12 @@ describe("card-mod-history event declarations (events.rb)", () => {
     // not throw (the bodies are void).
     const card = { name: "x", id: 1 };
     const host = {} as Parameters<NonNullable<typeof updateAnc>["fn"]>[1];
-    expect(() => updateAnc!.fn(card, host)).not.toThrow();
-    expect(() => assignAction!.fn(card, host)).not.toThrow();
-    expect(() => detectConflict!.fn(card, host)).not.toThrow();
-    expect(() => finalize!.fn(card, host)).not.toThrow();
-    expect(() => rollback!.fn(card, host)).not.toThrow();
-    expect(() => finalizeAct!.fn(card, host)).not.toThrow();
+    expect(() => updateAnc!.fn(card, host, {} as never)).not.toThrow();
+    expect(() => assignAction!.fn(card, host, {} as never)).not.toThrow();
+    expect(() => detectConflict!.fn(card, host, {} as never)).not.toThrow();
+    expect(() => finalize!.fn(card, host, {} as never)).not.toThrow();
+    expect(() => rollback!.fn(card, host, {} as never)).not.toThrow();
+    expect(() => finalizeAct!.fn(card, host, {} as never)).not.toThrow();
   });
 
   it("the newly-unblocked three events land at the stages + clauses Ruby declared (events.rb:15-50)", () => {

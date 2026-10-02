@@ -25,7 +25,11 @@
 //     shape relies on Annex-B identity escapes).
 // Each pin asserts the exact TS result against the Ruby result; upgrading
 // the UDF to translate these constructs fails the pin and the test must be
-// upgraded with it. Everything else is strict set parity, 27/30.
+// upgraded with it. UPGRADED 2026-09-29 (admin-views-2 lane): the
+// translation layer landed, the two pure-regex entries joined the strict
+// set, and the throw-on-untranslated guard's tests live in
+// match-dialect-throw-guard.test.ts. raw_posix_alpha keeps its own
+// disclosure (deck-model row composition, see KNOWN_DIVERGENCES).
 //
 // rendered_match_search is in the fixture but not replayed here: it is the
 // byte oracle for the render stream's Search-result views (slot-id and
@@ -102,7 +106,7 @@ const STANDARD_CONTENT_PATCH: Record<number, string> = {
   29: "Cardtype type rule body",
 };
 
-async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void> {
+export async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void> {
   const insert =
     "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +
     "created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, " +
@@ -138,15 +142,29 @@ async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void> {
   }
 }
 
-// The three pinned dialect divergences: entry name -> why (see header).
-const KNOWN_DIVERGENCES = new Set([
-  "raw_posix_alpha",
-  "raw_mysql57_wordstart",
-  "raw_unicode_class",
-]);
+// The three former pinned divergences. UPGRADED 2026-09-29 (admin-views-2
+// lane) together with the UDF, exactly as this file's own pin instruction
+// required: the compileMatchPattern translation layer (docs/cql-match-
+// decision.md "Decision" items 1-2) landed — POSIX classes, the
+// [[:<:]]/[[:>:]] word boundaries and \p{...} (u-flag, with the V8
+// Script= retry) translate to JS — so the two PURE-REGEX entries joined
+// the strict set and the silent-mismatch pin retired. The
+// throw-on-untranslated guard's own tests live in
+// match-dialect-throw-guard.test.ts.
+//
+// STILL EXCLUDED, one entry, NOT a regex divergence: raw_posix_alpha's
+// residual diff is a deck-MODEL row-composition question — the capture
+// deck's id-29 row (RStar-typed junction, left 3 / right 21, name and
+// content NULL) composed "Cardtype+*type+*structure" at capture time
+// while the TS model composes "Cardtype+*type" (oracle probes 5-6,
+// decko-oracle-app tmp/; the TS seed row 29 carries leftId 3 / rightId 21
+// with no RStar naming). Outside the regex guard's class — a CQL-lane
+// deck-model item, disclosed here rather than silently skipped.
+const KNOWN_DIVERGENCES = new Set(["raw_posix_alpha"]);
+
 
 describe("oracle replay: CQL match (MySQL rung, 30 entries)", () => {
-  it("strict name-set parity for the 27 dialect-clean entries", async () => {
+  it("strict name-set parity for 29 of 30 entries (the regex upgrade closed the two pure-regex divergences)", async () => {
     const fixture = JSON.parse(
       readFileSync(`${REPO_ROOT}/fixtures/captured/cql-mysql-match.json`, "utf8"),
     ) as CapturedMatch;
@@ -159,6 +177,8 @@ describe("oracle replay: CQL match (MySQL rung, 30 entries)", () => {
 
       const failures: string[] = [];
       for (const [name, captured] of Object.entries(fixture.queries)) {
+        // raw_posix_alpha stays skipped — its residual is the deck-model
+        // row-composition divergence named above, not the regex dialect.
         if (KNOWN_DIVERGENCES.has(name)) continue;
         if (!Array.isArray(captured.result)) {
           failures.push(`${name}: non-array oracle result (unexpected on the MySQL rung)`);
@@ -187,7 +207,12 @@ describe("oracle replay: CQL match (MySQL rung, 30 entries)", () => {
     }
   });
 
-  it("pinned dialect divergences: 3 raw-regex entries where JS loses to PCRE (upgrade fails these loudly)", async () => {
+  it("former divergences, upgraded: the 2 pure-regex entries now carry strict parity", async () => {
+    // The retired silent-mismatch pin's replacement: the three entries the
+    // old pin held out of the strict loop assert full name-set parity here
+    // (the translation layer makes TS match Ruby). A REGRESSION in the
+    // translation fails this loudly — the same "upgrade fails these
+    // loudly" tripwire, inverted to guard the landed behavior.
     const fixture = JSON.parse(
       readFileSync(`${REPO_ROOT}/fixtures/captured/cql-mysql-match.json`, "utf8"),
     ) as CapturedMatch;
@@ -198,7 +223,8 @@ describe("oracle replay: CQL match (MySQL rung, 30 entries)", () => {
       await warmDeckLexicon(storage);
       const parse = parseOptionsWithLexicon(storage.fetcher.lexicon);
 
-      for (const name of KNOWN_DIVERGENCES) {
+      const failures: string[] = [];
+      for (const name of ["raw_mysql57_wordstart", "raw_unicode_class"]) {
         const captured = fixture.queries[name];
         if (!captured || !Array.isArray(captured.result)) {
           throw new Error(`${name}: pin references a missing/non-array fixture entry`);
@@ -209,14 +235,13 @@ describe("oracle replay: CQL match (MySQL rung, 30 entries)", () => {
         const tsNames = await resultNames(storage.fetcher.lexicon, result.rows);
         const same =
           tsNames.length === rubyNames.length && tsNames.every((n, i) => n === rubyNames[i]);
-        // The pin holds only while the TS side silently returns less than
-        // Ruby. Three failure shapes are all "silent no-match" today — the
-        // most dangerous kind for a search engine (no error, just missing
-        // rows). An upgrade that translates these constructs (see
-        // docs/cql-match-decision.md) flips `same` to true and fails here;
-        // upgrade this test together with the UDF.
-        expect(same, `${name}: pin stale — TS now matches Ruby`).toBe(false);
+        if (!same) {
+          failures.push(
+            `${name} MISMATCH: ruby=${JSON.stringify(rubyNames)} ts=${JSON.stringify(tsNames)}`,
+          );
+        }
       }
+      expect(failures).toEqual([]);
     } finally {
       storage.close();
     }

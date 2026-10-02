@@ -35,23 +35,34 @@
 import { describe, expect, it } from "vitest";
 import { formatFileCore } from "../../../src/card/render/views.js";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import { SHARD_000000_PATH } from "../../../src/testing/test-corpus-paths.js";
 
 // ---------------------------------------------------------------------------
 // the helper itself (pure function)
 // ---------------------------------------------------------------------------
 
-describe("formatFileCore — the file cardtype :core body (set/type/file.rb:24-28)", () => {
+describe("formatFileCore — the file cardtype html :core body (core.haml)", () => {
   it.each([
     // storage-prefix resolution, mirroring the ported carrierwave
-    // contextualizePath (card-mod-carrierwave.ts): web/cloud pass through,
-    // local ~/... and coded :... become /files/... paths.
+    // contextualizePath (card-mod-carrierwave.ts): web passes through,
+    // local ~/... and coded :... become /files/... paths. CLOUD is the Ruby
+    // render-time derivation, never the stored key verbatim
+    // (set/type/file.rb:11-15 [-2] split + file_card_uploader.rb:147-153
+    // filename + path.rb:41-43 retrieval ignoring the identifier; the
+    // Michael Christensen oracle anchor pins it): [-2] of
+    // "(bucket)/808/42.png" is "42" -> the fog URL of files/808/42.png.
     ["https://example.com/attach.png", "https://example.com/attach.png"],
     ["http://example.com/attach.pdf", "http://example.com/attach.pdf"],
-    ["(bucket)/808/42.png", "(bucket)/808/42.png"],
+    ["(bucket)/808/42.png", "http://s3.amazonaws.com//files/808/42.png"],
     ["~808/42.png", "/files/808/42.png"],
     [":logo/carey.png", "/files/logo.carey.png"],
-  ])("source content '%s' renders the <a href> anchor", (input, source) => {
-    expect(formatFileCore(input)).toBe(`<a href="${source}">${source}</a>`);
+  ])("source content '%s' renders the download anchor", (input, source) => {
+    // core.haml: %a{ href: source } = t :carrierwave_download,
+    // title: title_in_context(voo.title) — HAML attr_wrapper apostrophe,
+    // label "Download " + the context-relativized name.
+    expect(
+      formatFileCore(input, { cardName: "Host Card+doc", contextNames: ["Host Card"] }),
+    ).toBe(`<a href='${source}'>Download +doc</a>\n`);
   });
 
   it.each([
@@ -188,9 +199,11 @@ describe("File-type card :content view — empty inner for prefix-less content",
   });
 
   it("file card with a real web source renders the <a href> anchor inside the slot", async () => {
-    // Outside the corpus: resolvable sources render the anchor
-    // (set/type/file/core.haml:1). Not exercised by the captured corpus
-    // (the sanitizer strips every real source); deterministic-seed proof.
+    // Outside the corpus: resolvable sources render the download anchor
+    // (core.haml: %a{ href: source } with the carrierwave_download label).
+    // Oracle-pinned shape (raw corpus quote-style exemplars: Werkshop
+    // Museum etc.); out of nest context the title is the full card name
+    // (context_names.rb title_in_context with an empty context).
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -207,7 +220,7 @@ describe("File-type card :content view — empty inner for prefix-less content",
         dbContent: "https://example.com/attach.png",
       });
       const html = await storage.engine.render("real attachment", "content");
-      expect(html).toContain('<a href="https://example.com/attach.png">');
+      expect(html).toContain("<a href='https://example.com/attach.png'>Download real attachment</a>");
     } finally {
       storage.close();
     }
@@ -230,7 +243,7 @@ describe("captured corpus — File-type card byte surface", () => {
     const path = await import("node:path");
     const url = new URL("../../..", import.meta.url);
     const repoRoot = url.pathname.replace(/^\//, "");
-    const shardPath = path.join(repoRoot, "fixtures/corpus/shard-000000.jsonl");
+    const shardPath = SHARD_000000_PATH; // committed miniature (fixtures/test-corpus/)
     const text = await fs.readFile(shardPath, "utf8");
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry808 = lines

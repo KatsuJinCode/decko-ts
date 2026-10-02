@@ -2,19 +2,34 @@
   "name": "decko-ts",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript port of the Decko card engine. Full compatibility with Ruby Decko (card 1.110.0 / decko 0.20.0), Ruby-as-oracle conformance testing, edge-native (Cloudflare D1, Bunny/libSQL). Upstream proposal: decko-commons/decko#1282.",
+  "description": "TypeScript port of the Decko card engine, validated against Ruby Decko (card 1.110.0 / decko 0.20.0) used as a rendering oracle. On the with-mods corpus replay of 2026-09-23, 167,674 of 180,442 captured views render byte-identically (92.9%); see the README's Migration status section for the run and what the remaining gap is. Edge-native (Cloudflare D1, Bunny/libSQL). Upstream proposal: decko-commons/decko#1282.",
   "type": "module",
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo — the Worker never writes to it."
+      }
+    }
+  },
   "scripts": {
     "test": "vitest run tests/card/",
     "typecheck": "tsc --noEmit",
-    "replay": "vitest run oracle-replay tests/testing"
+    "replay": "vitest run oracle-replay tests/testing",
+    "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
+    "deploy": "npm run db:migrations:apply && npx wrangler deploy",
+    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs"
   },
   "devDependencies": {
     "@libsql/client": "^0.18.0",
     "@types/node": "^26.6.2",
     "better-sqlite3": "^13.0.3",
+    "esbuild": "^0.28.2",
     "miniflare": "^5.20260918.0-alpha",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "coffeescript": "^1.12.2",
+    "sass": "1.105.0"
   }
 }

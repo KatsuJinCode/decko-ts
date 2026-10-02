@@ -1,7 +1,8 @@
 // The composed default deck (src/card/mod-loader/default-mod-deck.ts):
-// all 30 ported card-mod manifests, wired into one loader in the oracle
-// deck's captured bundle order (fixtures/captured/help-mod-loader.json
-// "mods"), with the deck-boot seam binding the process-wide defaults.
+// all 31 ported card-mod manifests (core composed, lane-admincompose),
+// wired into one loader in the oracle deck's captured bundle order
+// (fixtures/captured/help-mod-loader.json "mods"), with the deck-boot seam
+// binding the process-wide defaults.
 //
 // The order expectation is the capture, not a hand-written list: the test
 // compares the loader's resolved order against portedBundleOrder() AND
@@ -38,7 +39,7 @@ afterAll(() => {
 });
 
 describe("default-mod-deck: oracle bundle order", () => {
-  it("carries the captured resolve order (34 names, 4 without manifests)", () => {
+  it("carries the captured resolve order (34 names, 3 without manifests)", () => {
     expect(ORACLE_BUNDLE_ORDER).toHaveLength(34);
     expect(ORACLE_BUNDLE_ORDER[0]).toBe("core");
     // the capture's tail: recaptcha, tinymce_editor, defaults (indexes 31-33)
@@ -47,17 +48,19 @@ describe("default-mod-deck: oracle bundle order", () => {
       "tinymce_editor",
       "defaults",
     ]);
-    expect(COMPILED_IN_OR_ABSENT_MODS).toHaveLength(4);
+    expect(COMPILED_IN_OR_ABSENT_MODS).toHaveLength(3);
     for (const absent of COMPILED_IN_OR_ABSENT_MODS) {
       expect(ORACLE_BUNDLE_ORDER).toContain(absent);
     }
   });
 
-  it("restricts to exactly the 30 ported mods, preserving capture order", () => {
+  it("restricts to exactly the 31 ported mods, preserving capture order", () => {
     const order = portedBundleOrder();
-    expect(order).toHaveLength(30);
-    // head: collection..help is the capture's indexes 1-7 verbatim
-    expect(order.slice(0, 7)).toEqual([
+    expect(order).toHaveLength(31);
+    // head: core (the capture's index 0, composed) + collection..help is
+    // the capture's indexes 1-7 verbatim
+    expect(order.slice(0, 8)).toEqual([
+      "core",
       "collection",
       "content",
       "format",
@@ -67,7 +70,7 @@ describe("default-mod-deck: oracle bundle order", () => {
       "help",
     ]);
     // every ported name is in the capture; every capture name that is not
-    // ported is one of the documented four
+    // ported is one of the documented three
     for (const name of order) {
       expect(ORACLE_BUNDLE_ORDER).toContain(name);
     }
@@ -75,7 +78,6 @@ describe("default-mod-deck: oracle bundle order", () => {
       (name) => !order.includes(name),
     );
     expect(unaccounted).toEqual([
-      "core",
       "bar_and_box",
       "delayed_job",
       "defaults",
@@ -90,7 +92,7 @@ describe("default-mod-deck: oracle bundle order", () => {
 describe("default-mod-deck: one loader, oracle order, live registrations", () => {
   it("resolves the full order and loads every manifest", () => {
     const sources = defaultDeckSources();
-    expect(sources).toHaveLength(30);
+    expect(sources).toHaveLength(31);
     const loader = new ModLoader(sources);
     loader.resolveOrder({ gemMods: portedBundleOrder() });
     const report = loader.load();

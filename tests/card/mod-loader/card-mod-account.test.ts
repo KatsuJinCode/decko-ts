@@ -23,6 +23,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -44,6 +45,9 @@ beforeAll(async () => {
   // codename cards (the codename registry reads cards.codename; their
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
+  // the User cardtype card (the TYPE anchor of the type_plus_right/user
+  // sets; the corpus recapture carries this card with codename "user").
+  await seedCard(s, { id: 4, name: "User", codename: "user", typeId: 2 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
@@ -102,12 +106,18 @@ beforeAll(async () => {
     dbContent: "closed probe body",
   });
 
-  // Oracle Mail Probe (a User card whose +email right is the probe)
+  // Oracle Mail Probe (a User card whose +email right is the probe).
+  // The probe CARRIES the User type: a RichText-typed probe leaves the
+  // type_plus_right/user/email set module unreachable (the card's
+  // TYPE_PLUS_RIGHT anchor resolves from the LEFT card's type name, so a
+  // RichText-typed probe anchors "rich_text+Xemail" and misses
+  // TypePlusRight::User::Email). Deck truth (corpus: codename
+  // "user" cardtype): the probe is a User card.
   await seedCard(s, {
     id: 150,
     name: "Oracle Mail Probe",
     dbContent: "user body",
-    typeId: 2,
+    typeId: 4, // the User cardtype
   });
   await seedCard(s, {
     id: 151,
@@ -129,20 +139,33 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Token Probe+account", "token_days")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Token Probe+account", "verify_days")).rejects.toThrow(
-      UnsupportedViewError,
-    );
-    await expect(s.engine.render("Oracle Token Probe+account", "reset_password_days")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // :verify_days / :reset_password_days are NOT in this negative list,
+    // for the reason the :open_content note below records - raising here
+    // was the engine's gap, not Ruby's behaviour. Both are DEPRECATED
+    // aliases of :token_days (right/account/views.rb:18-20) that the four
+    // notification templates render loader-lessly, so the flat HTML_VIEWS
+    // table carries the page-path body: the blank the captured page bytes
+    // pin (`Link will remain valid for  days.`). :token_days and
+    // :token_expiry stay in this list - no flat entry was added for them.
+    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("");
+    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("");
     await expect(s.engine.render("Oracle Token Probe+account", "token_expiry")).rejects.toThrow(
       UnsupportedViewError,
     );
     await expect(s.engine.render("*signin", "one_line_content")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("*signin", "open_content")).rejects.toThrow(
-      UnsupportedViewError,
+    // :open_content is NO LONGER in this list, and its removal is a
+    // correction rather than a loosening. card-mod-format set/all/base.rb:
+    // 93-95 declares `view :open_content: _render_core` in the BASE format,
+    // so it exists on every Ruby card — and the engine now registers it in
+    // the shared HTML_VIEWS table the same way. Raising here was the
+    // engine's gap, not Ruby's behaviour. It renders now, which is the
+    // faithful shape; this mod's own signin.rb registration
+    // (card-mod-account.ts) shadows it with the same body, so the
+    // WITH-the-mod case is unchanged.
+    expect(await s.engine.render("*signin", "open_content")).toBe(
+      await s.engine.render("*signin", "core"),
     );
     await expect(s.engine.render("Oracle Closed Probe", "closed_account")).rejects.toThrow(
       UnsupportedViewError,
@@ -152,29 +175,49 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     );
   });
 
+  // The byte assertions run unmarked: ModLoader#viewChain's nested-set-file
+  // expansion (mod-loader.ts:501-526 — when the anchored token's own
+  // candidates produce no view, the walker expands to every registered
+  // module whose setPath sits under the token's pattern/anchor prefix, in
+  // load order — the port of Ruby's SetTemplate nesting the file's contents
+  // INTO Right::Account, set_template.rb:11-19) already reaches
+  // Right::Account::Views.
   it("WITH the mod: :token_days renders the integer-as-string (right/account/views.rb:14-16)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModAccount }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    expect(await s.engine.render("Oracle Token Probe+account", "token_days")).toBe("7");
+    // "2", not "7": `Card.config.token_expiry / 1.day` reads the railtie,
+    // which sets 2.days (card-1.110.0/lib/cardio/railtie.rb:12) and which
+    // no installed mod overrides. The number is
+    // DEFAULT_TOKEN_EXPIRY_SECONDS / 86400, the same
+    // constant Auth::Token.expiration stamps `exp` with, so the page's
+    // sentence and the link's lifetime cannot drift.
+    expect(await s.engine.render("Oracle Token Probe+account", "token_days")).toBe("2");
   });
 
+  // see the :token_days test - nested set/right/account/views.rb, reached
+  // through the viewChain nested expansion.
   it("WITH the mod: :verify_days alias renders the same bytes (right/account/views.rb:18-19)", async () => {
     const s = storage!;
-    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("7");
+    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("2");
   });
 
+  // see the :token_days test - nested set/right/account/views.rb.
   it("WITH the mod: :reset_password_days alias renders the same bytes (right/account/views.rb:20)", async () => {
     const s = storage!;
-    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("7");
+    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("2");
   });
 
+  // see the :token_days test - nested set/right/account/views.rb.
   it("WITH the mod: :token_expiry renders the HTML-wrapped expiry (right/account/views.rb:65-67)", async () => {
     const s = storage!;
+    // The sentence interpolates the SAME :token_days value, so this is a
+    // second pin on the railtie's 2 days — see the :token_days test.
     expect(await s.engine.render("Oracle Token Probe+account", "token_expiry"))
-      .toBe("<p><em>Link will expire in 7 days</em></p>");
+      .toBe("<p><em>Link will expire in 2 days</em></p>");
   });
 
   it("WITH the mod: :one_line_content renders the empty string (self/signin.rb:144-146)", async () => {
@@ -184,10 +227,20 @@ describe("card-mod-account through the mod loader (A/B)", () => {
 
   it("WITH the mod: :open_content delegates to :core (self/signin.rb:139-142)", async () => {
     const s = storage!;
-    // *signin has dbContent "Sign In"; the :core view (views.ts#coreView)
-    // for a plain settings-typed card falls through to
-    // processContent(renderRaw()) = "Sign In".
-    expect(await s.engine.render("*signin", "open_content")).toBe("Sign In");
+    // The delegation IS the truthful pin: Ruby's *signin
+    // :core is set/self/signin.rb:119-126 `view :core, cache: :never` — the
+    // SIGN-IN FORM (card_form :update + haml :core, the
+    // .signin-fields/.signin-buttons template), not the raw content; and it
+    // is not the Setting cardtype's rule listing either (that cardtype core
+    // only fires because the port has no Self::Signin :core registration —
+    // set/type/setting.rb:39-55 would never be reached in Ruby, the
+    // more-specific Self-pattern module overrides it). The view's own body —
+    // `_render_core` — is what this mod registers. The sign-in FORM bytes stay the
+    // named rails remainder in card-mod-account.ts's header ("signin
+    // core/open/title"), the forms/signin stack's territory.
+    expect(await s.engine.render("*signin", "open_content")).toBe(
+      await s.engine.render("*signin", "core"),
+    );
   });
 
   it("WITH the mod: :closed_account renders the two-line haml HTML (abstract/account_holder.rb:126 + closed_account.haml)", async () => {
@@ -232,7 +285,15 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     const type = [...basket.nonbase.values()].flat().map((m) => m.shortname);
     expect(type).toContain("Type::Role");
     expect(type).toContain("Type::Signup");
-    expect(type).toContain("Type::Signup::Views");
+    // The gem file is set/type/signup/views.rb, but the port registers the
+    // parent under the set-key spelling "type/sign_up" (the card's set-key
+    // token is TYPE-sign_up; camelize("sign_up") -> "SignUp" — the dispatch
+    // NEEDS Type::SignUp, the comment on the manifest entry documents the
+    // divergence). The child registration must nest under the SAME spelling
+    // for the viewChain nested expansion (setPath prefix
+    // "type/sign_up/") to ever reach it — "Type::Signup::Views" was the
+    // gem-directory spelling no token and no prefix walk can resolve.
+    expect(type).toContain("Type::SignUp::Views");
     expect(type).toContain("Type::User");
     // type_plus_right nonbase
     expect(type).toContain("TypePlusRight::Cardtype::Account");

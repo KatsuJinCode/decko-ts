@@ -25,6 +25,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -51,6 +52,10 @@ beforeAll(async () => {
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
+  // the *right codename card: the :template_nest field-only branch
+  // composes `fieldName :right` (all/template_nest.rb:29), which resolves
+  // the codename through the deck's registry.
+  await seedCard(s, { id: 15, name: "*right", codename: "right", typeId: 14 });
 
   // *input type setting (the right-anchor for Self::InputType and the
   // codename registry's lookup key for `setting_opts` registration).
@@ -82,6 +87,16 @@ beforeAll(async () => {
     name: "Oracle Nested Probe",
     dbContent: "nested probe body",
   });
+
+  // The name-environment bridge (the card-mod-edit-forms.test.ts:194
+  // idiom): the :template_nest field-only branch composes `fieldName
+  // :right` (all/template_nest.rb:29), whose codename tag resolves through
+  // the global env's registry. Install THIS storage's registry and prime
+  // the codehash memo AFTER the seeds so the sync peeks resolve
+  // deterministically (an unknown codename throws - name.ts#fromCardish
+  // CodenameNotFoundError, Ruby's bad-mark raise).
+  s.fetcher.installNameEnvironment();
+  await s.fetcher.codenames.ensureLoaded();
 }, 60_000);
 
 afterAll(() => {
@@ -95,15 +110,23 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Edit Probe", "just_deleted")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Edit Probe", "template_nest")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // :template_nest is EXCLUDED: it now also has a flat HTML_VIEWS entry
+    // (views.ts, the headless-port fallback the same file lists for
+    // name/linkname/add_button). The layout cardtype reaches it without a
+    // deck - card-mod-layout set/type/layout_type.rb:12-18 puts the Layout
+    // core under nest mode :template, and the page sweep
+    // (tmp/raw-ground-truth/scripts/verify-dual-lane.test.ts) boots no mod
+    // deck, so a registry-only registration would leave every layout body
+    // rendering a quiet render-error span instead of its own source. This
+    // is the same carve-out card-mod-format.test.ts:8 documents for
+    // bar_right.
   });
 
   it("WITH the mod: :just_deleted renders <div>TITLE deleted</div> (all/editing.rb:46-48)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModEdit }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     // The title view (src/card/render/views.ts#titleView) wraps the
@@ -155,17 +178,37 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :template_nest returns \"\" for field-only names (honest remainder)", () => {
-    // The field-only branch is the rails-runtime branch (with_nest_mode +
-    // nest template_link_set_name). The port returns "" - the same shape
-    // a Ruby's field-only branch yields when the template_link set card
-    // does not exist (Card[mark] returns nil and with_card yields nothing).
+  it("WITH the mod: :template_nest nests the composed set name for field-only names (all/template_nest.rb:5-7)", async () => {
+    // the field-only branch is the PORTED rails branch (with_nest_mode
+    // :normal + nest template_link_set_name, view: :template_link - the
+    // fix-d2-dangling-description lane; the composition is the shared
+    // templateLinkSetNameFromParts the engine's junction warm also runs,
+    // drift-pinned in d9-template-link-junction-warm-composition.test.ts).
+    // on_type_set misses here (the stub format carries no parent rule
+    // format), so the composition takes the *right arm: "+relative_field"
+    // composes "relative_field+*right". The view's own observable is the
+    // ASK - it returns exactly what fmt.nest answers - so the stub records
+    // the ask and answers the nothing-to-render shape.
     const viewsTable = loader!.viewsTable();
     const viewFn = viewsTable["template_nest"];
     expect(viewFn).toBeDefined();
     if (viewFn === undefined) return;
+    const nestAsks: Array<{ name: string; view: string | undefined }> = [];
     const ctx = {
-      fmt: undefined,
+      fmt: {
+        // the gate's inputs (card-mod-edit.ts#onTypeSet): no parent rule
+        // format, and a fetch the gate never reaches on this path
+        parent: undefined,
+        engine: { fetchRenderCard: () => undefined },
+        // nesting/mode.rb:24-30 with_nest_mode - run the body; the mode
+        // has no byte effect on the nest call itself
+        withNestMode: (_mode: string, body: () => string) => body(),
+        // format/nest.rb#nest - record the composed ask, answer ""
+        nest: (parsed: { name: string; options: { view?: string } }) => {
+          nestAsks.push({ name: parsed.name, view: parsed.options.view });
+          return "";
+        },
+      },
       voo: {
         opts: {
           nest_name: "+relative_field",
@@ -176,6 +219,11 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     expect(viewFn(ctx as unknown as Parameters<typeof viewFn>[0])).toBe(
       "",
     );
+    // the field-only branch composed the *right-arm set name and asked
+    // the format to render it through :template_link
+    expect(nestAsks).toEqual([
+      { name: "relative_field+*right", view: "template_link" },
+    ]);
   });
 
   it("WITH the mod: every set module from the gem tree is in the basket", () => {

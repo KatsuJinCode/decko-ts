@@ -1,60 +1,133 @@
 #!/usr/bin/env node
-// Import tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3 into Bunny Database.
-// Uses the HTTP /v2/pipeline endpoint (libSQL-compatible). Schema first, then
-// rows chunked at <=500. Reports rows written.
+// Import a scrubbed Culturesmith deck sqlite file into Bunny Database.
+// Uses the HTTP /v2/pipeline endpoint (libSQL-compatible, the protocol the
+// Bunny SQL API documents at https://bunny.net/docs/database/connect/sql-api.md).
+// Schema first, then rows chunked at <=500. Reports rows written.
 //
-// Reads credentials from C:\localProjects\brandonDojoTech\library\data\creds:
-//   BUNNY_DB_URL, BUNNY_DB_TOKEN
+// USAGE (TRIAL / SMALL SCALE — this is the path to use first):
+//   BUNNY_DB_URL=libsql://<id>-<name>.lite.bunnydb.net/ \
+//   BUNNY_DB_TOKEN=<jwt> \
+//   node scripts/import-to-bunny-db.mjs --limit 200
 //
-// Usage: node scripts/import-to-bunny-db.mjs [--dry-run] [--chunk-size N]
+//   --limit N        import at most N rows PER TABLE (small-scale seed; the
+//                    whole-deck import is the default only when omitted)
+//   --tables a,b     only these tables (default: every non-sqlite table)
+//   --source PATH    source sqlite file
+//                    (default tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3)
+//   --creds PATH     KEY=VALUE file to read BUNNY_DB_URL / BUNNY_DB_TOKEN from
+//   --chunk-size N   rows per pipeline POST (max 500)
+//   --schema-only    create tables, import no rows
+//   --data-only      skip the schema phase (target already has the schema)
+//   --dry-run        count and report, issue no writes
+//
+// CREDENTIALS, in resolution order (2026-10-01 change):
+//   1. BUNNY_DB_URL / BUNNY_DB_TOKEN environment variables
+//   2. --creds <path>
+//   3. (nothing — the script exits 2 with the message below)
+// It used to fall back unconditionally to Brandon's account creds file at
+// ../brandonDojoTech/library/data/creds. That default is gone on purpose: a
+// trial-account import must never be able to silently write to the production
+// account. Pass --creds explicitly if you really do mean that file.
 
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const args = Object.fromEntries(
-  process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => {
+// Flags accept both "--name value" and "--name=value". The old parser only
+// understood "--name=value": a space-separated value was dropped on the floor
+// and the flag silently became boolean `true` (so "--source <path>" once
+// resolved to the default source and reported the default path as missing).
+const args = {};
+{
+  const argv = process.argv.slice(2);
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--')) continue;
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
-    return [m[1], m[2] ?? true];
-  }),
-);
+    if (!m) continue;
+    if (m[2] !== undefined) {
+      args[m[1]] = m[2];
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+      args[m[1]] = argv[++i];
+    } else {
+      args[m[1]] = true;
+    }
+  }
+}
 const DRY_RUN = !!args['dry-run'];
 const CHUNK = Math.min(500, Number(args['chunk-size'] ?? 500));
 const SCHEMA_ONLY = !!args['schema-only'];
 const DATA_ONLY = !!args['data-only'];
+// Per-table row cap for a small-scale seed. 0 = no cap (whole deck).
+const LIMIT = Number(args['limit'] ?? 0);
+const TABLE_FILTER = typeof args['tables'] === 'string'
+  ? args['tables'].split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
 
-// creds
-const credsPath = resolve(repoRoot, '../brandonDojoTech/library/data/creds');
-const creds = Object.fromEntries(
-  readFileSync(credsPath, 'utf8').split('\n')
-    .filter((l) => l && !l.startsWith('#'))
-    .map((l) => {
-      const eq = l.indexOf('=');
-      return [l.slice(0, eq).trim(), l.slice(eq + 1).trim()];
-    }),
-);
-const DB_URL = creds.BUNNY_DB_URL;
-const TOKEN = creds.BUNNY_DB_TOKEN;
-if (!DB_URL || !TOKEN) {
-  console.error('Missing BUNNY_DB_URL or BUNNY_DB_TOKEN in creds');
-  process.exit(1);
+// creds: env first, then an explicit --creds path, then nothing.
+let DB_URL = process.env.BUNNY_DB_URL;
+let TOKEN = process.env.BUNNY_DB_TOKEN;
+if ((!DB_URL || !TOKEN) && typeof args['creds'] === 'string') {
+  const credsPath = resolve(String(args['creds']));
+  if (!existsSync(credsPath)) {
+    console.error(`--creds file not found: ${credsPath}`);
+    process.exit(2);
+  }
+  const creds = Object.fromEntries(
+    readFileSync(credsPath, 'utf8').split('\n')
+      .filter((l) => l && !l.startsWith('#'))
+      .map((l) => {
+        const eq = l.indexOf('=');
+        return [l.slice(0, eq).trim(), l.slice(eq + 1).trim()];
+      }),
+  );
+  DB_URL = DB_URL || creds.BUNNY_DB_URL;
+  TOKEN = TOKEN || creds.BUNNY_DB_TOKEN;
 }
+if (!DB_URL || !TOKEN) {
+  console.error(
+    'No database credentials.\n' +
+    '  Set BUNNY_DB_URL and BUNNY_DB_TOKEN in the environment, or pass --creds <path-to-file>.\n' +
+    '  (This script no longer falls back to the production-account creds file.)',
+  );
+  process.exit(2);
+}
+console.log(`target: ${DB_URL.replace(/\/\/[^@]*@/, '//<redacted>@')}`);
 // derive HTTP endpoint from libsql:// URL
 // libsql://01M3C77TGE0WTNWB2P4BMCQSJ3-cs-deck.lite.bunnydb.net/
 //   -> https://01M3C77TGE0WTNWB2P4BMCQSJ3-cs-deck.lite.bunnydb.net/v2/pipeline
 const httpBase = DB_URL.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '');
 const PIPELINE_URL = `${httpBase}/v2/pipeline`;
 
-const SOURCE_DB = resolve(repoRoot, 'tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3');
+const SOURCE_DB = resolve(
+  repoRoot,
+  typeof args['source'] === 'string' ? String(args['source']) : 'tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3',
+);
+if (!existsSync(SOURCE_DB)) {
+  console.error(`source database not found: ${SOURCE_DB}`);
+  process.exit(2);
+}
 const source = new Database(SOURCE_DB, { readonly: true });
 
-const tables = source.prepare(
+const allTables = source.prepare(
   "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
 ).all();
+const tables = TABLE_FILTER
+  ? allTables.filter((t) => TABLE_FILTER.includes(t.name))
+  : allTables;
+const missing = TABLE_FILTER ? TABLE_FILTER.filter((n) => !allTables.some((t) => t.name === n)) : [];
+if (missing.length > 0) {
+  console.error(`--tables names not present in ${SOURCE_DB}: ${missing.join(', ')}`);
+  process.exit(2);
+}
+if (LIMIT > 0) {
+  console.log(`row cap: ${LIMIT} rows per table (small-scale seed)`);
+}
+
 
 // Quote an identifier for SQL: keep it double-quoted; map " -> "".
 function quoteIdent(s) { return '"' + String(s).replace(/"/g, '""') + '"'; }
@@ -171,8 +244,10 @@ for (const t of tables) {
   let buf = [];
   let written = 0;
   let chunkIdx = 0;
+  let capped = false;
   const it = sel.iterate();
   for (const row of it) {
+    if (LIMIT > 0 && written + buf.length >= LIMIT) { capped = true; break; }
     buf.push(cols.map((c) => row[c]));
     if (buf.length >= CHUNK) {
       await insertChunk(t.name, cols, buf);
@@ -186,7 +261,8 @@ for (const t of tables) {
     written += buf.length;
     chunkIdx++;
   }
-  console.log(`  ${t.name}: ${written} rows in ${chunkIdx} chunks`);
+  const total = source.prepare(`SELECT COUNT(*) AS n FROM ${quoteIdent(t.name)}`).get().n;
+  console.log(`  ${t.name}: ${written} rows in ${chunkIdx} chunks${capped ? ` (capped at --limit ${LIMIT} of ${total})` : ` (of ${total})`}`);
 }
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 console.log(`\n== DONE ==`);

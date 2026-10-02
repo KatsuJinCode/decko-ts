@@ -14,7 +14,7 @@ The pipeline:
 1. INGEST — the source goes through the matching existing module:
      SQLite file   → tools/migrate/source-sqlite.mjs + generalized-import.mjs
      mysqldump text → tools/migrate/parse-dump.mjs + import.mjs
-     deck-INSERT    → tools/migrate/deck-seed-parser.mjs (this M5's new parser)
+     deck-INSERT    → tools/migrate/deck-seed-parser.mjs (the deck-INSERT parser)
    Each produces { table, columns, values } rows that flow through the
    existing schema-map.mjs column-drift machinery.
 
@@ -47,18 +47,18 @@ The pipeline:
    resolution, per-table parity, orphan-junction check. The report
    is content-free (ids, counts, hashes only).
 
-## The chunk-size recipe (M5 discovery on the 867MB anonymized seed)
+## The chunk-size recipe (measured on the 867MB anonymized seed)
 
 The anonymized corpus-v2 seed is 826.7 MiB / 3,871,640 lines / 1,206,985
 INSERT statements (94234 cards + 1112744 card_references + 7 meta).
-The M5 default (`--chunk-rows 1000 --chunk-bytes 8 MiB`) produces chunks
+The default (`--chunk-rows 1000 --chunk-bytes 8 MiB`) produces chunks
 where the card_references chunks are ~200 KB / 1000 statements each but
 the cards chunks (which carry long content strings) blow up to 7-16 MB
 each. Those large chunks hit wrangler's local-D1 per-file limit:
 
   X [ERROR] statement too long: SQLITE_TOOBIG
 
-The discovery run's empirical ceiling:
+Measured ceiling on that seed:
 
 | --chunk-rows | --chunk-bytes | Largest chunk | D1 wrangler outcome |
 |--------------|----------------|---------------|---------------------|

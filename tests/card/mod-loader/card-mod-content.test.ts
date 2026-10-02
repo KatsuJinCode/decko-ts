@@ -49,6 +49,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -192,6 +193,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModContent }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     expect(await s.engine.render("Oracle Code Probe", "input")).toBe(
@@ -441,6 +443,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     // both CodeContent-anchored and HamlFile-anchored cards.
     loader = new ModLoader([{ manifest: cardModContent }]);
     loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     const chain = loader.viewChain("", "input");
     const modules = chain.map((e) => e.setModule);
     expect(modules).toContain("Abstract::CodeContent");

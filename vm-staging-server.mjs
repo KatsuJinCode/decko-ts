@@ -30,6 +30,24 @@
 //   POST /_signout        -> slice-1 sign-out: revokes the presented
 //                            session (card-mod-account's :signout event
 //                            semantics, set/self/signin.rb:25-29)
+//   POST /_reset-request  -> lane-reset-flows: the :send_reset_password_token
+//                            event (set/self/signin.rb:27-31) — email in,
+//                            reset email with the token link out (transport
+//                            NOOP unless DECKO_MAIL_CAPTURE=1, which also
+//                            exposes GET /_mail-log to drain the capture)
+//   GET  /update/<mark>   -> lane-reset-flows: the EMAILED LINK consumption
+//        ?card[trigger]=     (set/right/account/views.rb:34-38 token_url;
+//        reset_password|     Ruby consumes it via engine_routes' explicit
+//        verify_and_activate GET alternative into card#update) — the JWT
+//        &token=<jwt>        authenticator + trigger event; 302 to the
+//                            +account edit view on success. Scoped to
+//                            exactly this trigger+token shape; every other
+//                            GET stays read-only (write-routes' posture).
+//   POST /_account-password -> lane-reset-flows: the +account edit form
+//                            submit's staging endpoint (the +*password
+//                            validate/store events, set/right/password.rb)
+//                            — session cookie required, writes the member's
+//                            own digest
 //   anything else         -> Decko's full-chrome error pages (live-shape,
 //                             2026-09-26): an unresolved card name gets the
 //                             not_found page (404, Default Layout chrome,
@@ -98,15 +116,52 @@ import { DeckoName } from "./dist/src/card/name.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
+// The first-run journey (first-run-experience lane): Ruby's
+// Card::Auth.needs_setup? census + the owner create, as a separate HTTP
+// surface. Off unless DECKO_FIRST_RUN=1 - handleFirstRunRequest returns null
+// for every request when the flag is unset, so the unarmed staging server
+// behaves exactly as it did before this module existed.
+import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/server/first-run-routes.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
 import { renderPageBytes } from "./dist/src/card/render/page.js";
+// The compiled *all+*script bundle (tinymce-assets lane): the OUTPUT side of
+// Ruby's script-asset pipeline — per-leaf comment_with_source +
+// Uglifier(harmony) compression, oracle-verified byte parity (see
+// src/card/assets/compiled-script-bundle.ts).
+import { compileScriptBundle } from "./dist/src/card/assets/compiled-script-bundle.js";
+// The deck-boot seam (default-mod-deck.ts): loads the composed 31-mod deck
+// and binds the process-wide defaults (mod view configs, content-override
+// registry, event registry) — the port of Ruby's one-time boot wiring
+// (Cardio::Mod::Dirs, dirs.rb:51-63). Without this call the server process
+// runs on the SEED html views only (getDefaultModLoader() unset), so every
+// mod-registered view — the whole card-mod-edit form chain (:edit,
+// :edit_form, :edit_buttons, :input, ...), history, rules, account forms —
+// raises UnsupportedViewError at the serving surface even though the views
+// are ported and byte-pinned at the engine level (the edit-forms lane's
+// session2-gap-8 mechanism: ?view=edit answered 422 where live shows 200).
+import { defaultDeckLoader } from "./dist/src/card/mod-loader/default-mod-deck.js";
 // Write path (write-path slice 2): the whole write surface lives in its own
 // module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
 import {
   handleWriteRequest,
   writePathEnabled,
+  readSessionCookie,
+  sessionCookieHeader,
+  clearedSessionCookieHeader,
 } from "./dist/src/server/write-routes.js";
+// The recaptcha seat's host-config source (staging-seat-wiring lane): reads
+// the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
+// seat (write-routes.ts). Undefined until ops sets the keys — INERT by
+// default; the rule walk and the real siteverify GET stay the engine's
+// defaults. Key NAMES only here; no key VALUES live in this repo.
+import { recaptchaConfigFromHostEnv } from "./dist/src/server/staging-server-recaptcha-env-config.js";
+// The attachment storage seam (uploads2 lane): new uploads land as
+// files/<cardId>/<actionId><ext> under DECKO_FILES_DIR — Ruby's
+// Card.paths["files"] port (card-mod-carrierwave paths.rb:14-17) — and
+// serve through the local fallback in handleAssetFile below.
+import { LocalAttachmentStore } from "./dist/src/card/attachments/attachment-store.js";
+import { expireRenderCachesAfterSave } from "./dist/src/server/post-save-cache-expiry.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -124,6 +179,25 @@ import {
   signinAccount,
   signoutAccount,
 } from "./dist/src/card/auth/index.js";
+
+// The member account email-token flows (lane-reset-flows): request reset ->
+// reset email (token link) -> confirm -> set new password, plus the signup
+// arm's verify/activate. Ruby sources: card-mod-account set/self/signin.rb
+// (send_reset_password_token), set/right/account/events.rb
+// (reset_password + verify_and_activate), set/right/account/views.rb
+// (token_url — the email link shape this server consumes at GET
+// /update/<mark>), set/right/password.rb (the validate/store events).
+import {
+  applyNewAccountPassword,
+  buildAccountTokenUrl,
+  confirmPasswordReset,
+  confirmAccountVerification,
+  sendResetPasswordToken,
+} from "./dist/src/card/auth/account-verify-reset-flows.js";
+import {
+  CaptureTransport,
+  NoopTransport,
+} from "./dist/src/card/notify/transport.js";
 
 // DECK BOOT — inflection initializer, FIRST, before any DeckoName.parse.
 // A Rails deck's config/initializers/inflections.rb runs before any request;
@@ -218,6 +292,103 @@ const COMPILED_ASSET_FILES = {
 };
 
 // ---------------------------------------------------------------------------
+// The compiled *all+*script bundle (tinymce-assets lane)
+// ---------------------------------------------------------------------------
+//
+// Ruby serves the deck's main JavaScript from the STORED bytes of the
+// *all+*script+*asset output file card — the production compile of the
+// *all+*script manifest (asset_outputter.rb:20-25 update_asset_output ->
+// store_output input_from_item_cards; each leaf through the script
+// :compressed view's Uglifier(harmony) arm, 00_script.rb:25-27, under the
+// production deck's compress_assets=true). This server mirrors that OUTPUT
+// contract:
+//
+//   1. The deck's main script output card resolves by codename (*all+*script
+//      rule's +*asset output child), not hardcoded ids — the same query
+//      answers the corpus deck (50617) and the oracle deck (307).
+//   2. Its bytes come from the deployed compiled-assets directory when the
+//      compile lane put them there, else the in-process compile of the
+//      PINNED assembled input (fixtures/captured/all-script-assembled-input.js,
+//      the cwinput lane's live pin sha 36a3d55d..., through
+//      compiled-script-bundle.ts — 48/49 shared leaves byte-identical to the
+//      live production bundle; divergences named in
+//      fixtures/captured/script-compile-oracle-leaves.json), else the honest
+//      uncompiled-manifest fallback below.
+//
+// Every flavor names itself in the X-Decko-Asset-* headers. The compile is
+// a memoized promise — the first /files fetch of the main script pays it
+// (~tens of seconds of uglify), later fetches serve the cached bytes.
+
+const ASSEMBLED_SCRIPT_FIXTURE = path.join(
+  HERE,
+  "fixtures",
+  "captured",
+  "all-script-assembled-input.js",
+);
+
+let mainScriptAssetOutputCache; // { id, db_content } | null, memoized
+async function mainScriptAssetOutput() {
+  if (mainScriptAssetOutputCache !== undefined) return mainScriptAssetOutputCache;
+  const { rows } = await driver.query(
+    "SELECT out_card.id AS id, out_card.db_content AS db_content" +
+      " FROM cards all_card" +
+      " JOIN cards rule ON rule.left_id = all_card.id AND rule.trash = 0" +
+      " JOIN cards setting ON rule.right_id = setting.id AND setting.trash = 0" +
+      " JOIN cards out_card ON out_card.left_id = rule.id AND out_card.trash = 0" +
+      " JOIN cards out_setting ON out_card.right_id = out_setting.id" +
+      " WHERE all_card.codename = 'all' AND all_card.trash = 0" +
+      " AND setting.codename = 'script'" +
+      " AND out_setting.codename = 'asset_output'",
+    [],
+  );
+  mainScriptAssetOutputCache = rows[0] ?? null;
+  return mainScriptAssetOutputCache;
+}
+
+let compiledBundlePromise; // Promise<{bytes, note, source} | null>, memoized
+function compiledMainScriptBundle() {
+  if (compiledBundlePromise === undefined) {
+    compiledBundlePromise = (async () => {
+      // 1. the deployed compiled bytes (the compile lane's scp output)
+      const deployedPath = path.join(COMPILED_ASSETS_DIR, "all-script.js");
+      try {
+        const bytes = await fs.readFile(deployedPath);
+        return { bytes, note: "compiled-bytes", source: deployedPath };
+      } catch (err) {
+        if (err && err.code !== "ENOENT") {
+          console.warn(
+            `[vm-staging] compiled asset read failed ${deployedPath}: ` +
+              (err instanceof Error ? err.message : String(err)),
+          );
+        }
+      }
+      // 2. compile in process from the pinned assembled input
+      try {
+        const assembled = await fs.readFile(ASSEMBLED_SCRIPT_FIXTURE, "utf8");
+        const startedAt = Date.now();
+        const bundle = compileScriptBundle(assembled);
+        console.log(
+          `[vm-staging] compiled *all+*script bundle in process: ${bundle.length} chars ` +
+            `in ${Date.now() - startedAt}ms from ${ASSEMBLED_SCRIPT_FIXTURE}`,
+        );
+        return {
+          bytes: Buffer.from(bundle, "utf8"),
+          note: "compiled-in-process-from-assembled-input",
+          source: ASSEMBLED_SCRIPT_FIXTURE,
+        };
+      } catch (err) {
+        console.warn(
+          `[vm-staging] in-process script compile unavailable: ` +
+            (err instanceof Error ? err.message : String(err)),
+        );
+        return null;
+      }
+    })();
+  }
+  return compiledBundlePromise;
+}
+
+// ---------------------------------------------------------------------------
 // CLI / boot args
 // ---------------------------------------------------------------------------
 
@@ -243,7 +414,13 @@ console.log(`[vm-staging] port: ${port}`);
 // Engine boot
 // ---------------------------------------------------------------------------
 
-const driver = new LocalSqliteDriver({ path: dbPath, readonly: true });
+// The write path (write-path slice 2) writes card/act/action/changes rows
+// through THIS driver, so when DECKO_WRITE_PATH=1 the browse driver must
+// open writable — the boot default (readonly pure-browse) made every routed
+// write die with SQLITE_READONLY inside ActWriter.batch (observed live in
+// the session-replay2 lane: the routed update crashed the process). The
+// read-only GET paths still never write card data either way.
+const driver = new LocalSqliteDriver({ path: dbPath, readonly: !writePathEnabled() });
 // CQL match queries compile SQL `field REGEXP ?`; SQLite has no built-in
 // REGEXP, so the UDF is registered before the first match query runs
 // (registerSqliteRegexpFunction header note: function resolution is at
@@ -263,6 +440,24 @@ driver.registerFunction("regexp", sqliteRegexpUdf, { deterministic: true });
 // loudly at boot — that is the deployment contract: give the server a
 // writable copy of the corpus.
 const authDriver = new LocalSqliteDriver({ path: dbPath, readonly: false });
+// The attachment store (uploads2 lane): Ruby's files dir —
+// Card.paths["files"] = the deck root's files/ (card-mod-carrierwave
+// paths.rb:14-17 files_base_dir). The staging corpus's HISTORICAL
+// attachments are cloud-hosted (the bucket front handles them); this dir
+// holds only NEW uploads, written by the multipart write path and served
+// by handleAssetFile's local fallback. DECKO_FILES_DIR must be writable
+// when DECKO_WRITE_PATH=1; the default sits beside the database.
+const DECKO_FILES_DIR =
+  process.env.DECKO_FILES_DIR ?? path.join(path.dirname(dbPath), "files");
+const attachmentStore = new LocalAttachmentStore(DECKO_FILES_DIR);
+// staging-seat-wiring lane: the recaptcha guard's host config, read ONCE at
+// boot from the environment (DECKO_RECAPTCHA_SITE_KEY / _SECRET_KEY, plus
+// optional _MINIMUM_SCORE / _VERIFY_URL — see the env-config module header).
+// Undefined until ops sets the keys: the composition below then carries NO
+// recaptcha field and the write path is the exact pre-wiring shape
+// (recaptcha_keys? false, recaptcha.rb:46-48). Throws at boot on a
+// malformed _MINIMUM_SCORE — mis-armed guards fail loud, not silent.
+const recaptchaConfig = recaptchaConfigFromHostEnv(process.env);
 // The compiled migrations runner resolves its DEFAULT directory relative to
 // dist (it is a source/test surface; the deploy stream applies D1
 // migrations its own way) — this Node origin passes its own repo-root
@@ -270,8 +465,567 @@ const authDriver = new LocalSqliteDriver({ path: dbPath, readonly: false });
 await runAuthMigrations(authDriver, { migrationsDir: path.join(HERE, "db", "migrations") });
 const sessions = new SessionStore({ driver: authDriver });
 
+// ---------------------------------------------------------------------------
+// Account email-token flows boot (lane-reset-flows)
+// ---------------------------------------------------------------------------
+//
+// The flows read card rows through the writable auth driver (the same file
+// — reads must see the writes the activation/password steps make, and the
+// boot driver can be read-only). Mail goes through the notify transport
+// seam: NOOP unless DECKO_MAIL_CAPTURE=1, which swaps in CaptureTransport
+// and exposes GET /_mail-log (a staging-only debug surface for asserting
+// envelopes; production wires the SMTP transport instead).
+const mailTransport =
+  process.env.DECKO_MAIL_CAPTURE === "1"
+    ? new CaptureTransport("capture")
+    : new NoopTransport();
+
+// {{:title|core}} — the *title card's content is the site title the email
+// templates render. Column shape varies by corpus builder (engine-standard
+// db_content vs the python-built content), so resolve defensively.
+async function resolveSiteTitle() {
+  for (const column of ["db_content", "content"]) {
+    try {
+      const result = await authDriver.query(
+        `SELECT ${column} AS title FROM cards WHERE codename = 'title' AND trash = 0 LIMIT 1`,
+        [],
+      );
+      const title = result.rows[0]?.title;
+      if (typeof title === "string" && title !== "") return title;
+      return title ?? "";
+    } catch {
+      // column missing — try the next spelling
+    }
+  }
+  return "";
+}
+
+const SITE_TITLE = await resolveSiteTitle();
+
+// The absolute base the email links carry (card_url, env/location.rb:19-24:
+// Env.origin). Same host the server itself answers on, so the flow test can
+// fetch the link out of the captured mail and hit THIS server.
+const DECKO_ORIGIN = process.env.DECKO_ORIGIN ?? `http://127.0.0.1:${port}`;
+
+// The flows' card-write engine input. A dedicated FetchEngine over the
+// writable driver: the activation (+*status -> active) and password writes
+// must work even when DECKO_WRITE_PATH is off (they are the auth layer's
+// own writes, like the session rows — not the general write route).
+// Built per call (cheap): TOKEN_CONFIG lives further down the boot file,
+// and a module-eval-time reference would read it before initialization.
+const flowsFetcher = new FetchEngine(authDriver);
+function accountFlowCtx() {
+  return {
+    driver: authDriver,
+    fetcher: flowsFetcher,
+    sessions,
+    transport: mailTransport,
+    token: TOKEN_CONFIG,
+    origin: DECKO_ORIGIN,
+    siteTitle: SITE_TITLE,
+  };
+}
+
+function accountFlowResponse(status, body) {
+  return { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }, body: JSON.stringify(body) };
+}
+
+/** The flow writes (+*status activation, +*password digest) go through the
+ *  flows' own fetcher, so the boot-time render engines' enriched card maps
+ *  must be expired explicitly — the same discipline the write-path dispatch
+ *  applies to routed saves. */
+function expireFlowWrittenName(mark) {
+  const name = decodeURIComponent(mark).replace(/_/g, " ");
+  if (name === "") return;
+  fetcher.expireName(name);
+  render.expireRenderCard(name);
+  for (const engine of signedInEngines.values()) {
+    engine.expireRenderCard(name);
+  }
+}
+
+/** POST /_reset-request {email} — the send_reset_password_token event
+ *  (set/self/signin.rb:27-31): find account by email, require active,
+ *  deliver the reset email with the token link. Unknown/inactive accounts
+ *  fail with Ruby's ladder and send nothing. */
+async function handleResetRequest(req) {
+  let raw;
+  try {
+    raw = await readRequestBody(req);
+  } catch (error) {
+    return accountFlowResponse(400, { ok: false, message: `unreadable request body: ${error}` });
+  }
+  let email = "";
+  const contentType = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
+  if (contentType === "application/json" || raw.trimStart().startsWith("{")) {
+    try {
+      email = String(JSON.parse(raw)?.email ?? "");
+    } catch {
+      email = "";
+    }
+  } else {
+    email = new URLSearchParams(raw).get("email") ?? "";
+  }
+  const outcome = await sendResetPasswordToken(accountFlowCtx(), email);
+  if (!outcome.ok) {
+    return accountFlowResponse(422, { ok: false, message: outcome.message });
+  }
+  return accountFlowResponse(200, { ok: true, sentTo: outcome.sentTo });
+}
+
+/** The email link consumption (GET — and verb-explicit POST/PATCH/PUT —
+ *  /update/<mark>?card[trigger]=...&token=...): Ruby routes the emailed
+ *  link through the explicit GET alternative
+ *  (decko-0.20.0 config/engine_routes.rb "get (card)/update(/:mark)") into
+ *  card#update with the JWT authenticator (rest.rb:37-47) running before
+ *  the trigger event. This surface consumes EXACTLY that link shape and
+ *  nothing else — a GET without the trigger+token pair is NOT a write and
+ *  falls through (the write-routes module's no-GET-writes posture stands
+ *  for everything outside these two trigger-gated flows).
+ *
+ *  Response mapping: success 302 (reset -> /<urlkey>?view=edit, the +account
+ *  edit form; verify -> the card) WITH the session cookie — Ruby's
+ *  Auth.signin (current.rb:35-41) binds the session of the browser that
+ *  clicked the link, and the edit form it lands on submits as that member;
+ *  token_invalid 403 (PermissionDenied), account_not_found 404 (NotFound),
+ *  mismatch 422 (the validation error page; the failure event already
+ *  re-sent the email). */
+function parseAccountFlowLink(pathname, searchParams) {
+  const match = /^\/update\/([^/]+)$/.exec(pathname);
+  if (match === null) return null;
+  const trigger = searchParams.get("card[trigger]");
+  const token = searchParams.get("token");
+  if ((trigger !== "reset_password" && trigger !== "verify_and_activate") || token === null) {
+    return null;
+  }
+  return { accountMark: decodeURIComponent(match[1]), trigger, token };
+}
+
+async function handleAccountFlowLink(flow) {
+  if (flow.trigger === "reset_password") {
+    const outcome = await confirmPasswordReset(accountFlowCtx(), flow.accountMark, flow.token);
+    if (outcome.ok) {
+      return withSessionCookie(
+        redirect(outcome.redirectTo.name, outcome.redirectTo.view),
+        outcome.session.token,
+      );
+    }
+    return accountFlowErrorResponse(outcome, flow.accountMark);
+  }
+  const outcome = await confirmAccountVerification(accountFlowCtx(), flow.accountMark, flow.token);
+  if (outcome.ok) {
+    return withSessionCookie(redirect(outcome.redirectTo.name, undefined), outcome.session.token);
+  }
+  return accountFlowErrorResponse(outcome, flow.accountMark);
+}
+
+function withSessionCookie(response, sessionToken) {
+  return {
+    ...response,
+    headers: { ...response.headers, "Set-Cookie": sessionCookieHeader(sessionToken) },
+  };
+}
+
+function accountFlowErrorResponse(outcome, accountMark) {
+  // Render polish (2026-09-29): the failure pages carry the deck's Default
+  // Layout chrome the way live does — the bare h1/pre stubs this arm used
+  // to emit read as a different site. Oracle bytes:
+  // tmp/wrong-goal-hunt/captures-reset-polish/ (live decko-0.20.0 oracle
+  // app, captured 2026-09-29).
+  if (outcome.kind === "token_invalid") {
+    return renderAccountFlowDenialPage();
+  }
+  if (outcome.kind === "account_not_found") {
+    // Ruby: a VALID token with a missing mark — the authenticator passes,
+    // card#update's fetch raises NotFound -> the not_found page (format/
+    // error.rb view :not_found, 404). The established chromed builder
+    // (error-pages lane) already byte-matches that view.
+    return renderDeckoErrorPage(accountMark, "not_found");
+  }
+  // The validation-failure arm (token mismatch; the failure event already
+  // re-sent the email): the failed-update render is the errors alert as
+  // the whole main slot, titled by the updated card
+  // (format/error.rb view :errors + standard_error_message).
+  return renderAccountFlowAlertPage(
+    422,
+    accountMarkName(accountMark),
+    "CONTENT",
+    outcome.message,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Account-flow PAGE chrome (render polish, 2026-09-29). The reset/verify
+// surfaces serve the deck's Default Layout wrapper with the oracle main-slot
+// bytes. Captures: tmp/wrong-goal-hunt/captures-reset-polish/.
+// ---------------------------------------------------------------------------
+
+/** Rails' html_escape (the h() the alert bodies go through): also folds
+ *  the apostrophe, which the server's attribute escapeHtml does not. */
+function escapeHtmlRails(text) {
+  return escapeHtml(text).replace(/'/g, "&#39;");
+}
+
+/** The +account URL mark's Ruby card-name form (underscores fold to
+ *  spaces — the same display rule urlDisplayNameForSlug applies to error
+ *  pages; the junction names this surface sees are holder+*account). The
+ *  mark arrives already percent-decoded (parseAccountFlowLink). */
+function accountMarkName(accountMark) {
+  return String(accountMark).replace(/_/g, " ");
+}
+
+/** Shared chrome wrapper for the account-flow pages: Default Layout shell
+ *  (wrapWithLayout) + the caller's main-slot bytes, shaped after
+ *  renderSigninPage. */
+async function renderChromedAccountFlowPage(mainSlotHtml, opts) {
+  const boot = await ensureBootValues();
+  const layout = await resolveDefaultLayout();
+  const body = applyServedEnvironmentDeltas(
+    await wrapWithLayout(opts.cardName ?? "*signin", mainSlotHtml, layout, {
+      titleText: opts.titleText,
+      headExtraLine: opts.headExtraLine,
+      bodyExtraHtml: opts.bodyExtraHtml,
+    }),
+  );
+  return {
+    status: opts.status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Connection": "close",
+      "Keep-Alive": "timeout=0",
+    },
+    body,
+  };
+}
+
+/** The authenticator's loud denial (token_invalid arm): PermissionDenied
+ *  raised BEFORE any card fetch, so the format renders against an EMPTY
+ *  card — empty name/title/data attrs, default RichText type keys, and the
+ *  no-task denial message "sign in or sign up to do that." (card-mod-format
+ *  set/all/html/error.rb:191-229 loud_denial + loud_denial_message with
+ *  @denied_task unset -> t(:format_to_do_that)). Oracle:
+ *  oracle-reset-link-garbage.html main slot. Status stays 403 (the
+ *  PermissionDenied status the prior lane pinned). */
+function buildAccountFlowDenialSlotHtml() {
+  const slotJson =
+    `{"view":"denial","nest_name":"_main","nest_syntax":"_main|titled",` +
+    `"hide":["menu","help"],"main":true,"home_view":"denial","main_view":true,` +
+    `"layout":"Default Layout"}`;
+  return (
+    `<div id="-denial-view" class="card-slot denial-view ALL TYPE-rich_text" ` +
+    `data-card-name="" data-card-type-id="2" data-card-type-name="RichText" ` +
+    `data-card-link-name="" data-slot-id="${newSlotId()}" ` +
+    `data-slot="${escapeHtml(slotJson)}">` +
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h1 class="d0-card-header-title">` +
+    `<span class="card-title" title=""></span></h1></div>\n` +
+    `\n` +
+    `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n` +
+    `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+    `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to do that.</div></div>` +
+    `</div></div></div>`
+  );
+}
+
+async function renderAccountFlowDenialPage() {
+  const boot = await ensureBootValues();
+  // Ruby titles the empty-card denial with the bare site title (oracle:
+  // <title>My Deck</title>).
+  return renderChromedAccountFlowPage(buildAccountFlowDenialSlotHtml(), {
+    status: 403,
+    titleText: boot.siteTitle,
+  });
+}
+
+/** The failed-update render's main slot: the errors alert IS the whole
+ *  main slot (no card-frame wrap) — format/error.rb view :errors
+ *  (standard_errors: alert "warning" + class_up card-error-msg; the
+ *  heading t(:format_problems_name); each error
+ *  `<p><strong>ATTRIBUTE:</strong> h(message)</p>`). Oracle:
+ *  oracle-reset-request-unknown.html article region (note the class list's
+ *  two spaces between alert-dismissible and card-error-msg — the
+ *  class_up join is part of the bytes). */
+function buildAccountFlowAlertSlotHtml(cardDisplayName, attributeLabel, message) {
+  return (
+    `<div class="alert alert-warning alert-dismissible  card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n` +
+    `<h4 class="alert-heading error">Problems with ${escapeHtmlRails(cardDisplayName)}</h4>\n` +
+    `<p><strong>${attributeLabel}:</strong> ${escapeHtmlRails(message)}</p></div>`
+  );
+}
+
+async function renderAccountFlowAlertPage(status, cardDisplayName, attributeLabel, message) {
+  const boot = await ensureBootValues();
+  return renderChromedAccountFlowPage(
+    buildAccountFlowAlertSlotHtml(cardDisplayName, attributeLabel, message),
+    {
+      status,
+      // Ruby titles the failed-update render with the updated card's name
+      // (oracle: <title>*signin - My Deck</title>).
+      titleText: `${cardDisplayName} - ${boot.siteTitle}`,
+    },
+  );
+}
+
+/** set/self/signin.rb:148-151 view :reset_password_success —
+ *  `frame { t :account_check_email }` on the *signin card, titled "Sign
+ *  In" (account_sign_in_title, the :title override at :134-137). Oracle:
+ *  oracle-reset-password-success-page.html main slot. DISCLOSED omissions
+ *  (the same treatment the sign-in form page's frame has): the
+ *  card-menu popover/edit/board links inside the frame header are the
+ *  card-mod-format menu machinery (rails remainder). */
+function buildResetPasswordSuccessSlotHtml(signinCardId) {
+  const slotJson =
+    `{"view":"reset_password_success","nest_name":"_main","nest_syntax":"_main|titled",` +
+    `"hide":["help"],"main":true,"home_view":"reset_password_success","main_view":true,` +
+    `"layout":"Default Layout"}`;
+  return (
+    `<div id="Xsignin-reset_password_success-view" ` +
+    `class="card-slot reset_password_success-view ALL TYPE-rich_text STAR SELF-Xsignin" ` +
+    `data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" ` +
+    `data-card-type-name="RichText" data-card-link-name="*signin" ` +
+    `data-slot-id="${newSlotId()}" data-slot="${escapeHtml(slotJson)}">` +
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h1 class="d0-card-header-title">` +
+    `<span class="card-title" title="Sign In">Sign In</span></h1></div>\n` +
+    `\n` +
+    `<div class="d0-card-body card-body card-text">Check your email for a link to reset your password</div>` +
+    `</div></div>`
+  );
+}
+
+async function renderResetPasswordSuccessPage() {
+  const signinRecord = await fetchCardByName("*signin");
+  return renderChromedAccountFlowPage(
+    buildResetPasswordSuccessSlotHtml(signinRecord?.id ?? ""),
+    { status: 200 },
+  );
+}
+
+/** GET /*signin?view=edit (and /*signin/edit) — the FORGOT PASSWORD page
+ *  (set/self/signin.rb:154-163 view :edit). Live renders the requested
+ *  edit view INSIDE the page's modal container while the main article
+ *  stays the titled sign-in form (oracle oracle-signin-edit.html: the
+ *  article region is byte-identical to /*signin; the modal rides after
+ *  </footer>). The modal shell bytes are oracle-verbatim; the form inside
+ *  is the honest stand-in posting Ruby's EXACT inputs (the full
+ *  card-mod-edit form machinery — data-remote/autosave, the type row, the
+ *  nested help slot — is the named rails remainder, card-mod-account.ts
+ *  NOT-PORTED block; the modal-header board link is menu machinery,
+ *  omitted with the same disclosure as the sign-in page's frame). */
+function buildForgotPasswordModalHtml(signinCardId) {
+  const slotJson =
+    `{"view":"edit","hide":["help","save_button"],"main":true,"main_view":true,` +
+    `"edit_structure":[["+*email",{"title":"email","view":"titled","nest_name":"+*email",` +
+    `"skip_perms":true,"home_view":"titled"}]],"title":"Forgot Password"}`;
+  return (
+    `<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n` +
+    `<!-- /, "data-backdrop": "static"} -->\n` +
+    `<div class='modal-dialog modal-dialog-centered modal-lg'>\n` +
+    `<div class='modal-content'>\n` +
+    `<div class='modal-header'>\n` +
+    `<span class="card-title" title="Forgot Password">Forgot Password</span>\n` +
+    `<div class="modal-menu _modal-menu ms-auto">` +
+    `<a class="_close-modal btn-close" data-bs-dismiss="modal" href=""><i class="notranslate material-icons">close</i></a>\n` +
+    `</div>\n` +
+    `<div class='modal-body'>\n` +
+    `<div id="Xsignin-edit-view" class="card-slot edit-view ALL TYPE-rich_text STAR SELF-Xsignin" ` +
+    `data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" ` +
+    `data-card-type-name="RichText" data-card-link-name="*signin" ` +
+    `data-slot-id="${newSlotId()}" data-slot="${escapeHtml(slotJson)}">` +
+    `<form action="/update/*signin" accept-charset="UTF-8" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    `<input type="hidden" name="success[view]" id="success_view" value="reset_password_success" autocomplete="off" />` +
+    `<input type="hidden" name="card[trigger]" id="card_trigger" value="send_reset_password_token" autocomplete="off" />` +
+    `<fieldset class="card-editor editor">` +
+    `<div class="form-group card-editor RIGHT-Xemail" data-card-name="*signin+*email" data-card-link-name="*signin+*email">` +
+    `<label for="card_subcards___email_content"><span class="card-title" title="email">email</span></label>\n` +
+    `<div class="editor content-editor">` +
+    `<input class="d0-card-content form-control" placeholder="" type="text" value="" name="card[subcards][+*email][content]" id="card_subcards___email_content" />\n` +
+    `</div></div></fieldset>\n` +
+    `<button name="button" type="submit" class="_close-modal-on-success btn btn-primary">Reset password</button></form>\n` +
+    `<!-- decko-ts staging render lane: live renders the full card-mod-edit ` +
+    `form machinery here (rails remainder); this honest form posts Ruby's ` +
+    `exact inputs to /update/*signin. -->\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n`
+  );
+}
+
+async function renderForgotPasswordPage() {
+  const signinRecord = await fetchCardByName("*signin");
+  const modalHtml = buildForgotPasswordModalHtml(signinRecord?.id ?? "");
+  return renderChromedAccountFlowPage(buildSigninSlotHtml(), {
+    status: 200,
+    bodyExtraHtml: modalHtml,
+  });
+}
+
+/** POST /update/*signin with card[trigger]=send_reset_password_token — the
+ *  forgot-password form's submit (set/self/signin.rb:27-31
+ *  send_reset_password_token over HTTP). Response mapping is the oracle's:
+ *  success 303 See Other -> the absolute reset_password_success URL
+ *  (Ruby's redirect_to after abort :success, success view reset_password_success,
+ *  empty body); validation failures 422 + the errors alert page. A POST
+ *  WITHOUT the trigger is not the forgot-password submit: Ruby routes it
+ *  through the *signin event machinery (the :signin event — the sign-in
+ *  POST lives at /_signin on this surface), so the request delegates to
+ *  the general write path with the pre-read body — the exact dispatch it
+ *  got before this handler existed (the edit-session replay's captured
+ *  sign-in POST rides it). */
+async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
+  let raw;
+  try {
+    raw = await readRequestBody(req);
+  } catch (error) {
+    return accountFlowResponse(400, { ok: false, message: `unreadable request body: ${error}` });
+  }
+  let email = "";
+  let trigger = "";
+  const contentType = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
+  if (contentType === "application/json" || raw.trimStart().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      email = String(parsed?.email ?? "");
+      trigger = String(parsed?.trigger ?? "");
+    } catch {
+      email = "";
+    }
+  } else {
+    const params = new URLSearchParams(raw);
+    email = params.get("card[subcards][+*email][content]") ?? params.get("email") ?? "";
+    trigger = params.get("card[trigger]") ?? "";
+  }
+  if (trigger !== "send_reset_password_token") {
+    if (writePathEnabled()) {
+      const writeResponse = await dispatchWriteRequest(req, FORGOT_PASSWORD_SUBMIT_PATH, raw);
+      if (writeResponse !== null) {
+        await applyWriteResponseTail(writeResponse, startedAt, req.method, FORGOT_PASSWORD_SUBMIT_PATH);
+        return writeResponse;
+      }
+    }
+    return jsonResponse(405, { error: "method not allowed" });
+  }
+  const outcome = await sendResetPasswordToken(accountFlowCtx(), email);
+  if (!outcome.ok) {
+    // the error ladder lands on the FIELD the event blames
+    // (set/self/signin.rb:86-102 blank_email?/reset_password_fail):
+    // email -> EMAIL, account -> ACCOUNT.
+    const attributeLabel = outcome.reason === "not_active" ? "ACCOUNT" : "EMAIL";
+    return renderAccountFlowAlertPage(422, "*signin", attributeLabel, outcome.message);
+  }
+  // Ruby's success redirect: 303 See Other to the absolute
+  // reset_password_success URL (captured: Location:
+  // http://localhost:3011/*signin/reset_password_success, 0-byte body).
+  const host = String(req.headers.host ?? "").trim();
+  const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
+  return {
+    status: 303,
+    headers: { Location: `${origin}/*signin/reset_password_success`, "Cache-Control": "no-store" },
+    body: "",
+  };
+}
+
+function ensureBootValuesOrigin() {
+  const configured = process.env.DECKO_ORIGIN;
+  return typeof configured === "string" && configured !== "" ? configured : "http://127.0.0.1";
+}
+
+function redirect(name, view) {
+  const target = `/${encodeURIComponent(name.replace(/ /g, "_"))}${view ? `?view=${view}` : ""}`;
+  return { status: 302, headers: { Location: target, "Cache-Control": "no-store" }, body: "" };
+}
+
+/** POST /_account-password — the +account edit form submit's staging
+ *  endpoint (the set/right/password.rb validate/store events). Requires a
+ *  live session (the signed-in member Ruby's flow leaves on the +account
+ *  edit page); writes that member's own +*account+*password digest. */
+async function handleAccountPassword(req) {
+  const sessionToken = readSessionCookie(req.headers.cookie);
+  const actor = sessionToken !== null ? await sessions.lookupSession(sessionToken) : null;
+  if (actor === null) {
+    return accountFlowResponse(401, { ok: false, message: "sign in first (session cookie required)" });
+  }
+  let raw;
+  try {
+    raw = await readRequestBody(req);
+  } catch (error) {
+    return accountFlowResponse(400, { ok: false, message: `unreadable request body: ${error}` });
+  }
+  let password = "";
+  let accountMark = `${actor.name}+*account`;
+  const contentType = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
+  if (contentType === "application/json" || raw.trimStart().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(raw);
+      password = String(parsed?.password ?? "");
+      if (typeof parsed?.account === "string" && parsed.account !== "") accountMark = parsed.account;
+    } catch {
+      password = "";
+    }
+  } else {
+    const params = new URLSearchParams(raw);
+    password = params.get("password") ?? "";
+    const account = params.get("account");
+    if (account !== null && account !== "") accountMark = account;
+  }
+  const outcome = await applyNewAccountPassword(
+    { driver: authDriver, fetcher: flowsFetcher, actor },
+    accountMark,
+    password,
+  );
+  if (!outcome.ok) {
+    return accountFlowResponse(422, { ok: false, message: outcome.message });
+  }
+  expireFlowWrittenName(accountMark);
+  return accountFlowResponse(200, { ok: true, noOp: outcome.noOp });
+}
+
+/** GET /_mail-log — drain the capture transport (DECKO_MAIL_CAPTURE=1
+ *  only). Staging-only debug surface for asserting envelopes. */
+function handleMailLog() {
+  if (!(mailTransport instanceof CaptureTransport)) {
+    return accountFlowResponse(404, { error: "mail capture is off (boot with DECKO_MAIL_CAPTURE=1)" });
+  }
+  return accountFlowResponse(200, { messages: mailTransport.drain() });
+}
+
+// The Auth::Token HMAC secret (Rails' secret_key_base analog, read by
+// card-1.110.0/lib/card/auth/token.rb:7 to sign the account verify_url /
+// reset_password_url links). Pinned via DECKO_TOKEN_SECRET by exactly the
+// same rule as the CSRF secret (declared below with the write-path
+// secrets): env so links survive a restart, a per-boot random so an unset
+// deployment cannot sign under a known key. It is handed to the engines as
+// RenderEngine.tokenConfig and is never written to the repo or to a log
+// line. Declared here — not with the other secrets below — because the
+// boot sequence reads TOKEN_CONFIG immediately after engine construction.
+// (This is the lane-tokenconfig-tdz reorder carried by lane-reset-flows:
+// the declare-below layout was a top-level use-before-declaration boot
+// crash from d6b1957 onward; the flows' endpoints need a booting server.)
+const TOKEN_SECRET =
+  process.env.DECKO_TOKEN_SECRET ?? crypto.randomBytes(32).toString("hex");
+
+/** The token config every engine in this process shares — the same secret,
+ *  and the railtie's own expiry default (cardio/railtie.rb:12 `2.days`,
+ *  the value Auth::Token.expiration reads). */
+const TOKEN_CONFIG = { secret: TOKEN_SECRET };
+
 const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
+// Deck boot BEFORE any engine construction: RenderEngine's constructor binds
+// getDefaultModLoader() (render.ts:539), so the loader must be in place
+// before the first engine exists — the same order Ruby boots in (mods load,
+// then controllers render).
+defaultDeckLoader();
 const render = new RenderEngine(fetcher);
+// The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
+// config shape as imageCdnHost on the next lines.
+render.tokenConfig = TOKEN_CONFIG;
 // Round-10 engineFix gap 1, wired at merge pass 2: the engine's
 // imageCdnHost is host-deployment config (RenderEngineLike.imageCdnHost;
 // undefined = host-relative /files URLs). The live deck serves carrierwave
@@ -1288,7 +2042,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
     `//]]>\n` +
     `</script>\n` +
     `        </head>\n` +
-    `        ${layout.layoutBody.slice(bodyTagMatch.index, bodyOpenEnd)}${renderedInner}</body>\n` +
+    `        ${layout.layoutBody.slice(bodyTagMatch.index, bodyOpenEnd)}${renderedInner}${pageOpts.bodyExtraHtml ?? ""}</body>\n` +
     `      </html>\n`
   );
 }
@@ -1631,7 +2385,7 @@ function applyServedEnvironmentDeltas(engineHtml) {
 // read rules (render.ts viewer seam; permission state memoizes per engine,
 // which is why actors get their own instance instead of a shared mutable
 // viewer field).
-async function renderCardPage(cardName, renderEngine = render) {
+async function renderCardPage(cardName, renderEngine = render, requestedView) {
   try {
     // r18: the ENGINE assembles the page — the show_with_page_layout port
     // (per-card *layout rule, main! render, layout-body processing through
@@ -1642,7 +2396,11 @@ async function renderCardPage(cardName, renderEngine = render) {
     // bytes natively (and has, since the page-lane + nitpicks + searchctx
     // + R16/R17 lanes). Only the served-environment deltas above are
     // applied to the engine's output.
-    const engineHtml = await renderPageBytes(renderEngine, cardName);
+    // requestedView = the ?view=/ ?v= query param (rest.rb view_from_params:
+    // the requested view is the root show view). An unported view raises
+    // the engine's UnsupportedViewError — Ruby's unsupported-view UserError
+    // (format/render.rb:60-64) — handled below.
+    const engineHtml = await renderPageBytes(renderEngine, cardName, requestedView);
     const body = applyServedEnvironmentDeltas(engineHtml);
     return {
       status: 200,
@@ -1663,6 +2421,17 @@ async function renderCardPage(cardName, renderEngine = render) {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof Error && error.name === "UnsupportedViewError") {
+      // Ruby: an unsupported view is a UserError -> 422
+      // (format/render.rb:60-64 raise + error.rb:21 status). With the deck
+      // boot wired (defaultDeckLoader above), the ported mod views render;
+      // this mapping now catches only genuinely unported view names.
+      return htmlResponse(
+        422,
+        `<pre>${escapeHtml(message)}</pre>`,
+        "Error (unsupported view)",
+      );
+    }
     if (/^card not found: /.test(message)) {
       // Live serves Decko's full-chrome not_found page for unresolved names
       // (live_Community_Building.html receipt) — not a bare stub. Status
@@ -1752,11 +2521,9 @@ async function status() {
 // POST /_signin, POST /_signout, and the GET sign-in form page.
 // ---------------------------------------------------------------------------
 
-const SESSION_COOKIE_NAME = "decko_ts_session";
-// Mirrors SessionStore's DEFAULT_SESSION_TTL_SECONDS (48h) so the cookie
-// and the server-side row expire together. Ruby's expiry is app config
-// (token_expiry) — this is a port decision, not a ported number.
-const SESSION_COOKIE_MAX_AGE = 60 * 60 * 48;
+// The cookie helpers (name, read, issue, clear) live in the write-routes
+// module (the write path reads the same cookie per rest.rb:37-40 +
+// auth/current.rb:50-63); this file imports them.
 // The render caches memoize permission state per engine (render.ts viewer
 // field docs: set BEFORE the first render), so each signed-in account gets
 // its own RenderEngine over the shared FetchEngine (fetch is
@@ -1770,6 +2537,7 @@ function engineForActor(actorId) {
   if (engine === undefined) {
     engine = new RenderEngine(fetcher);
     engine.imageCdnHost = SPACES_HOST;
+    engine.tokenConfig = TOKEN_CONFIG;
     engine.viewer = { signedIn: true, actorId };
     if (signedInEngines.size >= MAX_SIGNED_IN_ENGINES) {
       signedInEngines.delete(signedInEngines.keys().next().value);
@@ -1777,30 +2545,6 @@ function engineForActor(actorId) {
     signedInEngines.set(actorId, engine);
   }
   return engine;
-}
-
-function readSessionCookie(cookieHeader) {
-  if (typeof cookieHeader !== "string" || cookieHeader === "") return null;
-  for (const part of cookieHeader.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq === -1) continue;
-    if (part.slice(0, eq).trim() === SESSION_COOKIE_NAME) {
-      const value = part.slice(eq + 1).trim();
-      return value === "" ? null : value;
-    }
-  }
-  return null;
-}
-
-function sessionCookieHeader(token) {
-  return (
-    `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; ` +
-    `Max-Age=${SESSION_COOKIE_MAX_AGE}`
-  );
-}
-
-function clearedSessionCookieHeader() {
-  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
 // jsonResponse with a header extension (Set-Cookie rides every auth
@@ -1954,6 +2698,10 @@ async function renderSigninPage() {
 // staging-slice alias named alongside the POST endpoints.
 const SIGNIN_PAGE_PATHS = new Set(["/_signin", "/*signin", "/*signin/titled"]);
 
+// The forgot-password form's submit route: Ruby's own card_form :update
+// target for *signin (set/self/signin.rb format :html edit view).
+const FORGOT_PASSWORD_SUBMIT_PATH = "/update/*signin";
+
 const FILES_PATTERN = /^\/files\/~(\d+)\/(\d+)\.([a-z0-9]+)$/i;
 
 async function handleAssetFile(pathname) {
@@ -2004,6 +2752,62 @@ async function handleAssetFile(pathname) {
       }
     }
   }
+  // Local uploads (uploads2 lane): a NEW upload's identifier is
+  // ~<cardId>/<actionId><ext> with its bytes under DECKO_FILES_DIR (Ruby's
+  // files_base_dir scheme, paths.rb:10-17). The card row is the
+  // authority: when its CURRENT db_content names exactly the requested
+  // (cardId, actionId, ext) as a local identifier, the local file wins —
+  // this is how a just-uploaded file serves before any bucket copy exists
+  // (the live deck serves these through the same local_url form).
+  {
+    const row = fileCard ?? (
+      await driver.query("SELECT db_content FROM cards WHERE id = ? AND trash = 0", [cardId])
+    ).rows[0];
+    const dbContent = row?.db_content ?? "";
+    const localMatch = /^~(\d+)\/(\d+)(\.[A-Za-z0-9]+)$/.exec(dbContent);
+    if (
+      localMatch !== null &&
+      Number(localMatch[1]) === cardId &&
+      Number(localMatch[2]) === actionId &&
+      localMatch[3].toLowerCase() === `.${extLower}`
+    ) {
+      const localPath = path.join(DECKO_FILES_DIR, String(cardId), `${actionId}.${extLower}`);
+      try {
+        const bytes = await fs.readFile(localPath);
+        const contentType =
+          extLower === "css" ? "text/css; charset=utf-8" :
+          extLower === "js" ? "application/javascript; charset=utf-8" :
+          extLower === "png" || extLower === "jpg" || extLower === "jpeg" || extLower === "gif" ?
+            `image/${extLower === "jpg" ? "jpeg" : extLower}` :
+          extLower === "svg" ? "image/svg+xml" :
+          "application/octet-stream";
+        return {
+          status: 200,
+          headers: {
+            "Content-Type": contentType,
+            "Cache-Control": "no-store",
+            "Connection": "close",
+            "Content-Length": String(bytes.length),
+            "X-Decko-Asset-Source": `local:${localPath}`,
+            "X-Decko-Asset-Note": "local-upload",
+          },
+          body: bytes,
+        };
+      } catch (err) {
+        // ENOENT stays quiet (corpus rows can carry local-form identifiers
+        // whose bytes were never in this deployment); anything else is
+        // surfaced like the compiled block above.
+        if (err && err.code !== "ENOENT") {
+          console.warn(
+            `[vm-staging] local upload read failed ${localPath}: ` +
+            (err instanceof Error ? err.message : String(err)),
+          );
+        }
+        // fall through to the corpus 404s below — the identifier says
+        // local but the bytes are gone; that is a real 404.
+      }
+    }
+  }
   // Main stylesheet: serve the active skin's SCSS source (the compiled
   // CSS lives in the cloud bucket the scrubbed corpus does not mirror).
   if (cardId === 45514 && extLower === "css") {
@@ -2030,10 +2834,31 @@ async function handleAssetFile(pathname) {
       body: banner + scss,
     };
   }
-  // Main script + every other JS asset card: serve the *all+*script
-  // manifest (the mod list the deck compiles into the bundle). The
-  // compiled JS isn't in the corpus either.
+  // Main script + every other JS asset card. The deck's MAIN script (the
+  // *all+*script+*asset output card this URL names) serves the COMPILED
+  // bundle — the deployed compile bytes when present, else the in-process
+  // compile of the pinned assembled input (the tinymce-assets lane's output
+  // contract; the note header names the flavor). Other JS asset cards keep
+  // the honest uncompiled-manifest fallback.
   if (extLower === "js") {
+    const mainOut = await mainScriptAssetOutput();
+    if (mainOut !== null && mainOut.id === cardId) {
+      const compiled = await compiledMainScriptBundle();
+      if (compiled !== null) {
+        return {
+          status: 200,
+          headers: {
+            "Content-Type": "application/javascript; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Connection": "close",
+            "Content-Length": String(compiled.bytes.length),
+            "X-Decko-Asset-Source": `*all+*script compile (${compiled.source})`,
+            "X-Decko-Asset-Note": compiled.note,
+          },
+          body: compiled.bytes,
+        };
+      }
+    }
     const manifestRow = (
       await driver.query(
         "SELECT db_content FROM cards WHERE id = ? AND trash = 0",
@@ -2077,25 +2902,113 @@ async function handleAssetFile(pathname) {
 // The sign-in POST endpoints (the staging-slice names).
 const SIGNIN_POST_PATHS = new Set(["/_signin", "/_signout"]);
 
+// The account-flow POST endpoints (lane-reset-flows staging surface):
+// the reset request and the password set. The reset LINK itself is a GET
+// to /update/<mark> handled by parseAccountFlowLink before any of this.
+const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
+
 // ---------------------------------------------------------------------------
 // Write-path dispatch (write-path slice 2)
 // ---------------------------------------------------------------------------
 
-// The CSRF HMAC secret (Rails session[:_csrf_token] analog): pinned via
-// DECKO_CSRF_SECRET so sessions survive a restart; a per-boot random keeps
-// an unset deployment safe (tokens simply rotate with the restart).
-const CSRF_SECRET =
-  process.env.DECKO_CSRF_SECRET ?? crypto.randomBytes(32).toString("hex");
+// The Auth::Token secret (TOKEN_SECRET/TOKEN_CONFIG) is declared beside the
+// engine boot above, which reads it first. The write path carries no CSRF
+// secret: live decko arms no forgery protection (the write-routes module
+// header cites the sources and the captured session), so the earlier
+// DECKO_CSRF_SECRET HMAC machinery is gone.
 
 /** Bridge the node request to the write-routes module. Returns the write
  *  response, or null when the method/path pair is not a write route (the
- *  caller falls through to its 405). */
-async function dispatchWriteRequest(req, pathname) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const body = Buffer.concat(chunks).toString("utf8");
+ *  caller falls through to its 405). The renderSlot hook lets the ajax
+ *  soft redirect (response.rb:54-62) render through the ACTOR's own
+ *  engine — the same per-actor engines the GET surface uses. The optional
+ *  pre-read body is lane-reset-flows' form-handler seam: the account-flow
+ *  POST handlers parse the body once and hand it here so the write-path
+ *  delegation never re-reads the consumed stream.
+ *
+ *  uploads2 lane: the RAW bytes ride along as bodyBytes — the multipart
+ *  upload grammar parses the byte stream (Rack's rack.input), which a
+ *  utf8 string round-trip would corrupt for binary payloads. */
+async function dispatchWriteRequest(req, pathname, preReadBody) {
+  let body = preReadBody;
+  let bodyBytes;
+  const contentTypeHeader = String(req.headers["content-type"] ?? "");
+  if (typeof body !== "string" || /^multipart\/form-data/i.test(contentTypeHeader)) {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks);
+    if (/^multipart\/form-data/i.test(contentTypeHeader)) {
+      bodyBytes = new Uint8Array(raw);
+      body = "";
+    } else {
+      body = raw.toString("utf8");
+    }
+  }
+  const cookieToken = readSessionCookie(req.headers.cookie);
+  const cookieActor = cookieToken !== null ? await sessions.lookupSession(cookieToken) : null;
   return handleWriteRequest(
-    { driver, fetcher, csrfSecret: CSRF_SECRET },
+    {
+      driver,
+      fetcher,
+      attachmentStore,
+      // staging-seat-wiring lane: the recaptcha seat, composed only when the
+      // boot-time env read produced a config — the conditional spread keeps
+      // the unarmed context byte-identical (the seat's own discipline,
+      // write-routes.ts:154-168). The config passes through UNCHANGED; the
+      // engine's rule walk and siteverify GET stay the defaults.
+      ...(recaptchaConfig === undefined ? {} : { recaptcha: recaptchaConfig }),
+      renderSlot:
+        cookieActor !== null
+          ? async (name) => {
+              // Ruby's order: the save expires the saved card's cache
+              // (cache/all.rb) BEFORE the soft redirect re-renders it —
+              // without this the slot render reads the pre-save warm maps.
+              fetcher.expireName(name);
+              const actorEngine = engineForActor(cookieActor.id);
+              actorEngine.expireRenderCard(name);
+              return actorEngine.render(name, "titled");
+            }
+          : undefined,
+    },
+    {
+      method: req.method,
+      pathname,
+      host: req.headers.host,
+      headers: req.headers,
+      body,
+      bodyBytes,
+    },
+  );
+}
+
+/**
+ * Bridge one first-run request to the first-run-routes module (
+ * first-run-experience lane).
+ *
+ * The body is read here, once, and handed down - the same seam
+ * dispatchWriteRequest uses for a pre-read body, so neither surface
+ * re-reads a consumed stream.
+ *
+ * The response tail is the write path's own (applyWriteResponseTail): the
+ * create commits six card rows, and the boot engine plus every
+ * signed-in engine's warm maps must be expired for the owner's name. The
+ * module stamps expiryName on its success response for exactly that
+ * keying, the same contract WriteRouteResponse.expiryName carries.
+ */
+async function dispatchFirstRunRequest(req, pathname, startedAt) {
+  let body = "";
+  if (req.method === "POST") {
+    try {
+      body = await readRequestBody(req);
+    } catch (error) {
+      return jsonResponse(400, {
+        ok: false,
+        error: `unreadable request body: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  }
+  const firstRunResponse = await handleFirstRunRequest(
+    { driver, fetcher },
     {
       method: req.method,
       pathname,
@@ -2104,6 +3017,40 @@ async function dispatchWriteRequest(req, pathname) {
       body,
     },
   );
+  if (firstRunResponse === null) {
+    // Unreachable through this branch (the module answers null only for an
+    // unarmed flag or a different method/path, both already checked), but
+    // the host contract is a response-or-fall-through and a null here must
+    // not become a crash.
+    return jsonResponse(404, { error: "not found" });
+  }
+  await applyWriteResponseTail(firstRunResponse, startedAt, req.method, pathname);
+  return firstRunResponse;
+}
+
+/** The write-path branch's post-response tail (cache expiry for the saved
+ *  card + the request log line), extracted so the forgot-password submit's
+ *  write-path delegation applies the same discipline. */
+async function applyWriteResponseTail(writeResponse, startedAt, method, pathname) {
+  // The expiry half delegates to the module-extracted, tested successor of
+  // the inline block this tail was carved from (lane-cache-expiry,
+  // pass14-int): the gate is the mutation point's expiryName — stamped on
+  // EVERY success flavor — never the Location header, which only the HTML
+  // flavor carries (staging receipt staging-save-e2e.md FINDING 2026-09-29:
+  // a Location gate let JSON saves expire nothing and left warm engines
+  // serving pre-save pages). Same expiry fan-out the main write branch
+  // runs; the forgot-password write-path delegation shares it.
+  expireRenderCachesAfterSave(
+    {
+      fetcher,
+      renderEngine: render,
+      signedInEngines: signedInEngines.values(),
+    },
+    writeResponse,
+  );
+  console.log(
+    `[vm-staging] ${method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
+  );
 }
 
 const server = http.createServer(async (req, res) => {
@@ -2111,6 +3058,11 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
+  // The requested view (?view=/ ?v= — rest.rb view_from_params: the first
+  // PRESENT param of [:view, :v] is the root show view). Absent/blank -> the
+  // page default.
+  const requestedView =
+    url.searchParams.get("view")?.trim() || url.searchParams.get("v")?.trim() || undefined;
 
   // Slice-1: resolve the session cookie ONCE per request, before any
   // render. A request with no cookie takes the exact pre-slice path (the
@@ -2124,10 +3076,25 @@ const server = http.createServer(async (req, res) => {
     if (sessionToken !== null) {
       actor = await sessions.lookupSession(sessionToken);
     }
-  } else if (req.method === "POST" && SIGNIN_POST_PATHS.has(pathname)) {
-    // Slice-1 sign-in/sign-out POSTs: fall through to the shared dispatch
-    // chain below (handleSignin/handleSignout). They take precedence over
-    // the write-path marks — staging-slice endpoints are not card marks.
+  } else if (
+    req.method === "POST" &&
+    (SIGNIN_POST_PATHS.has(pathname) ||
+      ACCOUNT_POST_PATHS.has(pathname) ||
+      // the forgot-password form posts to Ruby's own route
+      // (set/self/signin.rb card_form :update -> /update/*signin); the
+      // trigger check happens in the handler after the body is read.
+      pathname === FORGOT_PASSWORD_SUBMIT_PATH)
+  ) {
+    // Slice-1 sign-in/sign-out + lane-reset-flows POSTs: fall through to
+    // the shared dispatch chain below (handleSignin/handleSignout/
+    // handleResetRequest/handleAccountPassword/handleForgotPasswordSubmit).
+    // They take precedence over the write-path marks — staging-slice
+    // endpoints are not card marks.
+  } else if (parseAccountFlowLink(pathname, url.searchParams) !== null) {
+    // The emailed reset/verify link arriving with a verb-explicit POST/
+    // PUT/PATCH (the link itself is a GET; see handleAccountFlowLink).
+    // Consumed here — ahead of the write-path dispatch — because the link
+    // is authenticator-token traffic, not a session-CSRF form post.
   } else {
     // Write path (write-path slice 2): all write logic lives in
     // dist/src/server/write-routes.js — this file only dispatches. Opt-in
@@ -2137,6 +3104,31 @@ const server = http.createServer(async (req, res) => {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
         res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        // Ruby expires the saved card's cache on every save (card-1.110.0
+        // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
+        // The write engine runs on its own per-request fetcher, so the
+        // boot-time render engine's cache must be expired explicitly —
+        // otherwise the next page render serves the pre-save row (observed
+        // live: session-replay2 lane step-05 read stale content after a
+        // successful save). The gate keys on the successful-mutation
+        // point's expiryName (successResponse stamps it on EVERY success
+        // flavor — including lane-edit-divergences' ajax 200 slot, which
+        // carries no Location) — NOT on the Location header, which only the
+        // HTML flavor carries: a Location gate let JSON saves expire nothing
+        // and left warm engines serving pre-save pages (staging receipt
+        // staging-save-e2e.md FINDING 2026-09-29). This is the module-
+        // extracted form (lane-cache-expiry, pass14-int) of the lane's
+        // inline expiry block — same expiry fan-out (fetcher + boot render
+        // engine + every signed-in engine), the module is its tested
+        // successor.
+        expireRenderCachesAfterSave(
+          {
+            fetcher,
+            renderEngine: render,
+            signedInEngines: signedInEngines.values(),
+          },
+          writeResponse,
+        );
         console.log(
           `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
         );
@@ -2154,19 +3146,65 @@ const server = http.createServer(async (req, res) => {
 
   let response;
   try {
+    const flowLink = parseAccountFlowLink(pathname, url.searchParams);
     if (
       req.method !== "GET" &&
-      !(req.method === "POST" && SIGNIN_POST_PATHS.has(pathname))
+      flowLink === null &&
+      !(
+        req.method === "POST" &&
+        (SIGNIN_POST_PATHS.has(pathname) ||
+          ACCOUNT_POST_PATHS.has(pathname) ||
+          pathname === FORGOT_PASSWORD_SUBMIT_PATH ||
+          // the first-run setup post (first-run-experience lane). Guarded by
+          // firstRunEnabled() INSIDE the module, so with the flag unset this
+          // clause is false and the 405 posture is byte-identical to before.
+          (firstRunEnabled() && pathname === SETUP_PATH))
+      )
     ) {
       response = jsonResponse(405, { error: "method not allowed" });
+    } else if (flowLink !== null) {
+      // The emailed reset/verify link (set/right/account/views.rb:34-38
+      // token_url -> the engine_routes explicit GET alternative): the JWT
+      // authenticator + trigger event over HTTP. Scoped to exactly this
+      // shape — trigger param present AND a token — so no other GET is a
+      // write (write-routes' no-GET-writes posture stands everywhere else).
+      req.resume(); // drain any verb-explicit POST body; params ride the query
+      response = await handleAccountFlowLink(flowLink);
+      if (response.status >= 200 && response.status < 400) {
+        expireFlowWrittenName(flowLink.accountMark);
+      }
     } else if (req.method === "POST" && pathname === "/_signin") {
       response = await handleSignin(req);
     } else if (req.method === "POST" && pathname === "/_signout") {
       response = await handleSignout(req);
+    } else if (req.method === "POST" && pathname === "/_reset-request") {
+      response = await handleResetRequest(req);
+    } else if (req.method === "POST" && pathname === "/_account-password") {
+      response = await handleAccountPassword(req);
+    } else if (req.method === "POST" && pathname === FORGOT_PASSWORD_SUBMIT_PATH) {
+      response = await handleForgotPasswordSubmit(req, startedAt);
+    } else if (firstRunEnabled() && (req.method === "GET" || req.method === "POST") && pathname === SETUP_PATH) {
+      // The first-run journey (first-run-experience lane). NEW surface, off
+      // unless DECKO_FIRST_RUN=1: with the flag unset this branch is never
+      // reached, /setup falls through to the card renderer exactly as before,
+      // and no existing route, view or rendered byte changes. The census
+      // behind it is Ruby Card::Auth.needs_setup? (card-1.110.0
+      // lib/card/auth/setup.rb:33-52); see src/card/auth/first-run-setup.ts.
+      response = await dispatchFirstRunRequest(req, pathname, startedAt);
+    } else if (req.method === "GET" && pathname === "/*signin/reset_password_success") {
+      response = await renderResetPasswordSuccessPage();
+    } else if (
+      req.method === "GET" &&
+      (pathname === "/*signin/edit" ||
+       (pathname === "/*signin" && url.searchParams.get("view") === "edit"))
+    ) {
+      response = await renderForgotPasswordPage();
+    } else if (req.method === "GET" && pathname === "/_mail-log") {
+      response = handleMailLog();
     } else if (pathname === "/_status") {
       response = await status();
     } else if (pathname === "/") {
-      response = await renderCardPage(HOME_CARD_NAME);
+      response = await renderCardPage(HOME_CARD_NAME, render, requestedView);
     } else if (pathname.startsWith("/files/")) {
       const assetResp = await handleAssetFile(pathname);
       if (assetResp !== null) {
@@ -2195,14 +3233,63 @@ const server = http.createServer(async (req, res) => {
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
       } else {
-        response = await renderCardPage(name, requestEngine);
+        response = await renderCardPage(name, requestEngine, requestedView);
       }
     } else {
-      response = htmlResponse(
-        404,
-        `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
-        "Not found",
-      );
+      // Multi-segment GET grammar — decko-0.20.0 config/engine_routes.rb,
+      // all resolving to card#read (the read action renders the page with
+      // the named view, exactly what the ?view= param does via
+      // view_from_params):
+      //   line 51: get ":mark/:view(.:format)" => "card#read"  (the
+      //     "super-lazy" form — and the form the live page chrome's own
+      //     edit links emit: href="/Aikido_2/edit" in the authenticated
+      //     captures, member.Aikido_2.html / admin.Home.html);
+      //   line 24: get ":mark/view/:view(.:format)" (the API-doc form);
+      //   line 25: get "card/:view(/:mark(.:format))", view restricted to
+      //     new|edit (the legacy explicit form — "/card/:name/edit").
+      // Ruby route order puts these BELOW the single-segment /:mark (line
+      // 19), preserved by the branch order above. The (.:format) suffix
+      // rides the last segment (served format is html either way). An
+      // unported view name raises UnsupportedViewError -> the 422 mapping
+      // inside renderCardPage (Ruby's unsupported-view UserError,
+      // format/render.rb:60-64 + error.rb:21). Deeper paths and the
+      // transaction-form arms of lines 42-48 (GET /card/create|update|
+      // delete|asset/:mark) stay the 404: those actions are not page
+      // renders in decko either (they process transactions), and the
+      // bad_address wildcard (line 54) is an unported view.
+      const segs = pathname.slice(1).split("/");
+      const stripFormat = (s) => s.replace(/\.[A-Za-z0-9]+$/, "");
+      let routeName;
+      let routeView;
+      if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
+        routeName = segs[0];
+        routeView = stripFormat(segs[1]);
+      } else if (segs.length === 3 && segs[1] === "view" && segs[0] !== "" && segs[2] !== "") {
+        routeName = segs[0];
+        routeView = stripFormat(segs[2]);
+      } else if (
+        segs.length === 3 &&
+        segs[0] === "card" &&
+        (segs[1] === "new" || segs[1] === "edit") &&
+        segs[2] !== ""
+      ) {
+        routeName = segs[2];
+        routeView = segs[1];
+      }
+      if (routeName !== undefined && routeView !== undefined) {
+        const name = decodeName(routeName);
+        if (name === undefined || name === "") {
+          response = jsonResponse(400, { error: "empty card name" });
+        } else {
+          response = await renderCardPage(name, requestEngine, routeView);
+        }
+      } else {
+        response = htmlResponse(
+          404,
+          `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
+          "Not found",
+        );
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

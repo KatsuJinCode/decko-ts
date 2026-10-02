@@ -23,13 +23,17 @@
 //   divergence is recorded in docs/render-port-notes.md.
 
 import { DeckoName } from "./name.js";
+import { getNameEnvironment } from "./name/environment.js";
+import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
 import { FetchEngine } from "./fetch.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
-import { executeQuery } from "../cql/execute.js";
+import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
+import { resolvePointerItemName } from "./render/pointer-list.js";
 import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
+import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -48,14 +52,28 @@ import {
   type RenderEngineLike,
   type ViewFn,
 } from "./render/format.js";
-import { renderPageBytes, UnknownLayoutError } from "./render/page.js";
+import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
+import { envOriginForSurface } from "./render/deck-origin.js";
+import { myCardDropdownInnerHtml, signedInAccountLinksInnerHtml } from "./render/navbar-views.js";
 import type { ViewOverride } from "./rules/apply.js";
-import { HTML_VIEWS, SETTING_GROUPS, visibleGroupSettings } from "./render/views.js";
+import {
+  HTML_VIEWS,
+  SETTING_GROUPS,
+  isTemplatedNestsName,
+  templateLinkSetNameFromParts,
+  visibleSettingsForGroup,
+} from "./render/views.js";
+import { RULE_TYPE_IDS_FOR_PRELOAD } from "./render/virtual-rule-card.js";
+import { headViewReadStatement } from "./render/head-views.js";
+import type { SearchResultPaging } from "./render/search-paging.js";
 import {
   ModLoader,
   getDefaultModLoader,
   modGeneration,
 } from "./mod-loader.js";
+import { modEngineHost } from "./mod-loader/mod-engine-host.js";
+import { bindModuleAdminHost } from "./mod-loader/mods/core-mod.js";
+import { prepareAdminRuntime } from "./mod-loader/mods/core-admin-runtime.js";
 import {
   badQuery,
   dateError,
@@ -75,6 +93,73 @@ import {
   type WarmupStats,
 } from "./render/prefetch.js";
 import { readCardRowsByIdChunked } from "../server/chunked-row-reads.js";
+import type {
+  HistoryActionRow,
+  HistoryActRow,
+  HistoryChangeRow,
+} from "./mod-loader/mods/card-mod-history.js";
+import {
+  actionPreviousValue,
+  actionValue,
+  historyActs,
+  historyCardIds,
+  lastAction,
+  lastAct,
+  updaterOf,
+} from "./mod-loader/mods/card-mod-history.js";
+import { trackedFieldByIndex } from "./history/change.js";
+
+/** The views the render-time history seam loads for (render-seam.ts): the
+ *  three ported history views. A render of any other view never touches
+ *  the seam (prepareHistoryRender is gated on this set). */
+// The history seam's view gate. "conflict" joins the three history views:
+// card-mod-format's :conflict (set/all/html/error.rb:37-51) reads the same
+// render-time act data - card.last_action (:38 revision span + the actor
+// walk) and render_act (:47, the act_from_context no-act_id branch).
+// "history_tab" joins for the board lane (card-mod-edit tab_views.rb:8-12:
+// acts_board_layout reads the same prepared act bundle).
+const HISTORY_SEAM_VIEWS = new Set([
+  "history",
+  "act",
+  "action_summary",
+  "action_expanded",
+  "last_action_verb",
+  "conflict",
+  "history_tab",
+  // surfaces-batch3 (2026-09-30): the ladder trio reads the same prepared
+  // act bundle (:act_legend's helpers + :last_action's last_act walk and
+  // :change's composition over it — card-mod-history views.rb:15-53).
+  "act_legend",
+  "last_action",
+  "change",
+]);
+import type {
+  HistoryActionCardInfo,
+  HistoryRenderParams,
+  HistoryRenderReader,
+} from "./history/render-seam.js";
+
+/** The views the render-time ACT-SEARCH seam loads for (updater-seam.ts):
+ *  the ones whose bodies reach :updated_by. :box renders :box_bottom when
+ *  `voo.show("box_bottom")` (card-mod-bar_and_box box.rb:13-15, the
+ *  `= render :box_bottom` line of box.haml), :box_bottom renders
+ *  `_render_updated_by` directly (history_board.rb:10-16), and
+ *  :updated_by is itself a renderable view name (it is in the registry,
+ *  so a caller may ask for it directly). A :titled / :open / :content
+ *  render never touches the seam. */
+const UPDATER_SEAM_VIEWS = new Set(["box", "box_bottom", "updated_by"]);
+
+/** The views whose bodies read the render root's SELF-SET card through the
+ *  rule walk (card-mod-edit editing.rb:50-52 edit_rules nests
+ *  current_set_card). The rule-side warm (Card::Rule::Cache's request-cycle
+ *  set-anchor load) covers them. */
+const RULE_WARM_VIEWS = new Set(["edit_rules"]);
+import type { UpdaterCardInfo, UpdaterRenderReader } from "./history/updater-seam.js";
+import {
+  FOLLOW_SEAM_VIEWS,
+  prepareFollowRender,
+  type FollowRenderBundle,
+} from "./follow/follow-render-seam.js";
 import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames, scanNests } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
@@ -90,6 +175,7 @@ import {
   type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
+import { readPermissionOverride, updatePermissionOverride } from "./permissions/read-override.js";
 import {
   allTaskVerdictsForCard,
   taskVerdictForCard,
@@ -100,7 +186,9 @@ import {
 } from "./permissions/view-task-rules.js";
 import { viewRequiresTask, type CrudTask } from "./permissions/view-perms.js";
 import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
+import { setPrototypeTypeCode } from "./render/views.js";
 import type { SQLQueryResult } from "../server/driver.js";
+import type { TokenRuntimeConfig } from "./auth/token.js";
 
 export { UnsupportedViewError };
 export { UnknownLayoutError };
@@ -119,6 +207,24 @@ export { HTML_VIEWS };
 export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
+
+/** The views whose body reaches Auth.createable_types (edit_type.rb:44-48
+ *  type_field via :type_formgroup/:board_type_formgroup, wrapped by
+ *  :edit_type/:edit_type_form; new.rb:128-152 new_view_type's
+ *  new_type_permitted? = Card.new(type_id: card.type_id).ok? :create via
+ *  :new_type_formgroup, reached from :new/:new_in_modal/:new_fields/
+ *  :simple_new) — the prepare gate for ensureCreateableTypes. */
+const CREATEABLE_TYPES_VIEWS = new Set([
+  "edit_type",
+  "edit_type_form",
+  "type_formgroup",
+  "board_type_formgroup",
+  "new",
+  "new_in_modal",
+  "new_fields",
+  "new_type_formgroup",
+  "simple_new",
+]);
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
  *  through Abstract::CqlSearch's parse exactly like search-type cards). */
@@ -158,6 +264,20 @@ const DATE_TYPE_CODE = "date";
  *  date likewise (corpus:1135 :open/:content raise, :closed/:title real). */
 const PARSE_DISPATCH_VIEWS = new Set(["open", "content"]);
 
+/** The search statement's own limit (cql_search.rb:85-87 card_content_limit
+ *  = `cql_hash&.dig :limit`): the cql's `limit` key as number or numeric
+ *  string, else undefined (the caller applies the html default 20). Ruby: 0
+ *  is TRUTHY — `cql limit: 0` means unlimited, and `0 || super` keeps the 0
+ *  (the engine's toIntOrZero(0) = unlimited, the same quirk). */
+function searchCqlLimit(statement: Record<string, unknown>): number | undefined {
+  const raw = statement["limit"];
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim() !== "" && !Number.isNaN(Number(raw))) {
+    return Number(raw);
+  }
+  return undefined;
+}
+
 /** The set of patterns a setting card's children can carry (card-mod-rules
  *  set/type/setting.rb#set_classes_with_rules + card-mod-rules
  *  set/type/setting/core.haml:1-12): every rule whose right part is the
@@ -168,6 +288,46 @@ const PARSE_DISPATCH_VIEWS = new Set(["open", "content"]);
 const SETTING_CLASSES = PATTERN_TABLE.filter(
   (spec) => spec.code !== "rule" && spec.code !== "star" && spec.code !== "rstar",
 );
+
+/** The [[target]] wikilinks inside one content string, deduplicated by the
+ *  caller's array (targets may repeat across cards). Target = the part
+ *  before `|`, trimmed — the same bytes page.ts scanWarmDeps harvests (the
+ *  page path's twin of this pass; the regex is kept byte-identical so both
+ *  surfaces resolve the same target set). Explicit-target forms (leading
+ *  `/`, `http(s):`, `mailto:`) never reach the named-anchor branch of
+ *  renderLinkChunk, so they are not existence candidates. */
+function collectLinkTargetNames(content: string, out: string[]): void {
+  for (const match of content.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+    const target = (match[1] ?? "").split("|")[0]?.trim() ?? "";
+    if (target === "" || /^(\/|https?:|mailto:)/.test(target)) continue;
+    out.push(target);
+  }
+}
+
+/**
+ * The views whose body routes to `_render_core` / `render_core` — the only
+ * bodies that can reach card-mod-layout set/self/head.rb:9-17 view :core
+ * through a `{{...|core}}` nest. Ruby: card-mod-format set/all/base.rb:85-87
+ * (:core), :89-95 (:content and :open_content both `_render_core`; the
+ * comment at :113-116 spells out that they render core EXPLICITLY so core
+ * overrides fire), :101-107 (:labeled_content / :titled_content
+ * `render_core`), :120-128 (:titled `_render_core`, :open the alias of
+ * :titled, :labeled `_render_labeled_content`, :closed the alias of
+ * :labeled). :one_line_content is deliberately ABSENT: base.rb:97-99 wraps
+ * its `render_core` in `with_nest_mode(:compact)`, where the nest renders
+ * the head card’s :one_line_content, not its :core.
+ */
+const CORE_REACHING_VIEWS: ReadonlySet<string> = new Set([
+  "core",
+  "content",
+  "open_content",
+  "labeled_content",
+  "titled_content",
+  "titled",
+  "open",
+  "labeled",
+  "closed",
+]);
 
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
@@ -187,6 +347,26 @@ export class RenderEngine implements RenderEngineLike {
   /** Enriched render cards by key - the render path reads this map
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
+
+  /** Save-side invalidation for the enriched render-card map: after a write,
+   *  BOTH layers holding the pre-save row must drop it - the fetch layer's
+   *  card cache (FetchEngine#expireName, the cache/all.rb#expire port) and
+   *  this map, which is a TS render-perf structure with no Ruby counterpart
+   *  (Ruby's expired Card objects simply re-fetch). Without the map drop a
+   *  post-save page render serves the pre-save content forever (observed
+   *  live: session-replay2 lane step-05). The next render re-fetches and
+   *  re-enriches from the database row. */
+  expireRenderCard(name: string): void {
+    const key = DeckoName.parse(name ?? "").key;
+    if (key !== "") {
+      this.renderCards.delete(key);
+      // The layout warm-up's engine-lifetime scan memory (warmupScannedKeys)
+      // records that this card's content references were chased; a write
+      // that drops the card invalidates that record, so a re-enriched card
+      // gets its refs re-chased.
+      this.warmupScannedKeys.delete(key);
+    }
+  }
   /** Rule lookup cache: `<card_key>|<view>` -> the resolved ViewOverride
    *  (or undefined if no rule applies). Filled during the first render of
    *  a (card, view) pair; subsequent renders skip the rule walk entirely.
@@ -215,6 +395,11 @@ export class RenderEngine implements RenderEngineLike {
    *  (24 each) while :closed/:title are real bytes (105/105 each), i.e.
    *  Ruby only parses the result-rendering views. Cleared on resetCaches(). */
   private searchFailures = new Map<string, Error>();
+  /** Seated paging records by search card key — the show_paging? == true
+   *  case only ({limit, offset, count}; search-paging.ts header). Seated in
+   *  runSearch alongside the items; read by the :card_list view's
+   *   searchResultPaging seam. Cleared on resetCaches(). */
+  private searchResultPagingMap = new Map<string, SearchResultPaging>();
   /** Resolved options cards by host key (the options-card parse boundary's
    *  rule walk). `has(key) === true` means resolved; the value is the
    *  resolved options card, or undefined when the walk stopped without one
@@ -232,6 +417,17 @@ export class RenderEngine implements RenderEngineLike {
    *  the first render, folded into the prefetch batch so a cold render
    *  stays ONE round trip; undefined until then. Cleared on resetCaches(). */
   private readPermission: ReadPermissionState | undefined;
+  /** The viewer actually resolved for the permission state — ANONYMOUS_VIEWER
+   *  carries no actorId, but ensureReadPermission resolves the anonymous card
+   *  id from the batch's codename rows (read-rules.ts) into THIS copy; the
+   *  viewer key the own_account?/own_email? overrides compare against comes
+   *  from its actorId. Cleared on resetCaches(). */
+  private readViewer: ReadViewer | undefined;
+  /** Memoized Auth.as_card.key (the readViewer actor card's canonical key) —
+   *  resolved once per permission-state generation; undefined when the actor
+   *  card is unresolvable. Cleared on resetCaches(). */
+  private readViewerKey: string | undefined;
+  private readViewerKeyResolved = false;
   /** card id -> denied verdict (the pure half of ok_to_read?). Computed in
    *  the prepare phase so the synchronous render path never queries.
    *  Cleared on resetCaches(). */
@@ -249,10 +445,77 @@ export class RenderEngine implements RenderEngineLike {
    *  parties (see ReadViewer in src/card/permissions/read-rules.ts). Set
    *  before the first render, or together with resetCaches() after. */
   viewer: ReadViewer = ANONYMOUS_VIEWER;
+  /** The page-chrome session (Ruby Auth.current) — see RenderEngineLike.
+   *  page.ts (decko.signed_in), navbar-views.ts (the *account_links
+   *  branch) and format.ts (the loud-denial copy) read this, never the
+   *  read-verdict viewer (Auth.as_id). Undefined = signed-out chrome (the
+   *  corpus surface, byte-identical to the pre-session render). */
+  pageSession: ReadViewer | undefined;
+  /** The prepared signed-in *account_links navbar items (see
+   *  RenderEngineLike.pageSessionAccountLinksHtml). Filled once per
+   *  session actor by prepareSessionAccountLinks; survives across pages of
+   *  the same engine (the chrome session does not change mid-engine). */
+  private sessionAccountLinks: string | undefined;
+  private sessionAccountLinksActorId: number | undefined;
+  /** The prepared :my_card view body (the account_dropdown arm) — see
+   *  RenderEngineLike.pageSessionMyCardHtml. */
+  private sessionMyCardHtml: string | undefined;
+
+  /** The render-time history seam bundle (src/card/history/render-seam.ts):
+   *  set by prepareHistoryRender during a render whose view is one of
+   *  HISTORY_SEAM_VIEWS, cleared at every render() entry. The sync history
+   *  ViewFns read it through RenderEngineLike#historyRenderReader. */
+  private historyReader: HistoryRenderReader | undefined;
+
+  /** The render-time ACT-SEARCH seam bundle (src/card/history/updater-seam.ts):
+   *  set by prepareUpdaterRender during a render whose view is one of
+   *  UPDATER_SEAM_VIEWS, cleared at every render() entry. The sync
+   *  :updated_by ViewFn reads it through
+   *  RenderEngineLike#updaterRenderReader. */
+  private updaterReader: UpdaterRenderReader | undefined;
+
+  /** The render-time follow seam bundle (src/card/follow/follow-render-seam.ts):
+   *  set by prepareFollowRender during a render whose view is one of
+   *  FOLLOW_SEAM_VIEWS, cleared at every render() entry. The sync follow /
+   *  account ViewFns read it through RenderEngineLike#followRenderBundle.
+   *  The session half is the EXPLICIT ACTOR BOUNDARY (Ruby Auth.current):
+   *  the seam resolves it from engine.pageSession only — never a global,
+   *  never the read-verdict viewer. */
+  private followBundle: FollowRenderBundle | undefined;
+
+  /** The card-mod-history action-level ContentDiff memo - the port of
+   *  Differ's @content_diff_object ivar (differ.rb:79-86), which lives on
+   *  the CACHED Action record and therefore outlives a single render: the
+   *  first view render of an action builds the diff and checks
+   *  summary_omits_content? BEFORE rendering the summary (Ruby reads nil),
+   *  later renders of the same action see the rendered state (the capture
+   *  pins both shapes). Engine-lifetime = the Action-record lifetime for
+   *  the bare-view lane; resetCaches() clears it with the rest. */
+  readonly historyDiffMemo = new Map<number, import("./history/content-diff.js").ContentDiff>();
   /** The deck's CDN/asset host for carrierwave cloud images (A-30 — see
    *  RenderEngineLike.imageCdnHost). Host-deployment config; undefined =
    *  host-relative /files URLs. */
   imageCdnHost: string | undefined;
+  /** The Auth::Token runtime config — the HMAC secret the account
+   *  verify_url / reset_password_url links are signed with
+   *  (card-1.110.0/lib/card/auth/token.rb:7 reads Rails' secret_key_base;
+   *  src/card/auth/token.ts takes it per call because there is no Rails
+   *  credentials object in this engine). Host-deployment config: same shape
+   *  and same reason as imageCdnHost above and the CSRF secret
+   *  (src/server/write-routes.ts WriteRouteContext.csrfSecret) — the HOST
+   *  owns the secret, the engine never stores or defaults one, and an unset
+   *  field makes a token call fail loudly rather than sign under a
+   *  repo-pinned key. vm-staging-server.mjs pins it from DECKO_TOKEN_SECRET
+   *  with a per-boot random fallback, the way it pins DECKO_CSRF_SECRET.
+   *  undefined = no token links are mintable. */
+  tokenConfig: TokenRuntimeConfig | undefined;
+  /** Cardio.config.file_storage's port (card-mod-carrierwave
+   *  set/abstract/attachment/01_storage_type.rb:75-79
+   *  storage_type_from_config): the attachment-storage default the deck is
+   *  configured with. Read LIVE by the file :input view's no_upload? gate
+   *  (web.rb:1-3); undefined = the deck default :local (the oracle's
+   *  config_file_storage_default). Host-deployment config. */
+  fileStorage: "local" | "web" | "cloud" | "coded" | undefined = undefined;
   /** Codename ids the rule? predicate compares against (SettingID/SetID/
    *  UserID, resolved from the codename codehash). Folded into the cold
    *  render's closure batch (zero extra round trips); undefined until
@@ -260,7 +523,7 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
-  /** R16: existing-rule resolution for VIRTUAL rule cards — the port of
+  /** existing-rule resolution for VIRTUAL rule cards — the port of
    *  card-mod-rules set/rule/editor.rb:119-131 find_existing_rule_card
    *  (`new_card? ? existing_rule_from_prototype : self`): for a rule card
    *  with no stored row, `existing_rule_card` is the prototype's winning
@@ -296,6 +559,13 @@ export class RenderEngine implements RenderEngineLike {
    *  structured_content || standard_content) is then pure memory. Undefined
    *  until the first parse. Cleared on resetCaches(). */
   private structureContents: Map<string, string | null> | undefined;
+  /** The structure universe's rule cards' own type_id by composed rule key
+   *  (parsed from the SAME universe batch as structureContents). The sync
+   *  virtual-left-type resolution reads it (virtualLeftTypeName): a nest
+   *  whose left card is itself virtual ("X+*type" -> Set) needs the left's
+   *  template-chain type AT CLASS-BUILD TIME, before the async enrichment
+   *  lands it in the render map. Cleared on resetCaches(). */
+  private structureRuleTypes: Map<string, number> | undefined;
   /** Render-card keys whose dbContent already went through the structured
    *  pass (idempotence: the pass re-runs after search enrichment without
    *  re-processing the closure). Cleared on resetCaches(). */
@@ -317,6 +587,14 @@ export class RenderEngine implements RenderEngineLike {
    *  batch as the structure universe (one statement, +0 round trips).
    *  Cleared on resetCaches(). */
   private defaultRuleTypes: Map<string, number> | undefined;
+  /** composed *default rule key -> the rule card's db_content (the
+   *  p20-nest-selection lane: content/all.rb:17-19 standard_content's
+   *  new_card branch — a nest-miss new card's content IS the *default
+   *  rule's content; the oracle's associative_inquiry-discussion-titled-view
+   *  body is discussion+*right+*default's `<p> </p>` x2 verbatim). Parsed
+   *  from the SAME universe rows the types ride (structureUniverseFromResults
+   *  over the default result). Cleared on resetCaches(). */
+  private defaultRuleContents: Map<string, string | null> | undefined;
   /** type_id -> type card NAME for the *default universe's referenced types
    *  (the data-card-type-name attribute + safeSetKeys TYPE anchor input for
    *  the new-child card). One batched id query, once per engine. Cleared on
@@ -326,6 +604,11 @@ export class RenderEngine implements RenderEngineLike {
    *  engine, on the first render whose ROOT view demands a non-read task
    *  (docs/view-perms-notes.md). Cleared on resetCaches(). */
   private taskState: ViewTaskState | undefined;
+  /** auth/permissions.rb:18-26 Auth.createable_types — the sorted cardtype
+   *  names the viewer's create verdict admits ([] until precomputed by
+   *  ensureCreateableTypes, which the type-editor views' prepare gate
+   *  fires). Cleared on resetCaches(). */
+  private createableTypesCache: string[] | undefined;
   /** card key -> allowed verdicts per write task (the ensureVerdicts
    *  model; undefined entries mean unverifiable). Cleared on resetCaches(). */
   private taskVerdicts = new Map<string, Record<WriteTask, boolean | undefined>>();
@@ -347,11 +630,35 @@ export class RenderEngine implements RenderEngineLike {
     string,
     { typeName: string; typeId: number } | undefined
   >();
+  /** The UNKNOWN pointer/list items' precomputed permission verdicts, keyed
+   *  `"${hostKey}|${itemKey}"` (see ensurePointerItemVerdicts). Ruby builds
+   *  the fetch-miss phantom FRESH PER NEST (Nest::Fetch#new_card ->
+   *  Card.fetch name, new: new_card_args — nest/fetch.rb), so the same
+   *  unknown name under two hosts carries TWO verdicts: the verdict input's
+   *  type is THAT nest's folded item type (determine_item_view_options_type
+   *  folds the rendering host's item_type_name only for its own nest), and
+   *  one host's fold must never answer another host's item slot — the
+   *  per-item-only keying let a pointer host that resolves Person
+   *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
+   *  verdict and render Williamscraig readable where the oracle denies.
+   *  Cleared on resetCaches(). */
+  private pointerItemVerdicts = new Map<
+    string,
+    { read: boolean; create: boolean | undefined }
+  >();
+  /** Item keys whose verdict already seeded the deck-global verdict maps
+   *  (deniedVerdictsByKey / taskVerdicts) — first-wins, the exact seeding
+   *  semantics the per-item-only keying produced before the per-host key
+   *  (the global maps' consumers — isDenied / taskAllowed on surfaces
+   *  outside the pointer-item slot — keep their pre-change bytes). Cleared on
+   *  resetCaches(). */
+  private pointerItemGlobalVerdictDone = new Set<string>();
   /** The modeled `Cardio.config.default_html_view` render lane (R17, A-36
    *  correction): "content" while a PAGE render is active — the production
    *  config value the page capture applies
-   *  (capture-dual-lane-page-and-view.rb:255, runbook production-equivalent
-   *  setting #5) — "titled" otherwise, the railtie default
+   *  (capture-dual-lane-page-and-view.rb:314, the capture's
+   *  production-equivalent setting #5) — "titled" otherwise, the railtie
+   *  default
    *  (card-mod-format lib/card/mod/format.rb:2) under which the BARE render
    *  capture (lane V, the old-capture dev boot) ran. Ruby reads process
    *  config per call (html.rb:17-19), never a deck rule; the corpus's
@@ -367,6 +674,14 @@ export class RenderEngine implements RenderEngineLike {
   helpRules?: HelpRulesApi;
   private helpResolver: ReturnType<typeof installHelpRules> | undefined;
   private lastPrefetch: PrefetchStats | undefined;
+  /** view-fail class V4 (links.rb:140-144 add_known_or_wanted_class): the
+   *  cards whose dbContent the link-target warm pass has already scanned
+   *  for [[wikilink]] targets (once per engine per card; the deck is static
+   *  on the read surface). */
+  private linkScanDoneKeys: Set<string> | undefined;
+  /** The core mod admin-runtime build's once-per-engine guard (see
+   *  ensureCoreAdminRuntime). resetCaches re-arms it. */
+  private coreAdminRuntimeEnsured = false;
 
   constructor(fetcher: FetchEngine) {
     this.fetcher = fetcher;
@@ -387,12 +702,18 @@ export class RenderEngine implements RenderEngineLike {
    * Render one view of one card to HTML bytes. Throws UnsupportedViewError
    * for views outside the ported registry (the captured sentinel contract).
    */
-  async render(cardName: string, view: string): Promise<string> {
+  async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
     const record = await this.fetcher.fetchByName(cardName);
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
     const name = record.name;
+    // The render-time history seam state is per-render: a render whose view
+    // is not one of the history views must not see a previous render's
+    // bundle (render-seam.ts documents the seam boundary). Same for the
+    // act-search (updater) seam.
+    this.historyReader = undefined;
+    this.updaterReader = undefined;
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -402,6 +723,15 @@ export class RenderEngine implements RenderEngineLike {
     const permissionCold = this.readPermission === undefined;
     const ruleTypesCold = this.ruleTypeIds === undefined;
     const structureCold = this.structureContents === undefined;
+    // The head read-set rides THIS batch rather than a query of its own:
+    // the head prefetch is a cold-path pass, and the cold path already
+    // owns a batch vehicle, so folding it in costs ZERO extra round trips
+    // (the query-count gates in junction-depth-closure /
+    // render-engine / depth-sweep pin the cold shape at 3-4 round trips
+    // and stay where they are). Its result index is
+    // HEAD_STATEMENT_INDEX below, which is a function of the three
+    // conditionals above it — read that comment before reordering.
+    const headReadsCold = !this.headReadsWarmed;
     const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
@@ -421,6 +751,11 @@ export class RenderEngine implements RenderEngineLike {
         ...(structureCold
           ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
           : []),
+        // The head read-set, appended after every slot the parsers above
+        // index into, so the head's index is stable at
+        // permissionStatements.length + (ruleTypesCold ? 1 : 0)
+        //                             + (structureCold ? 2 : 0).
+        ...(headReadsCold ? [headViewReadStatement()] : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
@@ -448,8 +783,48 @@ export class RenderEngine implements RenderEngineLike {
         foldedResults,
         permissionStatements.length + (ruleTypesCold ? 1 : 0),
       );
+      // The head read-set's rows, consumed from the same batch. Index is
+      // everything the three parsers above occupy, in order.
+      if (headReadsCold) {
+        const headIndex =
+          permissionStatements.length +
+          (ruleTypesCold ? 1 : 0) +
+          (structureCold ? 2 : 0);
+        await this.cacheHeadViewReads(foldedResults?.[headIndex]);
+        this.headReadsWarmed = true;
+      }
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
+    }
+    if (ruleTypesCold) {
+      // Warm-closure FIRST render: the fold above never ran (the batch is
+      // skipped), so parse here defensively - one standalone codename load,
+      // once per engine (parseRuleTypeIds' own defensive branch).
+      if (this.ruleTypeIds === undefined) {
+        await this.parseRuleTypeIds(undefined, 0);
+      }
+      // THE RULE SET-KEY REPAIR (oracle-pinned:
+      // fixtures/captured/search-list-views.json target 152): set keys were
+      // computed by enrichAndStore while ruleTypeIds was still undefined -
+      // computeIsRule returned undefined and safeSetKeys dropped the bare
+      // RULE token - and the existing-key guard (enrichAndStore's head)
+      // never recomputed them. Re-derive now that the ids are folded:
+      // structurePatternInputForSync is the SAME input contract safeSetKeys
+      // consumes (its doc), and every compound card's name parts are
+      // enriched ahead of it, so the sync predicate resolves. Runs once per
+      // engine (ruleTypesCold); memory-only, zero queries.
+      for (const card of this.renderCards.values()) {
+        if (!card.name.isCompound) continue;
+        const input = this.structurePatternInputForSync(card);
+        card.setKeys = safeSetKeys({
+          name: card.name,
+          typeId: input.typeId ?? undefined,
+          typeName: typeof input.typeName === "string" ? input.typeName : undefined,
+          leftTypeName:
+            typeof input.leftTypeName === "string" ? input.leftTypeName : undefined,
+          isRule: input.isRule === true,
+        });
+      }
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
@@ -459,6 +834,12 @@ export class RenderEngine implements RenderEngineLike {
     // batch), so the new-child type preload below can run right after.
     await this.applyStructureContent();
     await this.preloadDefaultTypeNames();
+    // Unknown nest-target read verdicts (the closure walk's fetch misses:
+    // trashed rows + never-existed names) — the *default-universe type
+    // preload above must precede them (newCardDefaultType input). The sync
+    // unknown-card gate (format.ts renderView) reads these for views whose
+    // `unknown:` config is true — Ruby's alter_unknown||denial arm.
+    await this.seatUnknownRefReadVerdicts();
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -487,6 +868,9 @@ export class RenderEngine implements RenderEngineLike {
     // Pass #2: cards enrichAndStore'd during search preparation (their
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
+    // Pass-2 misses (refs surfaced by search-enriched cards) seat here too —
+    // the universe + type names are loaded by now.
+    await this.seatUnknownRefReadVerdicts();
     // Pass #2 populateTypeCodes: cards enriched during runSearch also
     // need their typeCode patched (their enrichAndStore ran AFTER the
     // batch fold, so peekNameForId returned the right codename — but
@@ -495,10 +879,141 @@ export class RenderEngine implements RenderEngineLike {
     // prefetch walk's shape).
     this.populateTypeCodes();
     await this.ensureTaskVerdicts(view);
+    // The type editor's select (auth/permissions.rb:18-26 createable_types):
+    // precomputed for the views whose body reaches it so the sync render
+    // resolves the option list query-free.
+    if (CREATEABLE_TYPES_VIEWS.has(view)) await this.ensureCreateableTypes();
     // The configure_button permission predicate (cardtype.rb:68-70) for
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
     await this.ensureConfigureVerdict(record);
+    // The cwwrite-seam warm (the asset-output views): the right/asset_output
+    // :not_found gate reads the LEFT card's set keys and the outputter
+    // :asset_output_url reads the `+*asset output` child's identifier —
+    // both synchronously (fetchRenderCard is cache-only). The prefetch
+    // closure chases neither (not nest-syntax references), so warm the one
+    // related card the rendered card's shape implies: an `*asset output`
+    // child warms its left, an asset-outputter (TypePlusRight::Set::Style/
+    // ::Script set keys) warms its `+*asset output` child. One conditional
+    // fetch, riding the fetch layer's cache; other cards warm nothing.
+    {
+      const rendered = this.fetchRenderCard(name.s);
+      if (name.s.endsWith("+*asset output")) {
+        const left = name.leftName;
+        if (left !== undefined) await this.prepareItemForRender(left.s);
+      } else if (
+        rendered?.setKeys.includes("TYPE_PLUS_RIGHT-set-Xstyle") === true ||
+        rendered?.setKeys.includes("TYPE_PLUS_RIGHT-set-Xscript") === true
+      ) {
+        await this.prepareItemForRender(`${name.s}+*asset output`);
+      }
+    }
+    // The bootswatch-skin page warm (the compiled-in coreView branch's
+    // synchronous reads - views.ts calls bootswatchSkinCoreHtml, whose
+    // current_skin? / parent? / image / field lookups are all
+    // fetchRenderCard cache-only): a bootswatch_skin-typed rendered card
+    // warms its +Image field, its +parent pointer, the three skin-field
+    // children (+*colors / +*variables / +*stylesheets - the accordion
+    // nests resolve real rows through these; theme skins carry none and
+    // the view constructs the virtual fields), and the *all+*style rule
+    // the current_skin? check reads. Cards that do not exist warm nothing
+    // (prepareItemForRender undefined). One conditional family, riding the
+    // fetch layer's cache; other cards warm nothing.
+    // (Merge note: composed with bar-slots' V6 map scan below — this block
+    // covers the ROOT skin's full family; the scan covers +Image for skin
+    // cards NESTED into the render that joined the map outside the prefetch
+    // loop.)
+    if (record.typeId !== undefined && this.peekCodenameById?.(record.typeId) === "bootswatch_skin") {
+      await this.prepareItemForRender(`${name.s}+Image`);
+      await this.prepareItemForRender(`${name.s}+parent`);
+      await this.prepareItemForRender(`${name.s}+*colors`);
+      await this.prepareItemForRender(`${name.s}+*variables`);
+      await this.prepareItemForRender(`${name.s}+*stylesheets`);
+      await this.prepareItemForRender("*all+*style");
+    }
+    // p20-help-content warm (the setting-page core's synchronous reads):
+    // a SETTING-typed rendered card's core (views.ts settingCoreHtml)
+    // reads the *all+<setting> rule card synchronously — the rule_help
+    // alert's fetch (set/type/setting.rb:59-61's nest) and
+    // set_classes_with_rules' render-card-map walk (setting.rb:31-37) —
+    // and the Abstract::ModAssets CHILD pages ("mod: X+*style" /
+    // "mod: X+*script") read their LEFT mod card's codename the same way.
+    // The prefetch closure chases neither (not nest-syntax references).
+    // One conditional fetch per shape; cards that do not exist warm
+    // nothing (prepareItemForRender undefined), and a left card that is
+    // already enriched as Mod-typed costs only the cached map read.
+    {
+      const renderedCard = this.fetchRenderCard(name.s);
+      if (renderedCard !== undefined) {
+        if (renderedCard.typeCode === "setting") {
+          await this.prepareItemForRender(`*all+${name.s}`);
+          // the virtual-rule-card fallback (a missing *all+<setting>
+          // junction, rule_help unknown:true) builds its set card from the
+          // map too — the corpus prefetches *all on every page, a bare
+          // engine does not
+          await this.prepareItemForRender("*all");
+          // The set-class rows' rule universe: EVERY rule card whose right
+          // part is this setting (setting.rb:49-53 rules_for_set_class's
+          // per-class cql). The prefetch closure chases none of them, and
+          // the rows walk the render-card map — without this warm the rows
+          // rendered only what earlier pages happened to enrich (map-luck
+          // state the escape-residue-era sweep saw). fetchById reconstructs
+          // the junction names the cards table stores name-less.
+          if (renderedCard.id !== undefined) {
+            const results = await this.fetcher.driver.batch([
+              {
+                sql: "SELECT id FROM cards WHERE right_id = ? AND left_id IS NOT NULL AND trash = 0",
+                params: [renderedCard.id],
+              },
+            ]);
+            for (const row of (results[0]?.rows ?? []) as Array<{ id: number }>) {
+              const rec = await this.fetcher.fetchById(Number(row.id));
+              if (rec === undefined || rec.name === undefined) continue;
+              await this.enrichAndStore(rec);
+            }
+          }
+        }
+        if (renderedCard.name.isCompound) {
+          const leftName = renderedCard.name.leftName;
+          const rightName = renderedCard.name.rightName;
+          if (leftName !== undefined && rightName !== undefined) {
+            const right = this.fetchRenderCard(rightName.key);
+            const rightCodename = right?.record.codename;
+            if (rightCodename === "style" || rightCodename === "script") {
+              const left = this.fetchRenderCard(leftName.key);
+              if (left === undefined || left.typeCode !== "mod") {
+                await this.prepareItemForRender(leftName.s);
+              }
+            }
+          }
+        }
+      }
+    }
+    // bar-slots lane (view-fail class V6): the bootswatch_skin bar_left
+    // nests the card's +Image child at :boxed (card-mod-bar_and_box
+    // media_snippet.haml's `nest image_card, view: :boxed, size: size`).
+    // Ruby's nest does a live fetch; the sync ViewFn reads the
+    // render-card map, so the children ride the prepare phase — one
+    // conditional fetch per skin card in the prepared closure (the root
+    // skin itself, plus skin cards NESTED into the render — the oracle's
+    // +parent 1 pointer items nest skin bars, phase-019). The prefetch
+    // closure chases neither: the bar_left nest is view-time, so no
+    // card_references row names the image. Skins without an +Image child
+    // fetch nothing (the boxed unknown-nest bytes are name-shaped).
+    {
+      const skinImageNames: string[] = [];
+      for (const card of this.renderCards.values()) {
+        if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
+          skinImageNames.push(`${card.name.s}+Image`);
+        }
+      }
+      for (const imageName of skinImageNames) {
+        const imageChild = await this.fetcher.fetchByName(imageName);
+        if (imageChild !== undefined && imageChild.name !== undefined) {
+          await this.enrichAndStore(imageChild);
+        }
+      }
+    }
     if (this.helpResolver === undefined) {
       this.helpResolver = installHelpRules(this, this.fetcher);
       await this.helpResolver.prepare();
@@ -578,6 +1093,21 @@ export class RenderEngine implements RenderEngineLike {
     // target that is not warm yet. Cheap: the content quick-skip
     // (includes "type:") precedes the chunk scan.
     await this.enrichNestTypeOptTargets();
+    // D9 (warm-map junction load): card-mod-edit's :template_nest view
+    // composes its set name at RENDER time (`Role+*members+*type plus
+    // right` for page 105's `{{+*members}}`) and nests it; Ruby resolves
+    // that compound through Card::Lexicon.id's live left x right join
+    // (fetch/retrieve.rb:35-45), which finds corpus junction 45421 even
+    // though that row has a NULL key and ZERO inbound card_references —
+    // so the reference-driven prepare walk never warms it and the sync
+    // nest read falls back to buildUnknownNestCard's fabricated card (no
+    // data-card-id, url_key data-card-name, no SELF set-key token).
+    // Warm the same names the view composes, through the same shared
+    // composition, so the sync read finds the real card. Runs beside
+    // enrichNestTypeOptTargets (same sync-fetch-gap class, same once-per-
+    // engine-lifetime sweep) and BEFORE the verdict re-pass below, which
+    // then judges the newly seated junctions.
+    await this.enrichTemplateLinkSetJunctions();
     // The items enriched above land AFTER both ensureVerdicts passes
     // (the main pass and the help-rules re-pass), so their card.ids
     // have no entry in deniedVerdicts and isDenied() returns
@@ -590,6 +1120,23 @@ export class RenderEngine implements RenderEngineLike {
     // every card already judged. Same defect class and same fix
     // shape as the help-rules re-pass above.
     await this.ensureVerdicts();
+    // card-mod-format set/all/content.rb:37-41 label_description: the
+    // :smart_label view reads the +description subcard SYNCHRONOUSLY
+    // (card.fetch(:description) -> desc.format.render_core). The subcard
+    // is reachable from no reference closure (a smart_label render reads
+    // no content), so the render must warm it here — the same sync-fetch
+    // gap the R17 signup-children block above closes (the same
+    // prepareItemForRender seam). Fetch misses are tolerated: a card
+    // without +description renders the bare label (content.rb:30-34
+    // label_with_description's nil-description arm).
+    if (view === "smart_label") {
+      await this.prepareItemForRender(`${name.s}+description`);
+      // the warmed child landed after the verdict passes, so its id has
+      // no deniedVerdicts entry — re-run the pass (skip-if-set makes it a
+      // no-op for every card already judged; same defect class and fix
+      // shape as the re-passes above).
+      await this.ensureVerdicts();
+    }
     // Set cardtype cards: pre-load rule cards hanging off the set. The
     // prefetch closure walk does NOT chase rule cards hanging off a set
     // — they're reachable only through the rule's left side, which the
@@ -598,7 +1145,7 @@ export class RenderEngine implements RenderEngineLike {
     // cards synchronously from the render-card map.
     if (rootCard.typeCode === "set") {
       await this.preloadSetRules(rootCard);
-      // R16: the stored rule children preloadSetRules just cached
+      // the stored rule children preloadSetRules just cached
       // (composeCardRecord carries their stored read_rule_id) landed
       // AFTER the last verdict pass above, so deniedVerdicts has no
       // entry for their ids and isDenied() returned gate-open false —
@@ -617,6 +1164,45 @@ export class RenderEngine implements RenderEngineLike {
       await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
+    // view-fail class V4: the sync render's [[wikilink]] anchors classify
+    // known/wanted off the prepared map (Ruby asks a live fetch per anchor,
+    // links.rb:140-144) — warm the link targets this render's surface can
+    // name BEFORE the sync dispatch. Runs after every other enrichment
+    // group so the harvested set is the full prepared closure (help rule
+    // cards, set-rule children, pointer items included). Zero statements
+    // when nothing new resolves.
+    await this.enrichLinkTargetsForKnownClass(rootCard);
+    // THE HEAD READ-SET (the async-view seam — the two candidate seams and
+    // why the prefetch won are argued at renderView's contract note below).
+    //
+    // card-mod-format's head views (set/all/head.rb: :page_title,
+    // :page_title_tag, :favicon_tag, :stylesheet_tags, :head) each need
+    // an engine READ, but ViewFn is SYNCHRONOUS (render/format.ts:291).
+    // The prefetch IS the seam: it warms the cards those reads name, so
+    // the views read them out of renderCards through the already-public
+    // synchronous RenderEngineLike#fetchRenderCard (format.ts:1371) with
+    // no await, no async view class, and no change to ViewFn or the
+    // dispatcher. See the headReadsCold comment above for where the
+    // statement rides the cold batch and the cacheHeadViewReads comment
+    // (below preloadAllSettingCards) for the read set itself.
+    //
+    // Cost: ZERO extra round trips — the statement folds into the cold
+    // path's existing batch, and `headReadsWarmed` keeps it out of every
+    // later one. The query-count gates in tests/card/render
+    // (junction-depth-closure, render-engine, depth-sweep) pin the cold
+    // shape and are unchanged by this lane.
+    //
+    // This is the engine's own idiom, not a new subsystem: the same
+    // shape as preloadAllSettingCards, preloadSetRules and the
+    // pointer-item closure — prepare-phase async fetch feeding a
+    // synchronous map read. And it is what Ruby itself asks for:
+    // head.rb:5-13 lists :all+*head, :all+*style,
+    // :all+*style+*asset_output and :all+*script in
+    // basket[:cache_seed_names] — the deck's "always fetch these
+    // setting cards" list.
+    //
+    // Nothing to await here: the statement and its cache fold both ran
+    // inside the cold batch above.
     // THE OPTIONS-CARD CQL PARSE BOUNDARY (the host's own item-view options
     // chain — one of the firing paths of the capture-sentinel class; oracle
     // probes tmp/recapture-deck/diagnose-capture-error{,2,3,4,5,6,7}.rb).
@@ -712,7 +1298,98 @@ export class RenderEngine implements RenderEngineLike {
     // battery's depth-44 envelope {200,500} collapses to a deterministic
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, { maxDepth: RUBY_MAX_DEPTH });
-    const baseHtml = format.renderView(view, {});
+    // card-mod-layout set/self/head.rb:9-17 view :core reads the head bytes
+    // for the RENDER ROOT (`nest root.card, view: :head`, escape_in_main at
+    // :27-29). The page path has always seated them before the main render
+    // (render/page.ts:294 headContent -> seatPageHead); the BARE single-card
+    // view lane did not, so the Self::Head core answered "" and the
+    // inclusion-carrying head rules' CodeRay <pre> came out EMPTY where the
+    // oracle carries the page's own head block (m4verify D3: card 34754
+    // `*all+*head` views.content, pre 0 B vs the oracle's 2441 B).
+    //
+    // The bytes are a property of the ROOT card and the same builder makes
+    // them, so the two paths cannot drift: this IS page.ts's headContent, not
+    // a second implementation. Gated on RenderFormat#contentNestsHeadCore —
+    // the root's own content must nest the head card's :core view, and a
+    // :template-nest-mode (Layout) card is excluded because its nests stay
+    // literal — so no render that cannot reach the head core pays the read
+    // set, and the query-count gates keep their cold shape.
+    if (
+      this.pageHeadBytesFor(rootCard.key) === undefined &&
+      format.contentNestsHeadCore() &&
+      CORE_REACHING_VIEWS.has(view)
+    ) {
+      this.seatPageHead(rootCard.key, await headContent(this, name, rootCard));
+    }
+    // The render-time history seam (render-seam.ts): load the act/action/
+    // change rows the history views read ONLY when a history view is
+    // requested - never on :titled/:open/:content renders. Read-only
+    // SELECTs through the card-mod-history readers; verdict-filtered like
+    // every read. Runs after ensureVerdicts so the viewable filter sees the
+    // prepared read verdicts.
+    if (HISTORY_SEAM_VIEWS.has(view)) {
+      this.historyReader = await this.prepareHistoryRender(rootCard, params);
+    }
+    // The render-time ACT-SEARCH seam (updater-seam.ts): load the DISTINCT
+    // update-actor cards the :updated_by view reads - ONLY for the two
+    // views that reach it (:box, which renders :box_bottom, and
+    // :box_bottom). One read-only SELECT through the card-mod-history
+    // reader (updaterOf, the port of the gem's own updater_of query), then
+    // a name peek per actor, all here in the async prepare half; the sync
+    // ViewFn reads the memoized bundle.
+    if (UPDATER_SEAM_VIEWS.has(view)) {
+      this.updaterReader = await this.prepareUpdaterRender(rootCard);
+    }
+    // The render-time follow seam (follow/follow-render-seam.ts): the
+    // follow/account views' rule-walk + actor-session bundle, prepared ONLY
+    // when a seam view is requested (the history seam's gating rule).
+    // Read-only SELECTs through the rule algebra; the actor
+    // resolves from pageSession (the session field) or
+    // degrades to signed-out. Cleared first so a failed prepare cannot
+    // leak the previous render's bundle.
+    this.followBundle = undefined;
+    if (RULE_WARM_VIEWS.has(view)) {
+      // The RULE-SIDE warm: rule junctions are reached by the rule walk,
+      // never by content references, so the prefetch closure has no path to
+      // them. Ruby's request cycle loads rule cards WITH their set anchors
+      // in one cache fill - Card::Rule::Cache (card-1.110.0
+      // lib/card/rule/cache.rb:1-27: the JOIN carries sets.id / anchor_id /
+      // set_tag_id alongside every rule row). The port warms the render
+      // root's self-set card the same way before the view body runs.
+      const setCard = await this.fetcher.fetchByName(
+        `${rootCard.name.s}+*self`,
+      );
+      if (setCard !== undefined) await this.cacheFetchedRecord(setCard);
+    }
+    if (FOLLOW_SEAM_VIEWS.has(view)) {
+      this.followBundle = await prepareFollowRender(
+        this.fetcher,
+        this.pageSession,
+        rootCard,
+        view,
+      );
+      // warm the pills' known/wanted marks: the +*followers junction
+      // (followers_board_link's known-card) and the actor's own User+*follow
+      // card (follow_overview_button's known/wanted split)
+      const session = this.followBundle.session;
+      if (session !== undefined) {
+        const userFollow = await this.fetcher.fetchByName(
+          `${session.actorName}+*follow`,
+        );
+        if (userFollow !== undefined) await this.cacheFetchedRecord(userFollow);
+      }
+      const followersJunction = await this.fetcher.fetchByName(
+        `${rootCard.name.s}+*followers`,
+      );
+      if (followersJunction !== undefined) {
+        await this.cacheFetchedRecord(followersJunction);
+      }
+    }
+    // Ruby render(view, opts): the render's view opts ride the voo (the
+    // form-substrate-2 lane's modal hidden-header arm reaches the wrap
+    // gates through params.viewOpts; undefined for every prior caller -
+    // the {} pass-through is byte-identical).
+    const baseHtml = format.renderView(view, params.viewOpts ?? {});
 
     // A denied render never reaches view dispatch (the denial span REPLACES
     // the view in renderView), so view-override rules cannot apply to it —
@@ -864,6 +1541,28 @@ export class RenderEngine implements RenderEngineLike {
     return resolved;
   }
 
+  /** view/permission.rb:38 `setting :unknown` for ONE card: the p20-nest-
+   *  selection fix. With a mod deck bound, the per-card CHAIN walk is the
+   *  authority — loader.viewUnknownSettingForCard walks viewChain(setKeys,
+   *  view) (the same MRO walk the dispatcher uses) and takes the first
+   *  chain entry whose set module CARRIES an `unknown` config for the view
+   *  (Ruby: the most specific set module that defined the
+   *  `_view_<view>__unknown` method). Without a loader, undefined — the
+   *  caller falls back to the compiled per-set decl table
+   *  (format.ts compiledUnknownSettingForCard). */
+  viewUnknownSettingForCard(card: RenderCard, view: string): true | string | false | undefined {
+    const loader = this.modLoader;
+    if (loader === undefined) return undefined;
+    return loader.viewUnknownSettingForCard(card.setKeys, view, "html");
+  }
+
+  /** True when a mod deck is bound (format.ts consults this to keep the
+   *  compiled per-set decl stand-in from firing over the loader's chain
+   *  answer — a per-set declaration must not globalize again). */
+  modDeckBound(): boolean {
+    return this.modLoader !== undefined;
+  }
+
   /** The chain-walk half of resolveView (uncached). Walks the loader's
    *  per-card chain, applies format inheritance (html base), and falls
    *  to the flat engine.views[view] when no chain entry matches. */
@@ -897,8 +1596,13 @@ export class RenderEngine implements RenderEngineLike {
     this.fetcher.resetCaches();
     this.renderCards.clear();
     this.idsByKey.clear();
+    this.sessionAccountLinks = undefined;
+    this.sessionAccountLinksActorId = undefined;
+    this.sessionMyCardHtml = undefined;
     this.searchResults.clear();
     this.searchFailures.clear();
+    this.searchResultPagingMap.clear();
+    this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
     this.ruleCache.clear();
@@ -906,18 +1610,26 @@ export class RenderEngine implements RenderEngineLike {
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
+    this.coreAdminRuntimeEnsured = false;
     this.existingRuleCards = undefined;
     this.setRulePreloadDoneIds = undefined;
     this.ruleTypeIds = undefined;
     this.structureContents = undefined;
+    this.structureRuleTypes = undefined;
     this.structureProcessed.clear();
     this.structureRefMisses.clear();
     this.defaultRuleTypes = undefined;
+    this.defaultRuleContents = undefined;
     this.defaultTypeNameById = undefined;
     this.taskState = undefined;
     this.taskVerdicts.clear();
+    this.createableTypesCache = undefined;
     this.configureVerdicts.clear();
     this.itemTypeNameByHostKey.clear();
+    this.pointerItemVerdicts.clear();
+    this.pointerItemGlobalVerdictDone.clear();
+    this.warmupScannedKeys.clear();
+    this.linkScanDoneKeys = undefined;
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
@@ -948,7 +1660,9 @@ export class RenderEngine implements RenderEngineLike {
       defaultResult = batch[1];
     }
     this.structureContents = structureUniverseFromResults(result);
+    this.structureRuleTypes = structureRuleTypesFromResults(result);
     this.defaultRuleTypes = structureRuleTypesFromResults(defaultResult);
+    this.defaultRuleContents = structureUniverseFromResults(defaultResult);
   }
 
   /**
@@ -956,7 +1670,7 @@ export class RenderEngine implements RenderEngineLike {
    * `Cardio.config.default_html_view` for the CURRENT render lane (R17
    * A-36 correction; see the pageConfigActive field doc and
    * format.ts#defaultNestView): "content" while a page render is active
-   * (the production config, capture-dual-lane-page-and-view.rb:255),
+   * (the production config, capture-dual-lane-page-and-view.rb:369),
    * "titled" otherwise (the railtie default, mod/format.rb:2, under which
    * the bare-render capture ran — probe-pinned by
    * r17-nest-default-view-probe.rb: Cardio.config.default_html_view ==
@@ -967,7 +1681,28 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Run `fn` with the PAGE lane's process config active
+   * RenderEngineLike#envOriginConfig — the modeled `Card::Env.origin` for
+   * the CURRENT render lane (card-1.110.0 lib/card/env/serializable.rb:
+   * 20-22 `Cardio.config.deck_origin || "#{protocol}#{request&
+   * host_with_port}"`). The page capture sets deck_origin inside its
+   * production-config block (capture-dual-lane-page-and-view.rb:343,
+   * restored at :348); the view-function lane renders outside that block
+   * with a controller-less `Card::Env.reset` (:439), so protocol and
+   * host_with_port are both nil and the value interpolates to "".
+   * `card_url` (env/location.rb:19-21) is `"#{Env.origin}#{card_path
+   * rel}"`, so the empty origin yields the bare rooted path — the view
+   * lane's `/User`, against the page lane's
+   * `https://culturesmith.com/User`. SAME flag, SAME production-config
+   * block as defaultHtmlViewConfig above; the oracle pins both halves
+   * (6588/6588 page rows carry `decko.rootUrl='https://culturesmith.com
+   * /'`, 4 view rows carry `decko.rootUrl='/'`).
+   */
+  envOriginConfig(): string {
+    return envOriginForSurface(this.pageConfigActive);
+  }
+
+  /**
+   * Run `fn` with the process config active
    * (pageConfigActive = true, restored in finally): the page capture
    * wraps `fmt.show(nil, {})` in the production config values —
    * default_html_view :content among them — while every bare render runs
@@ -979,6 +1714,31 @@ export class RenderEngine implements RenderEngineLike {
     const prior = this.pageConfigActive;
     this.pageConfigActive = true;
     try {
+      // The help resolver installs on the VIEW path's prepare (render()
+      // below); the PAGE path bypasses render(), so install here too —
+      // once per engine (the canary guard inside prepare makes the second
+      // call a no-op). Without this the graded page lane rendered every
+      // menu popover as the &nbsp; placeholder where Ruby resolved help
+      // (26 oracle pages carry real help text; the pass-15 sass lane's
+      // three +*variables pages pin the resolved bytes).
+      // Lane p22-rules-table (head-rule popover counts): the help resolver's
+      // deck-wide Setting#count batch filters by the VIEWER's readable rule
+      // set (help-popover.ts settingRuleCountsStatement — the port of the
+      // Card.search read filter). An UNRESOLVED readPermission degrades that
+      // filter to the read_rule_id-IS-NULL branch, and every corpus *head
+      // rule carries a stored read_rule_id — the page lane rendered
+      // "(0 head rules)" where the oracle pins "(2 head rules)" (the
+      // *all+*head / PCTS+*self+*head nest-miss pages). The VIEW path folds
+      // the state earlier in render() (the permissionCold pass) before its
+      // own install; the page path must too. Once per engine: the state is
+      // memoized, render()'s permissionCold goes false, and its cold batch
+      // drops the permission statements — the folded-index math is computed
+      // from the same conditionals and stays consistent.
+      if (this.readPermission === undefined) await this.ensureReadPermission();
+      if (this.helpResolver === undefined) {
+        this.helpResolver = installHelpRules(this, this.fetcher);
+        await this.helpResolver.prepare();
+      }
       return await fn();
     } finally {
       this.pageConfigActive = prior;
@@ -1023,7 +1783,113 @@ export class RenderEngine implements RenderEngineLike {
    * candidates decide); the FIRST candidate that exists in the universe
    * wins (pattern precedence), matching rule_card's first-hit walk.
    */
+  /**
+   * RenderEngineLike#virtualLeftTypeName — the sync resolution of a
+   * compound name's LEFT card's type through the loaded *structure
+   * universe: the same candidate walk the fetch layer's virtual hook runs
+   * (resolveVirtualCardStructure — states.rb:44-50 virtual? ->
+   * templating.rb:19-48 structure_rule_card -> type.rb:78-80
+   * type_id_from_template), so a nest-miss child's TYPE_PLUS_RIGHT anchor
+   * reads the virtual left's template type instead of the context card's
+   * (the census page-22 defect: the oracle anchored
+   * TYPE_PLUS_RIGHT-set-by_name off the virtual set card
+   * "PlainText+*type" - Set via the *type+*right+*structure rule card -
+   * while the context fallback anchored cardtype-by_name off the Cardtype
+   * page card). The type NAME is read through the codename registry's
+   * memo - key-identical to the type card's name, which is all the anchor
+   * consumes (pattern/base.rb:70-73 safe_key keys the anchor name).
+   * Undefined when the universe is not loaded or no *structure rule
+   * applies (the caller keeps its context fallback - the pre-existing
+   * shape for genuinely unknown lefts).
+   */
+  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution — the
+   *  port of Ruby's known?-ness decision for a pointer/list fetch-miss
+   *  item (states.rb:65 known? = real? || virtual?; states.rb:44-50
+   *  virtual? = compound && structure.present?). The pointer-list seat
+   *  KNOWS the phantom's type (the host-resolved item type,
+   *  item.rb:245-248), so the *type candidates (<Type>+*type+*structure)
+   *  are derivable here — unlike the fetch hook, whose walk computes the
+   *  type and omits them. Undefined (=> the phantom stays UNKNOWN, the
+   *  mini_bar substitution path) when the universe is not loaded, the
+   *  name is simple, or no *structure rule resolves. The corpus pins the
+   *  split: the compound Tracked Item/Task-typed phantoms (structure rule
+   *  2081 Tracked Item+*type+*structure / 21905 Task+*type+*structure
+   *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
+   *  @8515-8987 — and the live Task card Merchandise denies as a real
+   *  card), while the simple-named denied phantoms (the view-lane census,
+   *  133 entries — Test Person 01, Morihei Ueshiba, Robert Kent, all
+   *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
+   *  two-span body: name.simple? short-circuits virtual? to false
+   *  (states.rb:45) whatever their type.
+   *  Honest static-trace limit, recorded for the next reader: the gem as
+   *  written retypes new_card_template's dup to the DEFAULT rule's type
+   *  (templating.rb:25-27 — for these phantoms RichText, whose
+   *  +*type+*structure rule is absent), so a literal reading does not
+   *  reach virtual? for the SMD/PdG phantoms; the capture deck's runtime
+   *  (not runnable on this machine — the p20-perm-residuals receipt)
+   *  demonstrably answers known? for them. The engine seats the decision
+   *  on the corpus-consistent reading — compound name + a *structure rule
+   *  resolves for the phantom's OWN type — which reproduces every pinned
+   *  surface (the four byte-exact class pages + the simple-named census +
+   *  the unit fixtures). */
+  phantomVirtualStructure(
+    name: DeckoName,
+    typeName: string | undefined,
+    typeId: number | undefined,
+  ): { ruleKey: string; templateContent: string; typeId?: number } | undefined {
+    if (!name.isCompound) return undefined;
+    if (this.structureContents === undefined || this.structureRuleTypes === undefined) {
+      return undefined;
+    }
+    return resolveVirtualCardStructure(
+      name,
+      { contents: this.structureContents, ruleTypeIds: this.structureRuleTypes },
+      undefined,
+      typeName,
+      typeId,
+    );
+  }
+  virtualLeftTypeName(name: DeckoName): string | undefined {
+    if (!name.isCompound) return undefined;
+    if (this.structureContents === undefined || this.structureRuleTypes === undefined) {
+      return undefined;
+    }
+    const resolution = resolveVirtualCardStructure(
+      name,
+      { contents: this.structureContents, ruleTypeIds: this.structureRuleTypes },
+      undefined,
+    );
+    if (resolution?.typeId === undefined) return undefined;
+    return this.fetcher.codenames.peekNameForId(resolution.typeId);
+  }
+
   newCardDefaultType(name: DeckoName): { typeId: number; typeName: string } | undefined {
+    // type.rb:58-66 ensure_type_id: `type_id_from_code ||
+    // type_id_from_template` — the ASSIGNMENT walk runs FIRST. The walk is
+    // the set-type-assignment registry over the card's type-assigning
+    // pattern module keys (*right / *type plus right; pattern/all.rb:74-81
+    // each_type_assigning_module_key) — sync: the registry is a Map and the
+    // anchor-codename lookups go through the installed name environment
+    // (warmed by warmLexicon). A registration whose type card does not
+    // resolve (`assignment[..]&.card_id` nil, type.rb:72) falls through to
+    // the template walk, exactly like Ruby's ||.
+    const assignedName = findAssignedTypeName({ name: name.s, isNew: true });
+    if (assignedName !== undefined) {
+      const env = getNameEnvironment();
+      const assignedId =
+        env?.codename?.id(assignedName) ?? env?.lexicon?.id(DeckoName.parse(assignedName).key);
+      if (assignedId !== undefined) {
+        // type.rb:32-35 quick_fetch(type_id)&.name — the TYPE CARD's name
+        // ("List"), not the registration string ("list"): the slot's
+        // data-card-type-name carries the card name (welcome_email.exp.html
+        // pins "List" where the assignment line names :list).
+        const assignedType =
+          env?.lexicon?.name(assignedId) ?? env?.codename?.nameForId(assignedId);
+        if (assignedType !== undefined) {
+          return { typeId: assignedId, typeName: assignedType };
+        }
+      }
+    }
     const universe = this.defaultRuleTypes;
     const names = this.defaultTypeNameById;
     if (universe === undefined || universe.size === 0 || names === undefined) return undefined;
@@ -1048,6 +1914,102 @@ export class RenderEngine implements RenderEngineLike {
       // type row degrades the whole resolution to untyped rather than
       // walking past the winning rule.
       return typeName !== undefined ? { typeId, typeName } : undefined;
+    }
+    return undefined;
+  }
+
+  /**
+   * RenderEngineLike#defaultRuleTypeIdForSetName — views.ts
+   * setPrototypeTypeCode's template leg, COLD arm: the set's own *default
+   * rule card's TYPE ID from the preloaded full-deck *default universe
+   * (defaultRuleUniverseStatement — every non-trashed <set>+*default rule
+   * composed by the recursive name walk, loaded in the cold render's folded
+   * batch). Ruby's template leg is a live rule-cascade data lookup
+   * (card-mod-content-0.20.0 set/all/templating.rb:27-39 template ->
+   * new_card_template -> rule_card(:default); lib/card/rule/all.rb
+   * first-hit) with NO render-warmth dependency — the warm collectRules
+   * walk (this.collectRules) only sees rule cards an earlier page render
+   * happened to warm, which made the recent-category verdicts depend on
+   * boot page order (the Search page's -51 `_category-recent` fold
+   * regression: Family/*style/Collection *content options bars rendered
+   * while their sets' List-typed *default cards 570/17452/17826 were
+   * cold). Returns undefined when the universe is not loaded (the caller
+   * keeps the not-allowed verdict — pre-fix behavior).
+   */
+  defaultRuleTypeIdForSetName(setName: string): number | undefined {
+    const universe = this.defaultRuleTypes;
+    if (universe === undefined || universe.size === 0) return undefined;
+    let key: string;
+    try {
+      key = DeckoName.parse(`${setName}+*default`).key;
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return undefined;
+      }
+      throw err;
+    }
+    return universe.get(key);
+  }
+
+  /**
+   * RenderEngineLike#ruleSetPrototypeTypeCode — card-mod-rules set/type/set.rb
+   * #prototype.type_id's CODENAME for a RULE card's set (the visible_settings
+   * input the categories machinery filters the restricted settings by):
+   * Card.fetch(subclass_for_set.prototype_args(anchor_name), new:).type_id.
+   * Delegates to views.ts #setPrototypeTypeCode — the SAME oracle-verified
+   * port the set-page board's restricted-setting filter runs (assignment
+   * layer right::<setting> / type_plus_right::<type>::<right>, template
+   * chain, SELF existing-anchor arm; grep-verified 2026-09-26 against
+   * expected-v2) — so the board enumeration and the bar categories read ONE
+   * prototype resolution, never two divergent ports. Undefined when the set
+   * card is not warm or no arm resolves (the caller's restricted-setting
+   * filter treats that as not-allowed, never allowed).
+   */
+  ruleSetPrototypeTypeCode(card: RenderCard): string | undefined {
+    if (!card.name.isCompound) return undefined;
+    const parts = card.name.parts;
+    if (parts.length < 2) return undefined;
+    // The rule card's SET card (its trunk) — the closure composes junction
+    // names from their side cards, so the trunk is warm wherever the rule
+    // card is (composeAndCache's transitive-side passes).
+    const setCard = this.fetchRenderCard(parts.slice(0, -1).join("+"));
+    if (setCard === undefined) return undefined;
+    return setPrototypeTypeCode(this, setCard);
+  }
+
+  /**
+   * The *default rule's CONTENT for a nest-miss new card (content/all.rb:
+   * 17-19 standard_content's new_card branch: `db_content ||
+   * (new_card? ? default_content : "")`, default_content = template&.
+   * db_content — the SAME winning rule card newCardDefaultType reads the
+   * type from). p20-nest-selection: the pass-15 class's 19 Project pages
+   * pin the applied form — the oracle's +discussion titled body is
+   * `discussion+*right+*default`'s `<p> </p>\r\n<p> </p>` verbatim.
+   * Returns undefined when the universe is not loaded or no candidate
+   * exists (the caller keeps dbContent "" — Ruby's nil falls through to
+   * standard_content's "" tail).
+   */
+  newCardDefaultContent(name: DeckoName): string | undefined {
+    const universe = this.defaultRuleContents;
+    if (universe === undefined || universe.size === 0) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined },
+      DEFAULT_SETTING_NAME,
+    );
+    for (const candidate of candidates) {
+      let key: string;
+      try {
+        key = DeckoName.parse(candidate).key;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          continue; // unresolved mark: no *default rule candidate
+        }
+        throw err;
+      }
+      if (!universe.has(key)) continue;
+      // NULL-content rule: Ruby's default_content nil falls through
+      // standard_content to "" — indistinguishable from no rule here.
+      return universe.get(key) ?? "";
     }
     return undefined;
   }
@@ -1196,6 +2158,91 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
+  /** Seat the read verdicts of UNKNOWN nest-target refs. Ruby fetches such
+   *  a target with `new:` (format/nest/fetch.rb) so the nest renders a NEW
+   *  card whose type RESOLVES FROM THE *default TEMPLATE before any
+   *  permission walk (mod/core/set/all/type.rb:78-80
+   *  type_id_from_template at new-card creation), and
+   *  view/permission.rb:22 `alter_unknown || denial` consults that card's
+   *  read verdict for every view whose `unknown:` config is `true` (the
+   *  view "supports unknown"). Two populations, both corpus-proven:
+   *
+   *  1. SIMPLE STARRED names (the setting-card shape — the corpus's *foot,
+   *     card 4033 trash=1): the new card's type lands on *all+*default
+   *     (rule 28, BasicCs), its read walk hits BasicCs+*type+*read (rule
+   *     22283, "Anyone Signed In") and Anonymous is denied → the quiet
+   *     denial span inside the highlighted layout source (the p20 lane's
+   *     pinned class).
+   *  2. COMPOUND names (the {{+field}} phantom family — BW Oversight's
+   *     {{+Human|closed}} leaves): the verdict is the LIVE RECURSIVE _left
+   *     walk (card-mod-permissions set/all/permissions.rb:55-71, read
+   *     verbatim this lane: `permission_rule_id` -> `rule(action).match?(
+   *     /^\[?\[?_left\]?\]?$/)` -> `left_permission_rule_id` ->
+   *     `lcard.permission_rule_id action` — the stored read_rule_id column
+   *     is never consulted). The walk itself was PROVEN verdict-correct
+   *     against the pre-change tree (env-gated probe run: BW+Human false,
+   *     the TPR virtuals false, Exhibit+Item's virtuals true, and the
+   *     CDW_Host+management guard-population walks true — Ruby's wanted-card
+   *     render), so seating the computed verdict reproduces Ruby for BOTH
+   *     directions at once: BW's leaves deny through 6569 "_left" -> left
+   *     11201 (EXISTS — the prior receipt's absent-left claim is
+   *     falsified) -> BW Oversight+*self+*read 10577 (role list, no
+   *     Anonymous); CDW_Host+management allows through its 6568-chain
+   *     left. (The whole-population fear is answered by
+   *     evidence, not scope: the walk's verdict IS Ruby's; the earlier
+   *     denial came from the BasicCs-substituted verdict input, which
+     *     this seat does not use.) Seated into deniedVerdictsByKey — the
+   *  map isDenied reads for id-less cards; pointer/list item keys keep
+   *  their richer pointerItemVerdicts path (the cql item-typing unit's
+   *  population). Verdict undefined (partial decks) seats ALLOWED — the
+   *  same undefined-means-unverifiable contract isDenied applies. Runs
+   *  AFTER preloadDefaultTypeNames (newCardDefaultType needs the *default
+   *  universe's type names) — never inline at miss time. */
+  private async seatUnknownRefReadVerdicts(): Promise<void> {
+    if (this.readPermission === undefined) return; // state not folded yet
+    for (const refKey of this.structureRefMisses) {
+      if (refKey === "" || this.deniedVerdictsByKey.has(refKey)) continue;
+      let parsed: DeckoName;
+      try {
+        parsed = DeckoName.parse(refKey);
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          continue;
+        }
+        throw err;
+      }
+      if (parsed.key === "") continue;
+      // COMPOUND phantom arm (p21-left-climb): the live walk's verdict on
+      // the absolutized name, typed by the *default template chain — the
+      // same input recipe as the simple-starred arm (Ruby's ensure_type_id
+      // type_id_from_template), never the BasicCs substitution.
+      if (parsed.isCompound) {
+        const defaulted = this.newCardDefaultType(parsed);
+        const input = {
+          name: parsed,
+          isNew: true,
+          ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+          ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+        };
+        const read = await canReadByRuleLookup(this.fetcher, input, this.readPermission);
+        this.deniedVerdictsByKey.set(refKey, read === false);
+        continue;
+      }
+      // Plain simple names stay unseeded (no setting shape, no rule
+      // universe to consult); the simple-starred arm follows.
+      if (!parsed.s.startsWith("*")) continue;
+      const defaulted = this.newCardDefaultType(parsed);
+      const input = {
+        name: parsed,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      };
+      const read = await canReadByRuleLookup(this.fetcher, input, this.readPermission);
+      this.deniedVerdictsByKey.set(refKey, read === false);
+    }
+  }
+
   /** The pattern input for one card's structure-candidate walk — the SAME
    *  fields enrichAndStore feeds safeSetKeys (leftTypeName for the *type
    *  plus right anchor, isRule for the *rule pattern), so candidate
@@ -1277,6 +2324,20 @@ export class RenderEngine implements RenderEngineLike {
    * :32-51). Preference shapes (>3 parts) return false here; the
    * corpus's structured-content path doesn't exercise them and the
    * async computeIsRule would re-fetch through the ladder for those.
+   *
+   * FORM-SUBSTRATE LANE CORRECTION (oracle-pinned by
+   * fixtures/captured/form-substrate.json rule_card_head/guide): the
+   * 2-part restriction below was WRONG against Ruby — standard_rule?
+   * (all.rb:37-44) has NO part-count limit; the 2-part "*all+*head" is a
+   * rule card exactly like the 3-part preference shape, and the async
+   * computeIsRule already implements the 2-part arm (its `else if (leftRecord
+   * !== undefined ...)` branch). The sync twin's `parts.length === 2 ->
+   * false` dropped the RULE token from every 2-part rule card's repaired
+   * set keys, and quick_edit (the first view to pin a 2-part rule card's
+   * SLOT classes — the link views carry no slot wrap) exposed it: the
+   * capture pins `... RSTAR RULE RIGHT-Xhead ...`. The preference guard
+   * stays: parts.length > 3 -> false (the corpus's structured-content
+   * path doesn't exercise preferences here).
    */
   private computeIsRuleSync(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
@@ -1289,8 +2350,9 @@ export class RenderEngine implements RenderEngineLike {
     if (rightKey === undefined) return false;
     const rightCard = this.renderCards.get(rightKey);
     if (rightCard === undefined || rightCard.record.typeId !== ids.setting) return false;
-    if (name.parts.length === 2) return false; // 2-part names can't be standard rules
-    // 3-part: standard_rule? — left (the 2-part trunk) type_id === set
+    if (name.parts.length > 3) return false; // preference shapes: not here
+    // standard_rule? — the left part ("A+B" for 3-part, "A" for 2-part)
+    // type_id === set
     const leftKey = name.leftName?.key;
     if (leftKey === undefined) return false;
     const leftCard = this.renderCards.get(leftKey);
@@ -1322,6 +2384,7 @@ export class RenderEngine implements RenderEngineLike {
         ? this.viewer
         : { signedIn: false, actorId: anonymousIdFromResults(results) };
     this.readPermission = readPermissionStateFromViewerResults(results, viewer);
+    this.readViewer = viewer;
     return this.readPermission;
   }
 
@@ -1389,11 +2452,31 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
+   * Page-render recovery seam (the perm-leak lane, 2026-09-29): resolve the
+   * read-permission state and judge every prepared card when the prepare
+   * render died BEFORE the folded batch landed. The page path catches
+   * prepare errors and continues (nested-raise semantics), but the sync
+   * render's gate reads only the precomputed verdicts — an unresolved state
+   * leaves every card unjudged, and `isDenied`'s unjudged-allowed contract
+   * then renders read-denied bodies in full (Ruby denies them; the pass-15
+   * triage booked 130 such pages). The standalone permission batch is three
+   * small statements — it succeeds where the folded closure batch died.
+   * No-op on a healthy prepare: ensureReadPermission returns the memoized
+   * state and ensureVerdicts is the map-size integer compare.
+   */
+  async ensurePermissionVerdicts(): Promise<void> {
+    await this.ensureReadPermission();
+    await this.ensureVerdicts();
+  }
+
+  /**
    * Verdicts for every card the render can touch — the sync render path
-   * reads only this map. Stored read_rule_id cards resolve purely
-   * (permissions.rb:142-143); cards without one fall back to the live rule
-   * walk (permission_rule_id, permissions.rb:55-61) — bounded by the
-   * hasReadRules gate, so rule-less seeds cost zero queries and stay
+   * reads only this map. The mod set-module ok_to_read? overrides
+   * (read-override.ts) decide first for their populations; cards they defer
+   * (or that match no override) resolve through the stored read_rule_id
+   * purely (permissions.rb:142-143), and cards without one fall back to the
+   * live rule walk (permission_rule_id, permissions.rb:55-61) — bounded by
+   * the hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
   /** renderCards.size at the moment the full judgment loop last completed.
@@ -1417,38 +2500,101 @@ export class RenderEngine implements RenderEngineLike {
         // (set/all/permissions.rb:139-146). Keyed by card key: virtual
         // cards share no id space.
         if (this.deniedVerdictsByKey.has(card.key)) continue;
-        const byRule = await canReadByRuleLookup(
-          this.fetcher,
-          await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
-          state,
+        const allowed = await this.cardReadAllowed(
+          card.name,
+          undefined,
+          card.record.typeId,
+          card.typeName,
+          undefined,
         );
-        this.deniedVerdictsByKey.set(card.key, byRule === false);
+        this.deniedVerdictsByKey.set(card.key, allowed === false);
         continue;
       }
       if (this.deniedVerdicts.has(card.id)) continue;
-      const stored = card.record.readRuleId;
-      if (stored !== undefined) {
-        // The STORED read_rule_id is the verdict input, full stop. Ruby's
-        // ok_to_read? (set/all/permissions.rb:139-146) is
-        // `self.read_rule_id ||= permission_rule_id :read; return true if
-        // Auth.as_card.read_rules_hash[read_rule_id]` — the `||=` keeps the
-        // stored value whenever one exists, so the live candidate walk runs
-        // ONLY for cards without a stored id. (The previous two-pass here
-        // consulted the live walk on a stored denial and flipped to allow
-        // when a more-general candidate granted — a permissiveness Ruby
-        // does not have, and one whose verdict memoized per engine id, so
-        // an early entry's flip poisoned every later render of the card.)
-        this.deniedVerdicts.set(card.id, !canReadByStoredRule(stored, state));
-        continue;
-      }
-      const byRule = await canReadByRuleLookup(
-        this.fetcher,
-        await this.verdictPatternInput(card.name, card.id, card.record.typeId, card.typeName),
-        state,
+      const allowed = await this.cardReadAllowed(
+        card.name,
+        card.id,
+        card.record.typeId,
+        card.typeName,
+        card.record.readRuleId,
       );
-      this.deniedVerdicts.set(card.id, byRule === false); // undefined = rule-less: allowed
+      this.deniedVerdicts.set(card.id, allowed === false);
     }
     this.verdictsJudgedAtMapSize = this.renderCards.size;
+  }
+
+  /**
+   * The full ok_to_read? port for one card. The mod set-module overrides
+   * (read-override.ts — right::head/script/enabled_roles/style true, the
+   * account family own_account?/own_email?, asset_output -> left) REPLACE
+   * the generic path whenever they decide; `super` and non-matching cards
+   * fall through to the generic stored/live verdict exactly as before.
+   * Ruby always_ok? sits BEFORE ok_to_read? for every override outcome
+   * (each override's own always_ok branch or the generic short-circuit),
+   * so an always-ok viewer skips the override walk entirely — identical
+   * verdicts, zero override queries.
+   */
+  private async cardReadAllowed(
+    name: DeckoName,
+    id: number | undefined,
+    typeId: number | undefined,
+    typeName: string | undefined,
+    storedReadRuleId: number | undefined,
+    depth = 0,
+  ): Promise<boolean | undefined> {
+    const state = this.readPermission;
+    if (state === undefined) return undefined;
+    if (!state.alwaysOk) {
+      const override = await readPermissionOverride(name, {
+        viewerKey: await this.resolveViewerKey(),
+        fetchByKey: (key) => this.fetcher.fetchByKey(key),
+        fetchById: (cardId) => this.fetcher.fetchById(cardId),
+        leftReadVerdict: (leftName, leftDepth) =>
+          this.leftReadAllowed(leftName, leftDepth),
+      }, depth);
+      if (override !== undefined) return override;
+    }
+    if (id !== undefined && storedReadRuleId !== undefined) {
+      return canReadByStoredRule(storedReadRuleId, state);
+    }
+    return canReadByRuleLookup(
+      this.fetcher,
+      await this.verdictPatternInput(name, id, typeId, typeName),
+      state,
+    );
+  }
+
+  /** right::asset_output's `left.ok_to_read?` — the LEFT card's full
+   *  verdict (its own overrides included), resolved through the same
+   *  cardReadAllowed machinery so the recursion memoizes into the shared
+   *  verdict maps. A missing left row defers (undefined) — no verdict is
+   *  fabricated from absent data. */
+  private async leftReadAllowed(
+    leftName: DeckoName,
+    depth: number,
+  ): Promise<boolean | undefined> {
+    const leftRecord = await this.fetcher.fetchByKey(leftName.key);
+    if (leftRecord === undefined) return undefined;
+    return this.cardReadAllowed(
+      leftRecord.name ?? leftName,
+      leftRecord.id,
+      leftRecord.typeId,
+      undefined,
+      leftRecord.readRuleId,
+      depth,
+    );
+  }
+
+  /** Ruby Auth.as_card.key — the readViewer actor card's canonical key,
+   *  resolved once per permission-state generation. */
+  private async resolveViewerKey(): Promise<string | undefined> {
+    if (this.readViewerKeyResolved) return this.readViewerKey;
+    this.readViewerKeyResolved = true;
+    const actorId = this.readViewer?.actorId;
+    if (actorId === undefined) return undefined;
+    const actor = await this.fetcher.fetchById(actorId);
+    this.readViewerKey = actor?.key;
+    return this.readViewerKey;
   }
 
   /** Populate the typeCode field on every prepared render card. The
@@ -1474,9 +2620,10 @@ export class RenderEngine implements RenderEngineLike {
 
   /** Read verdict for one card record — the per-card half of ensureVerdicts,
    *  shared by entries that serve card data outside the HTML view pipeline
-   *  (deploy/worker.ts cardRecordJson). Stored read_rule_id resolves purely
-   *  (canReadByStoredRule, permissions.rb:142-143); cards without one fall
-   *  back to the live rule walk (canReadByRuleLookup, permissions.rb:55-61;
+   *  (deploy/worker.ts cardRecordJson). The full ok_to_read? port — the mod
+   *  set-module overrides first (cardReadAllowed -> read-override.ts), then
+   *  the stored read_rule_id (canReadByStoredRule, permissions.rb:142-143),
+   *  then the live rule walk (canReadByRuleLookup, permissions.rb:55-61;
    *  undefined = rule-less deck: allowed, the documented divergence).
    *  `typeName` is optional — the *type pattern's anchor name; callers that
    *  already hold the type record pass it, others let the lookup resolve.
@@ -1484,26 +2631,23 @@ export class RenderEngine implements RenderEngineLike {
    *  so a card judged here is judged for the HTML path too (and vice versa:
    *  an existing verdict short-circuits). */
   async canReadCard(record: CardRecord, typeName?: string): Promise<boolean> {
-    const state = await this.ensureReadPermission();
+    await this.ensureReadPermission();
     if (record.id !== undefined && this.deniedVerdicts.has(record.id)) {
       return !this.deniedVerdicts.get(record.id);
     }
-    let denied: boolean;
-    const stored = record.readRuleId;
-    if (stored !== undefined) {
-      // The stored read_rule_id is final (permissions.rb:139-146 — the
-      // `||=` keeps the stored value; see ensureVerdicts).
-      denied = !canReadByStoredRule(stored, state);
-    } else {
-      const byRule = record.name
-        ? await canReadByRuleLookup(
-            this.fetcher,
-            await this.verdictPatternInput(record.name, record.id, record.typeId, typeName),
-            state,
-          )
-        : true; // a name-less record has no rule candidates (not a real card)
-      denied = byRule === false; // undefined = rule-less: allowed
-    }
+    // A name-less record has no set membership and no rule candidates (not
+    // a real card) — the overrides cannot apply and the walk cannot run.
+    const allowed =
+      record.name === undefined
+        ? true
+        : await this.cardReadAllowed(
+            record.name,
+            record.id,
+            record.typeId,
+            typeName,
+            record.readRuleId,
+          );
+    const denied = allowed === false;
     // Verdict memoization mirrors ensureVerdicts' split keying: real cards
     // by id, virtual (id-less) cards by canonical key.
     if (record.id !== undefined) this.deniedVerdicts.set(record.id, denied);
@@ -1543,6 +2687,35 @@ export class RenderEngine implements RenderEngineLike {
     return this.renderCards.get(key);
   }
 
+  /** view-fail class V4 — links.rb:140-144 add_known_or_wanted_class truth
+   *  for a render-map miss. Ruby's `Card.known?(name)` is a LIVE fetch
+   *  (cache, then DB): the class of a wikilink anchor reflects existence,
+   *  never prefetch reach. The sync render path cannot query, so this peek
+   *  covers the one existence source the cold render already carries in
+   *  memory: the codename registry's codehash memo (codename.rb
+   *  load_codehash — the same fold every cold render's batch rides, and the
+   *  same load Ruby's registry memoizes). A map miss whose key is a
+   *  registered codename with a non-NULL registered name IS a live card
+   *  ([[List]]/[[Pointer]]/[[Search]] — the *content options help popover's
+   *  cardtype links, 10 of the class's 15 dump entries). Returns the
+   *  registered card NAME (link_to_card's href source, base.rb:43-47) or
+   *  undefined when the name is not a live card. NULL-name junction rows
+   *  stay undefined (wanted-card) — absence of knowledge never flips a
+   *  class; the corpus's People Green pin (wanted on BOTH sides) is the
+   *  guard. Regular (uncodenamed) cards resolve through the prepare-phase
+   *  link-target warm pass below instead, which seats the real record. */
+  peekKnownCardName(name: string): string | undefined {
+    let key: string;
+    try {
+      key = DeckoName.parse(name).key;
+    } catch {
+      return undefined; // unresolvable mark: never known (cardReferenceKeys' tolerance)
+    }
+    const id = this.fetcher.codenames.peekId(key);
+    if (id === undefined) return undefined;
+    return this.fetcher.codenames.peekRegisteredName(id);
+  }
+
   /** On-demand enrichment for items referenced by plain text (not via
    *  {{...}}) — the pointer/list core view reads item names from
    *  db_content and renders each one as a nested slot. The closure walk
@@ -1563,6 +2736,111 @@ export class RenderEngine implements RenderEngineLike {
     return this.enrichAndStore(record);
   }
 
+  /** view-fail class V4 — the prepare-phase link-target warm pass. The sync
+   *  render's wikilink anchors (renderLinkChunk + the Link-chunk walker,
+   *  format.ts) classify known/wanted off the prepared map, and Ruby asks a
+   *  LIVE fetch per anchor. A fresh-process render of a card whose content
+   *  (or static help popover) links cards no {{nest}} reference reaches
+   *  emitted wanted-card for existing cards — 15 pass-15 dump entries
+   *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
+   *  5x card-body links like Anthony Gonzales's [[Bluevolution]]).
+   *
+   *  Harvest (memory only): the [[target]] matches of every prepared card's
+   *  dbContent not yet scanned (once per engine per card), plus the rendered
+   *  root's registered static setting-help text (the popover bytes are
+   *  registry strings — no card's dbContent carries them). Resolution: map
+   *  hit skips (already truthful); peekKnownCardName hit skips (the
+   *  codename memo is the existence truth, query-free); everything else
+   *  rides prepareItemForRender — fetch + enrich + memoize, so the sync
+   *  anchor reads the REAL record (href carries the stored name's casing,
+   *  the corpus's [[narrative]] -> /Narrative shape). Fetch misses leave
+   *  the anchor wanted-card: the oracle's own wanted pins (People Green)
+   *  must not flip.
+   *
+   *  Cost: zero statements on renders whose surfaces carry no new
+   *  unresolvable link targets (the depth-sweep chain, the prelude pins);
+   *  one point query per NEW existing target, Ruby's own cost model. The
+   *  harvested-then-seated cards join AFTER the last verdict pass, so the
+   *  same skip-if-set re-pass every other enrichment group runs here. */
+  private async enrichLinkTargetsForKnownClass(rootCard: RenderCard): Promise<void> {
+    const targets: string[] = [];
+    if (this.linkScanDoneKeys === undefined) this.linkScanDoneKeys = new Set();
+    for (const card of this.renderCards.values()) {
+      if (this.linkScanDoneKeys.has(card.key)) continue;
+      this.linkScanDoneKeys.add(card.key);
+      const content = card.dbContent;
+      if (content === undefined || content === "" || !content.includes("[[")) continue;
+      collectLinkTargetNames(content, targets);
+    }
+    const staticHelp = this.helpResolver?.peekStaticHelpTextFor(rootCard);
+    if (staticHelp !== undefined && staticHelp.includes("[[")) {
+      collectLinkTargetNames(staticHelp, targets);
+    }
+    let seated = false;
+    for (const target of targets) {
+      if (this.fetchRenderCard(target) !== undefined) continue;
+      // NO registry-hit skip here: the codename memo answers the classifier
+      // arms that consult it (format.ts renderLinkChunk's peek), but the
+      // popover's nest-path classifier (help-popover.ts renderLinkChunk ->
+      // fmt.nest view :link -> titleLinkView) reads the SEATED card's
+      // unknown flag - a registry-known but map-absent target renders a
+      // phantom (wanted-card) unless it joins the prepared map. The V4
+      // suite's *content options popover pin (known-card [[List]] /
+      // [[Pointer]] / [[Search]]) is the guard. Cost: one point query per
+      // registry-known harvested target - the same cost model as the
+      // un-skipped arm below (bar-slots lane's own doc).
+      const prepared = await this.prepareItemForRender(target);
+      if (prepared !== undefined) seated = true;
+    }
+    if (seated) await this.ensureVerdicts();
+  }
+
+  /** Whether any prepared card's content carries a `|configs` nest opt —
+   *  the Role dashboards' `{{_L|configs}}` shape (card-mod-account
+   *  set/type/role.rb view :configs dispatches). The async
+   *  prepare gates the admin-runtime build on this (see
+   *  ensureCoreAdminRuntime): pages that never reach the view pay zero
+   *  queries, so the query-count gates stay untouched.
+   *
+   *  MOD PAGES (mm-cstructural, 2026-09-30): a Mod-typed card's :core also
+   *  reads the admin runtime — the Cardtypes accordion nests admin.yml
+   *  codenames through `codenameToName` (core-mod.ts nestItemHtml), and
+   *  Ruby's nest resolves a SYMBOL argument with `Card.fetch` (an
+   *  existing-card fetch), so the slot's `nest_name` is the codename card's
+   *  AUTHORED name — the oracle's `nest_name: Role`, not the yml's `role`
+   *  (format/nest.rb:28 `view_opts[:nest_name] ||= card.name`). Without the
+   *  runtime the map is empty, the raw codename is nested, and the slot JSON
+   *  disagrees. The Depends-on section is deliberately NOT in this class:
+   *  `card_mods` yields STRINGS (type/mod.rb:222-226), and a String argument
+   *  takes nest/fetch.rb:31-33's `new_card` branch, which keeps the literal
+   *  (`mod_-account`) — which is what the oracle shows. So the trigger is
+   *  Mod-TYPED, not "the page nests a mod". */
+  renderClosureNeedsCoreAdminRuntime(): boolean {
+    for (const card of this.renderCards.values()) {
+      const content = card.dbContent?.toString();
+      if (content !== undefined && content.includes("|configs")) return true;
+      if (card.typeCode === "mod") return true;
+    }
+    return false;
+  }
+
+  /** The core mod's admin runtime (mod-core's prepareAdminRuntime: the
+   *  mod cards, the *update-rule role walk) built lazily for engines with
+   *  NO bound loader — the graded page-lane harness shape, where the mod
+   *  prepareEngine never ran and the :configs view would otherwise read an
+   *  empty admin universe. Sync view
+   *  bodies cannot await a build, so the page lane calls this from the
+   *  async prepare (gated by renderClosureNeedsCoreAdminRuntime) BEFORE
+   *  the sync render dispatches. Once per engine (the flag; resetCaches
+   *  re-arms). */
+  async ensureCoreAdminRuntime(): Promise<void> {
+    if (this.coreAdminRuntimeEnsured) return;
+    this.coreAdminRuntimeEnsured = true;
+    const host = modEngineHost(this, this.fetcher);
+    bindModuleAdminHost(host);
+    await prepareAdminRuntime(host);
+  }
+
   /** Interface hook: track an unknown-card nest target. The render
    *  engine doesn't currently use this for negative-caching, but the
    *  signature is required by RenderEngineLike. */
@@ -1577,7 +2855,7 @@ export class RenderEngine implements RenderEngineLike {
    *  surface — round trips, statements, rounds, fallbacks). */
   lastWarmupStats: WarmupStats | undefined;
 
-  /** The page lane's layout warm-up chase, bounded + batched (see
+  /** The layout warm-up chase, bounded + batched (see
    *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
    *  references (spine: nest targets + pointer/list items, which render
    *  and expand; leaf: [[link]] targets, which are existence-reads only)
@@ -1597,6 +2875,7 @@ export class RenderEngine implements RenderEngineLike {
         lexicon: this.fetcher.lexicon,
         cacheRecord: (cached) => this.cacheFetchedRecord(cached).then(() => undefined),
         getCard: (key) => this.renderCards.get(key),
+        scannedKeys: this.warmupScannedKeys,
         ...(this.fetcher.virtualCardLookup !== undefined
           ? {
               virtualLookup: async (abs: string) =>
@@ -1612,6 +2891,105 @@ export class RenderEngine implements RenderEngineLike {
     return stats;
   }
 
+  /**
+   * Pre-execute the Search-type cards the page's NEST CLOSURE reaches — the
+   * reference-BFS from the given seed cards over the prepared-card map, run
+   * at the point the page renderer calls it: after the prepare render +
+   * warm-up enrichment (the cards are on the map) but BEFORE the sync
+   * body/layout render dispatches their nests. The card_list view reads ONLY
+   * the pre-executed map (executeSearch → searchResults.get(key) ?? []), so
+   * a warm-enriched but unexecuted search renders search-no-results with
+   * zero queries — the 10-census-page SEARCH-EMPTY class (cache-nil-fix.md
+   * section 3).
+   *
+   * Ruby parity: card-mod-search set/abstract/0_search/views.rb view
+   * :card_list calls search_with_params -> Abstract::Search#search ->
+   * query.run INSIDE the view dispatch — the CQL executes during the
+   * request, synchronously, before the page's bytes are complete; there is
+   * no sync/async split in the Ruby request. This pass IS that view-time
+   * execution for the nest-closure searches, hoisted into the async phase
+   * the port runs before the sync render.
+   *
+   * SCOPE (the perf guard): only cards the page actually NESTS. The walk is
+   * prepareSearches' own algorithm — content references + search result
+   * items — extended to resolve RELATIVE references contextually (the
+   * warm-up's resolveWarmName semantics: absolute stays, relative resolves
+   * against the referencing card; prepareSearches' cardReferenceKeys skips
+   * them, which is exactly the gap). Cards that join the prepared map
+   * WITHOUT being nested — type-record sides (the `*search` type card joins
+   * as the junction searches' typeId row: executing it ran a whole-deck CQL
+   * whose 11,964 result items cascaded the pass across the deck),
+   * pointer-item chases, link targets — are never seeded and never reached,
+   * so the pass costs only what the page's own nests imply.
+   *
+   * Guards mirror prepareSearches exactly: the SEARCH_TYPE_CODE gate, the
+   * already-seated skip (searchResults/searchFailures — prepareSearches
+   * executed these during the prepare render), the isDenied skip (verdicts
+   * are fresh — the caller refreshes after the warm-up enrichment and again
+   * for the result items), and the BadQuery catch that seats an empty result
+   * + records the failure for the dispatch boundary's re-raise. Returns the
+   * number of searches executed (0 when every closure search is seated —
+   * warm re-renders).
+   */
+  async prepareNestClosureSearches(seeds: WarmupRef[]): Promise<number> {
+    this.populateTypeCodes();
+    const visited = new Set<string>();
+    const queue: RenderCard[] = [];
+    for (const seed of seeds) {
+      let key: string | undefined;
+      try {
+        const parsed = DeckoName.parse(seed.name);
+        key = (
+          parsed.isAbsolute ? parsed : parsed.absoluteName(DeckoName.parse(seed.context))
+        ).key;
+      } catch {
+        continue;
+      }
+      if (key === undefined) continue;
+      const card = this.renderCards.get(key);
+      if (card !== undefined && !visited.has(card.key)) queue.push(card);
+    }
+    let executed = 0;
+    while (queue.length > 0) {
+      const card = queue.shift() as RenderCard;
+      if (visited.has(card.key)) continue;
+      visited.add(card.key);
+      // Content references resolve exactly like the warm-up enrichment that
+      // put these cards on the map: absolute names stay, relative names
+      // resolve against the REFERENCING card (the sync nest dispatch's own
+      // resolution context).
+      for (const ref of referencedNames(card.dbContent)) {
+        let refKey: string | undefined;
+        try {
+          const parsed = DeckoName.parse(ref.name);
+          refKey = (parsed.isAbsolute ? parsed : parsed.absoluteName(card.name)).key;
+        } catch {
+          continue;
+        }
+        if (refKey === undefined) continue;
+        const refCard = this.renderCards.get(refKey);
+        if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard);
+      }
+      if (card.typeCode !== SEARCH_TYPE_CODE) continue;
+      if (this.searchResults.has(card.key) || this.searchFailures.has(card.key)) continue;
+      if (this.isDenied(card)) continue;
+      try {
+        const items = await this.runSearch(card);
+        this.searchResults.set(card.key, items);
+        queue.push(...items);
+      } catch (err) {
+        // Same parse-failure contract as prepareSearches: BadQuery seats an
+        // empty result and records the exact error for the dispatched view to
+        // re-raise; unknown errors are NOT parse failures — rethrow.
+        if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
+        this.searchFailures.set(card.key, err);
+        this.searchResults.set(card.key, []);
+      }
+      executed++;
+    }
+    return executed;
+  }
+
   /** Hosts whose pointer/list enrichment has COMPLETED (every item line
    *  either resolved into renderCards or is a true fetch miss — the deck
    *  is static per engine lifetime, so a processed host can never present
@@ -1619,6 +2997,24 @@ export class RenderEngine implements RenderEngineLike {
    *  new; reportUnknownCard is a documented no-op, so re-walking only
    *  re-parses). Keyed by host key, mirroring itemTypeNameByHostKey. */
   private pointerListHostsDone = new Set<string>();
+  /** +*account cards whose email/password field records the closure already
+   *  warmed (the account core view's sync field_nest fetches; see
+   *  enrichPointerListItemsClosure). */
+  private accountFieldWarmDone = new Set<string>();
+
+  /** ENGINE-LIFETIME warm-up scan memory (prefetch.ts scannedKeys): card
+   *  keys whose reference scan some page render's layout warm-up already
+   *  performed. The warm-up worklist is per-call, but the reference BFS it
+   *  walks terminates in engine state (renderCards), so once a card's refs
+   *  have been chased the chase can never find anything new on this engine
+   *  - the deck is static (the pointerListHostsDone contract). Without this
+   *  memory the warm-up's drain of warm-but-unscanned pending entries (the
+   *  render-state-fix order-independence fix) re-scans the whole
+   *  layout-connected closure (~6k corpus cards, pure CPU regex work) on
+   *  EVERY warm page render. Cleared in resetCaches() (the map it describes
+   *  is cleared there) and per key in expireRenderCard() (a dropped card's
+   *  content refs must be re-chased if it comes back). */
+   private warmupScannedKeys = new Set<string>();
 
   /** Set by enrichAndStore on every NEW render card, consumed by
    *  enrichPointerListItemsClosure: renderCards only grows, so a render
@@ -1671,6 +3067,123 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
+  /** TEMPLATE-LINK SET JUNCTION targets already composed (or determined
+   *  absent) for this engine lifetime. Keyed by the composed NAME, the
+   *  pointerListHostsDone shape: the deck is static, so a later render's
+   *  pass cannot find a new answer for a name it already asked about. */
+  private templateLinkJunctionTargetsDone = new Set<string>();
+  /** Templated-nests rule cards whose content the junction warm already
+   *  scanned. The gate that keeps this pass off the other ~47k deck cards
+   *  is `isTemplatedNestsName` (the `*default` / `*structure` right tag),
+   *  not this set — the set only avoids re-parsing a rule body. */
+  private templateLinkJunctionScanned = new Set<string>();
+  /** renderCards.size at the last junction sweep: new stores are the only
+   *  thing that can add an unscanned rule card. */
+  private templateLinkJunctionLastSize = -1;
+
+  /** D9 (warm-map junction load): seat the junction cards that
+   *  card-mod-edit's :template_nest view composes, so the sync nest that
+   *  view dispatches finds the REAL card instead of fabricating an unknown.
+   *
+   *  The mechanism this closes, in Ruby:
+   *
+   *  - `modal_nest_view` (mode.rb) swaps a :template-mode nest's view for
+   *    `:template_nest`, whose field-only branch nests
+   *    `template_link_set_name` (template_nest.rb:5-8) — an ABSOLUTE name
+   *    built by the view at render time, `Role+*members+*type plus right`
+   *    for page 105's `{{+*members}}`.
+   *  - That programmatic nest resolves through `fetch_card` ->
+   *    `new_card` (format/nest/fetch.rb:13, :30-33) -> `Card.fetch name,
+   *    new: {...}`. `Fetch#normalize_mark` (fetch.rb:36-41) absolutizes the
+   *    mark, then `retrieve_from_db` (fetch/retrieve.rb:21-26) queries it.
+   *  - `retrieval_from_db_query_base` (retrieve.rb:35-41) takes the
+   *    `key:` branch ONLY for a SIMPLE mark; a compound mark goes to
+   *    `id_from_mark` (retrieve.rb:43-45) = `Lexicon.id(mark_value)`, and
+   *    `name_to_lex`/`lex_to_id` (lexicon.rb:112-128) resolve it as
+   *    `Card.where(left_id:, right_id:, trash: false)` — a LIVE left x right
+   *    join on the NAME, never a reference lookup.
+   *
+   *  The port's `fetchRenderCard` is a warm-map read and its prepare walk is
+   *  driven by `card_references` rows. Corpus 6a44dfdc: 9,593 live compound
+   *  rows carry `name`/`key` NULL and ZERO inbound references, so they are
+   *  never warmed. The two witnesses are 45421 (`Role+*members+*type plus
+   *  right`, page 105 `{{+*members}}`) and 6554
+   *  (`Cardtype+description+*type plus right`, page 88 `{{+description}}`)
+   *  — both exist, both rendered the fabricated unknown shape (no
+   *  `data-card-id`, url_key `data-card-name`, no SELF set-key token).
+   *
+   *  Why a prepare-phase pass and not a sync lookup: the render is
+   *  synchronous after prepare (the whole enrichAndStore/type-opt/pointer
+   *  family above is the same constraint), and the name the view composes
+   *  is not in any card's content — it is computed inside the view — so no
+   *  content-reference walker can see it. This pass composes the SAME
+   *  names through the SAME shared function the view runs
+   *  (`templateLinkSetNameFromParts`, render/views.ts) and warms them
+   *  through `prepareItemForRender`, which runs the faithful fetch ladder
+   *  and therefore lands on `retrieveFromDb` -> `lexicon.id` ->
+   *  `Card.where(left_id, right_id)`. That is Ruby's own resolution, not
+   *  a key lookup: a junction row with a NULL key is unreachable by any
+   *  key path.
+   *
+   *  Gate, population and blast radius (census over corpus 6a44dfdc, the
+   *  sha-verified copy): 101 live cards sit in the `on_type_set` shape
+   *  (their trunk's tag is the `type` codename card); 40 of them carry a
+   *  `{{` in content; their 316 field-only relative nests compose 26
+   *  junctions that HAVE a row and 290 that do not. A composed name with
+   *  no row warms nothing and leaves the unknown-card bytes exactly as
+   *  they are, so the flip is bounded to those 26. The D9 witness sites
+   *  are two of them (105 -> 45421, 88 -> 6554; 17770 -> 6554 is the same
+   *  junction from a sibling rule).
+   *
+   *  Idempotence, same contract as enrichNestTypeOptTargets: each rule card
+   *  is content-scanned once per engine lifetime, and each composed name is
+   *  asked once. The pass returns after the map stops growing, which is
+   *  structural — enrichAndStore skips existing keys. */
+  private async enrichTemplateLinkSetJunctions(): Promise<void> {
+    if (this.renderCards.size === this.templateLinkJunctionLastSize) return;
+    this.templateLinkJunctionLastSize = this.renderCards.size;
+    const need = new Set<string>();
+    for (const card of this.renderCards.values()) {
+      if (this.templateLinkJunctionScanned.has(card.key)) continue;
+      const content = card.dbContent;
+      if (content === undefined || content === "" || !content.includes("{{")) continue;
+      if (!isTemplatedNestsName(card.name)) continue;
+      this.templateLinkJunctionScanned.add(card.key);
+      // template_nest.rb:23-31 on_type_set: the parent rule's TRUNK's TAG
+      // must be the `type` codename card; the composition then takes the
+      // TRUNK's LEFT as the base. Mirrors card-mod-edit#onTypeSet, which
+      // reads the same two names off the same warm map.
+      const trunk = card.name.trunkName;
+      const tagCard = this.fetchRenderCard(trunk.tagName.s);
+      const base = tagCard?.record.codename === "type" ? trunk.leftName : undefined;
+      for (const piece of scanNests(content)) {
+        if (piece.kind !== "nest" || piece.nest === undefined) continue;
+        if (piece.nest.comment !== undefined) continue;
+        const raw = piece.nest.name.trim();
+        if (raw === "" || raw === "_" || raw === "_self") continue;
+        let nestName: DeckoName;
+        try {
+          nestName = DeckoName.parse(raw);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+          throw err;
+        }
+        // template_nest.rb:5-8 reaches the composition only on the
+        // field-only arm (`field_only?`, fields.rb:33-35).
+        if (!nestName.fieldOnly) continue;
+        const composed = templateLinkSetNameFromParts(base, nestName);
+        if (composed.s === "" || this.templateLinkJunctionTargetsDone.has(composed.key)) continue;
+        if (this.fetchRenderCard(composed.s) !== undefined) {
+          this.templateLinkJunctionTargetsDone.add(composed.key);
+          continue;
+        }
+        need.add(composed.s);
+        this.templateLinkJunctionTargetsDone.add(composed.key);
+      }
+    }
+    for (const name of need) await this.prepareItemForRender(name);
+  }
+
   /** Pre-enrich the items of every pointer/list card reachable in the
    *  render-card map, repeating until the map stops growing (an enriched
    *  item may itself be a pointer/list host whose items need the same
@@ -1700,21 +3213,62 @@ export class RenderEngine implements RenderEngineLike {
       // determine_item_view_options_type chain (card-mod-search
       // 0_search/views.rb:132-136), so the items' slot JSON carries the
       // search's own cql :type (cql_search.rb:14-19 item_type_id).
+      // Skin-typed cards join for the same reason: card-mod-style
+      // set/type/skin.rb:3 `include_set List` puts Type::Skin on
+      // Abstract::List, so a Skin host's items run the identical
+      // nest_item walk (the pass-15 Skin pages' phantom items need their
+      // read verdicts precomputed exactly like list hosts').
       // Iterate the map directly (no intermediate array): the prewarmed
       // map holds the whole deck, and this filter runs every render.
       for (const card of this.renderCards.values()) {
+        // The +*account cards' field records: card-mod-account
+        // set/right/account/views.rb view :core nests +*email and +*password
+        // (accountFieldNest, views.ts) — fields the CONTENT-based closure
+        // never references (the +*account row's db_content is empty; the
+        // fields ride the mod's VIEW, not authored nests). The sync
+        // fetchRenderCard in nest() is cache-only, so without this warm the
+        // +*email nest misses and renders a PHANTOM where the oracle pins
+        // the real row's labeled view (data-card-id 19978 on
+        // Anonymous+*account). Ruby-faithful surface: exactly the two fields
+        // the gem's core view nests, resolved through Card.fetch's key
+        // ladder (prepareItemForRender) like every other cache-miss need.
+        if (
+          card.name.isCompound &&
+          card.name.rightName?.key === "*account" &&
+          !this.accountFieldWarmDone.has(card.key)
+        ) {
+          this.accountFieldWarmDone.add(card.key);
+          const beforeAccount = this.renderCards.size;
+          await this.prepareItemForRender(`${card.name.s}+*email`);
+          await this.prepareItemForRender(`${card.name.s}+*password`);
+          if (this.renderCards.size !== beforeAccount) grew = true;
+        }
         if (
           card.typeCode !== "pointer" &&
           card.typeCode !== "list" &&
           card.typeCode !== "search_type" &&
+          card.typeCode !== "skin" &&
           card.typeName !== "Search"
         ) {
           continue;
         }
         if (this.pointerListHostsDone.has(card.key)) continue;
         const before = this.renderCards.size;
-        await this.enrichPointerListItems(card);
+        // Host item type FIRST: the unknown-item read
+        // verdict must be computed on the phantom's REAL type — Ruby folds
+        // `options[:type] = card.item_type_name` into the item nest BEFORE
+        // the fetch (item.rb:149-158 determine_item_view_options_type), and
+        // new_unknown_item_args (item.rb:245-248) builds the fetch-miss card
+        // from that folded arg. A verdict computed before the host's item
+        // type resolves typed every phantom with the *all+*default template
+        // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
+        // Signed In" denied Anonymous — rendering the two-span denied body
+        // for exactly the host-typed unknown items Ruby renders the full
+        // bar for (Kimberly Richardson id 18560, Michael Christensen+musings
+        // id 14546; the captured oracle renders bar-body/card-title/
+        // bar-menu for both).
         await this.resolveHostItemTypeName(card);
+        await this.enrichPointerListItems(card);
         this.pointerListHostsDone.add(card.key);
         if (this.renderCards.size !== before) grew = true;
       }
@@ -1734,6 +3288,116 @@ export class RenderEngine implements RenderEngineLike {
     card: RenderCard,
   ): { typeName: string; typeId: number } | undefined {
     return this.itemTypeNameByHostKey.get(card.key);
+  }
+
+  /** The unknown-item verdicts the pointer walk precomputed (the sync read
+   *  side; see pointerItemVerdicts). `hostKey` = the RENDERING host's card
+   *  key — Ruby's phantom is per-nest, so the lookup is per (host, item). */
+  pointerItemVerdict(
+    hostKey: string,
+    key: string,
+  ): { read: boolean; create: boolean | undefined } | undefined {
+    return this.pointerItemVerdicts.get(`${hostKey}|${key}`);
+  }
+
+  /**
+   * Precompute the read + create verdicts for every UNKNOWN pointer/list
+   * item line of one host (the fetch misses enrichPointerListItems found).
+   * The verdicts are Ruby's own gates on the phantom's pattern input:
+   *  - read: canReadByRuleLookup (the *read rule walk, read-rules.ts) —
+   *    the oracle split this decides: the demo deck's "radio" item renders
+   *    the FULL mini_bar body for every actor (its *all+*read grants
+   *    Anyone) while the corpus's denied phantoms render the two-span body
+   *    (pointerListItemBodyForUnknown) — one mechanism, two verdicts.
+   *  - create: taskVerdictForCard(:create) (view-task-rules.ts) — the
+   *    unknown/mini_unknown views' createable gate (html/error.rb:19-21
+   *    `card.ok?(:create) ? yield : ""`): the demo oracle renders the
+   *    unknown-link bytes for bot only.
+   * Stored per item key; the sync item path reads them query-free via
+   * pointerItemVerdict. Also folded into the engine's standard verdict
+   * maps (deniedVerdictsByKey / taskVerdicts) so every other consumer
+   * (isDenied, taskAllowed) answers the phantom consistently.
+   *
+   * `hostItemType` is the HOST's resolved item_type_name — the SAME
+   * identity the sync render path folds into the phantom
+   * (renderUnknownPointerListItem -> phantomIdentity). Ruby types the
+   * fetch-miss item with it (new_unknown_item_args, item.rb:245-248:
+   * `itype = args[:type] || item_type_name`; args[:type] is the host item
+   * type determine_item_view_options_type folded in at item.rb:154-158),
+   * and the read walk's type-scoped candidates follow THAT type. Computing
+   * the verdict from newCardDefaultType alone (the *all+*default template
+   * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
+   * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
+   * type falls through to *all+*read = "Anyone" — the Kimberly
+   * Richardson / Michael Christensen+musings divergence (captured oracle
+   * renders the full bar body for both). The default-template walk stays
+   * as the fallback for hosts that resolve no item type, exactly
+   * Card.new's ensure_type_id.
+   *
+   * PER-NEST KEYING: Ruby constructs the phantom fresh for EVERY nest
+   * fetch (Nest::Fetch#new_card -> Card.fetch name, new: new_card_args),
+   * so the same unknown item name under two hosts renders TWO verdicts —
+   * each nest's own fold. The verdicts are therefore keyed
+   * `"${host.key}|${itemKey}"`; a host that resolves Person
+   * (weekday_morning_usual+owner) must not pre-empt the RVW List's
+   * untyped BasicCs verdict for the same item (probe p21b: RVW's oracle
+   * renders the two-span denied body — its item_type_name is nil — while
+   * the foreign host's Person fold rendered readable). The deck-global
+   * verdict maps keep the FIRST computation per item (the pre-keying
+   * seeding semantics; pointerItemGlobalVerdictDone), so consumers outside
+   * the pointer-item slot keep their pre-change bytes.
+   */
+  private async ensurePointerItemVerdicts(
+    host: RenderCard,
+    missNames: readonly string[],
+    hostItemType?: { typeName: string; typeId: number },
+  ): Promise<void> {
+    if (missNames.length === 0) return;
+    if (this.readPermission === undefined) return; // state not folded yet
+    let taskState = this.taskState;
+    if (taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      taskState = viewTaskStateFromResults(results, this.readPermission);
+      this.taskState = taskState;
+    }
+    for (const name of missNames) {
+      let parsed: DeckoName;
+      try {
+        parsed = DeckoName.parse(name);
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          continue; // unresolvable mark: the sync path degrades to the phantom fallback
+        }
+        throw err;
+      }
+      const key = parsed.key;
+      if (key === "") continue;
+      const verdictKey = `${host.key}|${key}`;
+      if (this.pointerItemVerdicts.has(verdictKey)) continue;
+      // Phantom identity: the host's item type wins; the *all+*default
+      // template walk is the fallback (item.rb:245-248 + Card.new's
+      // ensure_type_id — the same precedence the sync render path uses in
+      // phantomIdentity, views.ts).
+      const defaulted = hostItemType ?? this.newCardDefaultType(parsed);
+      const input = {
+        name: parsed,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      };
+      const read = await canReadByRuleLookup(this.fetcher, input, this.readPermission);
+      const create = await taskVerdictForCard(this.fetcher, input, "create", taskState);
+      this.pointerItemVerdicts.set(verdictKey, { read: read === true, create });
+      // The deck-global verdict maps keep the FIRST computation per item —
+      // the exact seeding the per-item-only verdict key produced before the
+      // per-host key (their consumers never keyed by host).
+      if (!this.pointerItemGlobalVerdictDone.has(key)) {
+        this.pointerItemGlobalVerdictDone.add(key);
+        this.deniedVerdictsByKey.set(key, read === false);
+        const existing = this.taskVerdicts.get(key) ?? { update: undefined, create: undefined, delete: undefined };
+        this.taskVerdicts.set(key, { ...existing, create });
+      }
+    }
   }
 
   /**
@@ -1878,7 +3542,21 @@ export class RenderEngine implements RenderEngineLike {
       .toString()
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
-      .filter((s) => s.length > 0);
+      .filter((s) => s.length > 0)
+      // Relative item lines ("+bootswatch theme") absolutize against the
+      // HOST card's name (clean_item_name's context, card-mod-collection
+      // item.rb:29-33) — the SAME transform the sync render path applies
+      // (views.ts pointer-list items map, resolvePointerItemName). Without
+      // it the miss names (and therefore the pointerItemVerdicts keys)
+      // carry the bare relative key ("+bootswatch_theme") while the sync
+      // path looks the verdict up under the absolutized key
+      // ("bootstrap_default_skin_bootswatch_theme") — every relative
+      // item's verdict misses and renders the denied phantom fallback
+      // regardless of the deck's rules. The shared helper also resolves
+      // the session-relative "_user" items (Card::Name.session) the sync
+      // path resolves — signup alert email+*from's "_user" item.
+      .map((s) => resolvePointerItemName(s, card.name));
+    const missNames: string[] = [];
     for (const name of items) {
       // An item line carrying an unresolvable ID/codename mark ("~393")
       // throws at DeckoName.PARSE time (name.ts#parse resolves id marks
@@ -1895,15 +3573,58 @@ export class RenderEngine implements RenderEngineLike {
       // NameNotFoundError swallowed, everything else rethrown).
       try {
         if (DeckoName.parse(name).key === "") continue;
-        await this.prepareItemForRender(name);
+        const prepared = await this.prepareItemForRender(name);
+        if (prepared === undefined) missNames.push(name);
       } catch (err) {
         if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          // Ruby's Lexicon.name(id) reads rows WITHOUT a trash filter
+          // (lexicon.rb#id_to_lex), so a `~id` item pointing at a TRASHED
+          // member card still RESOLVES to its name there (CB_role /
+          // WilliamsCraig Family +*members: their item ids are trashed
+          // rows, never warmed by warmLexicon's live-id pour and carrying
+          // no card_references rows for the seed closure). The async
+          // lexicon IS that db fallback: resolve, record the durable name
+          // (the sync boundary's next parse then succeeds), and let the
+          // item render through the unknown-item path — Ruby's own
+          // Card.fetch does NOT return the trashed row (retrieve.rb:24
+          // trash = false unless look_in_trash), so the record stays
+          // unknown and the oracle pins the denied unknown-item bar with
+          // the resolved name. A true db miss keeps the phantom fallback
+          // with the authored mark.
+          const idMatch = /^~(\d+)$/.exec(name.trim());
+          if (idMatch !== null) {
+            const id = Number(idMatch[1] as string);
+            if (Number.isSafeInteger(id)) {
+              const resolved = await this.fetcher.lexicon.name(id);
+              if (resolved !== undefined && resolved.s !== "") {
+                const record = await this.fetcher.fetchById(id);
+                if (record?.name !== undefined) {
+                  await this.enrichAndStore(record);
+                  continue;
+                }
+              }
+            }
+          }
           this.reportUnknownCard(name);
+          missNames.push(name);
           continue;
         }
         throw err;
       }
     }
+    // The misses are the UNKNOWN items: precompute their read/create
+    // verdicts (ensurePointerItemVerdicts) so the sync item path renders
+    // Ruby's own gates query-free (the readable-unknown full bar vs the
+    // denied phantom spans; the createable unknown-link). The host's
+    // resolved item type rides along (resolveHostItemTypeName ran first in
+    // the closure) — the verdict input's type is the phantom's REAL type
+    // (new_unknown_item_args, item.rb:245-248), not the *all+*default
+    // fallback.
+    await this.ensurePointerItemVerdicts(
+      card,
+      missNames,
+      this.hostItemTypeName(card),
+    );
   }
 
   /** Pre-load every rule card whose left_id equals the set card's id,
@@ -1964,6 +3685,22 @@ export class RenderEngine implements RenderEngineLike {
     // part to its codename. Without these the _category-* class chain
     // is empty (bar_view.rb:10 + editor.rb:54-58).
     await this.preloadAllSettingCards();
+    // The virtual rule cards' type cards (the corpus-pinned ensure_type
+    // outcomes - virtual-rule-card.ts RULE_TYPE_BY_SETTING) must be in
+    // the render-card map before the SYNC Rules-section render resolves
+    // each virtual's typeName/typeCode from the DECK
+    // (buildVirtualRuleCard's deckTypeCard lookup): Ruby's template walk
+    // resolves the rule's type to an ID and then prints the deck card AT
+    // that id, so the served deck's type names are what the oracle bytes
+    // carry (corpus:268 and recapture-shard-000000.jsonl *captcha+*right
+    // read TYPE-gwtx / data-card-type-name="gwtx" for the *head
+    // virtuals). Same preload contract as the settings walk above; fetch
+    // is cache-first, so warm renders add zero queries.
+    for (const preloadTypeId of RULE_TYPE_IDS_FOR_PRELOAD) {
+      const typeRecord = await this.fetcher.fetchById(preloadTypeId);
+      if (typeRecord === undefined || typeRecord.name === undefined) continue;
+      await this.enrichAndStore(typeRecord);
+    }
     // Pre-populate read-permission verdicts for every (setCard,
     // settingCard) pair the sync render path will construct a virtual
     // for — the engine's setRulesCoreHtml falls through to
@@ -2002,6 +3739,79 @@ export class RenderEngine implements RenderEngineLike {
     for (const row of result.rows) {
       const record = await composeCardRecord(row, this.fetcher.lexicon);
       if (record.name === undefined) continue;
+      await this.cacheFetchedRecord(record);
+    }
+  }
+
+  /** Set once the head read-set has been folded into the render-card map
+   *  from the cold batch. Mirrors the skip-if-set shape every other
+   *  memoized prepare pass uses, so a warm render pays zero round trips
+   *  and does not re-add the statement to a batch. */
+  private headReadsWarmed = false;
+
+  /**
+   * THE ASYNC-VIEW SEAM: warm the cards the head views read, so their
+   * SYNCHRONOUS ViewFn bodies can read them out of the render-card map
+   * through RenderEngineLike#fetchRenderCard (format.ts:1371).
+   *
+   * Why this exists: card-mod-format set/all/head.rb's :page_title,
+   * :page_title_tag, :favicon_tag, :stylesheet_tags and :head each need
+   * an engine read (Card::Rule.global_setting, nest :favicon,
+   * main_stylesheet_path -> asset_output_url), but ViewFn is
+   * synchronous (format.ts:291) and its dispatcher
+   * (RenderFormat#renderView, format.ts:452) returns `string`. The two
+   * candidate seams were a prepare-phase prefetch or an async view
+   * class; the prefetch won because it is the engine's established
+   * idiom (preloadAllSettingCards, preloadSetRules, isDenied's verdict
+   * pass, findSettingCard) and because the async class would have made
+   * renderView's return type a Promise for the whole ~200-view registry.
+   * The rejected alternative is an async view class, which would have made
+   * renderView's return type a Promise for the whole ~200-view registry.
+   *
+   * The read set is the fixed key list HEAD_READ_SET_KEYS
+   * (render/head-views.ts): the *title and *favicon setting cards (the
+   * `Card[:codename]` reads global_setting/nest make) and the two
+   * *all+*<setting>+*asset output chains asset_output_url walks. Ruby's
+   * own basket[:cache_seed_names] (head.rb:5-13) declares the same cards
+   * as always-prefetched, so this is a port of a Ruby mechanism, not an
+   * engine-local invention.
+   *
+   * The batch matches the `key` COLUMN, which is the normalized
+   * (underscored) form: a three-part junction stores
+   * `*all+*style+*asset_output` as its key, not the display
+   * `*all+*style+*asset output`. The read side is unaffected —
+   * fetchRenderCard runs DeckoName.parse, which normalizes — so the
+   * views address the display names while the batch addresses the keys.
+   *
+   * Absolute names, not the `:codename` marks: a mark resolves through
+   * the codename codehash, which a bare view render does not always
+   * fold; `:title` and `*title` are the same card (global_setting does
+   * `Card[name]`, rule/all.rb:5-9), so the map read is byte-identical
+   * and carries no registry dependency.
+   *
+   * ZERO extra round trips: the statement rides the cold path's existing
+   * batch (see the headReadsCold comment in render()), so the query-count
+   * gates that pin the cold shape stay exactly where they are. A name
+   * that does not exist in the deck is simply absent from renderCards,
+   * which is the state the views already handle as "no setting"
+   * (faviconTagBytes -> "", pageTitleBytes -> name alone).
+   */
+  private async cacheHeadViewReads(result: SQLQueryResult | undefined): Promise<void> {
+    for (const row of result?.rows ?? []) {
+      const record = await composeCardRecord(row as CardsRow, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      // Ruby's Card#key is name.key (name/all.rb:17-19) and every cache
+      // consumer keys by the normalized form (fetch.ts#retrieveFromCacheByKey
+      // reads mark.name.key; fetchRenderCard reads DeckoName.parse(name).key).
+      // The raw capture dump's key COLUMN carries the verbatim display name
+      // for simple rows ("*recent settings"), so seat under the name's
+      // normalized key — byte-identical for every row whose key column is
+      // already normalized (fixture decks seed DeckoName.parse(name).key) or
+      // single-word (all pre-existing head reads). Without this, a raw-dump
+      // row seats where no normalized lookup can ever reach it and the
+      // recent arm (format.ts#recentSettingCodenames -> fetchRenderCard)
+      // reads an empty membership on every raw-corpus render.
+      record.key = record.name.key;
       await this.cacheFetchedRecord(record);
     }
   }
@@ -2046,18 +3856,44 @@ export class RenderEngine implements RenderEngineLike {
     if (state === undefined) return;
     if (this.existingRuleCards === undefined) this.existingRuleCards = new Map();
     for (const groupName of SETTING_GROUPS) {
-      for (const settingCodename of visibleGroupSettings(groupName)) {
+      // The seat enumerates EXACTLY the settings the sync nav renders
+      // (views.ts rule-lists): Ruby's nav walk is group_settings ->
+      // visible_settings (card-mod-rules set/type/set/setting_categories.rb
+      // :47-49 -> set/type/set.rb:76-84) — the restricted_to_type gate is
+      // PROTOTYPE-dependent (card-mod-list set/self/content_options.rb:2
+      // `%i[list pointer session]`), so content_options/content_option_view
+      // ARE nav candidates on list/pointer/session-prototype sets. The
+      // prior deck-wide skip (SETTING_NEVER_VISIBLE via visibleGroupSettings)
+      // left those virtual bars unjudged here while the sync nav still
+      // rendered them — isDenied map miss = gate-open = the over-allow the
+      // oracle span pairs pin (GBA+*right+*layout+*self: two allowed bars
+      // where Ruby renders quiet denials). Seating the verdict the nav will
+      // look up is the whole fix; the verdict itself (deny via the generic
+      // _left walk, permissions.rb:55-71) needed no change.
+      // (Merge note: supersedes bar-slots' V1 full-registration walk —
+      // visibleSettingsForGroup is the prototype-aware enumeration of the
+      // SAME rows V1's 62 dump-pinned nav diffs need, per-set instead of
+      // deck-wide.)
+      for (const settingCodename of visibleSettingsForGroup(this, setCard, groupName)) {
         const settingCard = this.findSettingCard(settingCodename);
         if (settingCard === undefined) continue;
         const name = DeckoName.parse(`${setCard.name.s}+*${settingCodename}`);
         if (this.deniedVerdictsByKey.has(name.key)) continue;
-        const byRule = await canReadByRuleLookup(
-          this.fetcher,
-          await this.verdictPatternInput(name, undefined, settingCard.typeId, settingCard.typeName),
-          state,
+        // The FULL ok_to_read? port (cardReadAllowed): the mod set-module
+        // overrides decide first — the rules-editor nav's "+*head /
+        // +*script" bars sit under right::head / right::script's
+        // unconditional `true` even where the tag-scoped *right+*read rule
+        // denies (the FOR CHILDREN'S CLASS+*self nav class: the generic
+        // walk alone rendered the denial span where Ruby renders the bar).
+        const allowed = await this.cardReadAllowed(
+          name,
+          undefined,
+          settingCard.typeId,
+          settingCard.typeName,
+          undefined,
         );
-        this.deniedVerdictsByKey.set(name.key, byRule === false);
-        // R16: find_existing_rule_card for the virtual (editor.rb:126-130
+        this.deniedVerdictsByKey.set(name.key, allowed === false);
+        // find_existing_rule_card for the virtual (editor.rb:126-130
         // existing_rule_from_prototype → set_prototype.rule_card(setting) —
         // the first EXISTING stored rule in the prototype's candidate walk).
         // The set card's own pattern walk lands on the same stored rule for
@@ -2098,6 +3934,121 @@ export class RenderEngine implements RenderEngineLike {
   taskAllowed(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined {
     if (this.readPermission?.alwaysOk) return true;
     return this.taskVerdicts.get(card.key)?.[task];
+  }
+
+  /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
+   *  *account_links navbar items (undefined until a page render prepared
+   *  them for a signed-in chrome session). */
+  get pageSessionAccountLinksHtml(): string | undefined {
+    return this.sessionAccountLinks;
+  }
+
+  /** RenderEngineLike.pageSessionMyCardHtml — the prepared :my_card view
+   *  body (the account_dropdown arm; see the prepare note below). */
+  get pageSessionMyCardHtml(): string | undefined {
+    return this.sessionMyCardHtml;
+  }
+
+  /** Prepare the signed-in account-links chrome for the page session — the
+   *  async half of the navbar seam (the view fns are sync). Resolves what
+   *  the sync view cannot:
+   *  - the session account card's NAME (the my-card label/href — Ruby:
+   *    link_to_mycard's `Auth.current.name`, account_dropdown.rb:2-4);
+   *  - known/virtual resolution for the three links (links.rb:141-144
+   *    add_known_or_wanted_class -> Card.known? = real? || virtual?;
+   *    virtual? = compound && structure.present? — states.rb:63-67 — which
+   *    for "Decko Bot 1+*account settings" hits the deck's
+   *    `*account settings+*right+*structure` rule, corpus rule card 34826).
+   *  Memoized per actor; a no-op for signed-out or actor-less sessions.
+   *  An unresolvable session account cannot exist in Ruby (Auth.current_id
+   *  always names a live account card), so the engine degrades the whole
+   *  chrome to signed-out (the auth/current.rb:58-63 unresolvable-session
+   *  shape) rather than rendering half a session. */
+  async prepareSessionAccountLinks(): Promise<void> {
+    const session = this.pageSession;
+    if (session?.signedIn !== true || session.actorId === undefined) return;
+    if (
+      this.sessionAccountLinks !== undefined &&
+      this.sessionAccountLinksActorId === session.actorId
+    ) {
+      return;
+    }
+    const actor = await this.fetcher.fetchById(session.actorId, { skipVirtual: true });
+    if (actor?.name === undefined || actor.name === null || actor.name.s === "") {
+      this.pageSession = undefined;
+      this.sessionAccountLinks = undefined;
+      this.sessionAccountLinksActorId = undefined;
+      this.sessionMyCardHtml = undefined;
+      return;
+    }
+    const actorName: string = actor.name.s;
+    const accountSettingsName = `${actorName}+*account settings`;
+    const accountSettingsReal =
+      (await this.fetcher.fetchByKey(DeckoName.parse(accountSettingsName).key, {
+        skipVirtual: true,
+      })) !== undefined;
+    // virtual?: a compound card is known when a *structure rule applies to
+    // it (states.rb:63-67) — findRule walks the same pattern candidates
+    // Ruby's rule lookup does.
+    const accountSettingsVirtual =
+      (await findRule(this.fetcher, { name: accountSettingsName }, "*structure")) !== undefined;
+    // The sign-out mark is the SYMBOL :signin (account_dropdown.rb:22) —
+    // Card::Name[:symbol] resolves through the codename registry
+    // (name.rb:77 Codename.name!), so known? is the codename card's
+    // real existence.
+    const signinId = await this.fetcher.codenames.id("signin");
+    const signinReal =
+      signinId !== undefined &&
+      (await this.fetcher.fetchById(signinId, { skipVirtual: true })) !== undefined;
+    this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, {
+      actor: true,
+      accountSettings: accountSettingsReal || accountSettingsVirtual,
+      signin: signinReal,
+    });
+    // The :my_card view body (account_links.rb:56-58 my_card — the
+    // account_dropdown arm; can_disable_roles? reads the session actor's
+    // ROLES, which the port's page session does not carry — the dropdown
+    // arm is the shape every authenticated golden capture shows, and the
+    // roles arm (interactive_roles_dropdown nesting :edit_inline over
+    // +*enabled_roles) is the named remainder).
+    this.sessionMyCardHtml = myCardDropdownInnerHtml(actorName, {
+      actor: true,
+      accountSettings: accountSettingsReal || accountSettingsVirtual,
+      signin: signinReal,
+    }, []);
+    this.sessionAccountLinksActorId = session.actorId;
+  }
+
+  /** RenderEngineLike.updateVerdictForCard — ok?(:update) on demand for the
+   *  page head's universal_edit_button (perms: :update, card-mod-format
+   *  set/all/html/head.rb:46). always_ok? short-circuits first
+   *  (permissions.rb:140); otherwise the shared task-verdict machinery
+   *  computes (and memoizes into taskVerdicts) the card's four task
+   *  verdicts — the page head reuses whatever the render already computed.
+   *  The pattern input rides through structurePatternInputForSync so the
+   *  verdict walk's type_plus_right candidate anchors on the SAME
+   *  leftTypeName the structure walk sees (class_methods.rb:58-72
+   *  left_type: the LEFT card's type — cd-smalls' 7 Very Rosie +discussion
+   *  pages: `image+discussion+*type plus right+*update` rule 16985
+   *  ("Anyone") wins where the type-less input anchored rich_text and
+   *  denied). */
+  async updateVerdictForCard(card: RenderCard): Promise<boolean | undefined> {
+    if (this.readPermission?.alwaysOk) return true;
+    if (this.readPermission === undefined) return undefined;
+    if (card.id === undefined) return undefined;
+    const memoized = this.taskVerdicts.get(card.key);
+    if (memoized !== undefined) return memoized.update;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    const verdicts = await allTaskVerdictsForCard(
+      this.fetcher,
+      this.structurePatternInputForSync(card),
+      this.taskState,
+    );
+    this.taskVerdicts.set(card.key, await this.applyUpdateOverride(card, verdicts));
+    return this.taskVerdicts.get(card.key)?.update;
   }
 
   /**
@@ -2163,20 +4114,404 @@ export class RenderEngine implements RenderEngineLike {
     }
     for (const card of this.renderCards.values()) {
       if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
-      this.taskVerdicts.set(
-        card.key,
-        await allTaskVerdictsForCard(
-          this.fetcher,
-          { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
-          this.taskState,
-        ),
+      const verdicts = await allTaskVerdictsForCard(
+        this.fetcher,
+        // same pattern input the structure walk uses (leftTypeName for the
+        // type_plus_right anchor — class_methods.rb:58-72 left_type; the
+        // bare 4-field input anchored every compound card's candidate on
+        // the registry's RichText fallback). MERGE-PASS-18: censustail3's
+        // input kept under perm-allow2's applyUpdateOverride layer below.
+        this.structurePatternInputForSync(card),
+        this.taskState,
       );
+      this.taskVerdicts.set(card.key, await this.applyUpdateOverride(card, verdicts));
     }
+  }
+
+  /** The mod set-module ok_to_update? overrides (read-override.ts'
+   *  updatePermissionOverride — right::account's own_account? clean-arm,
+   *  the Abstract::AccountField chain through a +*account middle card,
+   *  right::status's own-status deny, account_holder's self update) lay
+   *  over the generic permit(:update) verdict exactly as Ruby's set
+   *  modules shadow Set::All#ok_to_update? (permissions.rb:148). The
+   *  page head's universal_edit_button (perms :update) consumes this —
+   *  the oracle renders "Edit this page!" on the viewer's own account
+   *  cards where the generic walk alone denies. */
+  private async applyUpdateOverride(
+    card: RenderCard,
+    verdicts: { update: boolean | undefined; create: boolean | undefined; delete: boolean | undefined },
+  ): Promise<{ update: boolean | undefined; create: boolean | undefined; delete: boolean | undefined }> {
+    const override = await updatePermissionOverride(card.name, {
+      viewerKey: await this.resolveViewerKey(),
+      fetchByKey: (key) => this.fetcher.fetchByKey(key),
+      fetchById: (cardId) => this.fetcher.fetchById(cardId),
+    });
+    return override === undefined ? verdicts : { ...verdicts, update: override };
+  }
+
+  /** auth/permissions.rb:18-26 Auth.createable_types — the sorted cardtype
+   *  card names the viewer's create verdict admits:
+   *
+   *  1. the bot-scope cardtype search (`Card.search type: CardtypeID,
+   *     not: {codename: ["in"] + Set.basket[:non_createable_types]}`) —
+   *     one statement, basket codenames inline (the basket is the loaded
+   *     mods' fixed registry: rules/setting+set, session, account/signup,
+   *     bootstrap/bootswatch_skin, assets/group_remote, script+style local
+   *     groups, core/mod — each push cited in card-mod-edit.ts);
+   *  2. the per-type `Card.new(type: name).ok? :create` verdict — the REAL
+   *     task-verdict algebra on a virtual new card (patternsForCard drops
+   *     the Self pattern for new cards, so the candidates are
+   *     `<Type>+*type+*create` then `*all+*create`, first resolved wins);
+   *  3. `.sort` (Ruby String#sort, byte-wise).
+   *
+   *  Memoized per engine; fired by the prepare gate for the views whose
+   *  body reaches it (the type editor's select). */
+  private async ensureCreateableTypes(): Promise<void> {
+    if (this.createableTypesCache !== undefined) return;
+    this.createableTypesCache = [];
+    if (this.readPermission === undefined) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    const state = this.taskState;
+    const [types] = await this.fetcher.driver.batch([{
+      sql:
+        `SELECT c.id AS id, c.name AS name FROM cards c ` +
+        `WHERE c.type_id = ` +
+        `  (SELECT id FROM cards WHERE codename = 'cardtype' AND trash = 0 ORDER BY id LIMIT 1) ` +
+        `AND c.trash = 0 ` +
+        `AND (c.codename IS NULL OR c.codename NOT IN (` +
+        `  'mod', 'set', 'setting', 'signup', 'remote_manifest_group',` +
+        `  'local_script_folder_group', 'local_script_manifest_group',` +
+        `  'local_style_folder_group', 'local_style_manifest_group',` +
+        `  'bootswatch_skin', 'session'))`,
+      params: [],
+    }]);
+    const ok: string[] = [];
+    for (const row of (types?.rows ?? []) as Array<{ id: number; name: string }>) {
+      const verdict = await taskVerdictForCard(
+        this.fetcher,
+        { name: "", isNew: true, typeId: row.id, typeName: row.name },
+        "create",
+        state,
+      );
+      if (verdict === true) ok.push(row.name);
+    }
+    ok.sort();
+    this.createableTypesCache = ok;
+  }
+
+  /** The sync read for the type-editor views (RenderFormat#createableTypes
+   *  delegates here) — [] until the prepare gate ran ensureCreateableTypes. */
+  createableTypes(): string[] {
+    return this.createableTypesCache ?? [];
   }
 
   /** Pre-executed results for a Search core (card_list view). */
   executeSearch(fmt: RenderFormat): RenderCard[] {
     return this.searchResults.get(fmt.card.key) ?? [];
+  }
+
+  /** RenderEngineLike#searchResultPaging — the seated paging record for a
+   *  rendered search (search-paging.ts header; undefined = not paged, the
+   *  show_paging? == false case). */
+  searchResultPaging(fmt: RenderFormat): SearchResultPaging | undefined {
+    return this.searchResultPagingMap.get(fmt.card.key);
+  }
+
+  /** RenderEngineLike#historyRenderReader — the render-time history seam
+   *  accessor the card-mod-history views read (undefined unless THIS
+   *  render's view is one of HISTORY_SEAM_VIEWS; see render-seam.ts). */
+  historyRenderReader(): HistoryRenderReader | undefined {
+    return this.historyReader;
+  }
+
+  /** RenderEngineLike#updaterRenderReader — the render-time act-search
+   *  seam accessor the :updated_by view reads (undefined unless THIS
+   *  render's view is one of UPDATER_SEAM_VIEWS; see updater-seam.ts). */
+  updaterRenderReader(): UpdaterRenderReader | undefined {
+    return this.updaterReader;
+  }
+
+  /**
+   * The act-search seam's prepare half: run the gem's own updater_of query
+   * for the render root, READ-ONLY, then resolve each actor's NAME (the
+   * lexicon/composed name `nest updater, view: :link` renders) and hand the
+   * result to the sync :updated_by view as a memoized bundle. See
+   * src/card/history/updater-seam.ts for the boundary + safety note.
+   *
+   * Query inventory (all SELECTs; the seam adds zero writes):
+   * - updaterOf (the DISTINCT update-actor join - the port of the SQL the
+   *   gem runs in history_board.rb:11);
+   * - fetchById per actor, cache-first, for the name. A card with no stored
+   *   name/key (a junction) is composed by the fetcher's lexicon exactly as
+   *   Ruby's lex_to_name does.
+   *
+   * `card.id` is the guard Ruby writes first (`if card.id`,
+   * history_board.rb:11): a NEW card has no id, so the search never runs
+   * and the view body is empty.
+   */
+  private async prepareUpdaterRender(rootCard: RenderCard): Promise<UpdaterRenderReader> {
+    const cardId = rootCard.id;
+    if (cardId === undefined) return { rootCardId: undefined, updaters: [] };
+    const rows = await updaterOf(this.fetcher.driver, cardId);
+    const updaters: UpdaterCardInfo[] = [];
+    for (const row of rows) {
+      const id = Number(row.id);
+      const record = await this.fetcher.fetchById(id);
+      updaters.push({ cardId: id, name: record?.name?.s });
+    }
+    return { rootCardId: cardId, updaters };
+  }
+
+  /** RenderEngineLike#followRenderBundle — the render-time follow seam
+   *  accessor the follow/account views read (undefined unless THIS
+   *  render's view is one of FOLLOW_SEAM_VIEWS; see
+   *  follow/follow-render-seam.ts). */
+  followRenderBundle(): FollowRenderBundle | undefined {
+    return this.followBundle;
+  }
+
+  /**
+   * The history seam's prepare half: load, READ-ONLY, exactly the rows the
+   * requested history view will read, then hand them to the sync view fns
+   * as a memoized bundle. See src/card/history/render-seam.ts for the
+   * boundary + safety design note.
+   *
+   * Query inventory (all through the tested card-mod-history readers, or
+   * the same tables those readers own):
+   * - historyCardIds + historyActs (the gem's history_acts walk, verdict-
+   *   filtered per action card) - the revisions list;
+   * - one IN-list SELECT per row table over the involved ids (card_actions
+   *   by act, card_changes by action) - the act/action/changes rows;
+   * - lastAct + lastAction (the current-act / act_from_context fallbacks);
+   * - actionValue/actionPreviousValue per involved action for the three
+   *   diffed fields (the sole-action synthesis stays in the tested readers);
+   * - fetchById + enrichAndStore for every involved card (action cards,
+   *   actors, types) so the views' subformat renders and name algebra ride
+   *   the standard prepared-card machinery.
+   */
+  private async prepareHistoryRender(
+    rootCard: RenderCard,
+    params: HistoryRenderParams,
+  ): Promise<HistoryRenderReader> {
+    const driver = this.fetcher.driver;
+    const cardId = rootCard.id;
+
+    // Card::Auth.current_id: the viewer's actor id. Anonymous resolves
+    // through the codename registry (Card::AnonymousID = Card[:anonymous].id
+    // - the same card the read-permission parties list resolves).
+    let currentUserId = -1;
+    if (this.viewer.signedIn === true && this.viewer.actorId !== undefined) {
+      currentUserId = this.viewer.actorId;
+    } else {
+      const anon = await driver.query<{ id: number }>(
+        "SELECT id FROM cards WHERE codename = 'anonymous' LIMIT 1",
+        [],
+      );
+      currentUserId = Number(anon.rows[0]?.id ?? -1);
+    }
+
+    const emptyReader: HistoryRenderReader = {
+      params,
+      rootCardId: cardId,
+      currentUserId,
+      acts: [],
+      actsTotal: 0,
+      cardLastAct: undefined,
+      cardLastAction: undefined,
+      actById: () => undefined,
+      actionById: () => undefined,
+      actionsOfAct: () => [],
+      actionOn: () => undefined,
+      actionsAffecting: () => [],
+      approvedActions: (actions) => actions,
+      actionCard: () => undefined,
+      cardInfo: () => undefined,
+      value: () => undefined,
+      previousValue: () => undefined,
+      typeNameForId: () => undefined,
+      rootUpdateAllowed: this.taskAllowed(rootCard, "update"),
+      changes: new Map(),
+    };
+    if (cardId === undefined) return emptyReader;
+
+    // history_acts (acts.rb:2-4 -> act.rb:46-59): the reference-closure
+    // walk. The viewable filter (the ok?(:read) / viewable_sql stand-in -
+    // render-seam.ts note 4) applies AFTER the involved cards are enriched
+    // and verdict-ed: act.rb:54-59's JOIN drops non-viewable ACTION rows
+    // and an act with no surviving action drops from the DISTINCT - so the
+    // raw acts load first, the family's cards enrich + judge, then the
+    // at-least-one-viewable-action filter runs.
+    const historyCardIdList = await historyCardIds(driver, cardId);
+    const rawActs = await historyActs(driver, historyCardIdList, {
+      currentUserId,
+      withDrafts: true,
+    });
+
+    // The acts' actions + changes (one IN-list SELECT per table - the same
+    // rows Act#actions and Action#all_changes read, batched).
+    const actIds = rawActs.map((a) => a.id);
+    const actions =
+      actIds.length === 0
+        ? ([] as HistoryActionRow[])
+        : (
+            await driver.query<HistoryActionRow>(
+              `SELECT * FROM card_actions WHERE card_act_id IN (${actIds.map(() => "?").join(", ")}) ORDER BY id`,
+              actIds,
+            )
+          ).rows;
+    const actionIds = actions.map((a) => a.id);
+    const changeRows: HistoryChangeRow[] = [];
+    if (actionIds.length > 0) {
+      const rows = await driver.query<{
+        id: number;
+        card_action_id: number;
+        field: number;
+        value: string | null;
+      }>(
+        `SELECT * FROM card_changes WHERE card_action_id IN (${actionIds.map(() => "?").join(", ")}) ORDER BY id`,
+        actionIds,
+      );
+      for (const row of rows.rows) {
+        const field = trackedFieldByIndex(Number(row.field));
+        if (field === undefined) continue;
+        changeRows.push({ cardActionId: Number(row.card_action_id), field, value: row.value });
+      }
+    }
+
+    // The current-act chain (last.rb) - current_act? + act/action_from_context.
+    const cardLastAct = await lastAct(driver, cardId);
+    const cardLastAction = await lastAction(driver, cardId);
+
+    // Involved cards: action cards + act primary cards + actors (+ their
+    // types). fetchById is cache-first; enrichAndStore makes each a
+    // prepared RenderCard so the views' subformat renders (the nested
+    // :action_summary slot) ride the standard machinery.
+    const involvedCardIds = new Set<number>();
+    for (const action of actions) if (action.card_id !== null) involvedCardIds.add(Number(action.card_id));
+    for (const act of rawActs) if (act.card_id !== null) involvedCardIds.add(Number(act.card_id));
+    for (const act of rawActs) involvedCardIds.add(Number(act.actor_id));
+    const cardById = new Map<number, RenderCard>();
+    const cardInfoById = new Map<number, HistoryActionCardInfo>();
+    for (const id of involvedCardIds) {
+      const record = await this.fetcher.fetchById(id);
+      if (record === undefined || record.name === undefined) continue;
+      const renderCard = await this.enrichAndStore(record);
+      cardById.set(id, renderCard);
+      cardInfoById.set(id, {
+        cardId: id,
+        name: renderCard.name.s,
+        typeId: record.typeId ?? null,
+        typeName: renderCard.typeName,
+        renderCard,
+      });
+    }
+
+    // The value / previous-value projections (changes.rb readers - the
+    // sole-action synthesis stays inside the tested functions).
+    const valueCache = new Map<number, Map<string, string | number | boolean | null | undefined>>();
+    const previousCache = new Map<number, Map<string, string | number | boolean | null | undefined>>();
+    const diffFields = ["name", "type_id", "db_content"] as const;
+    for (const action of actions) {
+      for (const field of diffFields) {
+        const value = await actionValue(driver, action, field);
+        const previous = await actionPreviousValue(driver, action, field);
+        let own = valueCache.get(action.id);
+        if (own === undefined) valueCache.set(action.id, (own = new Map()));
+        own.set(field, value);
+        let ownPrev = previousCache.get(action.id);
+        if (ownPrev === undefined) previousCache.set(action.id, (ownPrev = new Map()));
+        ownPrev.set(field, previous);
+      }
+    }
+
+    // Type names for the cardtype diff (create actions render
+    // `<ins>RichText</ins>` - the TYPE card's name through the registry).
+    const typeNames = new Map<number, string>();
+    for (const id of involvedCardIds) {
+      const info = cardInfoById.get(id);
+      if (info?.typeId !== undefined && info.typeId !== null && !typeNames.has(info.typeId)) {
+        const record = await this.fetcher.fetchById(info.typeId);
+        if (record?.name !== undefined) typeNames.set(info.typeId, record.name.s);
+      }
+    }
+
+    const actionsByActRaw = new Map<number, HistoryActionRow[]>();
+    for (const action of actions) {
+      if (action.card_act_id === null) continue;
+      const actId = Number(action.card_act_id);
+      const list = actionsByActRaw.get(actId);
+      if (list === undefined) actionsByActRaw.set(actId, [action]);
+      else list.push(action);
+    }
+    // The verdict pass for the newly enriched family cards, then the
+    // act-level viewable filter (an act survives when at least one of its
+    // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
+    await this.ensureVerdicts();
+    const acts = rawActs.filter((act) =>
+      (actionsByActRaw.get(act.id) ?? []).some(
+        (a) => a.card_id !== null && this.deniedVerdicts.get(Number(a.card_id)) !== true,
+      ),
+    );
+    const actByIdMap = new Map<number, HistoryActRow>(acts.map((a) => [a.id, a]));
+    const actionByIdMap = new Map<number, HistoryActionRow>(actions.map((a) => [a.id, a]));
+    const changesByAction = new Map<number, HistoryChangeRow[]>();
+    for (const change of changeRows) {
+      const list = changesByAction.get(change.cardActionId);
+      if (list === undefined) changesByAction.set(change.cardActionId, [change]);
+      else list.push(change);
+    }
+    // history_card_ids of the ROOT (the actions_affecting closure test).
+    const rootHistoryIds = new Set(historyCardIdList);
+
+    const readValue = (
+      action: HistoryActionRow,
+      field: "name" | "type_id" | "db_content" | "content" | "trash",
+    ): string | number | boolean | null | undefined =>
+      valueCache.get(action.id)?.get(field === "content" ? "db_content" : field);
+
+    const readPrevious = (
+      action: HistoryActionRow,
+      field: "name" | "type_id" | "db_content" | "content" | "trash",
+    ): string | number | boolean | null | undefined =>
+      previousCache.get(action.id)?.get(field === "content" ? "db_content" : field);
+
+    return {
+      params,
+      rootCardId: cardId,
+      currentUserId,
+      acts,
+      actsTotal: acts.length,
+      cardLastAct,
+      cardLastAction,
+      actById: (id) => actByIdMap.get(id),
+      actionById: (id) => actionByIdMap.get(id),
+      actionsOfAct: (actId) => actionsByActRaw.get(actId) ?? [],
+      actionOn: (actId, onCardId) =>
+        (actionsByActRaw.get(actId) ?? []).find((a) => a.card_id === onCardId && a.draft !== 1),
+      actionsAffecting: (actId, affectingCardId) =>
+        (actionsByActRaw.get(actId) ?? []).filter(
+          (a) =>
+            a.card_id === affectingCardId ||
+            (a.card_id !== null && rootHistoryIds.has(Number(a.card_id))),
+        ),
+      approvedActions: (list) =>
+        list.filter((a) => {
+          if (a.card_id === null) return false; // `a.card&.ok? :read` - no card, dropped
+          const info = cardInfoById.get(Number(a.card_id));
+          if (info === undefined) return false; // card row gone (clean_acts/approved)
+          return this.deniedVerdicts.get(Number(a.card_id)) !== true;
+        }),
+      actionCard: (a) => (a.card_id === null ? undefined : cardInfoById.get(Number(a.card_id))),
+      cardInfo: (id) => cardInfoById.get(id),
+      value: readValue,
+      previousValue: readPrevious,
+      typeNameForId: (typeId) => typeNames.get(typeId),
+      rootUpdateAllowed: this.taskAllowed(rootCard, "update"),
+      changes: changesByAction,
+    };
   }
 
   /** All rule cards whose left_id equals the host card's id (Card.search
@@ -2209,6 +4544,35 @@ export class RenderEngine implements RenderEngineLike {
     return this.fetcher.codenames.peekNameForId(typeId);
   }
 
+  /** Synchronous codename -> id lookup (the same pre-folded codehash memo,
+   *  Card::Codename.id). Consumed by the VirtualSearch family’s
+   *  assign_type :search_type (render/format.ts buildUnknownNestCard). */
+  peekIdByCodename(codename: string): number | undefined {
+    return this.fetcher.codenames.peekId(codename);
+  }
+
+  /** Synchronous registered card NAME for a codenamed id (the codehash
+   *  i2name map — codename.ts#peekRegisteredName). Consumed by the
+   *  VirtualSearch family’s virtual-card typeName ("Search"). */
+  peekRegisteredNameForId(id: number): string | undefined {
+    return this.fetcher.codenames.peekRegisteredName(id);
+  }
+
+  /** The page head bytes per page root (seated by the page renderer when
+   *  headContent builds the <head>; read by set/self/head.rb:17’s
+   *  `nest root.card, view: :head` port — src/card/render/views.ts
+   *  Self::Head core branch). Keyed by the page root’s card key; entries
+   *  are the exact bytes the page’s own <head> carries, so the
+   *  *all+*head-family CodeRay cores read the identical bytes Ruby’s head
+   *  view renders. Cleared with the other per-deck render caches. */
+  private pageHeadBytes = new Map<string, string>();
+  seatPageHead(rootKey: string, bytes: string): void {
+    this.pageHeadBytes.set(rootKey, bytes);
+  }
+  pageHeadBytesFor(rootKey: string): string | undefined {
+    return this.pageHeadBytes.get(rootKey);
+  }
+
   /** Look up a SETTING card by its codename (the 23 settings the
    *  preloadAllSettingCards walk loads: autoname/default/structure/
    *  create/read/update/delete/captcha/head/layout/style/script/help/
@@ -2222,6 +4586,21 @@ export class RenderEngine implements RenderEngineLike {
   findSettingCard(codename: string): RenderCard | undefined {
     for (const card of this.renderCards.values()) {
       if (card.record.codename === codename) return card;
+    }
+    return undefined;
+  }
+
+  /** Synchronous render-card lookup BY ID - the map is keyed by key;
+   *  this walks it the same way findSettingCard does. The set-card Rules
+   *  section's virtual rule cards resolve the DECK's type card at the
+   *  corpus-pinned template id through this (virtual-rule-card.ts
+   *  deckTypeCard): Ruby prints the type name/code of the deck's card at
+   *  that id, so the virtual's TYPE- fragment and data-card-type-name
+   *  read the SERVED deck's names (the sanitized corpus names
+   *  codename-html card 50 "gwtx"). */
+  findRenderCardById(id: number): RenderCard | undefined {
+    for (const card of this.renderCards.values()) {
+      if (card.id === id) return card;
     }
     return undefined;
   }
@@ -2246,11 +4625,34 @@ export class RenderEngine implements RenderEngineLike {
       if (card.id === undefined) continue;
       if (!card.name.isCompound) continue;
       if (card.name.rightName?.key !== hostKey) continue;
+      // Ruby's cql runs under the viewer's read rules — a read-denied
+      // rule never reaches the row list (corpus 21805
+      // "#<Card[set:259]Tracked Item+*type+*on create": its *read is
+      // "Anyone Signed In" (rule 22283), so the oracle's *on create page
+      // shows ONE *type-class bar although the row exists).
+      if (this.isDenied(card)) continue;
       const leftKey = card.name.leftName?.key;
       if (leftKey === undefined) continue;
-      const bucket = settingBuckets.get(leftKey);
+      // cql left: { type: SetID } — the left part is SET-typed (setting.rb
+      // :47-51); Mod-typed lefts (the mod: X+*style junction family) are
+      // not set rows and never bucket.
+      const left = this.renderCards.get(leftKey);
+      if (left === undefined || left.typeCode !== "set") continue;
+      // p20-help-content: the ANCHORED classes bucket by the left's RIGHT
+      // part (rules_for_set_class, setting.rb:51-53:
+      // `cql[:left][:right_id] = set_class.pattern_id` for anchored
+      // patterns) — the *type class's rules are "X+*type+<setting>"
+      // cards whose left "X+*type" has *type as its right part. The old
+      // exact-leftKey lookup only ever matched the ANCHORLESS classes
+      // (left literally the pattern card, e.g. "*all").
+      let bucketKey = leftKey;
+      if (left.name.isCompound) {
+        const leftRightKey = left.name.rightName?.key;
+        if (leftRightKey !== undefined) bucketKey = leftRightKey;
+      }
+      const bucket = settingBuckets.get(bucketKey);
       if (bucket === undefined) {
-        settingBuckets.set(leftKey, [card]);
+        settingBuckets.set(bucketKey, [card]);
       } else {
         bucket.push(card);
       }
@@ -2550,7 +4952,7 @@ export class RenderEngine implements RenderEngineLike {
    *  names; routing 3-part names straight into it (the previous shape)
    *  dropped the RULE set key for names like "SET+*right+SETTING" that
    *  Ruby classifies via standard_rule?. */
-  /** R16: the existing_rule_card memo for virtual rule cards — the sync
+  /** the existing_rule_card memo for virtual rule cards — the sync
    *  half of the preloadVirtualRuleVerdicts resolution (editor.rb:119-131).
    *  True = a stored rule exists for this virtual's (set, setting); false =
    *  the prototype walk found none (Ruby's `voo.hide :bar_nav unless
@@ -2561,7 +4963,7 @@ export class RenderEngine implements RenderEngineLike {
     return this.existingRuleCards.has(key);
   }
 
-  /** R16: the resolved existing-rule CARD for a virtual rule card — the
+  /** the resolved existing-rule CARD for a virtual rule card — the
    *  bar_right one-line content nests THIS card's :one_line_content through
    *  its own read verdict (rule_short_content, bar_view.rb:39-44), not the
    *  virtual's own. Undefined = no existing rule (or not preloaded). */
@@ -2569,7 +4971,7 @@ export class RenderEngine implements RenderEngineLike {
     return this.existingRuleCards?.get(key);
   }
 
-  /** R16: the PROTOTYPE pattern input for a set card — the port of
+  /** the PROTOTYPE pattern input for a set card — the port of
    *  set_prototype (set.rb:87-92 `Card.fetch prototype_args(anchor_name),
    *  new: prototype_args`) consumed by the existing-rule resolution above
    *  (editor.rb:126-130 existing_rule_from_prototype). Per pattern:
@@ -2613,6 +5015,17 @@ export class RenderEngine implements RenderEngineLike {
       case "all":
       case "rstar":
       case "all_plus":
+      // bar-slots lane (2026-09-29, view-fail class V1): the *star set card
+      // (codename "star" — the RSTAR family's set card in the oracle deck)
+      // joins the nameless-prototype arm. Oracle-pinned by the *star set
+      // page's 20 rule rows (shard 3, *star :content/:open): the 12 rows
+      // whose prototype walk finds an existing rule all resolve at the
+      // *all+<setting> level (*all+*default/-*create/-*read/-*update/
+      // -*delete/-*captcha/-*head/-*layout/-*style/-*script/-*guide/
+      // -*follow fields), the 8 hidden rows (*autoname/*help/*input type/
+      // *on create/*on update/*on delete/*thanks/*follow) have no stored
+      // rule at ANY candidate level — exactly the nameless walk's reach.
+      case "star":
         return { name: DeckoName.parse(""), id: undefined, typeId: undefined, isNew: true };
       case "self": {
         const real = await fetchAnchor();
@@ -2664,7 +5077,7 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  /** R16: set/rule SET membership — the port of set_pattern/06_rule.rb
+  /** set/rule SET membership — the port of set_pattern/06_rule.rb
    *  (`pattern_applies? card -> card.rule?`, lib/card/rule/all.rb:32-40):
    *  standard_rule? = the right part is a Setting AND the left part is a
    *  Set — NO part-count limit (the 2-part `*all+*autoname` and the 3-part
@@ -2789,6 +5202,38 @@ export class RenderEngine implements RenderEngineLike {
       seen.add(key);
       const card = this.renderCards.get(key);
       if (card === undefined) return false;
+      // p20-email-views: the Abstract::TestContext ladder's sync fetches
+      // (views.ts testContextCardFor — `card.left.fetch(:test_context)
+      // &.first_card`) need the +*test context junction and its first item
+      // warm. A message card whose RECORD was side-primed by ANOTHER page's
+      // closure (the parent email template page side-primes all its field
+      // children) answers warm on the content-ref walk alone — the junction
+      // sits in no content reference walk — so the prefetch prelude
+      // (prefetch.ts, the same tag-key condition) would never run for the
+      // message PAGES. Require the junction's key explicitly, symmetric
+      // with the prelude.
+      const tagKey =
+        card.name !== undefined && card.name.isCompound
+          ? DeckoName.parse(card.name.tag).key
+          : undefined;
+      if (
+        (tagKey === "*html_message" || tagKey === "*text_message") &&
+        card.name.leftName !== undefined
+      ) {
+        // The key keeps the star: "...+*test_context".
+        const junctionKey = `${card.name.leftName.key}+*test_context`;
+        const junction = this.renderCards.get(junctionKey);
+        if (junction === undefined) return false;
+        // The FIRST ITEM too (test_context.rb:17 `&.first_card`) — the same
+        // plain-list-line shape the prefetch's follow-up statement warms.
+        const firstItem = (junction.dbContent ?? "")
+          .split("\n")
+          .map((line) => line.trim())
+          .find((line) => line !== "");
+        if (firstItem !== undefined && !this.renderCards.has(DeckoName.parse(firstItem).key)) {
+          return false;
+        }
+      }
       for (const ref of this.cardReferenceKeys(card)) {
         if (this.structureRefMisses.has(ref)) continue;
         if (!this.renderCards.has(ref)) return false;
@@ -3008,6 +5453,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (render/errors.ts) so the corpus-v2 replay handler — read-only per
    *  the stream contract — emits the exact CAPTURE_ERROR sentinel bytes
    *  the capture recorded. */
+  /** The search statement's own limit — see searchCqlLimit below. */
   private async runSearch(card: RenderCard): Promise<RenderCard[]> {
     const rawContent = card.dbContent;
     if (rawContent === "") {
@@ -3022,10 +5468,25 @@ export class RenderEngine implements RenderEngineLike {
     if (statement === null || typeof statement !== "object" || Array.isArray(statement)) {
       return [];
     }
+    // The html search view's paging limit (card-mod-search
+    // set/abstract/0_search/search_params.rb:38-40 format :html
+    // default_limit = Cardio.config.paging_limit || 20; cql_search.rb:85-87
+    // card_content_limit = cql_hash&.dig(:limit)): the cql's own limit when
+    // it declares one (0 = Ruby-truthy = unlimited), else 20. It rides the
+    // statement like Ruby's search_params merge (cql_search.rb:70-74
+    // standardized_query_args merges {limit:, offset:} ON TOP of the cql
+    // hash — the cql's own offset is overridden to 0 headless). Searches
+    // rendering <= 20 items are byte-unchanged (paging only renders when
+    // limit < count); a search with more items now renders Ruby's first
+    // page instead of the whole set.
+    const cqlLimit = searchCqlLimit(statement as Record<string, unknown>);
+    const limit = cqlLimit ?? 20;
+    (statement as Record<string, unknown>)["limit"] = limit;
     let rows: CardsRow[];
     let records: Map<number, CardRecord>;
+    let paging: SearchResultPaging | undefined;
     try {
-      const result = await executeQuery(this.fetcher.driver, statement as Record<string, unknown>, {
+      const queryOptions = {
         // The viewer's read-permission filter rides the SQL
         // (implicitConditions' `read_rule_id IN (...)` — cqlPermissionOptions
         // is the same seam the /api/query path uses, never a parallel
@@ -3063,15 +5524,30 @@ export class RenderEngine implements RenderEngineLike {
           // origins prime it at boot (vm-staging-server primeEngine step 3,
           // worker primeCqlNameResolver). Unknown names still return
           // undefined -> the parser's -999 sentinel, exactly as Ruby.
+          // ensureCardId is Ruby's other half (card-1.110.0 lexicon.rb#
+          // lex_to_id: cache-first WITH a synchronous SQL fallback): the
+          // warm mirror cannot hold decks larger than the Temporary cache's
+          // max_keys (temporary.rb#within_key_counts resets at 10_000 - the
+          // 47k-card corpus deck resets it 10x during warmLexicon), so
+          // executeQuery pre-resolves this statement's name strings through
+          // the async db-fallback walk before the sync interpretation reads
+          // them. Unknown names still sentinel to -999 exactly as before.
+          ensureCardId: (nameish: string) => this.fetcher.lexicon.id(nameish),
           resolveCardId: (nameish: string) => {
             const key = DeckoName.parse(nameish).key;
             return this.idsByKey.get(key) ?? this.fetcher.lexicon.peekId(nameish);
           },
         },
-      });
+      };
+      const result = await executeQuery(
+        this.fetcher.driver,
+        statement as Record<string, unknown>,
+        queryOptions,
+      );
       rows = "rows" in result ? result.rows : [];
-    // Transport chunking (the lane-coldquery batching pattern generalized to
-    // the search read path): every result row used to cost its own
+      rows = await this.canonicalizeDanglingSideRows(rows);
+    // Transport chunking (the batching pattern from src/card/render/prefetch.ts
+    // generalized to the search read path): every result row used to cost its own
     // fetchById point query here — the whole-deck probe measured 12,475
     // driver round trips for one 6,233-item page render, far past the
     // Workers free tier's 50-per-invocation subrequest cap. The rows now
@@ -3090,6 +5566,25 @@ export class RenderEngine implements RenderEngineLike {
     // re-fetching each would only re-query). canReadCard/enrichAndStore
     // semantics are unchanged.
     records = await this.prefetchSearchResultRows(rows);
+      // The paging record (search-paging.ts header): show_paging?
+      // (paging_views.rb:4-9) — fewer_results_than_limit? is false exactly
+      // when the limited SQL list filled its window (rows.length >= limit;
+      // the Ruby list IS the SQL list — the JS re-check below can only
+      // shrink the RENDERED items, not Ruby's list length), and the nav
+      // renders only when limit < count_with_params. The count query runs
+      // only in that full-window case — small-set searches never pay it and
+      // render byte-identically to the pre-paging port. The count statement
+      // is the same statement with return: count — the engine's count path
+      // ignores limit/offset the way Ruby's 0_search.rb:35-39 count args
+      // (offset 0, limit 0) do.
+      if (limit >= 1 && rows.length >= limit) {
+        const count = await executeCount(
+          this.fetcher.driver,
+          statement as Record<string, unknown>,
+          queryOptions,
+        );
+        if (count > limit) paging = { limit, offset: 0, count };
+      }
     } catch {
       return []; // search_error view is wave 3
     }
@@ -3120,6 +5615,9 @@ export class RenderEngine implements RenderEngineLike {
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
     }
+    if (paging !== undefined) {
+      this.searchResultPagingMap.set(card.key, paging);
+    }
     return items;
   }
 
@@ -3139,6 +5637,94 @@ export class RenderEngine implements RenderEngineLike {
    *  lexicon entries behind it. Rows with no non-trashed cards row
    *  (trashed/absent ids) are absent from the map, the exact case the
    *  point-read ladder answered undefined. */
+  /** Live rows whose junction side id points at no cards row still compose
+   *  their names  with the EMPTY part (lexicon.ts#lexToName; lexicon.rb:
+   *  11-15 + name/all.rb:16-18)  so several such rows can share ONE
+   *  composed name. The corpus's only collision class: cards 375/377/389
+   *  (lefts 374/376/388 absent, right *default) all compose "+*default"
+   *  (junction pair-uniqueness makes dangling-side compositions the only
+   *  collision source). Ruby's listing renders the shared name under its
+   *  lowest-id card  the Phrase page oracle pins card 375 (data-card-id=
+   *  "375", type List) for the row the engine's own search matches as 389.
+   *  This map holds row id -> canonical (lowest-id) row id for the dangling
+   *  class, built once per engine from one statement; engines that never
+   *  meet a dangling row pay nothing. The swap runs BEFORE the prefetch so
+   *  the shared name-key seats the canonical record (enrichAndStore's
+   *  existing-key guard would otherwise pin whichever row composed first). */
+  private danglingSideRowCanonical: Map<number, number> | undefined;
+
+  private async danglingSideRowCanonicalMap(): Promise<Map<number, number>> {
+    if (this.danglingSideRowCanonical !== undefined) {
+      return this.danglingSideRowCanonical;
+    }
+    const result = await this.fetcher.driver.query<CardsRow>(
+      "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.left_id IS NOT NULL AND " +
+        "(NOT EXISTS (SELECT 1 FROM cards l WHERE l.id = c.left_id) OR " +
+        " NOT EXISTS (SELECT 1 FROM cards r WHERE r.id = c.right_id))",
+      [],
+    );
+    const names = new Map<string, number>();
+    const remap = new Map<number, number>();
+    for (const row of result.rows) {
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      const key = record.name.key;
+      const current = names.get(key);
+      if (current === undefined || row.id < current) {
+        names.set(key, row.id);
+      }
+    }
+    for (const row of result.rows) {
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined) continue;
+      const canonicalId = names.get(record.name.key);
+      if (canonicalId !== undefined) remap.set(row.id, canonicalId);
+    }
+    this.danglingSideRowCanonical = remap;
+    return remap;
+  }
+
+  /** Swap every search-result row that belongs to the dangling-side
+   *  collision class for its canonical (lowest-id) row's bytes, before the
+   *  prefetch composes and seats them (see danglingSideRowCanonical). */
+  private async canonicalizeDanglingSideRows(rows: CardsRow[]): Promise<CardsRow[]> {
+    if (rows.length === 0) return rows;
+    // junction-less results can never meet the collision class - keep the
+    // remap build (one statement, memoized per engine) off such searches
+    if (!rows.some((r) => r.left_id !== null && r.left_id !== undefined)) {
+      return rows;
+    }
+    const remap = await this.danglingSideRowCanonicalMap();
+    if (remap.size === 0) return rows;
+    let swapped = false;
+    const canonicalRows = new Map<number, CardsRow>();
+    const out: CardsRow[] = [];
+    for (const row of rows) {
+      const canonicalId = remap.get(row.id);
+      if (canonicalId === undefined || canonicalId === row.id) {
+        out.push(row);
+        continue;
+      }
+      let canonicalRow = canonicalRows.get(canonicalId);
+      if (canonicalRow === undefined) {
+        const fetched = await this.fetcher.driver.query<CardsRow>(
+          "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          [canonicalId],
+        );
+        canonicalRow = fetched.rows[0];
+        if (canonicalRow === undefined) {
+          canonicalRows.set(canonicalId, row);
+          out.push(row);
+          continue;
+        }
+        canonicalRows.set(canonicalId, canonicalRow);
+      }
+      out.push(canonicalRow);
+      swapped = true;
+    }
+    return swapped ? out : rows;
+  }
+
   private async prefetchSearchResultRows(rows: CardsRow[]): Promise<Map<number, CardRecord>> {
     const records = new Map<number, CardRecord>();
     if (rows.length === 0) return records;

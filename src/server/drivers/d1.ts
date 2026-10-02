@@ -5,7 +5,7 @@
 // The engine never imports vendor SDKs (see src/server/driver.ts), so this
 // file declares the D1 API structurally instead of importing
 // @cloudflare/workers-types. The shapes below were verified against the
-// miniflare 5 local D1 emulation on this machine (meta.changes,
+// miniflare 5 local D1 emulation (workerd on Windows; meta.changes,
 // meta.last_row_id, batch() semantics, bigint-bind rejection) — see
 // docs/driver-notes.md for the verified details.
 //
@@ -14,6 +14,7 @@
 // `getD1Database()`. Both satisfy D1DatabaseLike structurally.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
+import { rowIdOrOmit } from "../driver.js";
 
 /** Bind values D1 accepts. Note: JS numbers bind with REAL storage class
  *  (D1 has no integer binding for JS numbers), ArrayBuffer/Uint8Array bind
@@ -92,14 +93,6 @@ function assertSuccess(op: string, target: string, result: D1ResultLike): void {
   if (result.success === false) {
     throw new Error(`D1 ${op} failed for ${target}: reported success=false`);
   }
-}
-
-/** D1 reports meta.last_row_id === 0 when the statement inserted nothing.
- *  The driver contract treats lastInsertRowId as optional, so 0 becomes
- *  "omitted". */
-function rowIdOrOmit(lastRowId: number | bigint | undefined): number | bigint | undefined {
-  if (lastRowId === undefined) return undefined;
-  return BigInt(lastRowId) > 0n ? lastRowId : undefined;
 }
 
 /** D1 reports rows_read/rows_written as numbers on real D1; the workerd

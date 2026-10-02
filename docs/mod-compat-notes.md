@@ -8,7 +8,8 @@
 ## Method
 
 For every `card-mod-*` directory under
-`C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/` (the live oracle gems, decko 0.20.0
+`gems/` in the Ruby gems directory (`gem environment gemdir`;
+the live oracle gems, decko 0.20.0
 + card 1.110.0):
 
 1. **Walk `set/**/*.rb` and `lib/**/*.rb`** recursively.

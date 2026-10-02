@@ -34,7 +34,7 @@ import {
 } from "node:http";
 import { appendFileSync, readFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 // ===========================================================================
 // Policy
@@ -457,6 +457,3 @@ const isMain =
 if (isMain) {
   main();
 }
-
-// Suppress unused-binding lint for fileURLToPath (retained for tests).
-void fileURLToPath;

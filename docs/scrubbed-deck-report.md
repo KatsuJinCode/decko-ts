@@ -23,8 +23,8 @@ the deletion set).
 
 ### Phase 3 policy rationale (recorded for the operator)
 
-The ask's literal wording is "rule/pointer CONTENT references ... pruned only where a
-dangling reference would 500 a render". Interpreted by `card_references.ref_type`:
+The scrub rule: rule/pointer CONTENT references are pruned only where a
+dangling reference would 500 a render. Interpreted by `card_references.ref_type`:
 
 - **I (Include)** — `{{+name}}` content inclusion. Missing target → render 500s. **PRUNED.**
 - **Q (Query)** — `{ ... | name }` structured query. Missing target → query likely 500s. **PRUNED.**
@@ -74,7 +74,7 @@ re-mark them with `referee_id = NULL` (unresolved). No 500 risk.
 | **Phase 3 kept (P/L dangling to deleted cards)** | — | **3,292** (L: 3,230 / P: 62) — display refs that do not 500 |
 
 **Arithmetic check (cards):** 49,829 − 28,158 = **21,671** ✓
-**Arithmetic check (live cards):** 47,235 − (3,785 + 24,102) = **19,348** — actual is 19,477; difference of 29 reflects junction cards that were trashed in source AND in the cascade (their `trash=1` rows went into the live-deleted count of 27,758 vs. live-kept calculation). Recomputed correctly: live deletion 27,758, live kept 19,477 → 47,235 ✓.
+**Arithmetic check (live cards):** 47,235 − (3,785 Phase-1 live + 24,102 Phase-2 live) = **19,348** ✓ — the trashed deletions (5 Phase-1 + 266 Phase-2 = 271) sit outside the live count: 2,594 source-trashed − 271 = 2,323 trashed remain, and 19,348 + 2,323 = **21,671** ✓.
 **Arithmetic check (card_references):** 556,526 − 508,001 = **48,525** ✓
 **Arithmetic check (card_virtuals):** 39 − 0 = **39** ✓ (no virtuals deleted — none referenced a date-journal card as left/right; verified during cascade).
 
@@ -138,9 +138,9 @@ they were already dangling before the scrub. Their left/right ids are either:
   `cards`, right=`*default` 318 still present), or
 - negative ids (-9000 to -9016) that are Wagn "sign" sentinels and never existed as card rows.
 
-These are pre-existing artifacts in the source — the ask's "junction cards whose left or
-right was deleted" cannot retroactively apply to them. **They are not introduced by the
-scrub.** The same query against the source deck returns 20:
+These are pre-existing artifacts in the source — the Phase 2 rule (junction
+cards whose left or right was deleted) cannot retroactively apply to them.
+**They are not introduced by the scrub.** The same query against the source deck returns 20:
 
 ```text
 Source dangling junctions: 20
@@ -245,35 +245,34 @@ db_content   : 189 bytes
 
 ## 5. Where the scrubbed deck lives
 
-- **Source (untouched):** `C:\localProjects\decko-ts\tmp\raw-ground-truth\deck\corpus-v2.sqlite3` — byte-for-byte unchanged since 2026-09-24 18:07.
-- **Output (this report):** `C:\localProjects\decko-ts\tmp\raw-ground-truth\deck\corpus-v2-scrubbed.sqlite3` — 42,184,704 bytes, integrity-checked `ok`.
-- The scrubbed deck stays on this machine and Brandon's VM only. **Never uploaded anywhere else** (per the ask).
+- **Source (untouched):** `tmp/raw-ground-truth/deck/corpus-v2.sqlite3` — byte-for-byte unchanged since 2026-09-24 18:07.
+- **Output (this report):** `tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3` — 42,184,704 bytes, integrity-checked `ok`.
+- The scrubbed deck stays on the build machine and the owner's staging VM only. **Never uploaded anywhere else.**
 
 ---
 
 ## 6. Reproducer
 
-The exact scrub is encoded in `tmp-scrubber.mjs` at the project root (one-shot script).
-The verification is encoded in `tmp-verify.mjs`, `tmp-byte-identity.mjs`, `tmp-final-verify.mjs`,
-`tmp-verify-samples.mjs`. The portal-source-extracted matcher cross-check is in
-`tmp-verify.mjs`.
-
-```bash
-node ./tmp-scrubber.mjs    # builds corpus-v2-scrubbed.sqlite3 from corpus-v2.sqlite3
-node ./tmp-verify.mjs      # 0 portal-classifier matches + 0 dangling I/Q refs
-node ./tmp-byte-identity.mjs  # 21,671 cards, 48,525 refs, 39 virtuals all byte-identical
-node ./tmp-final-verify.mjs   # table set, schema, integrity_check
-node ./tmp-verify-samples.mjs # 3 sample cards byte-identical to source
-```
+The scrub was a one-shot script run once against the source deck; the script
+and its verification helpers were not retained in the tree. The specification
+of the scrub is the phase table in section 2 plus the Phase 1 classifier: a
+card name is date-journal family iff it matches `^(?:\d{6}|\d{8})` as a
+prefix, `^(?:\d{6}|\d{8})\s*[-+]` as a junction head, or contains
+`\b(?:\d{6}|\d{8})\b\s*(?:bdw|bw)\b` / `\b(?:bdw|bw)\s+(?:\d{6}|\d{8})\b`
+(the classifier the portal itself uses). Phase 2 iterates the junction
+cascade until a round deletes nothing (6 rounds to convergence here); Phase 3
+prunes dangling `I`/`Q` references and keeps display-typed ones. Re-running
+means re-implementing those three phases against a fresh copy of the source
+deck; every count this report claims is re-derivable from the deck with them.
 
 ---
 
 ## 7. Findings summary
 
-- 3,790 date-journal cards removed by Phase 1 (the only category the operator's ruling names).
-- 24,368 anonymous junction cards removed by Phase 2 transitive cascade (the ask's "junction cards whose left or right was deleted"). The cascade ran for 6 rounds before converging.
+- 3,790 date-journal cards removed by Phase 1 (the only category named for removal).
+- 24,368 anonymous junction cards removed by Phase 2 transitive cascade (junction cards whose left or right was deleted). The cascade ran for 6 rounds before converging.
 - 20,788 `card_references` rows pruned where dangling would 500 a render (`ref_type IN ('I','Q')`).
-- 3,292 `card_references` rows of display type (`ref_type IN ('P','L')`) intentionally kept — they render as broken-link text rather than 500, per the ask's "only where... would 500 a render" caveat.
+- 3,292 `card_references` rows of display type (`ref_type IN ('P','L')`) intentionally kept — they render as broken-link text rather than 500, keeping only prunes that would 500 a render.
 - 506,810 `card_references` rows deleted as orphans (their referer card was deleted by Phase 1 or Phase 2).
 - **Zero date-journal family cards remain in the scrubbed deck**, verified by running the portal's own classifier against every remaining row.
 - Every surviving card, card_reference, and card_virtual row is byte-for-byte identical to the source.

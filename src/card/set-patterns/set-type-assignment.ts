@@ -43,7 +43,8 @@
 
 import { DeckoName, type Nameish } from "../name.js";
 import type { FetchEngine } from "../fetch.js";
-import { typeAssigningModuleKeys } from "./card-patterns.js";
+import { patternsForCard, typeAssigningModuleKeys } from "./card-patterns.js";
+import { moduleKeyFromAnchorCodenames } from "./instance.js";
 import type { PatternCardInput } from "./types.js";
 
 /** A registration entry — the module key the pattern walk emits and the
@@ -128,7 +129,20 @@ export function findAssignedTypeName(
 ): AssignedTypeName {
   const parsed = DeckoName.parse(card.name);
   if (!parsed.isCompound) return undefined; // type.rb:69 simple? short-circuit
-  const patternInput: PatternCardInput = {
+  for (const moduleKey of typeAssigningModuleKeys(patternInputFor(card))) {
+    const typeName = ASSIGNMENTS.get(moduleKey);
+    if (typeName !== undefined) {
+      return DeckoName.parse(typeName).s;
+    }
+  }
+  return undefined;
+}
+
+/** The PatternCardInput the pattern walk builds from an AssignedTypeCardInput
+ *  (shared by the sync walk above, the driver-backed walk below, and the
+ *  read-side lister). */
+function patternInputFor(card: AssignedTypeCardInput): PatternCardInput {
+  return {
     name: card.name,
     isNew: card.isNew,
     typeId: card.typeId ?? null,
@@ -136,11 +150,63 @@ export function findAssignedTypeName(
     leftTypeName: card.leftTypeName ?? null,
     isRule: card.isRule ?? false,
   };
-  for (const moduleKey of typeAssigningModuleKeys(patternInput)) {
-    const typeName = ASSIGNMENTS.get(moduleKey);
-    if (typeName !== undefined) {
-      return DeckoName.parse(typeName).s;
+}
+
+/**
+ * Driver-backed anchor_codenames (pattern/base.rb:40-44
+ * `anchor_parts.map { |part| part.cardname&.codename || break }`): each
+ * anchor part resolves Card::Name#card_id through the ASYNC Lexicon
+ * registry and Card::Codename[id] (Integer branch, codename.ts:59-62)
+ * through the ASYNC codehash — the db-backed data Ruby answers at Card.new
+ * time regardless of cache warmth (base.rb:17-19 find_anchor_id falls back
+ * to @anchor_name.card_id, the Lexicon). The sync DeckoName#cardId /
+ * #codename peeks (name.ts) answer warm cache entries only — that peek
+ * chain is what died on a cold engine. First missing codename breaks the
+ * map all-or-nothing (`|| break`), undefined here.
+ */
+async function anchorCodenameDriverBacked(
+  fetcher: FetchEngine,
+  part: DeckoName,
+): Promise<string | undefined> {
+  const id = await fetcher.lexicon.id(part.key);
+  if (id === undefined) return undefined;
+  return fetcher.codenames.nameForId(id);
+}
+
+/**
+ * type_id_from_code's walk, driver-backed and cold-safe:
+ * each_type_assigning_module_key (pattern/all.rb:74-81) over the applying
+ * assigns_type patterns, each module key built from the db-backed anchor
+ * codenames via moduleKeyFromAnchorCodenames — the exact join
+ * PatternInstance#moduleKey performs. The SYNC findAssignedTypeName above
+ * is kept for its sync consumers (the render-side new-card typing,
+ * render.ts); the WRITE path's resolution goes through here so a cold
+ * engine resolves assignments exactly like Ruby — which has no cold state
+ * on this axis (mod/core/set/all/initialize.rb:54 handle_type ->
+ * ensure_type_id runs the db-backed walk for every new card).
+ */
+async function findAssignedTypeNameDriverBacked(
+  fetcher: FetchEngine,
+  card: AssignedTypeCardInput,
+): Promise<AssignedTypeName> {
+  const parsed = DeckoName.parse(card.name);
+  if (!parsed.isCompound) return undefined; // type.rb:69 simple? short-circuit
+  for (const pattern of patternsForCard(patternInputFor(card))) {
+    if (!pattern.assignsType) continue;
+    const codes: string[] = [];
+    let broke = false;
+    for (const part of pattern.anchorParts) {
+      const code = await anchorCodenameDriverBacked(fetcher, part);
+      if (code === undefined) {
+        broke = true; // base.rb:41 `|| break` - all-or-nothing
+        break;
+      }
+      codes.push(code);
     }
+    if (broke) continue;
+    const moduleKey = moduleKeyFromAnchorCodenames(pattern.spec, codes);
+    const typeName = ASSIGNMENTS.get(moduleKey);
+    if (typeName !== undefined) return DeckoName.parse(typeName).s;
   }
   return undefined;
 }
@@ -167,12 +233,18 @@ export async function resolveAssignedTypeId(
 /** The composite walk + id resolution: type_id_from_code and the
  *  card_id step (type.rb:72 `&.card_id`). Returns undefined when the card
  *  is simple OR no assigns_type pattern has a registration OR the type
- *  card named by the registration does not exist in storage. */
+ *  card named by the registration does not exist in storage.
+ *
+ *  The walk is the DRIVER-BACKED one (findAssignedTypeNameDriverBacked):
+ *  anchor codenames resolve through the async Lexicon/codehash
+ *  registries, so the assignment step of ensure_type_id
+ *  (initialize.rb:54 -> type.rb:58-66) stays live on a cold engine,
+ *  matching Ruby's db-backed resolution (base.rb:17-19, :40-44). */
 export async function resolveAssignedTypeIdForCard(
   fetcher: FetchEngine,
   card: AssignedTypeCardInput,
 ): Promise<number | undefined> {
-  const typeName = findAssignedTypeName(card);
+  const typeName = await findAssignedTypeNameDriverBacked(fetcher, card);
   if (typeName === undefined) return undefined;
   return resolveAssignedTypeId(fetcher, typeName);
 }
@@ -185,16 +257,8 @@ export function listAssignedTypeNamesForCard(
 ): readonly string[] {
   const parsed = DeckoName.parse(card.name);
   if (!parsed.isCompound) return [];
-  const patternInput: PatternCardInput = {
-    name: card.name,
-    isNew: card.isNew,
-    typeId: card.typeId ?? null,
-    typeName: card.typeName ?? null,
-    leftTypeName: card.leftTypeName ?? null,
-    isRule: card.isRule ?? false,
-  };
   const out: string[] = [];
-  for (const moduleKey of typeAssigningModuleKeys(patternInput)) {
+  for (const moduleKey of typeAssigningModuleKeys(patternInputFor(card))) {
     const typeName = ASSIGNMENTS.get(moduleKey);
     if (typeName !== undefined) out.push(DeckoName.parse(typeName).s);
   }

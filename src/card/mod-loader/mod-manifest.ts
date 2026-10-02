@@ -48,6 +48,12 @@
 import type { ViewFn } from "../render/format.js";
 import type { ContentFn } from "../render/content-overrides.js";
 import type { PatternSpec } from "../set-patterns/registry.js";
+// type-only: ModEventContext lives with the dispatcher that builds it (the
+// cycle manifest <-> dispatch is type-level only — no runtime edge).
+import type { ModEventContext } from "./mod-event-dispatch.js";
+// the seam's context is part of the mod-writable surface (ModEventFn's
+// third parameter), so the type re-exports here.
+export type { ModEventContext };
 
 /**
  * The view-definition options Ruby splits out of `view :x, <opts>` (the
@@ -168,19 +174,55 @@ export type ModEventTrigger = "create" | "update" | "delete" | "save";
 
 /** The card surface an event body receives when the execution seam fires
  *  it (Ruby's `self` in an event body is the acting card). Structural
- *  minimum; the seam widens it as stages wire in. */
+ *  minimum; the seam widens it as stages wire in.
+ *
+ *  THE EXECUTION SEAM'S WIDENING (mod-event-dispatch.ts): the fields Ruby
+ *  event bodies read off `self` — the key (map_referees), the action, the
+ *  dirty-field set (attribute_is_changing?, dirty.rb:31-37), the pre-act
+ *  name (name_before_act), trash/type, and the act's skip/trigger state
+ *  (skip_and_trigger.rb). All optional: stub declarations never read them. */
 export interface ModEventCard {
   readonly name: string;
   readonly id?: number;
   readonly dbContent?: string;
+  /** The card's effective key (lib/card/name/all.rb:17-19) — what
+   *  map_referees keys on. */
+  readonly key?: string;
+  /** The save this dispatch belongs to (Ruby's card.action). */
+  readonly action?: "create" | "update" | "delete";
+  readonly trash?: boolean;
+  readonly typeId?: number | null;
+  /** name_before_act (dirty.rb:66-68) — the pre-save name on renames. */
+  readonly nameBeforeAct?: string;
+  /** The columns changing in THIS save, in Card::Dirty canonical names
+   *  (dirty.rb:8-10: name, db_content, trash, type_id, left_id, right_id,
+   *  codename; DirtyNames :57-60 folds left/right changes into name). */
+  readonly changedFields?: readonly string[];
+  /** The act's skip/trigger state (see ModEventActState). */
+  readonly act?: ModEventActState;
 }
 
-/** An event body. Errors propagate to the caller; async bodies are awaited
- *  by the seam that fires them. The host is the mod engine host (the same
- *  instance prepareEngine receives). */
+/** The act-level state an event body sees — Ruby's accessors on the act
+ *  card (skip_and_trigger.rb:17-35): skip=/trigger= carry hash value true,
+ *  forceSkip the skip_event! entries (:force). */
+export interface ModEventActState {
+  readonly action: "create" | "update" | "delete";
+  readonly actId?: number;
+  readonly skip?: readonly string[];
+  readonly forceSkip?: readonly string[];
+  readonly trigger?: readonly string[];
+}
+
+/** An event body. Errors propagate to the caller (integration-stage walks
+ *  rescue them, card.rb:163-171); async bodies are awaited by the seam that
+ *  fires them. The host is the mod engine host (the same instance
+ *  prepareEngine receives); ctx carries the deck deps + the act skip state
+ *  (ModEventContext, mod-event-dispatch.ts). Bodies that predate the seam
+ *  take fewer parameters — assignable in both directions of the widening. */
 export type ModEventFn = (
   card: ModEventCard,
   host: ModEngineHost,
+  ctx: ModEventContext,
 ) => void | Promise<void>;
 
 /** One `event :name, <opts> do ... end` declaration inside a set file
@@ -205,6 +247,22 @@ export interface ModEventRegistration {
    *  the card FIELDS whose change gates the event; the execution seam
    *  evaluates it against the act's changed fields. */
   readonly changed?: readonly string[];
+
+  /** `changing:` — the API-level alias of changed: (event.rb:57; Dirty
+   *  alias_method :77). Recorded verbatim so declarations port as written
+   *  (cardtype.rb:20 `changing: :type`); the dispatcher treats it exactly
+   *  as changed:. */
+  readonly changing?: readonly string[];
+
+  /** `skip: :allowed` (event.rb:40, name_events.rb:12/:46,
+   *  reference_events.rb:6): the act's plain skip= list may drop this
+   *  event; events without the declaration only yield to skip_event!
+   *  (skip_and_trigger.rb:80-84). */
+  readonly skip?: "allowed";
+
+  /** `trigger: :required` (event.rb:41): the event runs only when the act
+   *  explicitly triggers it (skip_and_trigger.rb:86-90). */
+  readonly trigger?: "required";
 
   /** `after: :event_name` relative ordering (permissions.rb:7
    *  `after: :set_read_rule`) - the event runs after the named one at the
@@ -243,6 +301,49 @@ export interface ModSetModuleFile {
    *  DECLARATION surface - execution wiring into the save path is the
    *  action engine's stage seam, consult via eventsForStage). */
   readonly events?: readonly ModEventRegistration[];
+
+  /** the file's `assign_type :foo` line (advanced_api.rb:5-8:
+   *  `Type.assignment[module_key ||= shortname] = type`). module_key is the
+   *  set module's shortname ("right/to" -> "Right::To"), so one registration
+   *  per set-module file. Consumed by the type-assignment walk
+   *  (set-type-assignment.ts) whenever a COMPOUND card's type is derived —
+   *  the save path's resolveTypeId and the render path's new-card typing
+   *  (render.ts newCardDefaultType, type.rb:58-66 `type_id_from_code ||
+   *  type_id_from_template`). */
+  readonly assignsType?: string;
+
+  /** the file's `basket[:tasks][:name] = {...}` declarations
+   *  (set/self/admin.rb in card-mod-carrierwave; the registrar's basket
+   *  machinery, lib/card/set/basket.rb). The loader collects them in load
+   *  order; the deck task basket is core's own basket merged with every
+   *  contribution (the *admin :core task table reads the deck basket). */
+  readonly basketTasks?: readonly ModBasketTask[];
+
+  /** the file's `basket[:warnings] << :name` pushes (set/self/admin.rb in
+   *  card-mod-recaptcha). Collected in load order; the *admin :warning view
+   *  walks the deck list. */
+  readonly basketWarnings?: readonly string[];
+}
+
+/** One `basket[:tasks][:name] = { mod: ..., execute_policy: ... }` entry
+ *  (card-mod-carrierwave set/self/admin.rb:1-4). `execute_policy` is a Ruby
+ *  lambda with no headless surface (it shells at the asset pipeline) and is
+ *  deliberately not carried; the en.yml strings for the task table's
+ *  `t "#{mod}_task_#{task}_link_text"` / `_description` ride along because
+ *  a contribution's locale lives in the CONTRIBUTING mod's en.yml (the core
+ *  basket's pairs live in core-admin-runtime's CORE_ADMIN_LOCALE). */
+export interface ModBasketTask {
+  /** the basket key (Ruby's task symbol). */
+  readonly task: string;
+  /** the `mod:` value (basket select key; type/mod.rb#tasks filters
+   *  `v[:mod] == modname.to_sym`). */
+  readonly mod: string;
+  /** the `irreversible:` flag (nil is omitted - Ruby nil is falsy). */
+  readonly irreversible?: boolean;
+  /** en.yml `<mod>_task_<task>_link_text` (the task table's link text). */
+  readonly linkText: string;
+  /** en.yml `<mod>_task_<task>_description` (the task table's second cell). */
+  readonly description: string;
 }
 
 /** One set_pattern file registration (SetPatternTemplate postamble:
@@ -324,13 +425,17 @@ export interface ModEngineHost {
 
   /** Fetch one card by id (the fetch ladder). The record carries the name
    *  when the card is simple (or its lexicon entry exists); junction cards
-   *  reached by id compose names from their side records. */
+   *  reached by id compose names from their side records. dbContent rides
+   *  the record (cards.db_content) - the mod rule warms read it (the
+   *  input-remainders lane's *input type warm turns each rule's content
+   *  into the with_card mark fetch). */
   fetchById(id: number): Promise<
     | {
         name?: { s: string } | undefined;
         key?: string | undefined;
         leftId?: number | null | undefined;
         rightId?: number | null | undefined;
+        dbContent?: string | undefined;
       }
     | undefined
   >;

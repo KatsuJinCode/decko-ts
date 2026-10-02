@@ -107,9 +107,18 @@ describe("cold layout warm-up: batched + bounded reference closure", () => {
     // the WIDE menu (breadth reach) all rendered on the FIRST render.
     expect(page).toContain("<p>the body</p>");
     expect(page).toContain("<p>the-chain-tail</p>");
-    // Menu items render as BARS (name-bearing titles), one per item line.
+    // Menu items render as BARS (name-bearing titles). Ruby's pointer core
+    // slices the item list at default_limit 20 (card-mod-list other_views.rb
+    // :3-5) and appends the view :paging nav whenever show_paging? (count >
+    // 20) — the bar-slots V8 oracle shape: items 01-20 render as bars, and
+    // the nav's paging-context carries the FULL chased count ("of 24"),
+    // which is the breadth-reach proof (the warm-up closure saw every item).
     expect(page).toContain('title="Menu Item 01"');
-    expect(page).toContain(`title="Menu Item ${String(MENU_ITEMS).padStart(2, "0")}"`);
+    expect(page).toContain('title="Menu Item 20"');
+    expect(
+      page.includes(`<div class='paging-context'>\n1\n-\n20\nof\n${MENU_ITEMS}\n</div>`),
+      "the paging nav must carry the full chased item count",
+    ).toBe(true);
 
     // THE PIN: round trips scale with reference DEPTH (chain links), not
     // card count. The deck hangs 1 chain + 24 items + 24 menu pages + rules

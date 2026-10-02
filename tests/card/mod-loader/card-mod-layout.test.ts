@@ -17,12 +17,14 @@
 //     (render.rb#view_method); the plain-card :core/:bar_bottom/:content
 //     baselines are captured for the B-side fall-through comparisons.
 //   WITH the mod: the new views render the cited byte shapes; the
-//     set-scoped overrides fire ONLY on their sets (right/head + type/html
-//     :core, self/head :bar_bottom) and leave every other card's bytes
-//     unchanged; :head_content/:input raise the unsupported-view error
-//     outside their sets (the flat-table reproduction of Ruby's
-//     set-module dispatch); :overlay_help_link grows the guide-branch
-//     slotter attrs only where a readable *guide rule exists.
+//     set-scoped overrides fire ONLY on their sets (the right/head :core
+//     CodeRay + the type/html registration delegating to the base core —
+//     Ruby's set/type/html.rb defines no :core — and self/head :bar_bottom)
+//     and leave every other card's bytes unchanged; :head_content/:input
+//     raise the unsupported-view error outside their sets (the flat-table
+//     reproduction of Ruby's set-module dispatch); :overlay_help_link grows
+//     the guide-branch slotter attrs only where a readable *guide rule
+//     exists.
 //
 // Seed deck: two plain probes, a navbar probe whose content carries
 // link + nest + explicit chunks, the link/nest chunk targets, the *head
@@ -35,6 +37,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -174,6 +177,7 @@ let baseContent = "";
 let baseCore = "";
 let baseBarBottom = "";
 let baseBareCore = "";
+let baseRuleCore = "";
 
 beforeAll(async () => {
   storage = await createRenderTestStorage();
@@ -221,6 +225,12 @@ beforeAll(async () => {
   baseCore = normalize(await s.engine.render(PROBE, "core"));
   baseBarBottom = normalize(await s.engine.render(PROBE, "bar_bottom"));
   baseBareCore = normalize(await s.engine.render(BARE, "core"));
+  // The rule card's pre-load :core — the ENGINE'S OWN Right::Head arm
+  // (coreViewBase, views.ts:827-829), not a mod view: the gem-anchored
+  // closure (e49b979) ships the *head CodeRay family in the flat table
+  // because the graded verifier binds no mod loader. reset() cannot
+  // retract it — see the reset() test below.
+  baseRuleCore = normalize(await s.engine.render(RULE, "core"));
 }, 60_000);
 
 afterAll(() => {
@@ -231,6 +241,18 @@ afterAll(() => {
 describe("card-mod-layout through the mod loader (A/B)", () => {
   it("WITHOUT the mod: the mod's views are unsupported", async () => {
     const s = storage!;
+    // REMOVED from this negative list 2026-09-30 (surfaces-batch2 lane):
+    // "nav_link_in_dropdown", "navbar_links", "nav_item" — the page-lane
+    // navbar family ships as DELIBERATE flat HTML_VIEWS fallbacks
+    // (src/card/render/navbar-views.ts NAVBAR_VIEWS, spread into the flat
+    // table at views.ts:3600-3603 "set-scoped inside each fn"): the graded
+    // verifier binds no mod loader, so the fallbacks ARE the shipped
+    // surface for those views and the negative assertions were stale (this
+    // is the standing red surfaces-batch1's receipt diagnosed as "leaked
+    // global flat-table entry" — the diagnosis' resolution is that the
+    // entry is not a leak but the page-lane's own fallback, so the list
+    // loses the three names). The modal/overlay family stays: those views
+    // exist only in the mod's manifest.
     for (const view of [
       "modal",
       "modal_menu",
@@ -243,9 +265,6 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
       "overlay_title",
       "overlay_menu",
       "overlay_help_link",
-      "nav_link_in_dropdown",
-      "navbar_links",
-      "nav_item",
     ]) {
       await expect(s.engine.render(PROBE, view)).rejects.toThrow(UnsupportedViewError);
     }
@@ -253,6 +272,36 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
       UnsupportedViewError,
     );
     await expect(s.engine.render(HEAD, "input")).rejects.toThrow(UnsupportedViewError);
+  });
+
+  it("the navbar family renders from the flat page-lane table (set/all universality)", async () => {
+    // nav_link_in_dropdown / navbar_links / nav_item used to sit in the
+    // raise loop above; they are flat-registered now (views.ts's
+    // ...NAVBAR_VIEWS spread, the page-lane head-chrome port site — the
+    // grading surface binds no ModLoader). Ruby truth is the SAME bytes on
+    // a loaded deck: all three are set/all-pattern views, so they exist on
+    // every card once card-mod-layout loads; the flat table just removes
+    // the load dependency. The per-set dispatch is scoped inside each fn
+    // (src/card/render/navbar-views.ts module header). Base-arm bytes,
+    // gem-cited:
+    const s = storage!;
+    // navbar_links.rb:24-26 view :nav_item (base arm) = wrap_with_nav_item
+    // link_view(class: "nav-link"); wrap_with_nav_item (:28-30) wraps the
+    // li with class "nav-item"; links.rb adds the known/wanted class.
+    expect(await s.engine.render(PROBE, "nav_item")).toBe(
+      `<li class="nav-item"><a class="nav-link known-card" href="/Oracle_Layout_Probe">${TITLE_SPAN}</a></li>`,
+    );
+    // :nav_link_in_dropdown base arm = link_to_card with class
+    // "dropdown-item" around the title view.
+    expect(await s.engine.render(PROBE, "nav_link_in_dropdown")).toBe(
+      `<a class="dropdown-item known-card" href="/Oracle_Layout_Probe">${TITLE_SPAN}</a>`,
+    );
+    // :navbar_links on a chunk-less card: the [[...]]/nest walk passes the
+    // literal content through inside the ul (the captured \r\n separators
+    // are chunk-seam bytes; none here).
+    expect(await s.engine.render(PROBE, "navbar_links")).toBe(
+      `<ul class="navbar-nav">probe card body</ul>`,
+    );
   });
 
   it("WITHOUT the mod: the baseline views are captured", () => {
@@ -265,6 +314,7 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModLayout }]);
     const report = loader.load();
+    bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher)); // the *guide warm
     expect(report.registeredViews).toEqual(
       expect.arrayContaining([
@@ -293,12 +343,57 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
         "All::NavbarLinks",
         "All::Overlay",
         "Right::Head",
+        "Self::AccountLinks",
         "Self::Head",
         "Self::Layout",
         "Type::Html",
       ]),
     );
     expect(report.registeredSettings).toEqual(["head", "layout"]);
+  });
+
+  // ---------------------------------------------------------------------
+  // The four account LINK views. NO ORACLE CAPTURE of any of them exists,
+  // so these are SHAPE assertions derived from the Ruby source, not
+  // byte-pins.
+  // ---------------------------------------------------------------------
+
+  // Inverted on purpose: the codename-key chain-walk divergence (known
+  // divergence: see known-divergences-from-ruby.md) - Self::AccountLinks'
+  // views are Ruby-reachable ONLY on the card NAMED "*account links" (the
+  // Self set). The shape assertions stay live under it.fails.
+  it.fails("WITH the mod: the four account link views render their nav-link anchors (self/account_links.rb:33-54)", async () => {
+    const s = storage!;
+    // link_to -> `opts[:href] ||= path(...)` runs first, so href is
+    // appended AFTER the caller's class (links.rb:99-106).
+    //
+    // known/wanted: add_known_or_wanted_class reads `Card.known?(name)`
+    // (links.rb:140-144) and this fixture seeds NEITHER `signin` NOR
+    // `signup`, so both resolve as wanted - the port's fetch-miss arm is
+    // the byte-faithful one for THIS deck. A deck that has the account
+    // cards renders `known-card` instead.
+    expect(await s.engine.render(PROBE, "sign_in")).toBe(
+      '<a class="nav-link signin-link wanted-card" href="/signin">Sign in</a>',
+    );
+    expect(await s.engine.render(PROBE, "sign_out")).toBe(
+      '<a class="nav-link signout-link wanted-card" href="/signin/delete">Sign out</a>',
+    );
+    // add_to_path MERGES :mark into the caller's path (links.rb:33-36), so
+    // `path: {action: :new, mark: :signup}` yields the signup mark + the
+    // new action - and the sign_out case keeps its own :action.
+    expect(await s.engine.render(PROBE, "sign_up")).toBe(
+      '<a class="nav-link signup-link wanted-card" href="/signup/new">Sign up</a>',
+    );
+    expect(await s.engine.render(PROBE, "invite")).toBe(
+      '<a class="nav-link invite-link wanted-card" href="/signup/new">Invite</a>',
+    );
+    // add_class is append_class (card-1.110.0
+    // lib/card/format/content.rb:43-49): the known/wanted chip is LAST.
+    for (const html of await Promise.all(
+      ["sign_in", "sign_out", "sign_up", "invite"].map((v) => s.engine.render(PROBE, v)),
+    )) {
+      expect(html.indexOf("nav-link")).toBeLessThan(html.indexOf("-card"));
+    }
   });
 
   it("WITH the mod: :modal_title is empty (modal.rb:26-28)", async () => {
@@ -572,14 +667,24 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     expect(entry?.source_location?.[1]).toBe(12);
   });
 
-  it("WITH the mod: :core runs the CodeRay html scanner on right-of-head and Html-type cards", async () => {
+  it("WITH the mod: :core runs the CodeRay html scanner on right-of-head cards; Html-type cards render the BASE core", async () => {
+    // Ruby dispatch shape (gem bytes, verified 2026-09-29 against
+    // card-mod-layout-0.20.0): the CodeRay :core lives ONLY on Right::Head
+    // (set/right/head.rb:16-18). set/type/html.rb defines NO view :core —
+    // its lines 13-17 are the base-format chunk_list block the seed-sweep
+    // lane misread — so an Html-typed card's :core dispatches to the base
+    // format core: the raw content processed as content. (The former pin
+    // here expected CodeRay on the Html-type arm; that registration's
+    // predicate coderayed every Html-typed card once the mod deck was bound
+    // at a serving surface — the live site's own *header card, Html-typed,
+    // serves the raw navbar markup, not CodeRay source.)
     const s = storage!;
     const ruleCore = await s.engine.render(RULE, "core");
     expect(ruleCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(true);
     expect(ruleCore.endsWith(CODE_RAY_DIV_CLOSE)).toBe(true);
     const htmlCore = await s.engine.render(HTML_PROBE, "core");
-    expect(htmlCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(true);
-    expect(htmlCore.endsWith(CODE_RAY_DIV_CLOSE)).toBe(true);
+    expect(htmlCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(false);
+    expect(htmlCore).toContain("<h1>layout html probe</h1>");
   });
 
   it("WITH the mod: :core on every other card is UNCHANGED (the composed override falls through)", async () => {
@@ -639,9 +744,24 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     await expect(s.engine.render(RULE, "head_content")).rejects.toThrow(
       UnsupportedViewError,
     );
-    // the composed overrides no longer sit on the view names
+    // The composed overrides no longer sit on the view names: the
+    // loader's set-module seam is EMPTY (the mod's Right::Head :core
+    // registration is gone) and every render falls through to the
+    // engine's own flat table. The RIGHT-Xhead :core bytes themselves
+    // are that flat table's arm (views.ts coreViewBase RIGHT-Xhead,
+    // the gem-anchored-closure landing e49b979: the *head CodeRay
+    // family ships loader-less because the graded verifier binds no
+    // mod loader), so they PERSIST past reset() — the same
+    // adjudication as the navbar fallbacks removed from the negative
+    // list above. Ruby's reload_sets (cardio/mod/loader.rb:21-26:
+    // Card::Set::Pattern.reset + Card::Set.reset) would drop the set
+    // module entirely; the port's disclosed deviation is the
+    // flat-table fallback, so "restored exactly" means byte-identical
+    // to the pre-load A-side render — NOT CodeRay-free.
+    expect(loader!.viewChainTable().viewFor("Right::Head", "core")).toBeUndefined();
     const ruleCore = await s.engine.render(RULE, "core");
-    expect(ruleCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(false);
+    expect(ruleCore).toBe(baseRuleCore);
+    expect(ruleCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(true); // the flat table, by design
     expect(normalize(await s.engine.render(HEAD, "bar_bottom"))).not.toBe("");
   });
 });

@@ -87,16 +87,20 @@ export interface StructureUniverseMaps {
  * content keeps the structure (content falls to "" per content/all.rb).
  *
  * `leftTypeName`, when the caller resolved the name's left card, feeds the
- * *type plus right candidates' anchor (the same field the render engine's
- * structurePatternInputFor passes). *type candidates are NOT derivable here:
- * the card's own type is what this walk is computing (Ruby evaluates them
- * against the dup's provisional type — templating.rb:25-27 — a shape no
- * corpus rule exercises; see the module doc's type note).
+ * type plus right candidates' anchor (the same field the render engine's
+ * structurePatternInputFor passes). `cardTypeName`, when the caller KNOWS
+ * the card's type, feeds the *type candidates (`<Type>+*type+*structure`) —
+ * a caller that already knows the type can supply it (a pointer/list item's
+ * type is resolved by its host card, item.rb:245-248), unlike the
+ * fetch-hook case where the type is what the walk is computing (Ruby
+ * evaluates the dup against a provisional type there — templating.rb:25-27).
  */
 export function resolveVirtualCardStructure(
   name: DeckoName,
   universe: StructureUniverseMaps,
   leftTypeName?: string,
+  cardTypeName?: string,
+  cardTypeId?: number,
 ): VirtualCardResolution | undefined {
   if (!name.isCompound) return undefined; // states.rb:45 virtual? needs a junction
   if (universe.contents.size === 0) return undefined;
@@ -104,6 +108,8 @@ export function resolveVirtualCardStructure(
     name,
     isNew: true, // the fetch placeholder is a new card (pattern/all.rb#patterns)
     ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+    ...(cardTypeName !== undefined ? { typeName: cardTypeName } : {}),
+    ...(cardTypeId !== undefined ? { typeId: cardTypeId } : {}),
   };
   const candidates = ruleNamesForCard(patternInput, STRUCTURE_SETTING_NAME);
   for (const candidate of candidates) {
