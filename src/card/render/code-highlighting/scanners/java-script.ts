@@ -1,7 +1,7 @@
 // CodeRay JavaScript scanner.
 //
 // Truth source: coderay-1.1.3 lib/coderay/scanners/java_script.rb (read in
-// full, 2026-10-01, lane-autolink). The scanner is the delegate
+// full, 2026-10-01). The scanner is the delegate
 // html.rb:76-80 `scan_java_script` hands a <script> body to:
 //
 //   @java_script_scanner ||= Scanners::JavaScript.new '', :keep_tokens => true

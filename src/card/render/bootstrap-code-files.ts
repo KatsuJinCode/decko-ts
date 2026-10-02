@@ -35,7 +35,7 @@
 // the built-in default registry and silently unport the cards for
 // loader-less consumers.
 
-// 2026-10-01 (deploy-miniflare lane): the Node reads reach fs through a
+// 2026-10-01: the Node reads reach fs through a
 // RUNTIME process.getBuiltinModule probe instead of import statements —
 // the move coded-attachment-files.ts made 2026-09-29 — because this module
 // sits in the deploy/worker.ts bundle graph (render.ts -> format.ts ->
@@ -45,7 +45,7 @@
 // vite or wrangler, and workerd rejects the script at load with
 // `No such module "node:fs"` — the boot failure the miniflare deploy proof
 // (tests/deploy/deploy-worker-miniflare.test.ts) guards at its bundle
-// assertion. The lazy directory move below (2026-10-02, cf-worker lane)
+// assertion. The lazy directory move below (2026-10-02)
 // fixed module INIT on workerd; the probe fixes module LOAD.
 
 import type { RenderFormat } from "./format.js";
@@ -80,7 +80,7 @@ function nodeFsOrNull(): NodeSyncFs | undefined {
 
 // The vendored-scss directory, resolved LAZILY and memoized.
 //
-// 2026-10-02 (cf-worker-write-path lane): this used to be a module-scope
+// 2026-10-02: this used to be a module-scope
 // `const`. That is a module-LOAD side effect, and it crashes a Cloudflare
 // Workers runtime before the first request is ever served:
 //
@@ -93,7 +93,7 @@ function nodeFsOrNull(): NodeSyncFs | undefined {
 // has no valid base, and the whole Worker fails to START. Measured on
 // miniflare 5's workerd while proving the write surface. Pre-existing, not
 // introduced here: the same module-scope line is in the bundle of worker.js
-// at the base commit this lane branched from, and the deploy/worker.ts graph
+// at the base commit, and the deploy/worker.ts graph
 // carries the same hazard.
 //
 // Why lazy is safe: both consumers below (loadStylesheets,

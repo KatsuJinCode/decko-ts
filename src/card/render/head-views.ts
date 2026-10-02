@@ -96,7 +96,7 @@ export const HEAD_READ_SET_KEYS = [
   // them yet.
   "*all+*script",
   "*all+*script+*asset_output",
-  // The *recent settings card (lane catrecent-reversal, 2026-10-01):
+  // The *recent settings card (2026-10-01):
   // setting_categories.rb:64-67 reads `Card[:recent_settings]` — the same
   // deck-level codename fetch shape as `Card[:title]` (card 23808 carries
   // codename recent_settings) — and the rule-item bar's `_category-recent`
@@ -121,7 +121,7 @@ export const HEAD_READ_SET_KEYS = [
   // third shape, reachable only from a deck whose inflections declare
   // "settings" uncountable (ActiveSupport uncountable("settings") flips
   // the gem run to it) or that stores underscored raw keys.
-  // (stable-key-audit lane, 2026-10-01, gem-run + SQL-probe verified.)
+  // (2026-10-01, gem-run + SQL-probe verified.)
   // cacheHeadViewReads seats the row under record.name.key (the SAME
   // parse), so the fetch-side lookups hit whichever shape the deck
   // carried.

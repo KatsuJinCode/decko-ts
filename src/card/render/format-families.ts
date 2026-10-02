@@ -42,7 +42,7 @@
 // Not ported here (honest remainders, named):
 // - Search-type cards as csv/json items ride the claimed
 //   found_by/search execution surface (no oracle capture exists for a
-//   search card in these formats on this lane); executeSearch's
+//   search card in these formats); executeSearch's
 //   pre-executed map is a page-flow artifact. A search card's content
 //   falls to the raw-string :content arm here.
 // - Relative ({{_self+…}}) nest references as json items: contextual

@@ -315,8 +315,8 @@ export interface ViewPermsGateInput {
    *  (EmailTextFormat < TextFormat < Format), so its denials are "":
    *  exactly why the follower notification's TEXT message renders
    *  `was just  by` (double space) where the html message renders the
-   *  span. Optional: absent means the html shape (every pre-email lane's
-   *  callers). */
+   *  span. Optional: absent means the html shape (every caller
+   *  outside the email-text format). */
   readonly formatName?: string;
   /** permission.rb:61 method predicates — `format.send task` for the
    *  non-CRUD perms directives. can_configure? (cardtype.rb:68-70) is the

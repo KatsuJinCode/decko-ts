@@ -164,7 +164,7 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  the compact and slashed forms Ruby accepts so the engine's
  *  prepare-phase raise skips parity with Ruby's accepted inputs.
  *
- *  Dashed-numeric expansion (raise-leadview lane, 2026-09-29; every claim
+ *  Dashed-numeric expansion (2026-09-29; every claim
  *  below verified against this machine's ruby 3.3 Date.parse): Ruby parses
  *  the dashed numeric forms `Y-M-D` with 1-4 digit years and 1-2 digit
  *  month/day — "18-12-22" → 2018-12-22, "2010-7-19" → July 19 2010,
