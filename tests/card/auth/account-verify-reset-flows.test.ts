@@ -1,8 +1,8 @@
 // The account email-token FLOW tests (src/card/auth/account-verify-reset-flows.ts):
 // request reset -> reset email (token link) -> confirm -> set new password,
-// plus the signup-arm verification/activation. Red-first per the lane
+// plus the signup-arm verification/activation. Red-first per the suite
 // contract: the module under test did not exist at d6b1957 — every import
-// below is the gap this lane closes.
+// below is the gap this suite closes.
 //
 // Ruby truth is cited per block; the master citations live in the module
 // header of the implementation (set/self/signin.rb send_reset_password_token,

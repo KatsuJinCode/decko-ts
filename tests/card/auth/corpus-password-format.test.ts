@@ -18,7 +18,7 @@
 // (a local gitignored build, tmp/raw-ground-truth/bench-corpus-raw.sqlite3)
 // stays available as the explicit opt-in via DECKO_TS_RAW_CORPUS; no
 // sibling-checkout fallback and no presence probing (self-contained-tests
-// lane). The assertion is the same shape property at either scale.
+// rule). The assertion is the same shape property at either scale.
 
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";

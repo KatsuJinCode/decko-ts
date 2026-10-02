@@ -1,9 +1,9 @@
-// Shared corpus fixture for the reset-flow lanes: a DISPOSABLE COPY of the
+// Shared corpus fixture for the reset-flow suites: a DISPOSABLE COPY of the
 // anonymized corpus-v2 with the engine-standard column name, the write
 // engine's history tables, and test-issued credentials for the REAL corpus
-// account card (holder 583, the signin lane's proven roleful member).
+// account card (holder 583, the signin suite's proven roleful member).
 //
-// Discipline is the signin-endpoint lane's: the corpus source file stays
+// Discipline is the signin-endpoint suite's: the corpus source file stays
 // untouched (copy only), the python-built `content` column is renamed to
 // db_content IN THE COPY, the browse-built copy gains the missing history
 // tables from the repo's own DDL, and +*password/+*status are re-issued in

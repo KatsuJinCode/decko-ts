@@ -1,10 +1,10 @@
 // The FULL password-reset flow against a DISPOSABLE COPY of the anonymized
-// corpus-v2 (the lane contract: "test the full flow against a local corpus
+// corpus-v2 (the task contract: "test the full flow against a local corpus
 // copy with the mail transport mocked (assert envelope + token link
 // bytes)").
 //
 // The journey, end to end, in-process (no booted server — the endpoint
-// surface has its own lane test):
+// surface has its own dedicated test):
 //
 //   1. the member requests a reset (sendResetPasswordToken — the
 //      send_reset_password_token event, set/self/signin.rb:27-31)

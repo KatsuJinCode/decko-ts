@@ -571,8 +571,8 @@ describe("createOwnerAccount — the happy path", () => {
       await sha1Hex(`${outcome.salt}--Abcdef1!--`),
     );
 
-    // (g) THE ACCEPTANCE CRITERION OF THE LANE: the brand-new owner signs in
-    //     through the EXISTING signin flow, unchanged. Before this lane a new
+    // (g) THE ACCEPTANCE CRITERION OF THE FIX: the brand-new owner signs in
+    //     through the EXISTING signin flow, unchanged. Before this fix a new
     //     user could never sign in at all — both seeds create zero accounts.
     const sessions = new SessionStore({ driver });
     const signedIn = await signinAccount(driver, sessions, "Owner@Example.COM", "Abcdef1!");
@@ -739,7 +739,7 @@ describe("the /setup route", () => {
     );
     expect(response?.status).toBe(200);
     expect(response?.headers["Content-Type"]).toBe("text/html; charset=utf-8");
-    // Minimal: exactly the two fields the lane's contract names.
+    // Minimal: exactly the two fields the fix's contract names.
     expect(response?.body).toContain('name="email"');
     expect(response?.body).toContain('name="password"');
     expect(response?.body).toContain('action="/setup"');

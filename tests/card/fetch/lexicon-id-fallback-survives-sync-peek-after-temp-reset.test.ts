@@ -1,6 +1,6 @@
 // The sync-peek negative-materialization hazard (search-parity-2 follow-up
 // unit 3, demonstrated end-to-end on 10 census pages by the search-final
-// lane): the Temporary cache's max-keys reset (card-1.110.0
+// work): the Temporary cache's max-keys reset (card-1.110.0
 // lib/card/cache/temporary.rb#within_key_counts, default 10_000 keys) evicts
 // warm L-<key> entries mid-render; a subsequent SYNC peek (DbLexicon.peekId,
 // documented cache-only, no db fallback) went through CardCache.read -

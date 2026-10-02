@@ -67,7 +67,7 @@ const ANON_CARD_ID = 11;
 const EDITOR_ID = 7;
 const ANYONE_ID = 6;
 
-/** Codename + rule skeleton (the secverify lane's seedSkeleton shape):
+/** Codename + rule skeleton (the secverify suite's seedSkeleton shape):
  *  `defaultTypeId` (type-resolution.ts:95-112) is the *all+*default rule
  *  card's own type_id — Card.default_type_id (mod/core/set/all/type.rb:3-5). */
 async function seedSkeleton(s: ActionsTestStorage, defaultTypeId: number): Promise<void> {
