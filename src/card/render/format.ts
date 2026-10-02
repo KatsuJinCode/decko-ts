@@ -2805,6 +2805,21 @@ export interface RenderEngineLike {
    *  query-free, returning the registered card name for the href source.
    *  Optional: engines without it leave map misses wanted-card. */
   peekKnownCardName?(name: string): string | undefined;
+  /** M9 — the resolved html_views.rb:4-11 `new_customized_name` for one
+   *  bootswatch_skin card, computed in the engine's ASYNC PREPARE PHASE by
+   *  walking `Card.exist?` over `<skin> customized`, `<skin> customized 1`, …
+   *  (RenderEngine#cardExists) and memoized here for the synchronous
+   *  customize_button ViewFn to read. The view cannot query: this pipeline
+   *  dispatches sync ViewFns over a prepared map, and a bootswatch skin's
+   *  customized sibling is never in that page's nest closure — the
+   *  render-card-map-only gate is what produced the M9 residual (journal /
+   *  slate skin pages render the bare name where the oracle emits `+1`).
+   *
+   *  Optional: undefined = not warmed for this card (an engine with no
+   *  prepare phase, or a skin nested into a render rather than being the
+   *  root). The view then falls back to the render-card map, which is
+   *  exactly its pre-M9 behaviour. */
+  peekCustomizedName?(name: string): string | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
   /** The seated paging record for a rendered search (search-paging.ts;

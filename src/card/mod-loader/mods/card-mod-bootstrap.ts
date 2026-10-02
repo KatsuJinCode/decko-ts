@@ -429,42 +429,41 @@ function buildCustomizeButtonHref(args: {
 /** html_views.rb:4-11 new_customized_name: append " customized" to the
  *  card name; while the resulting name exists, append a numeric suffix
  *  and increment via `String#next!` until a free name is found
- *  (Card.exist? gates). The TS port walks the same logic with
- *  Card.exist? -> `engine.fetchRenderCard(name) !== undefined` against
- *  the engine's prepared render-card map. Cited: html_views.rb:4-11.
+ *  (Card.exist? gates). Cited: html_views.rb:4-11.
  *
- *  KNOWN GAP (negdelta-zero lane, M9, 2026-10-02) — the existence gate is
- *  wrong in TWO ways at once, and neither is safe to patch from the view:
+ *  M9 (2026-10-02) — the EXISTENCE GATE, not the walk. This function used to
+ *  answer `Card.exist?` from `engine.fetchRenderCard(name)`, the PREPARED
+ *  RENDER-CARD MAP. That map is the prefetch nest-closure's reach, not the
+ *  deck: a bootswatch skin's `<skin> customized` sibling is referenced by
+ *  nothing on the skin page, so it is never seated and the gate read "free"
+ *  for every skin. The oracle disagrees for exactly the skins whose customized
+ *  card exists (corpus 34179 `journal skin customized`, 38274 `slate skin
+ *  customized`): their pages carry `card[name]=journal+skin+customized+1` /
+ *  `slate+skin+customized+1`, and the other eighteen skin pages carry the bare
+ *  name.
  *
- *  1. SCOPE. The gate answers from the RENDER-CARD MAP, which is
- *     PAGE-SCOPED — it holds whatever this render's prefetch closure
- *     reached. `journal skin` and `slate skin` are the only bootswatch
- *     skins whose `<skin> customized` card exists (corpus ids 34179 /
- *     38274) and their oracle pages carry
- *     `card%5Bname%5D=journal+skin+customized+1` / `mark=...+1`
- *     (page-lane expected-v2); the other seventeen skin pages carry the
- *     bare `... customized`. A map-only gate renders all nineteen alike.
+ *  The gate now reads the prepare-phase answer. `RenderEngine#cardExists`
+ *  walks the same `Card.exist?` sequence ASYNC and EXACTLY (the
+ *  render-card map first, re-checked on each seat's STORED name because the
+ *  map is keyed by the case-folded canonical key, then one `WHERE name = ? AND
+ *  trash = 0` point query), and `peekCustomizedName` hands the resolved name
+ *  back to this synchronous view. The async boundary sits in `render()`'s
+ *  prepare phase, where every other live read on this pipeline is hoisted —
+ *  `fetchRenderCard` is cache-only by contract, so a query here would not be
+ *  a query at all.
  *
- *  2. EXACTNESS — and this is the one that makes a "just use the lexicon"
- *     patch WRONG. Ruby's `Card.exist?` matches the stored NAME exactly.
- *     The oracle-pinned probe in card-mod-bootstrap.test.ts:464 is the
- *     falsifier: the deck stores `Cerulean Skin Customized` (capital C) and
- *     the oracle emits `card%5Bname%5D=Cerulean+Skin+customized` — the
- *     lowercase base, UNSUFFIXED, because `Cerulean Skin customized` is not
- *     a name any card carries. `DeckoName.parse(...).key` and
- *     `Lexicon#peekId` both CASE-FOLD, so routing the gate through either
- *     answers TRUE for that deck and would render `... customized 1`,
- *     breaking a passing oracle pin.
- *
- *  The correct fix is an async exact-name existence query run in the page's
- *  prepare phase (Ruby answers from the DB on every call; a sync view
- *  function cannot). It is NOT landable from here: it changes which card
- *  the closure warms, and only a full-canvas grade — controller-owned, and
- *  out of this lane's window — can show that the other seventeen skin pages
- *  still render the bare name. */
+ *  FALLBACK: `peekCustomizedName` is optional on RenderEngineLike. Undefined
+ *  means the engine did not warm this skin (no prepare phase, or a skin
+ *  nested into a render rather than being the root), and the pre-M9
+ *  render-card-map walk stands. That fallback is deliberately NOT the new
+ *  gate: it is page-scoped by construction, which is the bug, and it is
+ *  only reachable on surfaces this lane does not warm. */
+ (M9: Card.exist? for customize_button's new_customized_name is an async EXACT-name query)
 function newCustomizedName(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const engine = ctx.fmt.engine;
+  const warmed = engine.peekCustomizedName?.(card.name.s);
+  if (warmed !== undefined) return warmed;
   const base = `${card.name.s} customized`;
   const exists = (name: string) => engine.fetchRenderCard(name) !== undefined;
   if (!exists(base)) return base;

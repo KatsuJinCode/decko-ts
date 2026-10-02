@@ -348,6 +348,23 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
 
+  /** M9 - bootswatch_skin new_customized_name's resolved answer, keyed by
+   *  the skin card's canonical key. `name` is the answer itself (the card
+   *  name the Customize button proposes); `asked` is every candidate the
+   *  walk asked Card.exist? about, verbatim, so a save can invalidate
+   *  exactly the decisions that consulted it and no others.
+   *
+   *  `Card.exist?` is a LIVE Ruby query (card/mod/core/set/all/states.rb:
+   *  18-23 `real?` -> `quick_fetch`; fetch/retrieve.rb:34-40 `{ key:
+   *  mark.key }`), and the customize_button view function is synchronous,
+   *  so the query cannot live there - warmCustomizedName runs the walk in
+   *  the async prepare phase and the view reads this memo.
+   *  Cleared on resetCaches() and, per saved name, in expireRenderCard. */
+  private customizedNameBySkinKey = new Map<
+    string,
+    { name: string; asked: readonly string[] }
+  >();
+
   /** Save-side invalidation for the enriched render-card map: after a write,
    *  BOTH layers holding the pre-save row must drop it - the fetch layer's
    *  card cache (FetchEngine#expireName, the cache/all.rb#expire port) and
@@ -365,6 +382,17 @@ export class RenderEngine implements RenderEngineLike {
       // that drops the card invalidates that record, so a re-enriched card
       // gets its refs re-chased.
       this.warmupScannedKeys.delete(key);
+    }
+    // M9: a save flips the Card.exist? verdict for exactly the stored name
+    // it wrote. Drop every warmed decision that ASKED about that name, and
+    // every decision whose answer IS that name (the save created the card
+    // the button was about to propose). The comparison is on the verbatim
+    // name string, not the canonical key: the walk's candidates are exact
+    // strings, and key comparison would fold case across them.
+    for (const [skinKey, answer] of [...this.customizedNameBySkinKey]) {
+      if (answer.name === name || answer.asked.includes(name)) {
+        this.customizedNameBySkinKey.delete(skinKey);
+      }
     }
   }
   /** Rule lookup cache: `<card_key>|<view>` -> the resolved ViewOverride
@@ -930,6 +958,17 @@ export class RenderEngine implements RenderEngineLike {
       await this.prepareItemForRender(`${name.s}+*variables`);
       await this.prepareItemForRender(`${name.s}+*stylesheets`);
       await this.prepareItemForRender("*all+*style");
+      // M9: html_views.rb:4-11 new_customized_name asks Card.exist? about
+      // `<skin> customized`, `<skin> customized 1`, ... The customized
+      // sibling is NOT in this page's nest closure (nothing on a skin page
+      // references it), so the render-card-map-only gate could not see it -
+      // that is the M9 gap: the oracle's journal/slate skin pages carry
+      // `card[name]=...customized+1` (corpus 34179 / 38274) and the other
+      // eighteen skin pages carry the bare name. This is the async half of
+      // the seam; warmCustomizedName runs the whole walk here, where
+      // queries are legal, and the synchronous customize_button view
+      // reads the answer out of memory.
+      await this.warmCustomizedName(name);
     }
     // p20-help-content warm (the setting-page core's synchronous reads):
     // a SETTING-typed rendered card's core (views.ts settingCoreHtml)
@@ -1629,6 +1668,7 @@ export class RenderEngine implements RenderEngineLike {
     this.pointerItemVerdicts.clear();
     this.pointerItemGlobalVerdictDone.clear();
     this.warmupScannedKeys.clear();
+    this.customizedNameBySkinKey.clear();
     this.linkScanDoneKeys = undefined;
     this.helpRules = undefined;
     this.helpResolver = undefined;
@@ -2685,6 +2725,111 @@ export class RenderEngine implements RenderEngineLike {
   fetchRenderCard(name: string): RenderCard | undefined {
     const key = DeckoName.parse(name).key;
     return this.renderCards.get(key);
+  }
+
+  /** M9 - `Card.exist?` as an ASYNC EXACT-stored-name query (the
+   *  customize_button new_customized_name gate, html_views.rb:4-11).
+   *
+   *  Two arms, in order:
+   *
+   *  1. THE PREPARED RENDER-CARD MAP - but the map is keyed by the
+   *     CANONICAL key (`DeckoName.key`, case-folded through
+   *     `Inflector#underscore`, cardname lib/cardname.rb:106-116), so a
+   *     map hit is re-checked against the seat's STORED name
+   *     (`card.name.s`) before it counts. A fold-only hit is not
+   *     existence; that is precisely the trap the negdelta lane's
+   *     `Lexicon#peekId` arm fell into.
+   *  2. ONE point query against the stored name - `WHERE name = ? AND
+   *     trash = 0`, the `trash = false unless look_in_trash` default of
+   *     retrieve.rb:28-33 pointed at the name column.
+   *
+   *  Compound names (never produced by this walk - `"#{name} customized"`
+   *  on a simple skin name stays simple) delegate to the fetcher, because
+   *  a junction row stores a NULL `name` and its identity IS its side
+   *  ids.
+   *
+   *  WHY ASYNC, AND WHY THE ASYNC BOUNDARY IS SAFE HERE: the view
+   *  function itself cannot query. The whole render pipeline dispatches
+   *  SYNCHRONOUS ViewFns over a prepared map - fetchRenderCard is
+   *  cache-only by contract (its own doc: "Returns undefined for anything
+   *  the prefetch did not prepare"). So the query belongs in the ASYNC
+   *  PREPARE PHASE of `render()`, which is this engine's established
+   *  seam for exactly this shape: prepareItemForRender,
+   *  enrichLinkTargetsForKnownClass and the bootswatch-skin family warm
+   *  above are all async, all run before the dispatch, and all hand the
+   *  sync view pure memory. Ruby's `Card.exist?` is equally live per
+   *  invocation; the port hoists it into prepare because the port's
+   *  render is a batch, and Ruby's batch is the prepare phase.
+   *
+   *  SCOPE OF THE CHANGE: the verdict never enters renderCards. Seating a
+   *  not-really-warm card there would change what every sync surface can
+   *  see - the blast radius the negdelta lane refused to take without a
+   *  full-canvas grade. This arm feeds exactly one decision: the
+   *  customize_button's proposed new card name. */
+  async cardExists(name: string): Promise<boolean> {
+    const parsed = DeckoName.parse(name);
+    if (!parsed.isCompound) {
+      // Arm 1: the prepared map, re-checked on the STORED name.
+      const seated = this.renderCards.get(parsed.key);
+      if (seated !== undefined) return seated.name.s === name;
+      // Arm 2: one point query on the stored name.
+      const row = await this.fetcher.driver.query<{ id: number }>(
+        "SELECT id FROM cards WHERE name = ? AND trash = 0 LIMIT 1",
+        [name],
+      );
+      return row.rows.length > 0;
+    }
+    // Compound: identity is the side-id pair, not a stored name string.
+    return (await this.fetcher.fetchByName(parsed)) !== undefined;
+  }
+
+  /** M9 - the prepare-phase warm for html_views.rb:4-11 new_customized_
+   *  name. Mirrors the Ruby walk verbatim:
+   *
+   *      nname = "#{name} customized"
+   *      if Card.exist?(nname)
+   *        nname = "#{nname} 1"
+   *        nname.next! while Card.exist?(nname)
+   *      end
+   *      nname
+   *
+   *  html_views.rb:38-48's `return "" if card.parent?` runs BEFORE
+   *  new_customized_name, so a skin with a +parent subcard never asks a
+   *  single existence question - this warm no-ops for it instead of
+   *  spending queries on an answer the view discards. The `String#next!`
+   *  increment is the numeric-suffix walk the port already used: each
+   *  candidate is `"#{base} N"` from the initial " 1".
+   *
+   *  Termination and cost: the walk is bounded only by the deck, as
+   *  Ruby's is, and every verdict memoizes per skin key, so a warm
+   *  re-render costs zero queries. A deck holding `<skin> customized`
+   *  through `<skin> customized N` pays N+2 point queries on that skin's
+   *  first page - the same count Ruby pays on the same page. */
+  private async warmCustomizedName(skinName: DeckoName): Promise<void> {
+    if (this.customizedNameBySkinKey.has(skinName.key)) return;
+    // html_views.rb:38-48 `return "" if card.parent?` short-circuits
+    // before new_customized_name; nothing below is reachable for a
+    // parented skin.
+    if (this.fetchRenderCard(`${skinName.s}+parent`) !== undefined) return;
+    const base = `${skinName.s} customized`;
+    const asked: string[] = [];
+    let answer = base;
+    let n = 1;
+    while (await this.cardExists(answer)) {
+      asked.push(answer);
+      answer = `${base} ${n}`;
+      n += 1;
+    }
+    this.customizedNameBySkinKey.set(skinName.key, { name: answer, asked });
+  }
+
+  /** M9 - the synchronous read side of the seam above, for the
+   *  customize_button ViewFn. Undefined = never warmed (an engine that did
+   *  not run the prepare phase for this card, or a skin nested into a render
+   *  rather than being the root); the view falls back to the render-card
+   *  map exactly as it did before this lane. */
+  peekCustomizedName(skinName: string): string | undefined {
+    return this.customizedNameBySkinKey.get(DeckoName.parse(skinName).key)?.name;
   }
 
   /** view-fail class V4 — links.rb:140-144 add_known_or_wanted_class truth
