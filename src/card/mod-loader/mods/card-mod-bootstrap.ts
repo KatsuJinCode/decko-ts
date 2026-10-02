@@ -431,7 +431,37 @@ function buildCustomizeButtonHref(args: {
  *  and increment via `String#next!` until a free name is found
  *  (Card.exist? gates). The TS port walks the same logic with
  *  Card.exist? -> `engine.fetchRenderCard(name) !== undefined` against
- *  the engine's prepared render-card map. Cited: html_views.rb:4-11. */
+ *  the engine's prepared render-card map. Cited: html_views.rb:4-11.
+ *
+ *  KNOWN GAP (negdelta-zero lane, M9, 2026-10-02) — the existence gate is
+ *  wrong in TWO ways at once, and neither is safe to patch from the view:
+ *
+ *  1. SCOPE. The gate answers from the RENDER-CARD MAP, which is
+ *     PAGE-SCOPED — it holds whatever this render's prefetch closure
+ *     reached. `journal skin` and `slate skin` are the only bootswatch
+ *     skins whose `<skin> customized` card exists (corpus ids 34179 /
+ *     38274) and their oracle pages carry
+ *     `card%5Bname%5D=journal+skin+customized+1` / `mark=...+1`
+ *     (page-lane expected-v2); the other seventeen skin pages carry the
+ *     bare `... customized`. A map-only gate renders all nineteen alike.
+ *
+ *  2. EXACTNESS — and this is the one that makes a "just use the lexicon"
+ *     patch WRONG. Ruby's `Card.exist?` matches the stored NAME exactly.
+ *     The oracle-pinned probe in card-mod-bootstrap.test.ts:464 is the
+ *     falsifier: the deck stores `Cerulean Skin Customized` (capital C) and
+ *     the oracle emits `card%5Bname%5D=Cerulean+Skin+customized` — the
+ *     lowercase base, UNSUFFIXED, because `Cerulean Skin customized` is not
+ *     a name any card carries. `DeckoName.parse(...).key` and
+ *     `Lexicon#peekId` both CASE-FOLD, so routing the gate through either
+ *     answers TRUE for that deck and would render `... customized 1`,
+ *     breaking a passing oracle pin.
+ *
+ *  The correct fix is an async exact-name existence query run in the page's
+ *  prepare phase (Ruby answers from the DB on every call; a sync view
+ *  function cannot). It is NOT landable from here: it changes which card
+ *  the closure warms, and only a full-canvas grade — controller-owned, and
+ *  out of this lane's window — can show that the other seventeen skin pages
+ *  still render the bare name. */
 function newCustomizedName(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const engine = ctx.fmt.engine;
