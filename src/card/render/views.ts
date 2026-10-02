@@ -3435,6 +3435,17 @@ function renderUnknownPointerListItem(
       : pointerListItemBodyForUnknown(phantom.name.s);
     return pointerListItemSlot(phantom, body, slotTypeName);
   }
+  // READABLE arm: this nest's own walk says the phantom reads, so the
+  // substituted :mini_bar body must not re-decide through the
+  // DECK-GLOBAL deniedVerdictsByKey (miniBarView below). `mytho-psychology`
+  // is an item line on ~30 corpus cards and ensurePointerItemVerdicts
+  // keeps the FIRST fold per item key globally, so under any other
+  // render order the global entry says denied and a phantom this nest
+  // found readable rendered the two-span body (probe: cold isDenied
+  // false -> FULL, warm isDenied true -> DENIED, per-nest verdict
+  // read:true in both). Carried on the phantom card itself, which is the
+  // object the mini_bar render receives.
+  phantom.pointerItemReadVerdict = true;
   return fmt.nestRecord(phantom, itemView, {
     nest_name: name,
     show: [itemView],
@@ -4551,7 +4562,7 @@ const labeledContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
  *  prior caveat ("no captured corpus bytes pin an unknown card's mini_bar")
  *  is falsified by the BW capture. */
 const miniBarView: ViewFn = (ctx) => {
-  if (ctx.fmt.card.unknown === true && ctx.fmt.engine.isDenied(ctx.fmt.card)) {
+  if (ctx.fmt.card.unknown === true && ctx.fmt.card.pointerItemReadVerdict !== true && ctx.fmt.engine.isDenied(ctx.fmt.card)) {
     // The denied unknown still renders THROUGH view :mini_bar's body in
     // Ruby: alter_unknown (view/permission.rb:31-43) substitutes the view
     // and the body — bar_view.rb:11 prepare_bar — RUNS. prepare_bar's 2-col

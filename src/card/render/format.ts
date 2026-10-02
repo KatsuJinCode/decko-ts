@@ -101,6 +101,16 @@ export interface RenderCard {
    *  views route through the unknown-view substitution (see
    *  RenderFormat.viewForUnknown). Real (fetched) cards never set this. */
   unknown?: boolean;
+  /** This NEST's own read verdict for an unknown pointer/list item
+   *  (RenderEngine#pointerItemVerdict, keyed `${hostKey}|${itemKey}`).
+   *  Ruby constructs the item's phantom fresh per nest
+   *  (Nest::Fetch#new_card) and runs the read walk on THAT card, so the
+   *  per-nest verdict — not the deck-global `deniedVerdictsByKey` entry
+   *  another nest happened to fold first — is what the :mini_bar body
+   *  gate asks. Set by renderUnknownPointerListItem on the readable arm
+   *  only; undefined = no per-nest verdict for this phantom, and every
+   *  consumer keeps the deck-global read. */
+  pointerItemReadVerdict?: boolean;
 }
 
 /** One view render's options object (the voo). Visibility is the ordered
@@ -849,6 +859,28 @@ export class RenderFormat {
     return `${this.card.name.safeKey}-${root.idCounter}`;
   }
 
+  /** The `read` half of the view-permission gate (format/error.rb:5-8 ok?),
+   *  as ONE predicate for both gate call sites.
+   *
+   *  The deck-global default is `!isDenied(card)`. The one exception is an
+   *  unknown pointer/list item whose OWN nest found it readable: Ruby builds
+   *  that phantom fresh per nest (Nest::Fetch#new_card) and runs the read
+   *  walk on THAT card, so the per-nest verdict
+   *  (RenderEngine#pointerItemVerdict, `${hostKey}|${itemKey}`) is the
+   *  faithful answer — while `isDenied` reads deniedVerdictsByKey, which
+   *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
+   *  wins). An item line that appears on many hosts therefore inherits
+   *  whichever host the run touched first: `mytho-psychology` sits on ~30
+   *  corpus cards and under Metashamanic+Core Project the nest read is true
+   *  (Project/398) while the global entry said denied, rendering bar_left
+   *  as a quiet denial where the oracle renders the card title. Probed:
+   *  cold isDenied false -> full bar; warm isDenied true -> two denied
+   *  spans; per-nest verdict read:true in both (M2 receipt). */
+  private cardReadable(): boolean {
+    if (this.card.pointerItemReadVerdict === true) return true;
+    return !this.engine.isDenied(this.card);
+  }
+
   private idCounter: number | undefined;
 
   // -------------------------------------------------------------------------
@@ -928,7 +960,7 @@ export class RenderFormat {
           formatName: this.formatName,
           taskAllowed: (task: CrudTask): boolean | undefined =>
             task === "read"
-              ? !this.engine.isDenied(this.card)
+              ? this.cardReadable()
               : this.engine.taskAllowed?.(this.card, task),
           // permission.rb:61 method predicates: can_configure? is the one
           // ported predicate (cardtype.rb:68-70 — update-ok on the card's
@@ -991,7 +1023,7 @@ export class RenderFormat {
           isNewCard: this.card.id === undefined,
           taskAllowed: (task: CrudTask): boolean | undefined =>
             task === "read"
-              ? !this.engine.isDenied(this.card)
+              ? this.cardReadable()
               : this.engine.taskAllowed?.(this.card, task),
           predicateAllowed: (predicate: string): boolean | undefined =>
             predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
