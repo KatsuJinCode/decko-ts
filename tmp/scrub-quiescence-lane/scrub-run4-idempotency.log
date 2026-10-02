@@ -1,0 +1,22 @@
+  classifier self-test: 25 positives + 11 negatives + 2 known gaps, all as specified
+  ISO-shaped names such as "2026-08-26 notes", "2026/08/26", "2026.08.26", "26-08-2026", "2026-8-26" ARE scrubbed (four extensions, 2026-10-02); still NOT covered: "v2026-08-26", "26/08/26"
+  target host: 01M3XWJHFZ6J2576VKGZ60WQNB-decko-edge.lite.bunnydb.net
+
+BEFORE: cards 21670 (live 19476, trashed 2194), card_references 48525
+
+Phase 1: date-journal family -> 0 matches (live 0, trashed 0)
+Phase 2 done: 0 cards in the deletion set after 0 rounds
+
+Phase 3: references touching the deletion set -> 0 dangling (by type {}), 0 orphaned
+  nothing to delete (deletion set empty)
+
+AFTER: cards 21670, card_references 48525
+  references still dangling to a missing card: 0 (must be 0)
+  eight-regex classifier against the scrubbed deck: 0 matches (must be 0)
+
+== SCRUB ==
+  cards removed        : 0
+  references removed   : 0
+  cards remaining      : 21670
+  classifier selftest  : passed
+  post-scrub classifier matches: 0

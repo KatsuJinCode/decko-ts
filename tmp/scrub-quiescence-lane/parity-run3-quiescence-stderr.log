@@ -1,0 +1,19 @@
+oracle view-lane: 48 shards, 3686 captured views
+pass 1: sample (100 urls)
+  sample: 20/100  {"identical":16,"divergent":4}
+  sample: 40/100  {"identical":34,"divergent":6}
+  sample: 60/100  {"identical":49,"divergent":10,"absent":1}
+  sample: 80/100  {"identical":69,"divergent":10,"absent":1}
+  sample: 100/100  {"identical":83,"divergent":16,"absent":1}
+pass 2: overlap (3 urls)
+pass 3: edge-deck-surface (25 urls)
+  surface: 20/25  {"divergent":16,"identical":1,"absent":3}
+sample: 100 urls  identical=83 divergent=16 absent=1  rowsSha256=8a0d72a09d74f523
+  signatures: {"identical-prefix-then-diverges":16}
+  -> tmp/edge-parity-harness/parity-sample.json
+overlap: 3 urls  identical=2 divergent=1 absent=0  rowsSha256=dfed3669d29991f2
+  signatures: {"identical-prefix-then-diverges":1}
+  -> tmp/edge-parity-harness/parity-overlap.json
+edge-deck-surface: 25 urls  identical=1 divergent=20 absent=4  rowsSha256=c03ae04c6afb5ac9
+  signatures: {"edge-renders-but-oracle-has-no-capture":19,"identical-prefix-then-diverges":1}
+  -> tmp/edge-parity-harness/parity-edge-deck-surface.json

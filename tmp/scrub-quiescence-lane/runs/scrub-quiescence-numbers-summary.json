@@ -1,0 +1,24 @@
+{
+  "lane": "trial scrub quiescence (fixed eight-regex scrubber vs quiescent corpus-scale trial decko-edge)",
+  "date": "2026-10-02",
+  "worktree_branch_at_commit": "lane-scrub-date-shapes (worktree shared with concurrent lanes; explicit paths only)",
+  "target": "TRIAL https://decko-edge-wm2um.bunny.run, script 93646, DB decko-edge",
+  "context_correction": "the 2,519 seeds / 15,877-closure figures in the ask were a mid-import 36k snapshot; corpus-load-lane.md:106-109,185-186,262-263 records the load-time scrub completing (3,791 seeds, 28,159 deleted) to exactly the quiescent state; this lane is the third idempotent verification plus the row-level proof",
+  "census_before": { "cards": 21670, "live": 19476, "trashed": 2194, "refs": 48525, "dangling_refs": 0, "classifier_matches_8regex": 0, "junction_closure": 0 },
+  "scrub_run_1": { "tool": "tmp/content-sync-rehearsal/scrub-trial-decko-edge-in-place.mjs", "classifier": "eight-regex (concurrent scrub-shapes-lane on-disk edit, self-test passed)", "refs_pull_fit": true, "seeds": 0, "deletion_set": 0, "cards_removed": 0, "refs_removed": 0, "post_classifier_matches": 0, "post_dangling": 0, "exit": 0 },
+  "scrub_run_2_idempotency": { "cards": 21670, "refs": 48525, "removed": 0, "post_classifier_matches": 0, "exit": 0 },
+  "census_after": { "cards": 21670, "live": 19476, "trashed": 2194, "refs": 48525, "dangling_refs": 0, "classifier_matches_8regex": 0, "junction_closure": 0 },
+  "row_level_proof": { "deleted_count": 0, "deleted_equals_closure": true, "appeared_count": 0, "survivor_rows_checked": 21670, "survivor_columns": ["name", "key", "trash", "left_id", "right_id"], "survivor_row_mismatches": 0, "verify": "tmp/scrub-quiescence-lane/verify-scrub-census-diff-row-by-row.mjs before-scrub after-scrub -> VERIFY PASS" },
+  "edge_after": { "GET_ /": 200, "GET_ /About": 200, "status_card_count": 19476 },
+  "parity_run_3_vs_run_2": {
+    "harness": "tools/bunny-edge-parity/run-url-parity-against-bunny-edge.mjs (same file, same deterministic URL sets, 128 sequential GETs)",
+    "sample_100": { "run2": "80 identical / 14 divergent / 6 absent (rowsSha256 862226b34019668e)", "run3": "83 identical / 16 divergent / 1 absent (rowsSha256 8a0d72a09d74f523)", "divergence_class": "all identical-prefix-then-diverges in both runs" },
+    "overlap_3": { "run2": "2/1/0", "run3": "2/1/0" },
+    "surface_25": { "run2": "1/13/11", "run3": "1/20/4" },
+    "flips": "12 total, ALL absent->served (sample: 3 absent->identical, 2 absent->divergent; surface: 7 absent->divergent-no-oracle-capture); zero flips in the deletion direction",
+    "denominators": "UNCHANGED by deletion: the measured deletion set is empty (0 cards, 0 refs), so run-2 vs run-3 movement is engine/concurrency-side (other lanes' deployments today), not deletion-side"
+  },
+  "residual_observation_not_deleted": "4 live space-separated date names (2011 12 06 id 10729, 2011 12 14 id 10857, 2011 12 15 id 10841, 2011 12 20 id 10881) — a shape class no portal or extension regex covers; public by deck rule state; flagged for owner shape review",
+  "artifacts_local_only": ["census-before-scrub.json (2.6MB full row dump)", "census-after-scrub.json (2.6MB full row dump)", "classifier-matches-*.json", "junction-closure-*.json"],
+  "artifacts_committed": ["census-trial-edge-cards-for-scrub-proof.mjs", "verify-scrub-census-diff-row-by-row.mjs", "scrub-run3-quiescence.log", "scrub-run4-idempotency.log", "verify-census-diff-output.log", "parity-run3-quiescence-stderr.log", "runs/scrub-quiescence-numbers-summary.json"]
+}

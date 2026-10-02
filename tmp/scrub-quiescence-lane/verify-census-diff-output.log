@@ -1,0 +1,21 @@
+{
+  "beforeTag": "before-scrub",
+  "afterTag": "after-scrub",
+  "before_cards": 21670,
+  "after_cards": 21670,
+  "before_refs": 48525,
+  "after_refs": 48525,
+  "deleted_count": 0,
+  "appeared_count": 0,
+  "closure_size": 0,
+  "deleted_equals_closure": true,
+  "deleted_not_in_closure_sample": [],
+  "closure_not_deleted_sample": [],
+  "survivor_row_mismatches": 0,
+  "classifier_matches_after": 0,
+  "dangling_refs_after": {
+    "referee": 0,
+    "referer": 0
+  }
+}
+VERIFY PASS: deleted 0 (== closure 0), appeared 0, 21670 survivor rows identical, classifier 0, dangling 0/0
