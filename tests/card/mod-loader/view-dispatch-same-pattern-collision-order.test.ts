@@ -35,7 +35,7 @@
 //                                10-13 — the real _render_last_action_verb
 //                                delegation; the verb is card-mod-follow's
 //                                base-format notify arm, email-text-
-//                                remainders lane 2026-10-01)
+//                                remainders 2026-10-01)
 //   one_line_content         html       -> non-image cards: All::Html::Views'
 //                                wrap arm (html/views.rb:29-32); image
 //                                cards: the Type::Image icon core
@@ -145,7 +145,7 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
   it("the chain-head device delegates non-image cards to the wrap arm (guard)", async () => {
     // html/views.rb:29-32 wrap arm bytes (the fmtoneline oracle pin) —
     // must hold with the device AT THE CHAIN HEAD (regression guard: this
-    // is the promotion the lane exists to prevent).
+    // is the promotion this suite exists to prevent).
     const html = await storage!.engine.render(
       "Dispatch Order Plain Probe",
       "one_line_content",
@@ -246,7 +246,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
       { manifest: cardModHistory },
       // the real deck order (default-mod-deck.ts:96-120) continues with
       // follow AFTER history - the base-format notify verb registration
-      // (all/notify/base_views, the email-text-remainders lane) rides it
+      // (all/notify/base_views, the email-text-remainders port) rides it
       { manifest: cardModFollow },
     ]);
     loader.load();
@@ -312,7 +312,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
   });
 
   it("email_text :last_action dispatches All::EmailText and renders the verb (email_text.rb:10-13)", async () => {
-    // the repaired body (email-text-remainders lane, 2026-10-01): the
+    // the repaired body (email-text-remainders, 2026-10-01): the
     // registered fn IS the real `_render_last_action_verb` (email_text.rb:
     // 12) - the underscore render (skip_perms: true, method_delegation.rb:
     // 6-18) delegating to the last_action_verb dispatch. The verb
@@ -353,7 +353,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
 
   it("compact_missing renders the html title span and the email_text empty body", async () => {
     // html renders the text-muted title span (set/all/html/error.rb:33-35
-    // — re-pinned by the nest-mechanism-remainders lane 2026-10-01 when the
+    // — re-pinned by nest-mechanism-remainders 2026-10-01 when the
     // compact substitution's :compact_missing fallback, mode.rb:73, was
     // ported and the registered html arm replaced the former base-arm ""
     // body); email_text keeps its own "" body (email_text.rb:6-8) through

@@ -1,5 +1,5 @@
 // view-dispatch-css-js-format-ancestry-census.test.ts - the css/js format
-// PARENT survey pin (css-js-format-parents lane, 2026-10-01): the gem
+// PARENT survey pin (css-js-format-parents, 2026-10-01): the gem
 // survey that corrected HTML_DESCENDED_FORMATS (mod-loader.ts) plus the
 // census that makes the correction byte-neutral on this codebase.
 //
@@ -51,7 +51,7 @@
 //    (nest_image.rb:40-59 `format :js`, register_all_set_format,
 //    set/format.rb:133-137) and the port dispatches through the FLAT
 //    record on html requests (render.ts:1519 this.views[view] — the
-//    flat-table-format-scope lane's adjudicated surface, pinned by
+//    flat-table-format-scope port's adjudicated surface, pinned by
 //    card-mod-tinymce_editor.test.ts:325), never through this
 //    fallback.
 // 3. The base tail is shared by both shapes: a base-keyed registration
@@ -164,12 +164,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     expect(RUBY_FORMAT_ANCESTRY.rss).toEqual(["rss", "html", "base"]);
     expect(RUBY_FORMAT_ANCESTRY.email_html).toEqual(["email_html", "html", "base"]);
     // the text lineage stays off the html table too (the email-text-
-    // remainders lane's tail shape)
+    // remainders port's tail shape)
     expect(RUBY_FORMAT_ANCESTRY.email_text).toEqual(["email_text", "text", "base"]);
   });
 
   it("composed-deck census: the format-key universe is exactly the measured six", () => {
-    // Measured on this tree (job-1790896607499, the lane's census dump):
+    // Measured on this tree (job-1790896607499, this suite's census dump):
     // base=5 email_html=2 email_text=3 html=312 js=2 json=3. No css, no
     // scss, no rss, no csv/text/xml/yaml rows exist. A NEW key (or a
     // css/scss row) fails here and names itself.
@@ -216,7 +216,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
   });
 
   it("composed-deck census: the base-kind base-keyed row is exactly follow's last_action_verb", () => {
-    // The email-text-remainders lane's tail row, re-measured (the four
+    // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
     // both-ways-green row.

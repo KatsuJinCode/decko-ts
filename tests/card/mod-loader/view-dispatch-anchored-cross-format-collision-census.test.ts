@@ -1,8 +1,8 @@
 // view-dispatch-anchored-cross-format-collision-census.test.ts - the
 // ANCHORED/nested-prefix cross-format collision census: the chainorder
-// lane's same-pattern census method
+// port's same-pattern census method
 // (view-dispatch-same-pattern-collision-order.test.ts) applied to the two
-// dispatch arms that lane left format-agnostic - the anchored exact-token
+// dispatch arms that port left format-agnostic - the anchored exact-token
 // arm and the nested-prefix expansion (mod-loader.ts viewChain's
 // dash-token branch, both probing SetModuleViewTable.viewFor, a
 // FORMAT-BLIND map).
@@ -31,7 +31,7 @@
 // EmailHtmlFormat < Card::Format::HtmlFormat, email_html_format.rb:6)
 // SHARE the html method table in Ruby; css/js do NOT - CssFormat and
 // JsFormat subclass Format DIRECTLY (css_format.rb:6, js_format.rb:6 -
-// the css-js-format-parents lane's survey, 2026-10-01; the earlier
+// the css-js-format-parents survey, 2026-10-01; the earlier
 // "email_html/css/js/rss" list here parroted the port's pre-survey
 // HTML_DESCENDED_FORMATS, which the survey corrected and
 // view-dispatch-css-js-format-ancestry-census.test.ts pins). The

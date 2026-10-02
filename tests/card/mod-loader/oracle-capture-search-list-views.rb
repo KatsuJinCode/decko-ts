@@ -36,7 +36,7 @@
 # Determinism contract (mirrors oracle-capture-edit-name-type.rb): output
 # JSON is pretty-printed with deeply sorted keys + a trailing newline; the
 # random slot id is normalized to a placeholder. A re-run must produce
-# byte-identical JSON. (The creator-credit TIME_AGO mask of the lane-A
+# byte-identical JSON. (The creator-credit TIME_AGO mask of the A
 # capture has no counterpart here: none of these views renders a relative
 # time.)
 

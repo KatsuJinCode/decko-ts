@@ -179,7 +179,7 @@ describe("SetModuleViewTable - per-set-module view recording", () => {
   });
 
   it("chainFor with empty cardChain falls back to the UNIVERSALLY APPLICABLE modules only", () => {
-    // CORRECTED 2026-09-28 (lane-chainfor). The old expectation was
+    // CORRECTED 2026-09-28. The old expectation was
     // that an empty card chain returns EVERY registering module in load
     // order, and it used three Abstract modules to say so. That was the
     // deck-wide masking defect: the comment above the code said "the only

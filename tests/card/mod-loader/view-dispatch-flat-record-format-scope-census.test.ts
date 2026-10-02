@@ -1,7 +1,7 @@
 // view-dispatch-flat-record-format-scope-census.test.ts - the FLAT-RECORD
-// format-scope census: the anchored-scope lane's census method
+// format-scope census: the anchored-scope port's census method
 // (view-dispatch-anchored-cross-format-collision-census.test.ts) applied to
-// the LAST format-blind dispatch surface that lane recorded outside its
+// the LAST format-blind dispatch surface that port recorded outside its
 // scope - the flat last-wins record (mod-loader.ts registration seam, the
 // `views.register` the engine's HTML_VIEWS object receives) - plus the
 // empty-setKeys (abstract pseudo-pattern) chain arm's measured spans.

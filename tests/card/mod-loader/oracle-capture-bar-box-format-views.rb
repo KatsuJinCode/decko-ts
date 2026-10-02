@@ -25,8 +25,8 @@
 #
 # Targets (all existing cards; ids verified by probes 1-4 recorded in
 # C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/unpinned-view-captures.md):
-#   basic_note  "Oracle Basics" id 605 RichText (the edit2 lane's target)
-#   deck_level  "Home"          id 521 RichText (the edit2 lane's target)
+#   basic_note  "Oracle Basics" id 605 RichText (the edit2 target)
+#   deck_level  "Home"          id 521 RichText (the edit2 target)
 #   decko_logo  "Decko logo"    id 291 Image    (the deck's Image card)
 # Target metadata (id, key, name, type, db_content, created_at) is recorded
 # so the TS fixture can seed byte-identical cards; Home's nest target

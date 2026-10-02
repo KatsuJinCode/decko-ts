@@ -1,5 +1,5 @@
 # oracle-capture-board-views.rb - oracle capture for the card-mod-edit
-# BOARD family (the lane's second stage: the board/cardboard wrapper + the
+# BOARD family (the capture's second stage: the board/cardboard wrapper + the
 # tab surface): :board, :cardboard, :engage_tab, :follow_section,
 # :history_tab, :related_tab, :rules_tab, :edit_rules.
 #

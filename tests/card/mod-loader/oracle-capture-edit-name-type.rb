@@ -164,7 +164,7 @@ results["no_write_proof"] = {
 FileUtils.mkdir_p(File.dirname(OUT_PATH))
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(results)) + "\n")
 
-# Pin the oracle bytes beside the lane receipt (raw captures for reference).
+# Pin the oracle bytes beside the receipt (raw captures for reference).
 if File.directory?(PIN_DIR)
   File.write(File.join(PIN_DIR, "edit-name-type-oracle.json"),
              JSON.pretty_generate(deep_sort(results)) + "\n")

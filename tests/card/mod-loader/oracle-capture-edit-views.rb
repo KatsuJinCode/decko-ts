@@ -1,5 +1,5 @@
 # oracle-capture-edit-views.rb - oracle capture for the card-mod-edit
-# EDIT-VIEWS lane (the 16 views ported after the edit2 lane's slice 3/4):
+# EDIT-VIEWS (the 16 views ported after the edit2 slice 3/4):
 # the inline-editing surface (:edit_inline, :edit_inline_buttons, :edit_row,
 # :edit_in_form), the create surface (:new, :new_in_modal,
 # :new_in_modal_buttons, :new_fields, :new_type_formgroup, :simple_new),
@@ -178,7 +178,7 @@ results["no_write_proof"] = {
 FileUtils.mkdir_p(File.dirname(OUT_PATH))
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(results)) + "\n")
 
-# Pin the oracle bytes beside the lane receipt (raw captures for reference).
+# Pin the oracle bytes beside the receipt (raw captures for reference).
 if File.directory?(PIN_DIR)
   File.write(File.join(PIN_DIR, "edit-views-oracle.json"),
              JSON.pretty_generate(deep_sort(results)) + "\n")

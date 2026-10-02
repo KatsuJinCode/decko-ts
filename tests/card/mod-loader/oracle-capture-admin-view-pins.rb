@@ -1,5 +1,5 @@
 # oracle-capture-admin-view-pins.rb - oracle byte-capture for the 5
-# rendered-unpinned core-mod admin views the lane-admin-pins lane targets:
+# rendered-unpinned core-mod admin views the lane-admin-pins capture targets:
 #   1. set/self/mod.rb view :roles          (on the Mod cardtype card)
 #   2. set/self/mod.rb view :cardtypes      (on the Mod cardtype card)
 #   3. set/type/mod.rb view :styles         (on mod: format)
