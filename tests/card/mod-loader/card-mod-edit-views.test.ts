@@ -1,4 +1,4 @@
-// The card-mod-edit EDIT-VIEWS lane: the 16 views ported after write-path
+// The card-mod-edit EDIT-VIEWS suite: the 16 views ported after write-path
 // slices 3/4 (the inline-editing surface, the create surface, the board-tab
 // :guide_tab delegate, the structure/nests placeholders, the read-form
 // formgroups and the overlay guide), rendered through the real RenderEngine
@@ -32,7 +32,7 @@
 //   process Home's nests (the full welcome page) - the engine's nest
 //   machinery, exercised by other suites; pinned on "Oracle Basics" only.
 // - The new-card surface (name-prompt arm) - the engine cannot render an
-//   unnamed card; the oracle arms are recorded under new_card for the lane
+//   unnamed card; the oracle arms are recorded under new_card for the suite
 //   that ports the unnamed-card render path.
 //
 // Rule-card update stand-in (disclosure): guide.rb:27-32 prepends the
@@ -75,7 +75,7 @@ import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.j
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 
 /** The board-family fixture (fixtures/captured/board-views.json): the 8
- *  board-lane views per actor per target + the visibility probes +
+ *  board-suite views per actor per target + the visibility probes +
  *  no_write_proof. */
 const BOARD_FIXTURE = JSON.parse(
   readFileSync(
@@ -153,9 +153,9 @@ const ALL_VIEWS = [
   "history_tab",
 ] as const;
 
-/** The board-lane views pinned byte-exact (board/cardboard/rules_tab/
+/** The board-suite views pinned byte-exact (board/cardboard/rules_tab/
  *  related_tab/history_tab + follow_section, edit_rules - the stage-3/4
- *  seams - and engage_tab, unpinned by the board-stage3 lane per the
+ *  seams - and engage_tab, unpinned by the board-stage3 suite per the
  *  engage-final recipe: this integrated tree carries the layout-ws
  *  +discussion machinery and the harness loads cardModComment with
  *  pageSession set, so the discussion arm composes). */
@@ -316,7 +316,7 @@ beforeAll(async () => {
     await seedReference(s, 210 + i, 50, "shark");
   }
 
-  // ---- the board-lane seeds -----------------------------------------------
+  // ---- the board-suite seeds -----------------------------------------------
   // the *all+*default rule the oracle deck carries (oracle development
   // sqlite card id 11: left_id 7 *all + right_id 8 *default, type_id 2
   // RichText - verified live 2026-09-29, Card.new("Oracle
@@ -480,8 +480,8 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
       // (a base-format registration in Ruby, registrar.rb:79-84) and the
       // graded page-lane harness binds no loader while the EmailTemplate
       // read_form nests dispatch this view on every field slot. The seam
-      // arm below pins the render. Same move the roleviews lane made for
-      // the raise-leadview :lead/:configs flats (c52669f) and this lane
+      // arm below pins the render. Same move the roleviews suite made for
+      // the raise-leadview :lead/:configs flats (c52669f) and this suite
       // made for bar_setting_list (e45fc71).
       if (view === "read_formgroup") continue;
       await expect(s.engine.render("Oracle Basics", view)).rejects.toThrow(

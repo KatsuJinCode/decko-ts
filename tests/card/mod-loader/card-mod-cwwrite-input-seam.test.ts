@@ -1,4 +1,4 @@
-// The carrierwave INPUT seam lane: the input half of the asset-output
+// The carrierwave INPUT seam: the input half of the asset-output
 // machinery — the port of
 //
 //   card-mod-assets set/abstract/asset_outputter.rb:32-34 input_from_item_cards

@@ -132,7 +132,7 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     // successfully without the mod); only the mod-specific views that the
     // gem introduces are absent from the registry.
     //
-    // :open_content left this list on lane-mod-a commit 7b40a70. It is
+    // :open_content left this list on commit 7b40a70. It is
     // declared in card-mod-format's BASE format (set/all/base.rb:93-95,
     // `_render_core`), so it was never mod-specific — the engine just had no
     // registration for it until the shared HTML_VIEWS table gained one. It
@@ -158,7 +158,7 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     const html = await s.engine.render("Oracle Comment Probe", "comment_box");
     // The Ruby card_form shape (card-mod-edit set/all/form.rb:193-224 +
     // comment.rb:46-53), byte-verified against the live deck by the
-    // board-stage3 lane's engage_tab oracle capture (the CREATE branch is
+    // board-stage3 engage_tab oracle capture (the CREATE branch is
     // pinned there; this probe walks the UPDATE branch of the same
     // machinery: autosave class (form.rb:221, :update-only), the
     // _method patch spoof (the PERSISTED-record form_for quirk),

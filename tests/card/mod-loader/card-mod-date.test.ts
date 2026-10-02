@@ -33,7 +33,7 @@
 //
 // The mod-loader manifest-field seam that lets the loader populate the
 // registry from the manifest is owned by the coordinator stream
-// (lane A's seam + the loader's SetLoader phase population); until it
+// (the seam + the loader's SetLoader phase population); until it
 // lands, tests + boot code wire the registry via the installer export.
 //
 // Probe cards:
@@ -384,7 +384,7 @@ describe("WITH the mod: the engine's :core for the Date cardtype (views.ts:186-2
 // (content-overrides.ts + format.ts:605-609).
 //
 // CURRENT VERDICT (mod-loader surface limitation, see viewsMissing in the
-// lane result): the engine surfaces the prefetched left card's
+// verifier result): the engine surfaces the prefetched left card's
 // `updatedAt` as the empty string (the seed row carries
 // "2026-09-19 00:00:00.000", but the warmed render-card mapping does not
 // surface it as a non-empty value today). The ContentFns are correct
@@ -600,7 +600,7 @@ describe("card-mod-date wired registry: render path exercises resolveContentOver
 // A/B test against the captured oracle bytes
 //
 // fixtures/captured/date-overrides.json holds the bytes the live Ruby
-// oracle produced for the same probes this lane ports. The capture
+// oracle produced for the same probes this suite ports. The capture
 // script (tests/card/mod-loader/oracle-capture-date-overrides.rb) ran
 // from tools/oracle/decko-oracle-app and recorded:
 //   - the I18n.t('time.formats.card_dayofwk_min_tz') format string from

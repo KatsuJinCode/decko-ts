@@ -1,4 +1,4 @@
-// The carrierwave WRITE/output seam lane: the four views mod-views-a-lane.md
+// The carrierwave WRITE/output seam: the four views mod-views-a-lane.md
 // named as needing "carrierwave/fog storage or a live file write"
 //
 //   card-mod-assets      :asset_output_url  (set/abstract/asset_outputter.rb:61-63)
@@ -17,7 +17,7 @@
 //
 // The write half (storeAssetOutput) is the port of the asset outputter's
 // live write (asset_outputter.rb:20-59 lock/store_output/handle_file +
-// update_asset_output_live) against the files lane's attachment machinery
+// update_asset_output_live) against the files port's attachment machinery
 // (CardActionEngine attachment + LocalAttachmentStore). The url bytes it
 // produces match the oracle's card-level asset_output_url
 // ("/files/~447/1790661047.css" — the tilde MARK form the /files routes
@@ -172,7 +172,7 @@ describe("card-mod-assets :asset_output_url (oracle-pinned)", () => {
     // type_plus_right/set/style.rb:1 and type_plus_right/set/script.rb:1),
     // so Ruby's view lookup raises unsupported-view
     // (lib/card/format/render.rb:59-63). The earlier "" pin on this arm
-    // extrapolated the view past its inclusion set — the lane receipt
+    // extrapolated the view past its inclusion set — the receipt
     // (fork-recount-2026-09-29) records the correction.
     await seedCard(s, { id: 62, name: "*once", typeId: SETTING_TYPE_ID });
     await seedCard(s, { id: 63, name: "Set+*once", leftId: 6, rightId: 62, typeId: 2 });
@@ -412,7 +412,7 @@ describe("numberToHumanSize — the Rails ladder (oracle-pinned)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// the write seam — storeAssetOutput over the files-lane machinery
+// the write seam — storeAssetOutput over the files-port machinery
 // ---------------------------------------------------------------------------
 
 describe("storeAssetOutput — update_asset_output_live's write half", () => {

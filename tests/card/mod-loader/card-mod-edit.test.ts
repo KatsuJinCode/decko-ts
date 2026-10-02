@@ -181,7 +181,7 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
   it("WITH the mod: :template_nest nests the composed set name for field-only names (all/template_nest.rb:5-7)", async () => {
     // the field-only branch is the PORTED rails branch (with_nest_mode
     // :normal + nest template_link_set_name, view: :template_link - the
-    // fix-d2-dangling-description lane; the composition is the shared
+    // fix-d2-dangling-description port; the composition is the shared
     // templateLinkSetNameFromParts the engine's junction warm also runs,
     // drift-pinned in d9-template-link-junction-warm-composition.test.ts).
     // on_type_set misses here (the stub format carries no parent rule

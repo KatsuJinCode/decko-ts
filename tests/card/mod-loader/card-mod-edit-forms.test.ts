@@ -336,8 +336,8 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
     // capture asserted the card_actions count before == after. The TS-side
     // surface this pins is the conflict tracker hidden field (rendered in
     // every :edit_form above, value normalized to ACTION_ID); the HTTP
-    // conflict re-render is the save lane's surface (a stale POST with
-    // changed content would write - outside this lane's capture contract).
+    // conflict re-render is the save path's surface (a stale POST with
+    // changed content would write - outside this suite's capture contract).
     expect(FIXTURE.targets).toBeDefined();
     const fixture = JSON.parse(
       readFileSync(
