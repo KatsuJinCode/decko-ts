@@ -1,4 +1,4 @@
-// The card-mod-rules rules-views-port-3 lane: the form-blocked rule-editor
+// The card-mod-rules rules-views-port-3 suite: the form-blocked rule-editor
 // surfaces, ported 2026-09-29 after the form-builder substrate (b49cb96)
 // unblocked the card_form/success/formgroup half of their chains:
 // - rule_form + rule_form_card_editor (set/rule/rule_form.rb)
@@ -15,11 +15,11 @@
 // lane adds the RuleSetRadio id normalization (rule_set_radio.rb:19 @id =
 // "#{unique_id}-#{Time.now.to_i}" - the seconds suffix is nondeterministic,
 // frozen port-side and normalized to TIME here, the select2 precedent from
-// the increment-2 lane).
+// the increment-2 port).
 //
 // nest_rules + modal_nest_rules were captured COMPOSITION-pinned here (the
 // rules-views capture did not render them - honest disclosure). The
-// rules-cap follow-up lane captured their bytes
+// rules-cap follow-up port captured their bytes
 // (fixtures/captured/rules-nest-views.json, no-write proof 5018 -> 5018)
 // and the full byte pins now live in card-mod-rules-nest-oracle-pinned.
 // test.ts; the capture's diff CORRECTED two arms of the modal_nest_rules
@@ -28,7 +28,7 @@
 // originally-composed ones.
 //
 // RED-FIRST: this file was written before the port and run against the
-// merged-lane tree (22e7a69): every WITH-the-mod byte test failed there
+// merged tree (22e7a69): every WITH-the-mod byte test failed there
 // with UnsupportedViewError (the views did not dispatch), which is the
 // renders-missing proof.
 
@@ -76,7 +76,7 @@ const FIXTURE = JSON.parse(
   no_write_proof: { actions_before: number; actions_after: number; unchanged: boolean };
 };
 
-/** The capture's own normalization (data-slot-id) plus this lane's:
+/** The capture's own normalization (data-slot-id) plus this suite's:
  *  - the RuleSetRadio id freeze (rule_set_radio.rb:19 - the seconds
  *    suffix; the port freezes the unique_id rand to "1"),
  *  - the select2 id seconds suffix (the increment-2 precedent),

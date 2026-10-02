@@ -1,5 +1,5 @@
 // The card-mod-tinymce_editor html editor views, ported 2026-09-29 (the
-// tinymce-views-port lane): :link_editor + :modal_link_editor
+// tinymce-views-port): :link_editor + :modal_link_editor
 // (set/all/reference_editor/link_editor.rb:2-12).
 //
 // ORACLE-PINNED: fixtures/captured/tinymce-editor-views.json, captured
@@ -35,7 +35,7 @@
 // increment.
 //
 // RED-FIRST: this file was written before the port and run against the
-// pristine d6b1957 tree (the lane's base worktree): every WITH-the-mod
+// pristine d6b1957 tree (the base worktree): every WITH-the-mod
 // byte test failed there with UnsupportedViewError (the views did not
 // dispatch), which is the renders-missing proof.
 
@@ -192,7 +192,7 @@ describe("card-mod-tinymce_editor link editors (A/B)", () => {
   it("WITH the mod: the load report lists all five ported views", () => {
     const report = loader!.load();
     // the two format :js views (change_create_to_update, open_nest_editor)
-    // plus this lane's two html views, plus the form-substrate lane's
+    // plus this suite's two html views, plus the form-substrate port's
     // :new_image_buttons (nest_image.rb:21-24) landed by the pass16
     // rules-views3 merge - a consequence of that port, the same count
     // movement card-mod-tinymce_editor.test.ts discloses

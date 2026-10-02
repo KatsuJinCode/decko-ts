@@ -226,7 +226,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     // re-pinned this A/B: the old expectation ("Broad help text…", the
     // *all+*help rule card's content) encoded card-mod-rules.ts's
     // help-rule-card-only simplification, contradicting the chain the
-    // help-content lane's receipt pins.
+    // help-content receipt pins.
     const html = await s.engine.render("RichText+*self+*help", "rule_help");
     expect(html).toBe(
       `<div class="alert alert-info rule-instruction"><a target="_blank" class="external-link" href="http://decko.org/custom_help_text">Help text</a> people will see when editing.</div>`,
@@ -253,7 +253,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
 
   it("WITH the mod: :one_line_content IS now live-registered (the increment-2 lane's masking fix: rule/bar_view nonbase registration in viewChains; RichText+*self+*help dispatches the rule variant - byte-correct path delegated to ruleBarRightHtml)", async () => {
     const s = storage!;
-    // The increment-2 lane registers :one_line_content under setPath
+    // The increment-2 port registers :one_line_content under setPath
     // "rule/bar_view" (kind "nonbase") - the viewChains-only path that
     // card-mod-rules.ts:1399 documents. The chain walker (mod-loader.ts:
     // 452) dispatches for RULE-token cards; for cards without a RULE
@@ -262,7 +262,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     // 4-part rule card whose setKeys include the RULE token, so the
     // chain dispatches the rule variant - this replaces the increment-1's
     // "NOT live-registered" assertion which documented the open
-    // remainder the increment-2 lane closes.
+    // remainder the increment-2 port closes.
     const html = await s.engine.render("RichText+*self+*help", "one_line_content");
     expect(html).toContain("text-muted one-line");
   });

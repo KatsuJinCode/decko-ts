@@ -380,7 +380,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
       "javascript_include_tag",
       "remote_script_tags",
       // type_plus_right/mod/script.rb's :core (the Abstract::ModAssets
-      // group-list render) — ported admin-views-2 lane, oracle-pinned
+      // group-list render) — ported admin-views-2, oracle-pinned
       // through mod: format :scripts (admin-view-pins.json)
       "core",
     ]) {

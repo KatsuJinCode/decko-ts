@@ -1,5 +1,5 @@
 // The card-mod-rules setting-list family + pill links + board tab +
-// template link, ported 2026-09-29 (the rules-views lane): bar_setting_list,
+// template link, ported 2026-09-29 (the rules-views port): bar_setting_list,
 // pill_setting_list, modal_pill_setting_list, accordion_rule_list,
 // accordion_bar_list, overlay_rule_list_link (set/type/set/html_views/
 // rule_lists.rb), board_rules_tab + filtered_accordion_rule_list
@@ -30,7 +30,7 @@
 // capture's rule_card.meta for the direct rule-set view pins.
 //
 // RED-FIRST: this file was written before the port and run against the
-// pristine d6b1957 tree (the lane's base worktree): every WITH-the-mod
+// pristine d6b1957 tree (the base worktree): every WITH-the-mod
 // byte test failed there with UnsupportedViewError (the views did not
 // dispatch), which is the renders-missing proof.
 
@@ -184,7 +184,7 @@ describe("card-mod-rules setting-list family (A/B, oracle-pinned)", () => {
       // Set-typed guard) because the graded page-lane harness binds no
       // loader and the Shark page nests this view on *all; the raise side
       // of the old pin is carried by the flat entry's own guard (non-Set
-      // cards still raise — the arm below). Same move the roleviews lane
+      // cards still raise — the arm below). Same move the roleviews suite
       // made for the raise-leadview :lead/:configs flats (its commit
       // c52669f updated the identical A/B shapes).
       ["*all", "pill_setting_list"],

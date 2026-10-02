@@ -1,5 +1,5 @@
-// The card-mod-rules rules-cap lane: the two views the rules-views-port-3
-// lane could only pin by COMPOSITION (no captured bytes existed for them)
+// The card-mod-rules rules-cap port: the two views the rules-views-port-3
+// port could only pin by COMPOSITION (no captured bytes existed for them)
 // are now ORACLE-PINNED against fixtures/captured/rules-nest-views.json
 // (captured live from the oracle deck 2026-09-29 by
 // oracle-capture-rules-nest-views.rb, no-write proof card_actions
@@ -12,7 +12,7 @@
 //
 // Capture normalizations (data-slot-id -> RANDOMIZED, select2 seconds ->
 // TIME) apply to BOTH sides; data-card-type-id -> TYPEID follows the
-// views-3 lane's precedent (the type ids are deck data; the type NAME and
+// views-3 port's precedent (the type ids are deck data; the type NAME and
 // the TYPE-<name> set-key fragments stay pinned).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -62,7 +62,7 @@ const PRIOR_FIXTURE = JSON.parse(
   set_card: { views: Record<string, { bytes: string }> };
 };
 
-/** The capture's own normalizations plus the views-3 lane's
+/** The capture's own normalizations plus the views-3 port's
  *  data-card-type-id -> TYPEID (identical to
  *  card-mod-rules-views-3.test.ts normalize). */
 function normalize(html: string): string {

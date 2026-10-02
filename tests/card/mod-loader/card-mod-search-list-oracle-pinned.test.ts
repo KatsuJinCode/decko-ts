@@ -1,4 +1,4 @@
-// ORACLE-PINNED byte-compares for the three mod-views-b views the lane
+// ORACLE-PINNED byte-compares for the three mod-views-b views
 // ported rendered-unpinned: search :checkbox_list, search
 // :results_for_keyword, list :view_list. The oracle bytes are
 // fixtures/captured/search-list-views.json, captured inside the live
@@ -26,7 +26,7 @@
 // RANDOMIZED. Nothing else is dynamic on this surface (no creator credit,
 // no select2 marker).
 //
-// Actor engines mirror the lane-A pinned harness: bot = main engine
+// Actor engines mirror the A pinned harness: bot = main engine
 // (viewer actorId 1, the decko_bot-codename card -> always-ok — the seed
 // below rides DECKOBOT_CODENAME, the deck's STORED bot codename, exactly
 // as Ruby derives DeckoBotID from the stored codename via camelize,
@@ -37,7 +37,7 @@
 //
 // A first-diff is a REAL finding: the expectation is the captured oracle
 // bytes, never tuned to pass. RESULT lines are logged per
-// target/view/actor either way so the lane receipt can quote them.
+// target/view/actor either way so the receipt can quote them.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -87,7 +87,7 @@ function normalize(html: string): string {
   return html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
 }
 
-/** First-diff diagnostics (same shape as the lane-A pinned harness). */
+/** First-diff diagnostics (same shape as the A pinned harness). */
 function firstDiff(actual: string, expected: string): string {
   const n = Math.min(actual.length, expected.length);
   let i = 0;
@@ -284,13 +284,13 @@ beforeAll(async () => {
   });
 
   // the mod loader: list + search manifests (the three captured views are
-  // mod-registered, unlike lane A's core-registered views)
+  // mod-registered, unlike the A harness's core-registered views)
   loader = new ModLoader([{ manifest: cardModList }, { manifest: cardModSearch }]);
   loader.load();
   bindModLoaderToEngine(storage!, loader!);
 
   // the name-environment bridge: the CQL {"not":{"codename":[...]}} and the
-  // SELF- set classes read the codename registry (edit2-lane mechanism)
+  // SELF- set classes read the codename registry (edit2 mechanism)
   s.fetcher.installNameEnvironment();
   await s.fetcher.codenames.ensureLoaded();
 

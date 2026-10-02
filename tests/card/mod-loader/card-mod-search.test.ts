@@ -274,7 +274,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
   });
 
   // ---------------------------------------------------------------------
-  // mod-views-b lane, 2026-09-28. NO ORACLE CAPTURE of either view exists
+  // mod-views-b, 2026-09-28. NO ORACLE CAPTURE of either view exists
   // (the capture script never requested them), so these are SHAPE
   // assertions derived from the Ruby source, NOT byte-pins, and are not
   // reported as byte-verified anywhere.
@@ -399,7 +399,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :select2_option; the json format renders the hash bytes (autocomplete.rb:52-56)", async () => {
     const s = storage!;
-    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the view
+    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the view
     // lives in set/all/autocomplete.rb:52-56's `format :json` block -
     // register_all_set_format files it under JsonFormat (set/format.rb:
     // 137-139; registrar.rb:79-84 mixes it into THAT class only), so an
@@ -431,7 +431,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(abstractShortnames).toContain("Abstract::SearchViews");
     // self/* -> nonbase bucket. The only self set module the port registers
     // is self/search (self/search.rb:48, the :results_for_keyword haml view,
-    // added by the mod-views-b lane); the other self/right/type files are
+    // added by the mod-views-b port); the other self/right/type files are
     // method-only.
     expect([...basket.nonbase.values()].flat().map((m) => m.shortname)).toEqual(["Self::Search"]);
   });

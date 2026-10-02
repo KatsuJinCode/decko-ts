@@ -6,13 +6,13 @@
 // fixtures/captured/rules-views.json (the capture normalizations
 // data-slot-id -> RANDOMIZED, select2 seconds -> TIME apply to BOTH sides).
 //
-// REGISTRATION PATH FINDING (the increment-1 lane's open problem):
+// REGISTRATION PATH FINDING (the increment-1 port's open problem):
 // card-mod-help registers :help_text under setPath "all/help" (kind
 // "base"), which the loader writes to the FLAT global views table
 // (mod-loader.ts:284). card-mod-content registers :one_line_content for
 // right/*default and right/*structure (kind "nonbase", viewChains only);
 // the render layer composes :bar_right (a different view name) for rule
-// cards. The global-table masking the increment-1 lane documents comes
+// cards. The global-table masking the increment-1 port documents comes
 // from registering the rule-card variant under an ALL set (which would
 // clobber the chain).
 //
@@ -34,7 +34,7 @@
 // RED-FIRST proof was attempted but the engine's read-permission
 // verdict state interacts with the readRuleId default (null) in a way
 // the byte-correctness tests can't reproduce in this test file's
-// isolated engine (the increment-1 lane's full-file test storage warms
+// isolated engine (the increment-1 port's full-file test storage warms
 // the same read-permission state via its "WITHOUT the mod" iter loop);
 // the byte correctness is asserted via registration shape + view-chain
 // placement + load-report membership, which DO run reliably here. The
@@ -153,7 +153,7 @@ describe("card-mod-rules increment-2: registration shape + helper exports (no en
     const rawOneLineChain = chain.viewFor("Rule::BarView", "raw_one_line_content");
     expect(oneLineChain).toBeDefined();
     expect(rawOneLineChain).toBeDefined();
-    // the increment-2 lane's whole point: the rule-card variant does
+    // the increment-2 port's whole point: the rule-card variant does
     // NOT clobber the existing chain entries (right/*default +
     // right/*structure for :one_line_content). The flat views table
     // (card-mod-rules owns no flat one_line_content registration) stays
@@ -197,7 +197,7 @@ describe("card-mod-rules increment-2: registration shape + helper exports (no en
 
 // ---------------------------------------------------------------------------
 // increment-2's honest remainder is CLOSED: the 2026-09-29 rules-views-port-3
-// lane ported :nest_rules / :modal_nest_rules once the form-substrate lane
+// port ported :nest_rules / :modal_nest_rules once the form-substrate port
 // landed the quick_edit machinery (the names are now in the load report; the
 // views themselves are pinned by card-mod-rules-views-3.test.ts -
 // composition pins, since no captured oracle bytes exist for either).
