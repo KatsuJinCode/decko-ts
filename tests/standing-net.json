@@ -99,11 +99,13 @@
   "tests/server/write-routes-anonymous-permission-pins.test.ts",
   "tests/server/write-routes-recaptcha-armed-update-delete.test.ts",
   "tests/server/write-routes-recaptcha-seat.test.ts",
+  "tests/card/render/admin-config-mod-card-deck-order-and-codename-pins.test.ts",
+  "tests/card/render/content-options-one-line-count-capture-state-pins.test.ts",
   "tests/card/render/bootswatch-skin-bar-bottom-code-wrap.test.ts",
   "tests/card/render/bootswatch-skin-virtual-field-type-identity.test.ts",
   "tests/card/render/wiki-link-title-escape-pins.test.ts",
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts",
   "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts"
  ],
- "manifestFileCount": 73
+ "manifestFileCount": 76
 }

@@ -1052,7 +1052,8 @@ function rowsOf(results: unknown[], index: number): Array<Record<string, unknown
  * 1. Every codename card into the sync render cache (the Card[code] warm:
  *    cards.codename IS NOT NULL), building codenameToName.
  * 2. Every mod card (type Mod) into the sync render cache, building the
- *    name-sorted modCards list.
+ *    modCards list in DECK order (no sort — see the comment at the query)
+ *    with each card's stored codename.
  * 3. The *update rule walk per codename card — all/admin.rb:32-38
  *    scoping_rule_card (Card.fetch([self, :self, :update]).find_existing_rule_card)
  *    walks the candidate rule names in pattern precedence (oracle-verified
@@ -1091,11 +1092,38 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
   }
 
   // -- 2. mod cards --------------------------------------------------------
+  //  ORDER: no sort. Ruby's all/admin.rb:19-21
+  //    def mod_cards_with_config
+  //      Card.search(type: :mod).select { |mod| mod.admin_config.present? }
+  //    end
+  //  and all_configs (admin.rb:40-42) `.map(&:admin_config_objects).flatten`
+  //  it in SEARCH order, so the section's item order IS the deck's mod-card
+  //  order. The corpus pins that order: the oracle's Administrator
+  //  `Configurations` section reads *title, *credit (mod: format, id 45437),
+  //  *Ace (mod: ace editor, 45475), *TinyMCE (mod: tinymce editor, 45509),
+  //  *home / *main menu / *getting started links (mod: defaults, 45513) —
+  //  ascending card id. The name sort this replaced ordered that same list
+  //  ace editor, defaults, format, recaptcha, tinymce editor, which is
+  //  what the rendered bytes showed.
+  //
+  //  CODENAME: the row's `codename` COLUMN, not a name-derived key.
+  //  Ruby's modname (card/mod/core/set/type/mod.rb:164-166) is
+  //    def modname; codename.to_s.gsub(/^mod_/, ""); end
+  //  — the CARD's codename. `nameToCodename` is DeckoName#key (the url_key),
+  //  which decays the plural gem names: the deck stores `mod_defaults`,
+  //  `mod_permissions`, `mod_rules`, `mod_assets`, `mod_tabs`, `mod_shades`
+  //  (measured: every mod card's cards.codename equals that exact plural),
+  //  while key gives mod_default / mod_permission / mod_rule / mod_asset /
+  //  mod_tab / mod_shade. ADMIN_CONFIG is keyed by GEM name, so the derived
+  //  key silently dropped whole mods from all_configs: `mod: defaults`
+  //  resolved to "default" (no ADMIN_CONFIG entry), losing *home,
+  //  *main menu and *getting started links — the three items the oracle's
+  //  Administrator Configurations section ends with.
   const modCards: AdminRuntimeState["modCards"] = [];
   if (modTypeId !== undefined) {
     const modRows = await host.batch([
       {
-        sql: "SELECT id FROM cards WHERE trash = 0 AND type_id = ?",
+        sql: "SELECT id, codename FROM cards WHERE trash = 0 AND type_id = ?",
         params: [modTypeId],
       },
     ]);
@@ -1103,12 +1131,15 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
       const record = await host.fetchById(row.id as number);
       if (record?.name?.s === undefined) continue;
       await host.cacheFetchedRecord(record);
+      const codename = row.codename;
       modCards.push({
         name: record.name.s,
-        codename: nameToCodename(record.name.s),
+        codename:
+          typeof codename === "string" && codename !== ""
+            ? codename
+            : nameToCodename(record.name.s),
       });
     }
-    modCards.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   // -- 3. the *update rule walk --------------------------------------------
