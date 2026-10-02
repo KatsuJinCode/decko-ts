@@ -60,7 +60,7 @@ import { safeSetKeys } from "./set-keys.js";
 const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: string; typeCode: string }> = new Map<string, { typeId: number; typeName: string; typeCode: string }>([
   // templating
   ["autoname", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
-  // R16 residual lane (2026-09-27), corpus-wide re-measure: the oracle's
+  // Corpus-wide re-measure (2026-09-27): the oracle's
   // VIRTUAL rule-bar type per setting is unanimous across every set page in
   // both lanes (2,397-2,529 id-less bars per setting, ZERO variance —
   // aggregated over all 48 expected-v2 shards). The type is the ensure_type
@@ -214,7 +214,7 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // — the space form the oracle pins in the bar's display positions
   // (data-slot nest_name + card-title; the url_key/id attrs stay
   // underscore forms because they are key derivations). The codename
-  // join the 2026-09-26 rules-editor lane left in place is key-identical
+  // join left in place 2026-09-26 is key-identical
   // (so all key/url-key lookups are unaffected) but NOT display-identical:
   // recapture-raw-shard-000003 AAM+*self:content offset 36177 pins
   // `nest_name":"AAM+*self+*input type"` + `title="AAM+*self+*input

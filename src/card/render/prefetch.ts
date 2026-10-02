@@ -25,7 +25,7 @@
 //    Spans cannot nest braces (Chunk::Nest full_re [^{}]*), so the JS span
 //    scan reproduces the chunker's spans exactly (nest-syntax.ts is the
 //    semantic authority).
-// 2. The PRELUDE BATCH (2026-09-27 cold-query lane; before this, the folds
+// 2. The PRELUDE BATCH (2026-09-27; before this, the folds
 //    rode closure round 0): one driver.batch round trip before composition
 //    carrying the root's side priming, the root's TYPE row (the enrichment
 //    fold - enrichAndStore's type-name resolution stopped being two point
@@ -185,8 +185,8 @@ export interface PrefetchContext {
  * through {{inclusion}} references (plus the type/side cards composition
  * needs). Returns the query-cost stats.
  *
- * The cold render's fixed cost is TWO round trips (2026-09-27 cold-query
- * lane): the root fetch (the caller's fetchByName) plus THIS prelude batch -
+ * The cold render's fixed cost is TWO round trips (2026-09-27):
+ * the root fetch (the caller's fetchByName) plus THIS prelude batch -
  * one driver.batch carrying, in order:
  *
  *   1. the root's side priming (moved out of closure round 0 - same
@@ -1105,7 +1105,7 @@ export interface WarmupStats {
  * or one missing-part lookup, and no prepared-map state. A compound negative
  * that a *structure rule would resolve as a VIRTUAL card goes through
  * ctx.virtualLookup directly (in-memory; the ladder's cache-write/reset
- * churn per negative name is exactly the burst this lane removes).
+ * churn per negative name is exactly the burst this path avoids).
  */
 export async function prefetchWarmupClosure(
   seeds: WarmupRef[],
@@ -1414,8 +1414,8 @@ export async function prefetchWarmupClosure(
         // per-call) was skipped by collect with the "prepared: next drain
         // scans it" contract - but that next drain never runs if we break
         // here, and the card's own references never join the chase. First
-        // reproduction (2026-09-29 page-mechanism census,
-        // render-state-fix lane): a bare view rendered before the first
+        // reproduction (2026-09-29 page-mechanism census):
+        // a bare view rendered before the first
         // page render prepared the layout's *header/*main menu cards as
         // one-level template references; this break then ate the scan of
         // *main menu, the navbar's [[*Opportunities]] chunk stayed

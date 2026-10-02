@@ -492,7 +492,7 @@ export function pointerListItemBodyForUnknown(
   // data-card-link-name='Test_Person_01' over data-card-name='Test Person
   // 01'; Z4 exemplar Testing Requirements+Pages open:
   // data-card-link-name='6th_Kyu_Requirements' over the raw double-space
-  // '6th Kyu  Requirements'; compile-engines lane adds the pass-15 Skin
+  // '6th Kyu  Requirements'; the pass-15 Skin
   // pages' multi-word phantom items, "simple skin" -> simple_skin — the
   // same urlKey derivation). data-card-name keeps slotCardname's rule:
   // the raw stored/authored name (these phantoms are simple names).

@@ -88,8 +88,8 @@ function camelizeAnchor(anchor: string): string {
  * (mod-registrar.ts setModuleShortname: "type_plus_right/set/style" ->
  * "TypePlusRight::Set::Style"), so the walker needs the path-join form as
  * a candidate too. Without it every type_plus_right (and self) chain
- * token misses its registered module (measured live in the cwwrite-seam
- * lane: `*all+*style`'s chain for asset_output_url was EMPTY while the
+ * token misses its registered module (measured live:
+ * `*all+*style`'s chain for asset_output_url was EMPTY while the
  * load report listed TypePlusRight::Set::Style). Candidate ORDER: exact
  * Ruby-constant form first, path form after. */
 export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
@@ -110,7 +110,7 @@ export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
   // star marker: a "User+email" card anchors "TYPE_PLUS_RIGHT-user-email"
   // (the tag card is not star-named, so there is no X to strip and the
   // mask loop below never runs) and must still reach the registered
-  // "TypePlusRight::User::Email". Measured live in the seed-sweep lane:
+  // "TypePlusRight::User::Email". Measured live:
   // the X-marked case dispatched (the fix) while this
   // no-X case returned a one-candidate list that no registered module
   // carries. Lookup still decides - the candidate is tried against the

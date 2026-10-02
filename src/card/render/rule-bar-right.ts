@@ -221,7 +221,7 @@ function ruleOneLineContent(
     // count 1 -> the single-item anchor form is the PERMISSION module's
     // view, *all+*script count 16 -> "16 items").
     const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
-    // bar-slots lane (2026-09-29, view-fail class V9): count != 1 renders
+    // view-fail class V9 (2026-09-29): count != 1 renders
     // the "N items" one-line INCLUDING 0 — card-mod-list
     // set/abstract/01_list/html_views.rb:99-105 short_content →
     // short_content_items has no lower bound, and the oracle pins "0 items"

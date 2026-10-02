@@ -247,7 +247,7 @@ async function renderPageBytesWithPageConfig(
   if (mainBodySearches > 0) {
     await engine.refreshVerdicts();
   }
-  // Permission recovery (the perm-leak lane, 2026-09-29): a prepare render
+  // Permission recovery (2026-09-29): a prepare render
   // that died before the folded batch landed (the corpus proof was the cold
   // closure batch's SqliteError "Expression tree is too large" — the 1019-
   // pair junction OR-tuple of 20120122+BW+RVW) leaves the read-permission

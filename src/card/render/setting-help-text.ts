@@ -114,7 +114,7 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["delete", { self: "Who can delete cards", right: "Who can delete cards" }],
   // card-mod-layout-0.20.0 set/self/head.rb (setting_opts help_text)
   ["head", { self: "head tag content", right: "head tag content" }],
-  // --- rule-tooltips lane (2026-09-29) extensions, sourced verbatim from the
+  // --- 2026-09-29 extensions, sourced verbatim from the
   // --- installed gems the same way; the pass-15 view-fail H4 class showed the
   // --- captured corpus exercising these settings' menus too.
 
