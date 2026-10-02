@@ -8,17 +8,17 @@
 // Why this file lives in mod-loader/: the views are registered by a MOD
 // MANIFEST (the core mod's own, ported here for the first time — the seed
 // layer carries no admin surface), so the mod-loader suite is the suite
-// whose failure set the coverage lanes compare batch over batch.
+// whose failure set the coverage suites compare batch over batch.
 //
-// HONESTY BOUNDARY, per the lane's byte-first rule: the pinned Ruby-oracle
+// HONESTY BOUNDARY, per the byte-first rule: the pinned Ruby-oracle
 // captures under tmp/raw-ground-truth carry NO bytes for any of these
 // names. Every expectation below is derived from the GEM SOURCES (cited
 // per assertion at card-1.110.0 mod/core set/...) plus the two read-only
-// oracle probes this lane ran for the STRUCTURAL facts no source file
+// oracle probes this suite ran for the STRUCTURAL facts no source file
 // carries (basket insertion order, spec.files emptiness, config defaults,
 // mod-card names, role-grouping shapes — tests/card/mod-loader/
 // oracle-probe-core-admin-facts.rb + oracle-probe-core-mod-fetch.rb,
-// outputs in the lane receipt). These views are RENDERED-UNPINNED: the
+// outputs in the receipt). These views are RENDERED-UNPINNED: the
 // tests prove each name dispatches (was UnsupportedViewError before this
 // port) and carries the structure the gem sources mandate; no byte
 // verification against a Ruby capture is claimed anywhere.
@@ -477,10 +477,10 @@ describe("core mod admin runtime — the engine-config reads the views need", ()
     // (carrierwave) — the first four of basket_task_keys_in_order.
     //
     // mm-cstructural (2026-09-30): the fourth key was already in the basket
-    // before this lane; the pin listed three and the comment called the
+    // before this suite; the pin listed three and the comment called the
     // fourth "not in this manifest". It is in the same global basket (every
     // mod's set modules merge into basket[:tasks]), which is why the *admin
-    // task table renders the row. The key ORDER is unchanged by this lane.
+    // task table renders the row. The key ORDER is unchanged by this suite.
     const { CORE_TASK_BASKET } = await import(
       "../../../src/card/mod-loader/mods/core-mod.js"
     );

@@ -1,7 +1,7 @@
 // THE REGRESSION GUARD for the measured dispatch defect: registering a
 // set-scoped mod view corrupted rendering DECK-WIDE.
 //
-// MEASURED (lane-mod-a batch 3, re-measured here): with card-mod-email
+// MEASURED (mod-a batch 3, re-measured here): with card-mod-email
 // loaded and set/right/html_message's :content registered, a plain
 // RichText card's :content flipped from the shared card-slot wrapper
 //   <div id="plain_probe-content-view" class="card-slot content-view ...">plain body</div>

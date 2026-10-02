@@ -1,4 +1,4 @@
-// The mod events + content-override manifest fields (lane A of the
+// The mod events + content-override manifest fields (part A of the
 // registration wiring): synthetic manifests prove the SetLoader phase
 // populates both registries with file coordinates injected, the report
 // carries the registrations, and reset() empties the loader-owned tables

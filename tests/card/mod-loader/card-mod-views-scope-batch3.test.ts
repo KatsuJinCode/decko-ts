@@ -1,7 +1,7 @@
 // Batch 3 turned into a REGRESSION GUARD rather than three ports, and this
 // file is the reason that was the right call.
 //
-// Three missing views in lane A are one-liners that port perfectly:
+// Three missing views in A are one-liners that port perfectly:
 //   card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:59-61
 //     view :bar_right do # customize_button end          -> body ""
 //   card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:63-67
@@ -43,7 +43,7 @@
 //
 // WHAT THIS FILE ASSERTS, then: with both mods loaded, the shared views still
 // render the shared bytes. That is the property that just broke, and it is
-// worth a test whether or not this lane ends up landing the three views.
+// worth a test whether or not this suite ends up landing the three views.
 // The moment chainFor's fallback is narrowed, the three registrations can go
 // in (the ported email body is exported from card-mod-email.ts) and these
 // assertions become the before/after pair that proves the narrowing worked.

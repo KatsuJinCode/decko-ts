@@ -317,7 +317,7 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModTinymceEditor }]);
     loader.load();
-    // BIND the loader to the engine (flat-table-format-scope lane,
+    // BIND the loader to the engine (flat-table-format-scope,
     // 2026-10-01): the suite's pre-fix pins rode the format-blind flat
     // seam through the SHARED HTML_VIEWS object with NO loader bound
     // (engine.modLoader stayed undefined, so renderView never walked a
@@ -328,7 +328,7 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     bindModLoaderToEngine(storage, loader);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the view
+    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the view
     // lives in set/all/reference_editor/nest_image.rb:41-43's
     // `format :js` block - register_all_set_format files it under
     // JsFormat (set/format.rb:137-139; registrar.rb:79-84 mixes it into
@@ -356,7 +356,7 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :open_nest_editor; the js format emits the strip_heredoc'd JS (nest_image.rb:45-50)", async () => {
     const s = storage!;
-    // FORMAT SCOPING (flat-table-format-scope lane, 2026-10-01): the
+    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the
     // second `format :js` view of nest_image.rb (45-50) - same
     // JsFormat-only filing as :change_create_to_update above; the html
     // pin used to ride the flat seam and now raises unsupported-view,
@@ -385,11 +385,11 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     const report = loader!.load();
     expect(report.registeredViews).toContain("change_create_to_update");
     expect(report.registeredViews).toContain("open_nest_editor");
-    // the two js views plus the tinymce-views-port lane's two html link
+    // the two js views plus the tinymce-views-port's two html link
     // editors (link_editor, modal_link_editor - see
     // card-mod-tinymce-editor-views.test.ts for their byte pins), plus the
-    // form-substrate lane's :new_image_buttons port (nest_image.rb:21-24;
-    // merge-resolution count: HEAD's 4 + the lane's port = 5)
+    // form-substrate suite's :new_image_buttons port (nest_image.rb:21-24;
+    // merge-resolution count: HEAD's 4 + this suite's port = 5)
     expect(report.registeredViews).toContain("new_image_buttons");
     expect(report.registeredViews).toHaveLength(5);
   });

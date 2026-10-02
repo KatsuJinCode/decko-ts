@@ -121,7 +121,7 @@ const NAME_OF_ID = (id: number): string | undefined =>
 
 // ---------------------------------------------------------------------------
 // the mod-loads-into-loader prove: registeredEvents + eventRegistry
-// (forStage / forEvent / all) — vitest path for this lane
+// (forStage / forEvent / all) — vitest path for this suite
 // ---------------------------------------------------------------------------
 
 let liveLoader: ModLoader | undefined;

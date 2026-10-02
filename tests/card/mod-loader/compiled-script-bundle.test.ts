@@ -1,10 +1,10 @@
 // The compiled *all+*script bundle — byte pins against the LIVE production
-// oracle (the tinymce-assets lane).
+// oracle (tinymce-assets).
 //
 // The chain, every link oracle-pinned:
 //
 //   fixtures/captured/all-script-assembled-input.js
-//     the deck's assembled *all+*script input — the cwinput lane's LIVE pin
+//     the deck's assembled *all+*script input — the cwinput port's LIVE pin
 //     (1,050,887 bytes, sha256 36a3d55df942e04f...), the same bytes the
 //     production bundle was compiled from (proven by the leaf parity below).
 //   splitAssembledScriptLeaves
@@ -19,7 +19,7 @@
 //     of /files/~50617/1768074298.js): 48/49 shared leaves byte-exact, 1
 //     one-byte divergence, 4 leaves of a live-only custom mod.
 //
-// The tinymce entrypoint assertions are the lane's reason to exist: the
+// The tinymce entrypoint assertions are this suite's reason to exist: the
 // browser rich-text editor initializes only when the served bundle carries
 // the tinymce global and the decko editor hook that binds
 // `.tinymce-textarea` edit forms to it.

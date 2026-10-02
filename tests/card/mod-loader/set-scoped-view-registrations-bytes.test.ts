@@ -1,4 +1,4 @@
-// BYTE PINS for the set-scoped view this lane unblocked, rendered through
+// BYTE PINS for the set-scoped view this suite unblocked, rendered through
 // the REAL mod manifest (card-mod-email) rather than a purpose-built stub,
 // so the pin covers the registration wiring as well as the body.
 //
