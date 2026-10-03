@@ -77,7 +77,11 @@ const ORIGINS = [
     keyDerivationSite: 'keyToId.set(DeckoName.parse(name).key, row.id)',
   },
   {
-    file: "deploy/bunny-worker-src/bunny-edge-engine-entry.ts",
+    // The handler file, not the entry: the boot code moved to
+    // bunny-edge-engine-handler.ts (2026-10-03, worker-twins audit lane)
+    // so the request surface became drivable in-process — the entry is the
+    // SDK registration shim only.
+    file: "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
     keyDerivationSite: "new FetchEngine(driver)",
   },
 ] as const;

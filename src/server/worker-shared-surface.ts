@@ -90,6 +90,22 @@ export function decodeName(raw: string): string | undefined {
 // History view params (Card::Env.params equivalents)
 // ---------------------------------------------------------------------------
 
+/**
+ * view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
+ * `%i[view v].each { |k| return params[k] if params[k].present? }` — the
+ * first NON-BLANK of the two query params, undefined when neither is
+ * present. The value rides VERBATIM into the engine; the path view (the
+ * action arg) never falls through to params. All worker entries share
+ * this one copy.
+ */
+export function queryViewFromUrl(url: URL): string | undefined {
+  for (const key of ["view", "v"] as const) {
+    const value = url.searchParams.get(key);
+    if (value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
 /** The query keys the history views read (render.ts HistoryRenderParams —
  *  act.rb's act_from_context "act_id" / "action_id" and the act-list
  *  paging keys). Other views ignore them, so passing them unconditionally

@@ -42,6 +42,7 @@ import {
   historyViewParams,
   installDeckNameEnvironment,
   mapRenderError,
+  queryViewFromUrl,
 } from "./src/server/worker-shared-surface.js";
 
 interface Env {
@@ -161,19 +162,6 @@ function parsePath(pathname: string): ParsedPath {
     return { name, view };
   }
   return { kind: "notFound" };
-}
-
-/** view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
- *  `%i[view v].each { |k| return params[k] if params[k].present? }` — the
- *  first NON-BLANK of the two query params, nil when neither is present.
- *  The value rides VERBATIM into the engine; the path view (the action
- *  arg) never falls through to params. */
-function queryViewFromUrl(url: URL): string | undefined {
-  for (const key of ["view", "v"] as const) {
-    const value = url.searchParams.get(key);
-    if (value !== null && value !== "") return value;
-  }
-  return undefined;
 }
 
 // Named export for the tests: the URL parser under test is this exact

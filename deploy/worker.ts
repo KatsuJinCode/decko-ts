@@ -54,6 +54,7 @@ import {
   decodeName,
   historyViewParams,
   mapRenderError,
+  queryViewFromUrl,
 } from "../src/server/worker-shared-surface.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
@@ -429,21 +430,9 @@ function parseCardRoute(pathname: string): ParsedRoute {
   return { kind: "no-route" };
 }
 
-/** view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
- *  `%i[view v].each { |k| return params[k] if params[k].present? }` - the
- *  first NON-BLANK of the two query params, nil when neither is present.
- *  The value rides VERBATIM into the engine (Rack has already
- *  percent-decoded it, exactly what URL.searchParams.get returns); the
- *  underscore aliasing is a PATH-mark rule, never a params rule - so
- *  ?view=no_such_view raises for an unregistered view the same way the
- *  path arm does. */
-function queryViewFromUrl(url: URL): string | undefined {
-  for (const key of ["view", "v"] as const) {
-    const value = url.searchParams.get(key);
-    if (value !== null && value !== "") return value;
-  }
-  return undefined;
-}
+/** queryViewFromUrl moved to src/server/worker-shared-surface.ts — the
+ *  view_from_params read (rest.rb:100-103) is shared surface; the local
+ *  copy was the twins' third drift risk. */
 
 async function renderCardPage(
   deck: Deck,

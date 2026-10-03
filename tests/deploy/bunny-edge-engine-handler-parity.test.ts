@@ -1,0 +1,218 @@
+// Third-twin parity — the Bunny Edge full-engine handler
+// (deploy/bunny-worker-src/bunny-edge-engine-handler.ts) driven IN-PROCESS
+// for the first time. The entry (bunny-edge-engine-entry.ts) calls
+// BunnySDK.net.http.serve at module scope with an edge-runtime-only SDK
+// that is not installed here, so until the 2026-10-03 extraction this
+// surface had ZERO test coverage; the inflection-boot pin could only read
+// its source (see that file's stated constraint).
+//
+// The DB seam needs no production change: BunnyDbDriver speaks Hrana v2
+// over plain fetch (src/card/drivers/bunny-db.ts), so the test stubs
+// globalThis.fetch with a translator over the SAME local fixture the
+// sibling worker tests use (0001-schema + demo seed) and the REAL driver
+// runs against it. globalThis.fetch is bound at driver CONSTRUCTION
+// (fetch.bind(globalThis), bunny-db.ts), and the handler boots its deck on
+// the first request — so the stub must be installed before the first
+// request, which beforeAll guarantees.
+//
+// Ruby truth under test (same cites as the twin parity suite):
+//   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
+//     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
+//   - src/card/name/errors.ts the mark errors are the NotFound family
+//   - the shared surface: src/server/worker-shared-surface.ts mapRenderError
+//     is what BOTH Cloudflare twins answer with; the third twin must not
+//     drift (it shared root's catch shape and carried the same missing-404
+//     defect the deploy-button lane fixed everywhere else).
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { splitSqlStatements } from "../card/render/render-test-storage.js";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
+const SEED = `${REPO_ROOT}deploy/seed/seed.sql`;
+
+const CREDENTIAL_ENV = {
+  BUNNY_DATABASE_URL: "https://fixture-db.lite.bunnydb.net",
+  BUNNY_DATABASE_AUTH_TOKEN: "fixture-token",
+};
+
+/** Translate BunnyDbDriver's Hrana-v2 pipeline POSTs into local sqlite
+ *  queries and encode the results back in the wire shape the driver
+ *  decodes (bunny-db.ts: request {requests:[{type:"execute",stmt:{sql,
+ *  args,want_rows}},...,{type:"close"}]}, response {results:[{type:"ok",
+ *  response:{type:"execute",result:{cols,rows}}}]}, cells tagged
+ *  {type:"null"|"integer"|"float"|"text", value}). */
+function makeBunnyFetchStub(driver: LocalSqliteDriver): typeof fetch {
+  const encodeCell = (value: unknown): Record<string, unknown> => {
+    if (value === null || value === undefined) return { type: "null" };
+    if (typeof value === "number") {
+      return Number.isInteger(value)
+        ? { type: "integer", value: String(value) }
+        : { type: "float", value };
+    }
+    return { type: "text", value: String(value) };
+  };
+  return (async (_url: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      requests: Array<
+        | { type: "execute"; stmt: { sql: string; args: Array<Record<string, unknown>> } }
+        | { type: "close" }
+      >;
+    };
+    const results = [];
+    for (const request of body.requests ?? []) {
+      if (request.type !== "execute") {
+        results.push({ type: "ok", response: { type: "close" } });
+        continue;
+      }
+      const args = (request.stmt.args ?? []).map((arg) => {
+        if (arg.type === "null") return null;
+        if (arg.type === "integer") return Number(arg.value);
+        if (arg.type === "float") return arg.value;
+        return arg.value;
+      });
+      const result = await driver.query<Record<string, unknown>>(request.stmt.sql, args);
+      const cols: string[] = [];
+      for (const row of result.rows) {
+        for (const key of Object.keys(row)) {
+          if (!cols.includes(key)) cols.push(key);
+        }
+      }
+      results.push({
+        type: "ok",
+        response: {
+          type: "execute",
+          result: {
+            cols: cols.map((name) => ({ name })),
+            rows: result.rows.map((row) => cols.map((col) => encodeCell(row[col]))),
+            affected_row_count: 0,
+          },
+        },
+      });
+    }
+    return new Response(JSON.stringify({ results }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+}
+
+let driver: LocalSqliteDriver | undefined;
+let handler: (request: Request, env: Record<string, string | undefined>) => Promise<Response>;
+
+beforeAll(async () => {
+  driver = new LocalSqliteDriver({ path: ":memory:" });
+  for (const file of [MIGRATIONS, SEED]) {
+    const sql = readFileSync(file, "utf8");
+    for (const statement of splitSqlStatements(sql)) {
+      await driver.query(statement, []);
+    }
+  }
+  // The stub must exist BEFORE the first request boots the deck: the
+  // driver binds globalThis.fetch at construction.
+  globalThis.fetch = makeBunnyFetchStub(driver!);
+  const module = await import("../../deploy/bunny-worker-src/bunny-edge-engine-handler.js");
+  handler = module.handleBunnyEngineRequest;
+});
+
+afterAll(() => {
+  driver?.close();
+});
+
+function get(path: string): Promise<Response> {
+  return handler(new Request(`https://decko-edge.test${path}`), CREDENTIAL_ENV);
+}
+
+describe("bunny edge engine handler — the shared read surface", () => {
+  it("GET / boots the engine over the stubbed seam and renders Home", async () => {
+    const response = await get("/");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Welcome to the decko-ts synthetic demo deck");
+  });
+
+  it("GET /:mark/:view renders the path view verbatim (root parsePath is the shared grammar)", async () => {
+    const response = await get("/About/closed");
+    expect(response.status).toBe(200);
+    expect(await response.text()).not.toContain("only synthetic demo content");
+  });
+
+  it("a missing card answers 404 Card not found (error.rb:88-89 — the defect the entry shared with root's pre-fix catch)", async () => {
+    const response = await get("/No+Such+Card");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toContain("<h1>Card not found</h1>");
+  });
+
+  it("an unregistered view answers the 422 UserError shape (error.rb:21)", async () => {
+    const response = await get("/Home/nonsense");
+    expect(response.status).toBe(422);
+    expect(await response.text()).toContain("<h1>Unsupported view</h1>");
+  });
+
+  it("an id mark resolves through the primed name environment (the boot prime the entry lacked)", async () => {
+    const response = await get("/~10");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Welcome to the decko-ts synthetic demo deck");
+  });
+
+  it("a codename mark resolves through the primed codehash", async () => {
+    const response = await get("/:search_type");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('data-card-name="Search"');
+  });
+
+  it("?view= fills the view-less arm (rest.rb:100-103)", async () => {
+    const response = await get("/About?view=closed");
+    expect(response.status).toBe(200);
+    expect(await response.text()).not.toContain("only synthetic demo content");
+  });
+
+  it("non-GET/HEAD stays 403 (read-only edge)", async () => {
+    const response = await handler(
+      new Request("https://decko-edge.test/Home", { method: "POST" }),
+      CREDENTIAL_ENV,
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it("/_status reports health through the stubbed seam", async () => {
+    const response = await get("/_status");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { ok?: boolean; database?: { card_count?: number } };
+    expect(body.ok).toBe(true);
+    expect(body.database?.card_count).toBeGreaterThan(0);
+  });
+
+  it("a read-denied card 403s on /api/card instead of serving db_content (permissions.rb:139-146)", async () => {
+    // The F3 denial fixture (mirror of tests/deploy/deploy-worker-miniflare.test.ts):
+    // codename carriers, a probe card, its *self set, a *read rule granting
+    // NOBODY (no card_references rows).
+    const T = "2026-09-20 00:00:00.000";
+    const insert = (values: string): string =>
+      `INSERT INTO cards (\n` +
+      `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
+      `  created_at, updated_at, creator_id, updater_id,\n` +
+      `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
+      `) VALUES (\n${values}\n)`;
+    for (const statement of [
+      insert(`9001, '*read', 'read', 'read', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9002, '*all', 'all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9003, 'Set', 'set', 'set', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9004, '*self', 'self', 'self', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+      insert(`9010, 'Probe Restricted', 'probe_restricted', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, 'Restricted secret body'`),
+      insert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 9003, NULL`),
+      insert(`9012, NULL, NULL, NULL, 9011, 9001, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL`),
+      `UPDATE cards SET read_rule_id = 9012, read_rule_class = 'R' WHERE id = 9010`,
+    ]) {
+      await driver!.query(statement, []);
+    }
+    const response = await get("/api/card/Probe%20Restricted");
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { error?: string; name?: string };
+    expect(body).toMatchObject({ error: "permission denied", name: "Probe Restricted" });
+    expect(JSON.stringify(body)).not.toContain("Restricted secret body");
+  });
+});
