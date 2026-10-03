@@ -34,13 +34,15 @@
 //                                          pattern registration order
 //                                          (= set_names order)
 //
+// ALSO ported here (2026-10-03, gherkin-port-wave lane): the
+// INDIRECT/field-follower walk — follower_ids.rb:74-83 indirect walk +
+// follower_stash.rb:39-52 stash_field_followers + followed_by.rb:18-31
+// followed_field?/*nests — resolveFollowers walks the left chain through
+// followed_field? (the *follow_fields rule + the ref_type "I" inclusion
+// check) and stashes each qualifying ancestor's direct followers.
+//
 // NOT ported here (deferred, cited for the next stream):
-//   - indirect/field followers (follower_ids.rb:75-83 indirect walk +
-//     FollowerStash.stash_field_followers, follower_stash.rb:39-52):
-//     needs the *follow_fields rule + *nests inclusion machinery.
-//   - `followable?` (set/all/follow.rb:2-4): in card-mod-follow 0.20.0
-//     no set overrides it — every card is followable; nothing to port.
-//   - `changes_visible?` (set/right/account.rb:9-11, the follower must
+//   - changes_visible? (set/right/account.rb:9-11, the follower must
 //     be able to read the card): permissions stream owns ok?(:read).
 
 import type { CardRecord } from "../fetch/card-record.js";
@@ -391,12 +393,20 @@ async function followRuleContent(
 /** The option codename of one follow-rule line: line.to_name.codename
  *  (followed_by.rb:53) = Codename[Lexicon.id(line)] (name_variants.rb
  *  :37-39). A line whose name has no codename (or no card) yields nil,
- *  which never matches (no test, no candidates). */
+ *  which never matches (no test, no candidates).
+ *
+ *  Link-bracket form: the upstream feature steps write the preference
+ *  content as "[[*always]]" (edit_steps.rb:9 "the card ...+*follow
+ *  contains \"[[*always]]\"") and the notifications arrive
+ *  (update_includers.feature:19-20), so Ruby's line resolution accepts
+ *  the link form; the port strips the brackets before the lexicon
+ *  lookup for the same acceptance. */
 async function optionCodeOfLine(
   fetch: FetchEngine,
   line: string,
 ): Promise<string | null> {
-  const id = await fetch.lexicon.id(DeckoName.parse(line));
+  const bare = line.replace(/[[\]]/g, "").trim();
+  const id = await fetch.lexicon.id(DeckoName.parse(bare));
   if (id === undefined) return null;
   const card = await fetch.fetchById(id);
   return card?.codename ?? null;
@@ -466,12 +476,28 @@ export async function resolveFollowers(
   const card = await fetch.fetchById(cardId);
   if (card === undefined || card.trash) return [];
 
+  // follower_ids.rb:66-68: follower_ids = direct_follower_ids +
+  // indirect_follower_ids, in that order (the dedupe set is shared).
+  const seen = new Set<number>();
+  const refs: FollowerRef[] = [];
+  await stashDirectFollowers(fetch, card, seen, refs);
+  await stashFieldFollowers(fetch, card, seen, refs);
+  return refs;
+}
+
+/** The direct walk for ONE card — follower_ids.rb:95-114
+ * direct_follower_ids (the former body of resolveFollowers, reused by the
+ * indirect walk for the left-chain cards). */
+async function stashDirectFollowers(
+  fetch: FetchEngine,
+  card: CardRecord,
+  seen: Set<number>,
+  refs: FollowerRef[],
+): Promise<void> {
   const patterns = await setPatternsOf(fetch, card);
   const index = indexPreferenceRows(await preferenceRows(fetch));
   const allId = await fetch.codenames.id("all");
 
-  const seen = new Set<number>();
-  const refs: FollowerRef[] = [];
   for (const pattern of patterns) {
     const userIds = await enumeratedUserIds(fetch, index, pattern.lookupKey);
     for (const followerId of userIds) {
@@ -490,7 +516,130 @@ export async function resolveFollowers(
       });
     }
   }
-  return refs;
+}
+
+/**
+ * The indirect walk — follower_ids.rb:74-83 indirect_follower_ids:
+ *
+ *   result = ::Set.new
+ *   left_card = left
+ *   while left_card
+ *     result += left_card.direct_follower_ids if left_card.followed_field? self
+ *     left_card = left_card.left
+ *   end
+ *
+ * A field's change notifies the followers of each left ancestor that
+ * "follows fields" like this one (followed_field?,
+ * followed_by.rb:18-27): the ancestor's *follow_fields rule lists either
+ * the field's key or *nests (any card it includes). The stash dedupe
+ * (follower_stash.rb:14-15 @checked) is the shared `seen` set.
+ */
+async function stashFieldFollowers(
+  fetch: FetchEngine,
+  card: CardRecord,
+  seen: Set<number>,
+  refs: FollowerRef[],
+): Promise<void> {
+  let leftName = card.name?.leftName;
+  while (leftName !== undefined) {
+    const left = await fetch.fetchByName(leftName);
+    if (left === undefined || left.trash) break;
+    if (await followedField(fetch, left, card)) {
+      await stashDirectFollowers(fetch, left, seen, refs);
+    }
+    leftName = left.name?.leftName;
+  }
+}
+
+/** followed_field? (followed_by.rb:18-27): the left card's
+ * rule_card(:follow_fields) items — the field's key, or *nests when the
+ * left card includes the field. */
+async function followedField(
+  fetch: FetchEngine,
+  left: CardRecord,
+  field: CardRecord,
+): Promise<boolean> {
+  const ruleContent = await followFieldsRuleContent(fetch, left);
+  if (ruleContent === null || ruleContent === "") return false; // no rule_card -> false (:19)
+  for (const item of ruleContent.split("\n")) {
+    const itemKey = DeckoName.parse(item.trim()).key;
+    if (field.name !== undefined && itemKey === field.name.key) return true; // :21-22
+    if (itemKey === NESTS_KEY && (await nestedCard(fetch, left, field))) return true; // :23-24
+  }
+  return false;
+}
+
+/** :nests.cardname.key (followed_by.rb:23) — the key of the *nests card. */
+/** :nests.cardname.key (followed_by.rb:23) — the KEY of the *nests card.
+ *  Cardname keys singularize (the cardname gem's key algorithm, mirrored by
+ *  DeckoName.parse().key), so the key of "*nests" is "*nest" — both sides
+ *  of the :22-24 comparison are keys, and Ruby's own comparison matches on
+ *  the singularized form. */
+const NESTS_KEY = "*nest";
+
+/** nested_card? (followed_by.rb:29-31): nestee_ids.include?(card.id) —
+ * nestees are the referees of this card's ref_type "I" references
+ * (card-1.110.0 lib/card/reference/all.rb:31-34). */
+async function nestedCard(
+  fetch: FetchEngine,
+  left: CardRecord,
+  field: CardRecord,
+): Promise<boolean> {
+  if (left.id === undefined || field.id === undefined) return false;
+  const r = await fetch.driver.query<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+    [left.id, field.id],
+  );
+  return Number(r.rows[0]?.n ?? 0) > 0;
+}
+
+/** rule_card(:follow_fields) (followed_by.rb:19) — the left card's
+ * *follow_fields rule, read in rule-lookup order (the card's set patterns,
+ * first rule row wins; card-1.110.0 lib/card/rule.rb rule_card's
+ * lookup_keys walk). The rule rows are `Set+*follow fields` cards (right =
+ * the follow_fields setting card, left = the set card). */
+async function followFieldsRuleContent(
+  fetch: FetchEngine,
+  left: CardRecord,
+): Promise<string | null> {
+  const settingId = await fetch.codenames.id("follow_fields");
+  if (settingId === undefined) return null;
+  const patterns = await setPatternsOf(fetch, left);
+  for (const pattern of patterns) {
+    const setId = await setCardIdForPattern(fetch, pattern.lookupKey);
+    if (setId === undefined) continue;
+    const r = await fetch.driver.query<{ db_content: string | null }>(
+      "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+      [setId, settingId],
+    );
+    const content = r.rows[0]?.db_content;
+    if (content !== undefined && content !== null) return content;
+  }
+  return null;
+}
+
+/** The SET CARD id for one pattern lookup key: anchorless patterns ("all",
+ * "all_plus", "star", "rstar", "rule") are their own codename card;
+ * anchored patterns ("<anchorId>+<code>") are the compound row
+ * left = anchor, right = the pattern's codename card
+ * (mod/core/set_pattern/*: the set card of "X+*self" is the
+ * X+*self row). */
+async function setCardIdForPattern(
+  fetch: FetchEngine,
+  lookupKey: string,
+): Promise<number | undefined> {
+  const plus = lookupKey.lastIndexOf("+");
+  if (plus === -1) return fetch.codenames.id(lookupKey);
+  const anchorId = Number(lookupKey.slice(0, plus));
+  const code = lookupKey.slice(plus + 1);
+  const patternCardId = await fetch.codenames.id(code);
+  if (patternCardId === undefined || Number.isNaN(anchorId)) return undefined;
+  const r = await fetch.driver.query<{ id: number }>(
+    "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+    [anchorId, patternCardId],
+  );
+  const id = r.rows[0]?.id;
+  return id === undefined ? undefined : Number(id);
 }
 
 /**

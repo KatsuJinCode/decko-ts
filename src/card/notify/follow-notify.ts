@@ -25,6 +25,7 @@ import {
   renderMail,
   type EmailTemplate,
   type FollowNotice,
+  type FollowNoticeAct,
 } from "./mail.js";
 import type {
   MailMessage,
@@ -116,6 +117,7 @@ async function notifyFollower(
   ref: FollowerRef,
   template: EmailTemplate,
   ctx: NotifyContext,
+  act: FollowNoticeAct,
 ): Promise<void> {
   if (ref.followerEmail === null) return; // return unless email.present?
   const notice: FollowNotice = {
@@ -123,7 +125,7 @@ async function notifyFollower(
     followedSet: ref.followedSetName,
     followOption: ref.followOption,
   };
-  const msg = renderMail({ ...template, to: ref.followerEmail }, notice);
+  const msg = renderMail({ ...template, to: ref.followerEmail }, notice, act);
   try {
     await ctx.transport.sendMail(msg);
     ctx.logger?.(`[notify] sent follow mail to ${ref.followerEmail} (${ref.followerName})`);
@@ -168,6 +170,18 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
       // Sequential is fine here: the transport is in-memory for tests
       // and SMTP doesn't parallelize well anyway. A worker-queue version
       // is the integrate_with_delay-delayed form (delayed_event.rb).
+      //
+      // The act the templates render against: the event's actor, its verb
+      // as the rendered verb (base_views.rb:45-47 action_type + "d"), and
+      // the event card's name (account.rb:18 delivers with context =
+      // act.card — for the single-action acts this hook fires on, the
+      // event card IS the act card; the multi-action act machinery is a
+      // named not-yet-ported surface).
+      const act: FollowNoticeAct = {
+        userName: event.actor.name,
+        verb: `${event.verb}d`,
+        cardName: event.card?.name ?? "",
+      };
       for (const ref of followers) {
         // Ruby wraps each follower's delivery in Auth.as(left.id)
         // (card-mod-follow set/right/account.rb:15-21); the port runs the
@@ -175,7 +189,7 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
         // actor-independent, so the resolved actor is not consumed
         // downstream.
         deps.authAs(ref.followerId, ref.followerName);
-        await notifyFollower(ref, template, ctx);
+        await notifyFollower(ref, template, ctx, act);
       }
     },
   };

@@ -67,6 +67,17 @@ export interface FollowNotice {
   readonly followOption: string;
 }
 
+/** The act the notification is about — the values behind the stock
+ *  template's act-relative placeholders. `verb` is the rendered verb
+ *  (base_views.rb:45-47: main action_type + "d" — created/updated/
+ *  deleted); `cardName` is the act card's name (account.rb:18 delivers
+ *  with context = act.card); `userName` the act actor's name. */
+export interface FollowNoticeAct {
+  readonly userName: string;
+  readonly verb: string;
+  readonly cardName: string;
+}
+
 /** Single-pass rendering of `{{key}}` placeholders, mirroring Ruby's
  *  `contextual_content` semantics for cards that do NOT resolve to a
  *  real card name. The M6 real-oracle capture
@@ -80,23 +91,25 @@ export interface FollowNotice {
  *                   + card-mod-email set/abstract/email_field.rb:22-26
  *                   (compact_missing view → default render of card-name)
  *
- *  `vars` is accepted for API compatibility with prior code paths but
- *  is unused — Ruby's contextual_content does not expose a substitution
- *  table; the inclusion walker resolves against the live card tree, and
- *  in the dev-DB scenario none of `follower` / `followed_set` /
- *  `follow_option` are real cards, so all three placeholders render
- *  as their literal names. The captured bytes are the byte-parity
- *  ground truth for the UNRESOLVABLE case; a resolvable placeholder
- *  renders what it points at (Ruby's walk against the live card tree)
- *  — the vars map is the resolved set (wiring test 2026-09-22).
- */
+ *  `vars` maps placeholder text (including any |view suffix, verbatim) to
+ *  the resolved value; an absent key renders the placeholder's BARE name
+ *  (braces dropped), the captured rule.
+ *
+ *  The act-relative shapes the stock template carries
+ *  (mod/follow/data/real.yml follower_notification_email subject
+ *  `{{_user|name}} {{_|last_action_verb}} "{{_|name}}"`) resolve through
+ *  the same map: `_|name` -> the act card's name (account.rb:18 delivers
+ *  with context = act.card), `{{_|last_action_verb}}` -> the act verb
+ *  (base_views.rb:45-47 last_action_verb = main action_type + "d"),
+ *  `{{_user|name}}` -> the act actor's name (the resolved output the
+ *  features pin: update_includers.feature:19 "Joe User created ..."). */
 export function interpolateTemplate(
   template: string,
   vars: Readonly<Record<string, string>>,
 ): string {
-  return template.replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (_whole, key: string) => {
+  return template.replace(/\{\{\s*([a-zA-Z_]+(?:\|[a-zA-Z_]+)?)\s*\}\}/g, (_whole, key: string) => {
     const value = vars[key];
-    return value !== undefined ? value : key;
+    return value !== undefined ? value : key.split("|")[0];
   });
 }
 
@@ -115,12 +128,20 @@ export function interpolateTemplate(
 export function renderMail(
   template: EmailTemplate,
   notice: FollowNotice,
+  act?: FollowNoticeAct,
 ): MailMessage {
   const vars: Record<string, string> = {
     follower: notice.follower,
     followed_set: notice.followedSet,
     follow_option: notice.followOption,
   };
+  if (act !== undefined) {
+    // The stock template's act-relative placeholders (mod/follow
+    // data/real.yml subject; citations on interpolateTemplate).
+    vars["_|name"] = act.cardName;
+    vars["_|last_action_verb"] = act.verb;
+    vars["_user|name"] = act.userName;
+  }
   const subject = interpolateTemplate(template.subject, vars);
   const textBody = interpolateTemplate(template.textBody ?? "", vars);
   const htmlBody = template.htmlBody === undefined
