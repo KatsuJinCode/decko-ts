@@ -115,7 +115,50 @@ const NAMED_REMAINDERS = {
     "seed:First":
       "data/test.yml is the gem's own test-suite fixture data (decko seed TEST data for the gem's specs), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
+  "card-mod-format": {
+    // set/all/html/error.rb:4-8 view :debug_server_error - the BetterErrors
+    // dev-tool page (BetterErrors::ErrorPage.new Card::Error.current, ...).
+    // The better_errors gem is NOT in the frozen gem set (the gems dir has
+    // no better_errors entry) - in the installed-gems environment the view
+    // RAISES NameError; its byte behavior is defined by an external dev
+    // gem's page renderer that no installed gem carries.
+    "view:debug_server_error":
+      "the BetterErrors dev-tool error page (error.rb:4-8); the better_errors gem is NOT in the frozen gem set, so the view raises NameError in the installed-gems environment - its behavior belongs to an external dev dependency, not the deck's public surface",
+    // CLASS remainders (matched by regex below): the non-html format
+    // blocks (data/json/csv/rss/text/yaml/js/jsonld - the manifest
+    // header's documented format-specific class; the engine renders the
+    // html format only), their validate events, the basket ops and the
+    // yml seed - every one the SAME engine-route class, none in the
+    // census's 23-view html gap.
+    // CLASS: the non-html format blocks (data/json/csv/rss - the manifest
+    // header's documented format-specific class; the engine renders the
+    // html format only) and their validate events, the two basket ops and
+    // the yml seed - one engine-route class, none in the census's 23-view
+    // html gap. Keys wrapped in <...> are regex classes matched against
+    // the behaviorId (namedRemainderFor below).
+    "<view:(import|body|row|pod|nucleus|atom|molecule|ancestors|cast|items|links|test|format_unsupported|style|source|status|page|remote|method|feed|feed_body|feed_title|feed_item|feed_item_description|feed_description)>":
+      "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+    "<event:(validate_json|validate_number)>":
+      "a non-html format's validate event (the json/number write-path validation the engine's write route does not reach yet - the same non-html render/write route class)",
+    "<basket:.*>":
+      "a basket registration (head_views / cache_seed_names) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+    "<seed:.*>":
+      "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
+  },
 };
+
+/** Exact key first, then <regex> class keys. */
+function namedRemainderFor(modId, behaviorId) {
+  const table = NAMED_REMAINDERS[modId];
+  if (table === undefined) return undefined;
+  if (Object.hasOwn(table, behaviorId)) return table[behaviorId];
+  for (const [key, reason] of Object.entries(table)) {
+    if (key.startsWith("<") && key.endsWith(">")) {
+      if (new RegExp(`^${key.slice(1, -1)}$`).test(behaviorId)) return reason;
+    }
+  }
+  return undefined;
+}
 
 // WAVE-1 PORTING STATE (the 10-03 ruling's first porting wave) - the
 // census-missing views BY NAME and their current disposition. A view moves
@@ -133,15 +176,35 @@ const WAVE1 = {
         status: "ported, verify GREEN (harness capture + probe)",
       },
     ],
+    "card-mod-format": [
+      {
+        view: "demo",
+        source: "set/all/demo.rb:2-7",
+        oracle: "static-ruby x4 scenarios (demo-view.rb; the codename list parsed from the REAL frozen admin.yml files under the real interpreter)",
+        status: "ported, verify GREEN (harness capture + probe)",
+      },
+    ],
+  },
+  namedRemainderViews: {
+    "card-mod-format": [
+      {
+        view: "debug_server_error",
+        source: "set/all/html/error.rb:4-8",
+        reason:
+          "the BetterErrors dev-tool error page; the better_errors gem is NOT in the frozen gem set - the view raises NameError in the installed-gems environment, its behavior belongs to an external dev dependency",
+      },
+    ],
   },
   status(modId) {
     const ported = this.portedViews[modId];
-    if (!ported) return null;
+    const named = this.namedRemainderViews[modId];
+    if (!ported && !named) return null;
     const census = REMEASURE.missingByMod[modId] ?? 0;
     return {
       branch: this.branch,
-      portedViews: ported,
-      censusMissingRemaining: census - ported.length,
+      portedViews: ported ?? [],
+      namedRemainderViews: named ?? [],
+      censusMissingRemaining: census - (ported?.length ?? 0) - (named?.length ?? 0),
     };
   },
 };
@@ -617,22 +680,38 @@ function mineEngineViews() {
 function registrationChecks(surface, engineViews) {
   const manifestPath = join(MOD_LOADER_MODS, `${surface.modId}.ts`);
   const manifestSrc = existsSync(manifestPath) ? readText(manifestPath) : null;
+  // cross-mod registration sweep (wave-1 lane): a view the SURFACE mod
+  // declares can be REGISTERED by another mod's manifest (format.rb's
+  // comment_box override is registered by card-mod-comment). The seed and
+  // config checks already sweep; the view check gains the same arm.
   const checks = [];
+  const crossModFor = (name) => {
+    for (const f of walkFiles(MOD_LOADER_MODS, ".ts")) {
+      const file = relative(REPO, f).replaceAll("\\", "/");
+      if (file.endsWith(`${surface.modId}.ts`)) continue;
+      const src = readText(f);
+      if (new RegExp(`\\{\\s*view:\\s*"${name}"`).test(src)) return file;
+    }
+    return null;
+  };
   for (const b of surface.behaviors) {
     if (b.kind === "view") {
-      const registered =
-        (manifestSrc !== null &&
-          new RegExp(`\\{\\s*view:\\s*"${b.name}"`).test(manifestSrc)) ||
-        engineViews.has(b.name);
+      const inManifest =
+        manifestSrc !== null &&
+        new RegExp(`\\{\\s*view:\\s*"${b.name}"`).test(manifestSrc);
+      const crossMod = !inManifest && !engineViews.has(b.name) ? crossModFor(b.name) : null;
+      const registered = inManifest || engineViews.has(b.name) || crossMod !== null;
       checks.push({
         behaviorId: b.id,
         check: "ts-view-registration",
         pass: registered,
         evidence: registered
-          ? engineViews.has(b.name)
-            ? `view "${b.name}" registered (engine HTML_VIEWS${manifestSrc !== null && new RegExp(`\\{\\s*view:\\s*"${b.name}"`).test(manifestSrc) ? " + manifest" : ""})`
-            : `${surface.modId}.ts registers view "${b.name}"`
-          : `no view "${b.name}" registration in ${surface.modId}.ts or the engine HTML_VIEWS table`,
+          ? crossMod !== null
+            ? `view "${b.name}" registered in ANOTHER mod's manifest (${crossMod}) - the surface mod's override dispatches through the mod chain`
+            : engineViews.has(b.name)
+              ? `view "${b.name}" registered (engine HTML_VIEWS${inManifest ? " + manifest" : ""})`
+              : `${surface.modId}.ts registers view "${b.name}"`
+          : `no view "${b.name}" registration in ${surface.modId}.ts, any other mod manifest, or the engine HTML_VIEWS table`,
       });
     } else if (b.kind === "event") {
       const registered =
@@ -783,12 +862,10 @@ function verifyMod(modId) {
     // red = registration missing OR probe suite failed;
     // uncaptured = no oracle (live-deck required) — never counted validated.
     // named-remainder = red-unported registration whose behaviorId carries a
-    // named, evidenced reason (NAMED_REMAINDERS) — never counted RED, never
+    // named, evidenced reason (NAMED_REMAINDERS via namedRemainderFor -
+    // exact keys then <regex> classes) — never counted RED, never
     // counted validated (the wave's end condition: every remainder named).
-    const remainderReason =
-      !reg?.pass && Object.hasOwn(NAMED_REMAINDERS, modId)
-        ? NAMED_REMAINDERS[modId][b.id]
-        : undefined;
+    const remainderReason = !reg?.pass ? namedRemainderFor(modId, b.id) : undefined;
     let state;
     if (remainderReason !== undefined) {
       state = "named-remainder";

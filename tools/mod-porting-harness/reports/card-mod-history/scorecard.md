@@ -15,7 +15,7 @@ Probe suite: 59 passed / 0 failed (tests/card/mod-loader/card-mod-history-harnes
 | `event:rollback_actions` | event | registered-standing-net | yes | - | card-mod-history.ts registers event "rollback_actions" |
 | `event:finalize_act` | event | registered-standing-net | yes | - | card-mod-history.ts registers event "finalize_act" |
 | `view:history` | view | registered-standing-net | yes | - | card-mod-history.ts registers view "history" |
-| `view:actions` | view | named-remainder | no | - | no view "actions" registration in card-mod-history.ts or the engine HTML_VIEWS table |
+| `view:actions` | view | named-remainder | no | - | no view "actions" registration in card-mod-history.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:history` | view | registered-standing-net | yes | - | card-mod-history.ts registers view "history" |
 | `view:act` | view | registered-standing-net | yes | - | card-mod-history.ts registers view "act" |
 | `view:act_legend` | view | registered-standing-net | yes | - | card-mod-history.ts registers view "act_legend" |

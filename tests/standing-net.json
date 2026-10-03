@@ -24,7 +24,8 @@
       "Gherkin behavior layer (tests/card/gherkin/ — the three .feature.test.ts files: card-crud, names, views; 31 scenarios ported from the Ruby Gherkin features), added 2026-10-03: the layer sat outside every gate, so the enrichTemplateLinkSetJunctions render change (wave1, carried by fold-8) broke 2 structure.feature renders on lineages that carry it (CodenameNotFoundError: unknown codename: right) and only a manual lane run noticed. Fixed in the gherkin-gate lane by seeding the codename cards and installing the DB-backed name environment (gherkin-storage.ts). Listed so the net guards the layer in every standing-net run. Verified green at 5cd5646: 31/31.",
       "Hops gate (tests/card/render/hops-per-render-one-page-law.test.ts), added 2026-10-03: the operator law 'one page, one database hit' as a mechanical gate — a fixture page's cold render must stay under the enumerated ceiling (1 page batch + the justified exception classes; see the file header and the db-roundtrip-elimination receipt's per-hop justifications) and the warm re-render must not re-ask beyond the late-seat type exception. Listed so any engine change that re-inflates hop counts fails the build.",
       "Pointer-item per-nest verdict pin (tests/card/render/pointer-item-per-nest-read-verdict-not-global.test.ts), added 2026-10-03: the waves' negative priming re-primed NIL over its own round-1 positives in multi-round calls, and the stored nils answered the render's rule ladders 'absent' for junctions the db holds — the reader host's item-type rule vanished and every phantom typed BasicCs. Fixed in the db-roundtrip-elimination continuation (call-local ask/answer sets); the suite sat OUTSIDE the manifest while the regression landed, so it is listed now: the net guards the per-nest phantom verdict in both render orders.",
-      "Mod-porting harness probe (tests/card/mod-loader/card-mod-history-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby board_act oracle (fixtures/oracle-surfaces/card-mod-history.harness.jsonl) against the ported board renderer cores; the capture is provenance-carrying and the title bytes cross-check the live board capture in the oracle script itself"
+      "Mod-porting harness probe (tests/card/mod-loader/card-mod-history-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby board_act oracle (fixtures/oracle-surfaces/card-mod-history.harness.jsonl) against the ported board renderer cores; the capture is provenance-carrying and the title bytes cross-check the live board capture in the oracle script itself",
+      "Mod-porting harness probe (tests/card/mod-loader/card-mod-format-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby demo oracle (fixtures/oracle-surfaces/card-mod-format.harness.jsonl - the codename list parsed from the frozen admin.yml files) against the admin-config accessor and the demo form composition"
     ],
     "droppedDeadFilters": [
       "tests/card/mod/card-mod-search-list-oracle-pinned.test.ts",
@@ -33,7 +34,7 @@
       "tests/card/rules/nest-miss-unknown-view-selection-corpus-replay.test.ts",
       "tests/card/render/highlighter-seams-h1-h2-oracle-pins.test.ts"
     ],
-    "manifestFileCount": 97
+    "manifestFileCount": 98
   },
   "files": [
     "tests/card/actions/anon-fix-fresh-variants.test.ts",
@@ -132,7 +133,8 @@
     "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts",
     "tests/card/render/hops-per-render-one-page-law.test.ts",
     "tests/card/render/pointer-item-per-nest-read-verdict-not-global.test.ts",
-    "tests/card/mod-loader/card-mod-history-harness-probe.test.ts"
+    "tests/card/mod-loader/card-mod-history-harness-probe.test.ts",
+    "tests/card/mod-loader/card-mod-format-harness-probe.test.ts"
   ],
-  "manifestFileCount": 97
+  "manifestFileCount": 98
 }

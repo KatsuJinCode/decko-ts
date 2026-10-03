@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T14:22:33.931Z",
+  "generatedAt": "2026-10-03T15:04:55.951Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -246,12 +246,30 @@
       "gem": "card-mod-format-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "44 mod-specific view(s) ported: add_button, add_link, add_url, admin, bar_right, board_link, ...",
+      "statusEvidence": "harness scorecard, 0 RED: 1/168 harness-oracle-validated, 137 pinned by the mod's standing suite, 30 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-format/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "1/168 validated",
       "reMeasureMissingViews": 2,
-      "wave1": null,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [
+          {
+            "view": "demo",
+            "source": "set/all/demo.rb:2-7",
+            "oracle": "static-ruby x4 scenarios (demo-view.rb; the codename list parsed from the REAL frozen admin.yml files under the real interpreter)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          }
+        ],
+        "namedRemainderViews": [
+          {
+            "view": "debug_server_error",
+            "source": "set/all/html/error.rb:4-8",
+            "reason": "the BetterErrors dev-tool error page; the better_errors gem is NOT in the frozen gem set - the view raises NameError in the installed-gems environment, its behavior belongs to an external dev dependency"
+          }
+        ],
+        "censusMissingRemaining": 0
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-format-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -289,6 +307,7 @@
             "status": "ported, verify GREEN (harness capture + probe)"
           }
         ],
+        "namedRemainderViews": [],
         "censusMissingRemaining": 0
       },
       "privateUnknown": false,

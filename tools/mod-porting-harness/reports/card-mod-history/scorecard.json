@@ -1,7 +1,7 @@
 {
   "mod": "card-mod-history",
   "gem": "card-mod-history-0.20.0",
-  "generatedAt": "2026-10-03T14:21:31.803Z",
+  "generatedAt": "2026-10-03T15:03:36.640Z",
   "totals": {
     "behaviors": 26,
     "validated": 1,
@@ -99,7 +99,7 @@
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "json-format view; the export.rb hash shapes are ported + suite-pinned, the engine's non-html render route is the named remainder (same class as card-mod-list's csv/js/data/json)",
-      "evidence": "no view \"actions\" registration in card-mod-history.ts or the engine HTML_VIEWS table"
+      "evidence": "no view \"actions\" registration in card-mod-history.ts, any other mod manifest, or the engine HTML_VIEWS table"
     },
     {
       "behaviorId": "view:history",

@@ -1,0 +1,1704 @@
+{
+  "mod": "card-mod-format",
+  "gem": "card-mod-format-0.20.0",
+  "generatedAt": "2026-10-03T15:03:34.669Z",
+  "totals": {
+    "behaviors": 168,
+    "validated": 1,
+    "standingNet": 137,
+    "namedRemainder": 30,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
+      "tests/card/mod-loader/card-mod-format.test.ts"
+    ],
+    "ran": true,
+    "detail": "54 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:name",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:14",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"name\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:key",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:26",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"key\""
+    },
+    {
+      "behaviorId": "view:linkname",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:27",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"linkname\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:url",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:28",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"url\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:id_url",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:29",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"id_url\""
+    },
+    {
+      "behaviorId": "view:url_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:31",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"url_link\""
+    },
+    {
+      "behaviorId": "view:link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"link\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:nav_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:39",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"nav_link\""
+    },
+    {
+      "behaviorId": "view:codename",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:55",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"codename\""
+    },
+    {
+      "behaviorId": "view:id",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:56",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"id\""
+    },
+    {
+      "behaviorId": "view:type",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:57",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"type\""
+    },
+    {
+      "behaviorId": "view:created_at",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:61",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"created_at\""
+    },
+    {
+      "behaviorId": "view:updated_at",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:62",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"updated_at\""
+    },
+    {
+      "behaviorId": "view:acted_at",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:63",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"acted_at\""
+    },
+    {
+      "behaviorId": "view:raw",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:75",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"raw\""
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:85",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:89",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:93",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"open_content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:97",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:labeled_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:101",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"labeled_content\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:titled_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:105",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"titled_content\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:blank",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:109",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"blank\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:titled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:120",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"titled\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:123",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"open\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:labeled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:125",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"labeled\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:closed",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:128",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"closed\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:closed_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:16",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"closed_content\""
+    },
+    {
+      "behaviorId": "view:raw_one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:18",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"raw_one_line_content\""
+    },
+    {
+      "behaviorId": "view:label",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:22",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"label\""
+    },
+    {
+      "behaviorId": "view:smart_label",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:26",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"smart_label\""
+    },
+    {
+      "behaviorId": "view:hidden_content_field",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:57",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"hidden_content_field\""
+    },
+    {
+      "behaviorId": "view:titled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:11",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"titled\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:unknown",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:19",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"unknown\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:import",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:23",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"import\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:url",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:27",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"url\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:titled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:21",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"titled\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:body",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:26",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"body\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:row",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:30",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"row\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:header",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"header\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:unknown",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:39",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"unknown\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:pod",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:32",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"pod\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:36",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:40",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:nucleus",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:44",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"nucleus\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:atom",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:49",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"atom\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:molecule",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:53",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"molecule\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:ancestors",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:57",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"ancestors\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:cast",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:64",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"cast\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:items",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:70",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"items\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:links",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:74",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"links\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:demo",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/demo.rb:2",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"demo\""
+    },
+    {
+      "behaviorId": "view:view_list",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/demo.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"view_list\""
+    },
+    {
+      "behaviorId": "view:compact_missing",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"compact_missing\""
+    },
+    {
+      "behaviorId": "view:unknown",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"unknown\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:server_error",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"server_error\""
+    },
+    {
+      "behaviorId": "view:denial",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:14",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"denial\""
+    },
+    {
+      "behaviorId": "view:not_found",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:18",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"not_found\""
+    },
+    {
+      "behaviorId": "view:bad_address",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:23",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"bad_address\""
+    },
+    {
+      "behaviorId": "view:errors",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:28",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"errors\""
+    },
+    {
+      "behaviorId": "view:test",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:75",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"test\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:format_unsupported",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:91",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"format_unsupported\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/file.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:style",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/file.rb:6",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"style\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:type",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html.rb:5",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"type\""
+    },
+    {
+      "behaviorId": "view:type_info",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"type_info\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:server_error",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"server_error\""
+    },
+    {
+      "behaviorId": "view:debug_server_error",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:4",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "the BetterErrors dev-tool error page (error.rb:4-8); the better_errors gem is NOT in the frozen gem set, so the view raises NameError in the installed-gems environment - its behavior belongs to an external dev dependency, not the deck's public surface",
+      "evidence": "no view \"debug_server_error\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:unknown",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"unknown\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:mini_unknown",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"mini_unknown\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:compact_missing",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:33",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"compact_missing\""
+    },
+    {
+      "behaviorId": "view:conflict",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:37",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"conflict\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:errors",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:53",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"errors\""
+    },
+    {
+      "behaviorId": "view:not_found",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:67",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"not_found\""
+    },
+    {
+      "behaviorId": "view:denial",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:75",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"denial\""
+    },
+    {
+      "behaviorId": "view:flash",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/frame.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"flash\""
+    },
+    {
+      "behaviorId": "view:page_title",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:21",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"page_title\""
+    },
+    {
+      "behaviorId": "view:head",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:31",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"head\""
+    },
+    {
+      "behaviorId": "view:meta_tags",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"meta_tags\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:page_title_tag",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:37",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"page_title_tag\""
+    },
+    {
+      "behaviorId": "view:favicon_tag",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:41",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"favicon_tag\""
+    },
+    {
+      "behaviorId": "view:universal_edit_button",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:46",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"universal_edit_button\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:rss_links",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:54",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"rss_links\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:stylesheet_tags",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:61",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"stylesheet_tags\""
+    },
+    {
+      "behaviorId": "basket:basket[:head_views] =",
+      "kind": "basket-op",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:1",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a basket registration (head_views / cache_seed_names) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+      "evidence": "no TS literal \"basket[:head_views] =\" (no consumer seam yet)"
+    },
+    {
+      "behaviorId": "basket:basket[:cache_seed_names] += [",
+      "kind": "basket-op",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:7",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a basket registration (head_views / cache_seed_names) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+      "evidence": "no TS literal \"basket[:cache_seed_names] += [\" (no consumer seam yet)"
+    },
+    {
+      "behaviorId": "basket:basket[:head_views].map { |viewname| render viewname }.flatten.compact.join \"\\n\"",
+      "kind": "basket-op",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:32",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "view:header",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/header.rb:5",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"header\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:header_title",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/header.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"header_title\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:menu_block",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"menu_block\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:menu",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"menu\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:edit_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:16",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"edit_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:edit_button",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:20",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"edit_button\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:full_page_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:25",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"full_page_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:board_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:29",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"board_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:help_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"help_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:short_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:20",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"short_content\""
+    },
+    {
+      "behaviorId": "view:raw_one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:24",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"raw_one_line_content\""
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:29",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:content_with_title",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:36",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content_with_title\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:content_panel",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:47",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content_panel\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:titled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:55",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"titled\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:labeled",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:67",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"labeled\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:source",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/js.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"source\" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-carrierwave.ts) - the surface mod's override dispatches through the mod chain"
+    },
+    {
+      "behaviorId": "view:status",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/json.rb:29",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"status\" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-follow.ts) - the surface mod's override dispatches through the mod chain"
+    },
+    {
+      "behaviorId": "view:page",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/json.rb:37",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"page\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:items",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/jsonld.rb:5",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"items\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:remote",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"remote\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:method",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"method\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:17",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed_body",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:40",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed_body\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed_title",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:48",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed_title\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed_item",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:52",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed_item\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed_item_description",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:67",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed_item_description\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:feed_description",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:71",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "evidence": "no view \"feed_description\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:comment_box",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:72",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"comment_box\" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-comment.ts) - the surface mod's override dispatches through the mod chain"
+    },
+    {
+      "behaviorId": "view:menu",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:73",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"menu\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:75",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"open\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:76",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:77",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"open_content\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:closed",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:78",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"closed\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:text_without_nests",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/text.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"text_without_nests\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/text.rb:22",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:title",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"title\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:title_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:16",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"title_link\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:title_no_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:20",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"title_no_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/all/yaml.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:home_url",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/self/home.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"home_url\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:home_path",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/self/home.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"home_path\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:type",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"type\""
+    },
+    {
+      "behaviorId": "view:add_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:14",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"add_link\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:add_button",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:18",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"add_button\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:add_url",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:36",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"add_url\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:configure_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:53",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"configure_link\""
+    },
+    {
+      "behaviorId": "view:configure_button",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:61",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"configure_button\""
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/html.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/json.rb:30",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "event:validate_json",
+      "kind": "event",
+      "source": "card-mod-format-0.20.0/set/type/json.rb:3",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a non-html format's validate event (the json/number write-path validation the engine's write route does not reach yet - the same non-html render/write route class)",
+      "evidence": "no event \"validate_json\" registration in card-mod-format.ts"
+    },
+    {
+      "behaviorId": "view:admin",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/mod.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"admin\""
+    },
+    {
+      "behaviorId": "view:bar_right",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/mod.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"bar_right\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "event:validate_number",
+      "kind": "event",
+      "source": "card-mod-format-0.20.0/set/type/number.rb:7",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a non-html format's validate event (the json/number write-path validation the engine's write route does not reach yet - the same non-html render/write route class)",
+      "evidence": "no event \"validate_number\" registration in card-mod-format.ts"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/plain_text.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:5",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:input",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"input\""
+    },
+    {
+      "behaviorId": "view:labeled_editor",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:19",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"labeled_editor\""
+    },
+    {
+      "behaviorId": "view:title_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"title_link\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:url_link",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-format.ts registers view \"url_link\""
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:12",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "seed:json",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:basic",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-rules.ts"
+    },
+    {
+      "behaviorId": "seed:number",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-carrierwave.ts"
+    },
+    {
+      "behaviorId": "seed:plain_text",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-email.ts"
+    },
+    {
+      "behaviorId": "seed:html",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:toggle",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/core-admin-runtime.ts"
+    },
+    {
+      "behaviorId": "seed:phrase",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:uri",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/core-admin-runtime.ts"
+    },
+    {
+      "behaviorId": "seed:head",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:title",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-bootstrap.ts"
+    },
+    {
+      "behaviorId": "seed:credit",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/core-admin-runtime.ts"
+    },
+    {
+      "behaviorId": "seed:noindex",
+      "kind": "seed",
+      "source": "card-mod-format-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"noindex\""
+    },
+    {
+      "behaviorId": "config:configurations",
+      "kind": "config",
+      "source": "card-mod-format-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    },
+    {
+      "behaviorId": "config:cardtypes",
+      "kind": "config",
+      "source": "card-mod-format-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-carrierwave.ts"
+    },
+    {
+      "behaviorId": "config:views",
+      "kind": "config",
+      "source": "card-mod-format-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "config:de",
+      "kind": "config",
+      "source": "card-mod-format-0.20.0/config/locales/de.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "config:en",
+      "kind": "config",
+      "source": "card-mod-format-0.20.0/config/locales/en.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    }
+  ]
+}

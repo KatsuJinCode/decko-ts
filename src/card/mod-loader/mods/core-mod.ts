@@ -629,7 +629,11 @@ function groupedBy(configs: AdminItem[], prop1: string, prop2?: string): unknown
   }
   const map = new Map<string, AdminItem[]>();
   for (const config of configs) {
-    const values = (config as unknown as Record<string, string[]>)[prop1] ?? [];
+    // Ruby's Array.wrap(config.send(property1)) (all/admin.rb:49-53): a
+    // scalar property (category) wraps into a one-element array - the
+    // bare iteration iterated the STRING's characters instead
+    const raw = (config as unknown as Record<string, unknown>)[prop1];
+    const values = Array.isArray(raw) ? (raw as string[]) : [raw as string];
     for (const value of values) {
       const list = map.get(value) ?? [];
       list.push(config);
@@ -637,6 +641,21 @@ function groupedBy(configs: AdminItem[], prop1: string, prop2?: string): unknown
     }
   }
   return map;
+}
+
+/** all/admin.rb:56-58 all_admin_configs_of_category - the category's admin
+ *  items in the admin.yml walk order (mod cards name-sorted, yml order
+ *  preserved). Exported for card-mod-format's :demo view_select
+ *  (demo.rb:37 all_views_from_admin_config) - the same machinery the
+ *  mod-less admin views above consume, through the same admin runtime
+ *  state (empty when no admin runtime is bound, as Ruby's is empty without
+ *  mod admin.yml files). */
+export function allAdminConfigCodenamesOfCategory(
+  ctx: ViewContext,
+  category: string,
+): string[] {
+  const grouped = groupedBy(allConfigs(ctx), "category") as Map<string, AdminItem[]>;
+  return (grouped.get(category) ?? []).map((item) => item.codename);
 }
 
 /** type/mod.rb:60-64 config_codenames_grouped_by_title. */
