@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  RANDOMIZED_GROUP_TOKEN,
   RANDOMIZED_SLOT_ATTRIBUTE,
   byteDiff,
   compareNormalized,
+  normalizeAccordionGroupIds,
+  normalizeForReplay,
   normalizeSlotIds,
 } from "../../src/testing/diff.js";
 
@@ -130,5 +133,134 @@ describe("compareNormalized (both sides normalized, then exact bytes)", () => {
     const diff = compareNormalized(fixtureHtml, engineHtml);
     expect(diff.equal).toBe(false);
     expect(diff.firstDifference!.codeUnitOffset).toBe(fixtureHtml.indexOf(">b") + 1);
+  });
+});
+
+// The two fragments below are the REAL bytes the canvas capture and the engine
+// emitted for the `mod: core` page entry at 35ca70a, taken verbatim from the
+// first-diff probe's own output pair
+// (decko-ts-lane-longtail-firstdiff/tmp/longtail-firstdiff/probe-batch4/
+//  {expected,actual}--mod_core__page.html). Both are 329 bytes; the only
+// difference between them is the accordion group token, in BOTH positions the
+// engine emits it (the `data-bs-target='#...'` fragment and the `id='...'`
+// attribute). 97674992 is Ruby's String#hash("Admin") from the capture
+// process; 63116079 is core-mod.ts stringHash("Admin") from the engine.
+const MOD_CORE_EXPECTED_ACCORDION =
+  "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#card-mod_core-97674992-collapse-id' data-bs-toggle='collapse' type='button'>\nAdmin\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='card-mod_core-97674992-collapse-id'>\n<div class='";
+const MOD_CORE_ACTUAL_ACCORDION =
+  "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#card-mod_core-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\nAdmin\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='card-mod_core-63116079-collapse-id'>\n<div class='";
+
+describe("normalizeAccordionGroupIds (the per-process Ruby String#hash rule)", () => {
+  it("masks the decimal group token in the data-bs-target fragment", () => {
+    expect(normalizeAccordionGroupIds("data-bs-target='#card-mod_core-97674992-collapse-id'")).toBe(
+      `data-bs-target='#card-mod_core-${RANDOMIZED_GROUP_TOKEN}-collapse-id'`
+    );
+  });
+
+  it("masks the same token in the id attribute", () => {
+    expect(normalizeAccordionGroupIds("id='card-mod_core-97674992-collapse-id'")).toBe(
+      `id='card-mod_core-${RANDOMIZED_GROUP_TOKEN}-collapse-id'`
+    );
+  });
+
+  it("masks a NEGATIVE hash - the capture's own rows carry card-mod_list--681338365-collapse-id", () => {
+    expect(normalizeAccordionGroupIds("card-mod_list--681338365-collapse-id")).toBe(
+      `card-mod_list-${RANDOMIZED_GROUP_TOKEN}-collapse-id`
+    );
+  });
+
+  it("masks a 10-digit hash (mod: layout's capture token 1045438464)", () => {
+    expect(normalizeAccordionGroupIds("card-mod_layout-1045438464-collapse-id")).toBe(
+      `card-mod_layout-${RANDOMIZED_GROUP_TOKEN}-collapse-id`
+    );
+  });
+
+  it("leaves every WORD-shaped group name untouched", () => {
+    // The five non-hashed accordion group shapes the engine emits.
+    for (const word of ["files", "depends_on", "closed", "templating", "editing"]) {
+      const id = `card-mod_format-${word}-collapse-id`;
+      expect(normalizeAccordionGroupIds(id)).toBe(id);
+    }
+  });
+
+  it("leaves any id that is not a collapse id untouched, hashed token or not", () => {
+    const html = `<div id='card-mod_core-97674992'>data-card-id='97674992'</div>`;
+    expect(normalizeAccordionGroupIds(html)).toBe(html);
+  });
+
+  it("is idempotent: the HASH placeholder is not decimal, so it never re-matches", () => {
+    const once = normalizeAccordionGroupIds("card-mod_core-97674992-collapse-id");
+    expect(normalizeAccordionGroupIds(once)).toBe(once);
+    expect(once).toContain(RANDOMIZED_GROUP_TOKEN);
+  });
+});
+
+describe("normalizeForReplay (both rules, slot ids then group hashes)", () => {
+  it("applies the slot-id rule and the group-hash rule together", () => {
+    const html = `<button data-bs-target='#card-mod_core-63116079-collapse-id' ${hexId("'")}>`;
+    expect(normalizeForReplay(html)).toBe(
+      `<button data-bs-target='#card-mod_core-${RANDOMIZED_GROUP_TOKEN}-collapse-id' ${RANDOMIZED_SLOT_ATTRIBUTE}>`
+    );
+  });
+});
+
+describe("compareNormalized judges the mod:<x>:page accordion band", () => {
+  it("RED-to-GREEN: the real mod: core byte pair is equal once the group hash is masked", () => {
+    // The strict recording-layer rule alone still sees a divergence - proof the
+    // two tokens really are different bytes, not a formatting artifact.
+    expect(
+      byteDiff(
+        normalizeSlotIds(MOD_CORE_EXPECTED_ACCORDION),
+        normalizeSlotIds(MOD_CORE_ACTUAL_ACCORDION)
+      ).equal
+    ).toBe(false);
+
+    expect(compareNormalized(MOD_CORE_EXPECTED_ACCORDION, MOD_CORE_ACTUAL_ACCORDION).equal).toBe(true);
+  });
+
+  it("closes the -8..+4 digit-count band: a 9-digit capture token vs a 7-digit engine token", () => {
+    // mod: format's shape - a 9-digit capture token against a 7-digit engine
+    // token is the whole of that entry's delta. This synthetic pair carries the
+    // token twice, so it measures -4; the recorded -8 is the same rule across
+    // the page's four occurrences plus its sign positions.
+    const expected = "<div data-bs-target='#card-mod_format-660361415-collapse-id' id='card-mod_format-660361415-collapse-id'>";
+    const actual = "<div data-bs-target='#card-mod_format-2603341-collapse-id' id='card-mod_format-2603341-collapse-id'>";
+    const strict = byteDiff(expected, actual);
+    expect(strict.equal).toBe(false);
+    expect(strict.actualBytes - strict.expectedBytes).toBe(-4);
+    expect(compareNormalized(expected, actual).equal).toBe(true);
+  });
+
+  it("still fails when a NON-token byte in the same accordion differs", () => {
+    const actual = MOD_CORE_ACTUAL_ACCORDION.replace("\nAdmin\n", "\nAdmins\n");
+    expect(actual).not.toBe(MOD_CORE_ACTUAL_ACCORDION);
+    const diff = compareNormalized(MOD_CORE_EXPECTED_ACCORDION, actual);
+    expect(diff.equal).toBe(false);
+    expect(diff.firstDifference!.codeUnitOffset).toBeGreaterThan(0);
+  });
+
+  it("still fails when the ENGINE omits the hashed accordion the capture emitted", () => {
+    // Masking must not manufacture agreement across a structural difference:
+    // the capture's token becomes HASH, the engine has no accordion at all.
+    const diff = compareNormalized(
+      "<div data-bs-target='#card-mod_core-97674992-collapse-id'><p>group</p></div>",
+      "<div class='card-slot'><p>group</p></div>"
+    );
+    expect(diff.equal).toBe(false);
+  });
+
+  it("still fails when one side carries a token and the other carries a word group name", () => {
+    const diff = compareNormalized(
+      "data-bs-target='#card-mod_format-660361415-collapse-id'",
+      "data-bs-target='#card-mod_format-files-collapse-id'"
+    );
+    expect(diff.equal).toBe(false);
+  });
+});
+
+describe("normalizeSlotIds keeps its documented recording-layer contract", () => {
+  it("does NOT mask the accordion group hash - the widening is confined to the replay seam", () => {
+    const id = "card-mod_core-97674992-collapse-id";
+    expect(normalizeSlotIds(id)).toBe(id);
   });
 });

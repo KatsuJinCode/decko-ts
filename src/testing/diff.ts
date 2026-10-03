@@ -1,12 +1,18 @@
-// Byte-diff comparator for oracle replay, plus the slot-id normalization
-// rule that mirrors the Ruby recording layer (tools/oracle/capture.rb).
+// Byte-diff comparator for oracle replay, plus the two normalization rules the
+// Ruby recording layer applies.
 //
-// Diff semantics: exact bytes, except data-slot-id values. The Ruby capture
-// replaces every rendered slot's random DOM id with the literal placeholder
-// data-slot-id="RANDOMIZED" before writing the fixture; the replay side
-// applies the same canonicalization to BOTH sides so a TS render that
-// stamps a fresh random slot id still byte-matches the fixture, while the
-// PRESENCE of the attribute (and every other byte) stays part of the spec.
+// 1. data-slot-id (tools/oracle/capture.rb:49-52). The capture replaces every
+//    rendered slot's random DOM id with the literal placeholder
+//    data-slot-id="RANDOMIZED" before writing the fixture; the replay side
+//    applies the same canonicalization to BOTH sides so a TS render that
+//    stamps a fresh random slot id still byte-matches the fixture, while the
+//    PRESENCE of the attribute (and every other byte) stays part of the spec.
+// 2. the accordion group hash (the two admin-card capture scripts, e.g.
+//    tests/card/mod-loader/oracle-capture-admin-card-views.rb:39). Ruby 3.3
+//    seeds String#hash per process, so the collapse id carries a value no
+//    deterministic engine can reproduce. See ACCORDION_GROUP_HASH_PATTERN.
+//
+// Diff semantics: exact bytes, except those two values.
 
 /**
  * The recording-layer placeholder. Every normalized slot carries exactly
@@ -30,12 +36,77 @@ export const RANDOMIZED_SLOT_ATTRIBUTE = 'data-slot-id="RANDOMIZED"';
 const SLOT_ID_PATTERN = /data-slot-id=(['"])([0-9a-f]{20})\1/g;
 
 /**
+ * The accordion group-hash rule, mirrored from the two admin-card capture
+ * scripts (tests/card/mod-loader/oracle-capture-admin-card-views.rb:39 and
+ * oracle-capture-admin-view-pins.rb:42) and from the four TS pin suites that
+ * already carry a local copy of it:
+ *
+ *   card-<safe_key>-<signed decimal>-collapse-id -> card-<safe_key>-HASH-collapse-id
+ *
+ * WHY THIS IS NOT DERIVABLE. The token is Ruby's String#hash of the accordion
+ * group title, embedded by accordion_item's collapse id
+ * (`card-#{card.name.safe_key}-#{args[:context]}-collapse-id`). Ruby 3.3 seeds
+ * SipHash PER PROCESS, so the value is an artifact of the capture process and
+ * not a function of the card. Measured on this machine: three consecutive
+ * `ruby -e 'print "Admin".hash'` processes returned three different values,
+ * none equal to the yardstick capture's `97674992`. The engine's stand-in
+ * (src/card/mod-loader/mods/core-mod.ts stringHash, a 31-accumulator truncated
+ * to int32) is stable - three renders of the same card in one process agreed -
+ * so it is NOT a warm-state artifact; it simply cannot reproduce a per-process
+ * SipHash. No algorithm on the TypeScript side can match it, and the -8..+4
+ * delta band is nothing but the digit-count difference between two random
+ * tokens. The sign is part of the value on BOTH sides (the capture's own rows
+ * carry `card-mod_list--681338365-collapse-id`), hence `-?[0-9]+`.
+ *
+ * SCOPE. `card-` prefix and `-collapse-id` suffix are both required, and the
+ * middle segment must be decimal, so the word-shaped group names the engine
+ * emits for non-hashed accordions survive untouched: `card-mod_format-files-
+ * collapse-id` (core-mod.ts:1145), `-depends_on-collapse-id` (core-mod.ts:1152),
+ * `card-<key>-closed-collapse-id` (views.ts:3796), and the rule-board groups
+ * `templating` / `editing` / `event` (card-mod-edit.ts:2831).
+ *
+ * The gate this corrects: tools/oracle/capture.rb:49-52 masks data-slot-id and
+ * nothing else, so the recorded fixtures hold raw hashes and every affected
+ * replay entry fails forever. The two capture scripts written afterwards mask
+ * it, and fixtures/captured/admin-view-pins.json records
+ * `normalizations: {"collapse-id": "HASH", "data-slot-id": "RANDOMIZED"}`.
+ */
+const ACCORDION_GROUP_HASH_PATTERN = /(card-[0-9a-z_:]+-)-?[0-9]+(-collapse-id)/g;
+
+/**
+ * The placeholder the accordion collapse id carries once masked. Same token the
+ * capture scripts and the pin fixtures use, so a normalized render compares
+ * equal to a capture that masked at record time and to one that did not.
+ */
+export const RANDOMIZED_GROUP_TOKEN = "HASH";
+
+/**
+ * Canonicalize the accordion group hash the way the admin-card capture
+ * scripts do. Idempotent: "HASH" is not decimal, so the placeholder is never
+ * re-matched.
+ */
+export function normalizeAccordionGroupIds(html: string): string {
+  return html.replace(ACCORDION_GROUP_HASH_PATTERN, `$1${RANDOMIZED_GROUP_TOKEN}$2`);
+}
+
+/**
  * Canonicalize slot ids the way the recording layer does. Idempotent: the
  * placeholder itself ("RANDOMIZED" is not hex) is never re-matched.
  * Attribute presence is preserved - this only rewrites the value.
  */
 export function normalizeSlotIds(html: string): string {
   return html.replace(SLOT_ID_PATTERN, RANDOMIZED_SLOT_ATTRIBUTE);
+}
+
+/**
+ * Every normalization the replay comparison applies, in the order the capture
+ * scripts apply them. This is the seam src/testing/replay.ts judges every
+ * canvas entry through, so it is the one place a replay-legitimate mask has to
+ * live; `normalizeSlotIds` alone stays exactly the recording-layer rule its
+ * documented contract claims, and its direct callers are unaffected.
+ */
+export function normalizeForReplay(html: string): string {
+  return normalizeAccordionGroupIds(normalizeSlotIds(html));
 }
 
 export interface FirstDifference {
@@ -117,13 +188,16 @@ export function byteDiff(
 }
 
 /**
- * The replay-side comparison: normalize slot ids on BOTH sides exactly as
- * the recording layer did, then diff. Everything else is exact bytes.
+ * The replay-side comparison: apply every replay-legitimate normalization to
+ * BOTH sides (data-slot-id placeholders and accordion group hashes), then diff
+ * exact bytes. src/testing/replay.ts judges every canvas entry through this
+ * function, so this is where a normalization that mirrors the recording layer
+ * has to land for the canvas to see it.
  */
 export function compareNormalized(
   expected: string,
   actual: string,
   contextRadius: number = CONTEXT_RADIUS
 ): ByteDiffResult {
-  return byteDiff(normalizeSlotIds(expected), normalizeSlotIds(actual), contextRadius);
+  return byteDiff(normalizeForReplay(expected), normalizeForReplay(actual), contextRadius);
 }
