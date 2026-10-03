@@ -74,6 +74,37 @@ path and result JSON path are printed. `--no-wait` returns the job id only.
 `--workers 2` (on the FIRST submitter while no runner is alive) lets the
 runner execute two jobs at once; the default is one at a time.
 
+## Standing-net env guard (auditor F16, 2026-10-03)
+
+`run-standing-net.mjs` refuses to produce the classic no-env accident, in
+which a net submitted without the oracle env rides the long-lived runner's
+own environment, silently skips the oracle-dependent tests (~27 skips instead
+of the pinned 13 on the fold-9 net) and still exits 0.
+
+- **Pre-submit**: if the manifest's `envGuard.requiredEnv` vars are absent
+  from the submitting shell (or not forwarded via `--env`), the submission is
+  refused (exit 4, `STANDING-NET-ENV-GUARD`) with the missing vars named and
+  the exact `--env KEY=VALUE` invocation shape that fixes it.
+- **Post-run**: when the job exits 0, the net's skip count is parsed from the
+  job log and must equal `envGuard.expectedSkips` (exit 5,
+  `STANDING-NET-SKIP-GUARD`, otherwise) — one source of truth in
+  `tests/standing-net.json`, never hardcoded in the runner.
+- **Fingerprint**: every run prints and receipts
+  (`results/<id>.standing-net-receipt.json`) which required vars were
+  present/absent and where they came from (shell or `--env`), never values.
+- `--allow-no-env` opts out of both checks for one run; the help text and the
+  run's own warning state that this produces a skip-heavy INVALID net.
+- A runner meeting a manifest without a usable `envGuard` pin fails loud
+  (exit 2). Each lineage adds its own pin when it integrates the guarded
+  runner; update `expectedSkips` only in the same deliberate change that
+  legitimately alters the net's skip behavior, re-verified with one
+  pinned-env run.
+
+Proof harness: `node tools/test-queue/run-standing-net-env-guard-proof.mjs`
+(no real vitest, scratch queue only) exercises the refusal, the post-run
+mismatch, the `--env` pinned path, the `--allow-no-env` bypass and the
+unparseable-summary failure.
+
 ## Rules
 
 1. Nothing on this machine outside the queue starts a test suite against a
