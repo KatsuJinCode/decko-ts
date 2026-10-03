@@ -1,0 +1,148 @@
+// RED-first pins, BUILD 4 (invalidation design, A2 rule binding):
+// - write-time fan-out recomputes the closure for the AFFECTED pages only
+//   (reverse closure lookup over the edge data);
+// - the A2 rule is binding: the derived store is READ-SCOPE ONLY — the
+//   recompute path reads the CORPUS and writes the side store through the
+//   builder's write API, and the recompute path never consults the side
+//   store's DATA (a canary query log proves it);
+// - the reader seam (fetchPageBundle / seatPageBundle) exposes no write
+//   capability over the derived store.
+//
+// Runs on a synthetic fixture deck (in-memory sqlite, core schema + seeded
+// cards): no corpus needed, no fresh-clone skips.
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { beforeAll, describe, expect, it } from "vitest";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import { buildOneTripClosure } from "../../../src/card/one-trip/closure-builder.js";
+import {
+  affectedPagesForCardWrite,
+  recomputeClosuresForPages,
+} from "../../../src/card/one-trip/invalidation.js";
+
+interface Row {
+  [column: string]: unknown;
+}
+
+/** A logging driver: records every statement so a scope canary can assert
+ *  WHERE the recompute path read from (A2: never the derived store). */
+class LoggingDriver implements SQLDatabaseDriver {
+  readonly log: { sql: string; params: unknown[] }[] = [];
+  constructor(private readonly inner: SQLDatabaseDriver) {}
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    this.log.push({ sql, params });
+    return this.inner.query<T>(sql, params);
+  }
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    for (const stmt of statements) this.log.push({ sql: stmt.sql, params: stmt.params ?? [] });
+    return this.inner.batch(statements);
+  }
+}
+
+async function makeFixtureDeck(): Promise<{ corpus: SQLDatabaseDriver; ids: Record<string, number> }> {
+  const corpus = new LocalSqliteDriver({ path: ":memory:" });
+  const ddl = readFileSync(
+    fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)),
+    "utf8",
+  );
+  for (const statement of splitSqlStatements(ddl)) {
+    await corpus.query(statement, []);
+  }
+  // Seed: type card (Basic = id 1 convention of the real decks is NOT
+  // assumed — insert explicit rows and keep the ids the db assigns).
+  const ids: Record<string, number> = {};
+  const insertCard = async (name: string, content: string): Promise<number> => {
+    const result = await corpus.query(
+      `INSERT INTO cards (name, "key", type_id, created_at, updated_at, creator_id, updater_id, trash, db_content)
+       VALUES (?, ?, 1, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', 1, 1, 0, ?)`,
+      [name, name.toLowerCase().replace(/[^a-z0-9_]+/g, "_"), content],
+    );
+    return result.lastInsertRowId as number;
+  };
+  ids["Page A"] = await insertCard("Page A", "intro {{Page B}}");
+  ids["Page B"] = await insertCard("Page B", "body {{Page C}}");
+  ids["Page C"] = await insertCard("Page C", "leaf");
+  ids["Page D"] = await insertCard("Page D", "standalone {{Page C}}");
+  ids["Unrelated"] = await insertCard("Unrelated", "nothing");
+  return { corpus, ids };
+}
+
+describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
+  let corpus: SQLDatabaseDriver;
+  let side: SQLDatabaseDriver;
+  let sidePath = "";
+  let ids: Record<string, number>;
+
+  beforeAll(async () => {
+    const fixture = await makeFixtureDeck();
+    corpus = fixture.corpus;
+    ids = fixture.ids;
+    sidePath = ":memory:";
+    side = new LocalSqliteDriver({ path: sidePath });
+    await buildOneTripClosure({
+      corpus,
+      side,
+      pageNames: ["Page A", "Page B", "Page C", "Page D", "Unrelated"],
+    });
+  });
+
+  it("the initial closure has Page A reaching B and C; Unrelated reaching nothing", async () => {
+    const closureA = await side.query<{ card_id: number }>(
+      "SELECT card_id FROM one_trip_page_closure WHERE page_id = ? ORDER BY card_id",
+      [ids["Page A"]],
+    );
+    const closureIds = closureA.rows.map((r) => r.card_id).sort((a, b) => a - b);
+    expect(closureIds).toEqual([ids["Page A"], ids["Page B"], ids["Page C"]].sort((a, b) => a - b));
+  });
+
+  it("reverse fan-out finds exactly the pages whose closure reaches the changed card", async () => {
+    // Page C's content changes: pages whose closure reaches C are A, B, D.
+    const affected = await affectedPagesForCardWrite({ corpus: corpus, side, cardId: ids["Page C"] });
+    const affectedIds = affected.map((p) => p.pageId).sort((a, b) => a - b);
+    expect(affectedIds).toEqual([ids["Page A"], ids["Page B"], ids["Page D"]].sort((a, b) => a - b));
+  });
+
+  it("recompute reads ONLY the corpus scope — never the derived store's data (A2 canary)", async () => {
+    const loggingSide = new LoggingDriver(side);
+    // Page B's content now references Page D too: the write path's parse
+    // produces the new edge; recompute rebuilds ONLY the named pages.
+    await corpus.query("UPDATE cards SET db_content = ? WHERE id = ?", [
+      "body {{Page C}} and {{Page D}}",
+      ids["Page B"],
+    ]);
+    await recomputeClosuresForPages({
+      corpus,
+      side: loggingSide,
+      pageIds: [ids["Page B"]],
+      pageNames: new Map([[ids["Page B"], "Page B"]]),
+    });
+    // A2 canary: the recompute may WRITE the side store (edge/closure
+    // tables) but must never READ the derived store's data tables.
+    const dataReads = loggingSide.log.filter(
+      (entry) =>
+        /select/i.test(entry.sql) &&
+        /one_trip_(edges|page_closure|search_nests|search_results)/.test(entry.sql),
+    );
+    expect(
+      dataReads,
+      `the recompute path must not consult the derived store's data (found: ${dataReads.map((r) => r.sql.slice(0, 80)).join(" | ")})`,
+    ).toEqual([]);
+    // and the recomputed closure for Page B now reaches D
+    const closureB = await side.query<{ card_id: number }>(
+      "SELECT card_id FROM one_trip_page_closure WHERE page_id = ? ORDER BY card_id",
+      [ids["Page B"]],
+    );
+    expect(closureB.rows.map((r) => r.card_id)).toContain(ids["Page D"]);
+    // Page A's closure is UNCHANGED (unaffected pages are not touched)
+    const closureA = await side.query<{ card_id: number }>(
+      "SELECT card_id FROM one_trip_page_closure WHERE page_id = ?",
+      [ids["Page A"]],
+    );
+    expect(closureA.rows.map((r) => r.card_id).sort((a, b) => a - b)).toEqual(
+      [ids["Page A"], ids["Page B"], ids["Page C"]].sort((a, b) => a - b),
+    );
+  });
+});
