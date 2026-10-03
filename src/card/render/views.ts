@@ -3591,6 +3591,27 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   }
 }
 
+/** The TYPE_PLUS_RIGHT anchor's left type for the unresolved-host phantom
+ *  cascade: Ruby's quick_type (lib/card/set/pattern/class_methods.rb:59-71)
+ *  present-name arm - a NEW card's type comes from the *default template
+ *  chain (type_id_from_template), exposed by the engine as
+ *  newCardDefaultType. The cascade's phantoms are unknown cards whose
+ *  lefts are absent from the deck (Decko Bot, MNv+ITM), exactly the arm
+ *  Ruby reaches (a STORED left would answer the stored card's type; the
+ *  corpus pins none here). undefined for simple names - the
+ *  TYPE_PLUS_RIGHT pattern is compound-only and never reads it - and for
+ *  engines without the hook, which keeps the registry's RichText literal
+ *  (the pre-fix shape). */
+function phantomCascadeLeftTypeName(
+  engine: RenderEngineLike,
+  name: DeckoName,
+): string | undefined {
+  if (!name.isCompound) return undefined;
+  const leftName = name.leftName;
+  if (leftName === undefined) return undefined;
+  return engine.newCardDefaultType?.(leftName)?.typeName;
+}
+
 /** The UNKNOWN pointer/list item render (the fetch-miss branch). The arm
  *  view decides the shape, per the oracle capture (search-list-views.json
  *  target 152, all five arms, bot + sara + anonymous):
@@ -3624,11 +3645,26 @@ function renderUnknownPointerListItem(
     // HOST-resolved arm keeps the pinned short `ALL TYPE-<x>` form (the
     // Flight Deck shard-000024 oracle); only the unresolved-host cascade
     // carries the full pattern set the live capture pins.
+    // THE TYPE_PLUS_RIGHT ANCHOR IS quick_type's ANSWER, NOT undefined:
+    // the registry's undefined arm pins a "RichText" literal
+    // (set-patterns/registry.ts), but Ruby's left_type
+    // (class_methods.rb:59-71) resolves a NEW card's type through the
+    // *default template chain - quick_type("Decko Bot") = Card.fetch
+    // new:{} = the *all+*default template type = BasicCs (22281), so the
+    // captured email-family mini_bar slots read
+    // TYPE_PLUS_RIGHT-basic_c-Xaccount where an undefined left keyed
+    // rich_text (recapture-raw-shard-000016/28, the 10 email entries).
+    // The compound pins hold through the same walk: quick_type("MNv+ITM")
+    // = RichText (the MNv cascade pages stay byte-exact),
+    // WilliamsCraig+Vacations+Oregon = RichText. This is the same
+    // mechanism leftTypeNameFor's last resort ports (format.ts, 96a5305);
+    // that arm never sees these bytes because the rule-shaped phantom
+    // (right = a Setting) skips nestRecord's withNewCardContext rebuild.
     phantom.setKeys = safeSetKeys({
       name: phantom.name,
       typeId: identity.typeId,
       typeName: identity.typeName,
-      leftTypeName: undefined,
+      leftTypeName: phantomCascadeLeftTypeName(fmt.engine, phantom.name),
       isNew: true,
     });
   }
