@@ -1,6 +1,6 @@
 # Public mod registry — the porting-harness progress tracker
 
-Generated 2026-10-03T15:04:55.951Z by tools/mod-porting-harness/mod-harness.mjs registry
+Generated 2026-10-03T15:25:53.467Z by tools/mod-porting-harness/mod-harness.mjs registry
 
 Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).
 
@@ -8,7 +8,7 @@ Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only e
 
 **Honest gap note:** the mod-level ported status does not mask behavior gaps — 6 ported mod(s) still carry 23 missing view(s) per the re-measurement (card-mod-account: 6, card-mod-follow: 4, card-mod-format: 2, card-mod-history: 1, card-mod-style: 4, card-mod-tinymce_editor: 6). Those behaviors are unported INSIDE ported mods; their rows show them in the re-measure column until their harness scorecards land.
 
-**Harness coverage of the registry:** 6 of 35 rows carry a harness scorecard; the other 29 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
+**Harness coverage of the registry:** 7 of 35 rows carry a harness scorecard; the other 28 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
 
 Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views.
 
@@ -44,7 +44,7 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 | `card-mod-script` | ported | 0 | not harness-validated yet | 5 mod-specific view(s) ported: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables |
 | `card-mod-search` | ported | 0 | not harness-validated yet | 10 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... |
 | `card-mod-session` | ported | 0 | not harness-validated yet | manifest + byte-pinned test (5 pins across 7 it()):  |
-| `card-mod-style` | ported | 4 | not harness-validated yet | 6 mod-specific view(s) ported: box, box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag |
+| `card-mod-style` | ported | 4 | 5/34 validated | harness scorecard, 0 RED: 5/34 harness-oracle-validated, 21 pinned by the mod's standing suite, 8 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports |
 | `card-mod-tabs` | ported | 0 | not harness-validated yet | 4 mod-specific view(s) ported: pills, pills_static, tabs, tabs_static |
 | `card-mod-tinymce_editor` | ported | 6 | not harness-validated yet | 5 mod-specific view(s) ported: change_create_to_update, link_editor, modal_link_editor, new_image_buttons, open_nest_editor |
 | `card-mod-virtual` | ported | 0 | not harness-validated yet | manifest + byte-pinned test (16 pins across 33 it()):  |

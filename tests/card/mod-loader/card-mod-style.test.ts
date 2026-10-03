@@ -169,19 +169,30 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "Self::Style",
       "Self::StyleMods",
     ]);
-    // exactly the four headlessly-portable views, in the loader's walk
-    // order: skin_box.rb's declaration order (:8, :10, :14 - box (:2) is
-    // in viewsMissing) first (Abstract::SkinBox walks in the abstract
-    // group), then type_plus_right/mod/style.rb's :core (the
-    // Abstract::ModAssets group-list render Ruby hosts on this
-    // included module - card-mod-assets set/abstract/mod_assets.rb:171-182
-    // via mod/style.rb:4-5; oracle-pinned byte-for-byte through mod:
+    // the registered views, in the loader's walk order: skin_box.rb's
+    // declaration order (:8, :10, :14 - box (:2) is in viewsMissing) first
+    // (Abstract::SkinBox walks in the abstract group), then
+    // abstract/style_group.rb's :stylesheet_include_tag (the wave-1
+    // raising arm), then type_plus_right/mod/style.rb's
+    // (:core, :stylesheet_include_tag, :remote_include_tags - the wave-1
+    // ports), then type_plus_right/set/style.rb's :stylesheet_path (the
+    // wave-1 else-arm port), then self/style_mods.rb's :remote_style_tags
+    // (the wave-1 nest port). The :core citation stands (the
+    // Abstract::ModAssets group-list render Ruby hosts on the included
+    // module - card-mod-assets set/abstract/mod_assets.rb:171-182 via
+    // mod/style.rb:4-5; oracle-pinned byte-for-byte through mod:
     // format :styles in fixtures/captured/admin-view-pins.json).
     expect(report.registeredViews).toEqual([
+      // stylesheet_include_tag registers ONCE (the loader's
+      // registeredViews is name-keyed; the abstract module walks first)
       "box_bottom",
       "customize_button",
       "box_middle",
+      "stylesheet_include_tag",
       "core",
+      "remote_include_tags",
+      "stylesheet_path",
+      "remote_style_tags",
     ]);
     expect(report.registeredSettings).toEqual(["style"]);
     // the three pinned `event` declarations from the gem tree, in the
@@ -394,10 +405,12 @@ describe("card-mod-style through the mod loader (A/B)", () => {
     expect(webpage?.[3]?.codename).toBe("style");
   });
 
-  it("WITH the mod: the seven non-portable missing views stay UNREGISTERED", () => {
+  it("WITH the mod: the three non-portable missing views stay UNREGISTERED", () => {
     // the compat report's htmlViewsMissingNames minus the views ported
-    // elsewhere - each documented in the mod file header with its reason.
-    // "box" is not on this list: the box family is
+    // elsewhere AND minus the four the wave-1 lane registered
+    // (remote_include_tags / remote_style_tags / stylesheet_include_tag /
+    // stylesheet_path - each documented in the mod file header with its
+    // disposition). "box" is not on this list: the box family is
     // card-mod-bar_and_box's (set/all/box.rb, box.haml), never card-mod-
     // style's, and it is registered in the shared table. The style header's
     // premise — "the engine has no base box-family views" — is false for it;
@@ -412,10 +425,6 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "compiled",
       "compressed",
       "import",
-      "remote_include_tags",
-      "remote_style_tags",
-      "stylesheet_include_tag",
-      "stylesheet_path",
     ]) {
       expect(views[name]).toBeUndefined();
     }
@@ -490,14 +499,20 @@ describe("card-mod-style through the mod loader (A/B)", () => {
     expect(typeof (await s.engine.render("Alpha Skin", "box_bottom"))).toBe("string");
     expect(typeof (await s.engine.render("Alpha Skin", "box_middle"))).toBe("string");
     // a fresh load() reproduces the same registrations (idempotence) -
-    // all four headlessly-portable views (see the load() pin above for
-    // the walk order and the :core citation)
+    // the registered views (see the load() pin above for the walk order
+    // and the wave-1 ports)
     const report = loader!.load();
     expect(report.registeredViews).toEqual([
+      // stylesheet_include_tag registers ONCE (the loader's
+      // registeredViews is name-keyed; the abstract module walks first)
       "box_bottom",
       "customize_button",
       "box_middle",
+      "stylesheet_include_tag",
       "core",
+      "remote_include_tags",
+      "stylesheet_path",
+      "remote_style_tags",
     ]);
     // with the mod back, the SkinBox body wins over the shared table
     const html = await s.engine.render("Alpha Skin", "box_bottom");

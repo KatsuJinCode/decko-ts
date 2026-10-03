@@ -115,6 +115,19 @@ const NAMED_REMAINDERS = {
     "seed:First":
       "data/test.yml is the gem's own test-suite fixture data (decko seed TEST data for the gem's specs), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
+  "card-mod-style": {
+    // CLASS remainders (the same engine-route classes format's table
+    // carries): the css/scss FORMAT views (the engine has no css/scss
+    // format dispatch; compiled/compressed additionally need the SassC
+    // engine - the mod header's documented remainder), the runtime-basket
+    // ops, and the yml seed.
+    "<view:(import|compiled|compressed|concat)>":
+      "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+    "<basket:.*>":
+      "a basket registration (non_createable_types folder groups) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+    "<seed:.*>":
+      "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
+  },
   "card-mod-format": {
     // set/all/html/error.rb:4-8 view :debug_server_error - the BetterErrors
     // dev-tool page (BetterErrors::ErrorPage.new Card::Error.current, ...).
@@ -174,6 +187,32 @@ const WAVE1 = {
         source: "set/all/history_board.rb:18-26",
         oracle: "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against fixtures/captured/board-views.json)",
         status: "ported, verify GREEN (harness capture + probe)",
+      },
+    ],
+    "card-mod-style": [
+      {
+        view: "remote_include_tags",
+        source: "set/type_plus_right/mod/style.rb:26-32",
+        oracle: "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the captured corpus constant REMOTE_STYLE_TAG)",
+        status: "ported, verify GREEN (harness capture + probe)",
+      },
+      {
+        view: "remote_style_tags",
+        source: "set/self/style_mods.rb:8-14",
+        oracle: "static-ruby (style-tag-views.rb; the item nest + present-filter + output join)",
+        status: "ported, verify GREEN (harness capture + probe)",
+      },
+      {
+        view: "stylesheet_include_tag",
+        source: "set/type_plus_right/mod/style.rb:20-24 + set/abstract/style_group.rb:37-40",
+        oracle: "static-ruby (style-tag-views.rb; the abstract arm's bare helper is defined in no installed gem - the registered arm throws the Ruby body's NoMethodError and the engine's quiet rescue emits the standard bytes)",
+        status: "ported (the mod/style nest arm GREEN; the abstract arm registered as the raising arm - the byte-equivalent quiet rescue)",
+      },
+      {
+        view: "stylesheet_path",
+        source: "set/type_plus_right/set/style.rb:28-33",
+        oracle: "static-ruby (style-tag-views.rb; the headless params absence computes the else arm)",
+        status: "ported, verify GREEN (harness capture + probe; the params[:debug] arm is the named remainder)",
       },
     ],
     "card-mod-format": [

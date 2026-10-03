@@ -74,22 +74,23 @@
 //   (card-mod-format.ts:437) - a second registration would shadow it
 //   globally (last-wins), breaking the html view for every card.
 // - views :remote_include_tags (type_plus_right/mod/style.rb:26-32) /
-//   :remote_style_tags (self/style_mods.rb:9-13) - MOD-MANIFEST:
-//   remote_include_tags iterates `map_remote_items` (card-mod-assets
-//   set/abstract/mod_assets.rb:167-169) -> group_remote_card.map_items
-//   -> item_configs -> `left.manifest_group_items("remote")`
-//   (mod_assets.rb:73-75) - the mod's manifest.yml read off disk through
-//   the Rails mod-dirs machinery. card-mod-assets' own port left the
-//   ModAssets surface unported for the same reason. remote_style_tags
-//   nests :remote_include_tags per item, so it bottoms out in the same
-//   missing surface.
+//   :remote_style_tags (self/style_mods.rb:9-13) - BOTH PORTED now (the
+//   mod-porting wave-1 lane 2026-10-03): remote_include_tags reads the
+//   deck-stored +*group remote child (the same card-surface read the
+//   script mod's port established - the deck-card route, not the
+//   manifest.yml read); the tag bytes are CAPTURE-proven (the corpus
+//   head's REMOTE_STYLE_TAG constant, cross-checked by the harness
+//   oracle). remote_style_tags nests :remote_include_tags per item.
 // - views :stylesheet_include_tag (style_group.rb:38-40,
 //   type_plus_right/mod/style.rb:20-24) / :stylesheet_path
-//   (type_plus_right/set/style.rb:28-34) - ASSET-URL: every branch
-//   renders `card.asset_output_url` (card-mod-assets
-//   set/abstract/asset_outputter.rb:78-82 - the asset pipeline's output
-//   file URL on disk) or a Rails `path`/params[:debug] helper. Rails
-//   asset-pipeline output, not portable headlessly;
+//   (type_plus_right/set/style.rb:28-34) - ALL THREE ARMS dispositioned
+//   (the wave-1 lane): the mod/style arm PORTED (the item nest); the
+//   abstract arm REGISTERED AS THE RAISING arm (its bare helper is
+//   defined in no installed gem - the Ruby body raises NoMethodError and
+//   the engine's quiet rescue emits the standard bytes); :stylesheet_path
+//   PORTED through the else arm (the headless params absence computes
+//   card.asset_output_url - the assets suites' pinned localAttachmentUrl
+//   shape; the params[:debug] arm is the named remainder);
 //   :stylesheet_include_tag additionally collides with card-mod-assets'
 //   registered right/group_remote view (card-mod-assets.ts:141).
 // - the three events (type/css.rb:7-16 validate_css, type/scss.rb:4-23
@@ -126,6 +127,8 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
+import { h } from "../../render/slot-html.js";
+import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { modAssetsGroupListHtml } from "./card-mod-assets.js";
 import type {
   DeckoModManifest,
@@ -487,6 +490,145 @@ const MOD_STYLE_GROUPS: Record<
   ],
 };
 
+// ---------------------------------------------------------------------------
+// set/type_plus_right/mod/style.rb + set/self/style_mods.rb +
+// set/type_plus_right/set/style.rb - the census-missing style views
+// (the mod-porting wave-1 lane, 2026-10-03)
+// ---------------------------------------------------------------------------
+
+/** The card's item NAMES from db_content (one per line, [[...]] stripped -
+ *  the established engine read, card-mod-script.ts's item parse). */
+function styleItemNames(ctx: ViewContext, card: ViewContext["fmt"]["card"]): string[] {
+  return card.dbContent
+    .split(/\n+/)
+    .map((item) => item.replace(/\[\[|\]\]/g, "").trim())
+    .filter((item) => item !== "");
+}
+
+/** Nest one view of an already-warm card name (the script mod's
+ *  renderCardView - Ruby's `card.format(:html).render :view` on the item
+ *  card). Returns undefined when the card is not prepared. */
+function styleRenderCardView(ctx: ViewContext, name: string, view: string): string | undefined {
+  const target = ctx.fmt.engine.fetchRenderCard(name);
+  if (target === undefined) return undefined;
+  return ctx.fmt.nestRecord(target, view);
+}
+
+/** The LEFT card's `+*group remote` content lines (card-mod-assets
+ *  set/right/group_remote.rb:25-31 - one remote src per line; the
+ *  script mod's remoteScriptTagsOfModCard established the same
+ *  card-surface read). */
+function styleGroupRemoteLines(ctx: ViewContext): string[] {
+  const card = ctx.fmt.card;
+  const leftKey = card.name.leftName?.key;
+  if (leftKey === undefined) return [];
+  const groupRemote = ctx.fmt.engine.fetchRenderCard(`${leftKey}+*group remote`);
+  const content = groupRemote?.dbContent;
+  if (content === undefined || content === "") return [];
+  return content.split("\n").filter((src) => src !== "");
+}
+
+/** type_plus_right/mod/style.rb:26-32 view :remote_include_tags -
+ *  map_remote_items (mod_assets.rb:167-169 -> the group remote list) each
+ *  `tag "link", href: src, media: "all", rel: "stylesheet",
+ *  type: "text/css"`. The tag bytes are CAPTURE-proven: the deck's pinned
+ *  gems render exactly the corpus head's constant (REMOTE_STYLE_TAG,
+ *  src/card/render/head-views.ts) - self-closing " />", attrs href/media/
+ *  rel/type in the caller's order. Oracle-pinned by the harness capture
+ *  (style-tag-views.rb, whose tag bytes cross-check that constant). */
+const remoteIncludeTagsView: ViewFn = (ctx) => {
+  return styleGroupRemoteLines(ctx)
+    .map(
+      (src) =>
+        `<link href="${h(src)}" media="all" rel="stylesheet" type="text/css" />`,
+    )
+    .join("\n");
+};
+
+/** self/style_mods.rb:8-14 view :remote_style_tags, cache: :deep, perms:
+ *  :none - `card.item_cards.map { nest each, view: :remote_include_tags }
+ *  .select(&:present?)` - the ARRAY return renders through output()'s
+ *  "\n" join (content.rb:70-72); the empty groups drop (present?). */
+const remoteStyleTagsView: ViewFn = (ctx) => {
+  const items = styleItemNames(ctx, ctx.fmt.card)
+    .map((item) => styleRenderCardView(ctx, item, "remote_include_tags") ?? "")
+    .filter((tags) => tags !== "");
+  return items.join("\n");
+};
+
+/** type_plus_right/mod/style.rb:20-24 view :stylesheet_include_tag -
+ *  `card.item_cards.map { |icard| nest icard, view:
+ *  :stylesheet_include_tag }.join("\n")` - the style-GROUP items nest
+ *  the abstract arm, whose bare `stylesheet_include_tag` helper is
+ *  defined NOWHERE in the installed gem universe (grep: only the three
+ *  view declarations mention the name) - MethodDelegation#
+ *  delegate_to_action_view sends it to ActionView, which does not define
+ *  it either, so the abstract body RAISES and the nest's quiet rescue
+ *  substitutes the standard bytes. The registered abstract arm below
+ *  throws the same way; the bytes ride the engine's rescue. */
+const modStylesheetIncludeTagView: ViewFn = (ctx) => {
+  const items = styleItemNames(ctx, ctx.fmt.card)
+    .map((item) => styleRenderCardView(ctx, item, "stylesheet_include_tag") ?? "")
+    .filter((tags) => tags !== "");
+  return items.join("\n");
+};
+
+/** abstract/style_group.rb:37-40 view :stylesheet_include_tag - the
+ *  RAISING arm: `stylesheet_include_tag card.asset_output_url` calls a
+ *  helper that no installed gem defines (see modStylesheetIncludeTagView's
+ *  note). The throw reproduces the Ruby body's NoMethodError; the
+ *  engine's quiet rescue emits the standard "Error rendering" bytes both
+ *  produce. */
+const abstractStylesheetIncludeTagView: ViewFn = () => {
+  throw new Error(
+    "undefined method `stylesheet_include_tag' for the style-group format (card-mod-assets' helper is not in the installed gem set)",
+  );
+};
+
+/** The `+*asset output` child read (the assets mod's
+ *  fetchAssetOutputCard - the same engine cache-only fetch; reimplemented
+ *  locally to keep the mod boundary, the byte shape is the assets
+ *  suites' pinned localAttachmentUrl). */
+function styleAssetOutputUrl(ctx: ViewContext): string {
+  const card = ctx.fmt.card;
+  const childName = `${card.name.s}+*asset output`;
+  const child = ctx.fmt.engine.fetchRenderCard?.(childName);
+  return localAttachmentUrl(child?.dbContent ?? "");
+}
+
+/** type_plus_right/set/style.rb:28-33 view :stylesheet_path, cache:
+ *  :never, perms: :none - `if params[:debug] == "style" then path(...)
+ *  else card.asset_output_url end`. The headless render has no request
+ *  params (flashView's disclosed basis) -> the ELSE arm computes; the
+ *  params arm is the named remainder. */
+const setStylesheetPathView: ViewFn = (ctx) => {
+  return styleAssetOutputUrl(ctx);
+};
+
+/** The wave-1 style views' PROBE SURFACE - the composition cores the
+ *  harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts)
+ *  replays the static-ruby oracle against; the same functions the view
+ *  bodies call. */
+export const styleProbeSurface = {
+  /** remote_include_tags' tag list composition. */
+  remoteIncludeTagsFrom(srcs: string[]): string {
+    return srcs
+      .map(
+        (src) =>
+          `<link href="${h(src)}" media="all" rel="stylesheet" type="text/css" />`,
+      )
+      .join("\n");
+  },
+  /** remote_style_tags' item arms (present?-filtered, output-joined). */
+  remoteStyleTagsFrom(arms: string[]): string {
+    return arms.filter((tags) => tags !== "").join("\n");
+  },
+  /** the abstract arm's raise (the Ruby body's NoMethodError shape). */
+  abstractStylesheetIncludeTagRaise(): never {
+    return abstractStylesheetIncludeTagView({} as ViewContext) as never;
+  },
+};
+
 /** The Mod+*style :core body: the remote group (mirror: absent for every
  *  mirrored mod), then each local group's tag + item names, through the
  *  shared group_list emitter. */
@@ -576,10 +718,18 @@ const cardModStyle: DeckoModManifest = {
       // card-mod-assets): asset_input_content (:5-7), scss view :core
       // (:9-15, scss-format), valid_file_extensions (:17-19),
       // new_asset_constants + the scss/css type constants (:21-35), html
-      // view :stylesheet_include_tag (:37-41, asset_output_url - in
-      // viewsMissing). valid_file_extensions is exported above.
+      // view :stylesheet_include_tag (:37-41). The view IS registered
+      // (the wave-1 lane) as the RAISING arm: its bare
+      // stylesheet_include_tag helper is defined in no installed gem, so
+      // the Ruby body raises NoMethodError and the engine's quiet rescue
+      // emits the standard bytes - the throw reproduces exactly that.
+      // valid_file_extensions is exported above.
       setPath: "abstract/style_group",
-      formats: {},
+      formats: {
+        html: {
+          views: [{ view: "stylesheet_include_tag", viewFn: abstractStylesheetIncludeTagView }],
+        },
+      },
     },
     {
       // card-mod-style-0.20.0/set/self/style.rb
@@ -601,11 +751,22 @@ const cardModStyle: DeckoModManifest = {
       // `include_set Abstract::AssetInputter, input_format: :scss` +
       // `def dependent_asset_inputters; Card::Assets.active_theme_cards;
       // end` (:4-6) - the boot-time asset pipeline's theme walk (Rails
-      // Card::Assets, card-mod-assets lib/). Its one html view,
-      // :remote_style_tags (:8-14, nests :remote_include_tags per item),
-      // is in viewsMissing - see the module header.
+      // Card::Assets, card-mod-assets lib/). :remote_style_tags (:8-14)
+      // IS ported (the mod-porting wave-1 lane 2026-10-03; the item nest
+      // + present-filter + output join, oracle-pinned by the harness
+      // capture + probe).
       setPath: "self/style_mods",
-      formats: {},
+      formats: {
+        html: {
+          views: [
+            {
+              view: "remote_style_tags",
+              viewFn: remoteStyleTagsView,
+              config: { cache: "deep", perms: "none" },
+            },
+          ],
+        },
+      },
     },
     {
       // card-mod-style-0.20.0/set/type/css.rb
@@ -719,11 +880,21 @@ const cardModStyle: DeckoModManifest = {
       // render registers HERE (chain-scoped: only "mod: X+*style" cards
       // dispatch it; the flat table is untouched - kind nonbase).
       // Oracle-pinned byte-for-byte: mod: format :styles nests it
-      // (fixtures/captured/admin-view-pins.json).
+      // (fixtures/captured/admin-view-pins.json). :stylesheet_include_tag
+      // (:20-24) and :remote_include_tags (:26-32) ARE ported (the
+      // mod-porting wave-1 lane 2026-10-03: the item nest composition and
+      // the group-remote link tags, oracle-pinned; the abstract arm the
+      // nest reaches throws the Ruby body's NoMethodError - the helper is
+      // undefined in the gem universe - and the engine's quiet rescue
+      // emits the standard bytes).
       setPath: "type_plus_right/mod/style",
       formats: {
         html: {
-          views: [{ view: "core", viewFn: modStyleGroupCoreView }],
+          views: [
+            { view: "core", viewFn: modStyleGroupCoreView },
+            { view: "stylesheet_include_tag", viewFn: modStylesheetIncludeTagView },
+            { view: "remote_include_tags", viewFn: remoteIncludeTagsView },
+          ],
         },
       },
     },
@@ -733,12 +904,26 @@ const cardModStyle: DeckoModManifest = {
       // :pointer (:1), ok_item_types (:5-7), ok_to_read? true (:9-11),
       // make_asset_output_coded (:13-15), format do chunk_list
       // :references (:17-22), HIDDEN_SKINS (:24-25), html view
-      // :stylesheet_path (:27-34, in viewsMissing - ASSET-URL),
-      // input_type/default_item_view (:36-42), themes/selectable_themes
-      // (:46-55), joined_items_content (:58-60, the item-content join
-      // the scss validator reads). Constants exported above.
+      // :stylesheet_path (:27-34), input_type/default_item_view (:36-42),
+      // themes/selectable_themes (:46-55), joined_items_content (:58-60,
+      // the item-content join the scss validator reads). Constants
+      // exported above. :stylesheet_path IS ported (the wave-1 lane: the
+      // headless params absence computes the else arm -
+      // card.asset_output_url - the assets suites' pinned
+      // localAttachmentUrl shape; the params[:debug] arm is the named
+      // remainder).
       setPath: "type_plus_right/set/style",
-      formats: {},
+      formats: {
+        html: {
+          views: [
+            {
+              view: "stylesheet_path",
+              viewFn: setStylesheetPathView,
+              config: { cache: "never", perms: "none" },
+            },
+          ],
+        },
+      },
     },
   ],
 };

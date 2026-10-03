@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T15:04:55.951Z",
+  "generatedAt": "2026-10-03T15:25:53.467Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -458,12 +458,42 @@
       "gem": "card-mod-style-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "6 mod-specific view(s) ported: box, box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag",
+      "statusEvidence": "harness scorecard, 0 RED: 5/34 harness-oracle-validated, 21 pinned by the mod's standing suite, 8 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-style/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "5/34 validated",
       "reMeasureMissingViews": 4,
-      "wave1": null,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [
+          {
+            "view": "remote_include_tags",
+            "source": "set/type_plus_right/mod/style.rb:26-32",
+            "oracle": "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the captured corpus constant REMOTE_STYLE_TAG)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "remote_style_tags",
+            "source": "set/self/style_mods.rb:8-14",
+            "oracle": "static-ruby (style-tag-views.rb; the item nest + present-filter + output join)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "stylesheet_include_tag",
+            "source": "set/type_plus_right/mod/style.rb:20-24 + set/abstract/style_group.rb:37-40",
+            "oracle": "static-ruby (style-tag-views.rb; the abstract arm's bare helper is defined in no installed gem - the registered arm throws the Ruby body's NoMethodError and the engine's quiet rescue emits the standard bytes)",
+            "status": "ported (the mod/style nest arm GREEN; the abstract arm registered as the raising arm - the byte-equivalent quiet rescue)"
+          },
+          {
+            "view": "stylesheet_path",
+            "source": "set/type_plus_right/set/style.rb:28-33",
+            "oracle": "static-ruby (style-tag-views.rb; the headless params absence computes the else arm)",
+            "status": "ported, verify GREEN (harness capture + probe; the params[:debug] arm is the named remainder)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-style-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },

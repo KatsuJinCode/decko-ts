@@ -1,0 +1,364 @@
+{
+  "mod": "card-mod-style",
+  "gem": "card-mod-style-0.20.0",
+  "generatedAt": "2026-10-03T15:25:53.387Z",
+  "totals": {
+    "behaviors": 34,
+    "validated": 5,
+    "standingNet": 21,
+    "namedRemainder": 8,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-style-harness-probe.test.ts",
+      "tests/card/mod-loader/card-mod-style.test.ts"
+    ],
+    "ran": true,
+    "detail": "23 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:import",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:48",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+      "evidence": "no view \"import\" registration in card-mod-style.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:compiled",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:52",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+      "evidence": "no view \"compiled\" registration in card-mod-style.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:compressed",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:56",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+      "evidence": "no view \"compressed\" registration in card-mod-style.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:compiled",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:4",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+      "evidence": "no view \"compiled\" registration in card-mod-style.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:labeled",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:23",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"labeled\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"box\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box_bottom",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"box_bottom\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:customize_button",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"customize_button\""
+    },
+    {
+      "behaviorId": "view:box_middle",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:14",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"box_middle\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/style_group.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:stylesheet_include_tag",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/abstract/style_group.rb:38",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"stylesheet_include_tag\""
+    },
+    {
+      "behaviorId": "view:remote_style_tags",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/self/style_mods.rb:9",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"remote_style_tags\""
+    },
+    {
+      "behaviorId": "event:validate_css",
+      "kind": "event",
+      "source": "card-mod-style-0.20.0/set/type/css.rb:7",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers event \"validate_css\""
+    },
+    {
+      "behaviorId": "basket:basket[:non_createable_types] << :local_style_folder_group",
+      "kind": "basket-op",
+      "source": "card-mod-style-0.20.0/set/type/local_style_folder_group.rb:4",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a basket registration (non_createable_types folder groups) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+      "evidence": "no TS literal \"basket[:non_createable_types] << :local_style_folder_group\" (no consumer seam yet)"
+    },
+    {
+      "behaviorId": "basket:basket[:non_createable_types] << :local_style_manifest_group",
+      "kind": "basket-op",
+      "source": "card-mod-style-0.20.0/set/type/local_style_manifest_group.rb:4",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a basket registration (non_createable_types folder groups) with no TS consumer seam yet - the runtime-basket seam is the named remainder",
+      "evidence": "no TS literal \"basket[:non_createable_types] << :local_style_manifest_group\" (no consumer seam yet)"
+    },
+    {
+      "behaviorId": "event:validate_scss_syntax",
+      "kind": "event",
+      "source": "card-mod-style-0.20.0/set/type/scss.rb:4",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers event \"validate_scss_syntax\""
+    },
+    {
+      "behaviorId": "view:concat",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/type/skin.rb:6",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a css/scss FORMAT view (the engine has no css/scss format dispatch; compiled/compressed additionally need the SassC engine - the mod header's documented remainder), not a census-gap view",
+      "evidence": "no view \"concat\" registration in card-mod-style.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "event:no_deletion_if_used",
+      "kind": "event",
+      "source": "card-mod-style-0.20.0/set/type/skin.rb:13",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers event \"no_deletion_if_used\""
+    },
+    {
+      "behaviorId": "view:stylesheet_include_tag",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/mod/style.rb:20",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"stylesheet_include_tag\""
+    },
+    {
+      "behaviorId": "view:remote_include_tags",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/mod/style.rb:26",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"remote_include_tags\""
+    },
+    {
+      "behaviorId": "view:stylesheet_path",
+      "kind": "view",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/set/style.rb:28",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-style.ts registers view \"stylesheet_path\""
+    },
+    {
+      "behaviorId": "seed:style_mods",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"style_mods\""
+    },
+    {
+      "behaviorId": "seed:local_style_folder_group",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-style.ts"
+    },
+    {
+      "behaviorId": "seed:local_style_manifest_group",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-style.ts"
+    },
+    {
+      "behaviorId": "seed:css",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-style.ts"
+    },
+    {
+      "behaviorId": "seed:scss",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-bootstrap.ts"
+    },
+    {
+      "behaviorId": "seed:skin",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-style.ts"
+    },
+    {
+      "behaviorId": "seed:style",
+      "kind": "seed",
+      "source": "card-mod-style-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "config:settings",
+      "kind": "config",
+      "source": "card-mod-style-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "config:cardtypes",
+      "kind": "config",
+      "source": "card-mod-style-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-carrierwave.ts"
+    },
+    {
+      "behaviorId": "config:de",
+      "kind": "config",
+      "source": "card-mod-style-0.20.0/config/locales/de.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "config:en",
+      "kind": "config",
+      "source": "card-mod-style-0.20.0/config/locales/en.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    }
+  ]
+}
