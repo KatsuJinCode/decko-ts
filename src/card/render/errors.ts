@@ -326,6 +326,25 @@ export function parseRubyDateContent(content: string): Date | null {
     if (day < 10 && (zone === "00" || Number(zone) > 31)) return null;
     return fillFromReferenceMonth(day);
   }
+  // fold-9 superset note (2026-10-03): the-69-wave1-refill2 independently
+  // re-derived this class as ONE coarse guard — "dashed ALL-NUMERIC with any
+  // component count other than the Y-M-D triple RAISES"
+  // (`/^\d{1,4}(-\d{1,4})+$/.test(content) && dashMatch === null -> null`,
+  // gem-verified over the corpus's 4,013 3-component rows + 2-component row
+  // 13903). That guard is NOT taken here: it also raises for the day+zone
+  // class ("20-0405") and single-digit-A real-offset shapes ("0-01", "9-01")
+  // that the gem PARSES (refill2's own White Fragility entry: Ruby 3.3 gives
+  // October 20 for "20-0405"), because its evidence base was the corpus's
+  // Date-typed rows only. The per-shape arms above were verified against a
+  // 1,306-row Date._parse sweep of the actual gem (ruby 3.3.12, date
+  // 3.5.1) and cover every raise case the coarse guard catches ("1981-10"
+  // via day>31, "2-1" via the merged :mday/:hour arm, "0-00"/"0-32"/"1-35"
+  // via the single-digit-A offset guard) while preserving the parseable
+  // classes. Superset-of-information: no raise case is lost, the
+  // gem-parseable classes survive, and the completion's today-dependence
+  // stays pinned by DATE_PARSE_REFERENCE_YEAR/_MONTH instead of a wall
+  // clock. The corpus-uncertain White Fragility residual stays as refill2's
+  // receipt recorded it.
   // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
   // JS accepts only the US-style "M/D/YYYY" reliably.
   const slashMatch = /^(\d{1,4})\/(\d{1,2})\/(\d{1,4})$/.exec(content);

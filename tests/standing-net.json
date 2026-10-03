@@ -77,6 +77,7 @@
   "tests/card/permissions/view-perms-table.test.ts",
   "tests/card/render/admin-config-mod-card-deck-order-and-codename-pins.test.ts",
   "tests/card/render/autolink-seams-pins.test.ts",
+  "tests/card/render/bar-bottom-rule-shape-type-refutation-pins.test.ts",
   "tests/card/render/bar-setting-list-filter-nest-option-rides-voo.test.ts",
   "tests/card/render/bootswatch-skin-bar-bottom-code-wrap.test.ts",
   "tests/card/render/bootswatch-skin-nested-image-child-warm.test.ts",
@@ -85,12 +86,16 @@
   "tests/card/render/code-highlighting/highlighter-seams-h1-h2-oracle-pins.test.ts",
   "tests/card/render/compact-nest-mode-substitution-and-char-elision.test.ts",
   "tests/card/render/content-options-one-line-count-capture-state-pins.test.ts",
+  "tests/card/render/core-delegating-view-bodies-rescue-scope-pins.test.ts",
   "tests/card/render/date-cardtype-view.test.ts",
+  "tests/card/render/date-dashed-two-component-raise-pins.test.ts",
   "tests/card/render/date-delegated-core-rescue-scope-pins.test.ts",
   "tests/card/render/date-parse-gem-conformance-pins.test.ts",
   "tests/card/render/deck-origin-surface-scoped-root-url.test.ts",
+  "tests/card/render/deep-nesting-fixture-sweep.test.ts",
   "tests/card/render/depth-sweep.test.ts",
   "tests/card/render/file-cardtype-view.test.ts",
+  "tests/card/render/focal-denial-header-title-codename-parity.test.ts",
   "tests/card/render/format-families-oracle.test.ts",
   "tests/card/render/image-cardtype-view.test.ts",
   "tests/card/render/junction-depth-corpus-replay.test.ts",
@@ -101,6 +106,7 @@
   "tests/card/render/nest-miss-unknown-view-selection-corpus-replay.test.ts",
   "tests/card/render/permission-corpus-replay.test.ts",
   "tests/card/render/pointer-list-input-type-rule-item-name-view.test.ts",
+  "tests/card/render/pointer-list-item-rescue-scope-pins.test.ts",
   "tests/card/render/raw-corpus-p20-perm-residuals-sweep.test.ts",
   "tests/card/render/raw-corpus-p21-cql-item-typing-sweep.test.ts",
   "tests/card/render/re-photograph-entry-replay.test.ts",
@@ -122,5 +128,5 @@
   "tests/server/write-routes-recaptcha-seat.test.ts",
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts"
  ],
- "manifestFileCount": 88
+ "manifestFileCount": 94
 }

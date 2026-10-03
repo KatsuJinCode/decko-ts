@@ -4562,6 +4562,39 @@ export class RenderEngine implements RenderEngineLike {
    *  them: one batch for the who_can universe, then one candidate
    *  resolution per prepared card (memoized — warm renders stay at zero
    *  queries). Read/none-only renders skip entirely. */
+  /** The comment_box gate's verdict half (views.ts commentBoxBaseView):
+   *  the same task-verdict algebra ensureTaskVerdicts runs, scoped to the
+   *  +discussion cards the render closure carries, WITHOUT the
+   *  viewRequiresTask gate (the comment form renders inside :open /
+   *  :content bodies whose top view never requests task verdicts, so the
+   *  generic warm skips them entirely). Corpus input: the *update rule
+   *  row on the discussion's own *self set (Klickstein_continues+
+   *  discussion: left_id 9813's *update row, content "Anyone") is what
+   *  the anonymous viewer's update rides - the same algebra
+   *  allTaskVerdictsForCard already walks. */
+  async ensureDiscussionUpdateVerdicts(): Promise<void> {
+    if (this.readPermission === undefined) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    for (const card of this.renderCards.values()) {
+      if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
+      if (card.name.rightName?.key !== "discussion") continue;
+      this.taskVerdicts.set(
+        card.key,
+        await this.applyUpdateOverride(
+          card,
+          await allTaskVerdictsForCard(
+            this.fetcher,
+            this.structurePatternInputForSync(card),
+            this.taskState,
+          ),
+        ),
+      );
+    }
+  }
+
   private async ensureTaskVerdicts(view: string): Promise<void> {
     if (this.readPermission === undefined) return;
     if (!viewRequiresTask(view)) return;

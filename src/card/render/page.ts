@@ -259,6 +259,11 @@ async function renderPageBytesWithPageConfig(
   // map-size guard). Deny-direction only: verdicts become Ruby's data-driven
   // ones; readable cards are unaffected.
   await engine.ensurePermissionVerdicts();
+  // The comment_box gate's update verdicts (views.ts commentBoxBaseView):
+  // the +discussion cores inside the page body render the comment form
+  // only on a POSITIVE update verdict, and the generic task warm
+  // (ensureTaskVerdicts) is view-gated - warm the discussion cards here.
+  await engine.ensureDiscussionUpdateVerdicts();
 
   // THE ROLE CONFIGS ADMIN-RUNTIME WARM.
   // card-mod-account set/type/role.rb view :configs (the Role dashboards'

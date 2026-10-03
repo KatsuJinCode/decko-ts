@@ -143,8 +143,17 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Discussion Probe+discussion", "input")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Comment Probe", "comment_box")).rejects.toThrow(
-      UnsupportedViewError,
+    // :comment_box left this list on the-69-wave1-refill2 (2026-10-03).
+    // The live-oracle recapture refuted the unregistered surface's "" :
+    // the anonymous capture carries the FULL form on stored discussions
+    // (recapture-raw-shard-000005 Klickstein_continues:page, the update-
+    // case bytes with the deck's recaptcha wrap), so comment_box gained a
+    // BASE-TABLE registration (views.ts commentBoxBaseView — the same
+    // seam :open_content's own note above describes). It renders now,
+    // which is the recapture-faithful shape; the mod-layer A/B below
+    // still isolates the mod's own registration and its Rails-form bytes.
+    expect(await s.engine.render("Oracle Comment Probe", "comment_box")).toContain(
+      "comment-box nodblclick",
     );
   });
 

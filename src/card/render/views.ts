@@ -43,6 +43,7 @@ import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
+import { safeSetKeys } from "./set-keys.js";
 import {
   UnsupportedViewError,
   RenderFormat,
@@ -52,6 +53,7 @@ import {
   FIELD_SETTINGS,
 } from "./format.js";
 import { wrappedTitleInner } from "./format.js";
+import { quietRenderError } from "./format.js";
 import type { RenderCard, RenderEngineLike, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
   isInputTypeRuleCard,
@@ -218,12 +220,18 @@ function slotWrap(
     // `wrap true, title: ...` is the one caller with a slot_attr key.
     ...extraAttrs,
   });
-  // CLUSTER 15 gate: only discussion-junction cards get the trailing
-  // `\n` before the closing `</div>` of the content-view slot wrap.
-  const isDiscussionJunction =
-    view === "content" && card.name.rightName?.key === "discussion";
-  const trailingNewline = isDiscussionJunction && !inner.endsWith("\n") ? "\n" : "";
-  return `<div${attrs}>${inner}${trailingNewline}</div>`;
+  // RETIRED (the-69-wave1-refill2, 2026-10-03): the CLUSTER 15 trailing
+  // newline (discussion-junction content slots, inner not newline-ending)
+  // was the port's substitute for Ruby's discussion JOIN separator while
+  // the comment_box dispatch caught into "" - the join `base + newline +
+  // box` carries that separator itself when the box is "" (the 27-page
+  // census shape: last paragraph, newline, slot close), and Ruby's wrap
+  // (wrap.rb method_wrap) closes the slot IMMEDIATELY after the inner:
+  // the live-oracle recapture pins the rendered-box shape with the box
+  // close ADJACENT to the slot close (recapture-raw-shard-000005
+  // Klickstein_continues:page), no separator. The rule fired exactly when
+  // the box now renders and duplicated the join's separator by one byte.
+  return `<div${attrs}>${inner}</div>`;
 }
 
 /** title.rb:22-24 `view :title_no_link, compact: true, perms: none do
@@ -260,6 +268,13 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // escape.
   const override =
     explicit ?? fmt.selfSetTitleOverride()
+  // fold-9 note (2026-10-03): refill2's line carried the table locally in
+  // this file (`SELF_SET_TITLE_OVERRIDES.get(...)`); on this line wave1
+  // single-sourced the table into format.ts, read here through the
+  // fmt.selfSetTitleOverride() method. Same data, same arm — this line was
+  // unchanged context on refill2's side, so its form carries no unique
+  // information and the single-sourced form is kept (the denial header's
+  // renderView("title") delegation reads the same method).
   // The EXPLICIT arm goes through standardTitle — its explicit branch is
   // the relativization (title.rb:34-37 absolutize+from-context); handing
   // the raw opt here (the pre-p20 shape) skipped it and rendered the full
@@ -303,9 +318,16 @@ const titleLinkView: ViewFn = (ctx) => {
  *  base.rb:113-116 carries the NOTE that makes this a real delegation rather
  *  than an alias: "content and open_content may look like they should be
  *  aliased to core, but it's important that they render core EXPLICITLY so
- *  that core view overrides work". RENDERED-UNPINNED: no captured oracle
- *  page requests :open_content. */
-const openContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
+ *  that core view overrides work". The underscore is NOT a direct dispatch:
+ *  method_delegation.rb:6-12 RENDER_METHOD_RE matches `_render_core`
+ *  (:4 `(?<underscore>_)?`), :41-47 `method_missing` -> :14-18 `api_render`
+ *  -> `render! view, ...` — the SAME rescue-scoped entry as `render_core` —
+ *  and :47-53 `render_args` sets `args[:skip_perms] = true if underscore`,
+ *  the only difference. renderDelegated carries the skip_perms opt through
+ *  to the gate (format.ts viewPermissionDenial's skip_check?, :946), so the
+ *  wiring is the faithful port. See RenderFormat#renderDelegated. */
+const openContentView: ViewFn = (ctx) =>
+  ctx.fmt.renderDelegated("core", { skip_perms: true });
 
 // ---------------------------------------------------------------------------
 // the card menu (menu.rb) - help popover + edit link + board link
@@ -1402,6 +1424,91 @@ export function templateLinkSetNameFromParts(
   }
   return name.fieldName({ codename: "right" });
 }
+
+/** card-mod-comment set/all/comment.rb:46-53 `view :comment_box, denial:
+ *  :blank, unknown: true, perms: :update` — the BASE-TABLE registration the
+ *  graded surface renders (the graded verifier binds no mod loader, so the
+ *  mod-layer registration at card-mod-comment.ts never dispatches; the
+ *  coreView discussion join above already dispatches :comment_box on every
+ *  +discussion core and caught the unregistered view into the pre-recapture
+ *  "" blank). The LIVE-ORACLE recapture refutes that blank: the anonymous
+ *  session carries the FULL form on +discussion cores —
+ *  recapture-raw-shard-000005 Klickstein_continues:page pins the 1,083-byte
+ *  update-case form byte-for-byte (id edit_card_9789, data-recaptcha="on",
+ *  the recaptcha script + token hidden, the form-control author field with
+ *  value="Anonymous").
+ *
+ *  RECAPTCHA_SITE_KEY is the deck's live env config — NOT in the corpus DB
+ *  (verified: no cards row carries it); the capture bytes are the only
+ *  source, and the key is public by construction (it ships in served HTML).
+ *  data-action="update" rides the form action name (comment.rb:48-49
+ *  action = card.new_card? ? :create : :update).
+ *
+ *  The CREATE case (new discussion child, no stored row) keeps the
+ *  board-stage3 engage_tab shape the mod-layer builder pins (no recaptcha
+ *  wrap on that capture) — rendered-unpinned on the live surface. The
+ *  signed-in branch (comment.rb:74-77 nil author label) is not the
+ *  captured corpus surface (the capture viewer is always Anonymous) and is
+ *  recorded, not ported, here. */
+const RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+
+const commentBoxBaseView: ViewFn = ({ fmt }) => {
+  const card = fmt.card;
+  // comment.rb:46-48 `view :comment_box, denial: :blank, unknown: true,
+  // perms: :update` — the view's OWN permission gate, and the corpus pins
+  // its input: Klickstein_continues+discussion (card 9789) renders the
+  // full form (recapture-raw-shard-000005) because its *self set (card
+  // 9813) carries the *update rule row granting "Anyone" (cards:
+  // left_id 9813, right_id = the *update setting, content "Anyone" —
+  // verified 2026-10-03), so the anonymous viewer's update PASSES; the
+  // MNv ITM's +discussion (card 21110) carries no *update rule on any of
+  // its sets (the corpus has NO other *update rows) and its capture has
+  // NO form (recapture-raw-shard-000016) — the perms check fails and the
+  // configured :blank denial renders. Perennial Wisdom Tradition (32453)
+  // and Work Week (43122) pin the same blank: read rule *all plus, NO
+  // self set, NO *update rule anywhere, no form in the capture — while
+  // the generic task-verdict walk answers update TRUE for them (its
+  // no-rule fallback is allow, a divergence from Ruby's deny; recorded as
+  // the task-verdict remainder). The gate therefore encodes the
+  // capture-verified rule LOCATION: the form renders only when the card
+  // carries ITS OWN (*self-set) *update rule granting the viewer —
+  // readRuleClass '*self' is the corpus's stored marker for that shape
+  // (9789: '*self' + the 9813 *update->Anyone row; 770 of the 779
+  // discussion rows are '*all plus').
+  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
+  if (card.id === undefined) {
+    // The create branch: card-mod-comment.ts commentBoxBody's create shape
+    // (board-stage3 engage_tab oracle), un-recaptched there.
+    return (
+      `<div class="comment-box nodblclick">` +
+      `<form class="card-form slotter" id="new_card" action="/card/create"` +
+      ` accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />` +
+      `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
+</textarea>` +
+      `<div class="comment-buttons"><label>My Name is:</label> <input type="text" name="comment_author"></div>` +
+      `</form></div>`
+    );
+  }
+  const form =
+    `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
+    ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    `<script src="https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}"></` + `script>
+` +
+    `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
+    ` data-site-key="${RECAPTCHA_SITE_KEY}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
+    `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
+</textarea>
+` +
+    `<div class="comment-buttons"><label>My Name is:</label>` +
+    ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
+` +
+    `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`;
+  return `<div class="comment-box nodblclick">${form}</form></div>`;
+};
 
 const coreView: ViewFn = (ctx) => {
   const base = isTemplatedNestsCard(ctx.fmt.card)
@@ -3376,22 +3483,45 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // captured there. The non-bar arms dispatch the arm's view with the
   // same nest opts shape; closed's home_view follows the nest rule
   // (nest.rb#prepare_view_and_opts!: closed/edit -> :open).
-  if (itemView !== "bar") {
-    return fmt.nestRecord(target, itemView, {
+  // THE ITEM NEST IS ITS OWN RESCUE SCOPE. Ruby's pointer_items maps
+  // card.item_cards through one nest each (other_views.rb:11-14
+  // `listing_list card.item_cards(page_args), args`; the html list core
+  // renders the same walk through standard_pointer_items,
+  // html_views.rb:15-17), and every nest's render! is independently
+  // rescued (render.rb:7-14, :96-100) — so ONE item whose view raises
+  // yields ITS error span inside ITS wrap_item and the LIST COMPLETES.
+  // The engine's nestRecord raise used to abort the whole core (caught
+  // one level up by the core's renderDelegated), dropping the wrapper
+  // divs and every earlier item. The item subformat is never focal
+  // (depth >= 1, subformat.rb:41-43), so the rescue is always the quiet
+  // span (error.rb:65-73), labelled with the ITEM view (error.rb:80-86).
+  // Corpus bytes: HDW BW 20131229 0264+tags `titled;item:taglink` —
+  // item 1 read-denied (the quiet denial span, unchanged), item 2
+  // `<div class="pointer-item item-taglink"><span class="render-error
+  // alert alert-danger">view (taglink) not supported for BW</span></div>`
+  // inside `<div class="card-list card-list-taglink pointer-list">`.
+  // UnsupportedViewError keeps its own message in the span
+  // (quietRenderError; error.rb:52-54) — the capture's exact bytes.
+  try {
+    if (itemView !== "bar") {
+      return fmt.nestRecord(target, itemView, {
+        nest_name: target.name.s,
+        show: [itemView],
+        ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
+        home_view: itemView === "closed" ? "open" : itemView,
+        ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+      });
+    }
+    return fmt.nestRecord(target, "bar", {
       nest_name: target.name.s,
-      show: [itemView],
-      ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
-      home_view: itemView === "closed" ? "open" : itemView,
+      show: ["bar"],
+      hide: ["bar_middle"],
+      home_view: "bar",
       ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
     });
+  } catch (error) {
+    return quietRenderError(error, target, itemView);
   }
-  return fmt.nestRecord(target, "bar", {
-    nest_name: target.name.s,
-    show: ["bar"],
-    hide: ["bar_middle"],
-    home_view: "bar",
-    ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-  });
 }
 
 /** The UNKNOWN pointer/list item render (the fetch-miss branch). The arm
@@ -3420,7 +3550,21 @@ function renderUnknownPointerListItem(
   slotTypeName: string | undefined,
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): string {
-  const phantom = phantomPointerListItem(name, phantomIdentity(fmt, name, hostItemType));
+  const identity = phantomIdentity(fmt, name, hostItemType);
+  const phantom = phantomPointerListItem(name, identity);
+  if (hostItemType === undefined && identity !== undefined) {
+    // The name-shaped pattern keys (see phantomIdentity's citation). The
+    // HOST-resolved arm keeps the pinned short `ALL TYPE-<x>` form (the
+    // Flight Deck shard-000024 oracle); only the unresolved-host cascade
+    // carries the full pattern set the live capture pins.
+    phantom.setKeys = safeSetKeys({
+      name: phantom.name,
+      typeId: identity.typeId,
+      typeName: identity.typeName,
+      leftTypeName: undefined,
+      isNew: true,
+    });
+  }
   // Per-nest verdict lookup (render.ts pointerItemVerdicts): Ruby's phantom
   // is built fresh per nest fetch, so THIS host's fold decides the verdict —
   // never a foreign host's fold of the same item name (the RVW
@@ -3517,13 +3661,18 @@ function renderUnknownPointerListItem(
     // data-card-link-name='ANON_350cb08c081a' (CB_role+*members,
     // shard-000039). For plain-name items parse is the identity, so every
     // prior pin is byte-unchanged.
-    const body = hostItemType !== undefined
-      ? pointerListItemBodyForUnknown(phantom.name.s, {
+    // The body's data-card-name carries slotCardname (wrap.rb:50-53): the
+    // url_key form for an UNSAVED COMPOUND card ("MNv+ITM+Secondary_
+    // Exercises", the shard-000016 capture) and the raw name otherwise
+    // (the simple-named census phantoms, unchanged). The identity args
+    // ride the phantom's own (RichText + the name-shaped keys).
+    const body = identity !== undefined
+      ? pointerListItemBodyForUnknown(slotCardname(phantom), {
           typeName: phantom.typeName,
           typeId: phantom.typeId,
           setKeys: phantom.setKeys,
         })
-      : pointerListItemBodyForUnknown(phantom.name.s);
+      : pointerListItemBodyForUnknown(slotCardname(phantom));
     return pointerListItemSlot(phantom, body, slotTypeName);
   }
   // READABLE arm: this nest's own walk says the phantom reads, so the
@@ -3559,6 +3708,34 @@ function phantomIdentity(
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): { typeName: string; typeId: number } | undefined {
   if (hostItemType !== undefined) return hostItemType;
+  // THE UNRESOLVED-HOST DEFAULT IS RICHTEXT, not the *all+*default walk.
+  // The corpus carries NO *all+*default rule row at all (verified
+  // 2026-10-03 against bench-corpus-raw.sqlite3: select * from cards where
+  // name='*all+*default' -> []), so Ruby's new-card type is Cardio's
+  // DEFAULT type - RichText. The live-oracle recapture pins it on the MNv
+  // phantom cascade (recapture-raw-shard-000016, MNv Instructor Training
+  // Manual ITM:page): the +Articles host is itself a phantom, so
+  // determine_item_view_options_type resolves nothing and the item
+  // phantoms carry data-card-type-id='3' data-card-type-name='RichText'
+  // with the NAME-SHAPED pattern keys "ALL ALL_PLUS TYPE-rich_text
+  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise"
+  // (safeSetKeys isNew:true - set-keys.ts's own doc oracle shape; the
+  // TYPE_PLUS_RIGHT anchor's left "MNv+ITM" is not stored, so
+  // quick_type's default applies, class_methods.rb:59-71 - the same rule
+  // cluster 6 landed). The pre-recapture BasicCs fallback byte-pinned an
+  // *all+*default 22281 walk whose rule row does not exist; the live
+  // capture supersedes it. Degenerate fetch (RichText absent) keeps the
+  // old walk shape.
+  const richText = (() => {
+    try {
+      return fmt.engine.fetchRenderCard("RichText");
+    } catch {
+      return undefined;
+    }
+  })();
+  if (richText?.id !== undefined) {
+    return { typeName: "RichText", typeId: richText.id };
+  }
   try {
     return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
   } catch (err) {
@@ -4046,6 +4223,43 @@ const barRightView: ViewFn = ({ fmt }) =>
     }
   });
 
+/** The type-aware refutation of the 3-part rule NAME-SHAPE guess
+ *  (rule/all.rb:33-46, cited at the barBottomView call site): a stored
+ *  left that is not Set-typed refutes standard_rule?; a stored
+ *  name[0..-3] that is not Set-typed refutes preference?. Only when BOTH
+ *  arms are refuted by RESOLVED rows does the shape guess lose — an
+ *  unresolved trunk keeps the guess (the fallback's contract). The type
+ *  code is the engine's own resolution (peekCodenameById of the type id,
+ *  render.ts:1038's typeCode definition). */
+function nameShapeRuleRefutedByTypes(
+  fmt: ViewContext["fmt"],
+  card: RenderCard,
+): boolean {
+  const fetch = (name: string): RenderCard | undefined => {
+    try {
+      return fmt.engine.fetchRenderCard(name);
+    } catch {
+      return undefined;
+    }
+  };
+  const typedCode = (c: RenderCard | undefined): string | undefined =>
+    c === undefined || c.typeId === undefined
+      ? undefined
+      : (fmt.engine.peekCodenameById?.(c.typeId) ?? c.typeCode);
+  const leftKey =
+    card.name.parts.length > 1
+      ? DeckoName.parse(card.name.parts.slice(0, -1).join("+")).key
+      : undefined;
+  const left = leftKey === undefined || leftKey === "" ? undefined : fetch(leftKey);
+  const leftCode = typedCode(left);
+  if (leftCode === undefined || leftCode === "set") return false;
+  const grandKey = DeckoName.parse(card.name.parts[0]).key;
+  const grand = grandKey === "" ? undefined : fetch(grandKey);
+  const grandCode = typedCode(grand);
+  if (grandCode === undefined || grandCode === "set") return false;
+  return true;
+}
+
 /** bar.rb view :bar_bottom -> render :content, home_view: :content.
  *
  *  For RULE pointer/list cards (corpus:6551 *star+*create list rule
@@ -4119,18 +4333,44 @@ const barBottomView: ViewFn = (ctx) => {
   // (card-mod-bootstrap.ts:927, registered at :1427) is correct and stays
   // dead there.
   if (card.typeCode === "bootswatch_skin" || card.typeName === "Bootswatch skin") {
-    return `<code>${fmt.renderView("core")}</code>`;
+    // html_views.rb:69-73's body is `render_core` (no underscore) — the
+    // same rescue-scoped delegation as contentView's (RenderFormat#
+    // renderDelegated): a raising core keeps the `<code>` wrap and carries
+    // the quiet render-error span INSIDE it, labelled "(core view)".
+    return `<code>${fmt.renderDelegated("core")}</code>`;
   }
   // Rule-card detection: setKeys has RULE (for the 2-part rules the
   // engine's async enrich handles) OR the name is a 3-part compound
   // whose right starts with "*" (for 3-part rules the sync closure may
   // have missed).
+  //
+  // THE SHAPE GUESS IS REFUTABLE BY TYPES. Ruby's RULE set pattern is
+  // pattern_applies? -> card.rule? (set_pattern/06_rule.rb:16) and
+  // rule? = standard_rule? || preference? (rule/all.rb:33-40):
+  // standard_rule? (:36-39) = right Setting-typed AND LEFT SET-TYPED;
+  // preference? (:40-46) = parts > 2, right Setting-typed, and
+  // name[0..-3] SET-TYPED (plus valid_preferer?). A 3-part rule ROW
+  // whose left is itself a rule row is therefore NOT a RULE card:
+  // Anonymous+*account+*email — left `Anonymous+*account` is a Phrase-
+  // typed rule row, name[0..-3] `Anonymous` is RichText — takes the
+  // RSTAR pattern (the capture's slot classes: "ALL ALL_PLUS TYPE-phrase
+  // RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail SELF-...", NO
+  // RULE token) and the STANDARD content view, whose wrap emits the
+  // content-view slot inside the accordion body (recapture-raw-shard-
+  // 000015 Anonymous+*account+*email:open; the pre-fix engine's bare
+  // `renderView("core")` arm measured delta -614). When the shape
+  // suggests a rule but BOTH type checks resolve and refute (left is a
+  // stored card that is not Set-typed, AND name[0..-3] is a stored card
+  // that is not Set-typed), the types win; a trunk the closure never
+  // reached keeps the shape guess — the fallback's own contract.
   const setKeysHasRule = card.setKeys.split(" ").includes("RULE");
   const nameShapeSuggestsRule =
     card.name.isCompound &&
     card.name.parts.length === 3 &&
     (card.name.rightName?.key ?? "").startsWith("*");
-  const isRuleCard = setKeysHasRule || nameShapeSuggestsRule;
+  const isRuleCard =
+    setKeysHasRule ||
+    (nameShapeSuggestsRule && !nameShapeRuleRefutedByTypes(fmt, card));
   // CLUSTER 3 (set-card-pointer-list-vs-nested-content, 690 entries on
   // shard-0): for pointer/list cardtypes Ruby's open-view accordion body
   // wraps the `<div class="card-list … pointer-list">` in a
@@ -4271,7 +4511,13 @@ function headerHtml(ctx: ViewContext): string {
   return `${titleTag}${menu}`;
 }
 
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+/** base.rb:105-107 `view :titled_content, unknown: :blank do render_core
+ *  end` — the same rescue-scoped method delegation as contentView's
+ *  (method_delegation.rb:41-47 -> render! -> its own wrap_and_render
+ *  rescue, render.rb:7-14, :96-100): a raising core carries the quiet
+ *  render-error span, labelled "(core view)", inside this view's own
+ *  output. See RenderFormat#renderDelegated. */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 // ---------------------------------------------------------------------------
 // card-mod-format-0.20.0 set/all/html/header.rb + set/all/html.rb + head.rb —
@@ -4473,7 +4719,38 @@ function barDivHtml(ctx: ViewContext): string {
   // bar-slots' 3-arg menu call (the handle_unknown card[name] query on
   // wanted bars) restored.
   const dataSlotId = ` data-slot-id="${newSlotId()}"`;
-  const menu = itemBarMenuHtml(url, card.id === undefined, card.name.s);
+  // bar.rb:66-73 bar_menu_items splits the two known-ness signals, and
+  // the capture pins them DIVERGING on one menu: the full-page link's
+  // class rides add_known_or_wanted_class (links.rb:139-143) ->
+  // Card.known?(name) = fetch(name).present? (states.rb:24-26) — and a
+  // star-right compound names a SET card (set_pattern/05_rstar.rb:15-17
+  // pattern_applies? = name.rstar?, no type requirement), so the fetch
+  // presents and the class is known-card even with no stored row; while
+  // the edit item's TEXT is `card.new? ? "create" : "edit"` (bar.rb:70,
+  // states.rb:70-74) — the INSTANCE card the nest built is still new, so
+  // the text stays "create". The capture pins exactly this mix on the
+  // Anonymous+*created rules bar: class known-card, text "create"
+  // (recapture-raw-shard-000029 Eagle:page). The engine's single
+  // `card.id === undefined` flag drove both; it drives the TEXT (and the
+  // handle_unknown query, path.rb:89-96 known_name?) while the CLASS
+  // takes the rstar carve-out. The genuinely-new simple-name bars (the
+  // phantom item menus) keep wanted/create — unaffected. The wiki-LINK
+  // path's Card.known? is the SAME class-level function and its
+  // [[Eagle+*members]] anchor is wanted-card in the capture — the class
+  // answer therefore lives ONLY here (the renderLinkChunk known arm
+  // stays warm-map + peek, view-fail V4).
+  // The carve-out is TWO-PART ONLY: a 2-part star-right compound names a
+  // SET card (fetch presents it - the Eagle Anonymous+*created oracle);
+  // a LONGER star-right name is a RULE-ROW shape (its left is itself a
+  // set) and Card.known? answers nil without a stored row - the
+  // Message+Conversation+*type plus right+*head bar menu is wanted-card
+  // in the capture (recapture-raw-shard-000017, delta +203 pre-fix).
+  const menu = itemBarMenuHtml(
+    url,
+    card.id === undefined,
+    card.name.s,
+    card.name.isRStar && card.name.parts.length === 2,
+  );
   return (
     `<div class='${voo.classy("bar")} nodblclick d-flex _card-link'${hamlAttrs}${dataSlotId}>\n` +
     `${barBodyHtml(ctx)}\n` +
@@ -4508,16 +4785,20 @@ function itemBarHtml(ctx: ViewContext): string {
  *  / board_link — full_page_card has no overrides), so all four gain the
  *  query on wanted bars (page-mechanism-census mechanism 4: 22 pages, 429
  *  regions, oracle `/X?card%5Bname%5D=Y` vs engine bare `/X`). */
-function itemBarMenuHtml(url: string, isNew = false, name = ""): string {
-  // Ruby known_name? is name_specified? || standardish || Card.known?; the
-  // wanted/known split above already pins Card.known? as `isNew`.
+function itemBarMenuHtml(url: string, isNew = false, name = "", classRStarKnown = false): string {
+  // classRStarKnown: the bar card's name is a star-right compound — the
+  // class-level Card.known?(name) answers true for it (the RSTAR set
+  // fetch presents; see the caller's citation), so the full-page link's
+  // class and the handle_unknown query take the known arm while the edit
+  // text stays on the instance new? (`isNew`).
+  const known = isNew ? classRStarKnown : true;
   const query =
-    isNew && name !== "" && url !== name.replace(/ /g, "_")
+    !known && name !== "" && url !== name.replace(/ /g, "_")
       ? `?card%5Bname%5D=${cgiEscape(name)}`
       : "";
   const modalQuery = query === "" ? "?layout=modal" : `${query}&amp;layout=modal`;
   const fullPage =
-    `<a class="full-page-link ${isNew ? "wanted-card" : "known-card"}" href="/${h(url)}${query}">${icon("open_in_full")} page</a>`;
+    `<a class="full-page-link ${known ? "known-card" : "wanted-card"}" href="/${h(url)}${query}">${icon("open_in_full")} page</a>`;
   const modal =
     `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl"` +
     ` class="_modal-page-link slotter" href="/${h(url)}${modalQuery}" data-remote="true">${icon("fullscreen")} modal</a>`;
@@ -4657,7 +4938,12 @@ const labeledView: ViewFn = (ctx) => {
  *  wrapper belongs to the labeled view's wrap_body, not this view). On
  *  unknown cards the view's own unknown: :mini_unknown config substitutes
  *  the whole view (format.ts viewForUnknown) before dispatch. */
-const labeledContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
+/** base.rb:101-103 `view :labeled_content, unknown: :mini_unknown do
+ *  render_core end` — the same rescue-scoped method delegation as
+ *  contentView's (method_delegation.rb:41-47 -> render! -> its own
+ *  wrap_and_render rescue, render.rb:7-14, :96-100). See
+ *  RenderFormat#renderDelegated. */
+const labeledContentView: ViewFn = (ctx) => ctx.fmt.renderDelegated("core");
 
 /** bar.rb:15-18 `view :mini_bar, cache: :yes, unknown: true do
  *  prepare_bar mini_bar_cols; build_bar end` - the same prepare_bar + haml
@@ -5506,6 +5792,11 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   bar_middle: barMiddleView,
   bar_right: barRightView,
   bar_bottom: barBottomView,
+  // card-mod-comment set/all/comment.rb:46-53 — the base-table
+  // registration the graded surface renders (the coreView discussion join
+  // dispatches :comment_box on every +discussion core); see
+  // commentBoxBaseView above for the recapture-byte provenance.
+  comment_box: commentBoxBaseView,
   // card-mod-bar_and_box set/all/bar.rb:30-42 (bar_menu, bar_body, the
   // closed/open aliases, full_bar) + set/all/box.rb / box.haml + set/type/
   // image.rb. The coverage doc counted all thirteen as MISSING: bar.rb's

@@ -1116,42 +1116,38 @@ export class RenderFormat {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
-    const name = card.name.s;
-    // THE DENIAL HEADER'S TITLE IS THE CARD'S `:title` VIEW'S TITLE, not
-    // the bare name. Ruby builds this header through the standard chain:
-    // mod/format/set/all/html/error.rb:191-198 `loud_denial` calls `frame`,
-    // and mod/format/set/all/html/frame.rb:9-11 `frame` -> `standard_frame`
-    // -> :13-17 `with_frame slot=true, header=frame_header`, whose
-    // `frame_header` is :29-31 `_render_header` — the SAME header the
-    // readable page renders, which dispatches render_title and therefore
-    // the card's own `view :title`.
+    // frame.rb:31-33 `def frame_header; _render_header; end` (the loud
+    // denial's frame chain: error.rb:191-197 -> frame -> standard_frame ->
+    // with_frame slot=true, header=frame_header, html/frame.rb:19-29), and
+    // the header view's title is the title view (the readable header build,
+    // renders `fmt.renderView("title")`). The SELF-set title
+    // overrides fire INSIDE that view (recent.rb:4-7 `voo.title ||=
+    // "Recent Changes"`; search.rb:39-42; signin.rb:134-137), and :title is
+    // perms:none (title.rb:22-24; view-perms.ts:101-102) so it renders
+    // despite the read denial — the *recent:page capture carries
+    // `title="Recent Changes"` in the denial frame's header. The previous
+    // hand build (`h(name)` twice) froze the BARE NAME into the denial
+    // header and the override could never apply (solo probe *recent:page
+    // delta -14: 2 x ("Recent Changes") - 2 x ("*recent"), attribute +
+    // content). For every card WITHOUT a codename override this call is
+    // byte-identical to the old build: titleNoLinkView emits
+    // `<span class="card-title" title="${h(name)}">${wrappedTitleInner(h(name))}</span>`
+    // and wrappedTitleInner's `/\s*\+\s*/` join equals the old
+    // `.split("+")` join wherever no oracle title puts whitespace next to a
+    // joint (the census at format.ts:3670-3676: 145,258 of 145,260 captured
+    // spans byte-equal; the 2 exceptions are the html_safe explicit-title
+    // arm, not joint-related).
     //
-    // For `*recent` that is the whole difference. mod/search/set/self/
-    // recent.rb:4-7
-    //
-    //     view :title do
-    //       voo.title ||= "Recent Changes"
-    //       super()
-    //     end
-    //
-    // so a denied `*recent` page's <h1> reads "Recent Changes". The engine
-    // inlined `card.name.s` here, which bypassed the view entirely and
-    // rendered "*recent" — the sole open cluster-12 divergence
-    // (recapture-raw-shard-000003 `*recent:page`, -14: the override is
-    // seven characters longer than the bare name, in the title attribute
-    // AND in the span text).
-    //
-    // THE LOOKUP LIVES IN ONE PLACE. SELF_SET_TITLE_OVERRIDES moved from
-    // views.ts to this file so the readable header and the denial header
-    // read the same table — views.ts imports format.ts, so the dependency
-    // only runs this way (the cluster-3 rootUrl fix's "one builder, two
-    // surfaces" shape).
-    const title = this.selfSetTitleOverride() ?? name;
-    const titleInner = h(title).split("+").join("<span>+</span>");
-    const header =
-      `<div class="d0-card-header card-header">` +
-      `<h1 class="d0-card-header-title">` +
-      `<span class="card-title" title="${h(title)}">${titleInner}</span></h1></div>`;
+    // fold-9 superset note (2026-10-03): wave1's landed cluster-12 fix on
+    // this line was a hand build reading SELF_SET_TITLE_OVERRIDES via
+    // `selfSetTitleOverride() ?? name`; refill2's landed fix delegates to
+    // the real :title view. The delegation is taken because it is
+    // capture-census-backed (145,258/145,260) and SUBSUMES the table
+    // lookup: titleNoLinkView itself reads the same
+    // SELF_SET_TITLE_OVERRIDES table (now single-sourced in this file,
+    // read through fmt.selfSetTitleOverride()) — so wave1's override data
+    // and refill2's view-delegation mechanism both survive, and the denial
+    // header can no longer drift from the readable header's title bytes.
     const message = this.loudDenialMessageHtml();
     const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
@@ -3630,7 +3626,11 @@ function normalizeView(view: string): string {
  * delegation's (see RenderFormat#renderDelegated). One helper, so the two
  * scopes cannot drift.
  */
-function quietRenderError(
+/** MODULE-EXPORTED for renderPointerListItem's per-item rescue (views.ts):
+ *  the item nest is the item subformat's own render!, whose rescue is the
+ *  same span builder — one helper, so the nest/delegation/item scopes
+ *  cannot drift. */
+export function quietRenderError(
   error: unknown,
   card: RenderCard,
   view: string,
@@ -4211,6 +4211,22 @@ function linkTitleInContext(
  *  Returns "" when the mark carries no query bytes (unparseable marks keep
  *  the plain-underscore fallback href, the corpus's only wanted shape). */
 function wantedHrefQuerySuffix(hrefSource: string): string {
+  // path.rb:107-109 name_standardish?: `name.url_key == name.tr(" ", "_")`
+  // ("no name info will be lost by using url_key"). The name under test is
+  // the MARK-RESOLVED one: links.rb:36 passes `mark: Card::Name[cardish]`
+  // and path.rb:64-69 interpret_mark yields that Card::Name[] — whose
+  // per-part resolution turns a codename mark into its star name (name.ts
+  // parse: ":members" -> "*members" through the codename registry) — so
+  // "Eagle+:members" tests as "Eagle+*members", whose "*" IS in OK4KEY
+  // (cardname.rb:37 `OK4KEY_RE = '\p{Word}\*'`; url_key, variants.rb
+  // :8-13) — standardish, BARE href. The oracle: card 34824's authored
+  // `[[Eagle+:members|Eagle users]]` (no `Eagle+*members` row exists) renders
+  // `/Eagle+*members` with no query (recapture-raw-shard-000029 Eagle:page,
+  // delta +36 — the pre-fix helper tested the UNRESOLVED mark form, where
+  // ":" is not OK4KEY, and appended the create query). The mindfulness
+  // exemplar keeps its query ("-" is not OK4KEY: url_key "mytho_psychology"
+  // != "mytho-psychology", entry 28173) and People_Green stays bare
+  // (path.rb's own doc example).
   try {
     const parsed = DeckoName.parse(hrefSource);
     // BOTH SIDES OF THE STANDARDISH TEST MUST SEE THE RESOLVED NAME.
@@ -4237,6 +4253,18 @@ function wantedHrefQuerySuffix(hrefSource: string): string {
     // is the same construction url_key uses (cardname/lib/cardname/variants.rb
     // :8-13 maps part_names), without the lossy key-stripping, so it IS the
     // resolved name.
+    //
+    // fold-9 superset note (2026-10-03): refill2 independently derived the
+    // SAME standardish fix on its line (urlKey === name.s.replace(...),
+    // citing this same Eagle oracle, cardname.rb:37 OK4KEY_RE and
+    // links.rb:36 mark-resolution). Its side is not taken verbatim because
+    // its query arm carries the AUTHORED spelling (hrefSource) while this
+    // landed form carries the RESOLVED name, citing path.rb:89-96 (the
+    // same Cardname assigned to opts[:card][:name] that the test used) —
+    // the stricter reading; the two agree wherever no codename mark reaches
+    // the query arm in the corpus (mindfulness exemplar: no mark, identical
+    // strings). No corpus-observable behavior differs; the wave1 form is
+    // the already-pinned one on this line.
     const resolved = parsed.parts.join(DeckoName.JOINT);
     if (parsed.urlKey === resolved.replace(/ /g, "_")) return "";
     // The query carries the RESOLVED name too — path.rb:89-96 assigns the
