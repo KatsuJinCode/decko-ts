@@ -55,6 +55,7 @@
 // dispatch change closes it, and hand-pinning 11 would break the 667-row arm.
 
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 
@@ -65,7 +66,17 @@ const ARCHIVE = "C:/localProjects/archive/decko-fork-study/decko";
 function readRuby(relPath: string): string {
   return readFileSync(`${ARCHIVE}/${relPath}`, "utf8").replace(/\r\n/g, "\n");
 }
-const CORPUS = "C:/localProjects/decko-ts-lane-fama-remainder/tmp/raw-ground-truth/bench-corpus-raw.sqlite3";
+/** The machine's standard raw capture, read from the RUNNING worktree's own
+ *  tmp. The previous constant pointed into the fama-remainder lane worktree;
+ *  that worktree's corpus is gone (2026-10-03 standing net: existsSync true
+ *  in one process, `unable to open database file` in the next — the tree was
+ *  being removed under the run), so the corpus arm died with another lane's
+ *  checkout. Every live worktree's tmp/raw-ground-truth carries the same
+ *  capture (row 11745 verified identical); without one, the runIf below
+ *  skips loudly by design. */
+const CORPUS = fileURLToPath(
+  new URL("../../../tmp/raw-ground-truth/bench-corpus-raw.sqlite3", import.meta.url),
+);
 
 /** `%w[...]` / `["a", "b"]` catalog sizes straight out of the Ruby line. */
 function catalogSize(rubyLine: string): number {
