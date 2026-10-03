@@ -26,6 +26,7 @@ import { applyScriptIntegrity } from "../../../src/card/render/page.js";
 import { applyDeploymentCssRevision } from "../../../src/card/render/head-views.js";
 import {
   deckoRootUrl,
+  deploymentDefaultHtmlViewNest,
   footerDeckoVersion,
   recaptchaSiteKey,
   setDeploymentFollowLiveConfig,
@@ -234,6 +235,17 @@ describe("deployment follow-live config: live head constants", () => {
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
     expect(deckoRootUrl()).toBe("https://culturesmith.com/");
+  });
+
+  it("the deployment default_html_view answers implicit-nest view resolution", () => {
+    // The live deck configures default_html_view :content on both lanes;
+    // the graded corpus's view lane carries it (children:open renders the
+    // implicit {{_self+*referred_to_by}} nest as content-view). Unset = the
+    // railtie default (r17-nest-default-view-probe.rb pinned :titled).
+    setDeploymentFollowLiveConfig({ defaultHtmlViewNest: "content" });
+    expect(deploymentDefaultHtmlViewNest()).toBe("content");
+    setDeploymentFollowLiveConfig(undefined);
+    expect(deploymentDefaultHtmlViewNest()).toBeUndefined();
   });
 });
 

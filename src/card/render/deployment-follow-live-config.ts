@@ -52,6 +52,18 @@ export interface DeploymentFollowLiveConfig {
    *  decko.rootUrl -- live "https://culturesmith.com/"; the corpus
    *  pins the capture-era "/" form). */
   deckoRootUrl?: string;
+  /** The deployment's `Cardio.config.default_html_view` (the value
+   *  card-mod-format set/all/html.rb:17-19's default_nest_view reads for
+   *  every nest WITHOUT an explicit view; railtie default :titled,
+   *  mod/format.rb:2). The live deck configures :content — capture
+   *  receipt: every live-wire page renders implicit child nests as
+   *  content-view (blog.html latest_news-content-view), and the GRADED
+   *  corpus's view lane agrees: children:open (recapture-raw-shard-000025)
+   *  renders the implicit {{_self+*referred_to_by}} nest as content-view
+   *  where the engine's railtie-default arm rendered titled-view. UNSET =
+   *  the railtie default the bare-render capture pinned
+   *  (r17-nest-default-view-probe.rb). */
+  defaultHtmlViewNest?: string;
 }
 
 let config: DeploymentFollowLiveConfig | undefined;
@@ -97,4 +109,12 @@ export function recaptchaSiteKey(): string | undefined {
 /** The live decko root URL, or undefined (keep the capture-era "/" form). */
 export function deckoRootUrl(): string | undefined {
   return config?.deckoRootUrl;
+}
+
+/** The deployment's default_html_view value, or undefined (the railtie
+ *  default :titled the bare-render capture pinned). Read through
+ *  RenderEngine.defaultHtmlViewConfig AFTER the page lane's own
+ *  pageConfigActive arm. */
+export function deploymentDefaultHtmlViewNest(): string | undefined {
+  return config?.defaultHtmlViewNest;
 }

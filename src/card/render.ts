@@ -57,6 +57,7 @@ import {
 } from "./render/format.js";
 import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
 import { envOriginForSurface } from "./render/deck-origin.js";
+import { deploymentDefaultHtmlViewNest } from "./render/deployment-follow-live-config.js";
 import { myCardDropdownInnerHtml, signedInAccountLinksInnerHtml } from "./render/navbar-views.js";
 import type { ViewOverride } from "./rules/apply.js";
 import {
@@ -1835,9 +1836,18 @@ export class RenderEngine implements RenderEngineLike {
    * the bare-render capture ran — probe-pinned by
    * r17-nest-default-view-probe.rb: Cardio.config.default_html_view ==
    * :titled at boot, implicit nests render titled-view).
+   *
+   * A deployment that SETS the config rides the follow-live seam
+   * (deploymentDefaultHtmlViewNest): the live deck configures :content on
+   * BOTH lanes — the graded corpus's view lane carries it (children:open,
+   * recapture-raw-shard-000025: the implicit {{_self+*referred_to_by}}
+   * nest renders content-view where the railtie-default arm rendered
+   * titled-view), the same deck state the live pages' page-lane bytes
+   * prove (capture receipt #5, blog.html latest_news-content-view).
    */
   defaultHtmlViewConfig(): string {
-    return this.pageConfigActive ? "content" : "titled";
+    if (this.pageConfigActive) return "content";
+    return deploymentDefaultHtmlViewNest() ?? "titled";
   }
 
   /**
