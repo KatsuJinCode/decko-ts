@@ -1,0 +1,58 @@
+{
+  "mod": "card-mod-ace_editor",
+  "gem": "card-mod-ace_editor-0.20.0",
+  "generatedAt": "2026-10-03T13:10:58.083Z",
+  "totals": {
+    "behaviors": 4,
+    "validated": 0,
+    "standingNet": 4,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-ace_editor.test.ts"
+    ],
+    "ran": true,
+    "detail": "10 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "basket:basket[:list_input_options] << \"ace editor\"",
+      "kind": "basket-op",
+      "source": "card-mod-ace_editor-0.20.0/set/all/ace_editor.rb:1",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    },
+    {
+      "behaviorId": "basket:basket[:script_calls][\"setAceConfig\"] = :ace_config",
+      "kind": "basket-op",
+      "source": "card-mod-ace_editor-0.20.0/set/all/ace_editor.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    },
+    {
+      "behaviorId": "seed:ace",
+      "kind": "seed",
+      "source": "card-mod-ace_editor-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/core-admin-runtime.ts"
+    },
+    {
+      "behaviorId": "config:configurations",
+      "kind": "config",
+      "source": "card-mod-ace_editor-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    }
+  ]
+}

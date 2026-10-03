@@ -1,0 +1,113 @@
+{
+  "modId": "card-mod-comment",
+  "gemName": "card-mod-comment-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-comment-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/all/comment.rb",
+      "views": 1,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/comment.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/discussion.rb",
+      "views": 6,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:comment_box",
+      "kind": "view",
+      "name": "comment_box",
+      "alias": null,
+      "config": ", denial: :blank, unknown: true, perms: :update do",
+      "source": "card-mod-comment-0.20.0/set/all/comment.rb:46"
+    },
+    {
+      "id": "event:add_comment",
+      "kind": "event",
+      "name": "add_comment",
+      "options": ", :prepare_to_store, on: :save, when: :comment do",
+      "source": "card-mod-comment-0.20.0/set/all/comment.rb:5"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:8"
+    },
+    {
+      "id": "view:input",
+      "kind": "view",
+      "name": "input",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:12"
+    },
+    {
+      "id": "view:open",
+      "kind": "view",
+      "name": "open",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)"
+    },
+    {
+      "id": "view:open_content",
+      "kind": "view",
+      "name": "open_content",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)"
+    },
+    {
+      "id": "view:titled",
+      "kind": "view",
+      "name": "titled",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)"
+    },
+    {
+      "id": "view:titled_content",
+      "kind": "view",
+      "name": "titled_content",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)"
+    },
+    {
+      "id": "seed:discussion",
+      "kind": "seed",
+      "name": "discussion",
+      "codename": "discussion",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-comment-0.20.0/data/real.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "discussion",
+      "codename": "discussion",
+      "type": null,
+      "content": null,
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [],
+  "assets": [
+    "assets/style/comments.scss"
+  ],
+  "publicAssets": 0
+}

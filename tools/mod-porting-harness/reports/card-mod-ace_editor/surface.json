@@ -1,0 +1,70 @@
+{
+  "modId": "card-mod-ace_editor",
+  "gemName": "card-mod-ace_editor-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-ace_editor-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/all/ace_editor.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 2
+    },
+    {
+      "file": "set/self/ace.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "basket:basket[:list_input_options] << \"ace editor\"",
+      "kind": "basket-op",
+      "op": "basket[:list_input_options] << \"ace editor\"",
+      "source": "card-mod-ace_editor-0.20.0/set/all/ace_editor.rb:1"
+    },
+    {
+      "id": "basket:basket[:script_calls][\"setAceConfig\"] = :ace_config",
+      "kind": "basket-op",
+      "op": "basket[:script_calls][\"setAceConfig\"] = :ace_config",
+      "source": "card-mod-ace_editor-0.20.0/set/all/ace_editor.rb:2"
+    },
+    {
+      "id": "seed:ace",
+      "kind": "seed",
+      "name": "\"*Ace\"",
+      "codename": "ace",
+      "type": "json",
+      "contentSha": null,
+      "source": "card-mod-ace_editor-0.20.0/data/real.yml"
+    },
+    {
+      "id": "config:configurations",
+      "kind": "config",
+      "name": "configurations",
+      "source": "card-mod-ace_editor-0.20.0/config/admin.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "\"*Ace\"",
+      "codename": "ace",
+      "type": "json",
+      "content": "",
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "configurations"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/decko_ace_config.js.coffee",
+    "assets/script/manifest.yml"
+  ],
+  "publicAssets": 368
+}

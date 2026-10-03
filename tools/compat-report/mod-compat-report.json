@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-02T01:46:52.787Z",
+  "generatedAt": "2026-10-03T12:42:22.039Z",
   "gemDir": "$GEM_HOME",
-  "repo": "C:\\localProjects\\decko-ts-lane-fixr-tools",
+  "repo": "C:\\localProjects\\decko-ts-lane-mod-porting-harness",
   "surface": {
     "implementedPatterns": [
       "all",
@@ -30,6 +30,7 @@
       "admin",
       "api_key",
       "asset_output_url",
+      "autocomplete",
       "bad_address",
       "bar",
       "bar_body",
@@ -185,6 +186,7 @@
       "modal_pill_setting_list",
       "modal_rule",
       "modal_title",
+      "multiselect",
       "my_card",
       "name",
       "name_form",
@@ -255,6 +257,7 @@
       "scripts",
       "search_count",
       "search_error",
+      "select",
       "server_error",
       "set_label",
       "settings",
@@ -1001,7 +1004,7 @@
       "classification": {
         "status": "ported",
         "verdict": "10 mod-specific view(s) ported: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ...",
-        "evidence": "11/11 html views in HTML_VIEWS∪mod-manifests (10/10 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=30",
+        "evidence": "11/11 html views in HTML_VIEWS∪mod-manifests (10/10 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=31",
         "metrics": {
           "htmlViewsDeclared": 11,
           "htmlViewsCovered": 11,
@@ -1033,7 +1036,7 @@
           "manifestViewsDeclared": 13,
           "testExists": true,
           "testCount": 32,
-          "bytePins": 30
+          "bytePins": 31
         }
       },
       "inv": {
@@ -1133,7 +1136,7 @@
         ],
         "testExists": true,
         "testCount": 32,
-        "bytePins": 30
+        "bytePins": 31
       }
     },
     {
@@ -1890,7 +1893,7 @@
           "libRbFiles": 0,
           "hamlFiles": 5,
           "manifestExists": true,
-          "manifestViewsDeclared": 44,
+          "manifestViewsDeclared": 45,
           "testExists": true,
           "testCount": 9,
           "bytePins": 4
@@ -1979,6 +1982,7 @@
       "pins": {
         "manifestExists": true,
         "manifestViews": [
+          "template_link",
           "titled",
           "board_rules_tab",
           "board",
@@ -2302,7 +2306,7 @@
       "classification": {
         "status": "ported",
         "verdict": "44 mod-specific view(s) ported: add_button, add_link, add_url, admin, bar_right, board_link, ...",
-        "evidence": "55/57 html views in HTML_VIEWS∪mod-manifests (44/46 mod-specific); mod-loader pins: manifest=yes, test=46 it(), byte-pins=8",
+        "evidence": "55/57 html views in HTML_VIEWS∪mod-manifests (44/46 mod-specific); mod-loader pins: manifest=yes, test=49 it(), byte-pins=8",
         "metrics": {
           "htmlViewsDeclared": 57,
           "htmlViewsCovered": 55,
@@ -2336,7 +2340,7 @@
           "manifestExists": true,
           "manifestViewsDeclared": 51,
           "testExists": true,
-          "testCount": 46,
+          "testCount": 49,
           "bytePins": 8
         }
       },
@@ -2634,7 +2638,7 @@
           "core"
         ],
         "testExists": true,
-        "testCount": 46,
+        "testCount": 49,
         "bytePins": 8
       }
     },
@@ -3115,7 +3119,7 @@
           "libRbFiles": 0,
           "hamlFiles": 8,
           "manifestExists": true,
-          "manifestViewsDeclared": 6,
+          "manifestViewsDeclared": 9,
           "testExists": true,
           "testCount": 15,
           "bytePins": 15
@@ -3229,6 +3233,9 @@
           "one_line_content",
           "list",
           "checkbox",
+          "select",
+          "multiselect",
+          "autocomplete",
           "input",
           "nest_list_input"
         ],
@@ -3434,8 +3441,8 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "manifest + byte-pinned test (12 pins across 41 it()): core",
-        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=41 it(), byte-pins=12",
+        "verdict": "manifest + byte-pinned test (12 pins across 40 it()): core",
+        "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=12",
         "metrics": {
           "htmlViewsDeclared": 1,
           "htmlViewsCovered": 1,
@@ -3464,7 +3471,7 @@
           "manifestExists": true,
           "manifestViewsDeclared": 1,
           "testExists": true,
-          "testCount": 41,
+          "testCount": 40,
           "bytePins": 12
         }
       },
@@ -3530,7 +3537,7 @@
           "core"
         ],
         "testExists": true,
-        "testCount": 41,
+        "testCount": 40,
         "bytePins": 12
       }
     },
@@ -4032,8 +4039,8 @@
       "version": "0.20.0",
       "classification": {
         "status": "ported",
-        "verdict": "manifest + byte-pinned test (6 pins across 13 it()): ",
-        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=13 it(), byte-pins=6",
+        "verdict": "manifest + byte-pinned test (5 pins across 7 it()): ",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=7 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -4058,8 +4065,8 @@
           "manifestExists": true,
           "manifestViewsDeclared": 0,
           "testExists": true,
-          "testCount": 13,
-          "bytePins": 6
+          "testCount": 7,
+          "bytePins": 5
         }
       },
       "inv": {
@@ -4116,8 +4123,8 @@
         "manifestExists": true,
         "manifestViews": [],
         "testExists": true,
-        "testCount": 13,
-        "bytePins": 6
+        "testCount": 7,
+        "bytePins": 5
       }
     },
     {

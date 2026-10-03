@@ -1,0 +1,105 @@
+{
+  "mod": "card-mod-comment",
+  "gem": "card-mod-comment-0.20.0",
+  "generatedAt": "2026-10-03T13:10:55.770Z",
+  "totals": {
+    "behaviors": 9,
+    "validated": 1,
+    "standingNet": 8,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-comment-harness-probe.test.ts",
+      "tests/card/mod-loader/card-mod-comment.test.ts",
+      "tests/card/mod-loader/card-mod-comment-save-event.test.ts"
+    ],
+    "ran": true,
+    "detail": "30 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:comment_box",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/all/comment.rb:46",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "card-mod-comment.ts registers view \"comment_box\""
+    },
+    {
+      "behaviorId": "event:add_comment",
+      "kind": "event",
+      "source": "card-mod-comment-0.20.0/set/all/comment.rb:5",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "evidence": "card-mod-comment.ts registers event \"add_comment\""
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:input",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:12",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "card-mod-comment.ts registers view \"input\""
+    },
+    {
+      "behaviorId": "view:open",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"open\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:open_content",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"open_content\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:titled",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"titled\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:titled_content",
+      "kind": "view",
+      "source": "card-mod-comment-0.20.0/set/right/discussion.rb:1 (loop-declared)",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"titled_content\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "seed:discussion",
+      "kind": "seed",
+      "source": "card-mod-comment-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/card-mod-comment.ts"
+    }
+  ]
+}

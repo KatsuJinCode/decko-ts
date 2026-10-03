@@ -1,0 +1,224 @@
+{
+  "modId": "card-mod-bar_and_box",
+  "gemName": "card-mod-bar_and_box-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-bar_and_box-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/abstract/media.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/bar.rb",
+      "views": 15,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/box.rb",
+      "views": 4,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/image.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:bar",
+      "kind": "view",
+      "name": "bar",
+      "alias": null,
+      "config": ", unknown: :mini_bar, cache: :yes do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:9"
+    },
+    {
+      "id": "view:mini_bar",
+      "kind": "view",
+      "name": "mini_bar",
+      "alias": null,
+      "config": ", cache: :yes, unknown: true do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:15"
+    },
+    {
+      "id": "view:full_bar",
+      "kind": "view",
+      "name": "full_bar",
+      "alias": null,
+      "config": ", unknown: :mini_bar, cache: :yes do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:20"
+    },
+    {
+      "id": "view:bar_left",
+      "kind": "view",
+      "name": "bar_left",
+      "alias": null,
+      "config": ", unknown: true) { render_title }",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:26"
+    },
+    {
+      "id": "view:bar_middle",
+      "kind": "view",
+      "name": "bar_middle",
+      "alias": null,
+      "config": ", unknown: :blank) { \"\" }",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:27"
+    },
+    {
+      "id": "view:bar_right",
+      "kind": "view",
+      "name": "bar_right",
+      "alias": null,
+      "config": ", unknown: :blank) { \"\" }",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:28"
+    },
+    {
+      "id": "view:bar_bottom",
+      "kind": "view",
+      "name": "bar_bottom",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:30"
+    },
+    {
+      "id": "view:bar_menu",
+      "kind": "view",
+      "name": "bar_menu",
+      "alias": null,
+      "config": ", unknown: true, template: :haml",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:35"
+    },
+    {
+      "id": "view:bar_body",
+      "kind": "view",
+      "name": "bar_body",
+      "alias": null,
+      "config": ", unknown: true, template: :haml",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:36"
+    },
+    {
+      "id": "view:closed",
+      "kind": "view",
+      "name": "closed",
+      "alias": null,
+      "config": ", unknown: :mini_bar, cache: :yes do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:38"
+    },
+    {
+      "id": "view:closed_bar",
+      "kind": "view",
+      "name": "closed_bar",
+      "alias": "closed",
+      "config": null,
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:41"
+    },
+    {
+      "id": "view:accordion_bar",
+      "kind": "view",
+      "name": "accordion_bar",
+      "alias": "closed",
+      "config": null,
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:42"
+    },
+    {
+      "id": "view:open",
+      "kind": "view",
+      "name": "open",
+      "alias": null,
+      "config": ", cache: :yes do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:44"
+    },
+    {
+      "id": "view:open_bar",
+      "kind": "view",
+      "name": "open_bar",
+      "alias": "open",
+      "config": null,
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:47"
+    },
+    {
+      "id": "view:expanded_bar",
+      "kind": "view",
+      "name": "expanded_bar",
+      "alias": "open",
+      "config": null,
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:48"
+    },
+    {
+      "id": "view:box",
+      "kind": "view",
+      "name": "box",
+      "alias": null,
+      "config": ", template: :haml, cache: :yes do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:1"
+    },
+    {
+      "id": "view:box_top",
+      "kind": "view",
+      "name": "box_top",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:5"
+    },
+    {
+      "id": "view:box_middle",
+      "kind": "view",
+      "name": "box_middle",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:9"
+    },
+    {
+      "id": "view:box_bottom",
+      "kind": "view",
+      "name": "box_bottom",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:13"
+    },
+    {
+      "id": "view:boxed",
+      "kind": "view",
+      "name": "boxed",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-bar_and_box-0.20.0/set/type/image.rb:6"
+    },
+    {
+      "id": "view:boxed_link",
+      "kind": "view",
+      "name": "boxed_link",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-bar_and_box-0.20.0/set/type/image.rb:10"
+    },
+    {
+      "id": "config:views",
+      "kind": "config",
+      "name": "views",
+      "source": "card-mod-bar_and_box-0.20.0/config/admin.yml"
+    }
+  ],
+  "seeds": [],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "views"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/bar_and_box.js.coffee",
+    "assets/script/click_select.js.coffee",
+    "assets/style/bar.scss",
+    "assets/style/box.scss",
+    "assets/style/image_box.scss"
+  ],
+  "publicAssets": 0
+}

@@ -75,6 +75,16 @@ export interface ModEventSaveInput {
   readonly signedInActorName: string | undefined;
   /** The save clock (Time.zone.now in the signature). */
   readonly now: () => Date;
+  /** Ruby's Env.session for this save (card-1.110.0 lib/card/env.rb:21-23 —
+   *  `request&.session || {}`, never nil in a real run). The comment mod's
+   *  add_comment event writes the resolved comment_author into it
+   *  (set/all/comment.rb:6 `Env.session[:comment_author] = comment_author
+   *  if Env.session`) and the author reader takes the session arm FIRST
+   *  (comment.rb:16-19), so a later save in the same session remembers the
+   *  author. The CALLER carries the bag across saves (the route layer owns
+   *  the real session store; undefined = no session — the pre-port
+   *  behavior). */
+  readonly session?: { commentAuthor?: string };
   /** The card's pending content (the update's current db_content when the
    *  request changed none). */
   readonly pendingContent: string | undefined;

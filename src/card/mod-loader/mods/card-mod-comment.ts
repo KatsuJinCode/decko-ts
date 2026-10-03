@@ -21,10 +21,19 @@
 // NOT ported (honest remainder):
 // - set/all/comment.rb:14-19 attr_writer :comment_author + the reader's
 //   SESSION-STICKY arm — `Env.session[:comment_author] = comment_author`
-//   (the port resolves the author per save through ModEventSaveInput; the
-//   staging route layer carries no session-mutation surface yet, so a
-//   follow-up save does not remember a previous author — the named
-//   remainder, ladder: degraded-labeled)
+//   PORTED 2026-10-02 (the mod-porting-harness lane, oracle-verified):
+//   ModEventSaveInput.session carries the session store (the caller owns
+//   the bag across saves — Ruby's Env.session), the event writes the
+//   card-level resolved author BEFORE the blank-comment return (the
+//   gem's own order, comment.rb:6 then :7), and the reader takes the
+//   session arm first (:16-19). Pinned by the tracked harness probe
+//   tests/card/mod-loader/card-mod-comment-harness-probe.test.ts against
+//   the verbatim-gem-source capture
+//   fixtures/oracle-surfaces/card-mod-comment.harness.jsonl. THE NAMED
+//   REMAINDER THAT REMAINS: the staging route layer does not yet thread
+//   the real HTTP session store into saves (the caller-side carry), so a
+//   follow-up REQUEST does not remember a previous request's author yet —
+//   ladder: degraded-labeled on that seam only.
 // - set/all/comment.rb:55-83 hidden_comment_fields / comment_box /
 //   comment_buttons / comment_author_label / comment_submit_button -
 //   Rails form helpers (card_form, hidden_field_tag, text_area,
@@ -330,14 +339,19 @@ export function commentSignature(author: string, now: Date): string {
 }
 
 /** comment.rb:36-41 comment_author (the format block): signed-in readers
- *  comment as "[[Name]]"; otherwise the card-level reader falls to
- *  params/session/"Anonymous" + " (Not signed in)". */
+ *  comment as "[[Name]]"; otherwise the card-level reader (comment.rb:16-19:
+ *  the SESSION arm first, then params, then "Anonymous") + " (Not signed
+ *  in)". The session arm is what makes a second anonymous save in the same
+ *  session remember the first save's declared author (the harness oracle's
+ *  second_save_session_sticky scenario). */
 export function commentAuthorFor(save: {
   signedInActorName: string | undefined;
   commentAuthor: string | undefined;
+  session?: { commentAuthor?: string };
 }): string {
   if (save.signedInActorName !== undefined) return `[[${save.signedInActorName}]]`;
-  const declared = save.commentAuthor ?? "Anonymous";
+  const declared =
+    save.session?.commentAuthor ?? save.commentAuthor ?? "Anonymous";
   return `${declared} (Not signed in)`;
 }
 
@@ -353,18 +367,29 @@ export function appendComment(
   return `${base}\n<hr>\n${cleanComment(comment)}\n${commentSignature(author, now)}`;
 }
 
-/** The event body (comment.rb:5-12): a blank-but-present comment sticks
- *  the session author and appends nothing (`return unless
- *  comment.present?`); a real comment appends
- *  `"\n<hr>\n" + clean_comment + "\n" + signature`. */
+/** The event body (comment.rb:5-12), in the source's OWN order: the
+ *  session-sticky write of the CARD-LEVEL resolved author (session ->
+ *  params -> "Anonymous", comment.rb:6 + 16-19) happens BEFORE the
+ *  `return unless comment.present?` blank skip — a blank comment still
+ *  sticks the author (the harness oracle's blank_comment_still_sticks_author
+ *  scenario). The signature then uses the FORMAT-level author
+ *  (commentAuthorFor: the signed-in "[[Name]]" arm, else the card-level
+ *  resolution + " (Not signed in)" — the two resolutions are different
+ *  methods in the gem and the oracle pins both). */
 export async function addCommentEventFn(
   save: ModEventSaveInput,
 ): Promise<void> {
   const comment = save.comment;
   if (comment === undefined) return;
-  // `Env.session[:comment_author] = comment_author if Env.session` — the
-  // session-sticky write is the named remainder (no route-layer session
-  // mutation surface yet).
+  // `Env.session[:comment_author] = comment_author if Env.session`
+  // (comment.rb:6) — the card-level resolution, written before the blank
+  // skip. Undefined session = the caller carries no session store (the
+  // route layer's session carry stays the named remainder on the manifest
+  // header).
+  if (save.session !== undefined) {
+    save.session.commentAuthor =
+      save.session.commentAuthor ?? save.commentAuthor ?? "Anonymous";
+  }
   if (comment === "") return;
   const author = commentAuthorFor(save);
   save.setContent(appendComment(save.pendingContent, comment, author, save.now()));
