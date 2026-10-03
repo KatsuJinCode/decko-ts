@@ -458,7 +458,6 @@ function buildCustomizeButtonHref(args: {
  *  render-card-map walk stands. That fallback is deliberately NOT the new
  *  gate: it is page-scoped by construction, which is the bug, and it is
  *  only reachable on surfaces this lane does not warm. */
- (M9: Card.exist? for customize_button's new_customized_name is an async EXACT-name query)
 function newCustomizedName(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const engine = ctx.fmt.engine;
