@@ -1562,13 +1562,64 @@ export class RenderFormat {
       rendered = sub.renderView(view, viewOpts);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
-      const msg =
-        error instanceof UnsupportedViewError
-          ? error.message
-          : `Error rendering: ${h(card.name.s)} (${view} view)`;
-      rendered = `<span class="render-error alert alert-danger">${msg}</span>`;
+      rendered = quietRenderError(error, card, view);
     }
     return this.countNestChars(rendered);
+  }
+
+  /**
+   * `render_<view>` FROM INSIDE A VIEW BODY — Ruby's
+   * card/lib/card/format/method_delegation.rb:41-47 (`method_missing` ->
+   * `api_render` :14-18 -> `render!`), which opens its OWN
+   * `wrap_and_render` rescue scope (card/lib/card/format/render.rb:7-14,
+   * :96-100) on the SAME format object.
+   *
+   * WHY THIS IS A SEPARATE SEAM FROM nest()'s catch. Every `render!` in
+   * Ruby is independently rescued, so an error raised INSIDE a delegated
+   * render becomes that render's RETURN VALUE and the enclosing view body
+   * — including its `wrap` — completes normally. Two consequences the port
+   * was missing, both visible in the frozen record:
+   *
+   *  1. the enclosing `wrap` still emits the card-slot div. html/views.rb:10-18
+   *     `view :content do wrap do [render_menu(...), render_core, ...] end end`
+   *     wraps the rescued span, so a `+Date` nest that cannot parse its
+   *     content still renders its `content-view` slot.
+   *  2. the error is labelled with the DELEGATED view, not the wrapper's.
+   *     format/error.rb:80-86 `rendering_error exception, view` interpolates
+   *     the view `wrap_and_render` was called with, and html/error.rb:99-101
+   *     wraps that text in the render-error span. `render_core` therefore
+   *     reports "(core view)" — the corpus bytes for card 34322
+   *     `Maturana ...+Date` and its three siblings.
+   *
+   * The engine raised both facts away: the dispatch seam
+   * (src/card/render.ts:1579-1589, the Date::Error / Search BadQuery raise)
+   * has no rescue of its own, so the throw escaped `contentView` entirely,
+   * `slotWrap` never ran, and nest()'s catch produced the unwrapped span
+   * labelled "(content view)".
+   *
+   * LOUD vs QUIET. error.rb:65-67 `loud_error?` is `focal? ||
+   * config.raise_all_rendering_errors`; nesting/subformat.rb:41-43 `focal?`
+   * is `depth.zero?`; cardio/railtie.rb:38 sets raise_all_rendering_errors
+   * false. A delegated render on a NESTED format is therefore quiet, and on
+   * a depth-0 format it re-raises (error.rb:69-73 `loud_error` -> `raise e`)
+   * — which is why the corpus pins a bare `format.render(:content)` of a
+   * bad-content Date card as CAPTURE_ERROR, not as a page.
+   *
+   * UnsupportedViewError keeps its own message in both scopes
+   * (error.rb:52-54 `unsupported_view_error_message`), so it is passed
+   * through verbatim by the same helper nest() uses.
+   */
+  renderDelegated(
+    view: string,
+    opts: Record<string, unknown> = {},
+    optional: unknown = "show",
+  ): string {
+    try {
+      return this.renderView(view, opts, optional);
+    } catch (error) {
+      if (this.depth === 0) throw error; // error.rb:69-73 loud_error re-raises
+      return quietRenderError(error, this.card, view);
+    }
   }
 
   /**
@@ -3393,6 +3444,35 @@ const PERMS_NONE_VIEWS: ReadonlySet<string> = new Set([
 
 function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
+}
+
+/**
+ * html/error.rb:99-101 `rendering_error`:
+ *
+ *     def rendering_error exception, view
+ *       wrap_with(:span, class: "render-error alert alert-danger") { super }
+ *     end
+ *
+ * over format/error.rb:80-86, which returns the exception message verbatim
+ * for a UserError (`unsupported_view_error_message` is the one that reaches
+ * here in practice, error.rb:52-54) and otherwise the `lib_error_rendering`
+ * locale line — the oracle's `Error rendering: <safe name> (<view> view)`.
+ *
+ * Shared by the two rescue scopes that mirror Ruby's per-`render!`
+ * `wrap_and_render` (render.rb:96-100): nest()'s and the `render_<view>`
+ * delegation's (see RenderFormat#renderDelegated). One helper, so the two
+ * scopes cannot drift.
+ */
+function quietRenderError(
+  error: unknown,
+  card: RenderCard,
+  view: string,
+): string {
+  const msg =
+    error instanceof UnsupportedViewError
+      ? error.message
+      : `Error rendering: ${h(card.name.s)} (${view} view)`;
+  return `<span class="render-error alert alert-danger">${msg}</span>`;
 }
 
 /** View.normalize_list (visibility.rb:89) — a visibility option value is

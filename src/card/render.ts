@@ -1576,16 +1576,42 @@ export class RenderEngine implements RenderEngineLike {
     // the Date::Error sentinel. So the Search arm skips rule cards
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
-    if (
-      (card.typeCode === SEARCH_TYPE_CODE || card.typeCode === DATE_TYPE_CODE) &&
-      PARSE_DISPATCH_VIEWS.has(view)
-    ) {
-      if (card.typeCode === SEARCH_TYPE_CODE) {
-        const failed = this.searchFailures.get(card.key);
-        if (failed !== undefined && !this.computeIsRuleSync(card)) throw failed;
-      } else if (!isValidDateContent(card.dbContent)) {
-        throw dateError();
-      }
+    if (card.typeCode === SEARCH_TYPE_CODE && PARSE_DISPATCH_VIEWS.has(view)) {
+      const failed = this.searchFailures.get(card.key);
+      if (failed !== undefined && !this.computeIsRuleSync(card)) throw failed;
+    }
+    // THE DATE ARM MOVED TO :core (2026-10-02, open-clusters-fix). The
+    // Search arm above keeps its {open, content} axis, but the Date arm used
+    // to share it — and that put the raise ONE LEVEL TOO HIGH.
+    //
+    // Ruby raises inside the date cardtype's OWN view: mod/date/set/type/
+    // date.rb:6-8 declares `view :core do ::Date.parse(card.content)
+    // .strftime "%B %-d, %Y" end` and nothing else. The :content view that
+    // renders a Date card is the all-set one (mod/format/set/all/html/
+    // views.rb:10-18), whose body is `wrap do [..., render_core, ...] end`;
+    // render_core is a method delegation (format/method_delegation.rb:41-47)
+    // with its own wrap_and_render rescue (format/render.rb:7-14, :96-100).
+    // So the Date::Error is raised INSIDE the :core scope, one level below
+    // the :content dispatch.
+    //
+    // Raising at the :content dispatch instead skipped the view body: the
+    // `wrap` never ran, so the card-slot div was never emitted, and nest()'s
+    // catch (format.ts) produced the unwrapped span labelled "(content
+    // view)". The corpus carries the wrapped form with the DELEGATED label —
+    // card 34322 `Maturana ...+Date`, 27918 `Jamie McHugh ...+Date`, 35469
+    // `White Fragility ...+Date`, 9788 `Klickstein continues+Date`:
+    //   <div id="...-date-content-view" class="card-slot content-view ...">
+    //   <span class="render-error alert alert-danger">Error rendering:
+    //   ...+Date (core view)</span></div>
+    //
+    // Moving the gate to :core preserves the other half of the contract for
+    // free: a TOP-LEVEL `format.render(:content)` of a bad-content Date card
+    // is still CAPTURE_ERROR, because the delegated core render is focal
+    // (nesting/subformat.rb:41-43 `focal?` = depth.zero?) and re-raises
+    // (format/error.rb:65-73) — which is the census shape this arm was
+    // originally built for.
+    if (card.typeCode === DATE_TYPE_CODE && view === "core") {
+      if (!isValidDateContent(card.dbContent)) throw dateError();
     }
     // The cache key embeds the mod loader generation: every ModLoader.load()
     // and ModLoader.reset() bumps the global counter, so a cache entry

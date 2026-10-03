@@ -501,7 +501,18 @@ const contentView: ViewFn = ({ fmt }) => {
   // wrap do [render_menu(optional: :hide), render_core, render_edit_button(...)] end
   // both optionals are :hide in the captured context -> the body is render_core
   // (which dispatches to the search card_list for Search-type cards).
-  return slotWrapCommon(fmt, "content", fmt.renderView("core"));
+  //
+  // renderDelegated, not renderView: Ruby's `render_core` is a METHOD
+  // DELEGATION (format/method_delegation.rb:41-47) that opens its own
+  // wrap_and_render rescue scope (format/render.rb:7-14, :96-100). A card
+  // whose delegated core raises therefore RETURNS the render-error span
+  // from render_core, this `wrap` completes normally, and the card-slot
+  // div is still emitted — labelled "(core view)", because
+  // format/error.rb:80-86 interpolates the view wrap_and_render was called
+  // with. See RenderFormat#renderDelegated. The corpus bytes: card 34322
+  // `Maturana ...+Date` and siblings render the full `content-view` slot
+  // around `Error rendering: ...+Date (core view)`.
+  return slotWrapCommon(fmt, "content", fmt.renderDelegated("core"));
 };
 
 function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): string {
@@ -522,8 +533,11 @@ function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): s
  *  END of the slot class list. The array body joins with NO separator
  *  (the same output join the header view pins). */
 const contentPanelView: ViewFn = ({ fmt }) => {
+  // Same delegated-render seam as contentView (RenderFormat#renderDelegated):
+  // `render_core`'s rescue scope is its own, so a raising core still lets
+  // this view's `wrap` emit its content_panel slot.
   const inner = `<div class="card-body">${fmt.renderView("menu")}
-${fmt.renderView("core")}</div>`;
+${fmt.renderDelegated("core")}</div>`;
   return slotWrapCommon(fmt, "content_panel", inner);
 };
 
@@ -536,7 +550,7 @@ ${fmt.renderView("core")}</div>`;
  *  AFTER the data attributes (slotWrap's extraAttrs). The before hook
  *  (:34) adds the d0-card-content class_up only. */
 const contentWithTitleView: ViewFn = ({ fmt }) => {
-  const core = fmt.renderView("core");
+  const core = fmt.renderDelegated("core");
   const title = toText(core);
   const inner = `${fmt.renderView("menu")}
 ${core}`;
