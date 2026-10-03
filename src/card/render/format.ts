@@ -1148,6 +1148,10 @@ export class RenderFormat {
     // read through fmt.selfSetTitleOverride()) — so wave1's override data
     // and refill2's view-delegation mechanism both survive, and the denial
     // header can no longer drift from the readable header's title bytes.
+    const header =
+      `<div class="d0-card-header card-header">` +
+      `<h1 class="d0-card-header-title">` +
+      `${this.renderView("title")}</h1></div>`;
     const message = this.loudDenialMessageHtml();
     const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
