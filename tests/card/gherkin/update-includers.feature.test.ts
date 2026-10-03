@@ -161,6 +161,16 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     const bg = await givenBackground();
     nw = bg.nw;
 
+    // the templated Book card, in the port's declared setup shape (header
+    // note): upstream creates "Book card Bros Krmzv with plusses" through
+    // the Book+*type+*structure template; the port carries the template
+    // body as the card's own content so the *nests walk has the same
+    // inclusion references to read.
+    await nw.engine.createCard({
+      name: "Bros Krmzv",
+      typeCode: "book",
+      content: "{{+author}} {{+illustrator}}",
+    });
     // upstream: When I create Book card "Bros Krmzv" with plusses
     // |author|illustrator| ... Then Joe Admin should be notified that
     // 'Joe User created "Bros Krmzv"' (ONCE) — Ruby's create is ONE act
@@ -174,13 +184,16 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // dispatchSavePathIntegrations), and a plus-card create is its own
     // save; there is no multi-action act machinery to stash across. The
     // port therefore sends one mail PER SAVE for the same business event:
+    // the main card's own create (direct walk — Joe Admin watches
+    // Book+*type) plus one indirect-walk mail per plus save.
     await nw.engine.createCard({ name: "Bros Krmzv+author", content: "Dostoyevsky" });
     await nw.engine.createCard({ name: "Bros Krmzv+illustrator", content: "Manet" });
+    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv"`);
     thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv+author"`);
     thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv+illustrator"`);
     // The boundary, pinned so the act-machinery's arrival must update
-    // this file: two saves, two mails (Ruby: one).
-    expect(nw.transport.count() - bg.baseline).toBe(2);
+    // this file: three saves, three mails (Ruby: one act, one mail).
+    expect(nw.transport.count() - bg.baseline).toBe(3);
   });
 
   // ---------------------------------------------------------------------
@@ -204,15 +217,19 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
       name: "Froot+*type+*structure",
       typeCode: "phrase",
       content: "{{+colors}} {{+flavor}}",
-    });    givenSignedInAs(nw, JOE_USER);
+    });
+    givenSignedInAs(nw, JOE_USER);
     await nw.engine.createCard({ name: "Banana+colors", content: "yellow" });
     await nw.engine.createCard({ name: "Banana+flavor", content: "sweet" });
+    // ONE watch covers both spellings: the key algebra CONVERGES
+    // "Banana+color" and "Banana+colors" — Cardname#key simple_key runs
+    // every word through stable_key (cardname.rb:106-117), whose uninflect
+    // default is :singularize with stabilize=false (cardname.rb:34-35;
+    // variants.rb:56-62 keeps the original word when singularizing is not
+    // stable), and name equality is key equality (cardname.rb:78-86). In
+    // Ruby too, watching "Banana+color+*self" watches the card this port
+    // saves as "Banana+colors" — a second watch would be the same set card.
     await givenWatching(nw.world, "Joe Camel", "Banana+color+*self");
-    // The upstream watches "Banana+color+*self" while the structure nest
-    // says {{+colors}} — decko's structure machinery reconciles the two;
-    // this deck has no structure machinery (header note), so the watch
-    // follows the card the port actually saves ("Banana+colors").
-    await givenWatching(nw.world, "Joe Camel", "Banana+colors+*self");
     const afterWatch = nw.transport.count();
 
     // upstream: When I edit "Banana" with plusses |colors|flavor|
