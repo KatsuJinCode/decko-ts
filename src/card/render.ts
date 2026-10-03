@@ -2572,9 +2572,17 @@ export class RenderEngine implements RenderEngineLike {
    * the render-card map (no fetches). Returns true only when the right
    * part's type_id is the *setting codename and the left part's type_id
    * is the *set codename — the standard_rule? path (lib/card/rule/all.rb
-   * :32-51). Preference shapes (>3 parts) return false here; the
-   * corpus's structured-content path doesn't exercise them and the
-   * async computeIsRule would re-fetch through the ladder for those.
+   * :32-51). The PREFERENCE? arm is ported below — it used to bail at
+   * `parts.length > 3 -> false` on the standing note that "the
+   * preference? shape is not ported", but the ASYNC twin right above
+   * (render.ts:5626-5641) DOES port it (citing all.rb:42-48 + 50-53),
+   * so the two declared "counterparts" disagreed and the sync one —
+   * the one that runs at applyStructureContent time — dropped the RULE
+   * token for every preference rule card. The capture pins it: card
+   * 22735 `*all+*all+*follow` (List-typed, 3 parts) renders
+   *   `class='accordion-item bar ALL ALL_PLUS TYPE-list RSTAR RULE
+   *    RIGHT-Xfollow TYPE_PLUS_RIGHT-rich_text-Xfollow SELF-Xall-Xall-Xfollow'`
+   * and the engine emitted the same list WITHOUT ` RULE`.
    *
    * CORRECTION (oracle-pinned by
    * fixtures/captured/form-substrate.json rule_card_head/guide): the
@@ -2586,9 +2594,7 @@ export class RenderEngine implements RenderEngineLike {
    * false` dropped the RULE token from every 2-part rule card's repaired
    * set keys, and quick_edit (the first view to pin a 2-part rule card's
    * SLOT classes — the link views carry no slot wrap) exposed it: the
-   * capture pins `... RSTAR RULE RIGHT-Xhead ...`. The preference guard
-   * stays: parts.length > 3 -> false (the corpus's structured-content
-   * path doesn't exercise preferences here).
+   * capture pins `... RSTAR RULE RIGHT-Xhead ...`.
    */
   private computeIsRuleSync(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
@@ -2601,14 +2607,38 @@ export class RenderEngine implements RenderEngineLike {
     if (rightKey === undefined) return false;
     const rightCard = this.renderCards.get(rightKey);
     if (rightCard === undefined || rightCard.record.typeId !== ids.setting) return false;
-    if (name.parts.length > 3) return false; // preference shapes: not here
-    // standard_rule? — the left part ("A+B" for 3-part, "A" for 2-part)
-    // type_id === set
-    const leftKey = name.leftName?.key;
-    if (leftKey === undefined) return false;
-    const leftCard = this.renderCards.get(leftKey);
-    if (leftCard !== undefined) return leftCard.record.typeId === ids.set;
-    return false;
+    if (name.parts.length > 2) {
+      // standard_rule? (all.rb:37-40) — the left part ("A+B" for a
+      // 3-part name, "A" for a 2-part one) is Set-typed.
+      const leftKey = name.leftName?.key;
+      if (leftKey !== undefined) {
+        const leftCard = this.renderCards.get(leftKey);
+        if (leftCard !== undefined && leftCard.record.typeId === ids.set) return true;
+      }
+      // preference? (all.rb:42-48) — `name[0..-3]` is Set-typed, then
+      // valid_preferer? (all.rb:50-52): the `[-2]` part is User-typed, or
+      // that part's codename is "all". The async twin's predicate, read
+      // off the render-card map instead of the fetch ladder. Corpus
+      // evidence for both preferer clauses: `*all` is card 274, type 259
+      // (Set) = the trunk, codename "all" = the codename clause;
+      // `Brandon WilliamsCraig` is card 393, type 4 (codename "user") =
+      // the User clause.
+      const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
+      if (trunkKey === "") return false;
+      const trunkCard = this.renderCards.get(trunkKey);
+      if (trunkCard === undefined || trunkCard.record.typeId !== ids.set) return false;
+      const prefererKey = DeckoName.parse(name.parts[name.parts.length - 2] ?? "").key;
+      if (prefererKey === "") return false;
+      const prefererCard = this.renderCards.get(prefererKey);
+      if (prefererCard === undefined) return false;
+      if (ids.user !== undefined && prefererCard.record.typeId === ids.user) return true;
+      return prefererCard.record.codename === "all";
+    }
+    // Two-part standard_rule?: name.left is the whole first part.
+    const twoPartLeftKey = name.leftName?.key;
+    if (twoPartLeftKey === undefined) return false;
+    const twoPartLeft = this.renderCards.get(twoPartLeftKey);
+    return twoPartLeft?.record.typeId === ids.set;
   }
 
   // -------------------------------------------------------------------------
