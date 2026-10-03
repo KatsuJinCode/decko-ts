@@ -8,12 +8,18 @@
 //   3. `wrangler d1 execute decko-ts --file db/seed.sql`           (optional)
 //   4. `wrangler deploy`
 //   5. curl https://decko-ts.<account>.workers.dev/             → "Hello world" card
-//   6. curl https://decko-ts.<account>.workers.dev/Hello+World   → renders that card
+//   6. curl https://decko-ts.<account>.workers.dev/Hello_World   → renders that card
 //
 // Runtime seam (src/server/drivers/d1.ts): the engine never imports vendor
 // SDKs. The D1 binding from `env` is duck-typed as D1DatabaseLike; see
 // docs/driver-notes.md for the verified shapes (meta.last_row_id, batch
 // semantics, bigint-bind rejection).
+//
+// TWIN SURFACE: this entry and deploy/worker.ts answer the same read
+// surface through the shared module src/server/worker-shared-surface.ts
+// (error-status mapping, hardened decode, history params, boot prime) —
+// the parity is pinned by
+// tests/deploy/worker-twins-shared-surface-parity.test.ts.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
 import { FetchEngine } from "./src/card/fetch.js";
@@ -23,6 +29,20 @@ import {
   readWorkersRequest,
   toWebResponse,
 } from "./src/server/cloudflare-write-routes.js";
+import { applyDeckInflections } from "./src/card/name/inflect.js";
+import { ORACLE_DECK_INFLECTIONS } from "./src/card/name/oracle-deck-inflections.js";
+import { createVirtualCardLookup } from "./src/card/fetch/virtual-cards.js";
+import {
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+  structureRuleTypesFromResults,
+} from "./src/card/rules/structure.js";
+import {
+  decodeName,
+  historyViewParams,
+  installDeckNameEnvironment,
+  mapRenderError,
+} from "./src/server/worker-shared-surface.js";
 
 interface Env {
   /** D1 binding declared in wrangler.toml [[d1_databases]]. */
@@ -40,14 +60,36 @@ interface Deck {
 
 // One Deck per isolate (the Workers reuse pattern). The first request in
 // the isolate boots the engine; subsequent requests share the warm caches
-// (the #1282 promise: warm re-render issues zero queries).
+// (the #1282 promise: warm re-render issues zero queries). A FAILED boot is
+// never cached: the next request retries (a transient D1 hiccup on first
+// hit must not poison the isolate — the deploy entry's proven pattern).
 const decks = new Map<string, Promise<Deck>>();
 
-function bootDeck(env: Env): Promise<Deck> {
+async function bootDeck(env: Env): Promise<Deck> {
+  // THE DECK'S INFLECTION TABLE, APPLIED BEFORE ANY NAME IS PARSED — the
+  // rule oracle-deck-inflections.ts:1-13 states for every deck-serving
+  // origin ("the same moment a Rails deck's config/initializers/
+  // inflections.rb runs"). Without it every key derives gem-default
+  // (`Anonymous` keyed `anonymou`) and the divergence rides into the
+  // rendered slot class tokens — visible in the card BYTES.
+  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   const driver = new CloudflareD1Adapter(env.DB);
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
-  return Promise.resolve({ fetcher, render });
+  // The sync name environment (mark URLs /~<id> and /:<codename>) reads
+  // only warm caches; install + warm at boot or the marks 500 (the
+  // deploy entry's F4 pins cover the behavior; this is the shared prime).
+  await installDeckNameEnvironment(driver, fetcher);
+  // Virtual-card rule universe (src/card/fetch/virtual-cards.ts:44-49, the
+  // storage factory's responsibility): without this hook compound names
+  // that resolve only through the structure rule walk 404 even when the
+  // live deck has the rule.
+  const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+  fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+    contents: structureUniverseFromResults(universeResult),
+    ruleTypeIds: structureRuleTypesFromResults(universeResult),
+  });
+  return { fetcher, render };
 }
 
 function getDeck(env: Env): Promise<Deck> {
@@ -55,65 +97,83 @@ function getDeck(env: Env): Promise<Deck> {
   const key = "deck";
   let p = decks.get(key);
   if (p === undefined) {
-    p = bootDeck(env);
+    p = bootDeck(env).catch((error) => {
+      decks.delete(key);
+      throw error;
+    });
     decks.set(key, p);
   }
   return p;
 }
 
 // ---------------------------------------------------------------------------
-// URL routing — minimum surface for the M2 demo
+// URL routing — the read grammar the two entries share
 // ---------------------------------------------------------------------------
 //
-//   GET /                  → render "Home" :open
-//   GET /<name>            → render <name> :open
-//   GET /<name>/<view>     → render <name> <view>   (any view in SUPPORTED_VIEWS below)
+//   GET /                  → render "Home" (view from ?view=/?v=, else :open)
+//   GET /<name>            → render <name>   (view from ?view=/?v=, else :open)
+//   GET /<name>/<view>     → render <name> <view>   (the path view wins)
+//   GET /<name>/view/<view>→ the same render (engine_routes.rb:24)
 //   GET /api/status        → JSON health
-//   GET /api/card/<name>   → JSON metadata
+//   GET /api/card/<name>   → JSON metadata (read-gated)
 //   everything else        → 404 with explanation
+//
+// The view name rides VERBATIM into the engine (engine_routes.rb:51's
+// ":mark/:view" constrains nothing): a view no module registers raises
+// UnsupportedViewError and the error mapper answers the UserError shape
+// (422). The former 17-view allowlist was a divergence — Ruby's route
+// matches any view and the ENGINE decides.
 
-const SUPPORTED_VIEWS = new Set([
-  "open", "closed", "content", "title", "titled", "menu",
-  "core", "card_list", "naked", "bar", "bar_left", "bar_middle",
-  "bar_right", "bar_bottom",
-  // card-mod-history render-time views (src/card/history/render-seam.ts):
-  // GET /<name>/history[?act_id=&page=], /<name>/act[?act_id=],
-  // /<name>/action_summary[?action_id=] - anonymous reads history exactly
-  // when it reads the card (the views carry no perms directive; the render
-  // gate enforces the card's read rule).
-  "history", "act", "action_summary",
-]);
+type ParsedPath =
+  | { name: string; view?: string }
+  | { kind: "api" }
+  | { kind: "notFound" };
 
-function parsePath(
-  pathname: string,
-  searchParams?: URLSearchParams,
-): { name: string; view: string; params?: Record<string, string> } | { kind: "api" } | { kind: "notFound" } {
+function parsePath(pathname: string): ParsedPath {
   // strip trailing slash, drop leading slash
   const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
-  if (path === "") return { name: "Home", view: "open" };
+  if (path === "") return { name: "Home" };
   if (path === "api/status") return { kind: "api" };
   if (path.startsWith("api/card/")) return { kind: "api" };
 
   const segments = path.split("/");
-  if (segments.length === 1) return { name: decodeURIComponent(segments[0]), view: "open" };
-  if (segments.length === 2 && SUPPORTED_VIEWS.has(segments[1])) {
-    // The history views read Card::Env.params equivalents (act_id /
-    // action_id / page / act_seq / action_view / hide_diff / act_context)
-    // from the query string; other views ignore them.
-    const params: Record<string, string> = {};
-    if (searchParams !== undefined) {
-      for (const key of ["act_id", "action_id", "page", "act_seq", "action_view", "hide_diff", "act_context"]) {
-        const value = searchParams.get(key);
-        if (value !== null) params[key] = value;
-      }
+  if (segments.length === 1) {
+    const name = decodeName(segments[0]!);
+    if (name === undefined || name === "") return { kind: "notFound" };
+    // no view in the path: Ruby's card#read -> show(nil) — view_from_params
+    // consults the query before the :open default applies (rest.rb:92-103)
+    return { name };
+  }
+  if (segments.length === 3 && segments[1] === "view") {
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[2]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "notFound" };
     }
-    return {
-      name: decodeURIComponent(segments[0]),
-      view: segments[1],
-      ...(Object.keys(params).length > 0 ? { params } : {}),
-    };
+    return { name, view };
+  }
+  if (segments.length === 2) {
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[1]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "notFound" };
+    }
+    return { name, view };
   }
   return { kind: "notFound" };
+}
+
+/** view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
+ *  `%i[view v].each { |k| return params[k] if params[k].present? }` — the
+ *  first NON-BLANK of the two query params, nil when neither is present.
+ *  The value rides VERBATIM into the engine; the path view (the action
+ *  arg) never falls through to params. */
+function queryViewFromUrl(url: URL): string | undefined {
+  for (const key of ["view", "v"] as const) {
+    const value = url.searchParams.get(key);
+    if (value !== null && value !== "") return value;
+  }
+  return undefined;
 }
 
 // Named export for the tests: the URL parser under test is this exact
@@ -188,50 +248,92 @@ export default {
       if (writeResult !== null) return toWebResponse(writeResult, inbound);
     }
 
-    const parsed = parsePath(url.pathname, url.searchParams);
+    const parsed = parsePath(url.pathname);
 
     if ("kind" in parsed) {
       if (parsed.kind === "notFound") {
-        return html(404, layoutPage("Not found", "<h1>Not found</h1><p class='muted'>Try <a href='/'>the home page</a> or render a card by name, e.g. <code>/Hello+World</code>.</p>"));
+        return html(404, layoutPage("Not found", "<h1>Not found</h1><p class='muted'>Try <a href='/'>the home page</a> or render a card by name, e.g. <code>/Hello_World</code>.</p>"));
       }
       // api routes
       if (url.pathname === "/api/status") {
-        const deck = await getDeck(env);
-        return json(200, {
-          ok: true,
-          runtime: "workers",
-          engine: "decko-ts",
-          notes: "boot pattern: warm caches survive across requests in the same isolate",
-        });
+        try {
+          await getDeck(env);
+          return json(200, {
+            ok: true,
+            runtime: "workers",
+            engine: "decko-ts",
+            notes: "boot pattern: warm caches survive across requests in the same isolate",
+          });
+        } catch (error) {
+          // an unbootable deck (missing/broken binding) is a structured
+          // 500, never an unhandled rejection
+          return json(500, {
+            ok: false,
+            runtime: "workers",
+            engine: "decko-ts",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
       if (url.pathname.startsWith("/api/card/")) {
-        const name = decodeURIComponent(url.pathname.slice("/api/card/".length));
-        const deck = await getDeck(env);
-        const record = await deck.fetcher.fetchByName(name);
-        if (record === undefined || record.name === undefined) {
-          return json(404, { error: "card not found", name });
+        try {
+          const name = decodeName(url.pathname.slice("/api/card/".length));
+          if (name === undefined || name === "") {
+            return json(400, { error: "empty card name" });
+          }
+          const deck = await getDeck(env);
+          const record = await deck.fetcher.fetchByName(name);
+          if (record === undefined || record.name === undefined) {
+            return json(404, { error: "card not found", name });
+          }
+          // The read gate (the deploy entry's .json gate, probe battery
+          // batch-05): Ruby's GET of a denied card renders the denial
+          // (ok_to_read? fails, set/all/permissions.rb:139-146); the JSON
+          // surface answers 403 without the protected fields. Same engine
+          // verdict the HTML path judges with (RenderEngine#canReadCard).
+          const typeRecord =
+            record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+          const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
+          if (!readable) {
+            return json(403, { error: "permission denied", name });
+          }
+          return json(200, {
+            id: record.id ?? null,
+            name: record.name.s,
+            key: record.name.key,
+            type_id: record.typeId ?? null,
+            codename: record.codename ?? null,
+            db_content_preview: (record.dbContent ?? "").slice(0, 200),
+          });
+        } catch (error) {
+          return json(500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-        return json(200, {
-          id: record.id ?? null,
-          name: record.name.s,
-          key: record.name.key,
-          type_id: record.typeId ?? null,
-          codename: record.codename ?? null,
-          db_content_preview: (record.dbContent ?? "").slice(0, 200),
-        });
       }
       return html(404, layoutPage("Not found", "<h1>Not found</h1>"));
     }
 
     try {
       const deck = await getDeck(env);
-      const htmlBody = await deck.render.render(parsed.name, parsed.view, parsed.params ?? {});
-      return html(200, layoutPage(`${parsed.name} (${parsed.view})`, htmlBody));
+      const view = parsed.view ?? queryViewFromUrl(url) ?? "open";
+      const htmlBody = await deck.render.render(
+        parsed.name,
+        view,
+        historyViewParams(url.searchParams),
+      );
+      return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      const isUnsupportedView = message.startsWith("view (");
-      const status = isUnsupportedView ? 422 : 500;
-      return html(status, layoutPage("Error", `<h1>${isUnsupportedView ? "Unsupported view" : "Render error"}</h1><pre>${message}</pre>`));
+      // The Card::Error status_code table (prototype/lib/card/error.rb),
+      // shared with deploy/worker.ts via mapRenderError: NotFound -> 404,
+      // the UserError raise for an unregistered view -> 422, else 500.
+      // This entry shipped a blanket 500 for missing cards until the
+      // deploy-button verification lane caught it live (the public
+      // lineage's 90d5f31); the mapping is now shared code, not a twin.
+      const mapped = mapRenderError(message);
+      return html(mapped.status, layoutPage(mapped.title, `<h1>${mapped.title}</h1><pre>${message}</pre>`));
     }
   },
 };

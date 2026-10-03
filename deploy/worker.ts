@@ -50,6 +50,11 @@ import {
   structureRuleTypesFromResults,
 } from "../src/card/rules/structure.js";
 import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
+import {
+  decodeName,
+  historyViewParams,
+  mapRenderError,
+} from "../src/server/worker-shared-surface.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
 interface Env {
@@ -347,27 +352,10 @@ function errorPage(status: number, title: string, message: string): Response {
   );
 }
 
-/** decodeURIComponent that 400s on malformed input instead of throwing.
- *  The '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb)
- *  and must survive into the name: /Demo%20Guide+Section%20One is the
- *  junction "Demo Guide+Section One" whose canonical engine key is
- *  "demo_guide+section_one" (left.key + joint + right.key, name.ts #key).
- *  An earlier revision rewrote '+' to ' ' here so multi-word simple names
- *  could ride the bare-plus URL form — that made junction names
- *  unreachable over HTTP in EVERY form ('+' -> space; '%2B' -> '+' ->
- *  space) while the engine still composes junction keys WITH the joint,
- *  so every compound GET 404'd (the adversarial probe battery's headline
- *  finding, batch 01). Ruby/decko addresses junctions as /A+B and
- *  multi-word simple names as /A%20B (or the underscore alias form);
- *  this surface now does the same. Caught by the targeted Cloudflare
- *  test 2026-09-23; reconciled to the engine-canonical key 2026-09-24. */
-function decodeName(raw: string): string | undefined {
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return undefined;
-  }
-}
+/** decodeName moved to src/server/worker-shared-surface.ts — the hardened
+ *  decode is SHARED surface (the root entry answers the same joint rules),
+ *  extracted so the twins cannot drift again. The joint story lives on the
+ *  shared function. */
 
 // ---------------------------------------------------------------------------
 // Route handlers
@@ -457,9 +445,14 @@ function queryViewFromUrl(url: URL): string | undefined {
   return undefined;
 }
 
-async function renderCardPage(deck: Deck, cardName: string, requestedView = OPEN_VIEW): Promise<Response> {
+async function renderCardPage(
+  deck: Deck,
+  cardName: string,
+  requestedView = OPEN_VIEW,
+  params: Record<string, string> = {},
+): Promise<Response> {
   try {
-    const view = await deck.render.render(cardName, requestedView);
+    const view = await deck.render.render(cardName, requestedView, params);
     // Body wrapper = the live decko page shell (receipt:
     // brandonDojoTech/tmp/live-wire/Home.html line 81): everything visible
     // rides inside <article class="container flex-shrink-0" role="main"> —
@@ -484,8 +477,12 @@ async function renderCardPage(deck: Deck, cardName: string, requestedView = OPEN
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (/^card not found: /.test(message)) return errorPage(404, "Card not found", message);
-    return errorPage(500, "Render error", message);
+    // The Card::Error status_code table (prototype/lib/card/error.rb),
+    // SHARED with the root entry via mapRenderError: NotFound -> 404, the
+    // UserError raise for an unregistered view -> 422 (error.rb:21 — the
+    // base status_code this entry's former 500 contradicted), else 500.
+    const mapped = mapRenderError(message);
+    return errorPage(mapped.status, mapped.title, message);
   }
 }
 
@@ -716,6 +713,7 @@ export default {
         deck,
         HOME_CARD_NAME,
         queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
+        historyViewParams(new URL(request.url).searchParams),
       );
     }
 
@@ -784,6 +782,7 @@ export default {
       deck,
       route.name,
       route.view ?? queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
+      historyViewParams(new URL(request.url).searchParams),
     );
   },
 };

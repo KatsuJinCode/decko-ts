@@ -158,17 +158,20 @@ describe("deploy worker route grammar — the alternate GET views (R4)", () => {
     expect(html).toContain('data-view="closed"');
   });
 
-  it("GET /:mark/:view 404s a missing card, and an unregistered view is the render-error page (never a 200)", async () => {
+  it("GET /:mark/:view 404s a missing card, and an unregistered view is the 422 Unsupported-view page (never a 200)", async () => {
     const missing = await get("/NoSuchCard/closed");
     expect(missing.status).toBe(404);
     expect(await missing.text()).toContain("Card not found");
 
-    // Ruby has no template for an unregistered view either; the engine's
-    // dispatch raises and the shell surfaces the render-error page naming
-    // the view. The negative half matters: a silent empty 200 would be a
-    // leak of "the view silently renders nothing".
+    // Ruby raises Card::Error::UserError for an unregistered view
+    // (render.rb#view_method; the engine's UnsupportedViewError cites it)
+    // and Card::Error's BASE status_code is 422 (prototype/lib/card/
+    // error.rb:21; only ServerError :46-51 overrides to 500) — the
+    // mapper answers the UserError shape on BOTH worker entries. The
+    // negative half matters: a silent empty 200 would be a leak of "the
+    // view silently renders nothing".
     const unknown = await get("/About/no_such_view");
-    expect(unknown.status).toBe(500);
+    expect(unknown.status).toBe(422);
     expect(await unknown.text()).toContain("no_such_view");
   });
 
@@ -224,11 +227,12 @@ describe("deploy worker route grammar — the ?view= query param (R4's named rem
     expect(html).not.toContain('data-view="open"');
   });
 
-  it("an unregistered view param is the render-error page, verbatim (never a silent 200)", async () => {
+  it("an unregistered view param is the 422 Unsupported-view page, verbatim (never a silent 200)", async () => {
     // the same contract the path arm pins: the view name rides verbatim
-    // into the engine, which raises for a view no module registers
+    // into the engine, which raises the UserError shape (error.rb:21
+    // base status_code 422) for a view no module registers
     const response = await get("/About?view=no_such_view");
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(422);
     expect(await response.text()).toContain("no_such_view");
   });
 

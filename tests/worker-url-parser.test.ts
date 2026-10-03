@@ -29,24 +29,28 @@ beforeAll(async () => {
 });
 
 describe("worker URL parser (worker entry parsePath)", () => {
-  it("routes / to Home :open", () => {
-    expect(parsePath("/")).toEqual({ name: "Home", view: "open" });
+  it("routes / to Home, view-less (the query fills it: rest.rb:100-103)", () => {
+    expect(parsePath("/")).toEqual({ name: "Home" });
   });
 
-  it("routes /<name> to <name> :open", () => {
-    expect(parsePath("/Hello+World")).toEqual({ name: "Hello+World", view: "open" });
-    expect(parsePath("/A")).toEqual({ name: "A", view: "open" });
+  it("routes /<name> to a view-less card route (the query fills it)", () => {
+    expect(parsePath("/Hello+World")).toEqual({ name: "Hello+World" });
+    expect(parsePath("/A")).toEqual({ name: "A" });
   });
 
-  it("routes /<name>/<view> to <name> <view>", () => {
+  it("routes /<name>/<view> to <name> <view>, verbatim (engine_routes.rb:51 constrains nothing)", () => {
     expect(parsePath("/Hello+World/content")).toEqual({ name: "Hello+World", view: "content" });
     expect(parsePath("/Home/open")).toEqual({ name: "Home", view: "open" });
     expect(parsePath("/Home/closed")).toEqual({ name: "Home", view: "closed" });
     expect(parsePath("/Home/menu")).toEqual({ name: "Home", view: "menu" });
   });
 
-  it("rejects unsupported views as notFound", () => {
-    expect(parsePath("/Home/nonsense")).toEqual({ kind: "notFound" });
+  it("routes /<name>/view/<view> (engine_routes.rb:24)", () => {
+    expect(parsePath("/Home/view/closed")).toEqual({ name: "Home", view: "closed" });
+  });
+
+  it("any view rides verbatim — the ENGINE raises for unregistered ones (the former allowlist was a twin divergence)", () => {
+    expect(parsePath("/Home/nonsense")).toEqual({ name: "Home", view: "nonsense" });
     expect(parsePath("/Home/open/extra")).toEqual({ kind: "notFound" });
   });
 
@@ -56,11 +60,16 @@ describe("worker URL parser (worker entry parsePath)", () => {
   });
 
   it("decodes URL-encoded names", () => {
-    expect(parsePath("/Hello%20World")).toEqual({ name: "Hello World", view: "open" });
+    expect(parsePath("/Hello%20World")).toEqual({ name: "Hello World" });
+  });
+
+  it("a MALFORMED %-encoding answers notFound instead of throwing (the shared hardened decode)", () => {
+    expect(parsePath("/%E0%A4%A")).toEqual({ kind: "notFound" });
+    expect(parsePath("/Home/%E0%A4%A")).toEqual({ kind: "notFound" });
   });
 
   it("handles trailing slashes", () => {
-    expect(parsePath("/Home/")).toEqual({ name: "Home", view: "open" });
+    expect(parsePath("/Home/")).toEqual({ name: "Home" });
     expect(parsePath("/Hello+World/content/")).toEqual({ name: "Hello+World", view: "content" });
   });
 });
