@@ -754,11 +754,27 @@ async function assetOutputContent(
 }
 
 /** Card::Rule.global_setting(name): the codename card's db_content
- *  (rule.rb:5-9 — `Card[name]` with the codename mark). */
+ *  (rule.rb:5-9 — `Card[name]` with the codename mark).
+ *
+ *  Codename-less decks (edge-site-shell residual #4): Ruby's head assembly
+ *  cannot 500 a page on an unmapped codename. `Codename.id` (codename.rb:
+ *  35-41) returns nil for an unmapped codename, and the raise-capable fetch
+ *  forms are caught per-view in the page assembly (nest fetches rescue
+ *  Card::Error::CodenameNotFound and render the not-found card, format/nest/
+ *  fetch.rb:22-34; every nested view's raise is rescued by wrap_and_render
+ *  -> rescue_view -> quiet_error, format/render.rb:56-59 + format/error.rb:
+ *  69-84). This port reads the registry FIRST (Codename.id — the
+ *  nil-returning fetch) and answers undefined for an unmapped codename, so
+ *  each head entry renders its no-setting branch; a mapped codename takes
+ *  the exact pre-fix fetch path (byte-identical, memo read only — the page
+ *  path folds the codehash in the prepare render before the head assembles). */
 async function globalSettingContent(
   engine: RenderEngine,
   codename: string,
 ): Promise<string | undefined> {
+  if ((await engine.fetcher.codenames.id(codename)) === undefined) {
+    return undefined; // Ruby Codename.id nil: the setting card cannot exist
+  }
   const card = await engine.fetcher.fetchByName(`:${codename}`);
   const content = card?.dbContent;
   return content === undefined || content === null ? undefined : content;
