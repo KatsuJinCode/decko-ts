@@ -1039,20 +1039,9 @@ export class RenderEngine implements RenderEngineLike {
     // closure chases neither: the bar_left nest is view-time, so no
     // card_references row names the image. Skins without an +Image child
     // fetch nothing (the boxed unknown-nest bytes are name-shaped).
-    {
-      const skinImageNames: string[] = [];
-      for (const card of this.renderCards.values()) {
-        if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
-          skinImageNames.push(`${card.name.s}+Image`);
-        }
-      }
-      for (const imageName of skinImageNames) {
-        const imageChild = await this.fetcher.fetchByName(imageName);
-        if (imageChild !== undefined && imageChild.name !== undefined) {
-          await this.enrichAndStore(imageChild);
-        }
-      }
-    }
+    // Called TWICE per render — see warmNestedSkinImages for why the first
+    // call cannot be the only one.
+    await this.warmNestedSkinImages();
     if (this.helpResolver === undefined) {
       this.helpResolver = installHelpRules(this, this.fetcher);
       await this.helpResolver.prepare();
@@ -1090,6 +1079,19 @@ export class RenderEngine implements RenderEngineLike {
     // pointer/list hosts. Termination is structural — enrichAndStore
     // skips existing keys, so renderCards only grows.
     await this.enrichPointerListItemsClosure();
+    // The V6 nested-skin scan has to run again HERE, not only above. A skin
+    // reached through a POINTER/LIST item is not in the render-card map when
+    // the earlier scan walks it — measured cold on
+    // `journal skin customized+parent 1:open`: that scan sees mapSize=10 with
+    // only `journal skin customized` in it, the pointer-item walk then grows
+    // the map to 211 with `journal skin` seated, and the bar_left nest fires
+    // `fetchRenderCard("journal skin+Image")` against a junction the scan
+    // never looked at. The bytes were then the empty image-box
+    // (`<div title="journal skin" class="image-box medium"></div>`), -86 on
+    // journal, -84 litera, -82 slate. Re-walking after the pointer/list
+    // closure is what makes those three entries' verdict independent of
+    // whether the process happened to render the skin as a root earlier.
+    await this.warmNestedSkinImages();
     // R17 (signup core): the Sign up cardtype's core view reads the
     // +account junction child synchronously (account_holder.rb:11-13
     // `account? = account.real?`) and its +*email child for the
@@ -3327,6 +3329,51 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     for (const name of need) await this.prepareItemForRender(name);
+  }
+
+  /** view-fail class V6: the bootswatch_skin bar_left nests the card's
+   *  +Image child at :boxed (card-mod-bar_and_box media_snippet.haml's
+   *  `nest image_card, view: :boxed, size: size`). Ruby's nest does a live
+   *  fetch; the sync ViewFn reads the render-card map, so the child rides
+   *  the prepare phase. The prefetch closure chases it never: the bar_left
+   *  nest is view-time, so no card_references row names the image. Skins
+   *  without an +Image child fetch nothing (the boxed unknown-nest bytes
+   *  are name-shaped).
+   *
+   *  The +Image child is a NULL-NAMED left/right junction — corpus-wide,
+   *  zero rows carry `+Image` in a name (`journal skin`'s is card 22846:
+   *  left 22794, right 19, content ":journal_skin+:image/bootstrap.png") —
+   *  so the fetch has to be by DERIVED COMPOUND name. `fetchByName` does
+   *  derive it (it returns that junction with `name` = "journal skin+Image"),
+   *  which is why the guard below is `name !== undefined` and not a
+   *  stored-name check.
+   *
+   *  WHY IT IS CALLED TWICE. A skin reached through a POINTER/LIST item is
+   *  not in renderCards when the prepare phase's first pass walks the map:
+   *  on a cold render of `journal skin customized+parent 1:open` that pass
+   *  sees mapSize=10 holding only `journal skin customized`, and the
+   *  pointer/list closure walk that follows grows the map to 211 with
+   *  `journal skin` seated. The view-time nest then reads a junction nobody
+   *  had fetched and emits the EMPTY image-box, -86 bytes. Re-walking after
+   *  that walk is what makes the entry's bytes a function of the card alone
+   *  rather than of what the process rendered earlier. Both calls are
+   *  idempotent: `fetchRenderCard` short-circuits a seated junction and
+   *  `enrichAndStore` skips existing keys, so the second pass costs one map
+   *  scan plus zero queries on an already-warm deck. */
+  private async warmNestedSkinImages(): Promise<void> {
+    const skinImageNames: string[] = [];
+    for (const card of this.renderCards.values()) {
+      if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
+        skinImageNames.push(`${card.name.s}+Image`);
+      }
+    }
+    for (const imageName of skinImageNames) {
+      if (this.fetchRenderCard(imageName) !== undefined) continue;
+      const imageChild = await this.fetcher.fetchByName(imageName);
+      if (imageChild !== undefined && imageChild.name !== undefined) {
+        await this.enrichAndStore(imageChild);
+      }
+    }
   }
 
   /** Pre-enrich the items of every pointer/list card reachable in the

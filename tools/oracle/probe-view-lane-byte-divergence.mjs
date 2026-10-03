@@ -64,8 +64,24 @@ if (SHARD === "") {
   process.exit(2);
 }
 
+//   `--seeding <path-under-repo>` OVERRIDES the staging seeding module. The
+//   GRADE does not use the staging copy: tools/oracle/dual-lane-direct-runner-
+//   core.ts:522 imports the committed home tests/card/render/raw-corpus-seeding.js
+//   because the staging copy predates the full reference-graph pass and stages
+//   3,184 card_references rows where the home stages 556,526. Running against
+//   the staging copy makes every reference-resolved slot (uploaded images, for
+//   one) render empty and can flip a graded pass into an instrument-only fail —
+//   measured on `journal skin customized+parent 1:open`, which reports -86 under
+//   the staging copy at BOTH cf7dc5c and 29ef88f while the grade passes it at
+//   cf7dc5c. Pass `--seeding tests/card/render/raw-corpus-seeding.js` to
+//   reproduce a grade verdict. The default is unchanged.
+
+const SEEDING = argValue(
+  "--seeding",
+  path.join("tmp", "raw-ground-truth", "scripts", "raw-corpus-seeding.js"),
+);
 const { createRawStructureSeededStorage, RAW_CORPUS_DB } = await import(
-  pathToFileURL(path.join(REPO, "tmp", "raw-ground-truth", "scripts", "raw-corpus-seeding.js")).href
+  pathToFileURL(path.join(REPO, SEEDING)).href
 );
 const Database = (await import("better-sqlite3")).default;
 const { compareNormalized, normalizeSlotIds } = await import(
