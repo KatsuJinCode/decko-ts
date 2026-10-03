@@ -106,11 +106,13 @@ describe("flat-record format-scope census (composed deck)", () => {
 
   it("census is non-vacuous: the composed deck registers all-set+abstract views", () => {
     // A broken walk (empty deck, wrong filter) must not read as "zero
-    // foreign rows". Measured: 143 base + 28 abstract rows. The abstract
+    // foreign rows". Measured: 144 base + 28 abstract rows. The abstract
     // count moved 25 -> 28 when the surface-queue fold (1ab8318) landed
     // the list mod's select/multiselect/autocomplete editor registrations
-    // (three all-set abstract-kind rows); base was unchanged.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(143);
+    // (three all-set abstract-kind rows); base moved 143 -> 144 when the
+    // mod-porting wave-1 lane (2026-10-03) registered :board_act on the
+    // all-set all/history_board module (cache: never).
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(144);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(28);
   });
 

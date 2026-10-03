@@ -1,0 +1,1506 @@
+{
+  "modId": "card-mod-follow",
+  "gemName": "card-mod-follow-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-follow-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/abstract/follow_option.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/follow_link.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/follow_link_views.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/followed_by.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/follower_ids.rb",
+      "views": 0,
+      "events": 2,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/start_follow_link.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/follow/stop_follow_link.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/notify.rb",
+      "views": 0,
+      "events": 4,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/notify/base_views.rb",
+      "views": 7,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/notify/html_views.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/account.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/contextual_class.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/disappear.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/follow.rb",
+      "views": 2,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/follow_fields.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/followers.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/following.rb",
+      "views": 4,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/message.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/always.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/created.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/edited.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/follow.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/follow_defaults.rb",
+      "views": 2,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/follow_fields.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/never.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/cardtype.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/notification_template.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/set.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/user.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/user/follow.rb",
+      "views": 6,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/user/follow/follow_editor_helper.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:follow_status",
+      "kind": "view",
+      "name": "follow_status",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follow_link_views.rb:12"
+    },
+    {
+      "id": "view:follow_button",
+      "kind": "view",
+      "name": "follow_button",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follow_link_views.rb:26"
+    },
+    {
+      "id": "event:cache_expired_for_type_change",
+      "kind": "event",
+      "name": "cache_expired_for_type_change",
+      "options": ", :store, on: :update, changed: %i[type_id name] do",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:5"
+    },
+    {
+      "id": "event:expire_preferences_cache",
+      "kind": "event",
+      "name": "expire_preferences_cache",
+      "options": ", :finalize, when: :expire_preferences? do",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:19"
+    },
+    {
+      "id": "event:silence_notifications",
+      "kind": "event",
+      "name": "silence_notifications",
+      "options": ", :initialize, when: :silence_notifications? do",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:5"
+    },
+    {
+      "id": "event:notify_followers_after_save",
+      "kind": "event",
+      "name": "notify_followers_after_save",
+      "options": ", :integrate_with_delay,",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:13"
+    },
+    {
+      "id": "event:stash_followers",
+      "kind": "event",
+      "name": "stash_followers",
+      "options": ", :store, on: :delete, when: :notable_change? do",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:22"
+    },
+    {
+      "id": "event:notify_followers_after_delete",
+      "kind": "event",
+      "name": "notify_followers_after_delete",
+      "options": ", :integrate, on: :delete, when: :notable_change? do",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:27"
+    },
+    {
+      "id": "view:list_of_changes",
+      "kind": "view",
+      "name": "list_of_changes",
+      "alias": null,
+      "config": ", denial: :blank, cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:6"
+    },
+    {
+      "id": "view:subedits",
+      "kind": "view",
+      "name": "subedits",
+      "alias": null,
+      "config": ", perms: :none, cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:13"
+    },
+    {
+      "id": "view:subedit_notice",
+      "kind": "view",
+      "name": "subedit_notice",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:25"
+    },
+    {
+      "id": "view:followed",
+      "kind": "view",
+      "name": "followed",
+      "alias": null,
+      "config": ", perms: :none, compact: true do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:33"
+    },
+    {
+      "id": "view:follower",
+      "kind": "view",
+      "name": "follower",
+      "alias": null,
+      "config": ", perms: :none, compact: true do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:41"
+    },
+    {
+      "id": "view:last_action_verb",
+      "kind": "view",
+      "name": "last_action_verb",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:45"
+    },
+    {
+      "id": "view:unfollow_url",
+      "kind": "view",
+      "name": "unfollow_url",
+      "alias": null,
+      "config": ", perms: :none, compact: true, cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:49"
+    },
+    {
+      "id": "view:follow_status",
+      "kind": "view",
+      "name": "follow_status",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:58"
+    },
+    {
+      "id": "view:follow_item",
+      "kind": "view",
+      "name": "follow_item",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:63"
+    },
+    {
+      "id": "event:cache_expired_for_new_preference",
+      "kind": "event",
+      "name": "cache_expired_for_new_preference",
+      "options": ", :integrate, when: :preference? do",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:7"
+    },
+    {
+      "id": "event:follow_fields_changed",
+      "kind": "event",
+      "name": "follow_fields_changed",
+      "options": ", :integrate do",
+      "source": "card-mod-follow-0.20.0/set/right/follow_fields.rb:3"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/right/followers.rb:8"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:8"
+    },
+    {
+      "id": "view:status",
+      "kind": "view",
+      "name": "status",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:16"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:28"
+    },
+    {
+      "id": "view:rule_editor",
+      "kind": "view",
+      "name": "rule_editor",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:32"
+    },
+    {
+      "id": "view:edit_buttons",
+      "kind": "view",
+      "name": "edit_buttons",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:49"
+    },
+    {
+      "id": "view:confirm_update_all",
+      "kind": "view",
+      "name": "confirm_update_all",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:70"
+    },
+    {
+      "id": "event:update_follow_rules",
+      "kind": "event",
+      "name": "update_follow_rules",
+      "options": ", :finalize, on: :save, trigger: :required do",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:17"
+    },
+    {
+      "id": "event:cache_expired_for_new_set",
+      "kind": "event",
+      "name": "cache_expired_for_new_set",
+      "options": ", :store, on: :create do",
+      "source": "card-mod-follow-0.20.0/set/type/set.rb:1"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:30"
+    },
+    {
+      "id": "view:edit",
+      "kind": "view",
+      "name": "edit",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:34"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:39"
+    },
+    {
+      "id": "view:follow_tab",
+      "kind": "view",
+      "name": "follow_tab",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:45"
+    },
+    {
+      "id": "view:ignore_tab",
+      "kind": "view",
+      "name": "ignore_tab",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:49"
+    },
+    {
+      "id": "view:errors",
+      "kind": "view",
+      "name": "errors",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:65"
+    },
+    {
+      "id": "seed:notification_template",
+      "kind": "seed",
+      "name": "Notification template",
+      "codename": "notification_template",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:follow",
+      "kind": "seed",
+      "name": "\"*follow\"",
+      "codename": "follow",
+      "type": ":setting",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:following",
+      "kind": "seed",
+      "name": "\"*following\"",
+      "codename": "following",
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:followers",
+      "kind": "seed",
+      "name": "\"*followers\"",
+      "codename": "followers",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:follow_fields",
+      "kind": "seed",
+      "name": "\"*follow fields\"",
+      "codename": "follow_fields",
+      "type": ":setting",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:always",
+      "kind": "seed",
+      "name": "\"*always\"",
+      "codename": "always",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:never",
+      "kind": "seed",
+      "name": "\"*never\"",
+      "codename": "never",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:follow_defaults",
+      "kind": "seed",
+      "name": "\"*follow defaults\"",
+      "codename": "follow_defaults",
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:follow_suggestions",
+      "kind": "seed",
+      "name": "follow suggestions",
+      "codename": "follow_suggestions",
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:contextual_class",
+      "kind": "seed",
+      "name": "\"*contextual class\"",
+      "codename": "contextual_class",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:message",
+      "kind": "seed",
+      "name": "\"*message\"",
+      "codename": "message",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:disappear",
+      "kind": "seed",
+      "name": "\"*disappear\"",
+      "codename": "disappear",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:follower_notification_email",
+      "kind": "seed",
+      "name": "follower notification email",
+      "codename": "follower_notification_email",
+      "type": ":email_template",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml"
+    },
+    {
+      "id": "seed:John",
+      "kind": "seed",
+      "name": "John",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:Sara",
+      "kind": "seed",
+      "name": "Sara",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:Big Brother",
+      "kind": "seed",
+      "name": "Big Brother",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:Optic fan",
+      "kind": "seed",
+      "name": "Optic fan",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:Sunglasses fan",
+      "kind": "seed",
+      "name": "Sunglasses fan",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:Narcissist",
+      "kind": "seed",
+      "name": "Narcissist",
+      "codename": null,
+      "type": ":user",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/users.yml"
+    },
+    {
+      "id": "seed:card with fields",
+      "kind": "seed",
+      "name": "card with fields",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:card with fields and admin fields",
+      "kind": "seed",
+      "name": "card with fields and admin fields",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:admin card with fields and admin fields",
+      "kind": "seed",
+      "name": "admin card with fields and admin fields",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:admin card with admin fields",
+      "kind": "seed",
+      "name": "admin card with admin fields",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml"
+    },
+    {
+      "id": "seed:Optic",
+      "kind": "seed",
+      "name": "Optic",
+      "codename": null,
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:All Eyes On Me",
+      "kind": "seed",
+      "name": "All Eyes On Me",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:No One Sees Me",
+      "kind": "seed",
+      "name": "No One Sees Me",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:Look At Me",
+      "kind": "seed",
+      "name": "Look At Me",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:Sara Following",
+      "kind": "seed",
+      "name": "Sara Following",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:John Following",
+      "kind": "seed",
+      "name": "John Following",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:Sunglasses",
+      "kind": "seed",
+      "name": "Sunglasses",
+      "codename": null,
+      "type": "Optic",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:Google glass",
+      "kind": "seed",
+      "name": "Google glass",
+      "codename": null,
+      "type": "Optic",
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:Created card",
+      "kind": "seed",
+      "name": "Created card",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-follow-0.20.0/data/test.yml"
+    },
+    {
+      "id": "config:settings",
+      "kind": "config",
+      "name": "settings",
+      "source": "card-mod-follow-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:cardtypes",
+      "kind": "config",
+      "name": "cardtypes",
+      "source": "card-mod-follow-0.20.0/config/admin.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "Notification template",
+      "codename": "notification_template",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*follow\"",
+      "codename": "follow",
+      "type": ":setting",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*following\"",
+      "codename": "following",
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*followers\"",
+      "codename": "followers",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*follow fields\"",
+      "codename": "follow_fields",
+      "type": ":setting",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*always\"",
+      "codename": "always",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*never\"",
+      "codename": "never",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*follow defaults\"",
+      "codename": "follow_defaults",
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "follow suggestions",
+      "codename": "follow_suggestions",
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*contextual class\"",
+      "codename": "contextual_class",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*message\"",
+      "codename": "message",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*disappear\"",
+      "codename": "disappear",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "follower notification email",
+      "codename": "follower_notification_email",
+      "type": ":email_template",
+      "content": null,
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":list",
+      "content": null,
+      "file": "data/test/rules.yml"
+    },
+    {
+      "name": "John",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "Sara",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "Big Brother",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "Optic fan",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "Sunglasses fan",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "Narcissist",
+      "codename": null,
+      "type": ":user",
+      "content": null,
+      "file": "data/test/users.yml"
+    },
+    {
+      "name": "card with fields",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "card with fields and admin fields",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "admin card with fields and admin fields",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "admin card with admin fields",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":pointer",
+      "content": null,
+      "file": "data/test/with_fields.yml"
+    },
+    {
+      "name": "Optic",
+      "codename": null,
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "All Eyes On Me",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "No One Sees Me",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "Look At Me",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "Sara Following",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "John Following",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "Sunglasses",
+      "codename": null,
+      "type": "Optic",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "Google glass",
+      "codename": null,
+      "type": "Optic",
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "Created card",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "file": "data/test.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "settings",
+        "cardtypes"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/follow.js.coffee",
+    "assets/style/follow.scss"
+  ],
+  "publicAssets": 0
+}

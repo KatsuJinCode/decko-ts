@@ -1,0 +1,323 @@
+{
+  "modId": "card-mod-history",
+  "gemName": "card-mod-history-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-history-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/all/history.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/act_listing.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/actions.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/acts.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/events.rb",
+      "views": 0,
+      "events": 6,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/export.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/last.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/revision.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/selected.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history/views.rb",
+      "views": 9,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/history_board.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "event:update_ancestor_timestamps",
+      "kind": "event",
+      "name": "update_ancestor_timestamps",
+      "options": ", :integrate do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:1"
+    },
+    {
+      "id": "event:assign_action",
+      "kind": "event",
+      "name": "assign_action",
+      "options": ", :initialize, when: :actionable? do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:15"
+    },
+    {
+      "id": "event:detect_conflict",
+      "kind": "event",
+      "name": "detect_conflict",
+      "options": ", :validate, on: :update, when: :edit_conflict? do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:19"
+    },
+    {
+      "id": "event:finalize_action",
+      "kind": "event",
+      "name": "finalize_action",
+      "options": ", :finalize, when: :finalize_action? do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:25"
+    },
+    {
+      "id": "event:rollback_actions",
+      "kind": "event",
+      "name": "rollback_actions",
+      "options": ", :prepare_to_validate, on: :update, when: :rollback_request? do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:40"
+    },
+    {
+      "id": "event:finalize_act",
+      "kind": "event",
+      "name": "finalize_act",
+      "options": ", after: :finalize_action, when: :act_card? do",
+      "source": "card-mod-history-0.20.0/set/all/history/events.rb:48"
+    },
+    {
+      "id": "view:history",
+      "kind": "view",
+      "name": "history",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/export.rb:10"
+    },
+    {
+      "id": "view:actions",
+      "kind": "view",
+      "name": "actions",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/export.rb:14"
+    },
+    {
+      "id": "view:history",
+      "kind": "view",
+      "name": "history",
+      "alias": null,
+      "config": ", cache: :never do # why no cache?",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:4"
+    },
+    {
+      "id": "view:act",
+      "kind": "view",
+      "name": "act",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:11"
+    },
+    {
+      "id": "view:act_legend",
+      "kind": "view",
+      "name": "act_legend",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:15"
+    },
+    {
+      "id": "view:draft_legend",
+      "kind": "view",
+      "name": "draft_legend",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:24"
+    },
+    {
+      "id": "view:action_summary",
+      "kind": "view",
+      "name": "action_summary",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:28"
+    },
+    {
+      "id": "view:action_expanded",
+      "kind": "view",
+      "name": "action_expanded",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:32"
+    },
+    {
+      "id": "view:change",
+      "kind": "view",
+      "name": "change",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:36"
+    },
+    {
+      "id": "view:last_action",
+      "kind": "view",
+      "name": "last_action",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:46"
+    },
+    {
+      "id": "view:last_action_verb",
+      "kind": "view",
+      "name": "last_action_verb",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-history-0.20.0/set/all/history/views.rb:55"
+    },
+    {
+      "id": "view:creator_credit",
+      "kind": "view",
+      "name": "creator_credit",
+      "alias": null,
+      "config": ",",
+      "source": "card-mod-history-0.20.0/set/all/history_board.rb:2"
+    },
+    {
+      "id": "view:updated_by",
+      "kind": "view",
+      "name": "updated_by",
+      "alias": null,
+      "config": ", wrap: { div: { class: \"text-muted\" } } do",
+      "source": "card-mod-history-0.20.0/set/all/history_board.rb:10"
+    },
+    {
+      "id": "view:board_act",
+      "kind": "view",
+      "name": "board_act",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-history-0.20.0/set/all/history_board.rb:18"
+    },
+    {
+      "id": "seed:First",
+      "kind": "seed",
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-history-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:First",
+      "kind": "seed",
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-history-0.20.0/data/test.yml"
+    },
+    {
+      "id": "seed:First",
+      "kind": "seed",
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-history-0.20.0/data/test.yml"
+    },
+    {
+      "id": "config:views",
+      "kind": "config",
+      "name": "views",
+      "source": "card-mod-history-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:de",
+      "kind": "config",
+      "name": "de",
+      "source": "card-mod-history-0.20.0/config/locales/de.yml"
+    },
+    {
+      "id": "config:en",
+      "kind": "config",
+      "name": "en",
+      "source": "card-mod-history-0.20.0/config/locales/en.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/test.yml"
+    },
+    {
+      "name": "First",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "file": "data/test.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "views"
+      ]
+    },
+    {
+      "file": "config/locales/de.yml",
+      "keys": [
+        "de"
+      ]
+    },
+    {
+      "file": "config/locales/en.yml",
+      "keys": [
+        "en"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/style/history.scss"
+  ],
+  "publicAssets": 0
+}

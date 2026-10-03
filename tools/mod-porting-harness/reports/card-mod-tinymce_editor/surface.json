@@ -1,0 +1,219 @@
+{
+  "modId": "card-mod-tinymce_editor",
+  "gemName": "card-mod-tinymce_editor-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-tinymce_editor-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/all/reference_editor.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/link_editor.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/link_editor/link_parser.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/nest_editor.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/nest_editor/nest_editor_options.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/nest_editor/nest_editor_tabs.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/reference_editor/nest_image.rb",
+      "views": 6,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/tinymce_editor.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 2
+    },
+    {
+      "file": "set/self/tiny_mce.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:link_editor",
+      "kind": "view",
+      "name": "link_editor",
+      "alias": null,
+      "config": ", cache: :never, unknown: true,",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:2"
+    },
+    {
+      "id": "view:modal_link_editor",
+      "kind": "view",
+      "name": "modal_link_editor",
+      "alias": null,
+      "config": ", cache: :never, unknown: true,",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:9"
+    },
+    {
+      "id": "view:nest_editor",
+      "kind": "view",
+      "name": "nest_editor",
+      "alias": null,
+      "config": ", cache: :never, unknown: true,",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:10"
+    },
+    {
+      "id": "view:modal_nest_editor",
+      "kind": "view",
+      "name": "modal_nest_editor",
+      "alias": null,
+      "config": ", cache: :never, unknown: true,",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:17"
+    },
+    {
+      "id": "view:nest_content",
+      "kind": "view",
+      "name": "nest_content",
+      "alias": null,
+      "config": ", perms: :create, cache: :never, unknown: true, wrap: :slot do",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:22"
+    },
+    {
+      "id": "view:nest_image",
+      "kind": "view",
+      "name": "nest_image",
+      "alias": null,
+      "config": ",",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:2"
+    },
+    {
+      "id": "view:modal_nest_image",
+      "kind": "view",
+      "name": "modal_nest_image",
+      "alias": null,
+      "config": ", unknown: true, cache: :never,",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:8"
+    },
+    {
+      "id": "view:new_image",
+      "kind": "view",
+      "name": "new_image",
+      "alias": null,
+      "config": ", perms: :create, unknown: true, cache: :never, wrap: :slot do",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:13"
+    },
+    {
+      "id": "view:new_image_buttons",
+      "kind": "view",
+      "name": "new_image_buttons",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:21"
+    },
+    {
+      "id": "view:change_create_to_update",
+      "kind": "view",
+      "name": "change_create_to_update",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:41"
+    },
+    {
+      "id": "view:open_nest_editor",
+      "kind": "view",
+      "name": "open_nest_editor",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:45"
+    },
+    {
+      "id": "basket:basket[:script_calls][\"setTinyMCEConfig\"] = :tinymce_config",
+      "kind": "basket-op",
+      "op": "basket[:script_calls][\"setTinyMCEConfig\"] = :tinymce_config",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:1"
+    },
+    {
+      "id": "basket:basket[:list_input_options] << \"tinymce editor\"",
+      "kind": "basket-op",
+      "op": "basket[:list_input_options] << \"tinymce editor\"",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:2"
+    },
+    {
+      "id": "seed:tiny_mce",
+      "kind": "seed",
+      "name": "\"*tinyMCE\"",
+      "codename": "tiny_mce",
+      "type": ":json",
+      "contentSha": null,
+      "source": "card-mod-tinymce_editor-0.20.0/data/real.yml"
+    },
+    {
+      "id": "config:configurations",
+      "kind": "config",
+      "name": "configurations",
+      "source": "card-mod-tinymce_editor-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:en",
+      "kind": "config",
+      "name": "en",
+      "source": "card-mod-tinymce_editor-0.20.0/config/locales/en.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "\"*tinyMCE\"",
+      "codename": "tiny_mce",
+      "type": ":json",
+      "content": "",
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "configurations"
+      ]
+    },
+    {
+      "file": "config/locales/en.yml",
+      "keys": [
+        "en"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/image_editor.js.coffee",
+    "assets/script/link_editor.js.coffee",
+    "assets/script/nest_editor.js.coffee",
+    "assets/script/nest_editor_name.js.coffee",
+    "assets/script/nest_editor_options.js.coffee",
+    "assets/script/nest_editor_rules.js.coffee",
+    "assets/script/script_tinymce.js",
+    "assets/script/tinymce_config.js.coffee",
+    "assets/style/nest_editor.scss"
+  ],
+  "publicAssets": 75
+}

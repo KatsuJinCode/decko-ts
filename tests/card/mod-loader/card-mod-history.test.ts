@@ -218,15 +218,16 @@ describe("card-mod-history manifest structure", () => {
     ]);
   });
 
-  it("registers :draft_legend plus the three seam-backed views (:history/:act/:action_summary) with no view config", () => {
+  it("registers :draft_legend plus the seam-backed views with no view config, and :board_act (cache: never) on the history_board set", () => {
     // views.rb:24-26 `view :draft_legend do ... end` declares no settings;
     // the seam (src/card/history/render-seam.ts +
     // RenderEngine#prepareHistoryRender) unblocked three of the eleven
     // data-bound views (:history/:act/:action_summary - the live-oracle
     // byte surface; :action_expanded/:last_action_verb added by
     // surfaces-batch2 2026-09-30; :act_legend/:last_action/:change added
-    // by surfaces-batch3 2026-09-30); board_act stays the named remainder
-    // (see the port file header).
+    // by surfaces-batch3 2026-09-30); :board_act landed with the
+    // mod-porting wave-1 lane (2026-10-03; history_board.rb:18-26,
+    // cache: :never per the gem's declaration) on all/history_board.
     const viewsModule = (cardModHistory.setModules ?? []).find(
       (m) => m.setPath === "all/history/views",
     );
@@ -248,9 +249,16 @@ describe("card-mod-history manifest structure", () => {
       "change",
     ]);
     expect(views.every((v) => v.config === undefined)).toBe(true);
-    // no other set module registers views
+    // the only OTHER set module registering views is history_board, whose
+    // board_act carries the gem's cache: :never (history_board.rb:18)
+    const boardModule = (cardModHistory.setModules ?? []).find(
+      (m) => m.setPath === "all/history_board",
+    );
+    expect(boardModule?.formats?.html?.views).toEqual([
+      { view: "board_act", viewFn: expect.any(Function), config: { cache: "never" } },
+    ]);
     for (const m of cardModHistory.setModules ?? []) {
-      if (m.setPath !== "all/history/views") {
+      if (m.setPath !== "all/history/views" && m.setPath !== "all/history_board") {
         expect(m.formats).toBeUndefined();
       }
     }
@@ -290,6 +298,7 @@ describe("card-mod-history manifest structure", () => {
       "act_legend",
       "last_action",
       "change",
+      "board_act",
     ]);
     expect(report.registeredSettings).toEqual([]);
     expect(report.registeredPatternCodes).toEqual([]); // no set_pattern/ tree
@@ -302,6 +311,8 @@ describe("card-mod-history manifest structure", () => {
     expect(typeof liveRecord["act_legend"]).toBe("function");
     expect(typeof liveRecord["last_action"]).toBe("function");
     expect(typeof liveRecord["change"]).toBe("function");
+    expect(typeof liveRecord["board_act"]).toBe("function");
+    expect(loader.viewConfigFor("board_act")).toEqual({ cache: "never" });
 
     const basket = loader.setModules();
     expect(basket.nonbase.size).toBe(0);

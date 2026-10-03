@@ -49,21 +49,35 @@
 // (see the views section below).
 //
 // NOT yet ported (honest remainder, updated surfaces-batch2 2026-09-30:
-// :action_expanded and :last_action_verb ARE ported now - see the views
-// section):
-// - four html views - act_legend (bs_layout), change, last_action,
-//   board_act (history_board.rb) - plus the two json views (export.rb
-//   :history/:actions; the hash shapes are ported). :last_action nests
+// :action_expanded, :last_action_verb and :board_act ARE ported now - see
+// the views section; board_act landed with the mod-porting wave-1 lane
+// (2026-10-03):
+// - three html views - act_legend (bs_layout), change, last_action - plus
+//   the two json views (export.rb :history/:actions; the hash shapes are
+//   ported). :last_action nests
 //   card.last_actor by id (no id-nest surface) and reads the :acted_at view
 //   (card-mod-format base.rb:63); :change composes _render_title +
 //   _render_menu + _render_last_action - it unblocks when :last_action
-//   lands; :board_act needs the board act renderer +
-//   overlay chain. :action_expanded IS ported (one viewKind argument, the
-//   capture probe#action_expanded(update_action) pins it).
+//   lands. :board_act IS ported (the board act renderer + overlay chain,
+//   all/history_board.rb:18-26; the renderer-string pieces are
+//   harness-oracle-pinned, the overlay frame chrome is gem-source-derived
+//   rendered-unpinned - the view comment carries the split).
 //   Specific external deps per view: act_legend's bs_layout (defined in a
 //   gem not installed here - grep for "def bs_layout" across the
 //   installed gems matches only the history mod's
 //   own four usages); content_legend's Card::Content::Diff chunk renderer
+//   NAMED REMAINDERS (mod-porting wave-1 lane, 2026-10-03, harness
+//   scorecard rows):
+//   - view :actions (export.rb:14-16, json format) - the HASH SHAPES are
+//     ported + suite-pinned (actionHashList/actHash/actionHash/changesHash,
+//     export.rb:18-47) but the engine has NO non-html render route for
+//     manifest-registered json views (the same class card-mod-list's
+//     csv/js/data/json surfaces are named remainders for); the view
+//     registration unblocks with that route, never fake-registered.
+//   - seed:First x3 (data/test.yml) - the gem's OWN test-suite fixture
+//     cards (data/test.yml is `decko seed` TEST data consumed by the gem's
+//     specs), not deck data; no TS seed consumer exists or is needed for
+//     a running deck.
 //   IS byte-pinned here (card-1.110.0 lib/card/content/diff.rb:16-21) but
 //   the layout around it is not; last_action renders the :acted_at view
 //   (card-mod-format-0.20.0 set/all/base.rb:63 - a different mod's view,
@@ -1117,7 +1131,7 @@ import { DeckoName } from "../../name.js";
 import { h, emitAttrs, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { RenderFormat, type ViewContext, type ViewFn } from "../../render/format.js";
 import { ContentDiff } from "../../history/content-diff.js";
-import type { HistoryRenderReader } from "../../history/render-seam.js";
+import type { HistoryRenderParams, HistoryRenderReader } from "../../history/render-seam.js";
 
 /** The seam bundle for this render; a history view without one is an
  *  engine-wiring bug (RenderEngine always provides it for the seam views). */
@@ -1132,8 +1146,16 @@ function historyReader(ctx: ViewContext): HistoryRenderReader {
 }
 
 /** wrap.rb #slot_wrap (the views.ts slotWrap shape): id/class/data attrs +
- *  slot options + the format's initial name context. */
-function historySlotWrap(ctx: ViewContext, view: string, inner: string): string {
+ *  slot options + the format's initial name context. extraAttrs are the
+ *  top-level html attributes slot_attributes' deep_merge! folds in AFTER
+ *  the id/class/data build (wrap.rb:31-35 hash.deep_merge! slot_attr -
+ *  board_act's breadcrumb_data attrs ride this). */
+function historySlotWrap(
+  ctx: ViewContext,
+  view: string,
+  inner: string,
+  extraAttrs: Record<string, string> = {},
+): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
   const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
@@ -1153,6 +1175,7 @@ function historySlotWrap(ctx: ViewContext, view: string, inner: string): string 
     "data-card-link-name": fmt.urlKey(),
     "data-slot-id": newSlotId(),
     "data-slot": slotOptionsJson(slotOptions),
+    ...extraAttrs,
   });
   return `<div${attrs}>${inner}</div>`;
 }
@@ -1427,11 +1450,15 @@ function nestedActionSummary(
 
 /** action_renderer.rb:29-56 ActionRenderer#render - the container/row/ul/li
  *  bytes with the bs_panel heading/body. The leading "\n" is the Builder
- *  add_content separator the capture pins. */
+ *  add_content separator the capture pins. actionListClass is the
+ *  classy("action-list") value - board_act's class_up "action-list",
+ *  "my-3" (history_board.rb:22) makes it "action-list my-3"; the default
+ *  is the plain class every other caller renders. */
 function actionRendererBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
   action: HistoryActionRow,
+  actionListClass = "action-list",
 ): string {
   const cardInfo = reader.actionCard(action);
   // name_diff (action_renderer.rb:62-82)
@@ -1453,7 +1480,7 @@ function actionRendererBytes(
     `\n${builderDiv(contentDiff, "card-body")}`;
   return (
     `\n<div class="container-fluid">\n\n<div class="row">\n` +
-    `              <ul class="action-list w-100">\n` +
+    `              <ul class="${actionListClass} w-100">\n` +
     `                <li class="${actionTypeSymbol(action)}">\n` +
     `                  ${panel}\n` +
     `                </li>\n` +
@@ -1466,9 +1493,12 @@ function actDetailsBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
   actions: HistoryActionRow[],
+  actionListClass = "action-list",
 ): string {
   const approved = reader.approvedActions(actions).slice(0, 21);
-  return approved.map((action) => actionRendererBytes(ctx, reader, action)).join("");
+  return approved
+    .map((action) => actionRendererBytes(ctx, reader, action, actionListClass))
+    .join("");
 }
 
 /** actions.rb:34-40 action_from_context - voo action_id, then the render
@@ -1658,6 +1688,305 @@ const actView: ViewFn = (ctx) => {
     collapseId: `act-id-${act.id}`,
   });
 };
+
+// --- view :board_act (all/history_board.rb:18-26) ---------------------------
+// --- + the BoardActRenderer chain (lib/card/act/act_renderer/ ---------------
+// --- board_act_renderer.rb over the relative/base renderers) ----------------
+//
+// Oracle: fixtures/oracle-surfaces/card-mod-history.harness.jsonl (the
+// static-ruby capture tools/mod-porting-harness/ruby-oracles/
+// card-mod-history/board-act-view.rb - 8 scenarios; the title bytes are
+// CROSS-CHECKED in that script against the live capture
+// fixtures/captured/board-views.json's history-tab pill anchor). The
+// renderer-string bytes (title / overlay_title / details cap / opts /
+// breadcrumb / action-list class up) are oracle-pinned; the overlay FRAME
+// chrome (the d0-card-frame div + the overlay header/menu links) is
+// gem-source-derived rendered-unpinned - the same disclosed basis as
+// last_action_verb's allowed arm (no live capture renders ?view=board_act;
+// the harness's named live-deck limit). The frame machinery follows
+// card-mod-edit.ts's framedView composition minus the bootstrap
+// standard_frame class_ups (the overlay path calls with_frame directly, so
+// "card"/"card-header"/"card-body card-text" NEVER fire on it).
+
+/** act_listing.rb:29-32 act_listing_opts_from_params - the render params
+ *  (string values stay strings; action_view defaults to :summary;
+ *  hide_diff is the strip=="true" boolean). */
+function actListingOptsFromParams(
+  params: HistoryRenderParams,
+  seq: string | null | undefined,
+): { actSeq: string | undefined; actionView: string; hideDiff: boolean } {
+  return {
+    actSeq: (seq ?? params.actSeq) || undefined,
+    actionView: params.actionView || "summary",
+    hideDiff: (params.hideDiff ?? "").trim() === "true",
+  };
+}
+
+/** board_act_renderer.rb:11-13 left_title - the seq number, the actor NAME
+ *  (plain, unlinked - unlike actor_and_ago's link), and the edited-ago
+ *  phrase. Ruby's String#join does NOT escape; the oracle + the captured
+ *  pill pin "Decko Bot" unescaped. */
+function boardLeftTitle(
+  reader: HistoryRenderReader,
+  act: HistoryActRow,
+  actSeq: string | undefined,
+): string {
+  const actor = reader.cardInfo(Number(act.actor_id));
+  const actorName = actor === undefined ? String(act.actor_id) : actor.name;
+  const ago = parseActedAt(act.acted_at);
+  const editedAgo = ago === undefined ? "" : `${timeAgoInWords(ago)} ago`;
+  return boardLeftTitleFrom(actorName, editedAgo, actSeq);
+}
+
+/** board_act_renderer.rb:11-13's composition core - the oracle's
+ *  time_ago_in_words stub makes the phrase an INPUT (frozen delta ->
+ *  "1 day"); the live view computes it through the shared
+ *  timeAgoInWords table above this call. */
+function boardLeftTitleFrom(actorName: string, editedAgo: string, actSeq: string | undefined): string {
+  return `#${actSeq} ${actorName} <small>${editedAgo}</small>`;
+}
+
+/** act.rb:108-110 draft? - main_action&.draft (action_on(card_id) ||
+ *  actions.first, act.rb:102-106). */
+function actIsDraft(reader: HistoryRenderReader, act: HistoryActRow): boolean {
+  const main =
+    reader.actionOn(act.id, Number(act.card_id)) ?? reader.actionsOfAct(act.id)[0];
+  return main?.draft === 1;
+}
+
+/** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link
+ *  draft arm's "continue editing" anchor. GEM-SOURCE-DERIVED RENDERED-
+ *  UNPINNED (the path is {edit_draft: true}, add_class "navbar-link", the
+ *  link_to_view :edit slotterification lands only when a real edit link
+  * renders - the oracle's double and this body carry the same disclosed
+  * shape). */
+function boardAutosavedDraftLink(ctx: ViewContext): string {
+  return `<a class="navbar-link" href="/${h(ctx.fmt.urlKey())}?edit_draft=true">continue editing</a>`;
+}
+
+/** board_act_renderer.rb:43-49 rollback_or_edit_link (the BOARD override:
+ *  revert_link, not the relative rollback_link) over the relative
+ *  show_rollback_link?/current_act? chain (relative_act_renderer.rb:36-44)
+ *  and revert_link (:50-55, actions.rb:81-90's ok?(:update) gate lives in
+ *  revertActionsLink's callers' contract - the relativeActSubheader arm
+ *  already established rootUpdateAllowed). */
+function boardRollbackOrEditLink(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  act: HistoryActRow,
+  actions: HistoryActionRow[],
+): string | null {
+  if (actIsDraft(reader, act)) return boardAutosavedDraftLink(ctx);
+  const isCurrentAct = reader.cardLastAct !== undefined && reader.cardLastAct.id === act.id;
+  if (!isCurrentAct && reader.rootUpdateAllowed !== false) {
+    return revertActionsLink(ctx, actions.filter((a) => a.draft !== 1).map((a) => a.id));
+  }
+  return null;
+}
+
+/** board_act_renderer.rb:35-41 overlay_title - [left_title, summary,
+ *  subtitle?, rollback_or_edit_link?].compact.join " | " in a plain div
+ *  (wrap_with :div block form, no class). The subtitle is the relative
+ *  renderer's (:16-20) - "" unless the act is on another card, then
+ *  `<small>act on #{relative_title}</small>` (unescaped, as Ruby renders
+ *  it; the oracle pins "act on child"). */
+function boardOverlayTitle(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  act: HistoryActRow,
+  actCardName: string,
+  actSeq: string | undefined,
+  actions: HistoryActionRow[],
+): string {
+  const left = boardLeftTitle(reader, act, actSeq);
+  const summary = actSummaryBadge(reader, actions);
+  const onOtherCard = Number(act.card_id) !== reader.rootCardId;
+  const subtitle = onOtherCard
+    ? boardSubtitleFrom(actCardName, ctx.fmt.card.name.s)
+    : "";
+  const rollback = boardRollbackOrEditLink(ctx, reader, act, actions);
+  return boardOverlayTitleFrom(left, summary, subtitle, rollback);
+}
+
+/** relative_act_renderer.rb:12-14 relative_title + :16-20 subtitle's
+ *  composition core (the oracle replays it with the same two names). */
+function boardSubtitleFrom(actCardName: string, rootCardName: string): string {
+  return `<small>act on ${DeckoName.parse(actCardName).from(rootCardName)}</small>`;
+}
+
+/** board_act_renderer.rb:35-41's composition core - the compact + join.
+ *  The oracle replays the four pieces with its documented row doubles. */
+function boardOverlayTitleFrom(
+  left: string,
+  summary: string,
+  subtitle: string,
+  rollback: string | null,
+): string {
+  const parts = [left, summary, subtitle === "" ? null : subtitle, rollback].filter(
+    (part): part is string => part !== null,
+  );
+  return `<div>${parts.join(" | ")}</div>`;
+}
+
+/** overlay.rb:89-92 overlay_menu_link - every menu anchor gains the
+ *  "text-muted p-1 ms-1" class (add_class appends). */
+const OVERLAY_MENU_LINK_CLASS = "text-muted p-1 ms-1";
+
+/** overlay.rb:24-27 view :overlay_menu + :30-34 + :41-43 + :87-89 - the
+ *  three icon anchors: the help popover (help_popover_opts, menu.rb:103-107
+ *  - the established menuHelpAnchor shape minus menu.rb's _card-menu-popover
+ *  class; add_class order: the popover class list, then the menu-link
+ *  class), the new-window card link (icon basket material: new_window ->
+ *  close_fullscreen; link_to_card's known-card append lands after the
+ *  menu-link class), and the close anchor (path "#", data-bs-dismiss
+ *  overlay). GEM-SOURCE-DERIVED RENDERED-UNPINNED (the help text is the
+ *  card's help rule - card-dependent, no live capture renders this menu). */
+function boardOverlayMenu(ctx: ViewContext): string {
+  const { fmt } = ctx;
+  const rawHelp = fmt.menuHelpContentBytes();
+  const helpContent = /^\s*$/.test(rawHelp) ? "&nbsp;" : rawHelp;
+  const helpLink =
+    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="${h(helpContent)}"` +
+    ` data-bs-placement="left" class="help-link ps-1 _popover_link ${OVERLAY_MENU_LINK_CLASS}"` +
+    ` data-bs-title="${h(fmt.card.name.s)}" href="#">${historyIcon("help")}</a>`;
+  const newWindowLink =
+    `<a class="${OVERLAY_MENU_LINK_CLASS} known-card" href="/${h(fmt.urlKey())}">` +
+    `${historyIcon("close_fullscreen")}</a>`;
+  const closeLink =
+    `<a class="${OVERLAY_MENU_LINK_CLASS}" href="#" data-bs-dismiss="overlay">${historyIcon("close")}</a>`;
+  return `<div class="overlay-menu">${helpLink}\n${newWindowLink}\n${closeLink}</div>`;
+}
+
+/** history_board.rb:18-26 view :board_act, cache: :never - the board's
+ *  single-revision overlay: opts from params, the act from context, the
+ *  BOARD renderer's overlay title, the action-list class up, and the act's
+ *  details wrapped in the overlay frame (overlay.rb wrapper :overlay :4-10
+ *  + overlay_framer :94-98 + with_frame frame.rb:13-19 + wrap_body
+ *  wrap.rb:101-107). Registered on the all/history_board set. */
+const boardActView: ViewFn = (ctx) => {
+  const reader = historyReader(ctx);
+  const { fmt, voo } = ctx;
+  const opts = actListingOptsFromParams(reader.params, null); // history_board.rb:19
+  const act = actFromContext(ctx, reader); // :20
+  const actCard = reader.cardInfo(Number(act.card_id));
+  if (actCard === undefined) return ""; // BoardActRenderer#render: "" unless @act_card
+  const actions = reader.actionsAffecting(act.id, reader.rootCardId!);
+  // history_board.rb:22 class_up "action-list", "my-3" (single_use: the
+  // details' <ul classy> consumes it once - the oracle pins
+  // "action-list my-3" as the consumed value)
+  const actionListClass = "action-list my-3";
+  // :23 wrap_with_overlay title: ar.overlay_title, slot: breadcrumb_data("History")
+  voo.hide("menu"); // wrapper :6 voo.hide! :menu
+  voo.hide("help"); // with_frame's voo.hide :help
+  voo.classUp("card-slot", "_overlay d0-card-overlay bg-body"); // wrapper :4, single_use
+  voo.classUp("card-slot", "_overlay"); // overlay_framer's second class_up
+  voo.classUp("d0-card-header", "bg-body"); // overlay_header :57
+  voo.classUp("d0-card-header-title", "d-flex"); // :58 (no consumer on this path - kept for voo state parity)
+  const overlayTitle = boardOverlayTitle(ctx, reader, act, actCard.name, opts.actSeq, actions);
+  const menu = boardOverlayMenu(ctx);
+  // header_wrap (format header.rb:9-11): ONE div, parts joined by
+  // output()'s "\n"; NO bootstrap card-header class on this path
+  const header = `<div class="${voo.classy("d0-card-header")}">${overlayTitle}\n${menu}</div>`;
+  // :24-25 act_listing(act, opts[:act_seq], :board) - the BOARD renderer's
+  // render is the details list alone
+  const details = boardActDetails(ctx, reader, actions, actionListClass);
+  // wrap_body (wrap.rb:101-107): body_css_classes = d0-card-body +
+  // safe_set_keys (the wrapper's @set_keys = true; NO d0-card-content,
+  // NO bootstrap card-body class on this path)
+  const body = `<div class="${voo.classy(["d0-card-body", fmt.card.setKeys])}">${details}</div>`;
+  // with_frame: wrap { panel { [header, frame_help(nil - hidden), flash(""),
+  // body] } } - panel's d0-card-frame carries NO "card" class (bootstrap's
+  // standard_frame override does not fire on the overlay path); output()'s
+  // flash "" stays as the empty line - the same "\n\n" seam the established
+  // framedView composes.
+  const panel = `<div class="${voo.classy("d0-card-frame")}">${header}\n\n${body}</div>`;
+  // :23's slot: breadcrumb_data("History") (edit mod board.rb:73-77) -
+  // slot_attributes' deep_merge! folds the two data attrs at the top level
+  return historySlotWrap(ctx, "board_act", panel, {
+    "data-breadcrumb": "History",
+    "data-breadcrumb-class": "history",
+  });
+};
+
+/** ActRenderer#details for the board: approved_actions[0..20] with the
+ *  view's class-upped action-list class. */
+function boardActDetails(
+  ctx: ViewContext,
+  reader: HistoryRenderReader,
+  actions: HistoryActionRow[],
+  actionListClass: string,
+): string {
+  return actDetailsBytes(ctx, reader, actions, actionListClass);
+}
+
+/** The board_act pieces' PROBE SURFACE - the composition cores the harness
+ *  probe (tests/card/mod-loader/card-mod-history-harness-probe.test.ts)
+ *  replays the static-ruby oracle against. The cores are the SAME functions
+ *  the view body calls (boardLeftTitleFrom / boardOverlayTitleFrom /
+ *  boardSubtitleFrom / actListingOptsFromParams / actDetailsBytes'
+ *  approved+slice selection) - the oracle's documented clock stub makes the
+ *  edited-ago phrase an input, so the probe hands the oracle's frozen "1
+ *  day" where the live view computes the shared timeAgoInWords table. */
+export const boardProbeSurface = {
+  /** act_listing.rb:29-32 with a params bag. */
+  actListingOptsFromParams(
+    params: { actSeq?: string; actionView?: string; hideDiff?: string },
+    seq: string | null | undefined,
+  ) {
+    return actListingOptsFromParams(params, seq);
+  },
+  /** board_act_renderer.rb:6-17 title = left_title + right_title divs. */
+  boardTitleForProbe(inputs: { actSeq?: string; actorName: string; editedAgo: string; summary: string }): string {
+    const left = boardLeftTitleFrom(inputs.actorName, inputs.editedAgo, inputs.actSeq);
+    return boardTitleFrom(left, inputs.summary);
+  },
+  /** board_act_renderer.rb:35-41 with the pieces the oracle documents. */
+  boardOverlayTitleForProbe(inputs: {
+    actSeq?: string;
+    actorName: string;
+    editedAgo: string;
+    summary: string;
+    subtitle: string;
+    rollback: string | null;
+  }): string {
+    const left = boardLeftTitleFrom(inputs.actorName, inputs.editedAgo, inputs.actSeq);
+    return boardOverlayTitleFrom(left, inputs.summary, inputs.subtitle, inputs.rollback);
+  },
+  /** relative_act_renderer.rb:12-20 subtitle from the two names. */
+  boardSubtitleForProbe(actCardName: string, rootCardName: string): string {
+    return boardSubtitleFrom(actCardName, rootCardName);
+  },
+  /** relative_act_renderer.rb:12-14 relative_title. */
+  boardRelativeTitleForProbe(actCardName: string, rootCardName: string): string {
+    return DeckoName.parse(actCardName).from(rootCardName);
+  },
+  /** act_renderer.rb:54-58,91-94's SELECTION - the approved actions the
+   *  details render, capped at 21 (the oracle's AR(id) markers encode
+   *  exactly this id sequence). */
+  boardDetailSelectionForProbe(
+    approvedActions: { id: number }[],
+  ): number[] {
+    return approvedActions.slice(0, 21).map((a) => a.id);
+  },
+  /** card-mod-edit board.rb:73-77 breadcrumb_data. */
+  breadcrumbData(title: string, htmlClass?: string): Record<string, string> {
+    return {
+      "data-breadcrumb": title,
+      "data-breadcrumb-class": htmlClass ?? title.toLowerCase(),
+    };
+  },
+  /** history_board.rb:22's class up - the classy("action-list") value the
+   *  details' <ul> consumes (the oracle pins the consumed string). */
+  actionListClass(): string {
+    return "action-list my-3";
+  },
+};
+
+/** board_act_renderer.rb:6-9 title - the two divs (left class "me-2",
+ *  right class "ms-auto act-summary"). */
+function boardTitleFrom(left: string, right: string): string {
+  return `<div class="me-2">${left}</div><div class="ms-auto act-summary">${right}</div>`;
+}
 
 /** view :action_summary (views.rb:28-30) - the diff view. */
 const actionSummaryView: ViewFn = (ctx) => {
@@ -1990,9 +2319,8 @@ const cardModHistory: DeckoModManifest = {
       // (:history / :act / :action_summary / :action_expanded /
       // :last_action_verb / :act_legend / :last_action / :change — the
       // render-time query seam, src/card/history/render-seam.ts;
-      // surfaces-batch3 added the ladder trio). board_act is the one
-      // remaining named view of the mod (the board act renderer + overlay
-      // chain, all/history_board.rb).
+      // surfaces-batch3 added the ladder trio). board_act is ported on the
+      // all/history_board set below (the mod-porting wave-1 lane).
       setPath: "all/history/views",
       formats: {
         html: {
@@ -2012,11 +2340,19 @@ const cardModHistory: DeckoModManifest = {
     },
     {
       // card-mod-history-0.20.0/set/all/history_board.rb - the board
-      // views. :board_act is not ported; :creator_credit and :updated_by
-      // are ported in the FLAT registry (src/card/render/views.ts, the
-      // same level the mod-a lane used for creator_credit), so this
-      // manifest registers no history_board view.
+      // views. :board_act IS ported (the mod-porting wave-1 lane
+      // 2026-10-03; the BoardActRenderer chain + the overlay frame, with
+      // the oracle pieces pinned by the harness capture and the frame
+      // chrome gem-source-derived rendered-unpinned - see the view's
+      // comment). :creator_credit and :updated_by are ported in the FLAT
+      // registry (src/card/render/views.ts, the same level the mod-a lane
+      // used for creator_credit).
       setPath: "all/history_board",
+      formats: {
+        html: {
+          views: [{ view: "board_act", viewFn: boardActView, config: { cache: "never" } }],
+        },
+      },
     },
   ],
 };

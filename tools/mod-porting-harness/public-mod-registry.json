@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T13:12:19.589Z",
+  "generatedAt": "2026-10-03T14:22:33.931Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -27,6 +27,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 6,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-account-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -40,6 +41,7 @@
       "manifest": true,
       "harnessScorecard": "0/4 validated",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-ace_editor-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -53,6 +55,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-api_key-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -66,6 +69,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-assets-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -79,6 +83,7 @@
       "manifest": false,
       "harnessScorecard": "0/22 validated",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-bar_and_box-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -92,6 +97,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-bootstrap-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -105,6 +111,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-carrierwave-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -118,6 +125,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-collection-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -131,6 +139,7 @@
       "manifest": true,
       "harnessScorecard": "1/9 validated",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-comment-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -144,6 +153,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-content-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -157,6 +167,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-date-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -170,6 +181,7 @@
       "manifest": false,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-defaults-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -183,6 +195,7 @@
       "manifest": false,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-delayed_job-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -196,6 +209,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-edit-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -209,6 +223,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-email-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -222,6 +237,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 4,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-follow-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -235,6 +251,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 2,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-format-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -248,6 +265,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-help-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -256,11 +274,23 @@
       "gem": "card-mod-history-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "11 mod-specific view(s) ported: act, act_legend, action_expanded, action_summary, change, creator_credit, ...",
+      "statusEvidence": "harness scorecard, 0 RED: 1/26 harness-oracle-validated, 21 pinned by the mod's standing suite, 4 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-history/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "1/26 validated",
       "reMeasureMissingViews": 1,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [
+          {
+            "view": "board_act",
+            "source": "set/all/history_board.rb:18-26",
+            "oracle": "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against fixtures/captured/board-views.json)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          }
+        ],
+        "censusMissingRemaining": 0
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-history-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -274,6 +304,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-integrate-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -287,6 +318,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-layout-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -300,6 +332,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-list-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -313,6 +346,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-markdown-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -326,6 +360,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-permissions-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -339,6 +374,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-recaptcha-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -352,6 +388,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-rules-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -365,6 +402,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-script-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -378,6 +416,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-search-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -391,6 +430,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-session-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -404,6 +444,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 4,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-style-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -417,6 +458,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-tabs-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -430,6 +472,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 6,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-tinymce_editor-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },
@@ -443,6 +486,7 @@
       "manifest": true,
       "harnessScorecard": "not harness-validated yet",
       "reMeasureMissingViews": 0,
+      "wave1": null,
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-virtual-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },

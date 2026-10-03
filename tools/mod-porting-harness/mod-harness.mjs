@@ -95,6 +95,57 @@ const REMEASURE = {
   },
 };
 
+// NAMED REMAINDERS (mod-porting wave-1 lane, 2026-10-03) - harness surface
+// behaviors that are NOT ports owed and NOT oversights: each carries its
+// named, evidenced reason (the wave's end condition: "the uncaptured set is
+// empty or every remainder is named"). A red-unported registration whose
+// behaviorId appears here scores "named-remainder" (never counted RED,
+// never counted validated).
+const NAMED_REMAINDERS = {
+  "card-mod-history": {
+    // export.rb:14-16 view :actions - a JSON-FORMAT view. The hash shapes
+    // ARE ported + suite-pinned (actionHashList/actHash/actionHash/
+    // changesHash, export.rb:18-47); the engine has no non-html render
+    // route for manifest-registered json views (the same class
+    // card-mod-list's csv/js/data/json surfaces are named remainders for).
+    "view:actions":
+      "json-format view; the export.rb hash shapes are ported + suite-pinned, the engine's non-html render route is the named remainder (same class as card-mod-list's csv/js/data/json)",
+    // data/test.yml seed cards - the gem's OWN test-suite fixtures
+    // (`decko seed` TEST data consumed by the gem's specs), not deck data.
+    "seed:First":
+      "data/test.yml is the gem's own test-suite fixture data (decko seed TEST data for the gem's specs), not deck data; no TS seed consumer exists or is needed for a running deck",
+  },
+};
+
+// WAVE-1 PORTING STATE (the 10-03 ruling's first porting wave) - the
+// census-missing views BY NAME and their current disposition. A view moves
+// here when it is ported + harness-verified GREEN on this lane; the row
+// cites the lane branch. Views not listed stay uncaptured by name until
+// this wave lands them or names them.
+const WAVE1 = {
+  branch: "lane-mod-porting-wave1-2026-10-03",
+  portedViews: {
+    "card-mod-history": [
+      {
+        view: "board_act",
+        source: "set/all/history_board.rb:18-26",
+        oracle: "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against fixtures/captured/board-views.json)",
+        status: "ported, verify GREEN (harness capture + probe)",
+      },
+    ],
+  },
+  status(modId) {
+    const ported = this.portedViews[modId];
+    if (!ported) return null;
+    const census = REMEASURE.missingByMod[modId] ?? 0;
+    return {
+      branch: this.branch,
+      portedViews: ported,
+      censusMissingRemaining: census - ported.length,
+    };
+  },
+};
+
 // ---------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------
@@ -731,8 +782,17 @@ function verifyMod(modId) {
     // state: green = registered AND (probe suite green OR no probe needed);
     // red = registration missing OR probe suite failed;
     // uncaptured = no oracle (live-deck required) — never counted validated.
+    // named-remainder = red-unported registration whose behaviorId carries a
+    // named, evidenced reason (NAMED_REMAINDERS) — never counted RED, never
+    // counted validated (the wave's end condition: every remainder named).
+    const remainderReason =
+      !reg?.pass && Object.hasOwn(NAMED_REMAINDERS, modId)
+        ? NAMED_REMAINDERS[modId][b.id]
+        : undefined;
     let state;
-    if (reg === undefined) {
+    if (remainderReason !== undefined) {
+      state = "named-remainder";
+    } else if (reg === undefined) {
       state = captured ? "green-no-registration-check" : "captured-unprobed";
     } else if (!reg.pass) {
       state = "red-unported";
@@ -758,12 +818,14 @@ function verifyMod(modId) {
       registration: reg?.pass === true ? "yes" : reg?.pass === false ? "no" : "n/a",
       captured: slot.captured ?? null,
       state,
+      remainderReason: remainderReason ?? null,
       evidence: reg?.evidence ?? null,
     };
   });
 
   const validated = rows.filter((r) => r.state === "green" || r.state === "green-no-registration-check").length;
   const standingNet = rows.filter((r) => r.state === "registered-standing-net").length;
+  const namedRemainder = rows.filter((r) => r.state === "named-remainder").length;
   const red = rows.filter((r) => r.state.startsWith("red")).length;
   const uncaptured = rows.filter((r) => r.state === "uncaptured" || r.state === "captured-unprobed").length;
 
@@ -771,7 +833,7 @@ function verifyMod(modId) {
     mod: modId,
     gem: surface.gemName,
     generatedAt: new Date().toISOString(),
-    totals: { behaviors: rows.length, validated, standingNet, red, uncaptured },
+    totals: { behaviors: rows.length, validated, standingNet, namedRemainder, red, uncaptured },
     probeSuite: {
       files: probeCandidates.map((p) => relative(REPO, p).replaceAll("\\", "/")),
       ran: probe.ran,
@@ -785,9 +847,9 @@ function verifyMod(modId) {
   const L = [];
   L.push(`# ${modId} — harness scorecard`);
   L.push("");
-  L.push(`Behaviors validated: **${validated} / ${rows.length}** (standing-net: ${standingNet}, RED: ${red}, uncaptured: ${uncaptured})`);
+  L.push(`Behaviors validated: **${validated} / ${rows.length}** (standing-net: ${standingNet}, named-remainder: ${namedRemainder}, RED: ${red}, uncaptured: ${uncaptured})`);
   L.push("");
-  L.push(`State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.`);
+  L.push(`State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.`);
   L.push("");
   if (probe.ran) L.push(`Probe suite: ${probe.detail} (${scorecard.probeSuite.files.join(", ")})`);
   else L.push(`Probe suite: not run — ${probe.detail}`);
@@ -859,7 +921,7 @@ function buildRegistry() {
       statusEvidence = `harness scorecard: ${sc.totals.red} RED behavior(s) of ${sc.totals.behaviors} (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
     } else if (sc !== null) {
       status = "ported";
-      statusEvidence = `harness scorecard, 0 RED: ${sc.totals.validated}/${sc.totals.behaviors} harness-oracle-validated, ${sc.totals.standingNet} pinned by the mod's standing suite (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
+      statusEvidence = `harness scorecard, 0 RED: ${sc.totals.validated}/${sc.totals.behaviors} harness-oracle-validated, ${sc.totals.standingNet} pinned by the mod's standing suite${sc.totals.namedRemainder ? `, ${sc.totals.namedRemainder} named-remainder(s) (see the scorecard rows)` : ``} (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
     } else if (manifestExists && compatStatus === "ported") {
       status = "ported";
       statusEvidence = c?.classification?.verdict ?? "compat report ported + manifest present (harness not yet run)";
@@ -877,6 +939,7 @@ function buildRegistry() {
       manifest: manifestExists,
       harnessScorecard: scorecard,
       reMeasureMissingViews: REMEASURE.missingByMod[modId] ?? 0,
+      wave1: WAVE1.status(modId),
       privateUnknown: false,
       publicEvidence: `installed gem ${gemDir} under ${GEM_DIR}; ${license}`,
     });

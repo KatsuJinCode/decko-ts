@@ -1,0 +1,452 @@
+{
+  "modId": "card-mod-style",
+  "gemName": "card-mod-style-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-style-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/abstract/01_asset_style.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/01_css.rb",
+      "views": 4,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/02_scss.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/03_asset_css.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/03_asset_scss.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/skin_box.rb",
+      "views": 4,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/style_group.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/style.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/style_mods.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/css.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/local_style_folder_group.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 1
+    },
+    {
+      "file": "set/type/local_style_manifest_group.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 1
+    },
+    {
+      "file": "set/type/scss.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/skin.rb",
+      "views": 1,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/mod/style.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/set/style.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:35"
+    },
+    {
+      "id": "view:import",
+      "kind": "view",
+      "name": "import",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:48"
+    },
+    {
+      "id": "view:compiled",
+      "kind": "view",
+      "name": "compiled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:52"
+    },
+    {
+      "id": "view:compressed",
+      "kind": "view",
+      "name": "compressed",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/01_css.rb:56"
+    },
+    {
+      "id": "view:compiled",
+      "kind": "view",
+      "name": "compiled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:4"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:8"
+    },
+    {
+      "id": "view:labeled",
+      "kind": "view",
+      "name": "labeled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/02_scss.rb:23"
+    },
+    {
+      "id": "view:box",
+      "kind": "view",
+      "name": "box",
+      "alias": null,
+      "config": ", cache: :yes do",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:2"
+    },
+    {
+      "id": "view:box_bottom",
+      "kind": "view",
+      "name": "box_bottom",
+      "alias": null,
+      "config": ", template: :haml",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:8"
+    },
+    {
+      "id": "view:customize_button",
+      "kind": "view",
+      "name": "customize_button",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:10"
+    },
+    {
+      "id": "view:box_middle",
+      "kind": "view",
+      "name": "box_middle",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/skin_box.rb:14"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/style_group.rb:10"
+    },
+    {
+      "id": "view:stylesheet_include_tag",
+      "kind": "view",
+      "name": "stylesheet_include_tag",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/abstract/style_group.rb:38"
+    },
+    {
+      "id": "view:remote_style_tags",
+      "kind": "view",
+      "name": "remote_style_tags",
+      "alias": null,
+      "config": ", cache: :deep, perms: :none do",
+      "source": "card-mod-style-0.20.0/set/self/style_mods.rb:9"
+    },
+    {
+      "id": "event:validate_css",
+      "kind": "event",
+      "name": "validate_css",
+      "options": ", :validate, on: :save, changed: %i[type_id content] do",
+      "source": "card-mod-style-0.20.0/set/type/css.rb:7"
+    },
+    {
+      "id": "basket:basket[:non_createable_types] << :local_style_folder_group",
+      "kind": "basket-op",
+      "op": "basket[:non_createable_types] << :local_style_folder_group",
+      "source": "card-mod-style-0.20.0/set/type/local_style_folder_group.rb:4"
+    },
+    {
+      "id": "basket:basket[:non_createable_types] << :local_style_manifest_group",
+      "kind": "basket-op",
+      "op": "basket[:non_createable_types] << :local_style_manifest_group",
+      "source": "card-mod-style-0.20.0/set/type/local_style_manifest_group.rb:4"
+    },
+    {
+      "id": "event:validate_scss_syntax",
+      "kind": "event",
+      "name": "validate_scss_syntax",
+      "options": ", :validate, on: :save, changed: %i[type_id content] do",
+      "source": "card-mod-style-0.20.0/set/type/scss.rb:4"
+    },
+    {
+      "id": "view:concat",
+      "kind": "view",
+      "name": "concat",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/type/skin.rb:6"
+    },
+    {
+      "id": "event:no_deletion_if_used",
+      "kind": "event",
+      "name": "no_deletion_if_used",
+      "options": ", :validate, on: :delete do",
+      "source": "card-mod-style-0.20.0/set/type/skin.rb:13"
+    },
+    {
+      "id": "view:stylesheet_include_tag",
+      "kind": "view",
+      "name": "stylesheet_include_tag",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/mod/style.rb:20"
+    },
+    {
+      "id": "view:remote_include_tags",
+      "kind": "view",
+      "name": "remote_include_tags",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/mod/style.rb:26"
+    },
+    {
+      "id": "view:stylesheet_path",
+      "kind": "view",
+      "name": "stylesheet_path",
+      "alias": null,
+      "config": ", cache: :never, perms: :none do",
+      "source": "card-mod-style-0.20.0/set/type_plus_right/set/style.rb:28"
+    },
+    {
+      "id": "seed:style_mods",
+      "kind": "seed",
+      "name": "\"style: mods\"",
+      "codename": "style_mods",
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:local_style_folder_group",
+      "kind": "seed",
+      "name": "Local style folder group",
+      "codename": "local_style_folder_group",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:local_style_manifest_group",
+      "kind": "seed",
+      "name": "Local style manifest group",
+      "codename": "local_style_manifest_group",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:css",
+      "kind": "seed",
+      "name": "CSS",
+      "codename": "css",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:scss",
+      "kind": "seed",
+      "name": "SCSS",
+      "codename": "scss",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:skin",
+      "kind": "seed",
+      "name": "Skin",
+      "codename": "skin",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:style",
+      "kind": "seed",
+      "name": "\"*style\"",
+      "codename": "style",
+      "type": ":search_type",
+      "contentSha": null,
+      "source": "card-mod-style-0.20.0/data/real.yml"
+    },
+    {
+      "id": "config:settings",
+      "kind": "config",
+      "name": "settings",
+      "source": "card-mod-style-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:cardtypes",
+      "kind": "config",
+      "name": "cardtypes",
+      "source": "card-mod-style-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:de",
+      "kind": "config",
+      "name": "de",
+      "source": "card-mod-style-0.20.0/config/locales/de.yml"
+    },
+    {
+      "id": "config:en",
+      "kind": "config",
+      "name": "en",
+      "source": "card-mod-style-0.20.0/config/locales/en.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "\"style: mods\"",
+      "codename": "style_mods",
+      "type": ":list",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Local style folder group",
+      "codename": "local_style_folder_group",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Local style manifest group",
+      "codename": "local_style_manifest_group",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "CSS",
+      "codename": "css",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "SCSS",
+      "codename": "scss",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Skin",
+      "codename": "skin",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*style\"",
+      "codename": "style",
+      "type": ":search_type",
+      "content": null,
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "settings",
+        "cardtypes"
+      ]
+    },
+    {
+      "file": "config/locales/de.yml",
+      "keys": [
+        "de"
+      ]
+    },
+    {
+      "file": "config/locales/en.yml",
+      "keys": [
+        "en"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/style/jquery_ui_decko.scss",
+    "assets/style/jquery_ui_smoothness.css"
+  ],
+  "publicAssets": 11
+}

@@ -1,0 +1,1734 @@
+{
+  "modId": "card-mod-format",
+  "gemName": "card-mod-format-0.20.0",
+  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-format-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/abstract/jsonld_support.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/base.rb",
+      "views": 26,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/content.rb",
+      "views": 6,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/css.rb",
+      "views": 5,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/csv.rb",
+      "views": 5,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/data.rb",
+      "views": 10,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/demo.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/error.rb",
+      "views": 9,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/file.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/haml.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/error.rb",
+      "views": 9,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/frame.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/head.rb",
+      "views": 8,
+      "events": 0,
+      "baskets": 3
+    },
+    {
+      "file": "set/all/html/header.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/menu.rb",
+      "views": 7,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/show.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/views.rb",
+      "views": 8,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/html/wrap.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/js.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/json.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/jsonld.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/links.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/path.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/rss.rb",
+      "views": 12,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/text.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/title.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/yaml.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/head.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/home.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/basic.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/cardtype.rb",
+      "views": 6,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/html.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/json.rb",
+      "views": 1,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/mod.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/number.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/phrase.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/plain_text.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/toggle.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/uri.rb",
+      "views": 3,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:name",
+      "kind": "view",
+      "name": "name",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:14"
+    },
+    {
+      "id": "view:key",
+      "kind": "view",
+      "name": "key",
+      "alias": null,
+      "config": ",      compact: true, perms: :none) { card.key }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:26"
+    },
+    {
+      "id": "view:linkname",
+      "kind": "view",
+      "name": "linkname",
+      "alias": null,
+      "config": ", compact: true, perms: :none) { card.name.url_key }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:27"
+    },
+    {
+      "id": "view:url",
+      "kind": "view",
+      "name": "url",
+      "alias": null,
+      "config": ",      compact: true, perms: :none) { card_url _render_linkname }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:28"
+    },
+    {
+      "id": "view:id_url",
+      "kind": "view",
+      "name": "id_url",
+      "alias": null,
+      "config": ",   compact: true) { card_url \"~#{card.id}\" }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:29"
+    },
+    {
+      "id": "view:url_link",
+      "kind": "view",
+      "name": "url_link",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:31"
+    },
+    {
+      "id": "view:link",
+      "kind": "view",
+      "name": "link",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:35"
+    },
+    {
+      "id": "view:nav_link",
+      "kind": "view",
+      "name": "nav_link",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:39"
+    },
+    {
+      "id": "view:codename",
+      "kind": "view",
+      "name": "codename",
+      "alias": null,
+      "config": ", compact: true) { card.codename.to_s }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:55"
+    },
+    {
+      "id": "view:id",
+      "kind": "view",
+      "name": "id",
+      "alias": null,
+      "config": ",       compact: true) { card.id            }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:56"
+    },
+    {
+      "id": "view:type",
+      "kind": "view",
+      "name": "type",
+      "alias": null,
+      "config": ",     compact: true) { card.type_name     }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:57"
+    },
+    {
+      "id": "view:created_at",
+      "kind": "view",
+      "name": "created_at",
+      "alias": null,
+      "config": ", compact: true) { date_view card.created_at }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:61"
+    },
+    {
+      "id": "view:updated_at",
+      "kind": "view",
+      "name": "updated_at",
+      "alias": null,
+      "config": ", compact: true) { date_view card.updated_at }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:62"
+    },
+    {
+      "id": "view:acted_at",
+      "kind": "view",
+      "name": "acted_at",
+      "alias": null,
+      "config": ",   compact: true) { date_view card.acted_at   }",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:63"
+    },
+    {
+      "id": "view:raw",
+      "kind": "view",
+      "name": "raw",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:75"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", compact: true do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:85"
+    },
+    {
+      "id": "view:content",
+      "kind": "view",
+      "name": "content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:89"
+    },
+    {
+      "id": "view:open_content",
+      "kind": "view",
+      "name": "open_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:93"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": ", compact: true do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:97"
+    },
+    {
+      "id": "view:labeled_content",
+      "kind": "view",
+      "name": "labeled_content",
+      "alias": null,
+      "config": ", unknown: :mini_unknown do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:101"
+    },
+    {
+      "id": "view:titled_content",
+      "kind": "view",
+      "name": "titled_content",
+      "alias": null,
+      "config": ", unknown: :blank do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:105"
+    },
+    {
+      "id": "view:blank",
+      "kind": "view",
+      "name": "blank",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:109"
+    },
+    {
+      "id": "view:titled",
+      "kind": "view",
+      "name": "titled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:120"
+    },
+    {
+      "id": "view:open",
+      "kind": "view",
+      "name": "open",
+      "alias": "titled",
+      "config": null,
+      "source": "card-mod-format-0.20.0/set/all/base.rb:123"
+    },
+    {
+      "id": "view:labeled",
+      "kind": "view",
+      "name": "labeled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/base.rb:125"
+    },
+    {
+      "id": "view:closed",
+      "kind": "view",
+      "name": "closed",
+      "alias": "labeled",
+      "config": null,
+      "source": "card-mod-format-0.20.0/set/all/base.rb:128"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:9"
+    },
+    {
+      "id": "view:closed_content",
+      "kind": "view",
+      "name": "closed_content",
+      "alias": "one_line_content",
+      "config": null,
+      "source": "card-mod-format-0.20.0/set/all/content.rb:16"
+    },
+    {
+      "id": "view:raw_one_line_content",
+      "kind": "view",
+      "name": "raw_one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:18"
+    },
+    {
+      "id": "view:label",
+      "kind": "view",
+      "name": "label",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:22"
+    },
+    {
+      "id": "view:smart_label",
+      "kind": "view",
+      "name": "smart_label",
+      "alias": null,
+      "config": ", cache: :never, unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:26"
+    },
+    {
+      "id": "view:hidden_content_field",
+      "kind": "view",
+      "name": "hidden_content_field",
+      "alias": null,
+      "config": ", unknown: true, cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/content.rb:57"
+    },
+    {
+      "id": "view:titled",
+      "kind": "view",
+      "name": "titled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:11"
+    },
+    {
+      "id": "view:content",
+      "kind": "view",
+      "name": "content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:15"
+    },
+    {
+      "id": "view:unknown",
+      "kind": "view",
+      "name": "unknown",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:19"
+    },
+    {
+      "id": "view:import",
+      "kind": "view",
+      "name": "import",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:23"
+    },
+    {
+      "id": "view:url",
+      "kind": "view",
+      "name": "url",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/css.rb:27"
+    },
+    {
+      "id": "view:titled",
+      "kind": "view",
+      "name": "titled",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:21"
+    },
+    {
+      "id": "view:body",
+      "kind": "view",
+      "name": "body",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:26"
+    },
+    {
+      "id": "view:row",
+      "kind": "view",
+      "name": "row",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:30"
+    },
+    {
+      "id": "view:header",
+      "kind": "view",
+      "name": "header",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:35"
+    },
+    {
+      "id": "view:unknown",
+      "kind": "view",
+      "name": "unknown",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/csv.rb:39"
+    },
+    {
+      "id": "view:pod",
+      "kind": "view",
+      "name": "pod",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:32"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:36"
+    },
+    {
+      "id": "view:content",
+      "kind": "view",
+      "name": "content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:40"
+    },
+    {
+      "id": "view:nucleus",
+      "kind": "view",
+      "name": "nucleus",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:44"
+    },
+    {
+      "id": "view:atom",
+      "kind": "view",
+      "name": "atom",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:49"
+    },
+    {
+      "id": "view:molecule",
+      "kind": "view",
+      "name": "molecule",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:53"
+    },
+    {
+      "id": "view:ancestors",
+      "kind": "view",
+      "name": "ancestors",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:57"
+    },
+    {
+      "id": "view:cast",
+      "kind": "view",
+      "name": "cast",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:64"
+    },
+    {
+      "id": "view:items",
+      "kind": "view",
+      "name": "items",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:70"
+    },
+    {
+      "id": "view:links",
+      "kind": "view",
+      "name": "links",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/data.rb:74"
+    },
+    {
+      "id": "view:demo",
+      "kind": "view",
+      "name": "demo",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/demo.rb:2"
+    },
+    {
+      "id": "view:view_list",
+      "kind": "view",
+      "name": "view_list",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/demo.rb:8"
+    },
+    {
+      "id": "view:compact_missing",
+      "kind": "view",
+      "name": "compact_missing",
+      "alias": null,
+      "config": ", perms: :none, compact: true do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:2"
+    },
+    {
+      "id": "view:unknown",
+      "kind": "view",
+      "name": "unknown",
+      "alias": null,
+      "config": ", perms: :none, cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:6"
+    },
+    {
+      "id": "view:server_error",
+      "kind": "view",
+      "name": "server_error",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:10"
+    },
+    {
+      "id": "view:denial",
+      "kind": "view",
+      "name": "denial",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:14"
+    },
+    {
+      "id": "view:not_found",
+      "kind": "view",
+      "name": "not_found",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:18"
+    },
+    {
+      "id": "view:bad_address",
+      "kind": "view",
+      "name": "bad_address",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:23"
+    },
+    {
+      "id": "view:errors",
+      "kind": "view",
+      "name": "errors",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:28"
+    },
+    {
+      "id": "view:test",
+      "kind": "view",
+      "name": "test",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:75"
+    },
+    {
+      "id": "view:format_unsupported",
+      "kind": "view",
+      "name": "format_unsupported",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/error.rb:91"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/file.rb:2"
+    },
+    {
+      "id": "view:style",
+      "kind": "view",
+      "name": "style",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/file.rb:6"
+    },
+    {
+      "id": "view:type",
+      "kind": "view",
+      "name": "type",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/html.rb:5"
+    },
+    {
+      "id": "view:type_info",
+      "kind": "view",
+      "name": "type_info",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html.rb:9"
+    },
+    {
+      "id": "view:server_error",
+      "kind": "view",
+      "name": "server_error",
+      "alias": null,
+      "config": ", template: :haml",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:2"
+    },
+    {
+      "id": "view:debug_server_error",
+      "kind": "view",
+      "name": "debug_server_error",
+      "alias": null,
+      "config": ", wrap: { modal: { size: :full } } do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:4"
+    },
+    {
+      "id": "view:unknown",
+      "kind": "view",
+      "name": "unknown",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:10"
+    },
+    {
+      "id": "view:mini_unknown",
+      "kind": "view",
+      "name": "mini_unknown",
+      "alias": null,
+      "config": ", unknown: true, cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:15"
+    },
+    {
+      "id": "view:compact_missing",
+      "kind": "view",
+      "name": "compact_missing",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:33"
+    },
+    {
+      "id": "view:conflict",
+      "kind": "view",
+      "name": "conflict",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:37"
+    },
+    {
+      "id": "view:errors",
+      "kind": "view",
+      "name": "errors",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:53"
+    },
+    {
+      "id": "view:not_found",
+      "kind": "view",
+      "name": "not_found",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:67"
+    },
+    {
+      "id": "view:denial",
+      "kind": "view",
+      "name": "denial",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/error.rb:75"
+    },
+    {
+      "id": "view:flash",
+      "kind": "view",
+      "name": "flash",
+      "alias": null,
+      "config": ", cache: :never, unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/frame.rb:2"
+    },
+    {
+      "id": "view:page_title",
+      "kind": "view",
+      "name": "page_title",
+      "alias": null,
+      "config": ", unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:21"
+    },
+    {
+      "id": "view:head",
+      "kind": "view",
+      "name": "head",
+      "alias": null,
+      "config": ", unknown: true, perms: :none, cache: :always do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:31"
+    },
+    {
+      "id": "view:meta_tags",
+      "kind": "view",
+      "name": "meta_tags",
+      "alias": null,
+      "config": ", unknown: true, perms: :none, template: :haml",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:35"
+    },
+    {
+      "id": "view:page_title_tag",
+      "kind": "view",
+      "name": "page_title_tag",
+      "alias": null,
+      "config": ", unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:37"
+    },
+    {
+      "id": "view:favicon_tag",
+      "kind": "view",
+      "name": "favicon_tag",
+      "alias": null,
+      "config": ", unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:41"
+    },
+    {
+      "id": "view:universal_edit_button",
+      "kind": "view",
+      "name": "universal_edit_button",
+      "alias": null,
+      "config": ", unknown: :blank, denial: :blank, perms: :update do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:46"
+    },
+    {
+      "id": "view:rss_links",
+      "kind": "view",
+      "name": "rss_links",
+      "alias": null,
+      "config": ", unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:54"
+    },
+    {
+      "id": "view:stylesheet_tags",
+      "kind": "view",
+      "name": "stylesheet_tags",
+      "alias": null,
+      "config": ", cache: :never, unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:61"
+    },
+    {
+      "id": "basket:basket[:head_views] =",
+      "kind": "basket-op",
+      "op": "basket[:head_views] =",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:1"
+    },
+    {
+      "id": "basket:basket[:cache_seed_names] += [",
+      "kind": "basket-op",
+      "op": "basket[:cache_seed_names] += [",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:7"
+    },
+    {
+      "id": "basket:basket[:head_views].map { |viewname| render viewname }.flatten.compact.join \"\\n\"",
+      "kind": "basket-op",
+      "op": "basket[:head_views].map { |viewname| render viewname }.flatten.compact.join \"\\n\"",
+      "source": "card-mod-format-0.20.0/set/all/html/head.rb:32"
+    },
+    {
+      "id": "view:header",
+      "kind": "view",
+      "name": "header",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/header.rb:5"
+    },
+    {
+      "id": "view:header_title",
+      "kind": "view",
+      "name": "header_title",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/html/header.rb:15"
+    },
+    {
+      "id": "view:menu_block",
+      "kind": "view",
+      "name": "menu_block",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:2"
+    },
+    {
+      "id": "view:menu",
+      "kind": "view",
+      "name": "menu",
+      "alias": null,
+      "config": ", denial: :blank, unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:8"
+    },
+    {
+      "id": "view:edit_link",
+      "kind": "view",
+      "name": "edit_link",
+      "alias": null,
+      "config": ", unknown: true, denial: :blank do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:16"
+    },
+    {
+      "id": "view:edit_button",
+      "kind": "view",
+      "name": "edit_button",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:20"
+    },
+    {
+      "id": "view:full_page_link",
+      "kind": "view",
+      "name": "full_page_link",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:25"
+    },
+    {
+      "id": "view:board_link",
+      "kind": "view",
+      "name": "board_link",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:29"
+    },
+    {
+      "id": "view:help_link",
+      "kind": "view",
+      "name": "help_link",
+      "alias": null,
+      "config": ", cache: :never, unknown: true do",
+      "source": "card-mod-format-0.20.0/set/all/html/menu.rb:35"
+    },
+    {
+      "id": "view:content",
+      "kind": "view",
+      "name": "content",
+      "alias": null,
+      "config": ", cache: :yes do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:10"
+    },
+    {
+      "id": "view:short_content",
+      "kind": "view",
+      "name": "short_content",
+      "alias": null,
+      "config": ", wrap: { div: { class: \"text-muted\" } } do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:20"
+    },
+    {
+      "id": "view:raw_one_line_content",
+      "kind": "view",
+      "name": "raw_one_line_content",
+      "alias": null,
+      "config": ", unknown: :mini_unknown,",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:24"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": ", unknown: :mini_unknown,",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:29"
+    },
+    {
+      "id": "view:content_with_title",
+      "kind": "view",
+      "name": "content_with_title",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:36"
+    },
+    {
+      "id": "view:content_panel",
+      "kind": "view",
+      "name": "content_panel",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:47"
+    },
+    {
+      "id": "view:titled",
+      "kind": "view",
+      "name": "titled",
+      "alias": null,
+      "config": ", cache: :yes do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:55"
+    },
+    {
+      "id": "view:labeled",
+      "kind": "view",
+      "name": "labeled",
+      "alias": null,
+      "config": ", unknown: :labeled, cache: :yes do",
+      "source": "card-mod-format-0.20.0/set/all/html/views.rb:67"
+    },
+    {
+      "id": "view:source",
+      "kind": "view",
+      "name": "source",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/js.rb:6"
+    },
+    {
+      "id": "view:status",
+      "kind": "view",
+      "name": "status",
+      "alias": null,
+      "config": ", unknown: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/json.rb:29"
+    },
+    {
+      "id": "view:page",
+      "kind": "view",
+      "name": "page",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/json.rb:37"
+    },
+    {
+      "id": "view:items",
+      "kind": "view",
+      "name": "items",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/jsonld.rb:5"
+    },
+    {
+      "id": "view:remote",
+      "kind": "view",
+      "name": "remote",
+      "alias": null,
+      "config": null,
+      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)"
+    },
+    {
+      "id": "view:method",
+      "kind": "view",
+      "name": "method",
+      "alias": null,
+      "config": null,
+      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)"
+    },
+    {
+      "id": "view:feed",
+      "kind": "view",
+      "name": "feed",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:17"
+    },
+    {
+      "id": "view:feed_body",
+      "kind": "view",
+      "name": "feed_body",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:40"
+    },
+    {
+      "id": "view:feed_title",
+      "kind": "view",
+      "name": "feed_title",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:48"
+    },
+    {
+      "id": "view:feed_item",
+      "kind": "view",
+      "name": "feed_item",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:52"
+    },
+    {
+      "id": "view:feed_item_description",
+      "kind": "view",
+      "name": "feed_item_description",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:67"
+    },
+    {
+      "id": "view:feed_description",
+      "kind": "view",
+      "name": "feed_description",
+      "alias": null,
+      "config": ") { \"\" }",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:71"
+    },
+    {
+      "id": "view:comment_box",
+      "kind": "view",
+      "name": "comment_box",
+      "alias": null,
+      "config": ") { \"\" }",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:72"
+    },
+    {
+      "id": "view:menu",
+      "kind": "view",
+      "name": "menu",
+      "alias": null,
+      "config": ") { \"\" }",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:73"
+    },
+    {
+      "id": "view:open",
+      "kind": "view",
+      "name": "open",
+      "alias": "titled",
+      "config": ", mod: All::Base::Format",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:75"
+    },
+    {
+      "id": "view:content",
+      "kind": "view",
+      "name": "content",
+      "alias": "core",
+      "config": ",   mod: All::Base::Format",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:76"
+    },
+    {
+      "id": "view:open_content",
+      "kind": "view",
+      "name": "open_content",
+      "alias": "core",
+      "config": ",   mod: All::Base::Format",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:77"
+    },
+    {
+      "id": "view:closed",
+      "kind": "view",
+      "name": "closed",
+      "alias": "link",
+      "config": ",   mod: All::Base::Format",
+      "source": "card-mod-format-0.20.0/set/all/rss.rb:78"
+    },
+    {
+      "id": "view:text_without_nests",
+      "kind": "view",
+      "name": "text_without_nests",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/text.rb:15"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/text.rb:22"
+    },
+    {
+      "id": "view:title",
+      "kind": "view",
+      "name": "title",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:2"
+    },
+    {
+      "id": "view:title_link",
+      "kind": "view",
+      "name": "title_link",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:16"
+    },
+    {
+      "id": "view:title_no_link",
+      "kind": "view",
+      "name": "title_no_link",
+      "alias": null,
+      "config": ", compact: true, perms: :none do",
+      "source": "card-mod-format-0.20.0/set/all/title.rb:20"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/all/yaml.rb:6"
+    },
+    {
+      "id": "view:home_url",
+      "kind": "view",
+      "name": "home_url",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/self/home.rb:2"
+    },
+    {
+      "id": "view:home_path",
+      "kind": "view",
+      "name": "home_path",
+      "alias": null,
+      "config": ", perms: :none do",
+      "source": "card-mod-format-0.20.0/set/self/home.rb:6"
+    },
+    {
+      "id": "view:type",
+      "kind": "view",
+      "name": "type",
+      "alias": null,
+      "config": ", unknown: true do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:2"
+    },
+    {
+      "id": "view:add_link",
+      "kind": "view",
+      "name": "add_link",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:14"
+    },
+    {
+      "id": "view:add_button",
+      "kind": "view",
+      "name": "add_button",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:18"
+    },
+    {
+      "id": "view:add_url",
+      "kind": "view",
+      "name": "add_url",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:36"
+    },
+    {
+      "id": "view:configure_link",
+      "kind": "view",
+      "name": "configure_link",
+      "alias": null,
+      "config": ", cache: :never, perms: :can_configure? do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:53"
+    },
+    {
+      "id": "view:configure_button",
+      "kind": "view",
+      "name": "configure_button",
+      "alias": null,
+      "config": ", cache: :never, denial: :blank, perms: :can_configure? do",
+      "source": "card-mod-format-0.20.0/set/type/cardtype.rb:61"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/html.rb:10"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/json.rb:30"
+    },
+    {
+      "id": "event:validate_json",
+      "kind": "event",
+      "name": "validate_json",
+      "options": ", :validate, on: :save, changed: :content do",
+      "source": "card-mod-format-0.20.0/set/type/json.rb:3"
+    },
+    {
+      "id": "view:admin",
+      "kind": "view",
+      "name": "admin",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/mod.rb:2"
+    },
+    {
+      "id": "view:bar_right",
+      "kind": "view",
+      "name": "bar_right",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/mod.rb:6"
+    },
+    {
+      "id": "event:validate_number",
+      "kind": "event",
+      "name": "validate_number",
+      "options": ", :validate, on: :save do",
+      "source": "card-mod-format-0.20.0/set/type/number.rb:7"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/plain_text.rb:6"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:5"
+    },
+    {
+      "id": "view:input",
+      "kind": "view",
+      "name": "input",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:15"
+    },
+    {
+      "id": "view:labeled_editor",
+      "kind": "view",
+      "name": "labeled_editor",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/toggle.rb:19"
+    },
+    {
+      "id": "view:title_link",
+      "kind": "view",
+      "name": "title_link",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:2"
+    },
+    {
+      "id": "view:url_link",
+      "kind": "view",
+      "name": "url_link",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:6"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-format-0.20.0/set/type/uri.rb:12"
+    },
+    {
+      "id": "seed:json",
+      "kind": "seed",
+      "name": "JSON",
+      "codename": "json",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:basic",
+      "kind": "seed",
+      "name": "RichText",
+      "codename": "basic",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:number",
+      "kind": "seed",
+      "name": "Number",
+      "codename": "number",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:plain_text",
+      "kind": "seed",
+      "name": "PlainText",
+      "codename": "plain_text",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:html",
+      "kind": "seed",
+      "name": "HTML",
+      "codename": "html",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:toggle",
+      "kind": "seed",
+      "name": "Toggle",
+      "codename": "toggle",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:phrase",
+      "kind": "seed",
+      "name": "Phrase",
+      "codename": "phrase",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:uri",
+      "kind": "seed",
+      "name": "URI",
+      "codename": "uri",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:head",
+      "kind": "seed",
+      "name": "\"*head\"",
+      "codename": "head",
+      "type": ":setting",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:title",
+      "kind": "seed",
+      "name": "\"*title\"",
+      "codename": "title",
+      "type": ":phrase",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:credit",
+      "kind": "seed",
+      "name": "\"*credit\"",
+      "codename": "credit",
+      "type": ":html",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:noindex",
+      "kind": "seed",
+      "name": "\"*noindex\"",
+      "codename": "noindex",
+      "type": ":list",
+      "contentSha": null,
+      "source": "card-mod-format-0.20.0/data/real.yml"
+    },
+    {
+      "id": "config:configurations",
+      "kind": "config",
+      "name": "configurations",
+      "source": "card-mod-format-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:cardtypes",
+      "kind": "config",
+      "name": "cardtypes",
+      "source": "card-mod-format-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:views",
+      "kind": "config",
+      "name": "views",
+      "source": "card-mod-format-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:de",
+      "kind": "config",
+      "name": "de",
+      "source": "card-mod-format-0.20.0/config/locales/de.yml"
+    },
+    {
+      "id": "config:en",
+      "kind": "config",
+      "name": "en",
+      "source": "card-mod-format-0.20.0/config/locales/en.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "JSON",
+      "codename": "json",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "RichText",
+      "codename": "basic",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Number",
+      "codename": "number",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "PlainText",
+      "codename": "plain_text",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "HTML",
+      "codename": "html",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Toggle",
+      "codename": "toggle",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Phrase",
+      "codename": "phrase",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "URI",
+      "codename": "uri",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*head\"",
+      "codename": "head",
+      "type": ":setting",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*title\"",
+      "codename": "title",
+      "type": ":phrase",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*credit\"",
+      "codename": "credit",
+      "type": ":html",
+      "content": "",
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*noindex\"",
+      "codename": "noindex",
+      "type": ":list",
+      "content": null,
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "configurations",
+        "cardtypes",
+        "views"
+      ]
+    },
+    {
+      "file": "config/locales/de.yml",
+      "keys": [
+        "de"
+      ]
+    },
+    {
+      "file": "config/locales/en.yml",
+      "keys": [
+        "en"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/decko/clicks_and_hovers.js.coffee",
+    "assets/script/decko/decko.js.coffee",
+    "assets/script/decko/decko_jquery.js.coffee",
+    "assets/script/decko/slot.js.coffee",
+    "assets/script/decko/slotter.js.coffee",
+    "assets/script/decko/slot_ready.js.coffee",
+    "assets/script/jquery/jquery-ui.min.js",
+    "assets/script/jquery/jquery.autosize.js",
+    "assets/script/jquery/jquery.ui.autocomplete.html.js",
+    "assets/script/manifest.yml",
+    "assets/style/common.scss",
+    "assets/style/logo_and_credit.scss",
+    "assets/style/menu.scss",
+    "assets/style/messaging.scss",
+    "assets/style/misc.scss",
+    "assets/style/open_and_closed.scss"
+  ],
+  "publicAssets": 0
+}
