@@ -917,13 +917,19 @@ export const modCardCoreHtml: ViewFn = (ctx) => {
     // styles? / scripts? (type/mod.rb:110-116) are the DECK-PINNED group
     // presence — the child card is virtual, so its own resolution is not a
     // usable predicate on the headless path (see typeModStylesView).
-    () => (modAssetGroups(modname, "style") === undefined ? undefined : typeModStylesView(ctx)),
-    () => (modAssetGroups(modname, "script") === undefined ? undefined : typeModScriptsView(ctx)),
+    () => typeModStylesView(ctx),
+    () => typeModScriptsView(ctx),
     () => (modTasks(modname).length === 0 ? undefined : typeModTasksView(ctx)),
     () => (config?.views === undefined ? undefined : typeModViewsView(ctx)),
     () => (dependsOn(spec) === undefined ? undefined : typeModDependsOnView(ctx)),
   ];
-  for (const render of present) sections.push(render());
+  for (const render of present) {
+    // An absent section must be COMPACTED AWAY (type/mod.rb:24-26
+    // render_section_views does `.compact.join "<br/>"`); a section that
+    // rendered to the empty string would contribute a stray `<br/>`.
+    const body = render();
+    sections.push(body === "" ? undefined : body);
+  }
   return sections
     .filter((s): s is string => s !== undefined)
     .join("<br/>");
@@ -1039,26 +1045,65 @@ const typeModBarRightView: ViewFn = (ctx) =>
  *  resolved `+*style` card therefore rendered
  *  `<div class="card-list card-list-bar pointer-list"></div>` where the
  *  oracle renders the group list. The headless engine has no gem asset
- *  tree to resolve the groups from (the raw corpus has ZERO rows named
- *  `mod: X+*style`), so the groups come from the deck-pinned
+ *  tree to resolve the groups from, so the groups come from the deck-pinned
  *  MOD_ASSET_GROUPS table (core-admin-runtime.ts) and render through the
- *  same group_list haml. The `styles?` predicate (type/mod.rb:110-112) is
- *  the table's presence: no style groups -> no section. */
-const typeModStylesView: ViewFn = (ctx) => {
-
-  const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), "style");
-  if (groups === undefined || groups.length === 0) return "";
-  return sectionHtml("Styles", modAssetGroupsCoreHtml(groups));
-};
+ *  same group_list haml.
+ *
+ *  THE PREDICATE IS THE CHILD CARD, not the table — and the table alone
+ *  gets it wrong in BOTH directions. type/mod.rb:60-65 is
+ *
+ *      view :scripts do
+ *        style = card.fetch :script
+ *        return unless style
+ *        section "Scripts", nest(style, view: :core)
+ *      end
+ *
+ *  and `styles?` (type/mod.rb:110-116) is `fetch(:style).present?` — the
+ *  same test. So the SECTION is present exactly when the `mod: X+*script`
+ *  child card is there, which is a CORPUS ROW, not a table entry. Measured
+ *  against tmp/raw-ground-truth/bench-corpus-raw.sqlite3, the two disagree:
+ *
+ *    - `shades` HAS a `mod: shades+*script` row (id 49309, List, with
+ *      `mod: shades+*script+*asset output` id 49310 under it) and NO entry
+ *      in MOD_ASSET_GROUPS_SRC, so the engine omitted the section and
+ *      rendered a bare `<p></p>` where the capture carries
+ *      `<p></p><br/><p><h3>Scripts</h3></p>` (recapture-raw-shard-000043
+ *      `mod: shades:page`, -28 — the whole delta is that section).
+ *    - `ace_editor` and `bar_and_box` have NO `+*script` row but DO have
+ *      pinned script groups, so switching the predicate to the corpus row
+ *      alone would DELETE sections those pages currently render and pass.
+ *
+ *  So the section is present when EITHER source says the child exists, and
+ *  the BODY is the pinned group list when the table has one. The body is
+ *  empty in the shades case because the graded corpus carries no asset
+ *  FILE rows for that gem — `sectionHtml(title, "")` is exactly
+ *  `<p><h3>Scripts</h3></p>`, which is what the capture holds.
+ *
+ *  This also puts `childCard` (defined below for precisely this purpose and
+ *  dead until now) to work. */
+const typeModStylesView: ViewFn = (ctx) => modAssetSection(ctx, "style", "Styles");
 
 /** type/mod.rb:60-65 view :scripts — the same shape over the script
  *  subpath (card-mod-script set/type_plus_right/mod/script.rb:3). */
-const typeModScriptsView: ViewFn = (ctx) => {
+const typeModScriptsView: ViewFn = (ctx) => modAssetSection(ctx, "script", "Scripts");
 
-  const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), "script");
-  if (groups === undefined || groups.length === 0) return "";
-  return sectionHtml("Scripts", modAssetGroupsCoreHtml(groups));
-};
+/** The shared styles/scripts section (type/mod.rb:56-65). See
+ *  typeModStylesView above for why presence is the union of the corpus
+ *  child card and the pinned group table. */
+function modAssetSection(
+  ctx: ViewContext,
+  tag: "style" | "script",
+  title: string,
+): string {
+  const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), tag);
+  if (groups === undefined || groups.length === 0) {
+    // No pinned group list: render the section only if the corpus says the
+    // child card exists, and with an empty body, because the graded corpus
+    // carries no asset file rows to list.
+    return childCard(ctx, tag) !== undefined ? sectionHtml(title, "") : "";
+  }
+  return sectionHtml(title, modAssetGroupsCoreHtml(groups));
+}
 
 
 /** card.fetch(:style)/(:script) — the child card by name; the engine's

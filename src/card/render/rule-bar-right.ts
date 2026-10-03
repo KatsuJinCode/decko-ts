@@ -198,10 +198,7 @@ function ruleOneLineContent(
       // no who_can party walk, so the self-set context always lands on the
       // rescue form — the exact bytes the corpus pinned (the Anonymous
       // viewer's walk raised at capture time the same way).
-      if (setContextTag === "*self" || setContextTag === "self") {
-        return `<span class="inherit-perm">Inherit</span>`;
-      }
-      return `<span class="inherit-perm">Inherit from left card</span>`;
+      return permissionInheritContentHtml(setContextTag);
     }
     if (isPermissionRightSetting(rightSetting)) {
       return pointerListOneLineContent(card, engine);
@@ -259,6 +256,36 @@ function ruleOneLineContent(
  *  cycle) renders a card's UNWRAPPED core-view body (Ruby render_core,
  *  mod-dispatched: Markdown kramdown, RichText processed content) for
  *  the base one-line method path. */
+/** card-mod-permissions set/abstract/permission.rb:98-105
+ *  #core_inherit_content — the inheritance marker a `_left` permission
+ *  rule card renders in place of its item list. SHARED by the two Ruby
+ *  surfaces that call it:
+ *
+ *  - `view :core` (permission.rb:15-21), which the engine dispatches in
+ *    views.ts at the isPointerOrListCard arm, before the pointer list
+ *    is built;
+ *  - `view :bar_right` (the one_line_content twin, below).
+ *
+ *  ONE implementation, so the two surfaces cannot drift. `setContextTag`
+ *  is the @set_context the nest carried (bar_view.rb:63-66,
+ *  `set_context: card.name.trunk_name`), read at each call site as
+ *  `card.name.trunkName?.tagName?.key`.
+ *
+ *  `in_context_of_self_set?` (permission.rb:107-110) tests that context's
+ *  tag against `Card[:self].key`; the self-set context renders the LINKS
+ *  form (permission.rb:114-120), whose who_can walk RESCUES to a bare
+ *  marker (permission.rb:121). The engine has no who_can party walk, so
+ *  the self-set context always lands on the rescue form — the exact
+ *  bytes the corpus pinned, because the Anonymous viewer's walk raised
+ *  at capture time the same way. Every other context is the plain
+ *  string. */
+export function permissionInheritContentHtml(setContextTag: string | undefined): string {
+  if (setContextTag === "*self" || setContextTag === "self") {
+    return `<span class="inherit-perm">Inherit</span>`;
+  }
+  return `<span class="inherit-perm">Inherit from left card</span>`;
+}
+
 export function ruleBarRightHtml(
   card: RenderCard,
   engine?: RenderEngineLike,

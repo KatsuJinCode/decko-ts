@@ -965,6 +965,26 @@ export class RenderEngine implements RenderEngineLike {
         await this.prepareItemForRender(`${name.s}+*asset output`);
       }
     }
+    // The Mod-cardtype asset-children warm.
+    //
+    // card/mod/core/set/type/mod.rb:56-65 reads `card.fetch :style` and
+    // `card.fetch :script` and `type/mod.rb:110-116 gates the two sections
+    // on `fetch(:style).present?` / `fetch(:script).present?` — the CHILD
+    // CARD, i.e. the `mod: X+*style` / `mod: X+*script` row. The port
+    // reads that test synchronously (core-mod.ts#childCard ->
+    // fetchRenderCard, cache-only), and nothing warmed those two children,
+    // so the Styles/Scripts section was decided entirely by the deck-pinned
+    // MOD_ASSET_GROUPS table and a gem with a real child row but no pinned
+    // entry lost its section. `mod: shades` is exactly that: corpus row
+    // `mod: shades+*script` (id 49309) exists, MOD_ASSET_GROUPS_SRC has no
+    // `shades` key, and the capture carries the section while the engine
+    // rendered a bare `<p></p>` (recapture-raw-shard-000043 `mod: shades:page`,
+    // -28). One conditional family, same shape and same caveat as the
+    // bootswatch-skin warm below: a mod with neither child warms nothing.
+    if (record.typeId !== undefined && this.peekCodenameById?.(record.typeId) === "mod") {
+      await this.prepareItemForRender(`${name.s}+*style`);
+      await this.prepareItemForRender(`${name.s}+*script`);
+    }
     // The bootswatch-skin page warm (the compiled-in coreView branch's
     // synchronous reads - views.ts calls bootswatchSkinCoreHtml, whose
     // current_skin? / parent? / image / field lookups are all

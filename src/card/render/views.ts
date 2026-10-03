@@ -65,7 +65,7 @@ import {
   phantomPointerListItem,
 } from "./pointer-list.js";
 import { readMiniBarCols, readBarCols, readFullBarCols } from "./bar-cols.js";
-import { ruleBarRightHtml } from "./rule-bar-right.js";
+import { permissionInheritContentHtml, ruleBarRightHtml } from "./rule-bar-right.js";
 import { modBarRightSections, modChildAssetGroups } from "../mod-loader/mods/core-admin-runtime.js";
 import { modAssetGroupsCoreHtml } from "./haml-file-views.js";
 import { processHelpContent } from "./help-popover.js";
@@ -963,6 +963,41 @@ const coreViewBase: ViewFn = (ctx) => {
   // card (codename match).
   if (isModAssetsChildCard(ctx)) {
     return modAssetsChildCoreHtml(ctx);
+  }
+  // card-mod-permissions set/abstract/permission.rb:15-21 view :core,
+  // `cache: :never` — the PERMISSION rule cards branch on their own
+  // content before the pointer list is ever built:
+  //
+  //     view :core, cache: :never do
+  //       if card.content == "_left"
+  //         core_inherit_content
+  //       else
+  //         render! :pointer_core
+  //       end
+  //     end
+  //
+  // `core_inherit_content` (permission.rb:98-105) is the
+  // `<span class="inherit-perm">` marker. The engine had no `core`
+  // counterpart to the `bar_right` one (rule-bar-right.ts handles the
+  // same test for the bar surface), so a rule card whose content is the
+  // magic `_left` fell through to the pointer list and rendered the
+  // upstream cards items where the oracle renders the marker:
+  //
+  //   corpus 6567/6569/6571/6573 — `*all plus+*create` / `*read` /
+  //   `*update` / `*delete`, all type_id 47, all content "_left". The
+  //   engine emitted a 2,354-byte `<div class="pointer-list">` block
+  //   wrapping a nested `*all plus` bar where the capture carries only
+  //   `<span class="inherit-perm">Inherit from left card</span>`
+  //   (recapture-raw-shard-000003, +2354 on EACH of the three pages).
+  //
+  // The set-context branch is the SAME one rule-bar-right.ts already
+  // implements, and for the same reason: `in_context_of_self_set?`
+  // (permission.rb:107-110) tests the @set_context the nest carried
+  // (bar_view.rb:63-66, `set_context: card.name.trunk_name`), and the
+  // engine has no who_can party walk, so the self-set context always
+  // lands on the rescue form.
+  if (isRuleCardWithPermissionRight(fmt.card) && fmt.card.dbContent === '_left') {
+    return permissionInheritContentHtml(ctx.fmt.card.name.trunkName?.tagName?.key);
   }
   if (isPointerOrListCard(fmt.card)) {
     // Abstract::List#standard_pointer_core (card-mod-list
