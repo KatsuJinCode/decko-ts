@@ -292,7 +292,7 @@ describe("Gherkin port: attach.feature / File Upload", () => {
     await aw.engine.updateCard({ cardId: main!.id!, content: "" });
     const field = await aw.world.storage.selectOne<{ db_content: string | null }>(
       "SELECT db_content FROM cards WHERE id = ?",
-      [fieldCard.id],
+      [fieldCard!.id!],
     );
     expect(field?.db_content).toBe(identifier);
     const stored = await storedFileBytes(aw, identifier);

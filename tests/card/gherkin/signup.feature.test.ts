@@ -84,6 +84,12 @@ describe("Gherkin port: signup.feature / Signing up (without approval)", () => {
     const confirm = await whenFollowMailLink(flow, "verify_and_activate");
     if (!confirm.ok) throw new Error(`activation failed: ${JSON.stringify(confirm)}`);
     expect(confirm.holder.name).toBe("Wanna B");
+    // whenFollowMailLink serves both confirm flows; the verify_and_activate
+    // success member is the one carrying `activated` (the reset arm's
+    // success returns the +account edit redirect and no activation).
+    if (!("activated" in confirm)) {
+      throw new Error(`wrong confirm path, expected verify_and_activate: ${JSON.stringify(confirm)}`);
+    }
     expect(confirm.activated).toBe(true);
     const statusAfter = await flow.world.storage.fetcher.fetchByName("Wanna B+*account+*status");
     expect(statusAfter?.dbContent).toBe("active");
