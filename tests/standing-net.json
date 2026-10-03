@@ -159,8 +159,8 @@
     ],
     "expectedSkips": 13,
     "observedNoEnvSignatureSkips": 27,
-    "pinnedAtCommit": "ea2e2e0",
-    "evidence": "decko-test-queue logs, 2026-10-03, cwd decko-ts-lane-fold9: job-1791045254136 = 13 skipped with oracle env present; job-1791039302663, job-1791039737257, job-1791040570233 = 27 skipped (no-env signature), all exit 0",
+    "pinnedAtCommit": "lane-fold10-2026-10-03 union tip",
+    "evidence": "decko-test-queue logs, 2026-10-03, cwd decko-ts-lane-fold9: job-1791045254136 = 13 skipped with oracle env present; job-1791039302663, job-1791039737257, job-1791040570233 = 27 skipped (no-env signature), all exit 0 | fold-10 union re-measure: expectedSkips 13 HOLDS on the 107-file union net (job-1791064772233-7fdd9359, 2026-10-03: 883 passed | 3EF | 13 skipped, edit-session-replay ran in-run = env rode; skip set = the by-design opt-in sweeps + layout-code-crlf + read-rule-left-climb, same classes as the fold-9 pin).",
     "howToUpdate": "expectedSkips changes ONLY in the same deliberate change that legitimately alters the net's skip behavior, re-verified with one pinned-env net run, with the evidence line updated. Lane manifests differ per lineage: each lineage adds its own envGuard pin when it integrates the guarded runner."
   }
 }

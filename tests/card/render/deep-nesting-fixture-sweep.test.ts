@@ -285,13 +285,25 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
 
       const byRoot = new Map(rows.map((r) => [r.root, r]));
 
-      // 1. Renderable open chains: round trips = 2 + (depth - 1) - the fixed
-      //    cost is the root fetch + the prelude batch; each inclusion level
-      //    costs exactly one batched round trip, independent of deck size.
+      // 1. Renderable open chains: round trips = 4 + (depth - 1) - the fixed
+      //    cost is the root fetch + the prelude batch + the two wave seating
+      //    rounds; each inclusion level costs exactly one batched round trip,
+      //    independent of deck size.
+      //    fold-10 re-pin 2 -> 4 (measured on the union tip, queue
+      //    job-1791064772233-7fdd9359): the db-roundtrip waves' batched
+      //    priming adds wave seating round 1 (the W2b type-card prime folded
+      //    in as the batch preamble by the net-reds W4 fold) + wave round 2
+      //    (junction candidates whose sides round 1 seated - "a junction's
+      //    ids are the previous round's ANSWERS", the receipt's
+      //    justification class 3) on every cold render, tiny fixtures
+      //    included. Same measured law the net-reds-fixforward lane pinned
+      //    into depth-sweep.test.ts (base 2 -> 4, slope exactly 1 per level,
+      //    warm 0) - that lane's own net could not catch THIS file (not in
+      //    the deploy-side 71-file manifest); the fold-10 union net did.
       for (const depth of [...PARITY_CHAIN_DEPTHS, ...DEEP_RENDERABLE_CHAIN_DEPTHS]) {
         const row = byRoot.get(chainName(depth, 1))!;
         expect(row.cold.renderError).toBeNull();
-        expect(row.cold.roundTrips).toBe(2 + Math.max(0, depth - 1));
+        expect(row.cold.roundTrips).toBe(4 + Math.max(0, depth - 1));
       }
 
       // 2. Past the cap the response is the too-deep rejection, and its query
@@ -300,14 +312,17 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    1 root fetch + 1 prelude batch + 25 closure rounds (the prefetch's
       //    MAX_CLOSURE_ROUNDS cap, prefetch.ts:68) + 8 rounds of
       //    applyStructureContent pass #1 (render.ts:460, loop cap
-      //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) = 43 round
+      //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) + the two
+      //    wave seating rounds (the db-roundtrip waves' priming machinery,
+      //    fold-10 re-pin 43 -> 45, measured on the union tip - the same
+      //    fixed +2 every cold render pays, see invariant 1) = 45 round
       //    trips. On a chain each chase round's batched IN-query degenerates
       //    to one key, so each round is one round trip; the walk itself
       //    renders cached rows only and throws the guard at nest depth 21
       //    (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
       for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
         const row = byRoot.get(chainName(depth, 1))!;
-        expect(row.cold.roundTrips).toBe(43);
+        expect(row.cold.roundTrips).toBe(45);
         expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
         // fold-9 superset note (2026-10-03): this suite was written on the
         // main@7c5cd26 lineage, where the too-deep rejection propagated out
@@ -350,14 +365,15 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
         fanRows[0]!.cold.htmlBytes!,
       );
 
-      // 4. Whole trees: round trips = 2 + tree DEPTH - the closure costs one
-      //    round per LEVEL (not per card): d4xf4 serves 342 cards in 6 round
-      //    trips; d3xf10 serves 1112 cards in 5.
+      // 4. Whole trees: round trips = 4 + tree DEPTH - the closure costs one
+      //    round per LEVEL (not per card) + the two fixed wave seating rounds
+      //    (fold-10 re-pin 2 -> 4, same fixed cost as invariant 1): d4xf4
+      //    serves 342 cards in 8 round trips; d3xf10 serves 1112 cards in 7.
       const treeRows = TREES.map(({ depth, fanout }) => byRoot.get(treeRootName(depth, fanout))!);
       for (const row of treeRows) {
         expect(row.cold.renderError).toBeNull();
         const depthLevels = Number(row.treeDims!.match(/^d(\d+)/)![1]);
-        expect(row.cold.roundTrips).toBe(2 + depthLevels);
+        expect(row.cold.roundTrips).toBe(4 + depthLevels);
       }
       expect(treeRows[1]!.liveCards).toBe(1112);
 
