@@ -23,6 +23,7 @@
 import type {
   NotifyContext,
   NotifyTransport,
+  SavePathAct,
   SavePathEvent,
   SavePathIntegrationHook,
 } from "./types.js";
@@ -41,6 +42,9 @@ export interface IntegrationDispatchInput {
   readonly silent: boolean;
   /** The actions in the save, expanded to SavePathEvents. */
   readonly events: readonly SavePathEvent[];
+  /** The act card's name (Ruby's act.card — the act-level hooks' mail
+   *  context, account.rb:18). Null/absent when unresolvable. */
+  readonly actCardName?: string | null;
   /** The hooks to fire. Order is preserved. */
   readonly hooks: readonly SavePathIntegrationHook[];
   /** The transport + logger. */
@@ -49,19 +53,49 @@ export interface IntegrationDispatchInput {
   readonly onError?: (err: unknown, hook: SavePathIntegrationHook, event: SavePathEvent) => void;
 }
 
-/** Run every hook on every event. Sequential — matches Ruby's
- *  set/event.rb:DelayedEvent's IntegrateWithDelayJob (one save maps to
- *  one ActiveJob that processes events in order). A worker-queue
+/** Run every hook. ACT-LEVEL hooks (fireAct present) run ONCE per act
+ *  with the whole act's events — Ruby's notify_followers fires once per
+ *  act (set/all/notify.rb:8-11 + :57-61 current_act_card?) and dedupes
+ *  the act's followers through one FollowerStash (:66-73 + follower_stash
+ *  .rb). Per-event hooks run the legacy event loop. Sequential — matches
+ *  Ruby's set/event.rb:DelayedEvent's IntegrateWithDelayJob (one save
+ *  maps to one ActiveJob that processes events in order). A worker-queue
  *  backlog is the integrate_with_delay-delayed form (delayed_event.rb);
  *  the dispatcher itself is in-line.
  *
  *  Returns a flat list of (hook,event,status) triples for diagnostics —
- *  useful for captures and tests, harmless in production. */
+ *  useful for captures and tests, harmless in production. Act-level
+ *  receipts carry the act's FIRST event as their event reference. */
 export async function runIntegrationHooks(
   input: IntegrationDispatchInput,
 ): Promise<IntegrationHookReceipt[]> {
   const receipts: IntegrationHookReceipt[] = [];
+  const act: SavePathAct = {
+    actId: input.actId,
+    actor: input.actor,
+    silent: input.silent,
+    events: input.events,
+    actCardName: input.actCardName ?? null,
+  };
   for (const hook of input.hooks) {
+    if (hook.fireAct !== undefined) {
+      if (input.events.length === 0) continue; // no actions: nothing stashes, nothing fires
+      if (!hook.notable(input.events[0])) {
+        receipts.push({ hook: hook.name ?? "<anonymous>", event: input.events[0], status: "skipped" });
+        continue;
+      }
+      try {
+        await hook.fireAct(act, input.context);
+        receipts.push({ hook: hook.name ?? "<anonymous>", event: input.events[0], status: "fired" });
+      } catch (err) {
+        const handler = input.onError ?? ((e, h, ev) => {
+          input.context.logger?.(`[notify] hook=${h.name ?? "?"} event=card#${ev.card?.id ?? "?"} failed: ${(e as Error).message}`);
+        });
+        handler(err, hook, input.events[0]);
+        receipts.push({ hook: hook.name ?? "<anonymous>", event: input.events[0], status: "failed", error: err });
+      }
+      continue;
+    }
     for (const event of input.events) {
       if (!hook.notable(event)) {
         receipts.push({ hook: hook.name ?? "<anonymous>", event, status: "skipped" });

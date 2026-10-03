@@ -78,11 +78,46 @@ export interface SavePathEvent {
   readonly isDeletePath?: boolean;
 }
 
+/** One act's dispatch payload (the act-level seam the gherkin-
+ *  capabilities lane added): Ruby's notify_followers runs ONCE per act —
+ *  the event is registered on every card but current_act_card? pins the
+ *  firing to the act card (card-mod-follow set/all/notify.rb:8-11 +
+ *  :57-61) — and notify_followers_of walks the ACT's actions through ONE
+ *  FollowerStash (:66-73 + lib/card/follower_stash.rb), so the act's
+ *  followers dedupe across all its actions and each gets one mail about
+ *  the act (act.card context, account.rb:18). */
+export interface SavePathAct {
+  /** The just-completed act's id. */
+  readonly actId: number;
+  /** The actor responsible for the act. */
+  readonly actor: NotifyActor;
+  /** The act's silent flag (covers every event — notify.rb:63-65's
+   *  @supercard chain). */
+  readonly silent: boolean;
+  /** The act's actions, expanded to SavePathEvents, in action order.
+   *  Empty when the act recorded no actions (never dispatched). */
+  readonly events: readonly SavePathEvent[];
+  /** The act card's name (Ruby's act.card — the mail's {{_|name}}
+   *  context, account.rb:18). Null when unresolvable (trashed mid-save).
+   *  Absent on the act-card action itself when the act card's own save
+   *  was a no-op (Ruby: main_action falls to the act's first action —
+   *  mod/history lib/card/act.rb). */
+  readonly actCardName?: string | null;
+}
+
 /** The save-path integration hook (Ruby's `event :name, :stage, on: :save`
  *  + a `when:` predicate). The action engine will call fire() once per
  *  SavePathEvent in the just-completed act. The hook returns when it has
  *  done its work; the engine ignores the return value (errors propagate
- *  via throw — same contract as Ruby's RescuingInvalid). */
+ *  via throw — same contract as Ruby's RescuingInvalid).
+ *
+ *  ACT-LEVEL HOOKS: implementing `fireAct` opts the hook into ONE call
+ *  per act with the whole act's events (Ruby's notify_followers shape —
+ *  see SavePathAct). The dispatcher prefers fireAct; the per-event `fire`
+ *  stays for single-event callers and direct tests. `notable` is then
+ *  evaluated on the act's first event (Ruby evaluates notable_change? on
+ *  the act card's own event — the dispatch's actor/silent values are
+ *  act-level, so the first event carries them). */
 export interface SavePathIntegrationHook {
   /** Which Ruby stage this hook replaces. Used only for diagnostics;
    *  the engine doesn't schedule by stage (no delayed-job queue here). */
@@ -93,6 +128,9 @@ export interface SavePathIntegrationHook {
   /** The work. Receives the full SavePathEvent and a per-call context
    *  (the transport; see below). */
   fire(event: SavePathEvent, ctx: NotifyContext): Promise<void>;
+  /** The act-level work (optional): one call per act with every event
+   *  (Ruby's notify_followers + FollowerStash shape). */
+  readonly fireAct?: (act: SavePathAct, ctx: NotifyContext) => Promise<void>;
   /** Optional name for debug + capture diagnostics. */
   readonly name?: string;
 }

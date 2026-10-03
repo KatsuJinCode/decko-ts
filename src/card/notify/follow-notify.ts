@@ -27,10 +27,12 @@ import {
   type FollowNotice,
   type FollowNoticeAct,
 } from "./mail.js";
+import { FollowerStash } from "./follower-stash.js";
 import type {
   MailMessage,
   NotifyActor,
   NotifyContext,
+  SavePathAct,
   SavePathEvent,
   SavePathIntegrationHook,
 } from "./types.js";
@@ -138,6 +140,49 @@ async function notifyFollower(
   }
 }
 
+/** The act-level delivery (notify_followers_of, set/all/notify.rb:49-55 +
+ *  notify_follower :57-59 + account.rb:9-21): the stash's followers, each
+ *  ONCE, the mail about THE ACT (act.card context — {{_|name}} = the act
+ *  card's name, {{_|last_action_verb}} = the act's main action's verb,
+ *  {{_user|name}} = the act actor). */
+async function notifyFollowersOfAct(
+  act: SavePathAct,
+  deps: FollowNotifyDeps,
+  ctx: NotifyContext,
+  stash: FollowerStash,
+  mainAction: SavePathEvent,
+): Promise<void> {
+  const template = await deps.template();
+  if (template.subject.length === 0 && template.textBody.length === 0 && (template.htmlBody?.length ?? 0) === 0) {
+    // Empty template — Ruby's `Card[:follower_notification_email]`
+    // defaults carry a stocked subject + body. A blank template
+    // here means the deck hasn't configured one yet; skip silently
+    // rather than send blank mail.
+    return;
+  }
+  // The act the templates render against: account.rb:18 delivers with
+  // context = act.card; the verb is the act's MAIN action's action_type
+  // + "d" (base_views.rb:44-46 — action_on(card_id) || actions.first,
+  // mod/history lib/card/act.rb; the caller resolves mainAction). The
+  // multi-action act machinery: one mail per follower about the act,
+  // never one per action.
+  const followAct: FollowNoticeAct = {
+    userName: act.actor.name,
+    verb: `${mainAction.verb}d`,
+    cardName: act.actCardName ?? mainAction.card?.name ?? "",
+  };
+  for (const ref of stash.followers()) {
+    if (ref.followerId === act.actor.id) continue; // notify.rb:51 `next if follower == act.actor`
+    // Ruby wraps each follower's delivery in Auth.as(left.id)
+    // (card-mod-follow set/right/account.rb:15-21); the port runs the
+    // per-follower resolver at the same swap point. Rendering is
+    // actor-independent, so the resolved actor is not consumed
+    // downstream.
+    deps.authAs(ref.followerId, ref.followerName);
+    await notifyFollower(ref, template, ctx, followAct);
+  }
+}
+
 /** Build the hook. The hook fires once per SavePathEvent in the
  *  just-completed act; for every follower of the affected card we
  *  render and send one MailMessage.
@@ -147,51 +192,49 @@ async function notifyFollower(
  *  on: :delete`). A later release can wire it; this file is the SAVE
  *  path only. */
 export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrationHook {
+  /** The per-act walk (notify_followers, set/all/notify.rb:37-41 +
+   *  act_followers :66-73): ONE FollowerStash over the act's actions'
+   *  cards (skip delete-path events — the delete arm is a separate hook;
+   *  skip card-less actions, :69), then one mail per stashed follower
+   *  about the act. The main action resolves as act.rb's does:
+   *  action_on(card_id) — the act-card event by NAME, actCardName being
+   *  the engine's act.card — falling back to the act's first action when
+   *  the act card itself recorded no action (a no-op main card's
+   *  multiedit; mod/history lib/card/act.rb main_action). */
+  const fireActOnce = async (act: SavePathAct, ctx: NotifyContext): Promise<void> => {
+    if (act.events.length === 0) return;
+    if (act.events[0].isDeletePath === true) return; // notify_after_delete is a separate hook
+    const stash = new FollowerStash(deps.followers);
+    for (const event of act.events) {
+      if (event.isDeletePath === true) continue;
+      await stash.checkCard(event.card?.id ?? null, event);
+    }
+    if (stash.followers().length === 0) return;
+    const mainAction =
+      act.events.find((e) => act.actCardName != null && e.card?.name === act.actCardName) ??
+      act.events[0];
+    await notifyFollowersOfAct(act, deps, ctx, stash, mainAction);
+  };
+
   return {
     stage: STAGE,
     name: "follow_notification_after_save",
     notable: isNotable,
     async fire(event: SavePathEvent, ctx: NotifyContext): Promise<void> {
-      if (event.isDeletePath === true) return; // notify_after_delete is a separate hook
-      const cardId = event.card?.id ?? null;
-      const followers = await deps.followers(cardId, event);
-      if (followers.length === 0) return;
-
-      const template = await deps.template();
-      if (template.subject.length === 0 && template.textBody.length === 0 && (template.htmlBody?.length ?? 0) === 0) {
-        // Empty template — Ruby's `Card[:follower_notification_email]`
-        // defaults carry a stocked subject + body. A blank template
-        // here means the deck hasn't configured one yet; skip silently
-        // rather than send blank mail.
-        return;
-      }
-
-      // Per-follower Auth.as (card-mod-follow set/right/account.rb:15).
-      // Sequential is fine here: the transport is in-memory for tests
-      // and SMTP doesn't parallelize well anyway. A worker-queue version
-      // is the integrate_with_delay-delayed form (delayed_event.rb).
-      //
-      // The act the templates render against: the event's actor, its verb
-      // as the rendered verb (base_views.rb:45-47 action_type + "d"), and
-      // the event card's name (account.rb:18 delivers with context =
-      // act.card — for the single-action acts this hook fires on, the
-      // event card IS the act card; the multi-action act machinery is a
-      // named not-yet-ported surface).
-      const act: FollowNoticeAct = {
-        userName: event.actor.name,
-        verb: `${event.verb}d`,
-        cardName: event.card?.name ?? "",
-      };
-      for (const ref of followers) {
-        // Ruby wraps each follower's delivery in Auth.as(left.id)
-        // (card-mod-follow set/right/account.rb:15-21); the port runs the
-        // per-follower resolver at the same swap point. Rendering is
-        // actor-independent, so the resolved actor is not consumed
-        // downstream.
-        deps.authAs(ref.followerId, ref.followerName);
-        await notifyFollower(ref, template, ctx, act);
-      }
+      // Single-event act (the legacy per-event seam): the stash over one
+      // event's card is the pre-act-machinery behavior, byte-for-byte.
+      await fireActOnce(
+        {
+          actId: event.actId,
+          actor: event.actor,
+          silent: event.silent === true,
+          events: [event],
+          actCardName: event.card?.name ?? null,
+        },
+        ctx,
+      );
     },
+    fireAct: fireActOnce,
   };
 }
 

@@ -219,10 +219,17 @@ export interface CardActionSummary {
 /** The result of one action request: one act, the primary card's action,
  *  and the subcard actions recorded in the same act (auto-created side
  *  cards on junction creates, trashed trash-name obstacles on renames,
- *  cascaded children on deletes). */
+ *  cascaded children on deletes, subcard saves on subcards-bearing
+ *  submissions). */
 export interface ActionResult extends CardActionSummary {
   actId: number;
   subactions: CardActionSummary[];
+  /** True when the ACT CARD itself recorded no action (its save was a
+   *  no-op) while subcards changed — the act still exists naming the main
+   *  card (Ruby: act.card; main_action falls to the act's first action,
+   *  mod/history lib/card/act.rb). The notify dispatch then carries only
+   *  the subcard actions. */
+  actCardActionOmitted?: boolean;
 }
 
 /** The host-side EXTRA permission gate. The rule-based ok? enforcement

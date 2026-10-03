@@ -75,6 +75,7 @@ import {
   type CardActionSummary,
   type CreateCardInput,
   type DeleteCardInput,
+  type SubcardInput,
   type UpdateCardInput,
 } from "./types.js";
 import {
@@ -116,6 +117,7 @@ import {
   expandActionResultToSavePathEvents,
   makeNotifyContext,
   runIntegrationHooks,
+  savePathEventFromAction,
   type FollowerResolver,
   type NotifyTransport,
   type SavePathIntegrationHook,
@@ -395,7 +397,10 @@ export class CardActionEngine {
    * still means "no integrations" (?? semantics), which is what every
    * pre-existing caller without hooks observes.
    */
-  private async dispatchSavePathIntegrations(result: ActionResult | null): Promise<void> {
+  private async dispatchSavePathIntegrations(
+    result: ActionResult | null,
+    opts: { actCardActionOmitted?: boolean } = {},
+  ): Promise<void> {
     if (result === null) return;
     if (await this.isAnonymousSession()) return;
     const hooks = this.integrationHooks ?? [
@@ -408,14 +413,105 @@ export class CardActionEngine {
     // actor read.
     if (this.actor === null) return;
     const actor = { id: this.actor.id, name: this.actor.name, email: null };
+    // The act's events: the primary action + its subactions — EXCEPT when
+    // the act card's own save was a no-op (actCardActionOmitted): then the
+    // subcard actions only, exactly Ruby's act.actions walk (the act card
+    // recorded no action; main_action falls to the act's first action,
+    // mod/history lib/card/act.rb). actCardName = act.card, the act-level
+    // hooks' mail context (account.rb:18).
+    const events = opts.actCardActionOmitted === true
+      ? result.subactions.map((sub) =>
+          savePathEventFromAction({ ...sub, actId: result.actId, subactions: [] }, actor, result.actId, false),
+        )
+      : expandActionResultToSavePathEvents(result, actor, false);
     await runIntegrationHooks({
       actId: result.actId,
       actor,
       silent: false,
-      events: expandActionResultToSavePathEvents(result, actor, false),
+      events,
+      actCardName: result.name?.s ?? null,
       hooks,
       context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
     });
+  }
+
+  /** subcards.rb:1-16 — "API to create/update/delete additional cards
+   *  together with the main card". Each key resolves RELATIVE ("+author"
+   *  -> "<main card>+author", the form's subfield shape) or absolute; a
+   *  missing card is created, a present one updated, both within THIS
+   *  save's act (director/store.rb:37-58 — subcards save in the
+   *  supercard's Director run). superActionId chains the subcard action
+   *  to the supercard's action (history events.rb:85-92). A subcard save
+   *  that changes nothing produces no action (events.rb:34-37). A
+   *  trashed name REVIVES through the create path (pull_from_trash!,
+   *  trash.rb:57-62). */
+  private async saveSubcardsInWriter(
+    writer: ActWriter,
+    mainName: DeckoName | undefined,
+    subcards: Record<string, SubcardInput> | undefined,
+    superActionId: number | null,
+  ): Promise<(CardActionSummary & { actId: number })[]> {
+    const saved: (CardActionSummary & { actId: number })[] = [];
+    if (subcards === undefined) return saved;
+    for (const [key, sub] of Object.entries(subcards)) {
+      const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
+      const existing = await this.fetch.fetchByName(fullName);
+      const existingRow =
+        existing?.id !== undefined && existing.id !== null
+          ? await this.fetchRowById(existing.id)
+          : undefined;
+      if (existingRow !== undefined && existingRow.trash === 0) {
+        const updated = await this.updateInWriter(
+          writer,
+          existingRow,
+          {
+            cardId: existingRow.id,
+            // null content on a subcard = no content argument (the update
+            // input's "no change" spelling — the scenarios never clear a
+            // plus via nil; Ruby's explicit-nil clear is not a pinned arm).
+            content: sub.content ?? undefined,
+            typeId: sub.typeId,
+            typeCode: sub.typeCode,
+            typeName: sub.typeName,
+            attachment: sub.attachment,
+            superActionId,
+          },
+          undefined,
+          { isActCard: false },
+        );
+        if (updated !== null) {
+          saved.push({
+            cardId: updated.cardId,
+            actionId: updated.actionId,
+            actId: updated.actId,
+            verb: updated.verb,
+            name: updated.name,
+          });
+        }
+      } else {
+        const created = await this.createInWriter(
+          writer,
+          {
+            name: fullName,
+            content: sub.content,
+            typeId: sub.typeId,
+            typeCode: sub.typeCode,
+            typeName: sub.typeName,
+            attachment: sub.attachment,
+            superActionId,
+          },
+          { isActCard: false },
+        );
+        saved.push({
+          cardId: created.cardId,
+          actionId: created.actionId,
+          actId: created.actId,
+          verb: created.verb,
+          name: created.name,
+        });
+      }
+    }
+    return saved;
   }
 
   // -----------------------------------------------------------------------
@@ -612,8 +708,7 @@ export class CardActionEngine {
   }
 
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
-    const name = DeckoName.parse(input.name ?? "");
-    // The anonymous-create arm: Ruby's create permission chain has NO
+    const name = DeckoName.parse(input.name ?? "");    // The anonymous-create arm: Ruby's create permission chain has NO
     // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
     // card (auth/current.rb:7-9 + auth/proxy.rb:33-35), and ok_to_create?
     // (card-mod-permissions set/all/permissions.rb:120-125) runs for it
@@ -642,6 +737,13 @@ export class CardActionEngine {
       isActCard: true,
       resolvedTypeId: typeId,
     });
+    // subcards.rb:1-16: the subcards ride this save's act (director/
+    // store.rb:37-58) — the "create Book card with plusses" submission.
+    let finalResult = result;
+    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId);
+    if (subResults.length > 0) {
+      finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
+    }
     // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
@@ -657,8 +759,8 @@ export class CardActionEngine {
         typeId,
       }),
     );
-    await this.dispatchSavePathIntegrations(result);
-    return result;
+    await this.dispatchSavePathIntegrations(finalResult);
+    return finalResult;
   }
 
   /** The create implementation, bound to an existing writer so side
@@ -1095,7 +1197,37 @@ export class CardActionEngine {
       return this.saveDraftInWriter(this.newWriter(actingId), row, input);
     }
     const writer = this.newWriter(actingId);
-    const result = await this.updateInWriter(writer, row, input, resolvedTypeId);
+    let result = await this.updateInWriter(writer, row, input, resolvedTypeId);
+    // subcards.rb:1-16: the subcards ride this save's act — the multiedit
+    // shape (the plusses in the main card's form submission). Ruby saves
+    // them within the supercard's Director run (director/store.rb:37-58);
+    // a no-change subcard produces no action (events.rb:34-37).
+    const subResults = await this.saveSubcardsInWriter(
+      writer,
+      await this.composedNameOf(row),
+      input.subcards,
+      result?.actionId ?? null,
+    );
+    if (result === null && subResults.length > 0) {
+      // The act card's own save was a no-op but its subcards changed: the
+      // ACT still exists naming the main card (Ruby's act.card — the mail
+      // context, account.rb:18) and main_action falls to the act's first
+      // action (mod/history lib/card/act.rb main_action =
+      // action_on(card_id) || actions.first). The synthesized result
+      // marks the act card's action omitted so the notify dispatch
+      // carries only the subcard actions.
+      result = {
+        cardId: row.id,
+        actionId: subResults[0].actionId,
+        actId: subResults[0].actId,
+        verb: "update",
+        name: await this.composedNameOf(row),
+        subactions: subResults,
+        actCardActionOmitted: true,
+      };
+    } else if (result !== null && subResults.length > 0) {
+      result = { ...result, subactions: [...result.subactions, ...subResults] };
+    }
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note).
     await this.dispatchEventStage(
@@ -1109,7 +1241,9 @@ export class CardActionEngine {
         typeId: row.type_id,
       }),
     );
-    await this.dispatchSavePathIntegrations(result);
+    await this.dispatchSavePathIntegrations(result, {
+      actCardActionOmitted: result?.actCardActionOmitted === true,
+    });
     return result;
   }
 
@@ -1213,6 +1347,7 @@ export class CardActionEngine {
     row: CardsRow,
     input: UpdateCardInput,
     preResolvedTypeId?: number,
+    opts: { isActCard?: boolean } = {},
   ): Promise<ActionResult | null> {
     const before = cardFieldStateFromRow(row);
     const after: CardFieldState = { ...before };
@@ -1395,7 +1530,10 @@ export class CardActionEngine {
       // identifier equals the current db_content is still a real save —
       // without this the writer's no-op detection would drop it.
       dirtyFields: input.attachment !== undefined ? ["db_content"] : undefined,
-      isActCard: true,
+      // The act-card claim: true for the caller's own card (the default),
+      // false for subcard saves riding the same act (subcards.rb — the
+      // writer holds ONE act-card action per act).
+      isActCard: opts.isActCard ?? true,
     });
     if (saved === null) return null; // no-op save: nothing persisted
     // SP (director.rb:20) + SS (director.rb:21): the storage-phase seams
