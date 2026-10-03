@@ -21,12 +21,15 @@
 //      guard; the rows themselves ARE staged).
 //   2. EVERY row of the capture-restored override table
 //      (tests/card/render/raw-corpus-override-capture-restored-rows.json --
-//      the 20 M8 class skins + journal skin customized): the staged card's
+//      the 20 M8 class skins + journal skin customized + the two bootstrap
+//      SCSS source siblings + litera skin): the staged card's
 //      dbContent is byte-equal to the override row, and the record envelope
 //      rebuilt through the graded runner's own card-engine record handler
 //      (dual-lane-direct-runner-core.ts:708-757) is FIELD-EQUAL to that
 //      card's oracle capture record (expected-v2 view-lane shard; for 34179
-//      additionally the p21 capture file, the original proven comparison).
+//      additionally the p21 capture file, the original proven comparison;
+//      for litera skin 33872 the LIVE raw-view capture, re-calibrated here
+//      against the cerulean/journal oracle contents before comparison).
 //   3. journal skin customized+parent 1 (45365): the +parent subcard the
 //      Customize-button gate reads is present in staging with its corpus
 //      content ("journal skin").
@@ -212,6 +215,51 @@ async function runnerRecordEnvelope(card) {
 
 const RECORD_FIELDS = ["name", "key", "type", "type_code", "codename", "content", "left", "right"];
 
+// ---- live-capture arm (m8-siblings-litera lane 2026-10-03) ----
+// Rows whose provenance carries liveCapture have no expected-v2 capture record;
+// their graded-truth content comes from the recorded LIVE raw-view captures.
+// The extraction rule + its calibration are re-verified here so this check does
+// not depend on the extractor's in-memory state.
+const LIVE_RAW_VIEW_DIR =
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe";
+const LIVE_RAW_WRAPPER_START = '<div id="main">';
+const LIVE_RAW_WRAPPER_END = "</div><script>";
+function extractLiveRawContent(body) {
+  const start = body.indexOf(LIVE_RAW_WRAPPER_START);
+  if (start < 0) return undefined;
+  const from = start + LIVE_RAW_WRAPPER_START.length;
+  const end = body.indexOf(LIVE_RAW_WRAPPER_END, from);
+  if (end < 0) return undefined;
+  return body.slice(from, end);
+}
+const LIVE_CALIBRATION = [
+  { name: "cerulean skin", file: "live-raw-view-cerulean-skin-culturesmith-2026-10-03.html" },
+  { name: "journal skin", file: "live-raw-view-journal-skin-culturesmith-2026-10-03.html" },
+];
+function liveCaptureRecordFor(prov) {
+  if (!prov?.liveCapture) return undefined;
+  let calibrated = true;
+  for (const cal of LIVE_CALIBRATION) {
+    const oracle = captureRecords.get(cal.name);
+    const live = extractLiveRawContent(readFileSync(path.join(LIVE_RAW_VIEW_DIR, cal.file), "utf8"));
+    if (oracle === undefined || live === undefined || live !== oracle.content) calibrated = false;
+  }
+  if (!calibrated) return undefined;
+  const firstFetch = prov.liveCapture.fetches[0];
+  const content = extractLiveRawContent(readFileSync(path.join(LIVE_RAW_VIEW_DIR, firstFetch.file), "utf8"));
+  if (content === undefined) return undefined;
+  return {
+    name: prov.envelopeFields.name,
+    key: DeckoName.parse(prov.envelopeFields.name).key,
+    type: prov.envelopeFields.type,
+    type_code: prov.envelopeFields.type_code,
+    codename: prov.envelopeFields.codename,
+    content,
+    left: null,
+    right: null,
+  };
+}
+
 const overridePath = path.join(REPO, "tests", "card", "render", "raw-corpus-override-capture-restored-rows.json");
 const override = JSON.parse(readFileSync(overridePath, "utf8"));
 const nameById = new Map(override.meta.provenance.map((p) => [p.cardId, p.cardName]));
@@ -223,6 +271,7 @@ const p21Journal = JSON.parse(readFileSync(CAPTURE, "utf8"));
 for (const row of override.cards) {
   const cardName = nameById.get(row.id) ?? `(unknown name for ${row.id})`;
   const label = `skin-record-envelope[${row.id} ${cardName}]`;
+  const rowProvenance = override.meta.provenance.find((p) => p.cardId === row.id);
   const staged = await storage.fetcher.fetchById(row.id);
   if (staged === undefined) {
     check(label, false, "card NOT in staged deck");
@@ -241,7 +290,8 @@ for (const row of override.cards) {
   // Shard capture (expected-v2 view-lane): the graded comparison source.
   const shardRecord = captureRecords.get(cardName);
   const p21Record = row.id === 34179 ? p21Journal : undefined;
-  if (shardRecord === undefined && p21Record === undefined) {
+  const liveRecord = liveCaptureRecordFor(rowProvenance);
+  if (shardRecord === undefined && p21Record === undefined && liveRecord === undefined) {
     check(label, false, `no capture record found for ${cardName}`);
     continue;
   }
@@ -252,6 +302,7 @@ for (const row of override.cards) {
   for (const [srcName, rec] of [
     ...(shardRecord ? [[`shard ${captureShardOf.get(cardName)}`, shardRecord]] : []),
     ...(p21Record ? [["p21 capture file", p21Record]] : []),
+    ...(liveRecord ? [["LIVE raw-view capture (calibrated)", liveRecord]] : []),
   ]) {
     const fieldsEqual = RECORD_FIELDS.every((k) => envelope[k] === rec[k]);
     const contentByteEqual = envelope.content === rec.content;
