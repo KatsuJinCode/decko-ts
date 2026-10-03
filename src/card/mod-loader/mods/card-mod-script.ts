@@ -88,6 +88,9 @@
 //   init_execjs.rb (a require), the README: no render-path surface.
 
 import { UnsupportedViewError, type ViewContext, type ViewFn } from "../../render/format.js";
+import { applyDeploymentCssRevision } from "../../render/head-views.js";
+import { deckoRootUrl } from "../../render/deployment-follow-live-config.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { modAssetsGroupListHtml } from "./card-mod-assets.js";
@@ -217,12 +220,12 @@ function javascriptTag(content: string): string {
  *    true.) */
 function deckoScriptVariables(ctx: ViewContext): string {
   const lines: string[] = [];
-  lines.push("decko.rootUrl='/';");
+  lines.push(`decko.rootUrl='${deckoRootUrl() ?? "/"}';`);
   lines.push("decko.doubleClick='signed_in';");
   const styleRule = paramOrRuleCard(ctx, "style");
   if (styleRule !== undefined) {
     const cssPath = ctx.fmt.nestRecord(styleRule, "stylesheet_path");
-    lines.push(`decko.cssPath='${cssPath}';`);
+    lines.push(`decko.cssPath='${applyDeploymentCssRevision(cssPath)}';`);
   }
   lines.push(`decko.signed_in=${false};`);
   return lines.join("\n") + "\n";

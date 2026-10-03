@@ -5,6 +5,7 @@ import {
   byteDiff,
   compareNormalized,
   normalizeAccordionGroupIds,
+  normalizeCloudflareChallengeBlocks,
   normalizeForReplay,
   normalizeSlotIds,
 } from "../../src/testing/diff.js";
@@ -262,5 +263,47 @@ describe("normalizeSlotIds keeps its documented recording-layer contract", () =>
   it("does NOT mask the accordion group hash - the widening is confined to the replay seam", () => {
     const id = "card-mod_core-97674992-collapse-id";
     expect(normalizeSlotIds(id)).toBe(id);
+  });
+});
+
+
+describe("normalizeCloudflareChallengeBlocks (the CF challenge-block mask)", () => {
+  // The real block shape from the graded page captures (938 bytes on every
+  // carrier; r/t are the per-response tokens).
+  const CF_BLOCK =
+    "<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML=\"window.__CF$cv$params={r:'a44bd28f4e93b4c4',t:'MTc5MTAyOTIwNA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);\";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>";
+
+  it("removes the challenge block from both sides so a CF-only pair compares equal", () => {
+    const engine = "<footer>Decko v0.19.1</footer>\n</body>";
+    const live = `<footer>Decko v0.19.1</footer>\n${CF_BLOCK}</body>`;
+    // RAW bytes differ (the block is 900+ bytes the engine never emits)...
+    expect(byteDiff(engine, live, 20).equal).toBe(false);
+    // ...the compare seam masks them (compareNormalized applies
+    // normalizeForReplay to both sides), which is what the canvas grade reads.
+    expect(compareNormalized(engine, live).equal).toBe(true);
+    // the pure mask is idempotent and a no-op on block-free bytes.
+    expect(normalizeCloudflareChallengeBlocks(engine)).toBe(engine);
+    expect(normalizeCloudflareChallengeBlocks(normalizeCloudflareChallengeBlocks(live))).toBe(
+      normalizeCloudflareChallengeBlocks(live),
+    );
+  });
+
+  it("still fails when a non-CF byte differs outside the block", () => {
+    const engine = "<footer>Decko v0.19.1</footer></body>";
+    const live = `<footer>Decko v0.20.0</footer>
+${CF_BLOCK}</body>`;
+    expect(compareNormalized(engine, normalizeForReplay(live)).equal).toBe(false);
+  });
+
+  it("does not span a script element that merely precedes the block", () => {
+    const engine = "<p>x</p>";
+    const live = `<p>x</p><script>var harmless=1;</script>${CF_BLOCK}`;
+    const masked = normalizeCloudflareChallengeBlocks(live);
+    expect(masked).toBe("<p>x</p><script>var harmless=1;</script>");
+  });
+
+  it("leaves pages without the block untouched (the frozen corpus shape)", () => {
+    const html = "<footer>Decko v0.20.0</footer><script>decko.rootUrl='/';</script></body>";
+    expect(normalizeCloudflareChallengeBlocks(html)).toBe(html);
   });
 });

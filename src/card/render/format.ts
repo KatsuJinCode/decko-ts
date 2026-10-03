@@ -49,6 +49,7 @@ import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms
 import type { ReadViewer } from "../permissions/read-rules.js";
 import { resolveContentOverride } from "./content-overrides.js";
 import { NO_REQUEST_ORIGIN } from "./deck-origin.js";
+import { serializerFollowsLive } from "./deployment-follow-live-config.js";
 import { mainNestWithoutMainError } from "./errors.js";
 
 /** The self-set title overrides, keyed on the rendered card's codename.
@@ -238,10 +239,37 @@ export class Voo {
    *  the nest's hide list in the emitted slot JSON instead of joining it
    *  (bar_view.rb:11's bar_nav hide vanished from *all+*autoname's
    *  data-slot). */
+  /** The view this slot's OWN optional render arg enrolled (set in
+   *  processVisibility; undefined = none). Intermediate renders (bar.rb's
+   *  bar_bottom -> render :content) enroll their own view; the VIEW-LANE
+   *  ROOT render's enrollment is the capture-harness artifact the live
+   *  serializer does not carry. */
+  private optionalEnrolledView: string | undefined;
+
+  /** The viz entries that trace to the VIEW-LANE ROOT slot's optional
+   *  enrollment - propagated transitively through the voo chain but never
+   *  through an intermediate render's OWN enrollment. The live serializer
+   *  drops these (Ruby-live's root render never enrolled: the harness
+   *  artifact's information is nobody's), keeping an entry only when it
+   *  names this slot's own requested view (Guns:open +Discussion pins
+   *  ["open","comment_box"]). An intermediate's own enrollment is NOT
+   *  marked: the bar_bottom -> content sub-render pins
+   *  ["bar_bottom","content"] (bar_bottom kept, open dropped). */
+  private rootEnrolledInherited = new Set<string>();
+
   processVisibility(optional: unknown): void {
     if (this.parent !== undefined) {
       for (const [view, setting] of this.parent.viz) {
-        if (!this.viz.has(view)) this.viz.set(view, setting); // reverse_merge!
+        if (!this.viz.has(view)) {
+          this.viz.set(view, setting); // reverse_merge!
+          if (
+            (this.parent.parent === undefined &&
+              this.parent.optionalEnrolledView === view) ||
+            this.parent.rootEnrolledInherited.has(view)
+          ) {
+            this.rootEnrolledInherited.add(view);
+          }
+        }
       }
     }
     // visibility.rb:87-92 process_visibility_options — the nest opts' own
@@ -263,6 +291,7 @@ export class Voo {
     // apply on undefined, so the page path passes null, not undefined.
     if (optional !== undefined && optional !== null && optional !== false && !this.viz.has(requested)) {
       this.viz.set(requested, optional === "hide" || optional === false ? "hide" : "show");
+      this.optionalEnrolledView = requested;
     }
   }
 
@@ -328,7 +357,30 @@ export class Voo {
     for (const [view, setting] of this.viz) {
       (setting === "show" ? show : hide).push(view);
     }
-    if (show.length > 0) out["show"] = show;
+    // Live-era emission rule (docs/serializer-spec-conditional-data-slot-
+    // show-key.md, refined by the frozen-vs-live slot census over all 37
+    // swapped entries - frozen and live slot JSONs are IDENTICAL there, so
+    // the rule is corpus truth for both eras):
+    //   - a ROOT slot does not emit the requested view itself (the view-lane
+    //     root render does not enroll it: mod:*:closed roots omit the key,
+    //     the discussion open root carries only its body's comment_box);
+    //   - a CHILD slot drops the parent-inherited entries (the parent's
+    //     information) but keeps its own registrations AND the nest/sub-render
+    //     optional enrollment of its requested view (+tags|closed carries
+    //     show:["closed"]; the content sub-render carries
+    //     ["bar_bottom","content"] with the inherited open dropped;
+    //     +Discussion|open carries ["open","comment_box"] with the inherited
+    //     open RETAINED because it names the slot's own requested view).
+    // UNSET default: the engine's always-enroll + full-inheritance form
+    // (the shape the pre-live engine pinned).
+    const emittedShow = serializerFollowsLive()
+      ? show.filter(
+          (view) =>
+            !(this.parent === undefined && view === viewField) &&
+            !(this.rootEnrolledInherited.has(view) && view !== this.requestedView),
+        )
+      : show;
+    if (emittedShow.length > 0) out["show"] = emittedShow;
     if (hide.length > 0) out["hide"] = hide;
     return out;
   }

@@ -40,6 +40,7 @@
 
 import { h } from "./slot-html.js";
 import { derivedCloudAttachmentSource } from "./views.js";
+import { mainStylesheetRevisionDigits } from "./deployment-follow-live-config.js";
 import type { SQLStatement } from "../../server/driver.js";
 
 /** The carrierwave cloud attachment URL prefix the page capture's fog
@@ -195,9 +196,23 @@ export function stylesheetTagsBytes(read: HeadReadSet): string {
   return [
     REMOTE_STYLE_TAG,
     `<link media="all" rel="stylesheet" type="text/css" href="${
-      cloudAttachmentUrl(read.styleAssetOutput) ?? ""
+      applyDeploymentCssRevision(cloudAttachmentUrl(read.styleAssetOutput) ?? "")
     }" />`,
   ].join("\n");
+}
+
+/** The deployment's compiled-CSS revision digits
+ *  (deployment-follow-live-config.ts mainStylesheetRevisionDigits): the
+ *  live deployment recompiled the deck stylesheet and serves the new
+ *  attachment revision (/files/45514/1790384218.css, byte receipt vs the
+ *  SassC compile) where the corpus pins the capture-era digits
+ *  (1786554352). Rewrites ONLY the 10-digit revision component of a
+ *  main-stylesheet attachment URL; UNSET = identity. Exported for the
+ *  deployment-config pin test. */
+export function applyDeploymentCssRevision(url: string): string {
+  const digits = mainStylesheetRevisionDigits();
+  if (digits === undefined) return url;
+  return url.replace(/(\/\d+\/)(\d{10})(\.css)$/, `$1${digits}$3`);
 }
 
 /** The mod-manifest CDN stylesheet for this deck's pinned gems: the

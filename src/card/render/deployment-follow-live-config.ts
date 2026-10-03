@@ -48,6 +48,10 @@ export interface DeploymentFollowLiveConfig {
   mainStylesheetRevisionDigits?: string;
   footerDeckoVersion?: string;
   recaptchaSiteKey?: string;
+  /** The live deployment's decko root URL (script_variables'
+   *  decko.rootUrl -- live "https://culturesmith.com/"; the corpus
+   *  pins the capture-era "/" form). */
+  deckoRootUrl?: string;
 }
 
 let config: DeploymentFollowLiveConfig | undefined;
@@ -88,4 +92,9 @@ export function footerDeckoVersion(): string | undefined {
 /** The live recaptcha site key, or undefined (keep the capture-era key). */
 export function recaptchaSiteKey(): string | undefined {
   return config?.recaptchaSiteKey;
+}
+
+/** The live decko root URL, or undefined (keep the capture-era "/" form). */
+export function deckoRootUrl(): string | undefined {
+  return config?.deckoRootUrl;
 }

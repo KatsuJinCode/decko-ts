@@ -111,6 +111,7 @@
 // - config/admin.yml (the admin views list) - no TS consumer
 
 import type { SQLDatabaseDriver } from "../../../server/driver.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { timeAgoInWords as sharedTimeAgoInWords } from "../../render/text-helpers.js";
 import { sqlDateTime } from "../../history/act.js";
 import type {
@@ -1556,7 +1557,10 @@ function accordionItemBytes(args: {
   const { headerInner, subheader, body, collapseId } = args;
   let out = `<div class='accordion-item'>\n`;
   out += `<h2 class='accordion-header nodblclick w-100'>\n`;
-  out += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
+  const accordionButtonClass = serializerFollowsLive()
+    ? "accordion-button collapsed"
+    : "collapsed accordion-button";
+  out += `<button class='${accordionButtonClass}' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
   out += `${headerInner}\n`;
   out += `</button>\n`;
   out += `</h2>\n`;
@@ -1564,7 +1568,7 @@ function accordionItemBytes(args: {
   if (subheader !== null) {
     out += `<div class='accordion-subheader bg-light p-2 text-end'>\n${subheader}\n</div>\n`;
   }
-  out += `<div class='accordion-body d0-card-body'>\n${body}
+  out += `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n${body}
 </div>\n`;
   out += `</div>\n`;
   out += `</div>\n`;

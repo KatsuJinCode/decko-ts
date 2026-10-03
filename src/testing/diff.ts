@@ -99,6 +99,35 @@ export function normalizeSlotIds(html: string): string {
 }
 
 /**
+ * The Cloudflare challenge-platform injection. The live pages carry a
+ * per-response <script> block immediately before </body> whose
+ * __CF$cv$params r/t tokens are rotated per response by the edge
+ * (live-check-71: present on 33 of the graded page captures; the probe-base
+ * census found the block on every page-lane expectation and no view-lane
+ * expectation). The engine can never emit it: it is not a function of the
+ * card, the deck, or the deployment - it is Cloudflare's per-request
+ * challenge bootstrap. Like the accordion group hash (9f023ce), this is
+ * per-response capture noise, not engine output spec: the mask removes the
+ * block from BOTH sides at the compare seam.
+ *
+ * The match is anchored on a <script> element whose body mentions
+ * __CF$cv$params before its closing tag (tempered dot - the match cannot
+ * span another script element, and the challenge block itself contains no
+ * literal </script>, measured 938 bytes uniform across the carriers).
+ */
+const CF_CHALLENGE_BLOCK_PATTERN =
+  /<script>(?:(?!<\/script>)[\s\S])*__CF\$cv\$params(?:(?!<\/script>)[\s\S])*<\/script>/g;
+
+/**
+ * Remove every Cloudflare challenge bootstrap script block. Applied to both
+ * sides by normalizeForReplay; a pure deletion cannot manufacture agreement
+ * on any byte outside the matched blocks.
+ */
+export function normalizeCloudflareChallengeBlocks(html: string): string {
+  return html.replace(CF_CHALLENGE_BLOCK_PATTERN, "");
+}
+
+/**
  * Every normalization the replay comparison applies, in the order the capture
  * scripts apply them. This is the seam src/testing/replay.ts judges every
  * canvas entry through, so it is the one place a replay-legitimate mask has to
@@ -106,7 +135,9 @@ export function normalizeSlotIds(html: string): string {
  * documented contract claims, and its direct callers are unaffected.
  */
 export function normalizeForReplay(html: string): string {
-  return normalizeAccordionGroupIds(normalizeSlotIds(html));
+  return normalizeCloudflareChallengeBlocks(
+    normalizeAccordionGroupIds(normalizeSlotIds(html)),
+  );
 }
 
 export interface FirstDifference {

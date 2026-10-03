@@ -53,10 +53,13 @@ import {
   faviconTagBytes,
   META_TAGS,
   pageTitleTagBytes,
+  applyDeploymentCssRevision,
   stylesheetTagsBytes,
   type HeadReadSet,
 } from "./head-views.js";
 import { getDeploymentCloudAssetHost } from "./views.js";
+import { deckoRootUrl } from "./deployment-follow-live-config.js";
+import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
@@ -746,7 +749,7 @@ async function globalSettingContent(
 async function javascriptTags(engine: RenderEngine): Promise<string> {
   const scriptUrl = await assetOutputUrl(engine, "script");
   return [
-    REMOTE_SCRIPT_TAGS,
+    applyScriptIntegrity(REMOTE_SCRIPT_TAGS),
     `<!-- MAIN DECKO JAVASCRIPT -->`,
     `<script src="${scriptUrl}"></script>`,
   ].join("\n");
@@ -762,7 +765,7 @@ async function assetOutputUrl(engine: RenderEngine, settingCodename: string): Pr
  *  wrapper); decko_script_variables order pinned: rootUrl, doubleClick,
  *  cssPath, signed_in. */
 async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
-  const cssPath = await assetOutputUrl(engine, "style");
+  const cssPath = applyDeploymentCssRevision(await assetOutputUrl(engine, "style"));
   // decko_script_variables order pinned: rootUrl, doubleClick, cssPath,
   // signed_in. signed_in is the SESSION (Auth.signed_in? — Auth.current_id
   // != AnonymousID, auth/current.rb), not the read-verdict actor: the page
@@ -786,7 +789,7 @@ async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   // (render.ts:1770-1772, render/deck-origin.ts:73-75) — reading it here
   // is what the constant could not do. Oracle: 6588/6588 page rows carry
   // 'https://culturesmith.com/', cards 34754 / 34758 views carry '/'.
-  const rootUrl = `${engine.envOriginConfig()}/`;
+  const rootUrl = deckoRootUrl() ?? `${engine.envOriginConfig()}/`;
   return (
     `<script>\n//<![CDATA[\n` +
     `decko.rootUrl='${rootUrl}';\n` +
@@ -845,6 +848,25 @@ const REMOTE_SCRIPT_TAGS = [
   `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
   `<script src="https://kit.fontawesome.com/1366963381.js" crossorigin="anonymous"></script>`,
 ].join("\n");
+
+/** The deployment's SRI integrity attributes
+ *  (deployment-follow-live-config.ts scriptIntegrityBySrc): the live head's
+ *  remote CDN script tags carry integrity="..." after crossorigin and before
+ *  an optional referrerpolicy (live head 12/12 pages; the vm-staging-server
+ *  derived constants). UNSET = identity (the frozen capture-era tags).
+ *  Exported for the deployment-config pin test. */
+export function applyScriptIntegrity(tags: string): string {
+  return tags.replace(
+    /<script src="([^"]+)"([^>]*)><\/script>/g,
+    (tag: string, src: string, attrs: string) => {
+      const integrity = scriptIntegrityFor(src);
+      if (integrity === undefined) return tag;
+      const referrer = attrs.indexOf(" referrerpolicy=");
+      const at = referrer === -1 ? attrs.length : referrer;
+      return `<script src="${src}"${attrs.slice(0, at)} integrity="${integrity}"${attrs.slice(at)}></script>`;
+    },
+  );
+}
 
 /** The page-path cloud attachment resolution: attachment URLs inside the
  *  assembled interior (header logo, image cores) must resolve to the

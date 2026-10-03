@@ -25,6 +25,7 @@ import { Voo } from "../../../src/card/render/format.js";
 import { applyScriptIntegrity } from "../../../src/card/render/page.js";
 import { applyDeploymentCssRevision } from "../../../src/card/render/head-views.js";
 import {
+  deckoRootUrl,
   footerDeckoVersion,
   recaptchaSiteKey,
   setDeploymentFollowLiveConfig,
@@ -88,7 +89,7 @@ describe("deployment follow-live config: live serializer era", () => {
   it("a plain closed root whose show list names only its own view OMITS show", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
     const closed = new Voo(undefined, "closed", {});
-    closed.setViz("closed", "show");
+    closed.processVisibility("show");
     closed.hide("bar_middle");
     expect(closed.slotOptions()).toEqual({
       view: "closed",
@@ -96,10 +97,10 @@ describe("deployment follow-live config: live serializer era", () => {
     });
   });
 
-  it("a discussion open carries show minus the requested view (comment_box)", () => {
+  it("a discussion open root carries only its body's comment_box", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
     const open = new Voo(undefined, "open", {});
-    open.setViz("open", "show");
+    open.processVisibility("show");
     open.setViz("comment_box", "show");
     open.hide("bar_middle");
     expect(open.slotOptions()).toEqual({
@@ -109,11 +110,55 @@ describe("deployment follow-live config: live serializer era", () => {
     });
   });
 
-  it("a content slot whose show list names only content OMITS show", () => {
+  it("a root content slot whose show list names only content OMITS show", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
     const content = new Voo(undefined, "content", {});
-    content.setViz("content", "show");
+    content.processVisibility("show");
     expect(content.slotOptions()).toEqual({ view: "content" });
+  });
+
+  it("a child nest keeps its optional-enrolled requested view (+tags|closed)", () => {
+    setDeploymentFollowLiveConfig({ serializerEra: "live" });
+    const parent = new Voo(undefined, "open", {});
+    parent.processVisibility("show");
+    const child = new Voo(parent, "closed", {});
+    child.processVisibility("show");
+    child.hide("bar_middle");
+    expect(child.slotOptions()).toEqual({
+      view: "closed",
+      show: ["closed"],
+      hide: ["bar_middle"],
+    });
+  });
+
+  it("a child content sub-render drops the inherited open, keeps content last", () => {
+    setDeploymentFollowLiveConfig({ serializerEra: "live" });
+    const parent = new Voo(undefined, "open", {});
+    parent.processVisibility("show");
+    // bar_bottom rides the render opts' show list (processed in
+    // processVisibility, before the optional enrollment) - the Guns:open
+    // content sub-render pins the emitted order ["bar_bottom","content"].
+    const child = new Voo(parent, "content", { show: "bar_bottom" });
+    child.processVisibility("show");
+    expect(child.slotOptions()).toEqual({
+      view: "content",
+      show: ["bar_bottom", "content"],
+    });
+  });
+
+  it("a child nest keeps an inherited entry that names its own requested view", () => {
+    setDeploymentFollowLiveConfig({ serializerEra: "live" });
+    const parent = new Voo(undefined, "open", {});
+    parent.processVisibility("show");
+    const child = new Voo(parent, "open", {});
+    child.processVisibility("show");
+    child.setViz("comment_box", "show");
+    child.hide("bar_middle");
+    expect(child.slotOptions()).toEqual({
+      view: "open",
+      show: ["open", "comment_box"],
+      hide: ["bar_middle"],
+    });
   });
 });
 
@@ -162,8 +207,14 @@ describe("deployment follow-live config: live head constants", () => {
       footerDeckoVersion: "0.19.1",
       recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
     });
+    setDeploymentFollowLiveConfig({
+      footerDeckoVersion: "0.19.1",
+      recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+      deckoRootUrl: "https://culturesmith.com/",
+    });
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
+    expect(deckoRootUrl()).toBe("https://culturesmith.com/");
   });
 });
 

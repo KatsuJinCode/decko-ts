@@ -185,6 +185,7 @@
 //   engine (they describe the type-mod surface for the live editor)
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
@@ -2829,14 +2830,17 @@ const editRulesView: ViewFn = (ctx) => {
       )
       .join("\n");
     const collapseId = `card-${setSafeKey}-${group}-collapse-id`;
+    const accordionButtonClass = serializerFollowsLive()
+      ? "accordion-button collapsed"
+      : "collapsed accordion-button";
     return (
       `<div class='accordion-item _setting-group _setting-list'>\n` +
       `<h2 class='accordion-header nodblclick w-100'>\n` +
-      `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n` +
+      `<button class='${accordionButtonClass}' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n` +
       `${group} <span class="_count badge bg-secondary ms-3">${settings.length}</span>\n` +
       `</button>\n</h2>\n` +
       `<div class='accordion-collapse collapse' id='${collapseId}'>\n` +
-      `<div class='accordion-body d0-card-body'>\n` +
+      `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
       `<ul class="${BOARD_PILL_UL_CLASSES}">${pills}</ul>\n` +
       `</div>\n</div>\n</div>\n`
     );

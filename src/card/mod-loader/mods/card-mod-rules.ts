@@ -123,6 +123,7 @@
 // - data/real.yml: deck-seed (seed content, not mod code)
 
 import { UnsupportedViewError, RenderFormat, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { processHelpContent } from "../../render/help-popover.js";
 import { registeredSettingHelpText } from "../../render/setting-help-text.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
@@ -1055,14 +1056,17 @@ function accordionItem(
   context: string,
 ): string {
   const collapseId = `card-${ctx.fmt.card.name.safeKey}-${context}-collapse-id`;
+  const accordionButtonClass = serializerFollowsLive()
+    ? "accordion-button collapsed"
+    : "collapsed accordion-button";
   return (
     `<div class='${ctx.voo.classy("accordion-item")}'>\n` +
     `<h2 class='accordion-header nodblclick w-100'>\n` +
-    `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n` +
+    `<button class='${accordionButtonClass}' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n` +
     `${title}\n` +
     `</button>\n</h2>\n` +
     `<div class='accordion-collapse collapse' id='${collapseId}'>\n` +
-    `<div class='accordion-body d0-card-body'>\n` +
+    `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
     `${body}\n</div>\n</div>\n</div>\n`
   );
 }

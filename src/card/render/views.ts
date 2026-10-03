@@ -39,6 +39,7 @@ import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
 import { searchPagingNav } from "./search-paging.js";
+import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./deployment-follow-live-config.js";
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
@@ -770,7 +771,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // never denies this card in Ruby; the engine's prepared verdict agrees
   // for the corpus's Anyone-read state, so no gate branch is needed here.
   if (fmt.card.record.codename === "version") {
-    return CARD_GEM_VERSION;
+    return footerDeckoVersion() ?? CARD_GEM_VERSION;
   }
   // set/self/account_links.rb view :core (card-mod-layout): the logging
   // div wrapping the navbar_item_views lis (anonymous: sign_up + sign_in).
@@ -1494,15 +1495,16 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
       `</form></div>`
     );
   }
+  const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
   const form =
     `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
     ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    `<script src="https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}"></` + `script>
+    `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
 ` +
     `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
-    ` data-site-key="${RECAPTCHA_SITE_KEY}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
+    ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
 </textarea>
 ` +
@@ -2661,12 +2663,15 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     let block = `<div class='accordion-item _setting-group'>\n`;
     block += `<h2 class='accordion-header nodblclick w-100'>\n`;
-    block += `<button class='collapsed accordion-button' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
+    const groupButtonClass = serializerFollowsLive()
+      ? "accordion-button collapsed"
+      : "collapsed accordion-button";
+    block += `<button class='${groupButtonClass}' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n`;
     block += `${groupName} <span class="_count badge bg-secondary ms-3">${settings.length}</span>\n`;
     block += `</button>\n`;
     block += `</h2>\n`;
     block += `<div class='accordion-collapse collapse' id='${collapseId}'>\n`;
-    block += `<div class='accordion-body d0-card-body'>\n`;
+    block += `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n`;
     block += `${renderSettingListItems(fmt, settings, ruleByCodename, card)}\n`;
     block += `</div>\n`;
     block += `</div>\n`;
@@ -4018,7 +4023,7 @@ function prepareBar(ctx: ViewContext): void {
 /** bar_body.haml: the bar-left/bar-middle/bar-right columns. */
 function barBodyHtml(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
-  let out = `<div class='${voo.classy("bar-body")} row g-0'>\n`;
+  let out = `<div class='${serializerFollowsLive() ? `row g-0 ${voo.classy("bar-body")}` : `${voo.classy("bar-body")} row g-0`}'>\n`;
   if (voo.show("bar_left")) {
     out += `<div class='${voo.classy("bar-left")}'>\n${fmt.renderView("bar_left")}\n</div>\n`;
   }
@@ -4053,10 +4058,16 @@ function accordionBarHtml(ctx: ViewContext, open: boolean): string {
   // class_up "accordion-item", "bar #{classy 'bar'}"
   voo.classUp("accordion-item", `bar ${voo.classy("bar")}`);
   const collapseId = `card-${fmt.card.name.safeKey}-closed-collapse-id`;
-  const buttonClasses = [open ? undefined : "collapsed", "accordion-button"]
+  const buttonClasses = (serializerFollowsLive()
+    ? ["accordion-button", open ? undefined : "collapsed"]
+    : [open ? undefined : "collapsed", "accordion-button"]
+  )
     .filter((s) => s !== undefined)
     .join(" ");
-  const collapseClasses = [open ? "show" : undefined, "accordion-collapse", "collapse"]
+  const collapseClasses = (serializerFollowsLive()
+    ? ["accordion-collapse", "collapse", open ? "show" : undefined]
+    : [open ? "show" : undefined, "accordion-collapse", "collapse"]
+  )
     .filter((s) => s !== undefined)
     .join(" ");
   const body = open ? fmt.renderView("bar_bottom") : cardStub(fmt, "bar_bottom");
@@ -4071,7 +4082,7 @@ function accordionBarHtml(ctx: ViewContext, open: boolean): string {
     `<div class='accordion-subheader bg-light p-2 text-end'>\n` +
     `${fmt.renderView("menu")}\n` +
     `</div>\n` +
-    `<div class='accordion-body d0-card-body'>\n` +
+    `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
     `${body}\n` +
     `</div>\n` +
     `</div>\n` +
@@ -4804,7 +4815,7 @@ function barDivHtml(ctx: ViewContext): string {
     card.name.isRStar && card.name.parts.length === 2,
   );
   return (
-    `<div class='${voo.classy("bar")} nodblclick d-flex _card-link'${hamlAttrs}${dataSlotId}>\n` +
+    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${dataSlotId}>\n` +
     `${barBodyHtml(ctx)}\n` +
     `${menu}\n\n` +
     `</div>\n`

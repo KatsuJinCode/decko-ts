@@ -88,6 +88,34 @@ const DEPLOYMENT_CLOUD_ASSET_HOST =
   "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
 setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
+// The same deployment's serializer + head constants (serializer-follow-live
+// lane): the live 0.19.1 serializer's conditional show-key + class-token
+// order, the SRI integrity attrs, the compiled-CSS revision digits, the
+// footer version and the recaptcha site key -- the byte-verbatim values the
+// live pages carry (live-check-71; vm-staging-server.mjs derived constants).
+// Set next to the host seam, BEFORE the corpus boot; unset = the frozen
+// corpus forms (tests/card/render/serializer-follow-live-deployment-config.test.ts).
+const { setDeploymentFollowLiveConfig } = await import(
+  pathToFileURL(path.join(REPO, "src", "card", "render", "deployment-follow-live-config.ts")).href
+);
+setDeploymentFollowLiveConfig({
+  serializerEra: "live",
+  scriptIntegrityBySrc: {
+    "https://code.jquery.com/jquery-3.5.1.min.js":
+      "sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=",
+    "https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js":
+      "sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==",
+    "https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js":
+      "sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw==",
+    "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js":
+      "sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==",
+  },
+  mainStylesheetRevisionDigits: "1790384218",
+  footerDeckoVersion: "0.19.1",
+  recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+  deckoRootUrl: "https://culturesmith.com/",
+});
+
 const targets = readFileSync(path.isAbsolute(TARGETS) ? TARGETS : path.join(REPO, TARGETS), "utf8")
   .split("\n")
   .map((l) => l.trim())

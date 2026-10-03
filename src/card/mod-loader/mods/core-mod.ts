@@ -84,6 +84,7 @@
 //   the real codename cards, so the tested paths are the real ones.
 
 import type { DeckoModManifest, ModEngineHost, ModEventCard, ModEventContext, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import {
@@ -335,17 +336,18 @@ function accordionItemHtml(args: {
   collapseId: string;
   data?: string;
 }): string {
-  const buttonClasses = [
-    args.open ? undefined : "collapsed",
-    "accordion-button",
-  ]
+  const buttonClasses = (
+    serializerFollowsLive()
+      ? ["accordion-button", args.open ? undefined : "collapsed"]
+      : [args.open ? undefined : "collapsed", "accordion-button"]
+  )
     .filter((s) => s !== undefined)
     .join(" ");
-  const collapseClasses = [
-    args.open ? "show" : undefined,
-    "accordion-collapse",
-    "collapse",
-  ]
+  const collapseClasses = (
+    serializerFollowsLive()
+      ? ["accordion-collapse", "collapse", args.open ? "show" : undefined]
+      : [args.open ? "show" : undefined, "accordion-collapse", "collapse"]
+  )
     .filter((s) => s !== undefined)
     .join(" ");
   const subheaderLines =
@@ -361,7 +363,7 @@ function accordionItemHtml(args: {
     `</h2>\n` +
     `<div class='${collapseClasses}' id='${args.collapseId}'>\n` +
     subheaderLines +
-    `<div class='accordion-body d0-card-body'>\n` +
+    `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
     `${args.body}\n` +
     `</div>\n` +
     `</div>\n` +

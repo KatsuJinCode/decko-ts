@@ -56,6 +56,7 @@
 //   the data-slot view field)
 
 import type { RenderCard } from "./format.js";
+import { serializerFollowsLive } from "./deployment-follow-live-config.js";
 import { DeckoName } from "../name.js";
 import { isNewCard, type CardRecord } from "../fetch/card-record.js";
 import { newSlotId, emitAttrs, emitHamlAttrs, h } from "./slot-html.js";
@@ -560,7 +561,7 @@ export function pointerListItemBodyForUnknown(
       "data-card-type-name": typeName,
     }) + ` data-slot-id="${newSlotId()}"`;
   return (
-    `<div class='bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link'${dataAttrs}>\n` +
+    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link bar ${h(setKeys)} with-bar-menu` : `bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link`}'${dataAttrs}>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `</div>\n`
