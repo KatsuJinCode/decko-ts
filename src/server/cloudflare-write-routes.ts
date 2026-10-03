@@ -82,13 +82,19 @@ import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
-export interface WorkersWriteEnv {
-  readonly DB: D1DatabaseLike;
+/** The two gate flags alone — the shape a host that owns its own DB binding
+ *  passes (the edge-signin-session surface reads only these; fold-10 union
+ *  export matching the deploy lineage's edge-signin-form-fix shape). */
+export interface WriteSurfaceFlags {
   /** "1" opens the /setup window (first-run-routes.ts:97, :145). */
   readonly DECKO_FIRST_RUN?: string;
   /** "1" turns on sign-in and card create/update/delete. Anything else,
    *  including absent, is off. */
   readonly DECKO_WRITE_PATH?: string;
+}
+
+export interface WorkersWriteEnv extends WriteSurfaceFlags {
+  readonly DB: D1DatabaseLike;
 }
 
 /** The render engine the host already boots (worker.js's `deck.render`). Only
@@ -124,6 +130,13 @@ export interface WorkersWriteRequest {
   /** True when the request arrived over TLS. Gates the `Secure` cookie
    *  attribute (see hardenSessionCookie). */
   readonly secure: boolean;
+  /** The scheme the CLIENT used — the same evidence as {@link secure},
+   *  captured so a redirect builder cannot hand the already-authenticated
+   *  browser a scheme-downgraded Location. workerd's Request URL scheme is
+   *  authoritative here. (fold-10 union: the field is the scheme-downgrade
+   *  lane's surface the edge-signin-form-fix pick consumes — 4d7b008's
+   *  hunks read it; the deploy lineage landed it in b0f8252.) */
+  readonly scheme: "http" | "https";
   /** The client ip the host captured, for card_acts
    *  (director/class_methods.rb:27-29 via write-routes.ts:137-139). */
   readonly ipAddress?: string;
@@ -152,12 +165,12 @@ const SIGNIN_FORM_ACTION = "/update/*signin";
 /** Is the write path armed? The [vars] value is authoritative; the engine
  *  modules' own process.env read is the fallback for a host that sets it
  *  there instead (the Node staging host, vm-staging-server.mjs:906). */
-export function writePathArmed(env: WorkersWriteEnv): boolean {
+export function writePathArmed(env: WriteSurfaceFlags): boolean {
   if (typeof env.DECKO_WRITE_PATH === "string") return env.DECKO_WRITE_PATH === "1";
   return false;
 }
 
-export function firstRunArmed(env: WorkersWriteEnv): boolean {
+export function firstRunArmed(env: WriteSurfaceFlags): boolean {
   if (typeof env.DECKO_FIRST_RUN === "string") return env.DECKO_FIRST_RUN === "1";
   return false;
 }
@@ -224,6 +237,7 @@ export async function readWorkersRequest(request: Request): Promise<WorkersWrite
     body,
     bodyBytes,
     secure: url.protocol === "https:",
+    scheme: url.protocol === "https:" ? "https" : "http",
     ipAddress: headers["cf-connecting-ip"] ?? headers["x-forwarded-for"],
   };
 }
@@ -432,7 +446,7 @@ function expireAfterSave(ctx: WorkersWriteContext, expiryName: string | undefine
 export async function handleWorkersWriteSurface(
   ctx: WorkersWriteContext,
   req: WorkersWriteRequest,
-  env: WorkersWriteEnv,
+  env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike },
 ): Promise<WorkersWriteResponse | null> {
   const firstRun = firstRunArmed(env);
   const write = writePathArmed(env);
@@ -490,9 +504,18 @@ export async function handleWorkersWriteSurface(
 
 /** The D1 adapter for the write path. CloudflareD1Adapter is a stateless
  *  wrapper over the binding (drivers/d1.ts:55-61), so building it per request
- *  shares nothing with the host's read adapter and warms nothing. */
-function resolveDriver(ctx: WorkersWriteContext, env: WorkersWriteEnv): SQLDatabaseDriver {
-  return ctx.driver ?? new CloudflareD1Adapter(env.DB);
+ *  shares nothing with the host's read adapter and warms nothing. (fold-10
+ *  union: DB is optional in the env bag the edge-signin-session surface
+ *  passes — a flags-only host supplies ctx.driver; neither is the write
+ *  path's own named error, per the deploy lineage's shape.) */
+function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
+  if (ctx.driver !== undefined) return ctx.driver;
+  if (env.DB === undefined) {
+    throw new Error(
+      "write surface needs a storage binding: pass ctx.driver (host adapter) or env.DB (the D1 binding)",
+    );
+  }
+  return new CloudflareD1Adapter(env.DB);
 }
 
 export { SESSION_COOKIE_NAME, SETUP_PATH };

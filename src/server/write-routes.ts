@@ -116,6 +116,17 @@ export interface WriteRouteRequest {
   pathname: string;
   /** The Host header (absolute redirect URLs, Ruby's card_url). */
   host: string | undefined;
+  /** The scheme the CLIENT used, derived by the host bridge from its own
+   *  inbound evidence: the Request URL scheme on workerd (Cloudflare's is
+   *  authoritative), URL scheme first then `x-forwarded-proto` on a
+   *  TLS-terminating proxy (the Bunny edge — the same evidence that host's
+   *  Secure-cookie decision consumes). Absent means http: the pre-scheme
+   *  hardcoded behavior, preserved for every caller that does not derive
+   *  the field (engine-level tests, scheme-less hosts). This is card_url's
+   *  scheme half (env/serializable.rb:19-21: "scheme+host_with_port").
+   *  (fold-10 union: the scheme-downgrade lane's field the edge-signin-form-fix
+   *  pick consumes — the deploy lineage landed it in b0f8252.) */
+  scheme?: "http" | "https";
   headers: Record<string, string | undefined>;
   body: string;
   /** The RAW body bytes — required for multipart/form-data (binary file
