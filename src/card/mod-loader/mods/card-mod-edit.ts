@@ -189,6 +189,7 @@ import { serializerFollowsLive } from "../../render/deployment-follow-live-confi
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
+import { createFormShell } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
@@ -779,9 +780,97 @@ const contentFormgroupView: ViewFn = ({ fmt, voo }) => {
   );
 };
 
+/** form.rb:95-103 edit_slot — the CASE arm order is Ruby's:
+ *  inline_nests_editor? (voo.input_type — the *input machinery's
+ *  inline_nests arm, the engine-remainder) -> multi_card_editor? (:76-80)
+ *  -> in_multi_card_editor? -> single_card_edit_field. The multi-card arm
+ *  is PORTED here (the mod-completion-100 lane): the explicit-edit-fields
+ *  walk the account family's content_formgroups ride. */
+function editSlot(ctx: ViewContext): string {
+  const { fmt, voo } = ctx;
+  if (multiCardEditor(ctx)) return multiCardEdit(ctx, true);
+  if (voo.show("type_formgroup") || voo.show("name_formgroup"))
+    return fmt.renderView("content_formgroup");
+  return `<div class="editor content-editor">${contentField({ fmt, voo })}</div>`;
+}
+
+/** form.rb:76-80 multi_card_editor?: `voo.structure || voo.edit_structure ||
+ *  card.structure || edit_fields?` — edit_fields? (:83-84) reads edit_fields
+ *  = voo.edit_structure (chunk.rb:38-39), so the voo arms subsume it.
+ *  card.structure (the *structure rule read) is nil on every surface the
+ *  engine reaches (the structure-rule editors stay the disclosed
+ *  remainder). */
+function multiCardEditor(ctx: ViewContext): boolean {
+  const { voo } = ctx;
+  return (
+    voo.opts["structure"] !== undefined ||
+    voo.opts["edit_structure"] !== undefined
+  );
+}
+
+/** form.rb:115-122 multi_card_edit: `field_configs = edit_field_configs
+ *  fields_only; return structure_link if field_configs.empty?;
+ *  field_configs.map { |name, options| nest name, options || {} }.join
+ *  "\n"`. The EXPLICIT arm (chunk.rb:57-61 explicit_edit_fields_config +
+ *  :81-100 normalized_edit_field_config) walks voo.edit_structure's tuples:
+ *  the mark normalizes to card.name.field(cardish) unless absolute/compound,
+ *  the title defaults to the mark's name. The IMPLICIT arm (the content's
+ *  nest-chunk walk) is the engine's disclosed chunk-enumerator gap — the
+ *  configs answer [] and the structure_link bytes render (the same basis
+ *  editNestsView pins). */
+function multiCardEdit(ctx: ViewContext, fieldsOnly: boolean): string {
+  const { fmt, voo } = ctx;
+  const editStructure = voo.opts["edit_structure"] as
+    | Array<[string, Record<string, unknown>]>
+    | undefined;
+  const fieldConfigs: Array<[string, Record<string, unknown>]> = (
+    editStructure ?? []
+  ).map(([cardish, options]) => {
+    const opts = { ...(options ?? {}) };
+    const fieldMark = normalizedEditFieldMark(fmt, cardish, opts);
+    if (opts["title"] === undefined) opts["title"] = fieldMark;
+    return [fieldMark, opts] as [string, Record<string, unknown>];
+  });
+  if (fieldConfigs.length === 0) return structureLink();
+  void fieldsOnly;
+  // Ruby's `nest name, options || {}` carries the title opt only - the VIEW
+  // resolves through the nest machinery (implicit_nest_view under the
+  // ambient nest mode; setup's with_nest_mode :edit chain renders the field
+  // cards' edit_in_form, a normal-mode walk renders their default view)
+  return fieldConfigs
+    .map(([name, options]) => {
+      const { title, ...rest } = options;
+      const __n = fmt.nest({
+        syntax: `{{${name}|title:${String(title ?? "")}}}`,
+        name,
+        options: { title: String(title ?? ""), ...rest, extra: {} },
+        comment: undefined,
+      });
+      console.log("NEST-DEBUG", name, JSON.stringify(__n.slice(0, 90)), ctx.fmt.nestMode);
+      return __n;
+    })
+    .join("\n");
+}
+
+/** chunk.rb:91-100 normalized_edit_field_mark: the mark is the cardish when
+ *  absolute (:absolute opt) or an explicit compound cardish; else
+ *  card.name.field(cardish) — the REAL field math rides DeckoName. */
+function normalizedEditFieldMark(
+  fmt: ViewContext["fmt"],
+  cardish: string,
+  options: Record<string, unknown>,
+): string {
+  if (options["absolute"] === true || cardish.startsWith("+")) {
+    delete options["absolute"];
+    return cardish;
+  }
+  return fmt.card.name.field(cardish);
+}
+
 /** all/form.rb:4-7 view :content_formgroups (cache: :never, unknown:
  *  true): `wrap_with :fieldset, edit_slot, class: classy("card-editor",
- *  "editor")`. edit_slot (:95-103) -> single_card_edit_field (:105-112):
+ *  "editor")`. edit_slot (:95-103) arms in Ruby's order — multi_card_editor?
+ *  (the explicit walk, PORTED above) before single_card_edit_field:
  *  `voo.show?(:type_formgroup) || voo.show?(:name_formgroup)` decides the
  *  branch - SHOWN (visibility.rb show? = `!hide?` answers SHOWN for
  *  un-listed optionals) the formgroup branch `_render_content_formgroup`
@@ -789,13 +878,12 @@ const contentFormgroupView: ViewFn = ({ fmt, voo }) => {
  *  label and editor); HIDDEN (:edit_inline's body hides both,
  *  edit_inline.rb:4) the else branch renders editor_wrap(:content)
  *  { content_field } - the bare content-editor div (the captured
- *  :edit_inline fieldset). */
-const contentFormgroupsView: ViewFn = ({ fmt, voo }) => {
-  const inner =
-    voo.show("type_formgroup") || voo.show("name_formgroup")
-      ? fmt.renderView("content_formgroup")
-      : `<div class="editor content-editor">${contentField({ fmt, voo })}</div>`;
-  return `<fieldset class="card-editor editor">${inner}</fieldset>`;
+ *  :edit_inline fieldset). No existing surface sets voo.structure/
+ *  edit_structure (the account family's callers do), so the single-card
+ *  bytes are unchanged. */
+const contentFormgroupsView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  return `<fieldset class="card-editor editor">${editSlot(ctx)}</fieldset>`;
 };
 
 // --- all/edit_content.rb (the :edit_form view + card_form machinery) -------
@@ -979,7 +1067,7 @@ const editView: ViewFn = ({ fmt, voo }) => {
  *  classy("d0-card-header") (the class_up extra included), header_title
  *  wraps render_title in default_header (main? ? :h1 : :h2 - the engine
  *  render surface is non-focal, h2). */
-function framedView(
+export function framedView(
   ctx: ViewContext,
   view: string,
   bodyFn: () => string,
@@ -1737,6 +1825,43 @@ const simpleNewView: ViewFn = (ctx) => {
  *  card_form end. The frame's slot wrap is POST-body here (with_create_
  *  context ran first - the captured :new slot carries show:[new, help],
  *  hide:[name_formgroup]). */
+/** new.rb:43-49 create_form - the VIEW-LESS form-substrate dispatch the
+ *  reference-editor views reach (`create_form success: {...}` with no body
+ *  block - new_image.rb:13-19, nest_editor.rb:87-92):
+ *  `with_create_context { card_form :create, form_opts {
+ *  create_form_with_alert_guide } }` - the FULL new-fields body (the name/
+ *  type hiddens + content_formgroups + the voo.buttons_view buttons), the
+ *  caller's success hash riding card_form's hidden_form_tags. The shell is
+ *  the substrate's createFormShell (form_for on the new record: id
+ *  "new_card", action /card/create, post - the live capture's form tag). */
+export function createFormDataShell(
+  ctx: ViewContext,
+  formOpts: { success?: Record<string, unknown> },
+): string {
+  withCreateContext(ctx);
+  return createFormShell(ctx, {
+    htmlAttrs: [],
+    success: formOpts.success,
+    body: createFormWithAlertGuide(ctx),
+  });
+}
+
+/** form.rb:186-200 card_form(:create, form_opts) with a CALLER body - the
+ *  frame_and_form chain's inner shell (user.rb:29-32 setup_form:
+ *  frame_and_form :create { [hidden fields, name formgroup,
+ *  account_formgroups, buttons] }; NO with_create_context - that wrapper is
+ *  the :new family's). */
+export function createCardBodyShell(
+  ctx: ViewContext,
+  formOpts: { success?: Record<string, unknown>; body: string },
+): string {
+  return createFormShell(ctx, {
+    htmlAttrs: [],
+    success: formOpts.success,
+    body: formOpts.body,
+  });
+}
+
 const newView: ViewFn = (ctx) => {
   withCreateContext(ctx);
   const form = createCardForm(

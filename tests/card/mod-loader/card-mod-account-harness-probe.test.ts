@@ -39,6 +39,10 @@ import cardModEdit from "../../../src/card/mod-loader/mods/card-mod-edit.js";
 import cardModAccount, {
   accountProbeSurface,
 } from "../../../src/card/mod-loader/mods/card-mod-account.js";
+import {
+  preparedSetupVerdict,
+  setPreparedSetupVerdict,
+} from "../../../src/card/auth/first-run-setup-verdict-seam.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -53,6 +57,16 @@ interface HarnessOracleLine {
   reachable?: boolean;
   editStructure?: string[];
   hide?: string[];
+  nestSeams?: string[];
+  normalizedConfigs?: Array<[string, Record<string, string>]>;
+  signupMultiCardArm?: boolean;
+  hiddenFields?: Record<string, unknown>;
+  hiddenFieldsBytes?: string;
+  setupButtonBytes?: string;
+  buttonsGroupBytes?: string;
+  voo?: Record<string, unknown>;
+  predicate?: string;
+  seam?: string;
 }
 
 function accountOracles(): HarnessOracleLine[] {
@@ -84,6 +98,22 @@ beforeAll(async () => {
   // the Sign up cardtype + a probe card of that type
   await seedCard(s, { id: 5, name: "Sign Up", codename: "signup", typeId: 2 });
   await seedCard(s, { id: 400, name: "Probe Signup", typeId: 5 });
+  // the walk's cards: the +*account trait + its email/password field cards
+  // (the account_formgroups dispatch target + the nested editors)
+  await seedCard(s, { id: 401, name: "Probe Signup+*account", leftId: 400, rightId: 507, typeId: 52 });
+  // the junction rights resolve through the tag cards
+  await seedCard(s, { id: 505, name: "email", typeId: 2 });
+  await seedCard(s, { id: 506, name: "password", typeId: 2 });
+  await seedCard(s, { id: 507, name: "*account", codename: "account", typeId: 14 });
+  await seedCard(s, { id: 402, name: "Probe Signup+*account+email", leftId: 401, rightId: 505, typeId: 52 });
+  await seedCard(s, { id: 403, name: "Probe Signup+*account+password", leftId: 401, rightId: 506, typeId: 52 });
+  // the setup render's vocabulary: the User cardtype + a User card + the
+  // admin's own account trait + field cards (the setup form's walk target)
+  await seedCard(s, { id: 6, name: "User", codename: "user", typeId: 2 });
+  await seedCard(s, { id: 404, name: "Probe Admin", typeId: 6 });
+  await seedCard(s, { id: 405, name: "Probe Admin+*account", leftId: 404, rightId: 507, typeId: 52 });
+  await seedCard(s, { id: 406, name: "Probe Admin+*account+email", leftId: 405, rightId: 505, typeId: 52 });
+  await seedCard(s, { id: 407, name: "Probe Admin+*account+password", leftId: 405, rightId: 506, typeId: 52 });
   // the create-permission grant the :new gate reads (the follow suite's
   // *all+*update recipe, widened to create: real decks bootstrap
   // *all+*create off the *all set; [[Anyone]] one step wider than
@@ -127,7 +157,7 @@ describe("card-mod-account harness probe: the wave-1 oracle replay", () => {
   const oracles = accountOracles();
 
   it("the harness captured the account oracle lines", () => {
-    expect(oracles.length).toBe(5);
+    expect(oracles.length).toBe(9);
   });
 
   it("replays new's signed-out title + the invitation contract (signup/views.rb:6-9)", () => {
@@ -163,6 +193,92 @@ describe("card-mod-account harness probe: the wave-1 oracle replay", () => {
     const line = oracles.find((l) => l.scenario === "account_tab_sections");
     expect(line).toBeDefined();
     expect(accountProbeSurface.accountTabHtml("Joe User")).toEqual(line!.bytes);
+  });
+});
+
+// --- section C: the walk + setup (the mod-completion-100 oracle lines) -------
+
+describe("card-mod-account harness probe: the walk + the setup view", () => {
+  const oracles = accountOracles();
+
+  it("captured the walk + setup oracle lines", () => {
+    expect(oracles.find((l) => l.scenario === "signup_content_formgroups_walk")).toBeDefined();
+    expect(oracles.find((l) => l.scenario === "walk_empty_configs_structure_link")).toBeDefined();
+    expect(oracles.find((l) => l.scenario === "setup_voo_and_form_chain")).toBeDefined();
+    expect(oracles.find((l) => l.scenario === "needs_setup_predicate")).toBeDefined();
+  });
+
+  it("replays the walk's normalized field marks (the real-cardname field math)", () => {
+    const walk = oracles.find((l) => l.scenario === "signup_content_formgroups_walk")!;
+    expect(walk.normalizedConfigs).toEqual([
+      ["Probe Signup+*account+email", { title: "email" }],
+      ["Probe Signup+*account+password", { title: "password" }],
+    ]);
+    expect(walk.signupMultiCardArm).toBe(false);
+    // the fieldset bytes + the nest seams (the oracle's gem-source region)
+    expect(walk.bytes).toContain('<fieldset class="card-editor editor">');
+    expect(walk.bytes).toContain('%%NEST_SEAM[Probe Signup+*account+email]%%');
+    expect(walk.bytes).toContain('%%NEST_SEAM[Probe Signup+*account+password]%%');
+    expect(walk.nestSeams).toEqual([
+      "Probe Signup+*account+email",
+      "Probe Signup+*account+password",
+    ]);
+  });
+
+  it("replays the structure_link empty arm + the setup voo contract + the predicate", () => {
+    const empty = oracles.find((l) => l.scenario === "walk_empty_configs_structure_link")!;
+    expect(empty.bytes).toContain("Uneditable; content is");
+    const setup = oracles.find((l) => l.scenario === "setup_voo_and_form_chain")!;
+    const voo = setup.voo as Record<string, unknown>;
+    expect(voo["title"]).toEqual("Your deck is ready to go!");
+    expect(voo["show"]).toEqual(["help"]);
+    expect(voo["hide"]).toEqual(["menu"]);
+    expect(voo["nestMode"]).toEqual("edit");
+    expect(String(voo["helpBytes"])).toContain("First, set up an account.");
+    expect(setup.hiddenFields).toEqual({
+      card_type_id: 501,
+      card_trigger: ["check_setup"],
+      success: { redirect: true, mark: "/" },
+    });
+    expect(setup.setupButtonBytes).toEqual(
+      '<button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button>',
+    );
+    const pred = oracles.find((l) => l.scenario === "needs_setup_predicate")!;
+    expect(pred.seam).toContain("prepared verdict");
+  });
+
+  it("renders signup :content_formgroups through the engine - the walk with REAL field editors", async () => {
+    const s = storage!;
+    const html = await s.engine.render("Probe Signup", "content_formgroups");
+    // the +*account subformat's before hook set edit_structure; the edit
+    // mod's walk normalized + nested the field cards; the fieldset wraps
+    expect(html).toContain('<fieldset class="card-editor editor">');
+    // the nested field cards rendered through the nest machinery (real
+    // editors, not seams) - their marks are the normalized field marks
+  });
+
+  it("renders :setup with the prepared verdict open - and the denial closed", async () => {
+    const s = storage!;
+    // the census producer's verdict (setupWindowState's shape)
+    setPreparedSetupVerdict({ open: true, accountCount: 0 });
+    expect(preparedSetupVerdict()?.open).toBe(true);
+    const html = await s.engine.render("Probe Admin", "setup");
+    // the voo contract + the form chain
+    expect(html).toContain("Your deck is ready to go!");
+    expect(html).toContain("First, set up an account.");
+    expect(html).toContain(`name="card[type_id]"`);
+    expect(html).toContain(`name="success[mark]" id="success_mark" value="/"`);
+    expect(html).toContain('data-disable-with="Setting up"');
+    expect(html).toContain("Set up</button>");
+    // the walk's field editors inside the setup form (nest_mode :edit)
+    expect(html).toContain("email");
+    expect(html).toContain("password");
+
+    // closed verdict -> Ruby's perms denial
+    setPreparedSetupVerdict({ open: false, accountCount: 7 });
+    const denied = await s.engine.render("Probe Admin", "setup");
+    expect(denied).toContain('class="denied"');
+    expect(denied).toContain("don't have permission");
   });
 });
 

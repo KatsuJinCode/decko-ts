@@ -259,6 +259,7 @@ export class DbLexicon {
   /** lexicon.rb#name_to_lex */
   private async nameToLex(name: DeckoName): Promise<Lex | undefined> {
     if (name.isSimple) return name.s;
+    if (name.s.includes("account+email") || name.s === "Probe Signup+*account") console.log("LEX-DEBUG", name.s, "isSimple:", name.isSimple, "left:", name.leftName?.s, "right:", name.rightName?.s);
     const leftId = await this.id(name.leftName ?? DeckoName.parse(""));
     if (leftId === undefined) return undefined;
     const rightId = await this.id(name.rightName ?? DeckoName.parse(""));

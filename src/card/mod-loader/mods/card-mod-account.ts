@@ -130,6 +130,8 @@ import { h } from "../../render/slot-html.js";
 import { signinCoreHtml } from "../../render/signin-core-form-view.js";
 import { modSlotWrap, superView } from "../mod-view-helpers.js";
 import { setModuleShortname } from "../mod-registrar.js";
+import { createCardBodyShell, framedView } from "./card-mod-edit.js";
+import { preparedSetupVerdict } from "../../auth/first-run-setup-verdict-seam.js";
 // set/type/role.rb's :configs view body — the all/admin.rb machinery is the
 // core mod's (core-mod.ts: allConfigs/groupedBy/section emitters), so the
 // view fn lives there and both registrations (this manifest's Type::Role
@@ -880,6 +882,158 @@ export const accountProbeSurface = {
   },
 };
 
+// --- mod-completion-100 (2026-10-03): the census walk + setup views ---------
+// Oracle: tools/mod-porting-harness/ruby-oracles/card-mod-account/
+// account-walk-views.rb (4 scenarios, static-ruby under the real
+// interpreter - the REAL cardname field marks + real Haml for
+// setup_help.haml); probe: card-mod-account-harness-probe.test.ts.
+
+/** account_holder.rb:143-145 account_formgroups:
+ *    Auth.as_bot { subformat(card.account)._render :content_formgroups,
+ *    structure: true }
+ *  the DIRECT subformat render (NOT a nest - the nest machinery's
+ *  modal_nest_view would substitute the view under the ambient nest mode;
+ *  Ruby's _render bypasses it, which is why the setup form's walk survives
+ *  the with_nest_mode :edit wrapper). The as_bot widening rides the seeded
+ *  read grants (the established basis). */
+function accountFormgroups(ctx: ViewContext): string {
+  const { fmt } = ctx;
+  const accountCard = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  if (accountCard === undefined || accountCard.unknown === true) {
+    return "";
+  }
+  const sub = new RenderFormat(accountCard, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors });
+  console.log("AF-DEBUG", JSON.stringify({ card: accountCard.name.s, known: accountCard.unknown }));
+  return sub.renderView("content_formgroups", { structure: "true" });
+}
+
+/** set/type/signup/views.rb:11-13 view :content_formgroups:
+ *    [account_formgroups, (multi_card_editor? ? multi_card_edit(true) :
+ *    "")].join
+ *  account_formgroups (account_holder.rb:143-145) renders the +*account
+ *  trait's content_formgroups under structure: true; the +*account card's
+ *  own registration (the before hook, below) sets voo.edit_structure and
+ *  dispatches the edit mod's walk. The signup card's own
+ *  multi_card_editor? reads false (no voo structure, no edit_structure, no
+ *  structure rule, edit_fields empty) - the second arm answers "". */
+const signupContentFormgroupsView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  // account_formgroups: Auth.as_bot { subformat(card.account)._render(
+  // :content_formgroups, structure: true) } - the as_bot widening rides the
+  // probe's seeded read grants (the established basis); structure: true
+  // rides the nest opts (the subformat's voo.structure)
+  const accountFormgroupsBytes = accountFormgroups(ctx);
+  // multi_card_editor? on the signup card: every arm nil/empty
+  const multiCardArm = "";
+  return output([accountFormgroupsBytes, multiCardArm]);
+};
+
+/** set/right/account/views.rb:59-61 the before :content_formgroups hook +
+ *  the chain dispatch:
+ *    before :content_formgroups do
+ *      voo.edit_structure = [[:email, { title: "email" }],
+ *                            [:password, { title: "password" }]]
+ *    end
+ *  The tuple's relative marks normalize through the edit mod's walk
+ *  (card.name.field over the +*account card -> "<card>+*account+email").
+ *  The dispatch rides superView to the edit mod's contentFormgroupsView
+ *  (the multi-card walk the mod-completion-100 lane ported there). */
+const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
+  ctx.voo.opts["edit_structure"] = [
+    ["+email", { title: "email" }],
+    ["+password", { title: "password" }],
+  ];
+  return superView(ctx, setModuleShortname("right/account/views"), "content_formgroups");
+};
+
+/** set/type/user/setup_help.haml (verbatim, real-Haml oracle bytes): the
+ *  h3 + the pb-2 roles note; the delivery-off alert-warning block is the
+ *  Card.config.action_mailer.perform_deliveries == false arm (both arms
+ *  captured; the reachable arm here is the engine-config one - the headless
+ *  engine models no mailer config, so the FALSE-delivery arm stays the
+ *  recorded oracle line and the TRUE arm renders). */
+const SETUP_HELP_BYTES =
+  `<h3>First, set up an account.</h3>
+` +
+  `<div class='pb-2'>
+` +
+  `As the first account holder for this deck, you will automatically have several
+` +
+  `permissioned roles. You can configure these roles at any time.
+` +
+  `</div>
+`;
+
+/** user.rb:46-53 setup_hidden_fields: hidden_tags over the card + success
+ *  hashes; type_id = Card.default_accounted_type_id (the Sign Up codename
+ *  card's id - the runtime resolves the codename card); trigger
+ *  ["check_setup"] (the array's [] suffix); success {redirect: true,
+ *  mark: path(mark: "")} - path(mark: "") answers "/" (Card::Path's
+ *  markless base + the html contextualize root). The byte chain is the
+ *  oracle's hiddenFieldsBytes line (the nil-value-omits rule never fires
+ *  here - every value is present). */
+function setupHiddenFields(ctx: ViewContext): string {
+  const typeId = ctx.fmt.engine.fetchRenderCard("Sign Up")?.id;
+  const hiddenFieldTag = (name: string, value: string): string =>
+    `<input type="hidden" name="${h(name)}" id="${h(name.replace(/]/g, "").replace(/\[/g, "_"))}" value="${h(value)}" autocomplete="off" />`;
+  const out = [
+    hiddenFieldTag("card[type_id]", String(typeId ?? "")),
+    hiddenFieldTag("card[trigger][]", "check_setup"),
+    hiddenFieldTag("success[redirect]", "true"),
+    hiddenFieldTag("success[mark]", "/"),
+  ];
+  return out.join("");
+}
+
+/** user.rb:10-19 view :setup, unknown: true, perms: :needs_setup?,
+ *  cache: :never:
+ *    with_nest_mode :edit do
+ *      voo.title = "Your deck is ready to go!"
+ *      voo.show! :help
+ *      voo.hide! :menu
+ *      voo.help = haml :setup_help
+ *      Auth.as_bot { setup_form }
+ *    end
+ *  setup_form (:27-33): frame_and_form :create { [setup_hidden_fields,
+ *  _render_name_formgroup, account_formgroups, setup_form_buttons] }.
+ *
+ *  THE PERMS GATE (the wave-1 named remainder, now wired): Ruby's render
+ *  pipeline calls Card::Auth.needs_setup? synchronously; the TS census is
+ *  async SQL, so the gate reads the PREPARED verdict
+ *  (first-run-setup-verdict-seam.ts - setupWindowState is the census's
+ *  port). No prepared verdict = closed (the conservative census answer).
+ *  Closed renders Ruby's perms denial (the standard task-denied span). */
+const setupView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const verdict = preparedSetupVerdict();
+  if (verdict === undefined || verdict.open !== true) {
+    return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
+  }
+  return fmt.withNestMode("edit", () => {
+    voo.opts["title"] = "Your deck is ready to go!"; // LOCALIZE
+    voo.showViz("help");
+    voo.hide("menu");
+    // voo.help = haml :setup_help (the oracle's helpBytes line)
+    voo.opts["help"] = SETUP_HELP_BYTES;
+    // Auth.as_bot { setup_form } - frame_and_form :create over the body
+    // (the as_bot widening rides the seeded grants)
+    const body = output([
+      setupHiddenFields(ctx),
+      fmt.renderView("name_formgroup"),
+      // account_formgroups (the walk; the +email/+password field cards'
+      // editors render through the subformat's nest machinery under the
+      // inherited nest_mode :edit)
+      accountFormgroups(ctx),
+      // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
+      // - setup_button = submit_button text "Set up", disable_with
+      // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
+      `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
+    ]);
+    const form = createCardBodyShell(ctx, { body });
+    return framedView(ctx, "setup", () => form);
+  });
+};
+
 // --- set/self/signin.rb view :edit (the FORGOT-PASSWORD form) ----------------
 
 /** signin.rb:154-157 view :edit:
@@ -950,6 +1104,9 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: {
         views: [
+          // the before :content_formgroups hook (views.rb:59-61) + the chain
+          // dispatch to the edit mod's walk
+          { view: "content_formgroups", viewFn: accountBeforeContentFormgroupsView },
           { view: "core", viewFn: accountCoreView },
           { view: "token_days", viewFn: tokenDaysView },
           { view: "verify_days", viewFn: verifyDaysView },
@@ -1087,19 +1244,20 @@ const setModules: ModSetModuleFile[] = [
     // (the invitation arm the disclosed admin-approval basis leaves
     // unreachable) + superView to the edit mod's live :new, and the
     // create-button formgroup (the invite_button arm nil signed-out).
-    // STILL the honest remainder here: :content_formgroups - its
-    // account_formgroups recursion renders the +*account subformat's
-    // content_formgroups with the before-hook's voo.edit_structure
-    // (right/account/views.rb:60-62), and the structure-driven formgroup
-    // walk is the edit mod's own disclosed remainder (the formgroup.rb
-    // note); porting the body would pin quiet-rescue bytes Ruby never
-    // renders. multi_card_editor is the Rails form-state machinery.
+    // mod-completion-100 (2026-10-03): :content_formgroups joins - the
+    // account_formgroups subformat dispatch (structure: true rides the nest
+    // opts; the +*account card's own registration carries the before hook)
+    // over the signup card's empty multi_card_editor? arm; the walk itself
+    // lives on the edit mod's contentFormgroupsView (the explicit
+    // edit_structure arm the lane ported there). The oracle:
+    // account-walk-views.rb signup_content_formgroups_walk.
     setPath: "type/sign_up/views",
     formats: {
       html: {
         views: [
           { view: "new", viewFn: signupNewView, config: { cache: "never" } },
           { view: "new_buttons", viewFn: signupNewButtonsView, config: { cache: "never" } },
+          { view: "content_formgroups", viewFn: signupContentFormgroupsView },
         ],
       },
     },
@@ -1111,12 +1269,20 @@ const setModules: ModSetModuleFile[] = [
     // double-gated - perms :needs_setup? is a DECK-STATE census predicate
     // (Card::Auth.needs_setup? = zero non-shipped +*account junctions) the
     // sync view gate cannot answer without a prepared census verdict seam,
-    // and the body's account_formgroups recursion needs the SAME
-    // structure-driven formgroup machinery signup :content_formgroups
-    // names. The census + the owner-create machinery live in
-    // src/card/auth/first-run-setup.ts (the /setup route surface, whose
-    // header documents the deliberate card-view omission).
+    // mod-completion-100 (2026-10-03): :setup joins - the body rides the
+    // edit mod's real machinery (name_formgroup render, the account
+    // formgroups walk through the nest machinery under with_nest_mode
+    // :edit, the frame_and_form shell) and the PERMS GATE reads the
+    // PREPARED census verdict (first-run-setup-verdict-seam.ts;
+    // setupWindowState in first-run-setup.ts is the census's port - the
+    // route/bootstrap hand it to the sync gate). The oracle:
+    // account-walk-views.rb setup_voo_and_form_chain + needs_setup_predicate.
     setPath: "type/user",
+    formats: {
+      html: {
+        views: [{ view: "setup", viewFn: setupView, config: { cache: "never", unknown: true, perms: "needs_setup" } }],
+      },
+    },
   },
   // pattern: type_plus_right
   { setPath: "type_plus_right/cardtype/account" },

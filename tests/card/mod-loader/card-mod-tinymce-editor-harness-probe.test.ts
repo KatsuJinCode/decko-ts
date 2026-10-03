@@ -37,6 +37,7 @@ import {
   modEngineHost,
   setDefaultModLoader,
 } from "../../../src/card/mod-loader.js";
+import cardModEdit from "../../../src/card/mod-loader/mods/card-mod-edit.js";
 import cardModTinymce, {
   tinymceProbeSurface,
   type ChromeContext,
@@ -144,7 +145,13 @@ beforeAll(async () => {
     dbContent: "[[Anyone]]",
   });
   await seedReference(s, 312, 311, "anyone");
-  loader = new ModLoader([{ manifest: cardModTinymce }]);
+  // the EDIT mod: the create_form dispatch's new-fields chain (new_fields,
+  // content_formgroups, new_buttons) + the edit_inline dispatch + the framed
+  // view machinery's help render
+  loader = new ModLoader([
+    { manifest: cardModEdit },
+    { manifest: cardModTinymce },
+  ]);
   loader.load();
   bindModLoaderToEngine(s, loader);
   await loader.installInto(modEngineHost(s.engine, s.fetcher));
@@ -316,5 +323,9 @@ describe("card-mod-tinymce_editor harness probe: the ported views through the en
     expect(html).toContain(`id="success_tinymce_id" autocomplete="off" />`);
     expect(html).toContain(`name="success[id]" id="success_id" value="image02"`);
     expect(html).toContain(`name="success[slot][show]" id="success_slot_show" value="preview_redirect"`);
+    // the full create_form body rides the dispatch (new.rb:43-49): the form
+    // tag + the new-fields walk + the voo.buttons_view buttons
+    expect(html).toContain(`<form class="card-form slotter" id="new_card" action="/card/create"`);
+    expect(html).toContain("_update-history-pills"); // new_image_buttons
   });
 });

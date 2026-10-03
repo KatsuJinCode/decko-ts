@@ -164,9 +164,9 @@ import { modViewSlotWrap } from "../../render/views.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
 import {
   buttonFormGroup,
-  createFormShell,
   standardSaveButtonBody,
 } from "../mod-form-substrate.js";
+import { createFormDataShell } from "./card-mod-edit.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -1734,13 +1734,10 @@ const nestContentView: ViewFn = (ctx) => {
         voo.hide("guide");
         voo.showViz("new_type_formgroup");
         voo.opts["buttons_view"] = "new_image_buttons";
-        return createFormShell(ctx, {
-          htmlAttrs: [],
-          // success: { tinymce_id: Env.params[:tinymce_id] } - params absent ->
-          // the nil value's value-less hidden tag
-          success: { tinymce_id: null },
-          body: "",
-        });
+        // new.rb:43-49 create_form success: {...} - the FULL new-fields body
+        // (the live capture's 5,992-byte new_image render is the same
+        // dispatch); the nil tinymce_id renders the VALUE-LESS hidden tag
+        return createFormDataShell(ctx, { success: { tinymce_id: null } });
       })()
     : (() => {
         voo.hide("cancel_button");
@@ -1766,10 +1763,10 @@ const newImageView: ViewFn = (ctx) => {
   return modSlotWrap(
     ctx,
     "new_image",
-    createFormShell(ctx, {
-      htmlAttrs: [],
-      // the nil tinymce_id renders the VALUE-LESS success[tinymce_id] hidden
-      // tag (hidden_field_tag nil omits the value attribute) - the live bytes
+    // new.rb:43-49 create_form success: {...} - the full new-fields body;
+    // the nil tinymce_id renders the VALUE-LESS success[tinymce_id] hidden
+    // tag (hidden_field_tag nil omits the value attribute) - the live bytes
+    createFormDataShell(ctx, {
       success: {
         tinymce_id: null,
         view: "new_image",
@@ -1777,7 +1774,6 @@ const newImageView: ViewFn = (ctx) => {
         slot: { hide: "guide", type: "image", show: "preview_redirect" },
         id: autoname,
       },
-      body: "",
     }),
   );
 };

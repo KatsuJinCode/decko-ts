@@ -1172,6 +1172,18 @@ export class RenderEngine implements RenderEngineLike {
     // sync-fetch gap the pointer-item walk closes. Both calls tolerate
     // fetch misses (a card without +account stays absent; the core's
     // missing-account branch renders).
+    // mod-completion-100 (2026-10-03): the account walk's cards — signup
+    // :content_formgroups and user :setup ride account_formgroups
+    // (account_holder.rb:143-145, the DIRECT subformat render of the
+    // +*account trait's content_formgroups) -> the explicit edit_structure
+    // walk nests <root>+*account+email and <root>+*account+password (the
+    // NO-STAR field children, right/account/views.rb:59-61's tuples through
+    // the edit mod's walk). The sync view's map reads need all three warm.
+    if (rootCard.typeCode === "signup" || rootCard.typeCode === "user") {
+      await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+      await this.prepareItemForRender(`${rootCard.name.s}+*account+email`);
+      await this.prepareItemForRender(`${rootCard.name.s}+*account+password`);
+    }
     if (rootCard.typeCode === "signup") {
       // views.rb:43-45 self_signup? compares creator_id against AnonymousID
       // ("was signed up on" vs "signed up on") — the *anonymous codename
