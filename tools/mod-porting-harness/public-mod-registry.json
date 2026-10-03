@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T18:12:56.933Z",
+  "generatedAt": "2026-10-03T18:39:16.191Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -22,12 +22,42 @@
       "gem": "card-mod-account-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "17 mod-specific view(s) ported: closed_account, closure, configs, content_formgroups, edit, edit_buttons, ...",
+      "statusEvidence": "harness scorecard, 0 RED: 4/99 harness-oracle-validated, 41 pinned by the mod's standing suite, 54 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-account/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "4/99 validated",
       "reMeasureMissingViews": 6,
-      "wave1": null,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [
+          {
+            "view": "new",
+            "source": "set/type/signup/views.rb:6-9",
+            "oracle": "static-ruby (account-census-views.rb; the signed-out title arm pinned, the invitation arm the documented contract line)",
+            "status": "ported, verify GREEN (harness capture + probe; the invitation? arm rides the admin-approval verdict machinery the engine does not model - the same disclosed basis the ported signup :core's approve links carry)"
+          },
+          {
+            "view": "new_buttons",
+            "source": "set/type/signup/views.rb:15-18",
+            "oracle": "static-ruby (account-census-views.rb; the create-only formgroup, invite_button nil signed-out)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "edit",
+            "source": "set/self/signin.rb:154-157 (the FORGOT-PASSWORD form)",
+            "oracle": "static-ruby (account-census-views.rb; the reset_password_voo contract)",
+            "status": "ported, verify GREEN (harness capture + probe; the voo.edit_structure CONSUMING side is the edit mod's disclosed remainder - the body threads the voo as Ruby does, named in the view comment)"
+          },
+          {
+            "view": "account_tab",
+            "source": "set/abstract/account_holder.rb:132-137",
+            "oracle": "static-ruby (account-census-views.rb; the pill sections over the verbatim item walks)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 2
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-account-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },

@@ -1,6 +1,6 @@
 # Public mod registry — the porting-harness progress tracker
 
-Generated 2026-10-03T18:12:56.933Z by tools/mod-porting-harness/mod-harness.mjs registry
+Generated 2026-10-03T18:39:16.191Z by tools/mod-porting-harness/mod-harness.mjs registry
 
 Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).
 
@@ -8,14 +8,14 @@ Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only e
 
 **Honest gap note:** the mod-level ported status does not mask behavior gaps — 6 ported mod(s) still carry 23 missing view(s) per the re-measurement (card-mod-account: 6, card-mod-follow: 4, card-mod-format: 2, card-mod-history: 1, card-mod-style: 4, card-mod-tinymce_editor: 6). Those behaviors are unported INSIDE ported mods; their rows show them in the re-measure column until their harness scorecards land.
 
-**Harness coverage of the registry:** 8 of 35 rows carry a harness scorecard; the other 27 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
+**Harness coverage of the registry:** 9 of 35 rows carry a harness scorecard; the other 26 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
 
 Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views.
 
 | mod | status | re-measure missing views | harness scorecard | evidence |
 |-----|--------|-------------------------:|-------------------|----------|
 | `card (core mod, card-1.110.0 mod/core)` | ported | - | see the engine suites | the decko-ts engine IS the core port (src/card/*); not a card-mod-* gem |
-| `card-mod-account` | ported | 6 | not harness-validated yet | 17 mod-specific view(s) ported: closed_account, closure, configs, content_formgroups, edit, edit_buttons, ... |
+| `card-mod-account` | ported | 6 | 4/99 validated | harness scorecard, 0 RED: 4/99 harness-oracle-validated, 41 pinned by the mod's standing suite, 54 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/report |
 | `card-mod-ace_editor` | ported | 0 | 0/4 validated | harness scorecard, 0 RED: 0/4 harness-oracle-validated, 4 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-ace_editor/scorecard.md) |
 | `card-mod-api_key` | ported | 0 | not harness-validated yet | 6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link |
 | `card-mod-assets` | ported | 0 | not harness-validated yet | 2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag |

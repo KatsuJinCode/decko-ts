@@ -116,9 +116,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     // stylesheet_include_tag raising-arm row - the census re-bump that
     // receipt's "net run in flight" never landed); base moved 145 -> 147
     // when wave-1's follow family registered :subedit_notice + :follower
-    // on the all-set all/notify/base_views module (base key).
+    // on the all-set all/notify/base_views module (base key); abstract
+    // moved 29 -> 30 when wave-1's account family registered :account_tab
+    // on the abstract-set abstract/account_holder module.
     expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(147);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(29);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 
   it("the foreign-key flat rows are exactly the eight measured rows", () => {
@@ -201,7 +203,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-two views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -213,7 +215,9 @@ describe("flat-record format-scope census (composed deck)", () => {
     // style family's own commit (8b56256, the abstract/style_group
     // raising-arm row, census re-bump folded here); +errors at wave-1's
     // follow family (the type_plus_right/user/follow :errors registration
-    // joining the format mod's all-set :errors row).
+    // joining the format mod's all-set :errors row); +new +new_buttons at wave-1's
+    // account family (the signup :new / :new_buttons registrations joining
+    // the edit mod's all-set rows of the same names).
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
@@ -236,6 +240,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "help_text",
       "input",
       "javascript_include_tag",
+      "new",
+      "new_buttons",
       "not_found",
       "one_line_content",
       "overlay_title",

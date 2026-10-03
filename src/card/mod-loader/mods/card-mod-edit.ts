@@ -2039,12 +2039,12 @@ const BOARD_TABS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /** board_pills.rb:1-4 the pill list classes. */
-const BOARD_PILL_UL_CLASSES = "nav nav-pills _auto-single-select board-pills flex-column";
+export const BOARD_PILL_UL_CLASSES = "nav nav-pills _auto-single-select board-pills flex-column";
 const BOARD_PILL_LI_CLASSES = "nav-item";
 
 /** menu.rb:196-199 board_slot_selector - the overlay target the board
  *  links' data-slot-selector names (HTML-escaped > in the attributes). */
-const BOARD_SLOT_SELECTOR =
+export const BOARD_SLOT_SELECTOR =
   ".board-main > .overlay-container > .card-slot._bottomlay-slot," +
   ".board-main > ._overlay-container-placeholder > .card-slot";
 const BOARD_SLOT_SELECTOR_ESC = h(BOARD_SLOT_SELECTOR);

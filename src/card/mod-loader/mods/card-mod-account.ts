@@ -116,7 +116,8 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { h } from "../../render/slot-html.js";
-import { modSlotWrap } from "../mod-view-helpers.js";
+import { modSlotWrap, superView } from "../mod-view-helpers.js";
+import { setModuleShortname } from "../mod-registrar.js";
 // set/type/role.rb's :configs view body — the all/admin.rb machinery is the
 // core mod's (core-mod.ts: allConfigs/groupedBy/section emitters), so the
 // view fn lives there and both registrations (this manifest's Type::Role
@@ -133,6 +134,11 @@ import {
   output,
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
+import { DeckoName } from "../../name.js";
+import {
+  BOARD_PILL_UL_CLASSES,
+  BOARD_SLOT_SELECTOR,
+} from "./card-mod-edit.js";
 import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
 import type {
   DeckoModManifest,
@@ -557,8 +563,7 @@ export const signupCoreHtml = (ctx: ViewContext): string => {
 };
 
 /** views.rb:54-61 account_lines (see signupCoreView). */
-function signupAccountLines(ctx: ViewContext): string[] {
-  const { fmt } = ctx;
+function signupAccountLines(ctx: ViewContext): string[] {  const { fmt } = ctx;
   const engine = fmt.engine;
   // The trait fetch composes the STAR name: card.account -> "<card>
   // +*account" (right 100 = *account; the r17-junction-fetch-probe.rb
@@ -605,6 +610,295 @@ function formatCardDateSeconds(sql: string | undefined): string {
  *  existence (loader.ts#registerSetModule: every setModules entry
  *  contributes one RegisteredSetModule to the basket regardless of its
  *  format blocks). */
+// ===========================================================================
+// mod-porting wave1 (2026-10-03): the census's account views. Oracle:
+// tools/mod-porting-harness/ruby-oracles/card-mod-account/
+// account-census-views.rb (5 scenarios, static-ruby under the real
+// interpreter - no live captures exist for any signup/forgot/tab form);
+// probe: card-mod-account-harness-probe.test.ts.
+// ===========================================================================
+
+// --- set/type/signup/views.rb (the signup form family) ----------------------
+
+/** views.rb:2-4 invitation?: `Auth.signed_in? && card.can_approve?`. The
+ *  headless render is signed OUT (current.rb:7-9 defaults AnonymousID), and
+ *  can_approve? rides the admin-approval verdict machinery the engine does
+ *  not model - the SAME disclosed basis the ported signup :core's approve
+ *  links carry (signupAccountLines above). The invitation arm's title is
+ *  the documented contract ("Invite", en.yml:17 - the oracle's
+ *  new_invitation_title_contract line), the signed-out arm is the pinned
+ *  reachable one. */
+const SIGNUP_INVITE_TITLE = "Invite";
+
+/** views.rb:6-9 view :new, cache: :never:
+ *    voo.title = invitation? ? t(:account_invite) : t(:account_sign_up)
+ *    super()
+ *  The super() dispatch rides the mod-view-helpers superView (the MRO
+ *  chain's next :new registration - card-mod-edit's live newView,
+ *  framed_create_form). en.yml:34 "Sign up"; the title rides the voo opt
+ *  the title view reads (titleNoLinkView's voo.opts["title"] - the live
+ *  writer Ruby's define_setter gives voo.title). */
+const signupNewView: ViewFn = (ctx) => {
+  // t(:account_sign_up); the invitation? arm ("Invite") is the disclosed
+  // remainder documented on SIGNUP_INVITE_TITLE above
+  ctx.voo.opts["title"] = "Sign up";
+  // the registration's set module: the nested child file's shortname (the
+  // gem dir is "signup", the card set-key token is "sign_up" - the parent
+  // entry's documented spelling)
+  return superView(ctx, setModuleShortname("type/sign_up/views"), "new");
+};
+
+/** views.rb:15-18 view :new_buttons, cache: :never:
+ *    button_formgroup do
+ *      [standard_create_button, invite_button].compact
+ *    end
+ *  invite_button (:21-23) returns nil signed-out (invitation? false), so
+ *  the compact leaves the lone create button (form_buttons.rb:184-186:
+ *  submit_button class "submit-button create-submit-button",
+ *  data-disable-with "Submitting" - the same bytes the edit mod's own
+ *  newButtonsView pins for the standard_create_button element).
+ *  button_formgroup (card-mod-edit set/all/form.rb:86-88): the
+ *  "form-group button-form-group" div. */
+const signupNewButtonsHtml = (): string =>
+  `<div class="form-group button-form-group">` +
+  `<button name="button" type="submit" data-disable-with="Submitting" class="submit-button create-submit-button btn btn-primary">Submit</button>` +
+  `</div>`;
+
+const signupNewButtonsView: ViewFn = () => signupNewButtonsHtml();
+
+// --- set/abstract/account_holder.rb view :account_tab ------------------------
+
+/** account_holder.rb:168-170 account_content_items. */
+const ACCOUNT_CONTENT_ITEMS: ReadonlyArray<readonly [string, string]> = [
+  ["Created", "*created"],
+  ["Edited", "*edited"],
+];
+
+/** account_holder.rb:151-166 account_details_items - the item tuples with
+ *  their path opts (the field marks expand through the trait fetch:
+ *  :account/:roles/:follow/:created/:edited are codename-marked rights -
+ *  "<card>+*account" etc.). */
+const ACCOUNT_DETAILS_ITEMS: ReadonlyArray<
+  readonly [string, string, Record<string, unknown>?]
+> = [
+  [
+    "Email and Password",
+    "*account",
+    { path: { slot: { hide: ["help_link", "board_link"] } } },
+  ],
+  ["Roles", "*roles", { path: { view: "content" } }],
+  ["Notifications", "*follow"],
+  [
+    "API",
+    "*account",
+    {
+      path: {
+        view: "api_key",
+        items: { view: "content" },
+        slot: { hide: ["help_link", "board_link"] },
+      },
+    },
+  ],
+  ["Close Account", "*account", { path: { view: "closure" } }],
+];
+
+/** board.rb:59-62 board_slot_selector + :42-51 board_link_opts - the pill
+ *  link's base opts (the edit mod exports the selector constant; the UL
+ *  classes ride with it). */
+const BOARD_PILL_BASE_OPTS = {
+  slotSelector: BOARD_SLOT_SELECTOR,
+};
+
+/** Rails Hash#to_param over the pill's path hash: sorted keys, nested
+ *  [a][b], arrays as [a][], Rack-escaped (the follow mod's followButton
+ *  precedent; the related tab's pinned href shape
+ *  slot%5Bitems%5D%5Bview%5D=closed). "&amp;" - the HTML attribute escape. */
+function pillPathQuery(path: Record<string, unknown>): string {
+  const pairs: Array<[string, string]> = [];
+  const flat = (
+    prefix: string,
+    value: Record<string, unknown> | readonly string[] | string,
+  ): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) pairs.push([`${prefix}[]`, String(item)]);
+    } else if (typeof value === "object" && value !== null) {
+      for (const k of Object.keys(value).sort()) {
+        flat(
+          `${prefix}[${k}]`,
+          (value as Record<string, unknown>)[k] as Record<string, unknown> | readonly string[] | string,
+        );
+      }
+    } else {
+      pairs.push([prefix, String(value)]);
+    }
+  };
+  for (const k of Object.keys(path).sort()) {
+    const v = path[k];
+    if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+      flat(k, v as Record<string, unknown>);
+    } else if (Array.isArray(v)) {
+      for (const item of v) pairs.push([`${k}[]`, String(item)]);
+    } else {
+      pairs.push([k, String(v)]);
+    }
+  }
+  return pairs
+    .map(
+      ([k, v]) =>
+        `${encodeURIComponent(k)
+          .replace(/%20/g, "+")
+          .replace(/%2B/g, "%2B")}=${encodeURIComponent(v).replace(/%20/g, "+")}`,
+    )
+    .join("&amp;");
+}
+
+function deepMergePaths(
+  base: Record<string, unknown>,
+  extra: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base };
+  for (const k of Object.keys(extra)) {
+    const b = out[k];
+    const e = extra[k];
+    out[k] =
+      b !== null && typeof b === "object" && !Array.isArray(b) && e !== null && typeof e === "object" && !Array.isArray(e)
+        ? deepMergePaths(b as Record<string, unknown>, e as Record<string, unknown>)
+        : e;
+  }
+  return out;
+}
+
+/** board_pills.rb:20-30 board_pill_item_opts + board.rb:68-71
+ *  breadcrumb_data ("Account".underscore = "account") + links.rb:101-106
+ *  link_to_card (href LAST). The pill data-cy: text.to_name.key
+ *  (cardname.rb generate_key: underscore + Rails singularize - the account
+ *  vocabulary's singulars: roles->role, notifications->notification; the
+ *  rest unchanged). The mark: "<card>+<trait>" url key. */
+function accountBoardPillItem(
+  cardName: string,
+  text: string,
+  trait: string,
+  extraPath: Record<string, unknown> | undefined,
+): string {
+  const cyTable: Record<string, string> = {
+    roles: "role",
+    notifications: "notification",
+  };
+  const cyBase = text.toLowerCase().replace(/ /g, "_");
+  const cy = `${cyTable[cyBase] ?? cyBase}-pill`;
+  // board_link_opts' path: layout=overlay, slot[items][view]=closed,
+  // view ||= content; the item's extra path DEEP-merges over it (the
+  // extra slot.hide row joins the base slot.items row).
+  const base: Record<string, unknown> = {
+    layout: "overlay",
+    slot: { items: { view: "closed" } },
+    view: "content",
+  };
+  const merged = deepMergePaths(base, (extraPath ?? {}) as Record<string, unknown>);
+  // the path's :view rides the SEGMENT (the related tab's pinned
+  // "/<mark>/content?..." shape), the rest the sorted to_param query
+  const viewSegment = String(merged.view);
+  const rest = { ...merged };
+  delete rest.view;
+  const query = pillPathQuery(rest);
+  const href = query === ""
+    ? `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}`
+    : `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}?${query}`;
+  return (
+    `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
+    ` data-slotter-mode="override" data-remote="true" class="slotter nav-link"` +
+    ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
+    ` data-cy="${cy}" href="${href}">${text}</a>`
+  );
+}
+
+/** account_holder.rb:132-137 view :account_tab:
+ *    board_pill_sections "Account" do
+ *      [["Settings", account_details_items],
+ *       ["Content", account_content_items]]
+ *    end
+ *  board_pill_sections (board_pills.rb:32-37): wrap_with :ul (the
+ *  BOARD_PILL_UL_CLASSES constant) over the sections joined "\n"; each
+ *  section (:35-37): wrap_with(:h6, title, class: "ms-1 mt-3") +
+ *  wrap_each_with(:li, class: "nav-item") (the pills joined "\n").
+ *  default_board_tab (:128-130): the accounted card's own tab (the
+ *  current_account? arm the engine's board renders resolve through their
+ *  own registrations). */
+const accountTabHtml = (cardName: string): string => {
+  const settings = ACCOUNT_DETAILS_ITEMS.map(([text, trait, extra]) =>
+    accountBoardPillItem(cardName, text, trait, extra?.path as Record<string, unknown> | undefined),
+  );
+  const content = ACCOUNT_CONTENT_ITEMS.map(([text, trait]) =>
+    accountBoardPillItem(cardName, text, trait, undefined),
+  );
+  const section = (title: string, pills: readonly string[]): string =>
+    `<h6 class="ms-1 mt-3">${title}</h6>${pills.join("\n")}`;
+  return (
+    `<ul class="${BOARD_PILL_UL_CLASSES}">` +
+    section("Settings", settings) +
+    "\n" +
+    section("Content", content) +
+    `</ul>`
+  );
+};
+
+const accountTabView: ViewFn = ({ fmt }) => accountTabHtml(fmt.card.name.s);
+
+/** The wave-1 account views' PROBE SURFACE - the composition cores the
+ *  harness probe replays the static-ruby oracle against; the same functions
+ *  the view bodies call. */
+export const accountProbeSurface = {
+  /** views.rb:6-9 the signed-out title arm (the reachable one). */
+  signupNewTitle(): string {
+    return "Sign up";
+  },
+  /** views.rb:15-18 the create-only formgroup (invite nil signed-out). */
+  signupNewButtonsHtml,
+  /** account_holder.rb:132-137 the pill sections over the verbatim walks. */
+  accountTabHtml,
+  /** signin.rb:159-163 the reset_password_voo contract. */
+  signinEditVoo(): {
+    title: string;
+    editStructure: ReadonlyArray<{ name: string; title: string; view: string; skipPerms: boolean }>;
+    hide: readonly string[];
+  } {
+    return {
+      title: "Forgot Password",
+      editStructure: [{ name: "+email", title: "email", view: "titled", skipPerms: true }],
+      hide: ["help"],
+    };
+  },
+};
+
+// --- set/self/signin.rb view :edit (the FORGOT-PASSWORD form) ----------------
+
+/** signin.rb:154-157 view :edit:
+ *    reset_password_voo
+ *    Auth.as_bot { super() }
+ *  reset_password_voo (:159-163): voo.title ||= t(:account_forgot_password)
+ *  ("Forgot Password", en.yml:16); voo.edit_structure = [signin_field(:email)]
+ *  (signin_field :198-202: the "+email" field nest tuple - title "email",
+ *  view "titled", skip_perms); voo.hide :help. The super() dispatch rides
+ *  superView to the edit mod's live editView.
+ *
+ *  DISCLOSED CONSUMING-SIDE GAP: voo.edit_structure drives WHICH fields the
+ *  edit form renders - the structure-driven form arm is the edit mod's own
+ *  disclosed remainder (card-mod-edit.ts formgroup.rb:9-11 note: "the
+ *  explicit-edit-fields arm is voo.edit_structure (unset in the engine)").
+ *  This body threads the voo exactly as Ruby does; the edit form the super()
+ *  reaches renders the implicit arm (the standard field walk), not the
+ *  email-only form. The voo contract is oracle-pinned
+ *  (signin_edit_reset_password_voo). */
+const signinEditView: ViewFn = (ctx) => {
+  const voo = accountProbeSurface.signinEditVoo();
+  // :159 ||= t(:account_forgot_password) - the title rides the voo opt the
+  // title view reads (titleNoLinkView's voo.opts["title"])
+  if (ctx.voo.opts["title"] === undefined) ctx.voo.opts["title"] = voo.title;
+  ctx.voo.opts["edit_structure"] = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
+  for (const hidden of voo.hide) ctx.voo.hide(hidden);
+  return superView(ctx, setModuleShortname("self/signin"), "edit");
+};
+
 const setModules: ModSetModuleFile[] = [
   // pattern: all (loader.rb#parts_from_path: "all/foo" -> "All::Foo")
   { setPath: "all/account" },
@@ -613,13 +907,19 @@ const setModules: ModSetModuleFile[] = [
   { setPath: "abstract/account_field" },
   {
     // set/abstract/account_holder.rb:125-170 format :html do block -
-    // :closed_account (port), :account_tab (not ported: rails),
+    // :closed_account (port), :account_tab (NOT ported: rails),
     // :show_account_tab?/:account_formgroups/:account_details_items/
-    // :account_content_items/:default_board_tab (helpers, not views)
+    // :account_content_items/:default_board_tab (helpers, not views).
+    // Wave-1 (2026-10-03): :account_tab joins - the board pill sections
+    // over the verbatim item walks (the pill composition the oracle pins;
+    // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
     formats: {
       html: {
-        views: [{ view: "closed_account", viewFn: closedAccountView }],
+        views: [
+          { view: "closed_account", viewFn: closedAccountView },
+          { view: "account_tab", viewFn: accountTabView },
+        ],
       },
     },
   },
@@ -709,6 +1009,12 @@ const setModules: ModSetModuleFile[] = [
           { view: "one_line_content", viewFn: oneLineContentView },
           { view: "reset_password_success", viewFn: resetPasswordSuccessView },
           { view: "edit_buttons", viewFn: signinEditButtonsView },
+          // Wave-1 (2026-10-03): :edit joins - the FORGOT-PASSWORD form's
+          // voo contract (title "Forgot Password", the +email edit_
+          // structure tuple, hide help) + the superView dispatch to the
+          // edit mod's editView. The consuming-side edit_structure gap is
+          // the edit mod's disclosed remainder (the view body's comment).
+          { view: "edit", viewFn: signinEditView },
         ],
       },
     },
@@ -763,12 +1069,39 @@ const setModules: ModSetModuleFile[] = [
     // (standard_create_button + invite_button), :core haml override (the
     // signup_line + account_lines template that would shadow the R17
     // ported core). surfaces-batch2 lane, 2026-09-30.
+    // Wave-1 (2026-10-03): :new + :new_buttons join - the title composition
+    // (the invitation arm the disclosed admin-approval basis leaves
+    // unreachable) + superView to the edit mod's live :new, and the
+    // create-button formgroup (the invite_button arm nil signed-out).
+    // STILL the honest remainder here: :content_formgroups - its
+    // account_formgroups recursion renders the +*account subformat's
+    // content_formgroups with the before-hook's voo.edit_structure
+    // (right/account/views.rb:60-62), and the structure-driven formgroup
+    // walk is the edit mod's own disclosed remainder (the formgroup.rb
+    // note); porting the body would pin quiet-rescue bytes Ruby never
+    // renders. multi_card_editor is the Rails form-state machinery.
     setPath: "type/sign_up/views",
+    formats: {
+      html: {
+        views: [
+          { view: "new", viewFn: signupNewView, config: { cache: "never" } },
+          { view: "new_buttons", viewFn: signupNewButtonsView, config: { cache: "never" } },
+        ],
+      },
+    },
   },
   {
     // set/type/user.rb:7-48 format :html do block - view :setup
     // (unknown: true, perms: :needs_setup?, cache: :never) + helpers.
-    // Not ported: rails.
+    // NOT PORTED (the named remainder, wave-1 receipt): the view is
+    // double-gated - perms :needs_setup? is a DECK-STATE census predicate
+    // (Card::Auth.needs_setup? = zero non-shipped +*account junctions) the
+    // sync view gate cannot answer without a prepared census verdict seam,
+    // and the body's account_formgroups recursion needs the SAME
+    // structure-driven formgroup machinery signup :content_formgroups
+    // names. The census + the owner-create machinery live in
+    // src/card/auth/first-run-setup.ts (the /setup route surface, whose
+    // header documents the deliberate card-view omission).
     setPath: "type/user",
   },
   // pattern: type_plus_right

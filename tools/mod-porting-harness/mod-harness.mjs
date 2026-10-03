@@ -158,6 +158,41 @@ const NAMED_REMAINDERS = {
     "<seed:.*>":
       "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
+  "card-mod-account": {
+    // set/type/signup/views.rb:11-13 view :content_formgroups - the body's
+    // account_formgroups recursion renders the +*account subformat's
+    // content_formgroups under the before-hook's voo.edit_structure
+    // (right/account/views.rb:60-62), and the STRUCTURE-DRIVEN formgroup
+    // walk is the edit mod's own disclosed remainder (card-mod-edit.ts's
+    // formgroup.rb note: "the explicit-edit-fields arm is voo.edit_
+    // structure (unset in the engine)"). Porting the body would pin
+    // quiet-rescue bytes Ruby never renders.
+    "view:content_formgroups":
+      "the structure-driven formgroup walk (voo.edit_structure from the right/account before-hook) is the edit mod's disclosed remainder - porting the body would pin bytes Ruby never renders; the machinery is the structure-form engine's own lane",
+    // set/type/user.rb:10-19 view :setup - double-gated: perms
+    // :needs_setup? is a DECK-STATE census predicate (Card::Auth.needs_
+    // setup?) the sync view gate cannot answer without a prepared census
+    // verdict seam, and the body's account_formgroups recursion needs the
+    // same structure-form machinery. The census + the owner create live in
+    // src/card/auth/first-run-setup.ts (the /setup route surface).
+    "view:setup":
+      "double-gated: the needs_setup? deck-census predicate has no prepared-verdict seam in the sync view gate, and the body's account_formgroups recursion needs the structure-form machinery named under content_formgroups; the census + create machinery is src/card/auth/first-run-setup.ts",
+    // CLASS remainders: the account WRITE-PATH events (validate/store/
+    // integrate phases over Auth, SecureRandom, the token + password
+    // ladders - the authenticate pair lives in src/card/auth/signin.ts,
+    // the verify/reset flows in account-verify-reset-flows.ts), the
+    // data/real.yml seed cards (the account system's setting surfaces +
+    // role cards + email templates - the gem's fixture data), and the
+    // loop-declared email-template views (right/account/events.rb:32).
+    "<event:.*>":
+      "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
+    "<seed:.*>":
+      "a data/real.yml seed card (the account system's setting surfaces, the role cards, the email templates), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+    "<view:(welcome_email|verification_email|password_reset_email)>":
+      "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32; the email-template surface the email lane owns), not a census-gap view",
+    "<basket:.*>":
+      "a basket registration (non_createable_types / roles_for_first_user) with no TS consumer seam yet - the runtime-basket seam is the named remainder (the same class the style/format tables carry)",
+  },
   "card-mod-follow": {
     // CLASS remainders: the notification WRITE-PATH events (the notify
     // stream: Card::Director integrate phases, ActiveJob's
@@ -226,6 +261,32 @@ const WAVE1 = {
         source: "set/type_plus_right/set/style.rb:28-33",
         oracle: "static-ruby (style-tag-views.rb; the headless params absence computes the else arm)",
         status: "ported, verify GREEN (harness capture + probe; the params[:debug] arm is the named remainder)",
+      },
+    ],
+    "card-mod-account": [
+      {
+        view: "new",
+        source: "set/type/signup/views.rb:6-9",
+        oracle: "static-ruby (account-census-views.rb; the signed-out title arm pinned, the invitation arm the documented contract line)",
+        status: "ported, verify GREEN (harness capture + probe; the invitation? arm rides the admin-approval verdict machinery the engine does not model - the same disclosed basis the ported signup :core's approve links carry)",
+      },
+      {
+        view: "new_buttons",
+        source: "set/type/signup/views.rb:15-18",
+        oracle: "static-ruby (account-census-views.rb; the create-only formgroup, invite_button nil signed-out)",
+        status: "ported, verify GREEN (harness capture + probe)",
+      },
+      {
+        view: "edit",
+        source: "set/self/signin.rb:154-157 (the FORGOT-PASSWORD form)",
+        oracle: "static-ruby (account-census-views.rb; the reset_password_voo contract)",
+        status: "ported, verify GREEN (harness capture + probe; the voo.edit_structure CONSUMING side is the edit mod's disclosed remainder - the body threads the voo as Ruby does, named in the view comment)",
+      },
+      {
+        view: "account_tab",
+        source: "set/abstract/account_holder.rb:132-137",
+        oracle: "static-ruby (account-census-views.rb; the pill sections over the verbatim item walks)",
+        status: "ported, verify GREEN (harness capture + probe)",
       },
     ],
     "card-mod-follow": [
