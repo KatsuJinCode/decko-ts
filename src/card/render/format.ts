@@ -284,8 +284,7 @@ export class Voo {
         if (!this.viz.has(view)) {
           this.viz.set(view, setting); // reverse_merge!
           if (
-            (this.parent.parent === undefined &&
-              this.parent.optionalEnrolledView === view) ||
+            (this.parent.viewLaneRoot && this.parent.optionalEnrolledView === view) ||
             this.parent.rootEnrolledInherited.has(view)
           ) {
             this.rootEnrolledInherited.add(view);
@@ -394,10 +393,21 @@ export class Voo {
     //     open RETAINED because it names the slot's own requested view).
     // UNSET default: the engine's always-enroll + full-inheritance form
     // (the shape the pre-live engine pinned).
+    //
+    // Root-drop arm: viewLaneRoot (the bare view-lane root render, the one
+    // call site whose optional render arg defaults to :show), NOT
+    // "parent === undefined" - the page lane's processLayoutContent runs on
+    // the root format after renderView restored this.voo, so the card-
+    // layout/body nests (the *footer content slot, the mod bar items) are
+    // parentless in the port while Ruby renders them with a seated voo
+    // (card_layout.rb:10 process_content inside the render) and the live
+    // pages carry their own requested-view enrollment (*footer
+    // show:["content"]; mod bar slots show:["bar"]; Anyone Signed In
+    // +description show:["lead"]). RED pin 6ddba9b4.
     const emittedShow = serializerFollowsLive()
       ? show.filter(
           (view) =>
-            !(this.parent === undefined && view === viewField) &&
+            !(this.viewLaneRoot && view === viewField) &&
             !(this.rootEnrolledInherited.has(view) && view !== this.requestedView),
         )
       : show;
@@ -978,7 +988,12 @@ export class RenderFormat {
    * carries Ruby's optional render opt (:show by default via
    * method_delegation.rb#optional_render_opt; "hide" for optional: :hide).
    */
-  renderView(view: string, opts: Record<string, unknown> = {}, optional: unknown = "show"): string {
+  renderView(
+    view: string,
+    opts: Record<string, unknown> = {},
+    optional: unknown = "show",
+    viewLaneRoot = false,
+  ): string {
     const normalized = normalizeView(view);
     // view.rb#ok_view (view.rb:86 `altered_view || requested_view`): on an
     // unknown card the view is substituted BEFORE dispatch (view/permission.rb
@@ -1019,7 +1034,7 @@ export class RenderFormat {
     // `format.main?` is.
     const vooOpts: Record<string, unknown> = { ...opts };
     if (this.isMain) vooOpts["main"] = true;
-    const voo = new Voo(this.voo ?? undefined, normalized, vooOpts);
+    const voo = new Voo(this.voo ?? undefined, normalized, vooOpts, viewLaneRoot);
     const previous = this.voo;
     this.voo = voo;
     try {

@@ -1510,8 +1510,13 @@ export class RenderEngine implements RenderEngineLike {
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
     // gates through params.viewOpts; undefined for every prior caller -
-    // the {} pass-through is byte-identical).
-    const baseHtml = format.renderView(view, params.viewOpts ?? {});
+    // the {} pass-through is byte-identical). The 4th arg marks THE bare
+    // view-lane root render: this entry's optional render arg defaults to
+    // :show (method_delegation.rb#optional_render_opt), and the live
+    // serializer omits exactly that enrollment from the root slot - the
+    // page-lane and nest renders pass their own optional explicitly and are
+    // NOT roots (format.ts#slotOptions root-drop arm reads this flag).
+    const baseHtml = format.renderView(view, params.viewOpts ?? {}, "show", true);
 
     // A denied render never reaches view dispatch (the denial span REPLACES
     // the view in renderView), so view-override rules cannot apply to it —

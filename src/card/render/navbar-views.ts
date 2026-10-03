@@ -85,7 +85,9 @@ const navbarLinksView: ViewFn = (ctx) => {
   }
   if (isListType(fmt)) {
     // Abstract::List#navbar_items: item_cards as nests.
-    const items = listItemsOf(fmt).map((name) => nestItemName(ctx, name, "nav_item"));
+    const items = listItemsOf(fmt)
+      .map((name) => nestItemName(ctx, name, "nav_item"))
+      .filter((s): s is string => s !== undefined);
     return `<ul class="navbar-nav">${items.join("")}</ul>`;
   }
   // set/all/navbar_links.rb: the content-chunk walk — reference chunks
@@ -102,7 +104,10 @@ const navbarLinksView: ViewFn = (ctx) => {
     const split = spec.indexOf("|");
     const target = (split === -1 ? spec : spec.slice(0, split)).trim();
     const label = split === -1 ? undefined : spec.slice(split + 1).trim();
-    if (target !== "") out.push(nestResolvedName(ctx, target, "nav_item", label));
+    if (target !== "") {
+      const link = nestResolvedName(ctx, target, "nav_item", label);
+      if (link !== undefined) out.push(link);
+    }
     lastIndex = (m.index ?? 0) + m[0].length;
   }
   out.push(content.slice(lastIndex));
@@ -146,11 +151,23 @@ function navDropdown(ctx: ViewContext): string {
 /** Abstract::List#navbar_items(view: :nav_link_in_dropdown): the pointer's
  *  items, each nested with the dropdown-item view; unknown items never
  *  dispatch (the unknown substitution renders "" — the capture's blank
- *  menu rows). */
+ *  menu rows).
+ *
+ *  Unresolvable ITEM NAMES and EMPTY renders drop from the join entirely:
+ *  Ruby's item walk renders ITEM CARDS (Abstract::List#list_cards —
+ *  set/abstract/list.rb, the card-mod-layout module this file ports), so a
+ *  raw item string that is no card reference ("https://culturesmith.com/
+ *  card/new|New Card", corpus card 38283 *Opportunities) never becomes a
+ *  render and its join separator vanishes with it; the same for a render
+ *  that resolves to no bytes (the engine's unknown-card substitution).
+ *  Live receipt: ZERO `\n\n` sequences inside any captured dropdown-menu
+ *  block (the *Opportunities menu renders `divider + "\n" + <denied>` —
+ *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
+ *  +1 on every page whose nav carries that menu). */
 function dropdownMenuItems(ctx: ViewContext): string {
-  const items = listItemsOf(ctx.fmt).map((name) =>
-    nestItemName(ctx, name, "nav_link_in_dropdown"),
-  );
+  const items = listItemsOf(ctx.fmt)
+    .map((name) => nestItemName(ctx, name, "nav_link_in_dropdown"))
+    .filter((s): s is string => s !== undefined && s !== "");
   return items.join("\n");
 }
 
@@ -162,8 +179,10 @@ function listItemsOf(fmt: RenderFormat): string[] {
     .filter((s) => s !== "");
 }
 
-/** Nest one item NAME with the given navbar view (content_nest). */
-function nestItemName(ctx: ViewContext, name: string, view: string): string {
+/** Nest one item NAME with the given navbar view (content_nest). Undefined
+ *  = the mark did not resolve (the item is skipped by the joiners — see
+ *  dropdownMenuItems). */
+function nestItemName(ctx: ViewContext, name: string, view: string): string | undefined {
   return nestResolvedName(ctx, name, view, undefined);
 }
 
@@ -172,14 +191,14 @@ function nestResolvedName(
   rawName: string,
   view: string,
   title: string | undefined,
-): string {
+): string | undefined {
   const fmt = ctx.fmt;
   let resolved: string;
   try {
     const parsed = DeckoName.parse(rawName);
     resolved = parsed.isAbsolute ? parsed.s : parsed.absoluteName(fmt.card.name).s;
   } catch {
-    return ""; // unresolved mark: renders empty on the captured surface
+    return undefined; // unresolved mark: never becomes a render
   }
   const nest = {
     name: resolved,

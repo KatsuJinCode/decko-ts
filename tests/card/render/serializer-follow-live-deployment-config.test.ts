@@ -138,7 +138,7 @@ describe("deployment follow-live config: live serializer era", () => {
 
   it("a child nest keeps its optional-enrolled requested view (+tags|closed)", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const parent = new Voo(undefined, "open", {});
+    const parent = new Voo(undefined, "open", {}, true);
     parent.processVisibility("show");
     const child = new Voo(parent, "closed", {});
     child.processVisibility("show");
@@ -152,7 +152,7 @@ describe("deployment follow-live config: live serializer era", () => {
 
   it("a child content sub-render drops the inherited open, keeps content last", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const parent = new Voo(undefined, "open", {});
+    const parent = new Voo(undefined, "open", {}, true);
     parent.processVisibility("show");
     // bar_bottom rides the render opts' show list (processed in
     // processVisibility, before the optional enrollment) - the Guns:open
