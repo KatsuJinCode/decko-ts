@@ -93,6 +93,17 @@ export interface AttachmentInput {
   declaredContentType?: string | null;
 }
 
+/** One subcard in a multi-card save (Card::Subcards — card/lib/card/
+ *  subcards.rb:1-16, "API to create/update/delete additional cards
+ *  together with the main card"; the values of the form's card[subcards]
+ *  hash). Attributes resolve like a card save's; the subcard is CREATED
+ *  when no card lives at the resolved name, UPDATED otherwise (the
+ *  mod/core/set/all/subcards.rb events). */
+export interface SubcardInput extends TypeSpec {
+  content?: string | null;
+  attachment?: AttachmentInput;
+}
+
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
  *  `card = new opts; card.save!`). Name is the mark; everything else is
  *  optional and resolved by the engine. */
@@ -101,6 +112,10 @@ export interface CreateCardInput extends TypeSpec {
   content?: string | null;
   /** An uploaded file/image. Requires the engine's attachmentStore. */
   attachment?: AttachmentInput;
+  /** Subcards saved in this save's act (subcards.rb:1-16): keys are
+   *  RELATIVE names ("+author" -> "<this card>+author", the form's
+   *  subfield shape) or absolute names. */
+  subcards?: Record<string, SubcardInput>;
   /** cards.codename passthrough (ActWriter column). Codename writes carry
    *  their own events in Ruby (mod/core/set/all/codename.rb) — the caller
    *  is responsible for legitimacy; the cache reset runs here. */
@@ -135,6 +150,11 @@ export interface UpdateCardInput extends TypeSpec {
    *  (Ruby: assign_attachment + write_identifier on an :update save).
    *  Requires the engine's attachmentStore. */
   attachment?: AttachmentInput;
+  /** Subcards saved in this save's act (subcards.rb:1-16) — the multiedit
+   *  shape: the plusses ride the main card's submission. Missing subcards
+   *  are created, existing ones updated; a subcard whose save changes
+   *  nothing produces no action (events.rb:34-37). */
+  subcards?: Record<string, SubcardInput>;
   superActionId?: number | null;
   /** params[:comment] — the add_comment event's input (card-mod-comment
    *  set/all/comment.rb:4-12). */

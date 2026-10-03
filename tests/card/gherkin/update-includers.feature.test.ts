@@ -198,19 +198,20 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
 
   // ---------------------------------------------------------------------
   // Scenario: Watching a plus card on multiedit; and watching both plus
-  // card and including card on multiedit — NOT-PORTABLE-TODAY
-  // (multiedit single-act), portable halves pinned
+  // card and including card on multiedit — the multiedit single-act
+  // machinery (one act per submission, subcards.rb:1-16) is the
+  // capability under test; the no-change half rides with it
   // ---------------------------------------------------------------------
 
-  it("NOT-PORTABLE-TODAY (multiedit single-act) / watched plus card edits mail directly; a no-change edit mails nothing", async () => {
+  it("multiedit single-act — the plusses ride the main card's act: one mail per edit naming the main card; a no-change multiedit mails nothing", async () => {
     const bg = await givenBackground();
     nw = bg.nw;
 
     // upstream: Joe Admin creates Cardtype "Froot" + PlainText
     // "Froot+*type+*structure" "{{+colors}} {{+flavor}}"; Joe User creates
-    // Froot card "Banana" with plusses; Joe Camel watches
-    // "Banana+color+*self" (the SINGULAR upstream uses — color, not
-    // colors; the port keeps the scenario's own spelling).
+    // Froot card "Banana" with plusses |colors|flavor| |yellow|sweet| —
+    // ONE form submission = ONE act (card/lib/card/subcards.rb:1-16): the
+    // main card's action plus the plusses' actions.
     givenSignedInAs(nw, JOE_ADMIN);
     await nw.engine.createCard({ name: "Froot", typeCode: "cardtype" });
     await nw.engine.createCard({
@@ -219,37 +220,78 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
       content: "{{+colors}} {{+flavor}}",
     });
     givenSignedInAs(nw, JOE_USER);
-    await nw.engine.createCard({ name: "Banana+colors", content: "yellow" });
-    await nw.engine.createCard({ name: "Banana+flavor", content: "sweet" });
-    // ONE watch covers both spellings: the key algebra CONVERGES
-    // "Banana+color" and "Banana+colors" — Cardname#key simple_key runs
-    // every word through stable_key (cardname.rb:106-117), whose uninflect
-    // default is :singularize with stabilize=false (cardname.rb:34-35;
-    // variants.rb:56-62 keeps the original word when singularizing is not
-    // stable), and name equality is key equality (cardname.rb:78-86). In
-    // Ruby too, watching "Banana+color+*self" watches the card this port
-    // saves as "Banana+colors" — a second watch would be the same set card.
+    const banana = await nw.engine.createCard({
+      name: "Banana",
+      subcards: {
+        "+colors": { content: "yellow" },
+        "+flavor": { content: "sweet" },
+      },
+    });
+    // upstream: And Joe Camel is watching "Banana+color+*self" (the
+    // SINGULAR upstream uses — color, not colors; the port keeps the
+    // scenario's own spelling). ONE watch covers both spellings: the key
+    // algebra CONVERGES "Banana+color" and "Banana+colors" — Cardname#key
+    // simple_key runs every word through stable_key (cardname.rb:106-117),
+    // whose uninflect default is :singularize with stabilize=false
+    // (cardname.rb:34-35; variants.rb:56-62 keeps the original word when
+    // singularizing is not stable), and name equality is key equality
+    // (cardname.rb:78-86). In Ruby too, watching "Banana+color+*self"
+    // watches the card this port saves as "Banana+colors".
     await givenWatching(nw.world, "Joe Camel", "Banana+color+*self");
     const afterWatch = nw.transport.count();
 
     // upstream: When I edit "Banana" with plusses |colors|flavor|
-    // |spotted|mushy| ... Then Joe Camel should be notified that
-    // 'Joe User updated "Banana"' — the MULTIEDIT (both plusses in one
-    // act, the mail naming the MAIN card) is the missing capability (one
-    // act per save, named in the previous it). The DIRECT half ports:
-    // the watched plus card's own save mails its watcher.
-    const colors = await nw.world.storage.fetcher.fetchByName("Banana+colors");
-    await nw.engine.updateCard({ cardId: colors!.id!, content: "spotted" });
-    thenNotified(nw, { name: "Joe Camel", email: "joe@camel.com" }, `Joe User updated "Banana+colors"`);
-    const afterEdit = nw.transport.count();
-    expect(afterEdit).toBeGreaterThan(afterWatch);
+    // |spotted|mushy| — the MULTIEDIT: one act naming the MAIN card. The
+    // act card is Banana (its own content doesn't change, so its action
+    // is absent and the act's main_action falls to the act's first action
+    // — mod/history lib/card/act.rb main_action = action_on(card_id) ||
+    // actions.first); last_action_verb = main_action.action_type + "d"
+    // (base_views.rb:44-46). Then Joe Camel should be notified that
+    // 'Joe User updated "Banana"' — ONCE: FollowerStash dedupes the act's
+    // followers across all its actions (notify.rb:66-73 act_followers +
+    // follower_stash.rb:10-28 — colors' direct self-watch stashes Joe
+    // Camel, flavor's field walk stashes Banana's direct watchers, the
+    // same follower lands once).
+    await nw.engine.updateCard({
+      cardId: banana.cardId,
+      subcards: {
+        "+colors": { content: "spotted" },
+        "+flavor": { content: "mushy" },
+      },
+    });
+    thenNotified(nw, { name: "Joe Camel", email: "joe@camel.com" }, `Joe User updated "Banana"`);
+    const afterEdit1 = nw.transport.count();
+    expect(afterEdit1 - afterWatch).toBe(1); // one act, one mail
+
+    // upstream: When Joe Camel is watching "Banana+*self" / And I edit
+    // "Banana" with plusses |green|mushy| (colors green CHANGES; flavor
+    // mushy is unchanged — no action, events.rb:34-37) / Then 'Joe User
+    // updated "Banana"' — still ONE mail: the self watch and the field
+    // walk stash the same follower once.
+    await givenWatching(nw.world, "Joe Camel", "Banana+*self");
+    await nw.engine.updateCard({
+      cardId: banana.cardId,
+      subcards: {
+        "+colors": { content: "green" },
+        "+flavor": { content: "mushy" },
+      },
+    });
+    thenNotified(nw, { name: "Joe Camel", email: "joe@camel.com" }, `Joe User updated "Banana"`);
+    const afterEdit2 = nw.transport.count();
+    expect(afterEdit2 - afterEdit1).toBe(1);
 
     // upstream: Given a clear email queue / And I edit "Banana" with
     // plusses |green|mushy| (the SAME values as the previous edit) /
-    // Then No notification should be sent — the no-change save is a no-op
-    // (events.rb:34-37): no act, no hook, no mail. This half ports whole.
+    // Then No notification should be sent — every save in the act is a
+    // no-op (events.rb:34-37): no action, no act, no hook, no mail.
     const baseline = nw.transport.count();
-    await nw.engine.updateCard({ cardId: colors!.id!, content: "spotted" });
+    await nw.engine.updateCard({
+      cardId: banana.cardId,
+      subcards: {
+        "+colors": { content: "green" },
+        "+flavor": { content: "mushy" },
+      },
+    });
     expectNoNewMail(nw, baseline);
   });
 
