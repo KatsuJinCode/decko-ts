@@ -156,6 +156,12 @@ interface Measure {
   cpuMs: number;
   htmlBytes: number | null;
   renderError: string | null;
+  /** fold-9 (2026-10-03): first embedded quiet render-error span when the
+   *  render RETURNS a page carrying one (this line's quiet nested-error
+   *  semantics, error.rb rescue_view quiet branch) — null when the render
+   *  throws or returns clean bytes. Lets the past-cap assertion pin the
+   *  rejection in THIS engine's response form. */
+  quietErrorSpan: string | null;
 }
 
 async function measureRender(
@@ -174,6 +180,8 @@ async function measureRender(
     renderError =
       err instanceof Error ? `${err.constructor.name}: ${err.message}` : String(err);
   }
+  const quietErrorSpan: string | null =
+    html !== undefined ? (html.match(/<span class="render-error alert alert-danger">[^<]*<\/span>/)?.[0] ?? null) : null;
   const t1 = performance.now();
   const cpu = process.cpuUsage(cpu0);
   const snap = storage.counting.snapshot();
@@ -184,6 +192,7 @@ async function measureRender(
     cpuMs: Number(((cpu.user + cpu.system) / 1000).toFixed(3)),
     htmlBytes: html !== undefined ? html.length : null,
     renderError,
+    quietErrorSpan,
   };
 }
 
@@ -298,9 +307,32 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
       for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
         const row = byRoot.get(chainName(depth, 1))!;
-        expect(row.cold.renderError).toMatch(/^Error: nest depth exceeded/);
         expect(row.cold.roundTrips).toBe(43);
         expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
+        // fold-9 superset note (2026-10-03): this suite was written on the
+        // main@7c5cd26 lineage, where the too-deep rejection propagated out
+        // of render() as a thrown Error("nest depth exceeded ..."). This
+        // integration line carries the corpus-verified quiet nested-error
+        // semantics (error.rb rescue_view quiet branch: format.ts nest()
+        // catches the depth guard's throw and embeds quietRenderError's
+        // capture-exact span), so the rejection arrives INSIDE the returned
+        // page. Both response forms are accepted; the embedded form is
+        // pinned HARDER than the old message match — the span must name the
+        // exact cap position (the RUBY_MAX_DEPTH+1 card) with the capture's
+        // "(core view)" label (observed bytes: d50 probe, this fold). The
+        // bounded-cost claim (43 round trips, depth-independent) is
+        // unchanged and asserted above.
+        const capCard = chainName(depth, RUBY_MAX_DEPTH + 1);
+        if (row.cold.renderError !== null) {
+          // main-lineage form: the rejection propagated out of render()
+          expect(row.cold.renderError).toMatch(/^Error: nest depth exceeded/);
+        } else {
+          // this line's form: the quiet span IS the rejection, embedded at
+          // the exact cap position
+          expect(row.cold.quietErrorSpan).toBe(
+            `<span class="render-error alert alert-danger">Error rendering: ${capCard} (core view)</span>`,
+          );
+        }
       }
 
       // 3. Wide fans: round trips are CONSTANT across fanouts 1..200 (the
@@ -330,10 +362,23 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       expect(treeRows[1]!.liveCards).toBe(1112);
 
       // 5. Warm steady state: zero queries on every renderable shape.
+      //    fold-9 superset note (2026-10-03): on the source lineage the
+      //    past-cap rejection chains threw, so renderError !== null excluded
+      //    them here by construction. On this line the rejection arrives as
+      //    the embedded quiet span (renderError null), so the exclusion must
+      //    key on the rejection itself, not on the throw. The warm re-pay on
+      //    the unclosed past-cap chains is the source lane's own recorded
+      //    honest exception ("TS warm re-pays 34/42/42 RT on the unclosed
+      //    past-cap chains"); it stays covered by a bounded assertion (the
+      //    cold bound) instead of being skipped silently.
       for (const row of rows) {
-        if (row.cold.renderError === null) {
+        const isTooDeepRejection =
+          row.cold.renderError !== null || row.cold.quietErrorSpan !== null;
+        if (!isTooDeepRejection) {
           expect(row.warm.roundTrips).toBe(0);
           expect(row.warm.statements).toBe(0);
+        } else {
+          expect(row.warm.roundTrips).toBeLessThanOrEqual(43);
         }
       }
 

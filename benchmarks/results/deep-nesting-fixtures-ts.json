@@ -5,10 +5,10 @@
     "R2",
     "R4"
   ],
-  "measured_at": "2026-10-03T12:38:46.856Z",
+  "measured_at": "2026-10-03T14:52:57.381Z",
   "engine": "decko-ts",
-  "engine_commit": "7c5cd26",
-  "engine_branch": "lane-deep-nesting-fixtures-2026-10-03",
+  "engine_commit": "458b820",
+  "engine_branch": "lane-fold9-2026-10-03",
   "environment": {
     "host": "Jace2",
     "os": "win32",
@@ -45,19 +45,21 @@
       "liveCards": 2,
       "cold": {
         "roundTrips": 2,
-        "statements": 9,
-        "wallMs": 7.774,
+        "statements": 13,
+        "wallMs": 11.475,
         "cpuMs": 0,
         "htmlBytes": 3011,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.433,
+        "wallMs": 0.522,
         "cpuMs": 0,
         "htmlBytes": 3011,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 1
     },
@@ -68,19 +70,21 @@
       "liveCards": 3,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 2.649,
+        "statements": 14,
+        "wallMs": 2.86,
         "cpuMs": 0,
         "htmlBytes": 5993,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.543,
+        "wallMs": 0.655,
         "cpuMs": 0,
         "htmlBytes": 5993,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 2
     },
@@ -91,19 +95,21 @@
       "liveCards": 5,
       "cold": {
         "roundTrips": 5,
-        "statements": 12,
-        "wallMs": 2.172,
+        "statements": 16,
+        "wallMs": 2.386,
         "cpuMs": 0,
         "htmlBytes": 11957,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.574,
+        "wallMs": 0.717,
         "cpuMs": 0,
         "htmlBytes": 11957,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 4
     },
@@ -114,19 +120,21 @@
       "liveCards": 9,
       "cold": {
         "roundTrips": 9,
-        "statements": 16,
-        "wallMs": 2.396,
+        "statements": 20,
+        "wallMs": 2.628,
         "cpuMs": 0,
         "htmlBytes": 23885,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.89,
+        "wallMs": 1.072,
         "cpuMs": 0,
         "htmlBytes": 23885,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 8
     },
@@ -137,19 +145,21 @@
       "liveCards": 17,
       "cold": {
         "roundTrips": 17,
-        "statements": 24,
-        "wallMs": 5.042,
-        "cpuMs": 46,
+        "statements": 28,
+        "wallMs": 3.685,
+        "cpuMs": 0,
         "htmlBytes": 47747,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.958,
+        "wallMs": 1.654,
         "cpuMs": 0,
         "htmlBytes": 47747,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 16
     },
@@ -160,19 +170,21 @@
       "liveCards": 11,
       "cold": {
         "roundTrips": 11,
-        "statements": 18,
-        "wallMs": 2.601,
+        "statements": 22,
+        "wallMs": 2.956,
         "cpuMs": 0,
         "htmlBytes": 29849,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.074,
-        "cpuMs": 0,
+        "wallMs": 1.112,
+        "cpuMs": 16,
         "htmlBytes": 29849,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 10
     },
@@ -183,19 +195,21 @@
       "liveCards": 21,
       "cold": {
         "roundTrips": 21,
-        "statements": 28,
-        "wallMs": 4.254,
+        "statements": 32,
+        "wallMs": 4.538,
         "cpuMs": 0,
         "htmlBytes": 59679,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 2.531,
-        "cpuMs": 16,
+        "wallMs": 1.849,
+        "cpuMs": 0,
         "htmlBytes": 59679,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "depth": 20
     },
@@ -206,19 +220,21 @@
       "liveCards": 51,
       "cold": {
         "roundTrips": 43,
-        "statements": 50,
-        "wallMs": 3.545,
-        "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d50_n22)"
+        "statements": 54,
+        "wallMs": 7.688,
+        "cpuMs": 32,
+        "htmlBytes": 62560,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d50_n21 (core view)</span>"
       },
       "warm": {
         "roundTrips": 34,
-        "statements": 35,
-        "wallMs": 1.99,
+        "statements": 37,
+        "wallMs": 2.592,
         "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d50_n22)"
+        "htmlBytes": 62560,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d50_n21 (core view)</span>"
       },
       "depth": 50
     },
@@ -229,19 +245,21 @@
       "liveCards": 101,
       "cold": {
         "roundTrips": 43,
-        "statements": 50,
-        "wallMs": 4.904,
-        "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d100_n22)"
+        "statements": 54,
+        "wallMs": 4.69,
+        "cpuMs": 15,
+        "htmlBytes": 62958,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d100_n21 (core view)</span>"
       },
       "warm": {
         "roundTrips": 42,
-        "statements": 43,
-        "wallMs": 2.295,
-        "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d100_n22)"
+        "statements": 45,
+        "wallMs": 3.012,
+        "cpuMs": 31,
+        "htmlBytes": 62958,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d100_n21 (core view)</span>"
       },
       "depth": 100
     },
@@ -252,19 +270,21 @@
       "liveCards": 201,
       "cold": {
         "roundTrips": 43,
-        "statements": 50,
-        "wallMs": 2.765,
+        "statements": 54,
+        "wallMs": 3.818,
         "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d200_n22)"
+        "htmlBytes": 62958,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d200_n21 (core view)</span>"
       },
       "warm": {
         "roundTrips": 42,
-        "statements": 43,
-        "wallMs": 2.748,
-        "cpuMs": 0,
-        "htmlBytes": null,
-        "renderError": "Error: nest depth exceeded (BenchDN_chain_open_d200_n22)"
+        "statements": 45,
+        "wallMs": 3.403,
+        "cpuMs": 32,
+        "htmlBytes": 62958,
+        "renderError": null,
+        "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d200_n21 (core view)</span>"
       },
       "depth": 200
     },
@@ -275,19 +295,21 @@
       "liveCards": 3,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 1.236,
+        "statements": 14,
+        "wallMs": 1.325,
         "cpuMs": 0,
         "htmlBytes": 5746,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.377,
+        "wallMs": 0.255,
         "cpuMs": 0,
         "htmlBytes": 5746,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 1
     },
@@ -298,19 +320,21 @@
       "liveCards": 6,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 1.591,
+        "statements": 14,
+        "wallMs": 1.621,
         "cpuMs": 0,
         "htmlBytes": 14890,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.371,
+        "wallMs": 0.541,
         "cpuMs": 0,
         "htmlBytes": 14890,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 4
     },
@@ -321,19 +345,21 @@
       "liveCards": 18,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 2.439,
-        "cpuMs": 0,
+        "statements": 14,
+        "wallMs": 5.541,
+        "cpuMs": 15,
         "htmlBytes": 51466,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.166,
+        "wallMs": 4.084,
         "cpuMs": 0,
         "htmlBytes": 51466,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 16
     },
@@ -344,19 +370,21 @@
       "liveCards": 52,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 5.381,
-        "cpuMs": 0,
+        "statements": 14,
+        "wallMs": 10.959,
+        "cpuMs": 16,
         "htmlBytes": 155098,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 4.815,
-        "cpuMs": 47,
+        "wallMs": 5.846,
+        "cpuMs": 0,
         "htmlBytes": 155098,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 50
     },
@@ -367,19 +395,21 @@
       "liveCards": 102,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 10.505,
-        "cpuMs": 0,
+        "statements": 14,
+        "wallMs": 29.16,
+        "cpuMs": 46,
         "htmlBytes": 309415,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 8.083,
-        "cpuMs": 15,
+        "wallMs": 27.517,
+        "cpuMs": 78,
         "htmlBytes": 309415,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 100
     },
@@ -390,19 +420,21 @@
       "liveCards": 202,
       "cold": {
         "roundTrips": 3,
-        "statements": 10,
-        "wallMs": 17.617,
-        "cpuMs": 32,
+        "statements": 14,
+        "wallMs": 66.716,
+        "cpuMs": 78,
         "htmlBytes": 618015,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 14.263,
-        "cpuMs": 31,
+        "wallMs": 50.204,
+        "cpuMs": 110,
         "htmlBytes": 618015,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "fanout": 200
     },
@@ -413,19 +445,21 @@
       "liveCards": 342,
       "cold": {
         "roundTrips": 6,
-        "statements": 13,
-        "wallMs": 30.47,
-        "cpuMs": 46,
+        "statements": 17,
+        "wallMs": 37.541,
+        "cpuMs": 93,
         "htmlBytes": 1092781,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 25.263,
-        "cpuMs": 47,
+        "wallMs": 26.711,
+        "cpuMs": 16,
         "htmlBytes": 1092781,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "treeDims": "d4xf4"
     },
@@ -436,19 +470,21 @@
       "liveCards": 1112,
       "cold": {
         "roundTrips": 5,
-        "statements": 12,
-        "wallMs": 90.463,
-        "cpuMs": 126,
+        "statements": 16,
+        "wallMs": 132.342,
+        "cpuMs": 155,
         "htmlBytes": 3595955,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 71.34,
-        "cpuMs": 140,
+        "wallMs": 101.408,
+        "cpuMs": 188,
         "htmlBytes": 3595955,
-        "renderError": null
+        "renderError": null,
+        "quietErrorSpan": null
       },
       "treeDims": "d3xf10"
     }
