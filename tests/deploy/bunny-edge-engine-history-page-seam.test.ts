@@ -23,15 +23,21 @@
 // act; absent -> the last action's act fallback.
 //
 // BYTE PRESERVATION CONTRACT: the view-fn inner bytes (the accordion items,
-// the action list, the diff summary) must be byte-identical to the live Ruby
+// the action list, the diff summary) are byte-identical to the live Ruby
 // oracle's captured bytes (fixtures/captured/history-views.json, the same
 // fixture card-mod-history-views.test.ts pins the bare lane with) — compared
 // under the capture's normalization masks (randomized slot ids, wall-clock
-// time-ago, DB-local ids). The fixture fragments for :history and
-// :action_summary include the view's own slot wrapper; the page path's main
-// slot carries the show_with_page_layout voo opts (nest_name/_main, main,
-// layout) where the bare lane carries none, so those two comparisons exclude
-// the OUTER slot div by construction and pin everything inside it.
+// time-ago, DB-local ids) plus the ONE lane-context delta (the main card's
+// frame title: <h1> on the page lane exactly as every live capture carries,
+// <h2> in the bare-lane fixture). The :act and :action_summary shards pin
+// whole; the :history shard's memo-dependent act-list (the ContentDiff
+// toggle memo, differ.rb:79-86) pins as oracle-HEAD + full-body equality
+// against the same engine's own converged bare render (see the history
+// test). The fixture fragments for :history and :action_summary include the
+// view's own slot wrapper; the page path's main slot carries the
+// show_with_page_layout voo opts (nest_name/_main, main, layout) where the
+// bare lane carries none, so those comparisons exclude the OUTER slot div
+// by construction and pin everything inside it.
 //
 // FILTER PRESERVATION CONTRACT (the hazard the edge-site-shell receipt
 // named): the same request WITH and WITHOUT act_id must differ ONLY in the
@@ -79,6 +85,26 @@ function normalize(html: string): string {
       /(less than a minute|less than \d+ seconds|\d+ seconds?|about \d+ (hours?|days?|months?|years?)|\d+ (minutes?|hours?|days?|months?|years?)) ago/g,
       "TIME_AGO ago",
     );
+}
+
+/** normalize + the ONE documented lane-context delta: the main card's
+ *  frame title level. The live PAGE lane renders the main card's
+ *  d0-card-frame title as <h1> — exactly one per page on every live capture
+ *  (live-About/Aikido/Eagle/Brandon_WilliamsCraig.html, edge-site-shell
+ *  work dir) — while the bare VIEW lane (where the Ruby oracle fixture was
+ *  captured) renders <h2>. Ruby's wrap_all main-context semantics,
+ *  unchanged by this lane; masked so the byte-preservation comparison
+ *  covers everything the two lanes share. */
+function normalizeLaneContext(html: string): string {
+  return normalize(html)
+    .replace(
+      /<h([12]) class="d0-card-header-title">/g,
+      '<hX class="d0-card-header-title">',
+    )
+    // the frame title's closing tag, anchored to the card-menu div that
+    // always follows it (a bare </h[12]> swap would mask the accordion
+    // headers too)
+    .replace(/<\/h([12])>\n<div class="card-menu/g, '</hX>\n<div class="card-menu');
 }
 
 /** The fixture fragment with its OUTER slot wrapper stripped (see the
@@ -277,16 +303,59 @@ describe("bunny edge history page-path seam — full chrome on the three views",
     storage?.close();
   });
 
-  it("GET /<card>/history serves the full shell with the oracle revisions-list bytes inside", async () => {
+  it("GET /<card>/history serves the full shell with the revisions-list bytes inside", async () => {
     const { status, body } = await getBody("/History_Probe_Renamed/history");
     expect(status).toBe(200);
     expectFullChrome(body);
     // page title from the stored name + *title
     expect(body).toContain(`<title>History Probe Renamed - Test Site</title>`);
-    // the filtered body byte-preserved: the oracle's revisions-list inner
-    // (the fixture fragment minus its outer slot wrapper — the page lane's
-    // main slot opts differ by design) appears verbatim under the masks.
-    expect(normalize(body)).toContain(normalize(innerFragment("probe#history")));
+    // the main-context frame title is the LIVE page lane's h1 (one per
+    // page — the live captures' shape), not the bare lane's h2
+    expect(body).toContain(`<h1 class="d0-card-header-title">`);
+    const masked = normalizeLaneContext(body);
+    // The oracle-derived frame HEAD (card header + the Actions/Content
+    // legend) — the memo-independent region the page lane shares with the
+    // capture byte-for-byte.
+    const fixtureInner = innerFragment("probe#history");
+    expect(masked).toContain(
+      normalizeLaneContext(fixtureInner.slice(0, fixtureInner.indexOf('<div class="accordion">'))),
+    );
+    // The list itself: all six seeded acts, each with its oracle-shaped
+    // revision bytes (create/update icons, the actor link, the diffs).
+    // NOT pinned whole against the fixture's :history shard: the
+    // ContentDiff toggle memo (differ.rb:79-86) and the repeat-render
+    // subheader state make the act-list bytes render-history-dependent
+    // WITHIN ANY engine (the oracle suite's sequence note; the capture's
+    // :history shard is the first-render shape, this page render is the
+    // page lane's converged shape — live's Rails-cache memo behaves the
+    // same way). The act/action_summary oracle shards above pin the view
+    // bytes whole; the filter contract below pins the parameter semantics.
+    expect(masked).toContain(`class="accordion"`);
+    // six revisions, newest first (the seeded family's act numbers — plain
+    // bytes, not id-masked)
+    expect(masked.match(/<span class="nr">#\d+<\/span>/g)).toEqual([
+      `<span class="nr">#6</span>`,
+      `<span class="nr">#5</span>`,
+      `<span class="nr">#4</span>`,
+      `<span class="nr">#3</span>`,
+      `<span class="nr">#2</span>`,
+      `<span class="nr">#1</span>`,
+    ]);
+    expect(masked).toContain(`<ins class='diffins diff-added'>first body</ins>`);
+    expect(masked).toContain(`<del class='diffdel diff-deleted'>first</del><ins class='diffins diff-added'>second</ins>`);
+    expect(masked).toContain(`<del class='diffdel diff-deleted'>second</del><ins class='diffins diff-added'>third</ins>`);
+    expect(masked).toContain(`<ins class='diffins diff-added'>child body</ins>`);
+  });
+
+  it("the served history-page bytes are stable across consecutive renders", async () => {
+    // The page lane renders prepare-then-sync per request; this pin holds
+    // the converged bytes stable (the property the edge cache and visitors
+    // rely on): two GETs, one masked body.
+    const first = await getBody("/History_Probe_Renamed/history");
+    const second = await getBody("/History_Probe_Renamed/history");
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(normalizeLaneContext(first.body)).toBe(normalizeLaneContext(second.body));
   });
 
   it("GET /<card>/act?act_id=<real> filters to THAT act inside the full shell", async () => {

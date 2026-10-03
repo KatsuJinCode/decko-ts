@@ -39,6 +39,7 @@ import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
+import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
   SPACES_ASSET_HOST,
@@ -423,21 +424,28 @@ async function dispatchEngineRequest(
     // (page.ts:124-129), which parsePath does not carry — the engine's
     // UnsupportedViewError still maps to 422 below.
     //
-    // HISTORY VIEWS stay on the bare-view lane (edge-site-shell residual):
-    // history/act/action_summary consume HistoryRenderParams (act_id, page,
-    // ... — parsePath worker.ts:104-109 -> render.ts:1331
-    // prepareHistoryRender), a per-render seam renderPageBytes does not
-    // thread (its page.ts:184 prepare render passes no params; the staging
-    // host's page entry has the same shape). Moving them would silently
-    // drop the act filter they answer filtered today, so they keep the
-    // exact pre-lane call and bytes; the page-shell gap for this view
-    // family is a named residual, not a regression.
-    if (HISTORY_PARAM_VIEWS.has(parsed.view)) {
-      const htmlBody = await deck.render.render(parsed.name, parsed.view, parsed.params ?? {});
-      return html(200, layoutPage(`${parsed.name} (${parsed.view})`, htmlBody));
-    }
+    // HISTORY VIEWS ride the page path too (p2-history-seam lane,
+    // 2026-10-03 — closes the edge-site-shell residual: they kept the bare
+    // layoutPage lane because HistoryRenderParams had no page-path seam).
+    // renderPageBytes's historyParams argument (src/card/render/page.ts)
+    // threads the query into the prepare render's RenderEngine.render, whose
+    // prepareHistoryRender seats the render-time history reader the sync
+    // history ViewFns read — so the full-chrome shell wraps the SAME view
+    // bytes the bare engine.render(name, view, params) machinery produces,
+    // with act_from_context's semantics intact: act_id present -> THAT act,
+    // absent -> the last action's act. The wire keys parsePath extracts
+    // (act_id/action_id/... — worker.ts:104-109) translate to the seam's
+    // camelCase fields HERE (historyRenderParamsFromWire); the bare lane
+    // passed them untranslated, where the views could not read them — the
+    // measured base state: ?act_id=<real> and no param rendered identical
+    // last-act bodies.
     const pageView = pathViewIsBareArm(url.pathname) ? undefined : parsed.view;
-    const pageHtml = await renderPageBytes(deck.render, parsed.name, pageView);
+    const pageHtml = await renderPageBytes(
+      deck.render,
+      parsed.name,
+      pageView,
+      historyRenderParamsFromWire(parsed.params),
+    );
     return html(200, applyServedEnvironmentDeltas(pageHtml));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -474,10 +482,32 @@ async function dispatchEngineRequest(
   }
 }
 
-/** The history views whose render consumes HistoryRenderParams
- *  (parsePath worker.ts:104-109); they keep the bare-view lane (see the
- *  dispatch comment in handleEngineRequest). */
-const HISTORY_PARAM_VIEWS = new Set(["history", "act", "action_summary"]);
+/** The history views' WIRE-KEY -> seam translation (p2-history-seam lane):
+ *  worker.ts parsePath extracts the query under Ruby's param names
+ *  (act_id/action_id/page/act_seq/action_view/hide_diff/act_context — the
+ *  Card::Env.params keys, worker.ts:104-109), while HistoryRenderParams and
+ *  the view fns read the camelCase fields (src/card/history/render-seam.ts).
+ *  The bare lane passed the wire-keyed object straight through, where
+ *  `reader.params.actId` was undefined for every request — the act_id
+ *  filter silently inert (measured at base 12bd5236: ?act_id=<real> and no
+ *  param rendered identical bodies). This mapping is the seam's carrier:
+ *  unknown keys are dropped, absent input maps to {} (renderPageBytes's
+ *  undefined-safe contract), values pass verbatim (the views' own integer/
+ *  enum parsing is unchanged downstream). */
+export function historyRenderParamsFromWire(
+  params: Record<string, string> | undefined,
+): HistoryRenderParams {
+  if (params === undefined) return {};
+  const out: HistoryRenderParams = {};
+  if (params["act_id"] !== undefined) out.actId = params["act_id"];
+  if (params["action_id"] !== undefined) out.actionId = params["action_id"];
+  if (params["act_seq"] !== undefined) out.actSeq = params["act_seq"];
+  if (params["action_view"] !== undefined) out.actionView = params["action_view"];
+  if (params["hide_diff"] !== undefined) out.hideDiff = params["hide_diff"];
+  if (params["act_context"] !== undefined) out.actContext = params["act_context"];
+  if (params["page"] !== undefined) out.page = params["page"];
+  return out;
+}
 
 /** True when the request path is the BARE single-segment card arm (/:mark,
  *  or the empty path's /Home dispatch) — parsePath's view field is its

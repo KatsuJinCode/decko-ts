@@ -61,6 +61,8 @@ import { getDeploymentCloudAssetHost } from "./views.js";
 import { deckoRootUrl } from "./deployment-follow-live-config.js";
 import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
+import type { HistoryRenderParams } from "../history/render-seam.js";
+import { DECK_ORIGIN } from "./deck-origin.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
 // production-equivalent setting 4; Env.origin with no request) now lives in
@@ -130,11 +132,24 @@ interface PageLayout {
  * satisfies from the memoized main.rendered). Unsupported views raise the
  * engine's UnsupportedViewError (Ruby: the unsupported-view UserError,
  * format/render.rb:60-64).
+ *
+ * `historyParams` is THE PAGE-PATH SEAM for the history views (the
+ * p2-history-seam lane, 2026-10-03 — edge-site-shell residual #3): the
+ * Card::Env.params equivalents Ruby's history views read at render time
+ * (HistoryRenderParams — act_id/action_id/page/...), carried THROUGH the
+ * page-path routing. It threads into the prepare render below, whose
+ * RenderEngine.render seats the render-time history reader
+ * (render.ts prepareHistoryRender) the sync history ViewFns read; without
+ * it, a history view served through this entry rendered the no-param
+ * fallback arms (and, before the edge's wire-key translation, ignored the
+ * query entirely). Undefined for every other caller — every pre-existing
+ * call is byte-identical.
  */
 export async function renderPageBytes(
   engine: RenderEngine,
   cardName: string,
   requestedView?: string,
+  historyParams?: HistoryRenderParams,
 ): Promise<string> {
   // The page capture wraps `fmt.show(nil, {})` in the production config
   // (capture-dual-lane-page-and-view.rb:369, inside the config block at
@@ -143,7 +158,7 @@ export async function renderPageBytes(
   // every nest resolved inside this call (including the prepare render's)
   // reads "content"; bare renders keep the railtie "titled".
   return engine.runWithPageConfig(() =>
-    renderPageBytesWithPageConfig(engine, cardName, requestedView),
+    renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
   );
 }
 
@@ -151,6 +166,7 @@ async function renderPageBytesWithPageConfig(
   engine: RenderEngine,
   cardName: string,
   requestedView?: string,
+  historyParams?: HistoryRenderParams,
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
@@ -184,7 +200,12 @@ async function renderPageBytesWithPageConfig(
   // collateral. A lost root (prepare died before enrichment) rethrows.
   let prepareError: Error | undefined;
   try {
-    await engine.render(record.name.s, mainView);
+    // The HistoryRenderParams thread (the page-path seam — see the
+    // renderPageBytes doc): render() seats the render-time history reader
+    // when the view is one of the history views; the sync main render
+    // below reads it. undefined passes through render()'s own `= {}`
+    // default, so non-history pages are untouched.
+    await engine.render(record.name.s, mainView, historyParams);
   } catch (error) {
     prepareError = error as Error;
   }
