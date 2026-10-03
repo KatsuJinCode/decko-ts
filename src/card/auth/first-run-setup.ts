@@ -653,7 +653,15 @@ export interface CreateOwnerDeps extends SetupWindowDeps {
  */
 export async function createOwnerAccount(
   deps: CreateOwnerDeps,
-  input: { email: string; password: string },
+  input: {
+    email: string;
+    password: string;
+    /** The setup form's card[name] field (user.rb:14 — the setup view
+     *  renders _render_name_formgroup, so the create carries the
+     *  submitted name). Omitted = the email-derived name
+     *  ownerCardNameFor computes, the prior behavior. */
+    cardName?: string;
+  },
 ): Promise<OwnerCreateOutcome> {
   // (0) the gate
   const window = await setupWindowState(deps);
@@ -713,7 +721,9 @@ export async function createOwnerAccount(
   // user.rb:52 — the bot is the administrator whose permissions cannot be
   // disabled, auth/permissions.rb:9).
   const engine = new CardActionEngine(deps.fetcher, { actor: bot });
-  const ownerName = await ownerCardNameFor(deps.fetcher, email);
+  // The holder's name: the submitted card[name] when the form carries one
+  // (user.rb:14), else the email-derived unique name.
+  const ownerName = input.cardName ?? (await ownerCardNameFor(deps.fetcher, email));
   // set/all/account.rb:3-5 `default_accounted_type_id` = UserID, and the
   // setup form posts exactly that (user.rb:42 `type_id:
   // Card.default_accounted_type_id`). The holder is therefore a User-typed
@@ -752,6 +762,19 @@ export async function createOwnerAccount(
       name: `${ownerName}+*account+*password`,
       content: digest,
     });
+    // setup_first_user (user.rb:59-64, :finalize, when: :setup? — this whole
+    // function runs only when the setup window is open, the port's
+    // `when: :setup?`): subcard [role, :members] content = name, over
+    // basket[:roles_for_first_user] %i[help_desk shark administrator]
+    // (user.rb:3), in basket order; plus the signup_alert_email+to subcard
+    // (user.rb:60). Ruby's subcard write is create-or-update (Card.create
+    // on an existing name updates) — the concurrent-setup pin
+    // (first-run-setup.test.ts "two creates issued CONCURRENTLY") needs
+    // that tolerance too, so the writes go through ensureCard.
+    await ensureCard(engine, "signup alert email+to", ownerName);
+    for (const role of ["Help Desk", "Shark", "Administrators"]) {
+      await ensureCard(engine, `${role}+members`, ownerName);
+    }
     return {
       ok: true,
       owner: { id: ownerId, name: ownerName },
@@ -775,6 +798,23 @@ export async function createOwnerAccount(
       reason: "write_failed",
       message: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/** Ruby's create-or-update subcard write: Card.create on an existing name
+ *  performs an update (the save machinery routes by name), so a subcard
+ *  whose card already exists gets its content replaced, never a name
+ *  collision. Used by the setup_first_user role writes. */
+async function ensureCard(
+  engine: CardActionEngine,
+  name: string,
+  content: string,
+): Promise<void> {
+  const existing = await engine.fetch.fetchByName(name);
+  if (existing !== undefined && existing.id !== undefined) {
+    await engine.updateCard({ cardId: existing.id, content });
+  } else {
+    await engine.createCard({ name, content });
   }
 }
 

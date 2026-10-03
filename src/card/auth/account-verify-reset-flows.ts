@@ -601,6 +601,60 @@ export async function sendResetPasswordToken(
   return { ok: true, sentTo: account.email, token, resetUrl: url };
 }
 
+// ---------------------------------------------------------------------------
+// SIGNUP CREATE: send_verification_email
+// (right/account/events.rb:32-35 + set/type/signup.rb:31-33, :48-52)
+// ---------------------------------------------------------------------------
+
+export type VerificationSendOutcome =
+  | { ok: true; sentTo: string; token: string; verifyUrl: string }
+  | { ok: false; reason: "account_not_found" | "no_email"; message: string };
+
+/**
+ * The signup create's verification-email delivery. Ruby: the signup form's
+ * create runs `auto_approve_with_verification` (mod/account
+ * set/type/signup.rb:31-33, on: :create, when: :can_approve?) whose
+ * `request_verification` (:48-52) writes +*status "unverified" and fires
+ * `trigger_event! :send_verification_email` — one arm of the generic
+ * account-template delivery
+ * `event :"send_#{email}", :integrate, trigger: :required do
+ * send_account_email email end` (right/account/events.rb:32-35).
+ *
+ * The port takes the account mark (the holder card's name): the signup
+ * create has just written the +*account subtree this lookup reads. The
+ * delivery is the same machinery sendResetPasswordToken uses — the
+ * verification_email template (card-mod-account data/real.yml) + the
+ * verify_and_activate token link the confirm arm
+ * (confirmAccountVerification, events.rb:19-24) verifies. Called from the
+ * signup feature port (tests/card/gherkin/) at the exact point Ruby's
+ * trigger fires: after the unverified status write.
+ */
+export async function sendAccountVerificationToken(
+  ctx: AccountFlowContext,
+  accountMark: string,
+): Promise<VerificationSendOutcome> {
+  const ids = await resolveAccountCodenameIds(ctx.driver);
+  if (ids === null) {
+    return { ok: false, reason: "account_not_found", message: "no account system in this deck" };
+  }
+  const account = await accountForMark(ctx.driver, ids, accountMark);
+  if (account === undefined || account.holder.id === undefined) {
+    return { ok: false, reason: "account_not_found", message: `no such card: ${accountMark}` };
+  }
+  if (account.email === undefined || account.email === "") {
+    return { ok: false, reason: "no_email", message: `account ${accountMark} has no +*email content` };
+  }
+  const { url, token } = await buildAccountTokenUrlForHolder(ctx, {
+    accountName: account.name,
+    holderId: account.holder.id,
+    trigger: "verify_and_activate",
+    extraPayload: {},
+  });
+  const mail = renderAccountEmail(ctx, VERIFY_EMAIL_TEMPLATE, { url });
+  await ctx.transport.sendMail({ ...mail, to: account.email });
+  return { ok: true, sentTo: account.email, token, verifyUrl: url };
+}
+
 /** Deliver one account template — send_account_email's render+deliver
  *  (right/account.rb:37-44): context = the +account card, to = its +email
  *  content. The From: is the template's own field ("Decko Bot" in both
