@@ -1,0 +1,59 @@
+{
+  "pages": [
+    {
+      "name": "Home",
+      "offTrips": 176,
+      "onTrips": 108,
+      "attachTrips": 1,
+      "dataFetchTrips": 1,
+      "residueTrips": 106,
+      "byteIdentical": true,
+      "offBytes": 15409,
+      "onBytes": 15409
+    },
+    {
+      "name": "Aikido",
+      "offTrips": 92,
+      "onTrips": 54,
+      "attachTrips": 1,
+      "dataFetchTrips": 1,
+      "residueTrips": 52,
+      "byteIdentical": true,
+      "offBytes": 101786,
+      "onBytes": 101786
+    },
+    {
+      "name": "About",
+      "offTrips": 202,
+      "onTrips": 146,
+      "attachTrips": 1,
+      "dataFetchTrips": 1,
+      "residueTrips": 144,
+      "byteIdentical": true,
+      "offBytes": 9106,
+      "onBytes": 9106
+    },
+    {
+      "name": "Eagle",
+      "offTrips": 49,
+      "onTrips": 21,
+      "attachTrips": 1,
+      "dataFetchTrips": 1,
+      "residueTrips": 19,
+      "byteIdentical": true,
+      "offBytes": 8990,
+      "onBytes": 8990
+    },
+    {
+      "name": "Taking_Stock",
+      "offTrips": 47,
+      "onTrips": 20,
+      "attachTrips": 1,
+      "dataFetchTrips": 1,
+      "residueTrips": 18,
+      "byteIdentical": true,
+      "offBytes": 76,
+      "onBytes": 76
+    }
+  ]
+}
