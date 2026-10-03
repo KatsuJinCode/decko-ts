@@ -41,6 +41,8 @@ import {
 import { executeQuery } from "../src/cql/execute.js";
 import { CqlBadQuery } from "../src/cql/ast.js";
 import { DeckoName } from "../src/card/name.js";
+import { applyDeckInflections } from "../src/card/name/inflect.js";
+import { ORACLE_DECK_INFLECTIONS } from "../src/card/name/oracle-deck-inflections.js";
 import { createVirtualCardLookup } from "../src/card/fetch/virtual-cards.js";
 import {
   structureRuleUniverseStatement,
@@ -90,6 +92,27 @@ function getDeck(env: Env): Promise<Deck> {
 }
 
 async function bootDeck(env: Env): Promise<Deck> {
+  // THE DECK'S INFLECTION TABLE, APPLIED BEFORE ANY NAME IS PARSED.
+  //
+  // `ORACLE_DECK_INFLECTIONS` is deck-boot DATA (src/card/name/oracle-deck-inflections.ts
+  // :1-13), and its own header is the rule this call is the first
+  // instance of: "Every deck-serving origin MUST apply this table at boot,
+  // BEFORE any name is parsed or any row is primed - the same moment a
+  // Rails deck's config/initializers/inflections.rb runs." This worker is
+  // a deck-serving origin and it did not, so every key it derived was the
+  // gem default instead of the deck's: `Anonymous` keyed `anonymou`,
+  // `SCarol` keyed `_carol`, `Brandon's` keyed `brandon_`, `delete this`
+  // keyed `delete_thi` (three uncountables, oracle-deck-inflections.ts
+  // :44-50). Those keys ride into the rendered slot class tokens
+  // (`SELF-anonymous-bar-view` vs `SELF-anonymou-bar-view`,
+  // `RIGHT-s_carol` vs `RIGHT-_carol`), so the divergence is visible in the
+  // card BYTES, not only in lookups.
+  //
+  // The call is idempotent (it swaps an immutable table snapshot and drops
+  // DeckoName's memoized keys, name.ts:115-120) and it must stay ABOVE the
+  // row loop in primeCqlNameResolver, which derives every keyToId entry
+  // from DeckoName.parse.
+  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   const driver = new CloudflareD1Adapter(env.DB);
   observeDriverQueries(driver, recorder());
   const fetcher = new FetchEngine(driver);

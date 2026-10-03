@@ -55,6 +55,8 @@ import process from "node:process";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
+import { applyDeckInflections } from "../../src/card/name/inflect.js";
+import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { layoutPage, parsePath } from "../../worker.js";
 
 /** Environment bag; on the edge this is process.env, in tests a plain
@@ -121,6 +123,13 @@ interface Deck {
 let deckPromise: Promise<Deck> | undefined;
 
 function bootDeck(config: ResolvedDbConfig): Deck {
+  // The deck's inflection table, applied BEFORE any name is parsed --
+  // oracle-deck-inflections.ts:1-13 states the rule ("Every deck-serving
+  // origin MUST apply this table at boot") and deploy/worker.ts:95 is the
+  // Cloudflare origin's instance of it. Without it this edge derives the
+  // gem defaults (`anonymou`, `_carol`, `brandon_`, `delete_thi`) and the
+  // rendered slot class tokens carry them.
+  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   const driver = new BunnyDbDriver({ url: config.url, authToken: config.authToken });
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
