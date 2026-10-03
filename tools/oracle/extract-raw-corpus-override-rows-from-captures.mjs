@@ -1,7 +1,8 @@
 // extract-raw-corpus-override-rows-from-captures.mjs -- build the raw-corpus
 // OVERRIDE TABLE from the oracle capture artifacts (harness-corpus-repair
 // lane 2026-10-02, extended by the m8-envelope-completion lane 2026-10-02 to
-// every entry of the M8 skin:record class).
+// every entry of the M8 skin:record class, extended by the m8-siblings-litera
+// lane 2026-10-03 to the two bootstrap SCSS source siblings).
 //
 // WHAT THIS IS
 //   The oracle deck's stored bytes for some cards are unobtainable from
@@ -110,6 +111,29 @@ const M8_CLASS_SKINS = [
   { skin: "sketchy skin", shard: "recapture-raw-shard-000028.jsonl" },
   { skin: "solar skin", shard: "recapture-raw-shard-000028.jsonl" },
 ];
+
+// The two bootstrap SCSS source siblings (m8-siblings-litera lane 2026-10-03):
+// the M8 corpus-materialization remainder entries the wave-2 receipts name
+// (bootstrap: core:record -248,378, bootstrap: functions:record -10,989).
+// Same class mechanism -- the corpus rows are EMPTY (0 bytes) while the oracle
+// record envelopes hold the full SCSS source (239,039 / 10,621 chars).
+const M8_BOOTSTRAP_SIBLINGS = [
+  { name: "bootstrap: core", shard: "recapture-raw-shard-000028.jsonl" },
+  { name: "bootstrap: functions", shard: "recapture-raw-shard-000028.jsonl" },
+];
+
+// The documented shared-source family (this file's header note: "compiled and
+// source share their 10,624-char '// Bootstrap functions...' preamble and
+// verbatim-passed library regions with the SCSS SOURCE rows the corpus holds
+// (classic bootstrap skin 22736, journal/litera/slate skin customized)").
+// Both siblings' bytes are verbatim REGIONS of these four monolithic rows
+// (functions = the shared preamble at index 0 x4; core = the source region
+// after the preamble, offsets 10625/12185/13346/15893, once per row --
+// measured by the lane probe). For the sibling pair the containment gate is
+// therefore: every containing corpus row must be IN this family; any
+// containing row outside it still fails the row. The skins keep the strict
+// hits==0 gate unchanged.
+const SHARED_SOURCE_FAMILY = [22736, 34179, 34530, 38274];
 
 function argValue(flag, fallback) {
   const i = process.argv.indexOf(flag);
@@ -358,6 +382,178 @@ for (const { skin, shard } of M8_CLASS_SKINS) {
   );
 }
 
+// ---------- the two bootstrap SCSS source siblings (capture side: expected-v2 view-lane shards) ----------
+for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) {
+  const entry = { cardName: siblingName, shard: siblingShard };
+  const shardPath = path.join(VIEW_LANE_DIR, siblingShard);
+  let record;
+  try {
+    const lines = readFileSync(shardPath, "utf8").split("\n").filter(Boolean);
+    for (const l of lines) {
+      let o;
+      try {
+        o = JSON.parse(l);
+      } catch {
+        continue;
+      }
+      if (o.record && o.record.name === siblingName) {
+        record = o.record;
+        break;
+      }
+    }
+  } catch (err) {
+    skipped.push({ ...entry, reason: `shard unreadable: ${err.message.slice(0, 80)}` });
+    console.log(`SKIP ${siblingName}: shard unreadable (${err.message.slice(0, 60)})`);
+    continue;
+  }
+  if (record === undefined) {
+    skipped.push({ ...entry, reason: "no capture record with this exact name in the shard" });
+    console.log(`SKIP ${siblingName}: no capture record in ${siblingShard}`);
+    continue;
+  }
+  const row = corpus
+    .prepare("SELECT id, name, content, length(content) AS len FROM cards WHERE id = ?")
+    .get(record.id);
+  if (row === undefined || row.name !== siblingName) {
+    skipped.push({
+      ...entry,
+      captureId: record.id,
+      reason: `capture id ${record.id} does not resolve to a live corpus row of the same name (found ${row ? JSON.stringify(row.name) : "nothing"})`,
+    });
+    console.log(`SKIP ${siblingName}: identity gate failed (capture id ${record.id})`);
+    continue;
+  }
+  const d = decompose(record.content, row.content ?? "");
+  if (!d.clean) {
+    skipped.push({ ...entry, captureId: record.id, reason: d.reason });
+    console.log(`SKIP ${siblingName}: ${d.reason}`);
+    continue;
+  }
+  const mRows = mHeadInCorpusRows(d.mBlock);
+  // Family-gated containment: every corpus row containing the full content must
+  // be one of the documented shared-source family rows. Hits inside the family
+  // are measured (offset + occurrences) and recorded in provenance; any hit
+  // outside the family fails the row.
+  const candidates = corpus
+    .prepare("SELECT id, name FROM cards WHERE length(content) >= ?")
+    .all(record.content.length);
+  const probe = corpus.prepare(
+    "SELECT COUNT(*) AS n FROM cards WHERE id = ? AND instr(content, ?) > 0",
+  );
+  const hitDetail = [];
+  let outsideFamilyHits = 0;
+  for (const c of candidates) {
+    if (probe.get(c.id, record.content).n > 0) {
+      const full = corpus.prepare("SELECT content FROM cards WHERE id = ?").get(c.id).content;
+      hitDetail.push({
+        id: c.id,
+        name: c.name,
+        firstIndex: full.indexOf(record.content),
+        occurrences: full.split(record.content).length - 1,
+        inSharedSourceFamily: SHARED_SOURCE_FAMILY.includes(c.id),
+      });
+      if (!SHARED_SOURCE_FAMILY.includes(c.id)) outsideFamilyHits++;
+    }
+  }
+  if (outsideFamilyHits !== 0) {
+    skipped.push({
+      ...entry,
+      captureId: record.id,
+      reason: `${outsideFamilyHits} corpus rows OUTSIDE the documented shared-source family contain the full restored content -- the override premise is stale for this row`,
+    });
+    console.log(`SKIP ${siblingName}: containment outside the shared-source family (${outsideFamilyHits})`);
+    continue;
+  }
+  // Cross-capture agreement with the p21 probe file (name -> filename: drop
+  // colons, spaces -> underscores; "bootstrap: core" -> "bootstrap_core").
+  const p21File = path.join(
+    P21_HTML_DIR,
+    `000028-${siblingName.replace(/:/g, "").replace(/ /g, "_")}-_record_.expected.html`,
+  );
+  let crossCheck = null;
+  if (existsSync(p21File)) {
+    let p21Env = null;
+    try {
+      p21Env = JSON.parse(readFileSync(p21File, "utf8"));
+    } catch {
+      p21Env = null;
+    }
+    if (p21Env === null) {
+      skipped.push({
+        ...entry,
+        captureId: record.id,
+        reason: "p21 cross-capture file is not a JSON envelope",
+      });
+      console.log(`SKIP ${siblingName}: p21 cross-capture file unparseable`);
+      continue;
+    }
+    const contentByteEqual = p21Env.content === record.content;
+    const fieldsEqual = RECORD_FIELDS.every((k) => p21Env[k] === record[k]);
+    crossCheck = { file: p21File, contentByteEqual, fieldsEqual };
+    if (!contentByteEqual || !fieldsEqual) {
+      skipped.push({
+        ...entry,
+        captureId: record.id,
+        reason: `cross-capture disagreement (contentByteEqual=${contentByteEqual} fieldsEqual=${fieldsEqual})`,
+      });
+      console.log(`SKIP ${siblingName}: cross-capture disagreement`);
+      continue;
+    }
+  }
+  cards.push({
+    id: record.id,
+    content: record.content,
+    note:
+      `${siblingName} -- oracle deck's stored content ` +
+      `(${record.content.length} chars = corpus prefix ${d.prefix} + M ${d.mBlock.length} + corpus tail ${d.tail}); ` +
+      `the corpus row is empty (${row.len} bytes).`,
+  });
+  provenance.push({
+    cardId: record.id,
+    cardName: siblingName,
+    classRow:
+      "M8 corpus-materialization remainder " +
+      `(bootstrap: core:record -248,378 / bootstrap: functions:record -10,989; ` +
+      "m8-siblings-litera lane 2026-10-03)",
+    source: `expected-v2 view-lane capture record (${siblingShard})`,
+    file: shardPath,
+    captureId: record.id,
+    envelopeFields: {
+      name: record.name,
+      key: record.key,
+      type: record.type,
+      type_code: record.type_code,
+      codename: record.codename,
+    },
+    contentChars: record.content.length,
+    envelopeEqualities: {
+      prefixBytes: d.prefix,
+      middleBytes: d.mBlock.length,
+      tailBytes: d.tail,
+    },
+    corpusRowBytes: row.len,
+    corpusAbsence: {
+      test:
+        "no corpus row OUTSIDE the documented shared-source family {22736, 34179, 34530, 38274} " +
+        "contains the full restored content (full-needle instr over length-qualified candidates); " +
+        "the strict hits==0 gate used for the compiled skins is NOT met by this SCSS-source pair -- " +
+        "the bytes are verbatim regions of the family rows the extractor header already documents " +
+        "(functions = the shared '// Bootstrap functions...' preamble at index 0 x4; " +
+        "core = the source region after the preamble), which is measured and recorded, not gated",
+      candidatesExamined: candidates.length,
+      containingRows: hitDetail.length,
+      containingRowDetail: hitDetail,
+      informationalPreambleHeadRows: mRows,
+    },
+    crossCapture: crossCheck,
+  });
+  console.log(
+    `OK   ${siblingName} id ${record.id}: content ${record.content.length} chars = prefix ${d.prefix} + M ${d.mBlock.length} + tail ${d.tail}` +
+      ` | containment candidates ${candidates.length}, hits ${hitDetail.length} (all in shared-source family)` +
+      `${crossCheck ? " | p21 cross-capture byte-equal" : ""}`,
+  );
+}
+
 // ---------- journal skin customized 34179 (the proven original row) ----------
 const card34179 = corpus
   .prepare("SELECT id, name, key, content, length(content) AS len FROM cards WHERE id = 34179")
@@ -464,7 +660,9 @@ const override = {
       "tests/card/render/raw-corpus-seeding.ts to the STAGED deck only; the " +
       "sha-pinned corpus file is never mutated. M8 skin:record class " +
       "(20 bootswatch skins, residual-classes-dfe642b-w5.txt class [20]) plus " +
-      "journal skin customized 34179 (harness-corpus-repair).",
+      "journal skin customized 34179 (harness-corpus-repair) plus the two " +
+      "bootstrap SCSS source siblings 33852/33848 (m8-siblings-litera, " +
+      "M8 corpus-materialization remainder).",
     corpusSha256: corpusSha,
     generatedBy: "tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs",
     generatedAt: new Date().toISOString(),
@@ -476,7 +674,11 @@ const override = {
 };
 writeFileSync(OUT, JSON.stringify(override, null, 2));
 console.log(`WROTE ${OUT} (cards: ${override.cards.map((c) => c.id).join(", ")})`);
+const siblingEmitted = provenance.filter((p) =>
+  M8_BOOTSTRAP_SIBLINGS.some((s) => s.name === p.cardName),
+).length;
 console.log(
-  `M8 CLASS: ${cards.length - 1} of ${M8_CLASS_SKINS.length} class rows emitted, ` +
+  `M8 CLASS: ${cards.length - siblingEmitted - 1} of ${M8_CLASS_SKINS.length} class rows emitted, ` +
+    `${siblingEmitted} of ${M8_BOOTSTRAP_SIBLINGS.length} bootstrap siblings emitted, ` +
     `${skipped.length} skipped (documented in meta.skipped), + journal 34179`,
 );
