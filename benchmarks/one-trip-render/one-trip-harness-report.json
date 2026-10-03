@@ -1,0 +1,122 @@
+{
+  "pages": [
+    {
+      "name": "Home",
+      "baselineTrips": 809,
+      "baselineHtmlBytes": 15409,
+      "oneTripTrips": 478,
+      "dataFetchTrips": 1,
+      "residueTrips": 474,
+      "htmlBytes": 15409,
+      "byteIdentical": true,
+      "residueClasses": {
+        "point-row-by-id": 51,
+        "closure-prefetch-batch": 16,
+        "engine-boot-codenames": 2,
+        "search-count": 1,
+        "reached-rules-cte": 4,
+        "engine-fold-type-names": 1,
+        "engine-fold-head-reads": 1,
+        "pair-exists-probe": 361,
+        "template-link-id-read": 2,
+        "engine-boot-dangling-canonical": 1,
+        "lexicon-id-to-name": 3,
+        "lexicon-key-to-id": 7,
+        "point-row-by-key": 36
+      }
+    },
+    {
+      "name": "Aikido",
+      "baselineTrips": 187,
+      "baselineHtmlBytes": 101786,
+      "oneTripTrips": 106,
+      "dataFetchTrips": 1,
+      "residueTrips": 102,
+      "htmlBytes": 101786,
+      "byteIdentical": true,
+      "residueClasses": {
+        "point-row-by-id": 18,
+        "closure-prefetch-batch": 9,
+        "engine-boot-codenames": 2,
+        "search-count": 1,
+        "reached-rules-cte": 4,
+        "engine-fold-type-names": 1,
+        "engine-fold-head-reads": 1,
+        "pair-exists-probe": 47,
+        "point-row-by-key": 20,
+        "lexicon-key-to-id": 8,
+        "template-link-id-read": 3,
+        "lexicon-id-to-name": 1
+      }
+    },
+    {
+      "name": "About",
+      "baselineTrips": 470,
+      "baselineHtmlBytes": 9106,
+      "oneTripTrips": 277,
+      "dataFetchTrips": 1,
+      "residueTrips": 273,
+      "htmlBytes": 9106,
+      "byteIdentical": true,
+      "residueClasses": {
+        "point-row-by-id": 37,
+        "closure-prefetch-batch": 56,
+        "engine-boot-codenames": 2,
+        "search-count": 1,
+        "reached-rules-cte": 4,
+        "engine-fold-type-names": 1,
+        "engine-fold-head-reads": 1,
+        "pair-exists-probe": 99,
+        "lexicon-key-to-id": 16,
+        "point-row-by-key": 84,
+        "lexicon-id-to-name": 4,
+        "template-link-id-read": 3
+      }
+    },
+    {
+      "name": "Eagle",
+      "baselineTrips": 57,
+      "baselineHtmlBytes": 8998,
+      "oneTripTrips": 27,
+      "dataFetchTrips": 1,
+      "residueTrips": 23,
+      "htmlBytes": 8998,
+      "byteIdentical": true,
+      "residueClasses": {
+        "point-row-by-id": 6,
+        "closure-prefetch-batch": 6,
+        "engine-boot-codenames": 2,
+        "search-count": 1,
+        "reached-rules-cte": 4,
+        "engine-fold-type-names": 1,
+        "engine-fold-head-reads": 1,
+        "pair-exists-probe": 8,
+        "point-row-by-key": 3,
+        "template-link-id-read": 2,
+        "lexicon-key-to-id": 1
+      }
+    },
+    {
+      "name": "Taking_Stock",
+      "baselineTrips": 47,
+      "baselineHtmlBytes": 76,
+      "oneTripTrips": 19,
+      "dataFetchTrips": 1,
+      "residueTrips": 15,
+      "htmlBytes": 76,
+      "byteIdentical": true,
+      "residueClasses": {
+        "point-row-by-id": 4,
+        "closure-prefetch-batch": 6,
+        "engine-boot-codenames": 2,
+        "search-count": 1,
+        "reached-rules-cte": 4,
+        "engine-fold-type-names": 1,
+        "engine-fold-head-reads": 1,
+        "pair-exists-probe": 4,
+        "template-link-id-read": 2,
+        "point-row-by-key": 2
+      }
+    }
+  ]
+}

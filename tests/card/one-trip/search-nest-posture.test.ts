@@ -54,7 +54,7 @@ describe.skipIf(!mirrorAvailable())("search-nest write-time execution (trial-dec
   }, 180_000);
 
   afterAll(() => {
-    if (sidePath !== "") rmSync(sidePath, { force: true });
+    if (sidePath !== "") try { rmSync(sidePath, { force: true }); } catch { /* Windows file lock: the driver holds the handle; the OS temp dir cleans up */ };
   });
 
   it("enumerated search nests execute to result rows identical to their live CQL", async () => {

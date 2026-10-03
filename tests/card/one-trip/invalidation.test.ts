@@ -20,6 +20,7 @@ import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
 import { buildOneTripClosure } from "../../../src/card/one-trip/closure-builder.js";
 import {
   affectedPagesForCardWrite,
+  asWritableDerivedStore,
   recomputeClosuresForPages,
 } from "../../../src/card/one-trip/invalidation.js";
 
@@ -42,7 +43,11 @@ class LoggingDriver implements SQLDatabaseDriver {
   }
 }
 
-async function makeFixtureDeck(): Promise<{ corpus: SQLDatabaseDriver; ids: Record<string, number> }> {
+async function makeFixtureDeck(): Promise<{
+  corpus: SQLDatabaseDriver;
+  ids: Record<string, number>;
+  basicTypeId: number;
+}> {
   const corpus = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(
     fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)),
@@ -51,23 +56,27 @@ async function makeFixtureDeck(): Promise<{ corpus: SQLDatabaseDriver; ids: Reco
   for (const statement of splitSqlStatements(ddl)) {
     await corpus.query(statement, []);
   }
-  // Seed: type card (Basic = id 1 convention of the real decks is NOT
-  // assumed — insert explicit rows and keep the ids the db assigns).
+  // Seed: a real TYPE card first (every content card's type_id points at
+  // it — a type edge to a CONTENT card would create universal
+  // reachability and make every page's closure cover every other page,
+  // which is exactly the fan-out shape under test), then the content
+  // cards. Ids are the db's.
   const ids: Record<string, number> = {};
-  const insertCard = async (name: string, content: string): Promise<number> => {
+  const insertCard = async (name: string, content: string, typeId: number, codename?: string): Promise<number> => {
     const result = await corpus.query(
-      `INSERT INTO cards (name, "key", type_id, created_at, updated_at, creator_id, updater_id, trash, db_content)
-       VALUES (?, ?, 1, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', 1, 1, 0, ?)`,
-      [name, name.toLowerCase().replace(/[^a-z0-9_]+/g, "_"), content],
+      `INSERT INTO cards (name, "key", codename, type_id, created_at, updated_at, creator_id, updater_id, trash, db_content)
+       VALUES (?, ?, ?, ?, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', 1, 1, 0, ?)`,
+      [name, name.toLowerCase().replace(/[^a-z0-9_]+/g, "_"), codename ?? null, typeId, content],
     );
     return result.lastInsertRowId as number;
   };
-  ids["Page A"] = await insertCard("Page A", "intro {{Page B}}");
-  ids["Page B"] = await insertCard("Page B", "body {{Page C}}");
-  ids["Page C"] = await insertCard("Page C", "leaf");
-  ids["Page D"] = await insertCard("Page D", "standalone {{Page C}}");
-  ids["Unrelated"] = await insertCard("Unrelated", "nothing");
-  return { corpus, ids };
+  const basicTypeId = await insertCard("Basic", "", 0, "basic");
+  ids["Page A"] = await insertCard("Page A", "intro {{Page B}}", basicTypeId);
+  ids["Page B"] = await insertCard("Page B", "body {{Page C}}", basicTypeId);
+  ids["Page C"] = await insertCard("Page C", "leaf", basicTypeId);
+  ids["Page D"] = await insertCard("Page D", "standalone {{Page C}}", basicTypeId);
+  ids["Unrelated"] = await insertCard("Unrelated", "nothing", basicTypeId);
+  return { corpus, ids, basicTypeId };
 }
 
 describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
@@ -75,11 +84,13 @@ describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
   let side: SQLDatabaseDriver;
   let sidePath = "";
   let ids: Record<string, number>;
+  let basicCardId = 0;
 
   beforeAll(async () => {
     const fixture = await makeFixtureDeck();
     corpus = fixture.corpus;
     ids = fixture.ids;
+    basicCardId = fixture.basicTypeId;
     sidePath = ":memory:";
     side = new LocalSqliteDriver({ path: sidePath });
     await buildOneTripClosure({
@@ -95,14 +106,24 @@ describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
       [ids["Page A"]],
     );
     const closureIds = closureA.rows.map((r) => r.card_id).sort((a, b) => a - b);
-    expect(closureIds).toEqual([ids["Page A"], ids["Page B"], ids["Page C"]].sort((a, b) => a - b));
+    expect(closureIds).toEqual(
+      [ids["Page A"], ids["Page B"], ids["Page C"], basicCardId].sort((a, b) => a - b),
+    );
   });
 
   it("reverse fan-out finds exactly the pages whose closure reaches the changed card", async () => {
-    // Page C's content changes: pages whose closure reaches C are A, B, D.
+    // Page C's content changes: pages whose closure reaches C are A and B
+    // (transitive includes), D (direct include), and C ITSELF (a page root
+    // contains its own card — its payload changes with the write; the
+    // MediaWiki invalidation set includes the edited page).
     const affected = await affectedPagesForCardWrite({ corpus: corpus, side, cardId: ids["Page C"] });
     const affectedIds = affected.map((p) => p.pageId).sort((a, b) => a - b);
-    expect(affectedIds).toEqual([ids["Page A"], ids["Page B"], ids["Page D"]].sort((a, b) => a - b));
+    expect(affectedIds).toEqual(
+      [ids["Page A"], ids["Page B"], ids["Page C"], ids["Page D"]].sort((a, b) => a - b),
+    );
+    // Unrelated's closure reaches nothing but its own card + the type card
+    const unaffected = await affectedPagesForCardWrite({ corpus: corpus, side, cardId: ids["Unrelated"] });
+    expect(unaffected.map((p) => p.pageId)).toEqual([ids["Unrelated"]]);
   });
 
   it("recompute reads ONLY the corpus scope — never the derived store's data (A2 canary)", async () => {
@@ -115,7 +136,7 @@ describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
     ]);
     await recomputeClosuresForPages({
       corpus,
-      side: loggingSide,
+      side: asWritableDerivedStore(loggingSide),
       pageIds: [ids["Page B"]],
       pageNames: new Map([[ids["Page B"], "Page B"]]),
     });
@@ -142,7 +163,7 @@ describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
       [ids["Page A"]],
     );
     expect(closureA.rows.map((r) => r.card_id).sort((a, b) => a - b)).toEqual(
-      [ids["Page A"], ids["Page B"], ids["Page C"]].sort((a, b) => a - b),
+      [ids["Page A"], ids["Page B"], ids["Page C"], basicCardId].sort((a, b) => a - b),
     );
   });
 });

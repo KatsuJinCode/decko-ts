@@ -1,9 +1,11 @@
 // THE ACCEPTANCE PIN (one-trip implementation lane):
 // a test render that consumes the one-trip payload produces byte-identical
-// HTML to the current engine's output for the 5 probe pages, with the data
-// fetch costing EXACTLY ONE round trip and every further trip belonging to
-// a NAMED residue class (the mission's "TRIPS=1 (or the named residue
-// constant)").
+// HTML to the current engine's output for the 5 probe pages — modulo the
+// engine's own per-render SecureRandom slot ids, which two BASELINE renders
+// of the same page also never agree on (normalizeSlotIds) — with the data
+// fetch costing EXACTLY ONE round trip, the payload seating costing ZERO
+// driver queries, and every further trip belonging to a NAMED residue class
+// (the mission's "TRIPS=1 (or the named residue constant)").
 //
 // This is also the harmlessness proof the row-set pin leans on: any rows
 // the bundle carries beyond the render's read set are proven harmless by
@@ -37,6 +39,7 @@ import {
   bootEngine,
   captureBaselineRender,
   mirrorAvailable,
+  normalizeSlotIds,
 } from "./one-trip-fixture.js";
 
 const hasMirror = mirrorAvailable();
@@ -71,7 +74,7 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
   }, 180_000);
 
   afterAll(() => {
-    if (sidePath !== "") rmSync(sidePath, { force: true });
+    if (sidePath !== "") try { rmSync(sidePath, { force: true }); } catch { /* Windows file lock: the driver holds the handle; the OS temp dir cleans up */ };
     if (measurements.length > 0) {
       if (!existsSync(join(HARNESS_REPORT_PATH, ".."))) mkdirSync(join(HARNESS_REPORT_PATH, ".."), { recursive: true });
       writeFileSync(HARNESS_REPORT_PATH, JSON.stringify({ pages: measurements }, null, 2));
@@ -92,15 +95,20 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
       const bundle = await fetchPageBundle(capture, name);
       const dataFetchTrips = capture.trips - tripsBeforeFetch;
       await seatPageBundle(fetcher, render, bundle);
+      const seatingTrips = capture.trips - tripsBeforeFetch - dataFetchTrips;
       const tripsBeforeRender = capture.trips;
       const html = await render.render(name, "open", {});
       const residueTrips = capture.trips - tripsBeforeRender;
       await detachDerivedStore(capture);
 
-      // THE PIN: byte-identical HTML
-      expect(html).toBe(baseline.html);
+      // THE PIN: byte-identical HTML modulo the engine's own per-render
+      // SecureRandom slot ids (normalizeSlotIds — the same normalization two
+      // BASELINE renders of one page need to agree)
+      expect(normalizeSlotIds(html)).toBe(normalizeSlotIds(baseline.html));
       // THE PIN: the data fetch is exactly ONE round trip
       expect(dataFetchTrips).toBe(1);
+      // THE PIN: the payload never costs driver queries to seat
+      expect(seatingTrips).toBe(0);
 
       // every post-payload trip belongs to a named residue class
       const { classifyResidueStatement } = await import("../../../src/card/one-trip/render-plan.js");
@@ -108,6 +116,8 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
       const postPayload = capture.statements.slice(stmtsBeforeFetch + 1);
       const unclassified: string[] = [];
       for (const stmt of postPayload) {
+        // ATTACH/DETACH are the harness's own connection setup, not page work
+        if (/^(ATTACH|DETACH) DATABASE/i.test(stmt.sql)) continue;
         const cls = classifyResidueStatement(stmt.sql);
         if (cls === undefined) unclassified.push(stmt.sql.slice(0, 120));
         residueClasses[cls ?? "UNCLASSIFIED"] = (residueClasses[cls ?? "UNCLASSIFIED"] ?? 0) + 1;
@@ -125,7 +135,7 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
         dataFetchTrips,
         residueTrips,
         htmlBytes: html.length,
-        byteIdentical: html === baseline.html,
+        byteIdentical: normalizeSlotIds(html) === normalizeSlotIds(baseline.html),
         residueClasses,
       });
     });

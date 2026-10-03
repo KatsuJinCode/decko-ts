@@ -95,12 +95,35 @@ export interface EngineBoot {
 
 /** Boot the SAME object graph the probes use, with the codename registry
  *  loaded and the name environment installed (DeckoName.parse needs it for
- *  ":codename" marks). */
+ *  ":codename" marks).
+ *
+ *  maxTemporaryCacheKeys is raised for the one-trip arms (default 200_000):
+ *  the Ruby-mirrored 10k-key Temporary reset wipes primed lexicon entries
+ *  MID-SEATING at corpus scale (measured: the 3,526-member Eagle payload's
+ *  composition re-issued 1,668 id-to-name queries purely because the reset
+ *  evicted entries the batch itself had written moments earlier). The cap
+ *  is an engine boot parameter (FetchEngine's own option), not an engine
+ *  change; a production one-trip deployment boots with the raised cap the
+ *  same way. The baseline arms use the same boot so both sides run
+ *  identical engine configuration. */
 export async function bootEngine(driver: SQLDatabaseDriver): Promise<EngineBoot> {
-  const fetcher = new FetchEngine(driver);
+  const fetcher = new FetchEngine(driver, { maxTemporaryCacheKeys: 200_000 });
   await fetcher.codenames.ensureLoaded();
   fetcher.installNameEnvironment();
   return { fetcher, render: new RenderEngine(fetcher) };
+}
+
+/** Normalize the per-render session randomness the engine itself emits:
+ *  data-slot-id is SecureRandom.hex(10) per rendered slot (slot-html.ts,
+ *  wrap.rb wrap_data parity) — two renders of the SAME page by the SAME
+ *  engine state never agree on it (measured). Byte-identity is asserted
+ *  modulo these ids: every data-slot-id value is replaced with a fixed
+ *  token on both sides before comparison. */
+export function normalizeSlotIds(html: string): string {
+  return html.replace(/data-slot-id=&quot;[0-9a-f]{20}&quot;/g, "data-slot-id=SLOTID").replace(
+    /data-slot-id="[0-9a-f]{20}"/g,
+    'data-slot-id="SLOTID"',
+  );
 }
 
 export interface BaselineRender {
@@ -113,7 +136,17 @@ export interface BaselineRender {
 }
 
 /** Render one page through a fresh engine on a capturing driver: the
- *  current engine's output and its round-trip cost, measured together. */
+ *  current engine's output and its round-trip cost, measured together.
+ *
+ *  touchedCardIds EXCLUDES the two ENGINE-BOOT folds (named residue classes
+ *  in render-plan.ts, excluded here with the same justification): the
+ *  codename registry load and the dangling-side canonical map. Both are
+ *  engine-LIFETIME state (memoized per engine, computed once regardless of
+ *  page), both return card-shaped rows in bulk, and no page payload can or
+ *  should carry them — they are not page dependencies. Every OTHER
+ *  statement's card rows count: content includes, rule candidates, search
+ *  results, shell reads — the closure must cover all of them or name the
+ *  gap. */
 export async function captureBaselineRender(
   mirrorPath: string,
   name: string,
@@ -122,11 +155,58 @@ export async function captureBaselineRender(
   const { render } = await bootEngine(capture);
   const html = await render.render(name, "open", {});
   const touched = new Set<number>();
-  for (const stmt of capture.statements) for (const id of stmt.cardIds) touched.add(id);
+  for (const stmt of capture.statements) {
+    if (isEngineBootStatement(stmt.sql)) continue;
+    for (const id of stmt.cardIds) touched.add(id);
+  }
   return {
     html,
     trips: capture.trips,
     statements: capture.statements,
     touchedCardIds: [...touched].sort((a, b) => a - b),
   };
+}
+
+/** The engine-boot fold statements (see captureBaselineRender). Two codename
+ *  loaders exist in the engine (the registry's and the admin runtime's) and
+ *  both are boot state, not page data; the dangling-side canonical map is
+ *  engine-lifetime memoized. The same classes live in render-plan.ts's
+ *  residue registry. */
+export function isEngineBootStatement(sql: string): boolean {
+  return (
+    /codename IS NOT NULL/i.test(sql) ||
+    /SELECT c\.\* FROM cards c WHERE c\.trash = 0 AND c\.left_id IS NOT NULL AND \(NOT EXISTS/i.test(sql)
+  );
+}
+
+/** Rule-lattice probe heuristic: a key parameter shaped like a rule
+ *  candidate ("*all+*layout", "rich_text+*type+*content") or a setting
+ *  card. Distinguishes the rule lattice's name probes from content-include
+ *  fetches (whose keys never carry the star-mark shape) — the lattice is
+ *  the named residue class the record-and-replay plan covers, not a
+ *  closure gap. */
+export function isRuleLatticeKey(key: unknown): boolean {
+  return typeof key === "string" && (key.startsWith("*") || key.includes("+*"));
+}
+
+/** The NAMED residue classes a closure-missing card may be fetched through
+ *  without failing the superset pin. JUSTIFICATION RULE (mechanical): a
+ *  missing id is justified when NONE of its fetching statements is a
+ *  content-include fetch — i.e. a key read or key IN-list carrying a
+ *  NON-rule-shaped key. Content includes always arrive through key reads
+ *  (retrieve.ts's simple-name path) or key IN-lists; if no such statement
+ *  with a content key touched the id, it entered the read set only through
+ *  the rule lattice / boot folds / id-follow-on machinery — the named
+ *  residue the record-and-replay plan covers. (Known limitation, accepted:
+ *  an id-mark content include — {{~861}} — fetches by id and would be
+ *  misclassified as residue; the byte-identity pin catches any resulting
+ *  correctness issue and the harness report makes the composition
+ *  visible.) */
+export function isContentIncludeFetch(sql: string, params: unknown[]): boolean {
+  const keyRead =
+    /SELECT \* FROM cards WHERE key = \?( AND trash = 0)?( LIMIT 1)?/i.test(sql) ||
+    /key( COLLATE NOCASE)? IN \(/i.test(sql);
+  if (!keyRead) return false;
+  if (!Array.isArray(params)) return false;
+  return params.some((p) => !isRuleLatticeKey(p));
 }
