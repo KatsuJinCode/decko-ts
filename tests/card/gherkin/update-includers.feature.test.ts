@@ -153,11 +153,12 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
 
   // ---------------------------------------------------------------------
   // Scenario: Templated cards should only send one email when added or
-  // updated — NOT-PORTABLE-TODAY (multi-action act mail dedupe), boundary
-  // pinned
+  // updated — the multi-action act machinery (one act per submission,
+  // subcards.rb:1-16, one FollowerStash per act) is the capability under
+  // test
   // ---------------------------------------------------------------------
 
-  it("NOT-PORTABLE-TODAY (multi-action act mail dedupe) / templated card with plusses — the port mails once PER SAVE; Ruby mails once per ACT", async () => {
+  it("multi-action act mail dedupe — a templated card created/edited with plusses mails its watcher ONCE per act, naming the MAIN card", async () => {
     const bg = await givenBackground();
     nw = bg.nw;
 
@@ -166,34 +167,52 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // the Book+*type+*structure template; the port carries the template
     // body as the card's own content so the *nests walk has the same
     // inclusion references to read.
-    await nw.engine.createCard({
+    // upstream: When I create Book card "Bros Krmzv" with plusses
+    // |author|illustrator| |Dostoyevsky|Manet| — ONE form submission = ONE
+    // act (card/lib/card/subcards.rb:1-16): the main card's action plus
+    // both plusses' actions.
+    const bros = await nw.engine.createCard({
       name: "Bros Krmzv",
       typeCode: "book",
       content: "{{+author}} {{+illustrator}}",
+      subcards: {
+        "+author": { content: "Dostoyevsky" },
+        "+illustrator": { content: "Manet" },
+      },
     });
-    // upstream: When I create Book card "Bros Krmzv" with plusses
-    // |author|illustrator| ... Then Joe Admin should be notified that
-    // 'Joe User created "Bros Krmzv"' (ONCE) — Ruby's create is ONE act
-    // with several actions (the main card + its plusses) and
-    // FollowerStash dedupes the act's followers across all its actions
-    // (follower_stash.rb:22-29 + notify.rb:38-46 act_followers), so Joe
-    // Admin gets exactly one mail.
-    //
-    // MISSING CAPABILITY: the port's save path dispatches the follow-notify
-    // hook per ENGINE SAVE (one act per call — card-action-engine.ts
-    // dispatchSavePathIntegrations), and a plus-card create is its own
-    // save; there is no multi-action act machinery to stash across. The
-    // port therefore sends one mail PER SAVE for the same business event:
-    // the main card's own create (direct walk — Joe Admin watches
-    // Book+*type) plus one indirect-walk mail per plus save.
-    await nw.engine.createCard({ name: "Bros Krmzv+author", content: "Dostoyevsky" });
-    await nw.engine.createCard({ name: "Bros Krmzv+illustrator", content: "Manet" });
+    // the plusses exist (the submission created them — the business fact
+    // the upstream editor's filled fields assert).
+    expect(await nw.world.storage.fetcher.fetchByName("Bros Krmzv+author")).toBeDefined();
+    expect(await nw.world.storage.fetcher.fetchByName("Bros Krmzv+illustrator")).toBeDefined();
+    // Then Joe Admin should be notified that 'Joe User created
+    // "Bros Krmzv"' (ONCE) — Ruby's act is ONE act with several actions
+    // and FollowerStash dedupes the act's followers across all its
+    // actions (follower_stash.rb:10-28 + notify.rb:38-46/49-55), so Joe
+    // Admin gets exactly one mail, about the ACT (act.card = Bros Krmzv —
+    // account.rb:18; main_action = the act card's own create, act.rb).
+    // The direct walk (Bros Krmzv via Book+*type) and the indirect walks
+    // (each plus's field walk through Bros Krmzv's watchers) stash the
+    // same follower ONCE.
     thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv"`);
-    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv+author"`);
-    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Bros Krmzv+illustrator"`);
-    // The boundary, pinned so the act-machinery's arrival must update
-    // this file: three saves, three mails (Ruby: one act, one mail).
-    expect(nw.transport.count() - bg.baseline).toBe(3);
+    const afterCreate = nw.transport.count();
+    expect(afterCreate - bg.baseline).toBe(1); // one act, one mail
+
+    // upstream: When I edit "Bros Krmzv" with plusses |Author|illustrator|
+    // |Rumi|Monet| (the capital A is key-equal — cardname.rb:78-86) /
+    // Then Joe Admin should be notified that 'Joe User updated
+    // "Bros Krmzv"' (ONCE) — again one act: the plusses' updates ride the
+    // main card's submission; the main card's own content is unchanged,
+    // so the act's main_action falls to the act's first action (act.rb)
+    // and the verb renders "updated" (base_views.rb:44-46).
+    await nw.engine.updateCard({
+      cardId: bros.cardId,
+      subcards: {
+        "+Author": { content: "Rumi" },
+        "+illustrator": { content: "Monet" },
+      },
+    });
+    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User updated "Bros Krmzv"`);
+    expect(nw.transport.count() - afterCreate).toBe(1); // one act, one mail
   });
 
   // ---------------------------------------------------------------------
