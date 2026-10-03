@@ -41,7 +41,10 @@ import {
   templateReferenceNames,
   defaultRuleUniverseStatement,
   structureRuleTypesFromResults,
+  templateTypeNameStatement,
+  templateTypeNamesFromResults,
   DEFAULT_SETTING_NAME,
+  STRUCTURE_SETTING_NAME,
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
 import {
@@ -779,10 +782,18 @@ export class RenderEngine implements RenderEngineLike {
         ...(structureCold
           ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
           : []),
+        // The template TYPE-NAME read (both universes' rule-card types
+        // joined to their type cards' names — newCardDefaultType's
+        // dup_structure leg answers a *structure rule card's own type and
+        // must resolve its NAME synchronously; an IN-list would need the
+        // universe rows first, so this is a self-contained JOIN). Rides the
+        // cold batch: +1 statement, +0 round trips (the p20-email
+        // prelude-prime precedent).
+        ...(structureCold ? [templateTypeNameStatement()] : []),
         // The head read-set, appended after every slot the parsers above
         // index into, so the head's index is stable at
         // permissionStatements.length + (ruleTypesCold ? 1 : 0)
-        //                             + (structureCold ? 2 : 0).
+        //                             + (structureCold ? 3 : 0).
         ...(headReadsCold ? [headViewReadStatement()] : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
@@ -811,13 +822,24 @@ export class RenderEngine implements RenderEngineLike {
         foldedResults,
         permissionStatements.length + (ruleTypesCold ? 1 : 0),
       );
+      // The template type-name rows, consumed from the same batch (only
+      // pushed when structureCold — same condition as the slot below).
+      if (structureCold && this.defaultTypeNameById === undefined) {
+        const nameIndex =
+          permissionStatements.length +
+          (ruleTypesCold ? 1 : 0) +
+          2;
+        this.defaultTypeNameById = templateTypeNamesFromResults(
+          foldedResults?.[nameIndex],
+        );
+      }
       // The head read-set's rows, consumed from the same batch. Index is
       // everything the three parsers above occupy, in order.
       if (headReadsCold) {
         const headIndex =
           permissionStatements.length +
           (ruleTypesCold ? 1 : 0) +
-          (structureCold ? 2 : 0);
+          (structureCold ? 3 : 0);
         await this.cacheHeadViewReads(foldedResults?.[headIndex]);
         this.headReadsWarmed = true;
       }
@@ -1694,12 +1716,18 @@ export class RenderEngine implements RenderEngineLike {
     let defaultResult = folded !== undefined ? folded[structureStatementIndex + 1] : undefined;
     if (result === undefined || defaultResult === undefined) {
       // No folded batch to read (defensive: a warm-closure first render).
+      // The template type-name statement rides the same batch (+1 statement,
+      // +0 round trips — same shape as the folded path).
       const batch = await this.fetcher.driver.batch([
         structureRuleUniverseStatement(),
         defaultRuleUniverseStatement(),
+        templateTypeNameStatement(),
       ]);
       result = batch[0];
       defaultResult = batch[1];
+      if (this.defaultTypeNameById === undefined) {
+        this.defaultTypeNameById = templateTypeNamesFromResults(batch[2]);
+      }
     }
     this.structureContents = structureUniverseFromResults(result);
     this.structureRuleTypes = structureRuleTypesFromResults(result);
@@ -1798,9 +1826,16 @@ export class RenderEngine implements RenderEngineLike {
   private async preloadDefaultTypeNames(): Promise<void> {
     if (this.defaultTypeNameById !== undefined) return;
     const map = new Map<number, string>();
-    const universe = this.defaultRuleTypes;
-    if (universe !== undefined && universe.size > 0) {
-      const ids = [...new Set(universe.values())];
+    // The *default universe's rule-card types AND the *structure universe's
+    // (newCardDefaultType's dup_structure leg answers a *structure rule
+    // card's own type — its name must resolve in the same sync map).
+    const ids = [
+      ...new Set([
+        ...(this.defaultRuleTypes?.values() ?? []),
+        ...(this.structureRuleTypes?.values() ?? []),
+      ]),
+    ];
+    if (ids.length > 0) {
       const placeholders = ids.map(() => "?").join(", ");
       const result = await this.fetcher.driver.query<CardsRow>(
         `SELECT id, name FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
@@ -1935,8 +1970,14 @@ export class RenderEngine implements RenderEngineLike {
     const universe = this.defaultRuleTypes;
     const names = this.defaultTypeNameById;
     if (universe === undefined || universe.size === 0 || names === undefined) return undefined;
+    // isNew: true — every caller resolves a Ruby Card.new (the nest-miss
+    // child here, the set_prototype prototype in prototypePatternInput), and
+    // new cards drop the first applied pattern (the *self candidate —
+    // lib/card/set/pattern/all.rb:26-28 `new_card? ? concrete_patterns[1..]
+    // : concrete_patterns`). Keeping *self in the walk let an anchor's
+    // X+*self+*default rule win where Ruby's prototype walk never sees it.
     const candidates = ruleNamesForCard(
-      { name, id: undefined, typeId: undefined, typeName: undefined },
+      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
       DEFAULT_SETTING_NAME,
     );
     for (const candidate of candidates) {
@@ -1955,7 +1996,51 @@ export class RenderEngine implements RenderEngineLike {
       // First existing candidate decides (rule/all.rb first-hit); a missing
       // type row degrades the whole resolution to untyped rather than
       // walking past the winning rule.
-      return typeName !== undefined ? { typeId, typeName } : undefined;
+      if (typeName === undefined) return undefined;
+      // dup_structure (templating.rb:61-65 + new_card_template:52-59): the
+      // template is NOT always the *default rule card — the *default-typed
+      // dup's *structure rule card, when it exists (content != "_self"),
+      // BECOMES the template, and ensure_type_id's type_id_from_template
+      // then answers THE STRUCTURE RULE CARD's own type_id. Corpus proof
+      // (2026-10-02): RichText+Gallery10+*type plus right's prototype
+      // *dummy+Gallery10 — *default walk hits *all plus+*default (rule
+      // 17827, RichText-typed); the RichText-typed dup carries
+      // RichText+Gallery10+*type plus right+*structure (rule 10525,
+      // HTML-typed) -> the prototype types HTML -> the *create walk hits
+      // HTML+*type+*create (rule 6553, "Shark") — the oracle's
+      // [Shark] create/delete rows for that set page.
+      const structureTypes = this.structureRuleTypes;
+      const structureContents = this.structureContents;
+      if (structureTypes !== undefined && structureTypes.size > 0) {
+        const structureCandidates = ruleNamesForCard(
+          { name, id: undefined, typeId, typeName, isNew: true },
+          STRUCTURE_SETTING_NAME,
+        );
+        for (const structureCandidate of structureCandidates) {
+          let structureKey: string;
+          try {
+            structureKey = DeckoName.parse(structureCandidate).key;
+          } catch (err) {
+            if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+              continue; // unresolved mark: no *structure rule candidate
+            }
+            throw err;
+          }
+          const structureTypeId = structureTypes.get(structureKey);
+          if (structureTypeId === undefined) continue;
+          // structure_rule_card nils a "_self" winner (templating.rb:44-48)
+          // — the walk does not continue past it.
+          const structureContent = structureContents?.get(structureKey);
+          if (structureContent !== undefined && structureContent !== null && structureContent.trim() === "_self") {
+            return { typeId, typeName };
+          }
+          const structureTypeName = names.get(structureTypeId);
+          return structureTypeName !== undefined
+            ? { typeId: structureTypeId, typeName: structureTypeName }
+            : { typeId, typeName };
+        }
+      }
+      return { typeId, typeName };
     }
     return undefined;
   }
@@ -3492,6 +3577,19 @@ export class RenderEngine implements RenderEngineLike {
     return this.pointerItemVerdicts.get(`${hostKey}|${key}`);
   }
 
+  /** RenderEngineLike#seatPhantomReadVerdict: publish ONE phantom item's
+   *  host-scoped read verdict under the bare item key (the deck-global
+   *  map the view gate reads). Called from views.ts
+   *  renderUnknownPointerListItem right before the phantom's nest renders,
+   *  so the inner bar views see THIS host's fold rather than a foreign
+   *  host's earlier global seeding of the same item name (the
+   *  Metashamanic+Core Project mytho-psychology poisoning: a foreign
+   *  untyped BasicCs fold seated denied; this host's Project-typed fold
+   *  reads allowed — the oracle renders the item bar). */
+  seatPhantomReadVerdict(key: string, denied: boolean): void {
+    this.deniedVerdictsByKey.set(key, denied);
+  }
+
   /**
    * Precompute the read + create verdicts for every UNKNOWN pointer/list
    * item line of one host (the fetch misses enrichPointerListItems found).
@@ -3580,10 +3678,23 @@ export class RenderEngine implements RenderEngineLike {
       const read = await canReadByRuleLookup(this.fetcher, input, this.readPermission);
       const create = await taskVerdictForCard(this.fetcher, input, "create", taskState);
       this.pointerItemVerdicts.set(verdictKey, { read: read === true, create });
-      // The deck-global verdict maps keep the FIRST computation per item —
-      // the exact seeding the per-item-only verdict key produced before the
-      // per-host key (their consumers never keyed by host).
-      if (!this.pointerItemGlobalVerdictDone.has(key)) {
+      // The deck-global verdict maps keep the FIRST HOST-AGNOSTIC computation
+      // per item — the template-fallback walk (hostItemType undefined), which
+      // is Ruby's bare Card.new ensure_type_id verdict for the name. A
+      // HOST-TYPED computation is per-context in Ruby (each nest constructs
+      // its own phantom, Nest::Fetch#new_card) and must neither poison nor
+      // consume the global slot: Metashamanic+Core Project's unknown list
+      // item mytho-psychology resolved Project-typed (readable via *all+*read
+      // "Anyone") while an earlier render in the same boot seated the global
+      // map from a different host's computation (denied) — the nest's view
+      // gate then read the poisoned entry and emitted two quiet denial spans
+      // where the oracle renders the item bar (recapture-raw-shard-000000,
+      // Metashamanic+Core Project :open, -1605 bytes). Only the untyped walk
+      // may claim pointerItemGlobalVerdictDone, so an untyped computation
+      // that arrives later still seeds the global maps (the RVW p21b case:
+      // its nil-item-type BasicCs denial must land no matter which
+      // host-typed fold ran first).
+      if (hostItemType === undefined && !this.pointerItemGlobalVerdictDone.has(key)) {
         this.pointerItemGlobalVerdictDone.add(key);
         this.deniedVerdictsByKey.set(key, read === false);
         const existing = this.taskVerdicts.get(key) ?? { update: undefined, create: undefined, delete: undefined };
@@ -5164,7 +5275,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /** the PROTOTYPE pattern input for a set card — the port of
-   *  set_prototype (set.rb:87-92 `Card.fetch prototype_args(anchor_name),
+   *  set_prototype (set.rb:90-93 `Card.fetch prototype_args(anchor_name),
    *  new: prototype_args`) consumed by the existing-rule resolution above
    *  (editor.rb:126-130 existing_rule_from_prototype). Per pattern:
    *  - SELF: the anchor REAL card (prototype_args {name: anchor}) — its
@@ -5174,9 +5285,14 @@ export class RenderEngine implements RenderEngineLike {
    *  - RIGHT: prototype_args {name: "*dummy+anchor"} — a new compound
    *    whose type rides the template chain (newCardDefaultType).
    *  - TYPE_PLUS_RIGHT: prototype_args {name: "*dummy+right"} typed by
-   *    the set's anchor type card.
-   *  - ALL/RSTAR/ALL_PLUS: nameless/untyped — only the ALL candidate
-   *    applies.
+   *    the same template chain (the supercard feeds only the TPR anchor's
+   *    left_type).
+   *  - ALL: nameless/untyped — only the ALL candidate applies.
+   *  - ALL_PLUS/STAR/RSTAR/RULE: their prototype_args names ("+",
+   *    "*dummy", "*dummy+*dummy", "*all+*create"), typed by the same
+   *    template chain; star's simple *dummy skips compound-only *all plus
+   *    in the *default walk → *all+*default's type; rstar's compound
+   *    *dummy+*dummy lands on *all plus+*default.
    *  The undefined input (unknown pattern) skips the resolution; the
    *  renderer treats it as no-existing-rule (documented remainder). */
   private async prototypePatternInput(setCard: RenderCard): Promise<PatternCardInput | undefined> {
@@ -5205,20 +5321,55 @@ export class RenderEngine implements RenderEngineLike {
     };
     switch (patternCode) {
       case "all":
-      case "rstar":
+        // 01_all.rb:9-11 prototype_args: {} — a nameless, typeless new card;
+        // only the *all candidate applies.
+        return { name: DeckoName.parse(""), id: undefined, typeId: undefined, typeName: undefined, isNew: true };
       case "all_plus":
-      // 2026-09-29 (view-fail class V1): the *star set card
-      // (codename "star" — the RSTAR family's set card in the oracle deck)
-      // joins the nameless-prototype arm. Oracle-pinned by the *star set
-      // page's 20 rule rows (shard 3, *star :content/:open): the 12 rows
-      // whose prototype walk finds an existing rule all resolve at the
-      // *all+<setting> level (*all+*default/-*create/-*read/-*update/
-      // -*delete/-*captcha/-*head/-*layout/-*style/-*script/-*guide/
-      // -*follow fields), the 8 hidden rows (*autoname/*help/*input type/
-      // *on create/*on update/*on delete/*thanks/*follow) have no stored
-      // rule at ANY candidate level — exactly the nameless walk's reach.
-      case "star":
-        return { name: DeckoName.parse(""), id: undefined, typeId: undefined, isNew: true };
+      case "rstar":
+      case "rule":
+      case "star": {
+        // Prototype_args per pattern file (card/mod/core/set_pattern/):
+        // 02_all_plus.rb:11-13 {name: "+"}; 05_rstar.rb:11-13
+        // {name: "*dummy+*dummy"}; 06_rule.rb:11-13 {name: "*all+*create"};
+        // 04_star.rb:9-11 {name: "*dummy"}. The prior arm collapsed
+        // star/rstar/all_plus into the NAMELESS prototype (only *all+X
+        // candidates) — that shape contradicts both the Ruby walk and the
+        // byte oracle: star's prototype *dummy is SIMPLE, so the *default
+        // template walk skips compound-only *all plus (02_all_plus.rb:1
+        // `@@options = { compound_only: true }`) and lands on *all+*default
+        // (rule 28, BasicCs-typed) → the *read walk then hits
+        // BasicCs+*type+*read (rule 22283, "Anyone Signed In") — the exact
+        // *star read-row oracle bytes (shard 3, [Anyone_Signed_In] href)
+        // the nameless walk missed with *all+*read "Anyone". rstar's
+        // compound *dummy+*dummy lands on *all plus+*default (rule 17827,
+        // RichText-typed) → the *default walk hits RichText+*type+*default
+        // (rule 21450) — the "RichText : <em>empty</em>" row.
+        // (Supersedes the bar-slots lane note: the *star rows do NOT all
+        // resolve at the *all+<setting> level — the read row resolves at
+        // BasicCs+*type+*read through the typed prototype.)
+        const protoName =
+          patternCode === "all_plus"
+            ? "+"
+            : patternCode === "rstar"
+              ? "*dummy+*dummy"
+              : patternCode === "rule"
+                ? "*all+*create"
+                : "*dummy";
+        const parsed = DeckoName.parse(protoName);
+        // The prototype's TYPE rides the new-card template chain
+        // (set/all/type.rb:58-80 type_id_from_template → mod/content
+        // set/all/templating.rb:52-59 new_card_template: the *default rule
+        // walk on the typeless prototype; no *structure rule intervenes on
+        // any relevant set — checked 2026-10-02).
+        const defaultType = this.newCardDefaultType(parsed);
+        return {
+          name: parsed,
+          id: undefined,
+          typeId: defaultType?.typeId,
+          typeName: defaultType?.typeName,
+          isNew: true,
+        };
+      }
       case "self": {
         const real = await fetchAnchor();
         if (real !== undefined && real.id !== undefined) {
@@ -5244,10 +5395,23 @@ export class RenderEngine implements RenderEngineLike {
       case "right": {
         if (anchorName === undefined) return undefined;
         const parsed = DeckoName.parse(`*dummy+${anchorName}`);
+        // 07_right.rb:18-20 {name: "*dummy+anchor"}; the type rides the
+        // template chain (type.rb:58-80): Recommendations+*right resolves
+        // News Item (rule 11377's own type), putting the TYPE candidate
+        // News Item+*type+*create (rule 14192, "Administrator\r\nTeam")
+        // ahead of *all plus+*create — the exact winner the
+        // Recommendations+*right oracle pins (pointer-list [Administrator,
+        // Team]). typeName MUST ride along: the type pattern's anchor name
+        // reads it (03_type.rb:15-17 anchor_name = card.type_name) — a
+        // typeId without typeName built the broken "+*type+*create"
+        // candidate and the walk skipped the type candidate entirely (the
+        // pre-fix inherit-perm divergence).
+        const defaultType = this.newCardDefaultType(parsed);
         return {
           name: parsed,
           id: undefined,
-          typeId: this.newCardDefaultType(parsed)?.typeId,
+          typeId: defaultType?.typeId,
+          typeName: defaultType?.typeName,
           isNew: true,
         };
       }
@@ -5257,12 +5421,29 @@ export class RenderEngine implements RenderEngineLike {
         const typeName = leftName?.leftName?.s;
         if (rightPart === undefined || typeName === undefined) return undefined;
         const parsed = DeckoName.parse(`*dummy+${rightPart}`);
-        let typeCard = this.fetchRenderCard(typeName);
-        if (typeCard === undefined) {
-          const record = await this.fetcher.fetchByName(typeName);
-          if (record !== undefined) typeCard = await this.enrichAndStore(record);
-        }
-        return { name: parsed, id: undefined, typeId: typeCard?.id, isNew: true };
+        // 08_type_plus_right.rb:23-31 prototype_args {name: "+#{tag}",
+        // supercard: Card.new(name: "*dummy", type: anchor.trunk_name)} — the
+        // supercard feeds ONLY the TPR anchor's left_type (left_type(card) =
+        // superleft&.type_name, base.rb class_methods); the prototype's OWN
+        // type always runs ensure_type_id (type.rb:58-66
+        // type_id_from_code || type_id_from_template) — the *default template
+        // walk (newCardDefaultType), which for RichText+Recommendations
+        // resolves News Item (rule 11377) and puts the TYPE candidate
+        // News Item+*type+*create (rule 14192, [Administrator, Team]) ahead
+        // of *all plus+*create — the oracle's create-row bytes for BOTH the
+        // Recommendations+*right and RichText+Recommendations+*type plus
+        // right set pages. The prior anchor-type stamp (RichText) built the
+        // wrong prototype type and the walk fell through to *all plus+*create
+        // ("_left" → inherit-perm).
+        const defaultType = this.newCardDefaultType(parsed);
+        return {
+          name: parsed,
+          id: undefined,
+          typeId: defaultType?.typeId,
+          typeName: defaultType?.typeName,
+          leftTypeName: typeName,
+          isNew: true,
+        };
       }
       default:
         return undefined;

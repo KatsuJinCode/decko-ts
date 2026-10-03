@@ -282,7 +282,16 @@ describe("RenderEngine structured content", () => {
       // root's type codename = 'email_template', so non-email decks get
       // zero rows and byte-identical renders (the 20 other tests here
       // pass unchanged) - the pushed statement itself is what counts.
-      expect(cold.statements).toBe(16);
+      // The rule-defaults lane (2026-10-02) added ONE folded prelude
+      // statement (16 -> 17, round trips still 6): the template TYPE-NAME
+      // read (templateTypeNameStatement — both universes' rule-card types
+      // joined to their type cards' names). newCardDefaultType's
+      // dup_structure leg (templating.rb:61-65) answers a *structure rule
+      // card's own type and must resolve its NAME synchronously; an
+      // IN-list would need the universe rows first, so the name read is a
+      // self-contained JOIN pushed with the universes. Zero render-byte
+      // change (this deck's other tests pass unchanged).
+      expect(cold.statements).toBe(17);
       expect(cold.roundTrips).toBe(6);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();

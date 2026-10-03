@@ -3102,7 +3102,16 @@ export interface RenderEngineLike {
     hostKey: string,
     key: string,
   ): { read: boolean; create: boolean | undefined } | undefined;
-  /** The phantom-item VIRTUAL resolution
+  /** Seat one phantom item's deck-global read verdict from the RENDERING
+   *  host's own fold (render.ts ensurePointerItemVerdicts computed it
+   *  host-scoped; this publishes it under the bare item key so the
+   *  phantom's inner views — bar_left/bar_menu, whose view gate re-reads
+   *  the global map — see THIS nest's verdict, not a foreign host's
+   *  earlier fold of the same item name). Depth-first rendering makes the
+   *  seat + inner-read a per-nest pair, matching Ruby's fresh phantom per
+   *  Nest::Fetch#new_card. */
+  seatPhantomReadVerdict?(key: string, denied: boolean): void;
+  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution
    *  (states.rb:65 known? = real? || virtual?; states.rb:44-50 virtual?
    *  = compound && structure.present?) for one UNKNOWN pointer/list item
    *  whose TYPE the seat knows (the host-resolved item type). Non-

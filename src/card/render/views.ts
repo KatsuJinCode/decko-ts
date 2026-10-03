@@ -3398,6 +3398,19 @@ function renderUnknownPointerListItem(
   // BasicCs verdict through the per-item-only key).
   const verdict = fmt.engine.pointerItemVerdict?.(fmt.card.key, phantom.key);
   const readable = verdict?.read === true;
+  // THIS host's fold governs the phantom's own view gate: the inner bar
+  // views of the nest below re-consult the deck-global deniedVerdictsByKey,
+  // which a foreign host's earlier fold may have seated differently (that
+  // map is keyed by bare item name — one slot for every context). Seat this
+  // nest's verdict before the phantom renders; depth-first rendering makes
+  // the seat + inner-read a per-nest pair (Ruby: the phantom is a fresh
+  // Card per Nest::Fetch#new_card and ok_to_read? runs on that card —
+  // Metashamanic+Core Project's Project-typed mytho-psychology item must
+  // render its bar even after a foreign BasicCs-typed fold of the same
+  // name seated denied).
+  if (verdict !== undefined) {
+    fmt.engine.seatPhantomReadVerdict?.(phantom.key, !readable);
+  }
   if ((itemView === "bar" || itemView === "closed") && !readable) {
     // The denied-arm SHAPE follows Ruby's
     // known?-ness split (states.rb:65 known? = real? || virtual?;

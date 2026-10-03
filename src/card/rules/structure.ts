@@ -154,6 +154,49 @@ export function defaultRuleUniverseStatement(): SQLStatement {
 }
 
 /**
+ * The TYPE-NAME read for both template universes in ONE self-contained
+ * statement: every *default/*structure rule card's type_id joined to its
+ * type card's name. Rides the SAME cold prelude batch as the two universe
+ * statements (rule-defaults lane, 2026-10-02): newCardDefaultType's
+ * dup_structure leg (templating.rb:61-65 — a *structure rule card can
+ * BECOME the new-card template, contributing ITS type_id) must answer the
+ * winning rule card's type NAME synchronously, so the names load with the
+ * universes instead of an IN-list that needs the universe rows first.
+ * Folded: +1 statement, +0 round trips (the p20-email prelude-prime
+ * precedent).
+ */
+export function templateTypeNameStatement(): SQLStatement {
+  return {
+    sql:
+      `SELECT DISTINCT c.type_id AS type_id, t.name AS name\n` +
+      `FROM cards c\n` +
+      `LEFT JOIN cards t ON t.id = c.type_id\n` +
+      `WHERE c.trash = 0\n` +
+      `  AND c.right_id IN (\n` +
+      `    SELECT id FROM cards\n` +
+      `    WHERE key IN ('*default', '*structure') AND trash = 0)\n` +
+      `  AND c.type_id IS NOT NULL`,
+    params: [],
+  };
+}
+
+/**
+ * Parse templateTypeNameStatement's rows into the id -> type-name map the
+ * sync template-type resolution reads (defaultTypeNameById).
+ */
+export function templateTypeNamesFromResults(
+  result: SQLQueryResult | undefined,
+): Map<number, string> {
+  const map = new Map<number, string>();
+  if (result === undefined) return map;
+  for (const row of result.rows as Array<{ type_id: number | null; name: string | null }>) {
+    if (row.type_id === null || row.name === null || row.name === "") continue;
+    map.set(row.type_id, row.name);
+  }
+  return map;
+}
+
+/**
  * Map rule-card composed key -> the rule card's db_content (null = the row's
  * NULL content; Ruby: default_content nil -> no structured content). Built
  * from the universe statement's batch result.

@@ -143,7 +143,12 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // rides the existing prelude round trip. Same re-pin the email port
     // itself applied to junction-depth-closure.test.ts (13/12 -> 15/14).
     const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 12 + Math.max(0, depth - 1);
+    // 2026-10-02 rule-defaults lane re-pin (12 -> 13 base): the template
+    // TYPE-NAME read (templateTypeNameStatement — newCardDefaultType's
+    // dup_structure leg must resolve a *structure rule card's type NAME
+    // synchronously) rides the SAME prelude batch — +1 statement at every
+    // depth, round trips untouched (the p20-email 10 -> 12 re-pin shape).
+    const expectedSts = (depth: number): number => 13 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
