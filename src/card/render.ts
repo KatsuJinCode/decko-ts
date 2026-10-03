@@ -27,6 +27,7 @@ import { getNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
 import { FetchEngine } from "./fetch.js";
+import { oneTripWantsPayload, seatOneTripPayloadForRender } from "./one-trip/render-gate.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
 import { resolvePointerItemName } from "./render/pointer-list.js";
@@ -742,6 +743,13 @@ export class RenderEngine implements RenderEngineLike {
    * for views outside the ported registry (the captured sentinel contract).
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
+    // One-trip payload (config-gated, default OFF - one-trip/render-gate.ts):
+    // when DECKO_ONE_TRIP=1 the page's working set is fetched in ONE round
+    // trip from the derived store and seated into the fetch cache before
+    // this path runs; every failure mode falls back to the unchanged path.
+    if (oneTripWantsPayload()) {
+      await seatOneTripPayloadForRender(cardName, this.fetcher);
+    }
     const record = await this.fetcher.fetchByName(cardName);
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
