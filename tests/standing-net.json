@@ -20,7 +20,8 @@
    "Flat-table format-scope census (tests/card/mod-loader/view-dispatch-flat-record-format-scope-census.test.ts), added 2026-10-01 so the net guards the flat-record format filter",
    "Select-editor suite (tests/card/mod-loader/card-mod-list-select-editor.test.ts), added 2026-10-02 so the net guards the editor port; its bytes are derived from the ActionView gems",
    "Surface-scoped decko.rootUrl pin (tests/card/render/deck-origin-surface-scoped-root-url.test.ts), added 2026-10-02: head_javascript.rb:35 card_url(\"\") is Env.origin + card_path(\"\") and Env.origin is per-render (env/serializable.rb:20-22), so the view lane carries / and the page lane carries the capture deck_origin. page.ts#scriptVariablesTag interpolated the DECK_ORIGIN constant; the bare-view-lane seat (render.ts:1385) reaches the same builder and emitted the page-surface bytes on cards 34754/34758 (+24). Listed so the net guards the surface split in both directions.",
-   "Delegated-render rescue scope (tests/card/render/date-delegated-core-rescue-scope-pins.test.ts), added 2026-10-02: every render! in Ruby is independently rescued (card/lib/card/format/render.rb:7-14, :96-100) and render_core from inside a view body is a NEW render! (format/method_delegation.rb:41-47), so a raising delegated core RETURNS the render-error span, the enclosing wrap still emits its card-slot div, and the error is labelled with the DELEGATED view (format/error.rb:80-86). The Date arm of the dispatch gate sat one level too high and skipped the view body, so a nested +Date lost its slot. Listed so the net guards the nested surface (wrapped, quiet, core-labelled) AND the focal surface (still re-raises) together."
+   "Delegated-render rescue scope (tests/card/render/date-delegated-core-rescue-scope-pins.test.ts), added 2026-10-02: every render! in Ruby is independently rescued (card/lib/card/format/render.rb:7-14, :96-100) and render_core from inside a view body is a NEW render! (format/method_delegation.rb:41-47), so a raising delegated core RETURNS the render-error span, the enclosing wrap still emits its card-slot div, and the error is labelled with the DELEGATED view (format/error.rb:80-86). The Date arm of the dispatch gate sat one level too high and skipped the view body, so a nested +Date lost its slot. Listed so the net guards the nested surface (wrapped, quiet, core-labelled) AND the focal surface (still re-raises) together.",
+   "Gherkin behavior layer (tests/card/gherkin/ — the three .feature.test.ts files: card-crud, names, views; 31 scenarios ported from the Ruby Gherkin features), added 2026-10-03: the layer sat outside every gate, so the enrichTemplateLinkSetJunctions render change (wave1, carried by fold-8) broke 2 structure.feature renders on lineages that carry it (CodenameNotFoundError: unknown codename: right) and only a manual lane run noticed. Fixed in the gherkin-gate lane by seeding the codename cards and installing the DB-backed name environment (gherkin-storage.ts). Listed so the net guards the layer in every standing-net run. Verified green at 5cd5646: 31/31."
   ],
   "droppedDeadFilters": [
    "tests/card/mod/card-mod-search-list-oracle-pinned.test.ts",
@@ -48,6 +49,9 @@
   "tests/card/auth/reset-flow-endpoint.test.ts",
   "tests/card/auth/signin-endpoint.test.ts",
   "tests/card/auth/signin.test.ts",
+  "tests/card/gherkin/card-crud.feature.test.ts",
+  "tests/card/gherkin/names.feature.test.ts",
+  "tests/card/gherkin/views.feature.test.ts",
   "tests/card/mod-loader/card-mod-account-fields.test.ts",
   "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts",
   "tests/card/mod-loader/card-mod-carrierwave.test.ts",
@@ -118,5 +122,5 @@
   "tests/server/write-routes-recaptcha-seat.test.ts",
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts"
  ],
- "manifestFileCount": 85
+ "manifestFileCount": 88
 }

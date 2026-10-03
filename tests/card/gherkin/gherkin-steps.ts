@@ -22,6 +22,7 @@
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { CardActionError, type Actor } from "../../../src/card/actions/index.js";
 import { DeckoName, type Nameish } from "../../../src/card/name.js";
+import { setNameEnvironment } from "../../../src/card/name/environment.js";
 import type { GherkinTestStorage } from "./gherkin-storage.js";
 import {
   JOE_ACTOR as DEFAULT_ACTOR,
@@ -67,6 +68,11 @@ export async function freshWorld(opts: { actor?: Actor; now?: () => Date } = {})
 
 export async function closeWorld(world: GherkinWorld): Promise<void> {
   world.storage.close();
+  // The installed name environment closes over this world's fetcher (and its
+  // now-closed driver) — uninstall it so no later parse in this file reads a
+  // dead registry (the leave-no-warm-env convention the action and render
+  // test streams follow).
+  setNameEnvironment(undefined);
 }
 
 // ---------------------------------------------------------------------------

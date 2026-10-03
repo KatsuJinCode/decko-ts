@@ -212,6 +212,32 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
       [ruleId],
     );
   }
+  // The codename cards the template link-set junction enrichment resolves
+  // (render.ts#enrichTemplateLinkSetJunctions -> render/views.ts
+  // #templateLinkSetNameFromParts): the non-type-set arm composes
+  // `<field>+*right` (:right, card-mod-edit template_nest.rb:29, corpus 260)
+  // and the type-set arm composes `<type>+<field>+*type plus right`
+  // (:type_plus_right, template_nest.rb:27, corpus 262). Both are setting
+  // cards every real decko deck seeds; without their codename rows the
+  // registry lookup raises CodenameNotFoundError and every render of a
+  // structure card fails (name.ts#fromCardish).
+  await seedCard(storage, { id: 308, name: "*right", codename: "right" });
+  await seedCard(storage, { id: 309, name: "*type plus right", codename: "type_plus_right" });
+  await installGherkinNameEnvironment(storage);
+}
+
+/** Install the fetcher's DB-backed name environment (the same bridge the
+ *  server installs — fetch.ts#installNameEnvironment) and prime the codename
+ *  registry from the rows just seeded. The DeckoName codename-tag resolution
+ *  the render layer performs (fieldName({codename})) reads this registry
+ *  synchronously; without it the port raises CodenameNotFoundError where Ruby
+ *  answers from its loaded codehash (codename.rb#load_codehash). Called at
+ *  the end of every seed function so the registry always reflects the deck
+ *  the scenario just built. */
+export async function installGherkinNameEnvironment(storage: GherkinTestStorage): Promise<void> {
+  storage.fetcher.codenames.resetCache();
+  storage.fetcher.installNameEnvironment();
+  await storage.fetcher.warmLexicon([]);
 }
 
 /** Seed an extended deck: standard + the Phrase and Pointer type cards
@@ -231,4 +257,5 @@ export async function seedExtendedDeck(storage: GherkinTestStorage): Promise<voi
     codename: "pointer",
     typeId: TYPE_IDS.cardtype,
   });
+  await installGherkinNameEnvironment(storage);
 }
