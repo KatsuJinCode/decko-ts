@@ -20,6 +20,14 @@ The tool has four stages and one report:
 4. **Compare** rendered bytes against captured bytes and classify every differing page as
    *engine gap* or *site content changed*, then report.
 
+And the cutover stage, BUILT 2026-10-03 (issue #1282 promise #6's automation half):
+
+5. **Shadow** — run a CANDIDATE engine in parallel behind a routing policy over a LOCAL MIRROR
+   deck (zero live-site requests) and report cutover readiness: total sampled, byte-identical,
+   every divergence classified ENGINE-GAP vs CONTENT-CHANGED vs UNATTRIBUTED, and an
+   N-consecutive-clean-runs gate verdict. See the shadow section of
+   `docs/migration-parity-tool-cli.md and the `shadow / `policy subcommands.
+
 ## 2. The one command a site owner runs (target shape)
 
 ```
@@ -130,6 +138,27 @@ produce receipts, but does not yet live on a merged branch — that is part of t
 - Framework spec this operationalizes: `deliverables/comparison-framework-manual.md` §2.3
   ("What an HTTP-capture mode needs") in the brandonDojoTech receipts repo — the tool is that
   section, built.
+
+### Stage 5 — SHADOW / cutover readiness (BUILT 2026-10-03; lane-shadow-routing-2026-10-03)
+
+The shadow-compare migration path's automation half: BASE and CANDIDATE engine checkouts render
+the sampled routes over one local mirror deck, in parallel, behind the routing policy, and the
+tool reports whether a cutover is safe. Wired from proven pieces — routing policy and
+deterministic percent sampling from `tools/shadow/shadow-router.mjs (the T5 live proxy), the
+render instrument from each checkout's own `vm-staging-server.mjs, fetches via the router's
+`forwardOnce — plus the documented noise normalization (Cloudflare per-response tokens +
+decko data-slot-id hashes, the `src/testing/diff.ts rule), two-sided classification against a
+sha-verified reference, and the N-consecutive-clean-runs cutover gate. Dry-run by default;
+nothing executes without `--execute; the mirror is never written (sha-bound writable copies per
+side); all traffic is 127.0.0.1 on ports the run spawned and tears down. Pinned by
+`tests/tools/shadow/migration-parity-shadow.test.mjs (52 tests). Honest limits: page-surface
+routes only in this build (view-lane shadowing is the named extension), and two-sided
+classification requires a reference — divergences without one classify UNATTRIBUTED and fail
+the gate. Honest gaps G1–G5 above are unchanged by this stage.
+
+Ruby-upstreamability: the comparison protocol is language-neutral — two renderers, one diff, one
+verdict — and is specified in `docs/migration-parity-tool-cli.md so a Ruby implementation can
+adopt it verbatim.
 
 ## 5. Honest gaps
 

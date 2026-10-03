@@ -16,9 +16,15 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  EXIT_OK,
+  EXIT_USAGE,
+  policyCheckMain,
+  shadowMain,
+  shadowUsage,
+} from "./migration-parity-shadow.mjs";
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const EXIT_OK = 0;
-const EXIT_USAGE = 2;
 
 // Proven lane tooling not yet productized (PLAN.md G2/G4): default locations where the
 // instruments live today, in the busy lane worktree that produced the 2026-10-02 oracle run.
@@ -29,9 +35,21 @@ const LANE_DRIVER_DEFAULT =
 
 function usage(exitCode = EXIT_OK) {
   const lines = [
-    "Usage: node bin/migration-parity-tool.mjs run --site <slug> --targets <targets.tsv>",
-    "                                             (--dump <file.sql> | --source <deck.sqlite>)",
-    "                                             --out <run-dir> [options]",
+    "Usage: node bin/migration-parity-tool.mjs <command> [options]",
+    "",
+    "Commands:",
+    "  run      One-command migration parity check: capture -> import -> render -> compare.",
+    "           We port your Decko site to TypeScript and tell you how many pages are not",
+    "           byte-identical. (see the run section below)",
+    "  shadow   Cutover-readiness shadow run: BASE vs CANDIDATE engine checkouts over a",
+    "           LOCAL MIRROR deck (zero live-site requests), routing-policy sampling,",
+    "           ENGINE-GAP vs CONTENT-CHANGED classification, N-consecutive-clean-runs gate.",
+    "           DRY-RUN BY DEFAULT (see --help below: node bin/migration-parity-tool.mjs shadow --help).",
+    "  policy   Validate a shadow routing-policy file: policy --check <file> [--sample-path /Name].",
+    "",
+    "run — one-command parity check",
+    "  node bin/migration-parity-tool.mjs run --site <slug> --targets <targets.tsv>",
+    "       (--dump <file.sql> | --source <deck.sqlite>) --out <run-dir> [options]",
     "",
     "Stages (all built from existing proven machinery; see deliverables/migration-parity-tool-PLAN.md):",
     "  1 CAPTURE  fetch the live site's public pages, byte-exact, sha256-bound (read-only GETs)",
@@ -243,8 +261,14 @@ const argv = process.argv.slice(2);
 if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
   process.exit(usage(0));
 }
+if (argv[0] === "shadow") {
+  process.exit(await shadowMain(argv.slice(1)));
+}
+if (argv[0] === "policy") {
+  process.exit(policyCheckMain(argv.slice(1)));
+}
 if (argv[0] !== "run") {
-  fail(`first argument must be "run" (got ${JSON.stringify(argv[0])}). See --help.`);
+  fail(`first argument must be "run", "shadow", or "policy" (got ${JSON.stringify(argv[0])}). See --help.`);
 }
 
 const opts = parseArgs(argv.slice(1));
