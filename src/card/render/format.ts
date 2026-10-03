@@ -1421,27 +1421,42 @@ export class RenderFormat {
         : undefined;
     const targetName = contextTarget !== undefined ? contextTarget.name.s : this.resolveNestName(nest.name);
     // Blank reference (`{{}}`): fetch.rb#retrieve_existing skips blank marks
-    // (`return unless mark.present?`) and fetch/results.rb#results then
-    // returns nil (`return if card.nil?`) - no card, not even an unknown
-    // one. The nil card takes view/permission.rb:36-44's unknown arm: the card
-    // is unknown, so alter_unknown returns format.view_for_unknown's
-    // `setting_view || :unknown` (format/error.rb:23) - so altered_view
-    // (view/permission.rb:19-23) never reaches #denial
-    // (view/permission.rb:46-50), and the nest renders Ruby's empty-string
-    // view result. The frozen
-    // oracle splits on this input: shard-000006 entry 10488 renders its
-    // `{{}}` as nothing on BOTH its content and open surfaces, while
-    // shard-000000 entry 636 carries a denial span on open/page. Ruby's own
-    // source trace sides with 10488 (the denial arm is unreachable for a
-    // nil-card nest). Measured on the frozen corpus: this form takes 10488
-    // to full byte equality and moves 636's open surface off its captured
-    // bytes by the one 76-byte region. 636 is the anomalous capture, not
-    // this branch — the former denial span here contradicted the
-    // source-traceable behavior to match that anomaly.
-    if (targetName.trim() === "") {
-      return ""; // view renders the nil-card nest's empty result; see above
-    }
-    const target = contextTarget ?? this.engine.fetchRenderCard(targetName);
+    // (`return unless mark.present?`), but the fetch still carries `new:`
+    // opts (format/nest/fetch.rb#new_card), so fetch/store.rb#new_for_cache
+    // instantiates `Card.new name: ""` and fetch/results.rb#new_result_card
+    // RETURNS it (`card if new_opts || card.known?` - new_opts present).
+    // The blank nest therefore renders a NEW-CARD SUBFORMAT exactly like any
+    // other fetch miss, and the outcome is decided by the VIEW's
+    // `unknown:` config (view/permission.rb:19-23 `alter_unknown || denial`):
+    //
+    //   - a view WITHOUT `unknown: true` substitutes :unknown
+    //     (format/error.rb:23 `setting_view || :unknown`), whose createable
+    //     gate renders "" for Anonymous - the plain-card shape (corpus
+    //     10488 `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open;
+    //     re-proven LIVE 2026-10-03: culturesmith.com/Steven_Goldin+Menu
+    //     ?view=content|open carry zero denial spans, stored content still
+    //     embeds the blank nest).
+    //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
+    //     DENIAL check still runs; the new card's read verdict denies
+    //     (its *default-template type is BasicCs, whose BasicCs+*type+*read
+    //     rule 22283 grants "Anyone Signed In" - Anonymous denied; the same
+    //     seated verdict the trashed *foot template_nest span pins,
+    //     render.ts#seatUnknownRefReadVerdicts population 1) and the nest
+    //     renders Ruby's 76-byte quiet denial span - the template-card shape
+    //     (corpus 636 `Menu+*right+*default`: is_template? wraps :core in
+    //     nest_mode :template, modal_nest_view substitutes :template_nest,
+    //     template_nest.rb:2 `unknown: true`). Re-proven LIVE 2026-10-03:
+    //     culturesmith.com/Menu+*right+*default?view=content renders the
+    //     span exactly at the blank-nest position.
+    //
+    // The earlier "blank renders the nil-card empty result" branch (and its
+    // "636 is the anomalous capture" reading) is superseded by that live
+    // truth: both shapes are one machinery, split by view unknown-capability,
+    // never by a blanket empty-string return.
+    const isBlankReference = targetName.trim() === "";
+    const target = isBlankReference
+      ? undefined // retrieve.rb:7 skips blank marks - straight to the new card
+      : (contextTarget ?? this.engine.fetchRenderCard(targetName));
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
@@ -3391,6 +3406,19 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // resolve must still render :template_nest (which answers from
   // voo.nest_syntax and needs no card) rather than :unknown.
   { view: "template_nest", config: true },
+  // card-mod-format set/all/html/menu.rb:29 `view :board_link, unknown: true
+  // do board_link end`. The captured `{{\_|board_link}}` nest (corpus 38250
+  // `Cardtype+*type+*guide`, content+open) targets a NEW card whose name
+  // `\_` keys to "" (cardname.rb:107-118 simple_key: `\` is outside
+  // OK4KEY_RE `\p{Word}\*`, so `\_` gubs to `_` and splits away) - an
+  // unknown card. Ruby's alter_unknown answers nil for this unknown-capable
+  // view (permission.rb:38-40) and the denial check still runs; the new
+  // card's read verdict denies (BasicCs+*type+*read = "Anyone Signed In",
+  // Anonymous denied) and the nest renders the 76-byte quiet denial span.
+  // LIVE-PROVEN 2026-10-03: culturesmith.com/Cardtype+*type+*guide
+  // ?view=content|open render the span at "click its ellipses icon (...)"
+  // in both the frozen capture and today's live bytes.
+  { view: "board_link", config: true },
   // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
   // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
   // field nests target virtual field cards (welcome email+*to et al.);

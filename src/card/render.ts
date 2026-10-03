@@ -890,6 +890,10 @@ export class RenderEngine implements RenderEngineLike {
     // unknown-card gate (format.ts renderView) reads these for views whose
     // `unknown:` config is true — Ruby's alter_unknown||denial arm.
     await this.seatUnknownRefReadVerdicts();
+    // Blank-key nest targets ({{}} and {{\_...}}) have no ref-miss row to
+    // walk (the ref walk skips empty keys)  their deck-constant verdict
+    // seats under the "" key (see the method doc).
+    await this.seatBlankKeyReadVerdict();
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -921,6 +925,9 @@ export class RenderEngine implements RenderEngineLike {
     // Pass-2 misses (refs surfaced by search-enriched cards) seat here too —
     // the universe + type names are loaded by now.
     await this.seatUnknownRefReadVerdicts();
+    // The blank-key seat is idempotent (has("") guard); re-called for the
+    // same reason the pass-2 ref seat is.
+    await this.seatBlankKeyReadVerdict();
     // Pass #2 populateTypeCodes: cards enriched during runSearch also
     // need their typeCode patched (their enrichAndStore ran AFTER the
     // batch fold, so peekNameForId returned the right codename — but
@@ -2430,6 +2437,48 @@ export class RenderEngine implements RenderEngineLike {
    *  plus right anchor, isRule for the *rule pattern), so candidate
    *  derivation is identical on both consumption sites. All fetches are
    *  cache hits (the prefetch walked the sides). */
+  /** The read verdict for BLANK-KEY new cards - the nest targets whose name
+   *  normalizes to the empty key: the blank reference `{{}}` (name "") and
+   *  backslash-escaped relative forms like `{{\_|board_link}}` (name `\_`;
+   *  cardname.rb:107-118 simple_key strips `\` outside OK4KEY_RE, so the
+   *  key is "" there too). Ruby's fetch hands BOTH the same shape: a NEW
+   *  card (retrieve.rb:7 skips the blank mark; `\_` retrieves by key ""
+   *  and finds no row - the deck has no empty-key card), typed by the
+   *  *default template chain (type.rb:78-80 type_id_from_template ->
+   *  BasicCs on this deck, rule 28), whose read walk lands on
+   *  BasicCs+*type+*read (rule 22283, "Anyone Signed In") - Anonymous is
+   *  read-DENIED. That verdict is deck-constant for every blank-key card
+   *  (the key carries no set anchors beyond the type/*all patterns), so it
+   *  seats ONCE under the "" key, where isDenied's byKey map read picks it
+   *  up for every fabricated blank-key card. The view decides whether the
+   *  denial SURFACES: `unknown:`-capable views (template_nest under
+   *  template mode; board_link) take the alter_unknown||denial arm and
+   *  render the 76-byte quiet span (corpus 636 + 38250, both re-proven
+   *  live 2026-10-03); plain views substitute :unknown whose createable
+   *  gate renders "" (corpus 10488, live re-proven same session).
+   *  Seated beside seatUnknownRefReadVerdicts (same prepare phase, same
+   *  newCardDefaultType input recipe), keyed "" - the walk itself skips
+   *  blank keys (its `parsed.key === ""` guard), so this is the one seat
+   *  that covers them. */
+  private async seatBlankKeyReadVerdict(): Promise<void> {
+    if (this.readPermission === undefined) return; // state not folded yet
+    if (this.deniedVerdictsByKey.has("")) return; // once per engine
+    const name = DeckoName.parse("");
+    const defaulted = this.newCardDefaultType(name);
+    const read = await canReadByRuleLookup(
+      this.fetcher,
+      {
+        name,
+        id: undefined,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      },
+      this.readPermission,
+    );
+    this.deniedVerdictsByKey.set("", read === false);
+  }
+
   private async structurePatternInputFor(card: RenderCard): Promise<PatternCardInput> {
     let leftTypeName: string | undefined;
     let leftRecord: CardRecord | undefined;
