@@ -72,6 +72,21 @@ const Database = (await import("better-sqlite3")).default;
 const { compareNormalized, normalizeSlotIds } = await import(
   pathToFileURL(path.join(REPO, "src", "testing", "diff.ts")).href
 );
+// The graded environment's cloud asset host: the live deployment serves
+// carrierwave attachments from DigitalOcean Spaces FR1 (live-check-71:
+// DO-host 34/34 pages, s3.amazonaws.com 0 occurrences), and the corpus
+// expectations carry the same prefix (the close-71 transform moves engine
+// config and expectations TOGETHER). Set BEFORE the first render, next to
+// the corpus boot; the corpus grading path is a DEPLOYMENT of the engine,
+// and this is its storage-config (fog asset_host) value. The engine default
+// (fog s3 form) stays pinned for every suite that does not set it
+// (tests/card/render/cloud-asset-host-deployment-config.test.ts).
+const { setDeploymentCloudAssetHost } = await import(
+  pathToFileURL(path.join(REPO, "src", "card", "render", "views.ts")).href
+);
+const DEPLOYMENT_CLOUD_ASSET_HOST =
+  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
 const targets = readFileSync(path.isAbsolute(TARGETS) ? TARGETS : path.join(REPO, TARGETS), "utf8")
   .split("\n")

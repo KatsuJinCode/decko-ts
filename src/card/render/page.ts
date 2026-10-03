@@ -56,6 +56,7 @@ import {
   stylesheetTagsBytes,
   type HeadReadSet,
 } from "./head-views.js";
+import { getDeploymentCloudAssetHost } from "./views.js";
 import type { RenderEngine } from "../render.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
@@ -849,10 +850,22 @@ const REMOTE_SCRIPT_TAGS = [
  *  assembled interior (header logo, image cores) must resolve to the
  *  absolute fog URL exactly like the head pieces; the bare view lane keeps
  *  the raw "(bucket)/..." bytes (different capture env — the view-lane
- *  contract). Runs LAST so nested view output is covered wholesale. */
+ *  contract). Runs LAST so nested view output is covered wholesale.
+ *  The prefix reads the process-wide deployment asset host when set (the
+ *  graded environment's setting, mirroring Ruby's process-wide storage
+ *  config); unset = the capture's fog CLOUD_URL_PREFIX, byte-identical to
+ *  the pre-config engine. Note the two constants' slash shapes: the fog
+ *  host carries a trailing slash (empty bucket -> the double slash the
+ *  oracle pins), the deployment host does not (a REAL bucket -> single
+ *  slash), and each is joined to "/files/" to reproduce exactly its own
+ *  pinned form. */
 function resolveCloudUrls(html: string): string {
+  const deployment = getDeploymentCloudAssetHost();
+  const prefix = deployment !== undefined
+    ? `${deployment}/files/`
+    : CLOUD_URL_PREFIX;
   return html.replace(
     /\([^()\s]+\)\/(\d+\/[^\s"'<>)]+\.[A-Za-z0-9]+)/g,
-    `${CLOUD_URL_PREFIX}$1`,
+    `${prefix}$1`,
   );
 }

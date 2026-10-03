@@ -2069,6 +2069,34 @@ export function imageSizeVariant(sizeOpt: unknown): string {
  *  absolute fog form (expected-v2 both lanes: *favicon, header logo). */
 export const FOG_CLOUD_URL_HOST = "http://s3.amazonaws.com/";
 
+/** The deployment's cloud asset host -- Ruby's process-wide carrierwave/fog
+ *  `asset_host` storage configuration (capture-dual-lane-page-and-view.rb:
+ *  328-336 models the capture's own bucket as Cardio.config.file_buckets
+ *  with `provider: "AWS", subdirectory: "files"`; a production deployment
+ *  points the same storage config at its CDN host). undefined = the fog
+ *  default FOG_CLOUD_URL_HOST above, the Ruby default the oracle bytes pin;
+ *  the appended "/files/" web path is unchanged either way.
+ *
+ *  The live deployment (culturesmith.com) migrated its asset host to
+ *  DigitalOcean Spaces FR1 (2026-10; live-check-71 lane: DO-host
+ *  occurrences 172/34 pages, s3.amazonaws.com occurrences 0 across all 34
+ *  bodies) -- so the graded environment (canvas runner + named-entry probe)
+ *  sets this via setDeploymentCloudAssetHost(SPACES_HOST) and the corpus
+ *  expectations carry the same prefix (the close-71 transform moves both
+ *  sides TOGETHER; revert = the transform's inverse manifest). The engine
+ *  DEFAULT is preserved wherever nothing sets it: unset, every emission
+ *  byte-identical to the pre-config engine (pinned by
+ *  tests/card/render/cloud-asset-host-deployment-config.test.ts). */
+let deploymentCloudAssetHost: string | undefined;
+
+export function setDeploymentCloudAssetHost(host: string | undefined): void {
+  deploymentCloudAssetHost = host;
+}
+
+export function getDeploymentCloudAssetHost(): string | undefined {
+  return deploymentCloudAssetHost;
+}
+
 export function cloudImageUrl(
   content: string,
   sizeOpt: unknown,
@@ -2193,7 +2221,13 @@ export function derivedCloudAttachmentSource(
   const leaf = sizeVariant === undefined
     ? `${basename}${ext}`
     : appendVariantLowercasingExt(`${basename}${ext}`, sizeVariant);
-  return `${cdnAssetHost ?? FOG_CLOUD_URL_HOST}/files/${idSeg}/${leaf}`;
+  // Host resolution order: the caller's per-engine imageCdnHost (the edge
+  // deployment's per-engine setting), then the process-wide deployment
+  // asset host (the graded environment's setting -- Ruby's process-wide
+  // storage config), then the capture's fog default. Unset everywhere =
+  // byte-identical to the pre-config engine.
+  const host = cdnAssetHost ?? deploymentCloudAssetHost ?? FOG_CLOUD_URL_HOST;
+  return `${host}/files/${idSeg}/${leaf}`;
 }
 
 /** Append the carrierwave variant suffix before the extension, DOWNCASING

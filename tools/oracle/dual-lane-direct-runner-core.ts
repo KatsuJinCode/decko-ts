@@ -528,6 +528,21 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   }
   const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;
 
+  // The graded environment's cloud asset host: the live deployment serves
+  // carrierwave attachments from DigitalOcean Spaces FR1 (live-check-71:
+  // DO-host 34/34 pages, s3.amazonaws.com 0 occurrences), and the corpus
+  // expectations carry the same prefix (the close-71 transform moves engine
+  // config and expectations TOGETHER). Set BEFORE any storage boot so every
+  // worker's render emits the deployment form. The engine DEFAULT (fog s3
+  // form) stays pinned for every suite that does not set it
+  // (tests/card/render/cloud-asset-host-deployment-config.test.ts).
+  const { setDeploymentCloudAssetHost } = await import(
+    pathToFileURL(path.join(REPO_ROOT, "src", "card", "render", "views.ts")).href
+  );
+  const DEPLOYMENT_CLOUD_ASSET_HOST =
+    "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
+
   // The aggregate's OWN directory, which is not necessarily OUT_DIR: a pooled
   // worker's aggregate lives in artifactDir, which the driver creates on disk
   // but this process may be first to write into.
