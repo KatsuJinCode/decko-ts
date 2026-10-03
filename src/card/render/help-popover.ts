@@ -230,6 +230,8 @@ export class HelpRulesResolver implements HelpRulesApi {
   private canaryKey: string | undefined;
   private setTypeId: number | undefined;
   private settingTypeId: number | undefined;
+  /** The user codename card's id - valid_preferer?'s first arm (all.rb:53). */
+  private userTypeId: number | undefined;
   /** Setting#count per setting card id (card-mod-rules set/type/setting.rb). */
   private readonly ruleCounts = new Map<number, number>();
 
@@ -250,6 +252,7 @@ export class HelpRulesResolver implements HelpRulesApi {
     if (setTypeId === undefined || settingTypeId === undefined) return; // degenerate deck
     this.setTypeId = setTypeId;
     this.settingTypeId = settingTypeId;
+    this.userTypeId = this.fetcher.codenames.peekId("user");
     const host = this.engineHost();
     // rule-card enrichment runs through the engine's own enrichAndStore,
     // whose RULE set-key check reads the engine's memoized codename ids
@@ -377,46 +380,36 @@ export class HelpRulesResolver implements HelpRulesApi {
     return ruleNamesForCard(input, "*help");
   }
 
-  /** rule/all.rb:36-46 `rule?` = `standard_rule? || preference?`.
+  /** rule/all.rb:33-54 `rule?` = `standard_rule? || preference?`, ported
+   *  clause for clause (the same clause set render.ts computeIsRuleSync
+   *  implements; oracle-pinned by
+   *  tools/oracle/rule-preference-truth-table/truth-table.jsonl, which runs
+   *  the gem's own verbatim all.rb lines over the corpus facts):
    *
-   *  standard_rule? (all.rb:36-39): the right part's type is Setting and the
-   *  left part's type is Set.
+   *  standard_rule? (all.rb:37-40): the right part's type is Setting and the
+   *  left part's type is Set - any part count (name.left of "A+B+C" is
+   *  "A+B").
    *
-   *  preference? (all.rb:41-46): parts > 2, the right part's type is Setting,
-   *  `name[0..-3]`'s type is Set, and `valid_preferer?` - the `self[-2]` is a
-   *  User-typed card OR carries codename `all` (all.rb:50-52).
+   *  preference? (all.rb:42-47): parts > 2, the right part's type is
+   *  Setting, `name[0..-3]`'s type is Set, and `valid_preferer?`
+   *  (all.rb:51-54) - the `self[-2]` part is a User-typed card OR carries
+   *  codename `all`.
    *
-   *  The engine previously ported standard_rule? alone, on the standing note
-   *  that "the preference? shape is not ported - no corpus menu renders a
-   *  preference card's help". THE CAPTURE REFUTES THAT NOTE. Corpus card
-   *  22735 `*all+*all+*follow` is a List-typed rule row whose left
-   *  (`*all+*all`, card 22734) is RichText, so standard_rule? is false - and
-   *  every clause of preference? holds: parts = 3 > 2; right `*follow`
-   *  (22720) is Setting-typed; `name[0..-3]` = `*all` (274) is Set-typed (259);
-   *  `self[-2]` = `*all`, codename "all" = `:all`. The recapture expected
-   *  bytes for `*all+*all+*follow:closed` carry the setting_link the
-   *  standard_rule?-only predicate suppressed:
-   *    `<div class="ms-auto"><a class="text-muted known-card" href="/*follow">
-   *     (0 follow rules)</a></div>`
-   *  and the `(0)` is right: setting.rb:12-14 counts `left: {type: SetID},
-   *  right: id`, and NO corpus card has a Set-typed left with right `*follow`
-   *  (all ten cards with right_id 22720 have a RichText left) - the same
-   *  zero the engine's own count SQL returns.
-   *
-   *  HONEST LIMIT on the predicate's shape. The two sibling entries
-   *  (`Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow`,
-   *  `Make Contact+*self+Brandon WilliamsCraig+*follow`) satisfy
-   *  valid_preferer? through the OTHER arm (their `self[-2]` is
-   *  `Brandon WilliamsCraig`, card 393, type 4 = the `user` codename), but
-   *  their `name[0..-3]` is a junction with no Set-typed row in the corpus, so
-   *  preference?'s third clause cannot be evaluated true from the shipped
-   *  artifacts. Ruby nonetheless served both the identical setting_link (the
-   *  capture proves it byte for byte). The predicate below is therefore the
-   *  empirical superset of both Ruby arms - "the right part is a Setting and
-   *  the card is not the setting's own card" - which adds exactly the 47
-   *  corpus cards that are Setting-righted with a NON-Set left (measured:
-   *  2,602 already pass the standard_rule? arm, 47 do not). That 47-card
-   *  blast radius is what the byte probe and the standing net gate. */
+   *  WHY NOT THE WIDENED SUPERSET. 8f8f9ca admitted "right is a Setting and
+   *  the left part resolves" because the corpus lookup for the *follow
+   *  guards' trunk looked unevaluable. The corpus facts close that: the
+   *  trunk cards ARE Set-typed rows (`Don't Wait For The Study+*self` id
+   *  26849 and `Make Contact+*self` id 6854, both type 259 = Set), and the
+   *  oracle's truth table shows the verbatim Ruby predicate admits all 3
+   *  guard rows (the 9 `*follow` entries) while refusing all 34 distinct
+   *  `mod: <x>+*style/script` rows (2-part; left `mod: <x>` is
+   *  Mod-cardtype-typed 45410, not Set 259 - standard_rule? false;
+   *  parts = 2 - preference? false). The widened tail admitted those 34
+   *  mod rows and put settingLinkBytes into their popover data-bs-content -
+   *  exactly the 68 grade7-to-8 regressions this file's predicate is here
+   *  to refuse (first diff: expected "Skin (collection of stylesheets) for
+   *  card&#39;s page..." / "JavaScript (or CoffeeScript) for card&#39;s
+   *  page...", actual " &lt;div class=&quot;ms-auto&quot;&gt;..."). */
   private isRuleCard(card: RenderCard): boolean {
     if (this.settingTypeId === undefined) return false;
     if (!card.name.isCompound) return false;
@@ -428,12 +421,28 @@ export class HelpRulesResolver implements HelpRulesApi {
     if (rightKey === undefined || leftKey === undefined || leftKey === "") return false;
     const right = this.engine.fetchRenderCard(rightKey);
     if (right === undefined) return false;
+    // the right part is a Setting gates BOTH arms (all.rb:38,44)
     if (right.record.typeId !== this.settingTypeId) return false;
     const left = this.engine.fetchRenderCard(leftKey);
-    // standard_rule? (all.rb:36-39) - the left part's type is Set.
+    // standard_rule? (all.rb:37-40) - the left part's type is Set.
     if (left !== undefined && left.record.typeId === this.setTypeId) return true;
-    // preference? / the capture's own arm: a rule row whose left is not Set.
-    return left !== undefined;
+    // preference? (all.rb:42-47): parts > 2, then `name[0..-3]` is
+    // Set-typed, then valid_preferer? (all.rb:51-54): the [-2] part is
+    // User-typed, or that part's codename is "all". The map reads mirror
+    // render.ts computeIsRuleSync (fetchRenderCard is the cache-only
+    // render-path accessor); a miss = Ruby's fetch-returns-nil path =
+    // clause false.
+    if (card.name.parts.length <= 2) return false;
+    const trunkKey = DeckoName.parse(card.name.parts.slice(0, -2).join("+")).key;
+    if (trunkKey === "") return false;
+    const trunk = this.engine.fetchRenderCard(trunkKey);
+    if (trunk === undefined || trunk.record.typeId !== this.setTypeId) return false;
+    const prefererKey = DeckoName.parse(card.name.parts[card.name.parts.length - 2] ?? "").key;
+    if (prefererKey === "") return false;
+    const preferer = this.engine.fetchRenderCard(prefererKey);
+    if (preferer === undefined) return false;
+    if (this.userTypeId !== undefined && preferer.record.typeId === this.userTypeId) return true;
+    return preferer.record.codename === "all";
   }
 
   /** Whether this rule row is a standard_rule? (left Set-typed) card. The
