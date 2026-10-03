@@ -110,5 +110,5 @@
   "tests/card/render/pointer-list-input-type-rule-item-name-view.test.ts",
   "tests/deploy/deploy-origin-deck-inflection-boot.test.ts"
  ],
- "manifestFileCount": 78
+ "manifestFileCount": 79
 }
