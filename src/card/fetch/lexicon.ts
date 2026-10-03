@@ -294,6 +294,23 @@ export class DbLexicon {
     return sides.join(JOINT);
   }
 
+  /** db-roundtrip-elimination lane (W2): whether a lex_to_id entry EXISTS
+   *  for this lex - a positive id OR a stored negative ("a stored nil is a
+   *  hit"). The seatNamesByWave waves use this to skip re-asking a pair or
+   *  key whose answer the engine already holds - from an earlier wave OR
+   *  from the fetch ladder's own point query (lexToId caches both). The
+   *  entry IS the answer; re-asking would only spend a round trip to
+   *  re-learn it. Temp first, then shared - the read order cacheFetch
+   *  uses, minus the write-back. */
+  lexEntryKnown(lex: Lex): boolean {
+    const key = cacheKey(lex);
+    if (this.cache.temp.exist(key)) return true;
+    if (this.cache.shared !== undefined) {
+      return this.cache.shared.read(key) !== undefined;
+    }
+    return false;
+  }
+
   /** lexicon.rb#lex_to_id - trash: false filter (lex_query merge). */
   private async lexToId(lex: Lex): Promise<number | undefined> {
     const found = (await this.cacheFetch(cacheKey(lex), async () => {

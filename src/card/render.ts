@@ -954,7 +954,7 @@ export class RenderEngine implements RenderEngineLike {
     // a second call before view dispatch measured NET WORSE (+5 to +20
     // RT/page: its fresh asks cost more than the point queries they
     // displaced) and was reverted.
-    await this.primePreparedCardDerivedState();
+    await this.primePreparedCardDerivedState(record.key);
     // The cwwrite-seam warm (the asset-output views): the right/asset_output
     // :not_found gate reads the LEFT card's set keys and the outputter
     // :asset_output_url reads the `+*asset output` child's identifier —
@@ -2413,13 +2413,21 @@ export class RenderEngine implements RenderEngineLike {
    * Lexicon#write; negatives through the wave's priming), so the sync
    * render's answers are byte-identical - only the round trips change.
    */
-  private async primePreparedCardDerivedState(): Promise<void> {
+  private async primePreparedCardDerivedState(rootKey: string | undefined): Promise<void> {
     const typeIds = new Set<number>();
     for (const card of this.renderCards.values()) {
       const t = card.record.typeId;
-      if (typeof t === "number" && Number.isSafeInteger(t) && t > 0) typeIds.add(t);
+      if (
+        typeof t === "number" &&
+        Number.isSafeInteger(t) &&
+        t > 0 &&
+        !this.typeCardsPrimed.has(t)
+      ) {
+        typeIds.add(t);
+      }
     }
     if (typeIds.size > 0) {
+      for (const id of typeIds) this.typeCardsPrimed.add(id);
       const ids = [...typeIds];
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
@@ -2439,6 +2447,10 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     const candidateSettings = ["*content options", "*help", "*structure", "*default"];
+    if (rootKey !== undefined && rootKey !== "") {
+      if (this.ruleCandidatesPrimedFor.has(rootKey)) return; // warm re-render of this page: nothing to ask
+      this.ruleCandidatesPrimedFor.add(rootKey);
+    }
     const names = new Set<string>();
     for (const card of this.renderCards.values()) {
       if (card.record.isNew) continue;
@@ -2505,8 +2517,29 @@ export class RenderEngine implements RenderEngineLike {
       if (this.renderCards.has(key) || this.structureRefMisses.has(key)) continue;
       pending.add(raw);
     }
-    const askedSimpleKeys = new Map<string, string>(); // canonical key -> name str
-    const askedPairs = new Map<string, { leftId: number; rightId: number; lex: Lex }>();
+    // ENGINE-LIFETIME ask memory (db-roundtrip-elimination lane): every
+    // question one wave asked the database, this engine never re-asks. The
+    // deck is static per engine lifetime (the same contract
+    // pointerListHostsDone and prefetch.ts's scannedKeys document), so a
+    // later render's wave cannot find a new answer for a question the db
+    // already answered - and the warm-render query-shape pins (zero
+    // queries on re-render) hold because every re-ask is skipped.
+    if (this.waveAskedSimpleKeys === undefined) this.waveAskedSimpleKeys = new Map();
+    if (this.waveAskedPairs === undefined) this.waveAskedPairs = new Map();
+    const askedSimpleKeys = this.waveAskedSimpleKeys;
+    const askedPairs = this.waveAskedPairs;
+    const askedSideKeyPairs = this.waveAskedSideKeyPairs;
+    // THIS CALL's asks and answers (db-roundtrip-elimination continuation):
+    // the negative priming below derives "asked and missed" from THESE, never
+    // from the engine-lifetime maps (a warm render's call would otherwise
+    // re-prime nil over an earlier render's positive) and never from
+    // per-round answer sets (a multi-round call re-primed nil over its own
+    // round-1 positives - the stored nil then answered the render's own rule
+    // ladders "absent" for junctions the db holds).
+    const callAskedSimple = new Set<string>();
+    const callAskedPairs = new Set<string>();
+    const callAnsweredSimple = new Set<string>();
+    const callAnsweredPairs = new Set<string>();
     let seatedAny = false;
     for (let round = 0; round < MAX_WAVE_ROUNDS && pending.size > 0; round++) {
       const simpleKeys: string[] = [];
@@ -2528,8 +2561,13 @@ export class RenderEngine implements RenderEngineLike {
         const right = name.rightName;
         if (!name.isCompound || left === undefined || right === undefined) {
           const key = name.key;
-          if (!this.renderCards.has(key) && !askedSimpleKeys.has(key)) {
+          if (
+            !this.renderCards.has(key) &&
+            !askedSimpleKeys.has(key) &&
+            !this.fetcher.lexicon.lexEntryKnown(name.s)
+          ) {
             askedSimpleKeys.set(key, raw);
+            callAskedSimple.add(key);
             simpleKeys.push(key);
           }
           continue;
@@ -2539,21 +2577,28 @@ export class RenderEngine implements RenderEngineLike {
         if (leftId !== undefined && rightId !== undefined) {
           const lex: Lex = [leftId, rightId];
           const pairKey = `L-${leftId}-${rightId}`;
-          if (!askedPairs.has(pairKey)) {
+          if (!askedPairs.has(pairKey) && !this.fetcher.lexicon.lexEntryKnown(lex)) {
             askedPairs.set(pairKey, { leftId, rightId, lex });
+            callAskedPairs.add(pairKey);
             sideIdPairs.push({ leftId, rightId, lex });
           }
         } else if (!left.isCompound && !right.isCompound) {
           // depth-2 pair: side-key join; the sides ride this round's
           // IN-list so the junction composes (driveClosure shape).
-          sideKeyPairs.push({ left: left.key, right: right.key, raw });
-          if (!this.renderCards.has(left.key) && !askedSimpleKeys.has(left.key)) {
-            askedSimpleKeys.set(left.key, left.s);
-            simpleKeys.push(left.key);
-          }
-          if (!this.renderCards.has(right.key) && !askedSimpleKeys.has(right.key)) {
-            askedSimpleKeys.set(right.key, right.s);
-            simpleKeys.push(right.key);
+          const sidePairKey = `${left.key}~${right.key}`;
+          if (!askedSideKeyPairs.has(sidePairKey)) {
+            askedSideKeyPairs.add(sidePairKey);
+            sideKeyPairs.push({ left: left.key, right: right.key, raw });
+            if (!this.renderCards.has(left.key) && !askedSimpleKeys.has(left.key)) {
+              askedSimpleKeys.set(left.key, left.s);
+              callAskedSimple.add(left.key);
+              simpleKeys.push(left.key);
+            }
+            if (!this.renderCards.has(right.key) && !askedSimpleKeys.has(right.key)) {
+              askedSimpleKeys.set(right.key, right.s);
+              callAskedSimple.add(right.key);
+              simpleKeys.push(right.key);
+            }
           }
         } else {
           // a compound side is not seated yet: resolve the sides first.
@@ -2620,6 +2665,9 @@ export class RenderEngine implements RenderEngineLike {
         }
         const record = await composeCardRecord(row, this.fetcher.lexicon);
         if (record.name === undefined || record.key === undefined || record.key === "") continue;
+        // The row ANSWERED its question for this call: a row whose composed
+        // key is one this call asked can never be primed as a miss below.
+        callAnsweredSimple.add(record.key);
         if (row.name !== null && row.name !== undefined) {
           this.fetcher.lexicon.write(record.id!, record.name, row.name);
         } else if (
@@ -2633,17 +2681,32 @@ export class RenderEngine implements RenderEngineLike {
         await this.cacheFetchedRecord(record);
         seatedAny = true;
       }
+      for (const pairKey of fetchedPairs) callAnsweredPairs.add(pairKey);
       // Negative priming for the asked-and-missed questions: the exact
-      // entries lexToId's cacheFetch would have cached.
+      // entries lexToId's cacheFetch would have cached. Both derivations are
+      // THIS CALL's cumulative ask/answer sets (see their declaration):
+      //  - a simple key is missed only when no row of any round carried it
+      //    (callAnsweredSimple) and it did not seat earlier (renderCards);
+      //  - a pair is missed only when no row of any round answered it
+      //    (callAnsweredPairs unions every round's fetchedPairs). The
+      //    previous per-round view re-primed NIL over round-1 positives at
+      //    every later round of a multi-round call - and the render-card-map
+      //    view (the ask memory variant) primed nil over ANSWERED keys
+      //    whenever the answer was not seated into the map.
       const missingSimple: { key: string; id: undefined }[] = [];
-      for (const [key] of askedSimpleKeys) {
-        if (!this.renderCards.has(key)) missingSimple.push({ key, id: undefined });
+      for (const key of callAskedSimple) {
+        if (!callAnsweredSimple.has(key) && !this.renderCards.has(key)) {
+          missingSimple.push({ key, id: undefined });
+        }
       }
       if (missingSimple.length > 0) this.fetcher.lexicon.primeIdsByKey(missingSimple);
-      for (const [pairKey, { lex }] of askedPairs) {
+      for (const pairKey of callAskedPairs) {
         // the positive rows primed via lexicon.write above; the negative
-        // only for pairs no row answered (fetchedPairs, not a cache peek).
-        if (!fetchedPairs.has(pairKey)) this.fetcher.lexicon.primeIdByLex(lex, undefined);
+        // only for pairs no row of ANY round answered.
+        if (!callAnsweredPairs.has(pairKey)) {
+          const entry = askedPairs.get(pairKey);
+          if (entry !== undefined) this.fetcher.lexicon.primeIdByLex(entry.lex, undefined);
+        }
       }
       pending.clear();
       for (const raw of nextRound) pending.add(raw);
@@ -3781,6 +3844,25 @@ export class RenderEngine implements RenderEngineLike {
    *  pointerListHostsDone shape: the deck is static, so a later render's
    *  pass cannot find a new answer for a name it already asked about. */
   private templateLinkJunctionTargetsDone = new Set<string>();
+  /** db-roundtrip-elimination lane: the waves' ENGINE-LIFETIME ask memory
+   *  (see seatNamesByWave) - every simple key and id pair any wave asked
+   *  the database, so warm renders' waves re-ask nothing and the
+   *  warm-zero query-shape pins hold. */
+  private waveAskedSimpleKeys?: Map<string, string>;
+  private waveAskedPairs?: Map<string, { leftId: number; rightId: number; lex: Lex }>;
+  /** Side-KEY join asks (the depth-2 shape), keyed "<leftKey>~<rightKey>" -
+   *  the same engine-lifetime memory. A join miss converts to a pair-id ask
+   *  (askedPairs) on the retry round, so this set never blocks that. */
+  private waveAskedSideKeyPairs = new Set<string>();
+  /** db-roundtrip-elimination lane: type-card ids the W3b priming already
+   *  seated - the priming pass's IN-list runs once per id per engine. */
+  private typeCardsPrimed = new Set<number>();
+  /** Root card keys whose rule-candidate set the W2b priming already
+   *  asked - the priming pass runs once per page per engine, which is what
+   *  makes a warm re-render of the same page zero-query by construction
+   *  (the candidates of a page's prepared set are deterministic in the
+   *  deck-static-per-engine contract). */
+  private ruleCandidatesPrimedFor = new Set<string>();
   /** Templated-nests rule cards whose content the junction warm already
    *  scanned. The gate that keeps this pass off the other ~47k deck cards
    *  is `isTemplatedNestsName` (the `*default` / `*structure` right tag),

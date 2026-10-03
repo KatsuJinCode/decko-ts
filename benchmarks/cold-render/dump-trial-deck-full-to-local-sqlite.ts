@@ -80,22 +80,23 @@ for (const table of tables) {
     console.error(`${name}: 0 rows`);
     continue;
   }
+  let insert: ReturnType<typeof db.prepare> | undefined;
   for (let from = Math.floor(lo / CHUNK) * CHUNK; from <= hi; from += CHUNK) {
     const page = await driver.query<Record<string, unknown>>(
       `SELECT * FROM "${name}" WHERE rowid >= ? AND rowid < ? ORDER BY rowid`,
       [from, from + CHUNK],
     );
     if (page.rows.length === 0) break;
-    if (total === 0) {
+    if (insert === undefined) {
       const first = page.rows[0] as Record<string, unknown>;
       const cols = Object.keys(first);
       const colList = cols.map((c) => `"${c}"`).join(", ");
       const ph = cols.map(() => "?").join(", ");
-      var insert = db.prepare(`INSERT INTO "${name}" (${colList}) VALUES (${ph})`);
+      insert = db.prepare(`INSERT INTO "${name}" (${colList}) VALUES (${ph})`);
     }
     db.exec("BEGIN");
     for (const row of page.rows as Record<string, unknown>[]) {
-      (insert as Database.Statement).run(...Object.values(row).map((v) => (v ?? null) as never));
+      insert.run(...Object.values(row).map((v) => (v ?? null) as never));
     }
     db.exec("COMMIT");
     total += page.rows.length;

@@ -512,6 +512,7 @@ async function composeAndCache(
   for (const row of byId.values()) {
     const name = names.get(row.id);
     if (name === undefined) continue;
+    ctx.lexicon.noteDurableName(row.id, typeof name === "string" ? name : name.s);
     if (row.name !== null) {
       ctx.lexicon.write(row.id, name, row.name); // simple lex: the name string
     } else if (row.leftId !== null && row.rightId !== null) {
@@ -644,6 +645,11 @@ export async function composeAndCacheSqlRows(
   for (const row of byId.values()) {
     const name = names.get(row.id);
     if (name === undefined) continue;
+    // W1 durable coverage: the removed per-row fetchById ladder recorded
+    // every warmed row's id->name in the lexicon's durable map (via
+    // lexicon.name(id)); the own-rows composer notes it explicitly instead
+    // (db truth from the held row - see DbLexicon.noteDurableName).
+    ctx.lexicon.noteDurableName(row.id, typeof name === "string" ? name : name.s);
     const record = await composeCardRecord(row, ctx.lexicon); // the REAL row
     await ctx.cacheRecord(record);
     composedRecords.push(record);
