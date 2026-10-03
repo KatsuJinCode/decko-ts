@@ -41,7 +41,9 @@
 // oracle lists search-result-item bars, even though production D1 flips.
 
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import { DeckoName } from "../../../src/card/name.js";
 import {
@@ -461,6 +463,56 @@ export async function createRawStructureSeededStorage(
     }
   }
 
+  // CAPTURE-RESTORED OVERRIDE TABLE (harness-corpus-repair lane, 2026-10-02).
+  // The oracle deck's stored bytes for some cards are unobtainable from the
+  // corpus dump: the capture-time deck held materialized bytes the dump does
+  // not carry (M8 class — card 34179 "journal skin customized" holds a
+  // 221,051-byte compiled-CSS block the corpus lacks; the envelope equalities
+  // are in tmp/wrong-goal-hunt/scss-double-emit-fix-lane.md). The p21 oracle
+  // capture carries those bytes, so the restoration is capture-sourced, not
+  // hand-authored: tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs
+  // re-derives them from the capture files, verifies every envelope equality,
+  // and writes the table applied here — to the STAGED deck only, never to the
+  // sha-pinned corpus file (6a44dfdc...).
+  //
+  // THE SHA GATE IS LOAD-BEARING: the restored bytes are only what the oracle
+  // rendered for the corpus snapshot the captures came from. Against any other
+  // corpus state this module REFUSES the run instead of silently seeding
+  // foreign bytes (the same refuse-don't-fallback discipline as the runner's
+  // seeding-module assertion).
+  //
+  // Contract (see the extractor for the emitter side): `cards` patches the
+  // named columns of rows that exist in the corpus; `references` adds
+  // card_references rows (emitted with their capture ids so the FULL REFERENCE
+  // GRAPH PASS below can keep physical rowid order byte-faithful).
+  const overrideRows: CorpusReferenceRow[] = [];
+  {
+    const overridePath = path.join(REPO_ROOT, "tests", "card", "render",
+      "raw-corpus-override-capture-restored-rows.json");
+    const override = JSON.parse(readFileSync(overridePath, "utf8")) as {
+      meta: { corpusSha256: string };
+      cards: Array<{ id: number; content?: string; note?: string }>;
+      references: CorpusReferenceRow[];
+    };
+    const corpusSha = createHash("sha256").update(readFileSync(RAW_CORPUS_DB)).digest("hex");
+    if (override.meta.corpusSha256 !== corpusSha) {
+      throw new Error(
+        `capture-restored override table is pinned to corpus ${override.meta.corpusSha256} ` +
+          `but this worktree's corpus is ${corpusSha} — refusing to seed foreign bytes`,
+      );
+    }
+    for (const oc of override.cards) {
+      const row = rows.get(oc.id);
+      if (row === undefined) {
+        throw new Error(
+          `override table patches card ${oc.id} but the closure did not seed it`,
+        );
+      }
+      if (oc.content !== undefined) row.content = oc.content;
+    }
+    for (const ref of override.references) overrideRows.push(ref);
+  }
+
   for (const row of rows.values()) {
     await seedCard(storage, {
       id: row.id,
@@ -732,6 +784,14 @@ export async function createRawStructureSeededStorage(
         )
         .all(...chunk) as CorpusReferenceRow[];
       for (const r of batch) refRows.push(r);
+    }
+    // Override-table reference restorations merge INTO the id order, so the
+    // physical rowid order stays byte-faithful to the captured deck (the
+    // id-column comment above is load-bearing; a sorted merge is the only
+    // insertion that preserves it).
+    if (overrideRows.length > 0) {
+      refRows.push(...overrideRows);
+      refRows.sort((a, b) => a.id - b.id);
     }
     for (let slice = 0; slice < refRows.length; slice += 5000) {
       const chunk = refRows.slice(slice, slice + 5000);

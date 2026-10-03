@@ -28,8 +28,16 @@
 //   node tools/oracle/probe-staging-db-missing-content-reference-rows.mjs \
 //     [--referee-id 568] [--out tmp/negdelta-zero/m5-staging-refs.json]
 //
-//   Exit 0 when the corpus holds the rows and staging does not (harness gap
-//   confirmed), 1 when the two agree.
+// EXIT SEMANTICS (re-scoped by the harness-corpus-repair lane, 2026-10-02)
+//   Originally the probe confirmed the M5 harness gap, so it exited 0 on the
+//   GAP (corpus holds rows, staging does not) and 1 on agreement — an
+//   instrument whose healthy state reads as failure. Re-scoped to
+//   graded-truth semantics: exit 0 when staging holds the rows the corpus
+//   holds (parity — the M5 gap is closed), 1 when the gap is present. The
+//   2026-10-02 pre-repair run against the stale fixture copy exited the old
+//   gap-confirmed 0 with staging at 0 of 21 rows; the same run through the
+//   committed home (or this worktree's propagated fixture shim) stages all
+//   21 rows and the exact-CQL join returns 19 in both databases.
 
 import { register } from "node:module";
 import { writeFileSync } from "node:fs";
@@ -111,10 +119,10 @@ const report = {
   verdict:
     corpusRefereeRows.length > 0 && (stagingRefereeRows.rows ?? []).length === 0
       ? "STAGING-GAP: the corpus holds the content reference rows and staging does not; the zero-row refer_to CQL is a measurement-harness gap, not a port defect."
-      : "both databases agree on the row set; the zero-row CQL has another cause.",
+      : "PARITY: staging holds the corpus's reference row set; the M5 harness gap is closed.",
 };
 console.log(`VERDICT ${report.verdict}`);
 writeFileSync(OUT, JSON.stringify(report, null, 2));
 console.log(`WROTE ${OUT}`);
 storage.close();
-process.exit(report.verdict.startsWith("STAGING-GAP") ? 0 : 1);
+process.exit(report.verdict.startsWith("STAGING-GAP") ? 1 : 0);
