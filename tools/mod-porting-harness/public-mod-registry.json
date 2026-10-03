@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T18:39:16.191Z",
+  "generatedAt": "2026-10-03T19:05:03.829Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -576,12 +576,48 @@
       "gem": "card-mod-tinymce_editor-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "5 mod-specific view(s) ported: change_create_to_update, link_editor, modal_link_editor, new_image_buttons, open_nest_editor",
+      "statusEvidence": "harness scorecard, 0 RED: 1/16 harness-oracle-validated, 9 pinned by the mod's standing suite, 6 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-tinymce_editor/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "1/16 validated",
       "reMeasureMissingViews": 6,
-      "wave1": null,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [],
+        "namedRemainderViews": [
+          {
+            "view": "nest_editor",
+            "source": "set/all/reference_editor/nest_editor.rb:10-16",
+            "reason": "the reference-editor haml chrome over request-param snippet state (blocker A); ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding) - no oracle bytes exist to pin a port against"
+          },
+          {
+            "view": "modal_nest_editor",
+            "source": "set/all/reference_editor/nest_editor.rb:17-20",
+            "reason": "the reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck"
+          },
+          {
+            "view": "nest_image",
+            "source": "set/all/reference_editor/nest_image.rb:2-6",
+            "reason": "the image reference-editor chrome (blocker A); ZERO anchors on the migrated deck"
+          },
+          {
+            "view": "modal_nest_image",
+            "source": "set/all/reference_editor/nest_image.rb:8-11",
+            "reason": "the image reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck"
+          },
+          {
+            "view": "nest_content",
+            "source": "set/all/reference_editor/nest_editor.rb:22-27",
+            "reason": "both arms ride unported form machinery: with_nest_mode :edit around the ported edit_inline (known) and the create_form chain (unknown, blocker D)"
+          },
+          {
+            "view": "new_image",
+            "source": "set/all/reference_editor/nest_image.rb:13-19",
+            "reason": "the create_form chain (blocker D): the full create-form body + the params-driven success chain"
+          }
+        ],
+        "censusMissingRemaining": 0
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-tinymce_editor-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },

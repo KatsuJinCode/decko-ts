@@ -158,6 +158,32 @@ const NAMED_REMAINDERS = {
     "<seed:.*>":
       "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
+  "card-mod-tinymce_editor": {
+    // The six census html views are the reference-editor UI the tinymce-
+    // views lane's own blockers A/D name (the mod manifest's nest_image
+    // entry header): the four reference-editor chrome views' state is
+    // REQUEST-PARAM driven (tm_snippet_raw / tinymce_id - absent in the
+    // headless render, the documented convention) and their bodies are the
+    // reference_editor.haml chrome + nest_editor_tabs.rb + the
+    // option-select/template machinery; :nest_content's unknown arm and
+    // :new_image ride the create_form chain (the full create-form body).
+    // The mod-coverage lane's usage-weight finding: tinymce carries ZERO
+    // anchors on the migrated deck (unreachable there) - ported-behavior
+    // risk would be pinned against no oracle bytes at all. The mod's OWN
+    // already-ported surface: :new_image_buttons + the two js views.
+    "view:nest_editor":
+      "the reference-editor haml chrome (reference_editor.haml + _nest_editor.haml + the tabs/options partials) over request-param snippet state (tm_snippet_raw absent headlessly) - the tinymce-views lane's blocker A; ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding)",
+    "view:modal_nest_editor":
+      "the reference-editor chrome in the modal wrapper (the same params-driven snippet state + partial machinery) - blocker A; ZERO anchors on the migrated deck",
+    "view:nest_image":
+      "the image reference-editor chrome (adapt_reference_editor_for_images + the image_nest partial) - blocker A; ZERO anchors on the migrated deck",
+    "view:modal_nest_image":
+      "the image reference-editor chrome in the modal wrapper - blocker A; ZERO anchors on the migrated deck",
+    "view:nest_content":
+      "both arms ride unported form machinery: the known arm needs with_nest_mode :edit (the Rails nest-mode state) around the ported edit_inline, the unknown arm is the create_form chain (blocker D) with the force-viz (hide!/show!) + buttons_view voo state",
+    "view:new_image":
+      "the create_form chain (blocker D): the full create-form body + the success chain (tinymce_id params-driven, the autoname(name.next) id mark)",
+  },
   "card-mod-account": {
     // set/type/signup/views.rb:11-13 view :content_formgroups - the body's
     // account_formgroups recursion renders the +*account subformat's
@@ -331,6 +357,44 @@ const WAVE1 = {
         source: "set/all/html/error.rb:4-8",
         reason:
           "the BetterErrors dev-tool error page; the better_errors gem is NOT in the frozen gem set - the view raises NameError in the installed-gems environment, its behavior belongs to an external dev dependency",
+      },
+    ],
+    "card-mod-tinymce_editor": [
+      {
+        view: "nest_editor",
+        source: "set/all/reference_editor/nest_editor.rb:10-16",
+        reason:
+          "the reference-editor haml chrome over request-param snippet state (blocker A); ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding) - no oracle bytes exist to pin a port against",
+      },
+      {
+        view: "modal_nest_editor",
+        source: "set/all/reference_editor/nest_editor.rb:17-20",
+        reason:
+          "the reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck",
+      },
+      {
+        view: "nest_image",
+        source: "set/all/reference_editor/nest_image.rb:2-6",
+        reason:
+          "the image reference-editor chrome (blocker A); ZERO anchors on the migrated deck",
+      },
+      {
+        view: "modal_nest_image",
+        source: "set/all/reference_editor/nest_image.rb:8-11",
+        reason:
+          "the image reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck",
+      },
+      {
+        view: "nest_content",
+        source: "set/all/reference_editor/nest_editor.rb:22-27",
+        reason:
+          "both arms ride unported form machinery: with_nest_mode :edit around the ported edit_inline (known) and the create_form chain (unknown, blocker D)",
+      },
+      {
+        view: "new_image",
+        source: "set/all/reference_editor/nest_image.rb:13-19",
+        reason:
+          "the create_form chain (blocker D): the full create-form body + the params-driven success chain",
       },
     ],
   },

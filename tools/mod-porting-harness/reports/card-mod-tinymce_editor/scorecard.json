@@ -1,0 +1,184 @@
+{
+  "mod": "card-mod-tinymce_editor",
+  "gem": "card-mod-tinymce_editor-0.20.0",
+  "generatedAt": "2026-10-03T19:05:03.724Z",
+  "totals": {
+    "behaviors": 16,
+    "validated": 1,
+    "standingNet": 9,
+    "namedRemainder": 6,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-tinymce_editor.test.ts",
+      "tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts"
+    ],
+    "ran": true,
+    "detail": "42 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:link_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"link_editor\""
+    },
+    {
+      "behaviorId": "view:modal_link_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"modal_link_editor\""
+    },
+    {
+      "behaviorId": "view:nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:10",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "the reference-editor haml chrome (reference_editor.haml + _nest_editor.haml + the tabs/options partials) over request-param snippet state (tm_snippet_raw absent headlessly) - the tinymce-views lane's blocker A; ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding)",
+      "evidence": "no view \"nest_editor\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:modal_nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:17",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "the reference-editor chrome in the modal wrapper (the same params-driven snippet state + partial machinery) - blocker A; ZERO anchors on the migrated deck",
+      "evidence": "no view \"modal_nest_editor\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:nest_content",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:22",
+      "registration": "no",
+      "captured": "static-ruby",
+      "state": "named-remainder",
+      "remainderReason": "both arms ride unported form machinery: the known arm needs with_nest_mode :edit (the Rails nest-mode state) around the ported edit_inline, the unknown arm is the create_form chain (blocker D) with the force-viz (hide!/show!) + buttons_view voo state",
+      "evidence": "no view \"nest_content\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:nest_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:2",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "the image reference-editor chrome (adapt_reference_editor_for_images + the image_nest partial) - blocker A; ZERO anchors on the migrated deck",
+      "evidence": "no view \"nest_image\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:modal_nest_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:8",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "the image reference-editor chrome in the modal wrapper - blocker A; ZERO anchors on the migrated deck",
+      "evidence": "no view \"modal_nest_image\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:new_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:13",
+      "registration": "no",
+      "captured": "static-ruby",
+      "state": "named-remainder",
+      "remainderReason": "the create_form chain (blocker D): the full create-form body + the success chain (tinymce_id params-driven, the autoname(name.next) id mark)",
+      "evidence": "no view \"new_image\" registration in card-mod-tinymce_editor.ts, any other mod manifest, or the engine HTML_VIEWS table"
+    },
+    {
+      "behaviorId": "view:new_image_buttons",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:21",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"new_image_buttons\""
+    },
+    {
+      "behaviorId": "view:change_create_to_update",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:41",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"change_create_to_update\""
+    },
+    {
+      "behaviorId": "view:open_nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:45",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"open_nest_editor\""
+    },
+    {
+      "behaviorId": "basket:basket[:script_calls][\"setTinyMCEConfig\"] = :tinymce_config",
+      "kind": "basket-op",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:1",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-script.ts"
+    },
+    {
+      "behaviorId": "basket:basket[:list_input_options] << \"tinymce editor\"",
+      "kind": "basket-op",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:tiny_mce",
+      "kind": "seed",
+      "source": "card-mod-tinymce_editor-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-tinymce_editor.ts"
+    },
+    {
+      "behaviorId": "config:configurations",
+      "kind": "config",
+      "source": "card-mod-tinymce_editor-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    },
+    {
+      "behaviorId": "config:en",
+      "kind": "config",
+      "source": "card-mod-tinymce_editor-0.20.0/config/locales/en.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    }
+  ]
+}
