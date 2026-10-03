@@ -325,10 +325,17 @@ export class HelpRulesResolver implements HelpRulesApi {
    *  setModuleRawHelpText below; the readable *help rule card's db_content
    *  is the fallback. */
   private rawHelpText(card: RenderCard): string | undefined {
-    const staticHelp = registeredSettingHelpText(
-      card.record.codename,
-      this.rightPartCodename(card),
-    );
+    // A preference rule row (isRuleCard true, isStandardRuleCard false) is
+    // NOT in the setting's right set, so `card.try(:raw_help_text)` is nil
+    // there and help.rb:36-38 falls straight to `card.help_rule_card&.content`
+    // (all/help.rb:36-38). The static table is keyed on the RIGHT part's
+    // codename (setting-help-text.ts:39-42), which over-answers for exactly
+    // these cards: the capture's `Get notified about changes.` carries the
+    // period the *follow+*right+*help rule card's db_content has and the
+    // Right::Follow `raw_help_text` does not.
+    const staticHelp = this.isRuleCard(card) && !this.isStandardRuleCard(card)
+      ? undefined
+      : registeredSettingHelpText(card.record.codename, this.rightPartCodename(card));
     if (staticHelp !== undefined) return staticHelp;
     const setModuleHelp = setModuleRawHelpText(card, this.engine);
     if (setModuleHelp !== undefined) return setModuleHelp;
@@ -370,11 +377,48 @@ export class HelpRulesResolver implements HelpRulesApi {
     return ruleNamesForCard(input, "*help");
   }
 
-  /** rule/all.rb:37-40 standard_rule? (the preference? shape is not ported -
-   *  no corpus menu renders a preference card's help; see the notes doc):
-   *  the right part's type is Setting and the left part's type is Set. */
+  /** rule/all.rb:36-46 `rule?` = `standard_rule? || preference?`.
+   *
+   *  standard_rule? (all.rb:36-39): the right part's type is Setting and the
+   *  left part's type is Set.
+   *
+   *  preference? (all.rb:41-46): parts > 2, the right part's type is Setting,
+   *  `name[0..-3]`'s type is Set, and `valid_preferer?` - the `self[-2]` is a
+   *  User-typed card OR carries codename `all` (all.rb:50-52).
+   *
+   *  The engine previously ported standard_rule? alone, on the standing note
+   *  that "the preference? shape is not ported - no corpus menu renders a
+   *  preference card's help". THE CAPTURE REFUTES THAT NOTE. Corpus card
+   *  22735 `*all+*all+*follow` is a List-typed rule row whose left
+   *  (`*all+*all`, card 22734) is RichText, so standard_rule? is false - and
+   *  every clause of preference? holds: parts = 3 > 2; right `*follow`
+   *  (22720) is Setting-typed; `name[0..-3]` = `*all` (274) is Set-typed (259);
+   *  `self[-2]` = `*all`, codename "all" = `:all`. The recapture expected
+   *  bytes for `*all+*all+*follow:closed` carry the setting_link the
+   *  standard_rule?-only predicate suppressed:
+   *    `<div class="ms-auto"><a class="text-muted known-card" href="/*follow">
+   *     (0 follow rules)</a></div>`
+   *  and the `(0)` is right: setting.rb:12-14 counts `left: {type: SetID},
+   *  right: id`, and NO corpus card has a Set-typed left with right `*follow`
+   *  (all ten cards with right_id 22720 have a RichText left) - the same
+   *  zero the engine's own count SQL returns.
+   *
+   *  HONEST LIMIT on the predicate's shape. The two sibling entries
+   *  (`Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow`,
+   *  `Make Contact+*self+Brandon WilliamsCraig+*follow`) satisfy
+   *  valid_preferer? through the OTHER arm (their `self[-2]` is
+   *  `Brandon WilliamsCraig`, card 393, type 4 = the `user` codename), but
+   *  their `name[0..-3]` is a junction with no Set-typed row in the corpus, so
+   *  preference?'s third clause cannot be evaluated true from the shipped
+   *  artifacts. Ruby nonetheless served both the identical setting_link (the
+   *  capture proves it byte for byte). The predicate below is therefore the
+   *  empirical superset of both Ruby arms - "the right part is a Setting and
+   *  the card is not the setting's own card" - which adds exactly the 47
+   *  corpus cards that are Setting-righted with a NON-Set left (measured:
+   *  2,602 already pass the standard_rule? arm, 47 do not). That 47-card
+   *  blast radius is what the byte probe and the standing net gate. */
   private isRuleCard(card: RenderCard): boolean {
-    if (this.setTypeId === undefined || this.settingTypeId === undefined) return false;
+    if (this.settingTypeId === undefined) return false;
     if (!card.name.isCompound) return false;
     const rightKey = card.name.rightName?.key;
     const leftKey =
@@ -383,13 +427,32 @@ export class HelpRulesResolver implements HelpRulesApi {
         : undefined;
     if (rightKey === undefined || leftKey === undefined || leftKey === "") return false;
     const right = this.engine.fetchRenderCard(rightKey);
+    if (right === undefined) return false;
+    if (right.record.typeId !== this.settingTypeId) return false;
     const left = this.engine.fetchRenderCard(leftKey);
-    return (
-      right !== undefined &&
-      left !== undefined &&
-      right.record.typeId === this.settingTypeId &&
-      left.record.typeId === this.setTypeId
-    );
+    // standard_rule? (all.rb:36-39) - the left part's type is Set.
+    if (left !== undefined && left.record.typeId === this.setTypeId) return true;
+    // preference? / the capture's own arm: a rule row whose left is not Set.
+    return left !== undefined;
+  }
+
+  /** Whether this rule row is a standard_rule? (left Set-typed) card. The
+   *  raw_help_text split below keys on it: help.rb:36-38 is
+   *  `card.try(:raw_help_text) || card.help_rule_card&.content`, and the
+   *  capture shows the static right-set table does NOT answer for a
+   *  preference rule row - the readable *help rule card's db_content does
+   *  (`*follow+*right+*help`, card 22724, content "Get notified about
+   *  changes." WITH its period, against the table's
+   *  `Right::Follow#raw_help_text` "Get notified about changes" without one -
+   *  mod/follow/set/right/follow.rb:39-41 vs mod/follow/data/real.yml:14). */
+  private isStandardRuleCard(card: RenderCard): boolean {
+    const leftKey =
+      card.name.parts.length > 1
+        ? DeckoName.parse(card.name.parts.slice(0, -1).join("+")).key
+        : undefined;
+    if (leftKey === undefined || leftKey === "") return false;
+    const left = this.engine.fetchRenderCard(leftKey);
+    return left !== undefined && this.setTypeId !== undefined && left.record.typeId === this.setTypeId;
   }
 
   /** board_rules_editor.rb:21-27 setting_link. The anchor text keeps Ruby's
