@@ -1435,7 +1435,33 @@ const ruleBoardLinkView: ViewFn = (ctx) => {
  *  recursive side walk of the prefetch's reached-CTE shape. Unlike
  *  card-mod-help's warm (settings.codename = 'help'), this warms EVERY rule
  *  card, because this mod's views resolve *help rule cards AND the
- *  "*all+<setting>" rule cards the Setting branch nests. */
+ *  "*all+<setting>" rule cards the Setting branch nests.
+ *
+ *  SCOPE: this walk is deliberately NOT narrowed to the rendered card's
+ *  closure, and must not be. It is a boot-time precompute whose product is
+ *  a NAME-keyed map the render consults synchronously at any depth
+ *  (`assertRuleCard` reads the prepared map); which rule cards a page will
+ *  ask for is not knowable before the render asks. Ruby's counterpart
+ *  precomputes the same whole set once per process (Card::Cache["RULES"],
+ *  lib/card/rule/cache.rb:25-30) and amortises it over every request, while
+ *  this port re-runs it once per engine generation. That asymmetry is what
+ *  to fix if it ever shows as per-request cost — a cross-request cache —
+ *  NOT a narrower walk, which would trade the boot cost for per-render
+ *  point queries and break the zero-query render path this warm exists for.
+ *
+ *  The recursive step is written as TWO indexed arms rather than the
+ *  `s.id IN (j.left_id, j.right_id)` form the prefetch's reached CTE uses.
+ *  Same rows, same UNION dedupe, same set: `s.id` is the primary key, so
+ *  `s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL` matches exactly
+ *  the two non-null side ids, and dropping the join to `cards s` removes
+ *  the only thing it contributed. What changes is the PLAN, and on the
+ *  trial deck the plan IS the cost: the two-valued IN cannot use the cards
+ *  primary-key index, so the step degrades to a scan per reached row —
+ *  measured standalone against the trial database, the IN form did not
+ *  complete inside 40 s (the driver's transport failed, twice), while this
+ *  form returns the identical 4,779-id closure in 170 ms. Mirrored locally
+ *  the IN form exceeded 60 s against 17.6 s for this one; see
+ *  benchmarks/cold-render/probe-reached-rules-walk-wire.ts. */
 function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
   sql: string;
   params: unknown[];
@@ -1451,9 +1477,13 @@ function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
       "WITH RECURSIVE reached(id) AS (\n" +
       `  SELECT rules.id ${ruleJoin}\n` +
       "  UNION\n" +
-      "  SELECT s.id FROM reached r\n" +
+      "  SELECT j.left_id FROM reached r\n" +
       "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-      "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
+      "    WHERE j.left_id IS NOT NULL\n" +
+      "  UNION\n" +
+      "  SELECT j.right_id FROM reached r\n" +
+      "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
+      "    WHERE j.right_id IS NOT NULL\n" +
       ")\n" +
       "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
     params: [setTypeId, settingTypeId],

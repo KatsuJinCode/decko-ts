@@ -559,7 +559,28 @@ function rubyBlank(s: string): boolean {
 /** The *help rule cards (rule rows joined through their set + setting cards,
  *  lib/card/rule/cache.rb:10-27's join with the setting narrowed to codename
  *  'help') plus every transitive side card needed to compose their names.
- *  The recursive reached-CTE mirrors prefetch.ts SELECT_TYPE_AND_SIDE. */
+ *  The recursive reached-CTE mirrors prefetch.ts SELECT_TYPE_AND_SIDE.
+ *
+ *  SCOPE: deck-wide by construction and deliberately so — the product is
+ *  the help popover's rule facts, closure-independent, which is the same
+ *  precompute Ruby's Rule::Cache does once per process
+ *  (lib/card/rule/cache.rb:25-30). It is NOT narrowed to the rendered
+ *  card's closure: a page's popover asks about the SETTINGS that page
+ *  shows, and which those are depends on the page's content, so the row
+ *  set is not knowable before the page is walked. What was wrong is the
+ *  recursive step's PLAN, and the plan was the whole cost: the two-valued
+ *  `s.id IN (j.left_id, j.right_id)` cannot use the cards primary-key
+ *  index, so the step degrades to a scan per reached row. `s.id` IS the
+ *  primary key, so that predicate matches exactly the two non-null side
+ *  ids and the join to `cards s` contributes nothing — splitting it into
+ *  two indexed arms returns the identical set (the UNION dedupe is
+ *  unchanged) on a plan the index can serve. Measured on the trial deck's
+ *  all-settings twin (card-mod-rules.ts ruleSidesStatement, same step):
+ *  the IN form did not complete inside 40 s standalone against the trial
+ *  database, the two-arm form returned the identical 4,779-id closure in
+ *  170 ms; mirrored locally, 60 s+ against 17.6 s, with the two-arm set
+ *  matching an independent breadth-first walk id for id. See
+ *  benchmarks/cold-render/probe-reached-rules-walk-wire.ts. */
 function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLStatement {
   const ruleJoin =
     "FROM cards rules\n" +
@@ -572,12 +593,17 @@ function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLSt
       "WITH RECURSIVE reached(id) AS (\n" +
       `  SELECT rules.id ${ruleJoin}\n` +
       "  UNION\n" +
-      "  SELECT s.id FROM reached r\n" +
+      "  SELECT j.left_id FROM reached r\n" +
       "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-      "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
+      "    WHERE j.left_id IS NOT NULL\n" +
+      "  UNION\n" +
+      "  SELECT j.right_id FROM reached r\n" +
+      "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
+      "    WHERE j.right_id IS NOT NULL\n" +
       "  UNION\n" +
       "  SELECT j.type_id FROM reached r\n" +
-      "    JOIN cards j ON j.id = r.id AND j.type_id IS NOT NULL\n" +
+      "    JOIN cards j ON j.id = r.id\n" +
+      "    WHERE j.type_id IS NOT NULL\n" +
       ")\n" +
       "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
     params: [setTypeId, settingTypeId],

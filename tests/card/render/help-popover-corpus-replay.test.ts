@@ -92,6 +92,13 @@ async function seedHelpRuleUniverse(storage: Awaited<ReturnType<typeof createPer
     corpus.close();
     throw new Error("corpus DB lacks the set/setting codename cards");
   }
+  // Kept in step with helpRuleSidesStatement (src/card/render/help-popover.ts):
+  // the side step is two indexed arms, not the two-valued `s.id IN
+  // (j.left_id, j.right_id)` form, which cannot use the cards primary-key
+  // index and degrades to a scan per reached row. Same rows either way — `s.id`
+  // IS the primary key, so the IN form matches exactly the two non-null side
+  // ids — and this copy exists to seed the same universe the engine warms, so
+  // it has to carry the same plan.
   const sql =
     "WITH RECURSIVE reached(id) AS (\n" +
     "  SELECT rules.id FROM cards rules\n" +
@@ -100,9 +107,13 @@ async function seedHelpRuleUniverse(storage: Awaited<ReturnType<typeof createPer
     "  WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help'\n" +
     "    AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n" +
     "  UNION\n" +
-    "  SELECT s.id FROM reached r\n" +
+    "  SELECT j.left_id FROM reached r\n" +
     "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
-    "    JOIN cards s ON s.id IN (j.left_id, j.right_id) AND s.id IS NOT NULL\n" +
+    "    WHERE j.left_id IS NOT NULL\n" +
+    "  UNION\n" +
+    "  SELECT j.right_id FROM reached r\n" +
+    "    JOIN cards j ON j.id = r.id AND j.trash = 0\n" +
+    "    WHERE j.right_id IS NOT NULL\n" +
     "  UNION\n" +
     "  SELECT j.type_id FROM reached r\n" +
     "    JOIN cards j ON j.id = r.id AND j.type_id IS NOT NULL\n" +

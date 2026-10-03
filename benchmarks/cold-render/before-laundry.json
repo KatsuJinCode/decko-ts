@@ -1,0 +1,243 @@
+{
+  "reports": [
+    {
+      "name": "Laundry",
+      "outcome": "ok",
+      "html_bytes": 76,
+      "distinct_sql_param_sets": 1170,
+      "repeat_ratio": 0.984,
+      "wall_ms": 90760,
+      "http_posts": 1151,
+      "distinct_shapes": 22,
+      "total_db_bytes": 4916710,
+      "top_by_calls": [
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 408,
+          "statements": 408,
+          "bytes": 138277,
+          "mean_ms": 61.6,
+          "max_ms": 583.3
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 313,
+          "statements": 313,
+          "bytes": 765446,
+          "mean_ms": 73.4,
+          "max_ms": 1067.9
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 169,
+          "statements": 169,
+          "bytes": 382111,
+          "mean_ms": 85,
+          "max_ms": 1030.9
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 123,
+          "statements": 123,
+          "bytes": 43444,
+          "mean_ms": 58.5,
+          "max_ms": 437.8
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 90,
+          "statements": 90,
+          "bytes": 42785,
+          "mean_ms": 61.5,
+          "max_ms": 323.9
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ;; SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ;; SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.",
+          "calls": 18,
+          "statements": 54,
+          "bytes": 787983,
+          "mean_ms": 290.6,
+          "max_ms": 554.3
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "calls": 9,
+          "statements": 9,
+          "bytes": 4162,
+          "mean_ms": 54.2,
+          "max_ms": 60.2
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ;; SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ",
+          "calls": 3,
+          "statements": 6,
+          "bytes": 233467,
+          "mean_ms": 228.7,
+          "max_ms": 269.4
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+          "calls": 3,
+          "statements": 3,
+          "bytes": 1693,
+          "mean_ms": 49.3,
+          "max_ms": 56
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "calls": 2,
+          "statements": 2,
+          "bytes": 25004,
+          "mean_ms": 88.8,
+          "max_ms": 99.3
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "calls": 2,
+          "statements": 2,
+          "bytes": 2569,
+          "mean_ms": 76.6,
+          "max_ms": 77.4
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 ;; SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template') ;; SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id ;; SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0 ;; SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0 ;; SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id  ;; SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id ;; SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL ;; WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction c ;; WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction c ;; SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "calls": 1,
+          "statements": 11,
+          "bytes": 186746,
+          "mean_ms": 623.1,
+          "max_ms": 623.1
+        }
+      ],
+      "top_by_bytes": [
+        {
+          "shape": "WITH RECURSIVE resolved(id, ckey) AS ( SELECT id, \"key\" FROM cards WHERE \"key\" IS NOT NULL AND +trash = 0 UNION SELECT j.id, l.ckey || '+' || r.\"key\" FROM resolved l JOIN cards j ON j.left_id = l.id AND +j.trash = 0 JOIN",
+          "calls": 1,
+          "statements": 1,
+          "bytes": 1873329,
+          "mean_ms": 3763.3,
+          "max_ms": 3763.3
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ;; SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ;; SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.",
+          "calls": 18,
+          "statements": 54,
+          "bytes": 787983,
+          "mean_ms": 290.6,
+          "max_ms": 554.3
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 313,
+          "statements": 313,
+          "bytes": 765446,
+          "mean_ms": 73.4,
+          "max_ms": 1067.9
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 169,
+          "statements": 169,
+          "bytes": 382111,
+          "mean_ms": 85,
+          "max_ms": 1030.9
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ;; SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ",
+          "calls": 3,
+          "statements": 6,
+          "bytes": 233467,
+          "mean_ms": 228.7,
+          "max_ms": 269.4
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 ;; SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template') ;; SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id ;; SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0 ;; SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0 ;; SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id  ;; SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id ;; SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL ;; WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction c ;; WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction c ;; SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "calls": 1,
+          "statements": 11,
+          "bytes": 186746,
+          "mean_ms": 623.1,
+          "max_ms": 623.1
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 408,
+          "statements": 408,
+          "bytes": 138277,
+          "mean_ms": 61.6,
+          "max_ms": 583.3
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ;; SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,  ;; SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?))",
+          "calls": 1,
+          "statements": 3,
+          "bytes": 122749,
+          "mean_ms": 393.4,
+          "max_ms": 393.4
+        }
+      ],
+      "largest_hops": [
+        {
+          "bytes": 1873329,
+          "ms": 3763.3,
+          "statements": 1,
+          "shape": "WITH RECURSIVE resolved(id, ckey) AS ( SELECT id, \"key\" FROM cards WHERE \"key\" IS NOT NULL AND +trash = 0 UNION SELECT j.id, l.ckey || '+' || r.\"key\" FROM resolved l JOIN cards j O"
+        },
+        {
+          "bytes": 186746,
+          "ms": 623.1,
+          "statements": 11,
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 ;; SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND "
+        },
+        {
+          "bytes": 130545,
+          "ms": 269.4,
+          "statements": 2,
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        },
+        {
+          "bytes": 122749,
+          "ms": 393.4,
+          "statements": 3,
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        },
+        {
+          "bytes": 115633,
+          "ms": 388.1,
+          "statements": 4,
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        }
+      ],
+      "slowest_hops": [
+        {
+          "ms": 3763.3,
+          "bytes": 1873329,
+          "statements": 1,
+          "shape": "WITH RECURSIVE resolved(id, ckey) AS ( SELECT id, \"key\" FROM cards WHERE \"key\" IS NOT NULL AND +trash = 0 UNION SELECT j.id, l.ckey || '+' || r.\"key\" FROM resolved l JOIN cards j O"
+        },
+        {
+          "ms": 2211.9,
+          "bytes": 65431,
+          "statements": 2,
+          "shape": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN cards settings ON rules.right_id = settings.id WHERE sets.type_id ="
+        },
+        {
+          "ms": 1067.9,
+          "bytes": 2082,
+          "statements": 1,
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+        },
+        {
+          "ms": 1030.9,
+          "bytes": 2317,
+          "statements": 1,
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1"
+        },
+        {
+          "ms": 1012.9,
+          "bytes": 988,
+          "statements": 1,
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+        }
+      ]
+    }
+  ]
+}

@@ -64,7 +64,7 @@ import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import type { ReadPermissionState } from "./read-rules.js";
-import { resolveRuleIdsByKeys } from "./read-rules.js";
+import { resolveRuleIdsByRuleKeys } from "./read-rules.js";
 import type { CrudTask } from "./view-perms.js";
 
 /** The tasks the view gate checks beyond read (permission.rb:11 CRUD). */
@@ -237,7 +237,7 @@ export async function allTaskVerdictsForCard(
     perTask.set(task, names);
     candidateKeys.push(...names);
   }
-  const resolved = await resolveRuleIdsByKeys(fetcher.driver, candidateKeys);
+  const resolved = await resolveRuleIdsByRuleKeys(fetcher.driver, candidateKeys);
   for (const task of needed) {
     const names = perTask.get(task) ?? [];
     const firstResolved = names
@@ -354,7 +354,7 @@ async function permitVerdict(
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
   );
-  const resolved = await resolveRuleIdsByKeys(fetcher.driver, candidates);
+  const resolved = await resolveRuleIdsByRuleKeys(fetcher.driver, candidates);
   for (const key of candidates) {
     const ruleId = resolved.get(key);
     if (ruleId === undefined) continue;

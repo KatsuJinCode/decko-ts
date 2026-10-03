@@ -462,7 +462,10 @@ async function canReadByRuleLookupDepth(
   // WITH content: the delegation check reads the winning rule's text
   // (permissions.rb:54 `rule(action)`); the extra join rides the same
   // statement, no second round trip.
-  const resolved = await resolveRuleRowsByKeys(
+  // RENDER path, so the rule-closure walk: every candidate here is a
+  // pattern name joined to *read, which the scoped walk resolves exactly
+  // (resolveRuleRowsByRuleKeys carries the equivalence measurement).
+  const resolved = await resolveRuleRowsByRuleKeys(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),
     true,
@@ -580,6 +583,23 @@ export async function resolveRuleIdsByKeys(
   return out;
 }
 
+/**
+ * The RENDER path's id-only projection — resolveRuleRowsByRuleKeys without
+ * the content column. Every render-path caller asks for rule candidate
+ * names, which the rule-closure walk answers exactly; the write path keeps
+ * resolveRuleIdsByKeys (the whole-deck walk) because its `self` set-pattern
+ * member lookup asks for a card's own composed name.
+ */
+export async function resolveRuleIdsByRuleKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const rows = await resolveRuleRowsByRuleKeys(driver, keys, false);
+  const out = new Map<string, number>();
+  for (const [key, row] of rows) out.set(key, row.id);
+  return out;
+}
+
 /** One resolved rule candidate: the rule card's id and (when requested) its
  *  db content — the content is what the _left delegation inspects. */
 export interface ResolvedRuleRow {
@@ -637,11 +657,37 @@ export interface ResolvedRuleRow {
  */
 interface RuleResolutionDriverCache {
   /** ckey -> rule card id: the full composed-key universe, built once per
-   *  driver generation. Undefined until the first resolution. */
+   *  driver generation. Undefined until the first resolution. The WRITE
+   *  path's walk — it answers any composed key, which the rule-closure walk
+   *  deliberately does not. */
   universe?: Map<string, number>;
+  /** ckey -> rule card id: the RULE-CLOSURE universe (the rule cards' side
+   *  spines only), built once per driver generation by the RENDER path's
+   *  walk. A separate entry, not a subset view of `universe`: the two walks
+   *  are different statements and either can be the first one a driver
+   *  generation sees, so each memoizes independently and both are dropped
+   *  together by expireRuleResolutionCache. */
+  ruleUniverse?: Map<string, number>;
   /** Rule-card db_content per id, lazily filled by withContent calls
    *  (null = NULL column, exactly what the old content join projected). */
   contentById: Map<number, string | null>;
+}
+
+/** The memo entry a scope reads. Undefined until that scope's first walk. */
+function universeFor(
+  cache: RuleResolutionDriverCache,
+  scope: RuleResolutionScope,
+): Map<string, number> | undefined {
+  return scope === "ruleClosure" ? cache.ruleUniverse : cache.universe;
+}
+
+function setUniverseFor(
+  cache: RuleResolutionDriverCache,
+  scope: RuleResolutionScope,
+  universe: Map<string, number>,
+): void {
+  if (scope === "ruleClosure") cache.ruleUniverse = universe;
+  else cache.universe = universe;
 }
 
 const ruleResolutionCaches = new WeakMap<SQLDatabaseDriver, RuleResolutionDriverCache>();
@@ -679,6 +725,91 @@ const RULE_KEY_UNIVERSE_STATEMENT =
   `)\n` +
   `SELECT rs.ckey, rs.id FROM resolved rs`;
 
+/** The setting names a rule candidate's name can end in — the four task
+ *  settings the resolver's render-path callers join a pattern name to
+ *  (READ_SETTING_NAME above; view-task-rules.ts's TASK_SETTING_NAME for the
+ *  other three). They are the walk's boundary: a composed key is only ever
+ *  needed when it can be one of these, and the boundary is on the NAME, not
+ *  on any particular page's card — so one statement per driver generation
+ *  still serves every card the render asks about. */
+const TASK_RULE_SETTING_NAMES: readonly string[] = [
+  READ_SETTING_NAME,
+  "*create",
+  "*update",
+  "*delete",
+];
+
+/**
+ * The RULE-CLOSURE walk — resolveRuleRowsByRuleKeys's ONE statement, the
+ * same composed-key resolution as RULE_KEY_UNIVERSE_STATEMENT with the
+ * deck replaced by the rule cards' side spines.
+ *
+ * `anc` is the left-ancestor chain of every rule card (a card whose right
+ * side is a task setting card): the composition of a rule card's name reads
+ * its left subtree, so the simple card at the bottom of every spine is a
+ * seed the walk needs. The second seed term covers the rule cards whose
+ * composed key is STORED rather than composable — a rule row with a virtual
+ * left carries its full name in the `key` column and no `left_id` to walk
+ * from, which is not hypothetical: the corpus deck's delegating rule
+ * `*all plus+*read` is exactly that row, and a seed of `anc` alone loses it
+ * (which the delegation then resolves to the catch-all `*all+*read` and
+ * allows — a fail-OPEN, caught by
+ * tests/card/permissions/rule-closure-scoped-resolution.test.ts). Every
+ * spine bottoms out in one of the two cases: a card with no `left_id` is
+ * either a simple card on a spine or a stored rule-shaped key.
+ *
+ * The `resolved` arms are the shipped arms verbatim — same trash handling,
+ * same bidirectional composition — with the seed narrowed. The projection
+ * keeps only the rule-shaped composed keys, which is the entire set of keys
+ * the render path can ask for.
+ *
+ * Measured on the trial deck (19,482 live cards), wire and local: whole-deck
+ * 19,474 rows / 1,074,532 bytes / 3,789 ms against rule-closure 1,489 rows
+ * / 84,379 bytes / 384 ms, agreeing on all 1,489 rule-shaped keys (0 missing,
+ * 0 disagreeing, 0 invented). See
+ * benchmarks/cold-render/probe-rule-closure-statement-shapes.ts (wire) and
+ * probe-rule-closure-shapes-locally.ts (plan ranking against a local mirror).
+ *
+ * The arms stay UNBOUNDED on purpose: adding `j.id IN (SELECT id FROM anc)`
+ * to them is the obvious tightening and it is a trap — measured at 20-25 s
+ * against this deck, worse than the 142 ms whole-deck walk it replaces,
+ * because the bound re-evaluates a 12,738-row closure per recursion step.
+ * The seed narrowing plus the projection is what actually removes the deck.
+ *
+ * NOT equivalent to the whole-deck walk for arbitrary keys, and must not be
+ * used where a non-rule key is asked for — set-read-rule.ts's `self`
+ * set-pattern member lookup is the one such consumer and stays on
+ * RULE_KEY_UNIVERSE_STATEMENT.
+ */
+const RULE_KEY_RULE_CLOSURE_STATEMENT =
+  `WITH RECURSIVE\n` +
+  `anc(id) AS (\n` +
+  `  SELECT r.left_id FROM cards r\n` +
+  `    JOIN cards st ON st.id = r.right_id\n` +
+  `    WHERE +r.trash = 0 AND st."key" IN (${TASK_RULE_SETTING_NAMES.map(() => "?").join(", ")})\n` +
+  `      AND r.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.left_id FROM anc a\n` +
+  `    JOIN cards j ON j.id = a.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `resolved(id, ckey) AS (\n` +
+  `  SELECT c.id, c."key" FROM cards c\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `      AND (c.id IN (SELECT id FROM anc)\n` +
+  `        OR ${TASK_RULE_SETTING_NAMES.map((n) => `c."key" LIKE '%+${n}'`).join("\n        OR ")})\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id FROM resolved rs\n` +
+  `WHERE ${TASK_RULE_SETTING_NAMES.map((n) => `rs.ckey LIKE '%+${n}'`).join(" OR ")}`;
+
 /**
  * The same composed-key resolution as resolveRuleIdsByKeys, with the rule
  * card's CONTENT carried when `withContent` is set (the content is what the
@@ -697,16 +828,70 @@ export async function resolveRuleRowsByKeys(
   keys: string[],
   withContent: boolean,
 ): Promise<Map<string, ResolvedRuleRow>> {
+  return resolveRowsAgainst(driver, keys, withContent, "wholeDeck");
+}
+
+/**
+ * The RENDER path's resolution: the same answers as resolveRuleRowsByKeys,
+ * from the RULE-CLOSURE walk — one statement, scoped to the composed keys
+ * that can be a rule candidate's name, instead of the whole deck's composed
+ * key universe.
+ *
+ * WHY the scope is the requested closure and not the whole deck: every key
+ * a render asks this resolver for ends in a task setting name, because
+ * every rule candidate is a pattern name joined to a setting
+ * (`ruleNamesForCard(card, "*read" | "*create" | "*update" | "*delete")`
+ * — canReadByRuleLookupDepth below and allTaskVerdictsForCard /
+ * permitVerdict in view-task-rules.ts are the only render-path callers, and
+ * their keys are pattern names by construction). Measured on a cold `Home`
+ * against the trial deck: 612 resolution calls, 99 distinct keys, 99 of 99
+ * ending in a task setting name. A card's composed key is therefore needed
+ * only when the card sits on a rule card's spine, and the walk only has to
+ * start from the simple cards on those spines — which is the boundary the
+ * whole-deck statement lacks.
+ *
+ * WHAT IT COSTS AND BUYS (trial deck, 19,482 live cards; wire, measured by
+ * benchmarks/cold-render/probe-rule-closure-statement-shapes.ts):
+ * whole-deck 19,474 rows / 1,074,532 response bytes / 3,789 ms;
+ * rule-closure 1,489 rows / 84,379 response bytes / 384 ms — the SAME
+ * statement count (one per driver generation), and on all 1,489 rule-shaped
+ * keys the two agree exactly (0 missing, 0 disagreeing, 0 invented).
+ *
+ * The whole-deck walk stays for the write path: set-read-rule.ts's
+ * `self` set-pattern member lookup resolves the anchor card's own composed
+ * name, which is not a rule key, so the scoped walk would answer nothing
+ * for it. That is the one consumer that still needs the full universe, and
+ * it is a write, not a render.
+ */
+export async function resolveRuleRowsByRuleKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+): Promise<Map<string, ResolvedRuleRow>> {
+  return resolveRowsAgainst(driver, keys, withContent, "ruleClosure");
+}
+
+/** Which walk backs a resolution: the whole deck's composed-key universe, or
+ *  the rule cards' side-spine closure. Both are one statement per driver
+ *  generation; they differ in what the walk is allowed to compose. */
+type RuleResolutionScope = "wholeDeck" | "ruleClosure";
+
+async function resolveRowsAgainst(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+  scope: RuleResolutionScope,
+): Promise<Map<string, ResolvedRuleRow>> {
   if (keys.length === 0) return new Map();
   let cache = ruleResolutionCaches.get(driver);
   if (cache === undefined) {
     cache = { contentById: new Map() };
     ruleResolutionCaches.set(driver, cache);
   }
-  if (cache.universe === undefined) {
+  if (universeFor(cache, scope) === undefined) {
     const result = await driver.query<{ ckey: string; id: number }>(
-      RULE_KEY_UNIVERSE_STATEMENT,
-      [],
+      scope === "ruleClosure" ? RULE_KEY_RULE_CLOSURE_STATEMENT : RULE_KEY_UNIVERSE_STATEMENT,
+      scope === "ruleClosure" ? [...TASK_RULE_SETTING_NAMES] : [],
     );
     // The statement's await is an expire window: a fixture seed or committed
     // save may have dropped this entry after this call created it. Re-read
@@ -714,13 +899,14 @@ export async function resolveRuleRowsByKeys(
     // a detached object would make every later call rebuild.
     cache = ruleResolutionCaches.get(driver) ?? { contentById: new Map() };
     ruleResolutionCaches.set(driver, cache);
-    if (cache.universe === undefined) {
+    if (universeFor(cache, scope) === undefined) {
       const universe = new Map<string, number>();
       for (const row of result.rows) universe.set(row.ckey, row.id);
-      cache.universe = universe;
+      setUniverseFor(cache, scope, universe);
     }
   }
-  const universe = cache.universe;
+  const universe = universeFor(cache, scope);
+  if (universe === undefined) throw new Error("rule resolution universe missing after build");
   // The result map is built in SORTED key order: the resolution is
   // order-insensitive (the old CTE's fragment Set + IN clause + ckey-keyed
   // result were too), so reordered calls must produce identical maps —
