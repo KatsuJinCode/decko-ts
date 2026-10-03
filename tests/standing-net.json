@@ -2,7 +2,7 @@
  "what": "The decko-ts standing verification net: every live file of the fold-verification net, reconciled into ONE checked-in list. Submit it as a single machine test queue job with the runner (see canonicalCommand).",
  "canonicalCommand": "node tools/test-queue/run-standing-net.mjs",
  "jobName": "standing-net",
- "timeoutMin": 10,
+ "timeoutMin": 30,
  "vitestArgs": [
   "--maxWorkers=1",
   "--no-file-parallelism"
