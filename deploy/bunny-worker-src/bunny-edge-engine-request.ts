@@ -14,15 +14,25 @@
 // stays the thin shell that owns process.env, the deck boot and the serve
 // registration.
 //
-// THE ERROR MAPPING (handleEngineRequest's catch), aligned with the CF
-// worker's render path (deploy/worker.ts:462-466):
-//   card not found: <name>            -> 404 "Card not found"
-//     (the throw site is src/card/render.ts:706-708; Ruby answers 404 for a
-//     missing card, and before 2026-10-02 this edge fell through to 500)
-//   view (<v>) not supported for <n>  -> 422 "Unsupported view"
+// THE ERROR MAPPING (handleEngineRequest's catch):
+//   card not found: <name>            -> 404 Decko's full-chrome not_found
+//     page (bunny-edge-error-page.ts, the staging host's error builder port
+//     — vm-staging-server.mjs:1497-1549; status per format/error.rb
+//     page_status_for_unknown). The throw site is src/card/render.ts:706-708
+//     (Ruby answers 404 for a missing card; before 2026-10-02 this edge fell
+//     through to 500).
+//   view (<v>) not supported for <n>  -> 422 "Unsupported view" bare page
 //     (UnsupportedViewError's message shape, src/card/render.ts:18 — the
-//     edge's own case; the CF render path 500s these instead)
-//   anything else                     -> 500 "Render error"
+//     edge's own case, no staging shape exists for it; the CF render path
+//     500s these instead)
+//   anything else                     -> 500 Decko's full-chrome Wild Card
+//     deck error page (the same port; live_Introduction.html shape)
+// The no-route 404s (parsePath notFound + the api fallthrough) answer the
+// staging ROUTER's minimal stub — a different route class from the card
+// not_found page (vm-staging-server.mjs:2203). The budget 503 answers the
+// full chrome around the edge's own Slow-render body region, grace-bounded
+// back to the bare pre-lane page when the database is too slow to build
+// chrome (EDGE_ERROR_PAGE_GRACE_MS). Every error surface stays no-store.
 
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
@@ -36,6 +46,13 @@ import {
   filesLeafVariant,
   filesNotFoundBody,
 } from "./bunny-edge-page-shell.js";
+import {
+  EDGE_ERROR_PAGE_GRACE_MS,
+  noRouteNotFoundResponse,
+  renderDeckoNotFoundErrorPage,
+  renderDeckoServerErrorPage,
+  renderFullChromeErrorPage,
+} from "./bunny-edge-error-page.js";
 
 /** The deck the engine request renders through; booted once per isolate by
  *  the entry (getDeck) and passed in, so this module never touches env or
@@ -156,32 +173,53 @@ export function resolveEdgePipelineTimeoutMs(env: EdgeEnv): number {
  *  as every other response here — same layout shell, same escaping, same
  *  `no-store` — so an escaping or header regression in the error path cannot
  *  hide behind a special case. It carries no card name (the request may not
- *  have parsed one yet) and no internal error text. */
-function budgetExceededResponse(budgetMs: number, retryAfterSeconds: number): Response {
-  const response = html(
-    503,
-    layoutPage(
-      "Slow render",
-      `<h1>Slow render</h1><p class='muted'>This page took longer than ` +
-        `${escapeHtml(String(budgetMs))} ms to render and was stopped before it ` +
-        `finished. That is a capacity limit, not a missing page — retrying in a ` +
-        `few seconds usually succeeds.</p>`,
-    ),
-  );
+ *  have parsed one yet) and no internal error text.
+ *
+ *  p2-error-shell lane (2026-10-03): the body region is re-homed into the
+ *  FULL-CHROME error page (bunny-edge-error-page.ts — the staging host's
+ *  error builder port). No staging shape exists for an infra 503, so the
+ *  title and body text are byte-identical to the bare page this replaced,
+ *  and when the chrome cannot be built (or the chrome build outlives
+ *  EDGE_ERROR_PAGE_GRACE_MS — the budget fired because the database is slow
+ *  or dead, and the error page must not become a second long wait) the
+ *  fallback IS the bare pre-lane page below. Retry-After and the diagnostic
+ *  header are set on whichever arm answered. */
+async function budgetExceededResponse(
+  deck: Deck,
+  budgetMs: number,
+  retryAfterSeconds: number,
+): Promise<Response> {
+  const bodyRegion =
+    `<h1>Slow render</h1><p class='muted'>This page took longer than ` +
+    `${escapeHtml(String(budgetMs))} ms to render and was stopped before it ` +
+    `finished. That is a capacity limit, not a missing page — retrying in a ` +
+    `few seconds usually succeeds.</p>`;
+  const response = await renderFullChromeErrorPage(deck, {
+    status: 503,
+    viewHtml: bodyRegion,
+    titleText: "Slow render",
+    cardName: "",
+    fallbackHtml: layoutPage("Slow render", bodyRegion),
+    graceMs: EDGE_ERROR_PAGE_GRACE_MS,
+  });
   response.headers.set("Retry-After", String(retryAfterSeconds));
   response.headers.set(EDGE_BUDGET_DIAGNOSTIC_HEADER, `exceeded; budget_ms=${budgetMs}`);
   return response;
 }
 
 /** Race `work` against the budget. Resolves to work's response, or the 503
- *  when the budget wins. Rejections are the work's own outcome and propagate
- *  to the caller's existing try/catch — EXCEPT once the budget has already
- *  fired, where a late rejection must not turn a clean 503 back into a 500.
+ *  when the budget wins — the 503 built by `slowPage` (which may itself
+ *  take a bounded moment to assemble the full-chrome error page; see
+ *  budgetExceededResponse). Rejections are the work's own outcome and
+ *  propagate to the caller's existing try/catch — EXCEPT once the budget
+ *  has already fired, where a late rejection must not turn a clean 503 back
+ *  into a 500.
  */
 async function withBudget(
   budgetMs: number,
   retryAfterSeconds: number,
   work: () => Promise<Response>,
+  slowPage: () => Promise<Response>,
 ): Promise<Response> {
   if (!Number.isFinite(budgetMs) || budgetMs <= 0) return await work();
 
@@ -190,7 +228,7 @@ async function withBudget(
   const expiry = new Promise<Response>((resolve) => {
     timer = setTimeout(() => {
       expired = true;
-      resolve(budgetExceededResponse(budgetMs, retryAfterSeconds));
+      resolve(slowPage());
     }, budgetMs);
     // Never hold the process open on the timer alone: if the platform drops
     // the connection, the timer must not be the reason the isolate lingers.
@@ -204,7 +242,7 @@ async function withBudget(
     // rejection arriving after the timer fired is a symptom of the request
     // we already abandoned, not of the one we are answering — so answer the
     // abandoned one the same way and never let it surface as a 500.
-    if (expired) return budgetExceededResponse(budgetMs, retryAfterSeconds);
+    if (expired) return await slowPage();
     throw err;
   } finally {
     if (timer !== undefined) clearTimeout(timer);
@@ -258,10 +296,13 @@ export async function handleEngineRequest(
   deck: Deck,
   options?: EngineRequestOptions,
 ): Promise<Response> {
+  const budgetMs = options?.budgetMs ?? 0;
+  const retryAfterSeconds = options?.retryAfterSeconds ?? EDGE_BUDGET_RETRY_AFTER_SECONDS;
   return await withBudget(
-    options?.budgetMs ?? 0,
-    options?.retryAfterSeconds ?? EDGE_BUDGET_RETRY_AFTER_SECONDS,
+    budgetMs,
+    retryAfterSeconds,
     () => dispatchEngineRequest(request, deck),
+    () => budgetExceededResponse(deck, budgetMs, retryAfterSeconds),
   );
 }
 
@@ -293,13 +334,15 @@ async function dispatchEngineRequest(
 
   if ("kind" in parsed) {
     if (parsed.kind === "notFound") {
-      return html(
-        404,
-        layoutPage(
-          "Not found",
-          "<h1>Not found</h1><p class='muted'>Try <a href='/'>the home page</a> or render a card by name, e.g. <code>/Hello+World</code>.</p>",
-        ),
-      );
+      // THE NO-ROUTE CLASS (p2-error-shell lane, 2026-10-03): paths that
+      // never parse to a card route answer the staging ROUTER's own minimal
+      // stub (vm-staging-server.mjs:2203 — `<pre>No route for <path></pre>`,
+      // pathname escaped), not the full-chrome card not_found page: staging
+      // routes only single-segment card names to the renderer, and live's
+      // Rails router 404s this class bare too. The title stays the edge's
+      // existing "Not found" (staging's default title is its own origin
+      // name); headers keep the html() no-store pair.
+      return noRouteNotFoundResponse(url.pathname);
     }
     if (url.pathname === "/api/status") {
       return json(200, {
@@ -352,7 +395,9 @@ async function dispatchEngineRequest(
         db_content_preview: (record.dbContent ?? "").slice(0, 200),
       });
     }
-    return html(404, layoutPage("Not found", "<h1>Not found</h1>"));
+    // Same no-route class as the parsePath notFound branch above (an api
+    // subpath that is neither /api/status nor /api/card/<name>).
+    return noRouteNotFoundResponse(url.pathname);
   }
 
   try {
@@ -401,25 +446,31 @@ async function dispatchEngineRequest(
     // for a missing card too (this edge previously fell through to 500). The
     // 422 unsupported-view case stays the edge's own (UnsupportedViewError's
     // message shape, src/card/render.ts:18); anything else is a 500.
+    //
+    // THE FULL-CHROME ERROR SURFACES (p2-error-shell lane, 2026-10-03): the
+    // 404 and the 500 route through the staging host's error builder port
+    // (bunny-edge-error-page.ts) — the not_found slot page (404, noindex,
+    // "Could not find <Name>.") and the Wild Card deck error page (500),
+    // both in the deck's Default-Layout chrome, with the staging builder's
+    // minimal-stub fallback when the chrome cannot be built. The 422 has no
+    // staging shape (the unsupported-view mapping is the edge's own) and
+    // keeps the bare page below, escape convention unchanged: the crafted
+    // name rides the message, so every interpolation of it is escaped.
     const isCardNotFound = /^card not found: /.test(message);
     const isUnsupportedView = message.startsWith("view (");
-    const status = isCardNotFound ? 404 : isUnsupportedView ? 422 : 500;
-    const title = isCardNotFound
-      ? "Card not found"
-      : isUnsupportedView
-        ? "Unsupported view"
-        : "Render error";
-    // The message embeds the requested card name (the crafted-name payload
-    // rides parsePath's decode), so the interpolations are escaped — the
-    // same convention the CF worker's errorPage uses (deploy/worker.ts
-    // errorPage -> escapeHtml) and the entry error pages got on 70d2042.
-    return html(
-      status,
-      layoutPage(
-        "Error",
-        `<h1>${escapeHtml(title)}</h1><pre>${escapeHtml(message)}</pre>`,
-      ),
-    );
+    if (isUnsupportedView) {
+      return html(
+        422,
+        layoutPage(
+          "Error",
+          `<h1>${escapeHtml("Unsupported view")}</h1><pre>${escapeHtml(message)}</pre>`,
+        ),
+      );
+    }
+    if (isCardNotFound) {
+      return renderDeckoNotFoundErrorPage(deck, parsed.name);
+    }
+    return renderDeckoServerErrorPage(deck, parsed.name);
   }
 }
 

@@ -42,7 +42,13 @@
 
 import { describe, expect, it } from "vitest";
 
+import { escapeHtml } from "../../worker.js";
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
+import {
+  EDGE_ERROR_PAGE_GRACE_MS,
+  renderFullChromeErrorPage,
+  type ErrorPageDeck,
+} from "../../deploy/bunny-worker-src/bunny-edge-error-page.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -129,9 +135,13 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       // The *header nest substituted verbatim into the layout body.
       expect(body).toContain(`<header><nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav></header>`);
       // The not_found slot (buildNotFoundSlotHtml): type constants pinned
-      // from the live bytes (NOT_FOUND_DEFAULT_TYPE), URL-display link name,
-      // per-request slot id, and the escaped outer slot JSON.
-      expect(body).toContain(`<div id="no_such_card-not_found-view" class="card-slot not_found-view ALL TYPE-basic_c" data-card-name="NoSuchCard" data-card-type-id="22281" data-card-type-name="BasicCs" data-card-link-name="NoSuch_Card" data-slot-id="`);
+      // from the live bytes (NOT_FOUND_DEFAULT_TYPE), the DeckoName key
+      // ("NoSuchCard".key = "no_such_card" — this engine's key splits
+      // camelCase words; staging imports the same DeckoName module) and the
+      // URL-display link name (urlKey keeps case, underscores only for
+      // spaces: "NoSuchCard"), per-request slot id, and the escaped outer
+      // slot JSON.
+      expect(body).toContain(`<div id="no_such_card-not_found-view" class="card-slot not_found-view ALL TYPE-basic_c" data-card-name="NoSuchCard" data-card-type-id="22281" data-card-type-name="BasicCs" data-card-link-name="NoSuchCard" data-slot-id="`);
       expect(body).toContain(`data-slot="{&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;_main&quot;,&quot;nest_syntax&quot;:&quot;_main|titled&quot;,&quot;hide&quot;:[&quot;menu&quot;,&quot;help&quot;],&quot;main&quot;:true,&quot;home_view&quot;:&quot;titled&quot;,&quot;main_view&quot;:true,&quot;layout&quot;:&quot;Default Layout&quot;}">`);
       expect(body).toContain(`<span class="card-title" title="Not Found">Not Found</span>`);
       expect(body).toContain(`Could not find\n<em>\nNoSuchCard\n</em>`);
@@ -235,9 +245,12 @@ describe("bunny edge — full-chrome server_error page (staging builder shape)",
       expect(res.status).toBe(500);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
+      // The stub's message is the BUILDER's own failure (the staging host
+      // catches inside renderDeckoErrorPage, vm-staging-server.mjs:1530-1547
+      // — it never sees the original render error), escaped into the <pre>.
       expect(body).toBe(
         `<!doctype html><html><head><meta charset="utf-8"><title>Render error</title></head>` +
-          `<body><h1>Render error</h1><pre>engine exploded</pre></body></html>`,
+          `<body><h1>Render error</h1><pre>${escapeHtml(`default layout "Default Layout" has no body in the corpus; cannot build the error page chrome`)}</pre></body></html>`,
       );
     } finally {
       storage.close();
@@ -327,5 +340,38 @@ describe("bunny edge — budget-exceeded 503 in the full chrome", () => {
     } finally {
       storage.close();
     }
+  });
+
+  it("the budget 503's chrome build is grace-bounded — a hung database still answers the bare page", async () => {
+    // The deadline fired because the database is slow or dead; the error
+    // page's own queries must not become a second unbounded wait. Direct
+    // module seam with an injectable (short) grace: a driver whose queries
+    // never settle, a chrome build that would hang forever, and a fallback
+    // that must win at the grace.
+    const hungDeck = {
+      fetcher: {
+        driver: {
+          query: () => new Promise<{ rows: never[] }>(() => {}),
+        },
+      },
+    } as unknown as ErrorPageDeck;
+    const started = Date.now();
+    const res = await renderFullChromeErrorPage(hungDeck, {
+      status: 503,
+      viewHtml: "<h1>Slow render</h1>",
+      titleText: "Slow render",
+      cardName: "",
+      fallbackHtml: "<!doctype html><title>Slow render</title>",
+      graceMs: 25,
+    });
+    expect(res.status).toBe(503);
+    expect(await res.text()).toBe("<!doctype html><title>Slow render</title>");
+    // The grace actually bounded the wait (25 ms grace, far under the test
+    // timeout — and far under the 5 s production EDGE_ERROR_PAGE_GRACE_MS).
+    expect(Date.now() - started).toBeLessThan(2_000);
+    // The production default is bounded and exported — a hung DB waits at
+    // most this long past the render budget, never forever.
+    expect(EDGE_ERROR_PAGE_GRACE_MS).toBeGreaterThan(0);
+    expect(EDGE_ERROR_PAGE_GRACE_MS).toBeLessThanOrEqual(10_000);
   });
 });
