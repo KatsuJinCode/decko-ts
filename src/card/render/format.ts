@@ -3061,7 +3061,10 @@ export interface RenderEngineLike {
    *  views; live blog.html/Latest_News.html render the same shape).
    *  Optional; engines without it build type-less unknown cards (the
    *  pre-round-9 shape). */
-  newCardDefaultType?(name: DeckoName): { typeId: number; typeName: string } | undefined;
+  newCardDefaultType?(
+    name: DeckoName,
+    leftTypeName?: string,
+  ): { typeId: number; typeName: string } | undefined;
   /** content/all.rb:17-19 standard_content's new_card branch — the winning
    *  *default rule card's db_content for a nest-miss new card
    *  (default_content = template&.db_content, mod/core set/all/content.rb:

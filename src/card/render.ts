@@ -1940,7 +1940,10 @@ export class RenderEngine implements RenderEngineLike {
     return this.fetcher.codenames.peekNameForId(resolution.typeId);
   }
 
-  newCardDefaultType(name: DeckoName): { typeId: number; typeName: string } | undefined {
+  newCardDefaultType(
+    name: DeckoName,
+    leftTypeName?: string,
+  ): { typeId: number; typeName: string } | undefined {
     // type.rb:58-66 ensure_type_id: `type_id_from_code ||
     // type_id_from_template` — the ASSIGNMENT walk runs FIRST. The walk is
     // the set-type-assignment registry over the card's type-assigning
@@ -1977,7 +1980,14 @@ export class RenderEngine implements RenderEngineLike {
     // : concrete_patterns`). Keeping *self in the walk let an anchor's
     // X+*self+*default rule win where Ruby's prototype walk never sees it.
     const candidates = ruleNamesForCard(
-      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
+      {
+        name,
+        id: undefined,
+        typeId: undefined,
+        typeName: undefined,
+        leftTypeName,
+        isNew: true,
+      },
       DEFAULT_SETTING_NAME,
     );
     for (const candidate of candidates) {
@@ -2009,11 +2019,30 @@ export class RenderEngine implements RenderEngineLike {
       // HTML-typed) -> the prototype types HTML -> the *create walk hits
       // HTML+*type+*create (rule 6553, "Shark") — the oracle's
       // [Shark] create/delete rows for that set page.
+      //
+      // leftTypeName (tpr-regression-fix lane, 2026-10-02): Ruby's dup is a
+      // real `dup` of the prototype Card, so it keeps @supercard/@superleft —
+      // and the *structure walk's TPR anchor reads
+      // `left_type(card) = card.superleft&.type_name`
+      // (set_pattern/class_methods.rb:59-71). For a *type plus right
+      // prototype the supercard is `Card.new(name: "*dummy", type:
+      // anchor.trunk_name)` (08_type_plus_right.rb:23-28), so the anchor is
+      // `<set's trunk>+<tag>` — NOT the registry's "unknown left type ->
+      // RichText" default (registry.ts:186-192). Corpus proof: the
+      // Search+large image+*type plus right prototype `*dummy+large image`
+      // (supercard `*dummy` typed Search) walks to
+      // Search+large image+*type plus right+*structure (rule 17703,
+      // PlainText-typed) — with the RichText default the candidate misses,
+      // the walk falls to `large image+*right+*structure` (rule 17705,
+      // HTML-typed), and the prototype types HTML, so the *create/*update/
+      // *delete walks hit HTML+*type+*<setting> (rules 6553/6558/6562,
+      // "Shark") where the oracle renders the `_left` inherit-perm span
+      // (*all plus+*<setting>, rules 6567/6571/6573).
       const structureTypes = this.structureRuleTypes;
       const structureContents = this.structureContents;
       if (structureTypes !== undefined && structureTypes.size > 0) {
         const structureCandidates = ruleNamesForCard(
-          { name, id: undefined, typeId, typeName, isNew: true },
+          { name, id: undefined, typeId, typeName, leftTypeName, isNew: true },
           STRUCTURE_SETTING_NAME,
         );
         for (const structureCandidate of structureCandidates) {
@@ -5435,7 +5464,7 @@ export class RenderEngine implements RenderEngineLike {
         // right set pages. The prior anchor-type stamp (RichText) built the
         // wrong prototype type and the walk fell through to *all plus+*create
         // ("_left" → inherit-perm).
-        const defaultType = this.newCardDefaultType(parsed);
+        const defaultType = this.newCardDefaultType(parsed, typeName);
         return {
           name: parsed,
           id: undefined,
