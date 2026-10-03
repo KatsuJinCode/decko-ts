@@ -443,4 +443,26 @@ export interface ModEngineHost {
   /** Write a composed CardRecord into the engine's caches so the SYNC
    *  render path (fetchRenderCard/isDenied/set keys) sees it. */
   cacheFetchedRecord(record: unknown): Promise<void>;
+
+  /** db-roundtrip-elimination lane (W1): compose + cache records from the
+   *  warms' OWN `SELECT c.*` rows instead of walking each row back through
+   *  fetchById (the per-row point-query storm: one idToLex + one id row per
+   *  uncached row, ~170 hops per cold engine on the trial deck). Same
+   *  mechanism and value-identity contract as prefetch.ts
+   *  composeAndCacheSqlRows: the real row goes straight into
+   *  composeCardRecord, junction names compose multi-pass sides-first from
+   *  the row set itself, the lexicon is primed both directions, and every
+   *  composed record lands in the fetch cache + enriched render-card map
+   *  exactly like cacheFetchedRecord. Returns the composed records in row
+   *  order (records whose sides never composed are skipped, the same skip
+   *  the per-row ladder applied when the composed name stayed undefined). */
+  composeAndCacheRows(rows: readonly object[]): Promise<
+    Array<{
+      id?: number;
+      name?: { s: string };
+      key?: string;
+      leftId?: number | null;
+      rightId?: number | null;
+    }>
+  >;
 }

@@ -1,0 +1,2484 @@
+{
+  "reports": [
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Home",
+      "outcome": "ok",
+      "html_bytes": 15409,
+      "wall_ms": 489.8,
+      "round_trips": 163,
+      "statements_total": 190,
+      "consumers": [
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 26,
+          "marks": [
+            "fetchByName(*recent settings+*self+*content options) [23808,264]",
+            "fetchByName(*recent settings+*self+*content options) [23809,86]",
+            "fetchByName(Brian Roemmele - AI DEFENDING THE STATUS QUO+tags+*self+*content opt [51580,264]",
+            "fetchByName(Source+tags+*type plus right+*content options) [1023,128]",
+            "fetchByName(tags+*right+*content options) [355,86]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 21,
+          "marks": [
+            "phase:render [\"description\"]",
+            "phase:render [\"williamscraig\"]",
+            "phase:render [\"item\"]",
+            "phase:render [\"type_news_item_sort_create_dir_desc_limit_9\"]",
+            "phase:render [\"dm_craigslist_re\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:enrichAndStore",
+          "consumerFrames": [
+            "composeAndCache",
+            "prefetchInclusionClosure"
+          ],
+          "calls": 18,
+          "marks": [
+            "fetchById(5) [5]",
+            "fetchById(50) [50]",
+            "fetchById(52) [52]",
+            "fetchById(19) [19]",
+            "fetchById(30) [30]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 13,
+          "marks": [
+            "fetchByName({\"type\":\"News item\", \"sort\":\"create\", \"dir\":\"desc\", \"limit\": \"9\"}) [\"type_news_item_sort_create_dir_desc_limit_9\"]",
+            "fetchByName(*comment) [\"*comment\"]",
+            "fetchByName(AI) [\"ai\"]",
+            "fetchByName(fiction) [\"fiction\"]",
+            "fetchByName(deception) [\"deception\"]"
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 12,
+          "marks": [
+            "phase:render [5]",
+            "phase:render [50]",
+            "phase:render [52]",
+            "phase:render [19]",
+            "phase:render [30]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 6,
+          "marks": [
+            "fetchByName(RichText+*type+by name) [273,184]",
+            "fetchByName(News Item+*type+by name) [815,184]",
+            "fetchByName(Image+*type+by name) [3383,184]",
+            "fetchByName(tags+BDWC+private) [41198,14155]",
+            "fetchByName(tags+BDWC+private+Williamscraig) [40301,18145]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 6,
+          "marks": [
+            "phase:render [814,146,23701,146]",
+            "phase:render [814,266,23701,19,23701,13229,23701,437,23701,23613,23701,23002,23701,2975,23701",
+            "phase:render [19,266,51573,516,51573,12173,51573,130]",
+            "phase:render [17,146,583,19,583,13229,583,437,583,146,583,23613,583,23002,583,2975,583,668,58",
+            "phase:render [14152,19,14152,146,14152,675,14152,130,14152,544,14152,548,14152,552,14152,556,"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 6,
+          "marks": [
+            "phase:render [19,146]",
+            "phase:render [17,266]",
+            "phase:render [18145,146]",
+            "phase:render [18145,2077]",
+            "phase:render [2077,146]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 6,
+          "marks": [
+            "fetchByName(*recent settings+*self+*content options) [23810]",
+            "fetchByName(tags+*right+*content options) [452]",
+            "fetchByName(Project(s) Organizing+*right+*content options) [1739]",
+            "fetchByName(Related Project+*right+*content options) [498]",
+            "fetchByName(musings+*right+*content options) [2978]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"rich_text\",\"description\"]",
+            "phase:render [\"rich_text\",\"*type\"]",
+            "phase:render [\"tag\",\"bdwc\"]",
+            "phase:render [\"williamscraig\",\"item\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kao",
+            "phase:render [\"huston_smith\",\"martha_hart_eddy\",\"ed_correium\",\"kayla_feder\",\"robert_kent\",\"mo",
+            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"robert_kent\",\"christ",
+            "phase:render [\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"public\",\"private\",\"related_person\"]",
+            "phase:render [\"bdwc\",\"writing_sample\",\"linked_in\"]",
+            "phase:render [\"movement_education_org\",\"embody_peace_website\",\"martha_hart_eddy_article_bmc_l",
+            "phase:render [\"huston_smith_on_fresh_air_with_terry_gross_19960219\",\"huston_smith_remembered_"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "fetchByName(*recent_setting+*self) [23809]",
+            "fetchByName(related_project+*right) [492]",
+            "fetchByName(musing+*right) [2976]",
+            "fetchByName(frequent_process+*right) [545]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"ab_cglobal_board\",\"low_impact_body_art_research\",\"mr_to_im_name_change_project",
+            "phase:render [\"huston_smith_and_brandon_williamscraig\",\"conversation_with_huston_smith\",\"hust",
+            "phase:render [\"the_red_book_considered\",\"david_and_julie_william_january_2011\",\"meditation_10",
+            "phase:render [\"regina_hackett_jefferson_award_cheryl_honey_a_weaver_of_neighborhood_network\","
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:danglingSideRowCanonicalMap",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [374]",
+            "phase:render [376]",
+            "phase:render [388]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:fetchTypeIdForPart",
+          "consumerFrames": [
+            "composeAndCacheSqlRows"
+          ],
+          "calls": 3,
+          "marks": [
+            "fetchByName(recommendation) [\"recommendation\"]",
+            "fetchByName(project__organizing) [\"project_organizing\"]",
+            "fetchByName(*content_option) [\"*content_option\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:cqlItemTypeId",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "fetchByName(Project) [\"project\"]",
+            "fetchByName(consideration) [\"consideration\"]",
+            "fetchByName(process) [\"process\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored ke",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"*structure\",\"*structure\"]",
+            "phase:render [\"*default\",\"*default\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"latest_news\",\"cdwcd_wimage02\"]",
+            "phase:render [\"feed_icon\",\"latest_news_item\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"huston_smith\",\"martha_hart_eddy\",\"ed_correium\",\"kayla_feder\",\"robert_kent\",\"mo",
+            "phase:render [\"some_help_spreading_the_word_would_be_much_appreciated\",\"what_do_we_need_to_kn"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"h_recommend_bw\"]",
+            "phase:render [\"h_bw_rec\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(tags+BDWC+private) [40301]",
+            "fetchByName(tags+BDWC+private+Williamscraig) [40445]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "asyncRunEntryPointWithESMLoader"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Home) [\"home\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [3]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [80,3]"
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject'",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [3]"
+          ]
+        },
+        {
+          "shape": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*self\",\"*type\",\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*title\",\"*favicon\",\"*all+*style\",\"*all+*style+*asset_output\",\"*all+*script\",\"*"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*admin_info\",\"home_htm_lheader\",\"new_connection_ask\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*type\",\"by_name\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash =",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*create\",\"*update\",\"*delete\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [6568,6569]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:seatBlankKeyReadVerdict",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [22283]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:resolveViewerKey",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchById(15) [15]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "phase:render :: phase:runSearch",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"news_item\"]"
+          ]
+        },
+        {
+          "shape": "SELECT c0.*, c0.created_at, c0.id FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND c0.read_rule_id",
+          "consumer": "phase:render :: phase:runSearch",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [814,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689,112"
+          ]
+        },
+        {
+          "shape": "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.left_id IS NOT NULL AND (NOT EXISTS (SELECT 1 FROM cards l WHE",
+          "consumer": "phase:render :: phase:danglingSideRowCanonicalMap",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:prefetchSearchResultRows",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [51579,814,50256,49322,48308,47617,46301,45777,45736,45195,23701,3527]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [
+            "composeAndCacheSqlRows"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(kaori_suzuki) [\"kaori_suzuki\"]"
+          ]
+        },
+        {
+          "shape": "SELECT coalesce(count(distinct c0.id),0) as count FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND",
+          "consumer": "phase:render :: phase:runSearch",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [814,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689,112"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"brian_roemmele_ai_defending_the_status_quo\",\"bw_recommendation\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"image\",\"bio\",\"how_to_contact_me\",\"company\",\"skill\",\"musing\",\"page\",\"document\","
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"huston_smith_recommendation\",\"odette_lockwood_stewart_recommendation\",\"kayla_f"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"writing\",\"applicable_research\",\"related\",\"core_pattern\",\"related_pattern\",\"sug"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JO",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278]"
+          ]
+        },
+        {
+          "shape": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN card",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689"
+          ]
+        },
+        {
+          "shape": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN ca",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AN",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*structure\",\"*script\",\"*content_option\",\"*input_type\",\"*default\",\"*lay"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"ai\",\"agi\",\"reality_control\",\"fiction\",\"deception\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(*all) [\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(project__organizing+*right) [\"project_organizing\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN ca",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"conflict_done_well\",\"martha_hart_eddy\",\"online_class\",\"cv\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Home+*self+*open) [80,264]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Home+*self+*open) [\"*open\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Laundry",
+      "outcome": "ok",
+      "html_bytes": 76,
+      "wall_ms": 833.3,
+      "round_trips": 385,
+      "statements_total": 468,
+      "consumers": [
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 82,
+          "marks": [
+            "fetchByName(Roundtable+Pages+*self+*content options) [18823,264]",
+            "fetchByName(Project+Pages+*type plus right+*content options) [398,668]",
+            "fetchByName(Pages+*right+*content options) [668,260]",
+            "fetchByName(Pages+*right+*content options) [671,86]",
+            "fetchByName(List+*type+*content options) [47,266]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 41,
+          "marks": [
+            "fetchByName(The Flight Deck) [\"the_flight_deck\"]",
+            "fetchByName(Pacific Rim International School) [\"pacific_rim_international_school\"]",
+            "fetchByName(Beacon Day School) [\"beacon_day_school\"]",
+            "fetchByName({\"referred_to_by\":\"GBA_quotes\", \"limit\":\"1\", \"sort\":\"rand()\", \"view\" [\"referred_to_by_gba_quote_limit_1_sort_rand_view_naked\"]",
+            "fetchByName(*comment) [\"*comment\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 34,
+          "marks": [
+            "fetchByName(Task+*type+by name) [21904,184]",
+            "fetchByName(Project+*type+by name) [403,184]",
+            "fetchByName(Log Entry+*type+by name) [21893,184]",
+            "fetchByName(Image+*type+by name) [3383,184]",
+            "fetchByName(Aikido and Attention+member content+sign-in only) [15960,15964]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 28,
+          "marks": [
+            "phase:render [\"20140113\"]",
+            "phase:render [\"ab_cglobal\"]",
+            "phase:render [\"aikido_of_berkeley\"]",
+            "phase:render [\"ethan_mc_cutchen\"]",
+            "phase:render [\"index\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:enrichAndStore",
+          "consumerFrames": [
+            "composeAndCache",
+            "prefetchInclusionClosure"
+          ],
+          "calls": 26,
+          "marks": [
+            "fetchById(5) [5]",
+            "fetchById(22281) [22281]",
+            "fetchById(3) [3]",
+            "fetchById(18) [18]",
+            "fetchById(814) [814]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 25,
+          "marks": [
+            "phase:render [\"\",\"project\",\"\",\"status\",\"\",\"owner\",\"\",\"issue\",\"\",\"solution\",\"\",\"log_entry\",\"\",",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"conversation_with_huston_smith\",\"roundtable\",\"consulting_",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 25,
+          "marks": [
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry"
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 23,
+          "marks": [
+            "phase:render [5]",
+            "phase:render [22281]",
+            "phase:render [3]",
+            "phase:render [18]",
+            "phase:render [814]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 20,
+          "marks": [
+            "phase:render [635,318,19334,19349,10939,184,2887,2917,641,128]",
+            "phase:render [10939,184,19334,19324,2259,634]",
+            "phase:render [10939,184,41198,14155,12857,12173,18887,146,18887,130,18887,128]",
+            "phase:render [10939,184,10688,184,11817,12194,1527,1854,1527,1534,1624,12028,1624,12026,1624,",
+            "phase:render [10939,184,10688,184,1527,1534,18887,10521,18887,1975,18887,128,11817,12268,2934"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 14,
+          "marks": [
+            "fetchByName(PGI+DP+Soma) [29783,27516]",
+            "fetchByName(PGI+DP+Soma+851) [29786,29784]",
+            "fetchByName(WilliamsCraig+Family_Business+Financial+Insurance+Kaiser) [3413,3416]",
+            "fetchByName(WilliamsCraig+Family_Business+Financial+Insurance+Kaiser) [3417,11733]",
+            "fetchByName(WilliamsCraig+Family_Business+Financial+Insurance+Kaiser) [18575,11267]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 13,
+          "marks": [
+            "fetchByName(Aikido and Attention+member content+sign-in only) [15965]",
+            "fetchByName(WagnDecko dev+Notes+BW Issues) [12790]",
+            "fetchByName(WagnDecko dev+Notes+BW Learning) [12794]",
+            "fetchByName(WagnDecko dev+Notes+card tools) [12800]",
+            "fetchByName(WagnDecko dev+Notes+changes) [12782]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 12,
+          "marks": [
+            "phase:render [\"strategy\",\"upon_gaining_employment\"]",
+            "phase:render [\"grass_common\",\"logo\"]",
+            "phase:render [\"team\",\"dream_team\"]",
+            "phase:render [\"associative_inquiry\",\"martial_nonviolence\"]",
+            "phase:render [\"referred_to_by_medium\",\"youtube_video_view_naked_append_gba_y_tlink_view\"]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 10,
+          "marks": [
+            "phase:render [21884,146,23291,23371,23291,398,23291,1124,23291,128,23291,23018,23291,23020,23",
+            "phase:render [634,260,23291,30731,23291,25947,23291,11739,23291,11742,23291,25961,576,22057,5",
+            "phase:render [17,266,18,266]",
+            "phase:render [14041,12028,14041,14155,14894,130,629,19,629,146,629,675,629,1879,629,1014,629,",
+            "phase:render [2615,260,12795,266]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 10,
+          "marks": [
+            "fetchByName(Associates+*right+*content options) [519]",
+            "fetchByName(tags+*right+*content options) [452]",
+            "fetchByName(Core Project+*right+*content options) [506]",
+            "fetchByName(Central Places+*right+*content options) [523]",
+            "fetchByName(Related Project+*right+*content options) [498]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 9,
+          "marks": [
+            "phase:render [\"min_ahn_program_at_uc_berkeley\",\"vi_a_vie_gba\"]",
+            "phase:render [\"20140113\",\"bw\"]",
+            "phase:render [\"reading\",\"bw\"]",
+            "phase:render [\"grass_common\",\"logo\"]",
+            "phase:render [\"brandon_william_craig\",\"video\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 9,
+          "marks": [
+            "fetchByName(associate+*right) [517]",
+            "fetchByName(core_project+*right) [509]",
+            "fetchByName(central_place+*right) [521]",
+            "fetchByName(related_project+*right) [492]",
+            "fetchByName(*recent_setting+*self) [23809]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 8,
+          "marks": [
+            "phase:render [23368]",
+            "phase:render [10940]",
+            "phase:render [19826]",
+            "phase:render [16394]",
+            "phase:render [9338]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 7,
+          "marks": [
+            "fetchByName(PGI+DP+Soma) [29786]",
+            "fetchByName(PGI+DP+Soma+851) [29787]",
+            "fetchByName(WilliamsCraig+Family_Business+Financial+Insurance+Kaiser) [11268]",
+            "fetchByName(WilliamsCraig+Family Business+Financial+IRS) [14474]",
+            "fetchByName(Writing workspace+Conflict Done Well+proposal) [33617]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 5,
+          "marks": [
+            "phase:render [\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"healing_friction\",\"healing_f",
+            "phase:render [\"task\",\"project\",\"log_entry\",\"image\",\"date\",\"gba_style\",\"to_do\",\"file\",\"item\",\"",
+            "phase:render [\"automatic_billing\",\"automatic_billing\",\"automatic_billing\",\"home\",\"about\",\"sch",
+            "phase:render [\"writing_workspace\",\"20151024\",\"20150926\",\"20140915\",\"trx\",\"conflict_done_well\"",
+            "phase:render [\"20150522\",\"william_craig\",\"pathfinder\",\"20150730\",\"20140320\",\"bw\",\"family_busi"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:fetchTypeIdForPart",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "fetchByName(project__organizing) [\"project_organizing\"]",
+            "fetchByName(*content_option) [\"*content_option\"]",
+            "fetchByName(organizer_) [\"organizer\"]",
+            "fetchByName(participant_) [\"participant\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"reading\",\"daily\",\"admin\"]",
+            "phase:render [\"robert_frager_on_the_aikido_archive\",\"robert_frager_demo_20100110\",\"robert_fra",
+            "phase:render [\"repro\",\"copyright\",\"open_source\"]",
+            "phase:render [\"dp\",\"soma\",\"851\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND tras",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [\"hour\",\"deadline\",\"*when_created\",\"*when_last_edited\",\"related\",\"legacy\",\"overv",
+            "phase:render [\"*read\",\"*structure\",\"*script\",\"*content_option\",\"*input_type\",\"*layout\",\"*than",
+            "phase:render [\"1030\",\"email_sequence\",\"kaiser\",\"sallie_mae_navient\",\"vsac\",\"ir\",\"writing_work"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [\"*type\",\"sign_in_only\",\"plan\",\"body\",\"original_work\",\"thought\",\"correspondence\"",
+            "phase:render [\"conflict_done_well\",\"aikido_2\",\"aikido_oak_cliff\",\"paul_linden\",\"kayla_feder\",",
+            "phase:render [\"storage_physical\",\"slobodan_dan_paich_connection\",\"paula_craig_support\",\"besse"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [12750,453]",
+            "phase:render [1210,867]",
+            "phase:render [29786,23018]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [6568,6569]",
+            "phase:render [20874,19458]",
+            "phase:render [10745,10864]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "fetchByName(organizer_+*right) [\"organizer\"]",
+            "fetchByName(participant_+*right) [\"participant\"]",
+            "fetchByName(project__organizing+*right) [\"project_organizing\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored ke",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"*structure\",\"*structure\"]",
+            "phase:render [\"*default\",\"*default\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"aikido_a_peace_practice\",\"bw_guideline\"]",
+            "phase:render [\"wagn_skype_w_ethan20100726\",\"wagn_skype_w_ethan20100727\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"wagn_decko_dev\"]",
+            "phase:render [\"culturesmith_com_wagn_free_aiki_dojo\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"bw_issue\",\"bw_learning\",\"card_tool\",\"change\",\"c_dev\",\"direct_card_access_vium_",
+            "phase:render [\"20150522\",\"insurance\",\"loan\",\"william_craig\",\"family_business\",\"financial\",\"pa"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"march_9th\",\"april_13th\",\"may_18th\",\"july_20th\"]",
+            "phase:render [\"the_flight_deck\",\"pacific_rim_international_school\",\"beacon_day_school\",\"the_r"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"professional_material\",\"bw_press\",\"bw_link\",\"bw_previou_blog\",\"bw_original\",\"p",
+            "phase:render [\"it_all_make_sense_trumpery_explained\",\"a_taste_of_your_own_medicine_the_proble"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:cqlItemTypeId",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(place) [\"place\"]",
+            "fetchByName(consideration) [\"consideration\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"gp_xabc\",\"gpx2007archive\",\"gpx2002archive\",\"gpx2001blog\",\"g_px_to_do\"]",
+            "phase:render [\"don_levine_aiki_con_syllabus_aut_2010_final\",\"don_levine_many_dimension_of_aik"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Laundry) [\"laundry\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [21884]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [23291,21884]"
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject'",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [21884]"
+          ]
+        },
+        {
+          "shape": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*self\",\"*type\",\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*title\",\"*favicon\",\"*all+*style\",\"*all+*style+*asset_output\",\"*all+*script\",\"*"
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [2525]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [2525]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"ae_to_do\",\"bar02\",\"training_schedule\",\"1514_university\",\"aiki_bulletin_board\","
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN ca",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"bw_to_do\",\"bw_to_do\",\"strategy\",\"upon_gaining_employment\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"application\",\"client\",\"community\",\"martial\",\"kith_kin\",\"pgi\",\"professional_dev"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"javascript_weirdness\",\"wag_nversation\",\"typewithmenote\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash =",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*create\",\"*update\",\"*delete\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByKey( :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [
+            "readThroughLeftCard",
+            "canReadByRuleLookupDepth"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByKey(grass_common,record) [\"grass_common\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:resolveViewerKey",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchById(15) [15]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JO",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278]"
+          ]
+        },
+        {
+          "shape": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN card",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(*all) [\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) J",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"roundtable\",\"roundtable\",\"roundtable\",\"roundtable\",\"march_9th\",\"april_13th\",\"m"
+          ]
+        },
+        {
+          "shape": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN ca",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(participant_+*right) [10960,260]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"gba_jeremy__13_jo_katum\",\"gba_jeremy__20_jo_suburi\",\"gba_jeremy__1st_kumijo\",\""
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [10689]"
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Aikido Oak Cliff",
+      "outcome": "ok",
+      "html_bytes": 40826,
+      "wall_ms": 618.4,
+      "round_trips": 220,
+      "statements_total": 270,
+      "consumers": [
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 61,
+          "marks": [
+            "fetchByName(Aikido Oak Cliff+related+*self+*content options) [44344,264]",
+            "fetchByName(Place+related+*type plus right+*content options) [442,25961]",
+            "fetchByName(related+*right+*content options) [25961,260]",
+            "fetchByName(related+*right+*content options) [25963,86]",
+            "fetchByName(List+*type+*content options) [47,266]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 25,
+          "marks": [
+            "phase:render [\"\",\"image\",\"\",\"description\",\"\",\"document\",\"\",\"writing\",\"\",\"related\",\"\",\"core_pr",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\""
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 25,
+          "marks": [
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\""
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 24,
+          "marks": [
+            "phase:render [\"gallery\"]",
+            "phase:render [\"kayla_feder_bio\"]",
+            "phase:render [\"aikido_of_berkeley\"]",
+            "phase:render [\"aikido_of_berkeley_and_free_aiki\"]",
+            "phase:render [\"brandon_william_craig\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:enrichAndStore",
+          "consumerFrames": [
+            "composeAndCache",
+            "prefetchInclusionClosure"
+          ],
+          "calls": 20,
+          "marks": [
+            "fetchById(5) [5]",
+            "fetchById(22281) [22281]",
+            "fetchById(18) [18]",
+            "fetchById(3) [3]",
+            "fetchById(47) [47]"
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 17,
+          "marks": [
+            "phase:render [5]",
+            "phase:render [22281]",
+            "phase:render [18]",
+            "phase:render [3]",
+            "phase:render [47]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 17,
+          "marks": [
+            "fetchByName(Cheryl does not contribute directly to Culturesmith at this time) [\"cheryl_do_not_contribute_directly_to_culturesmith_at_thi_time\"]",
+            "fetchByName(*comment) [\"*comment\"]",
+            "fetchByName({\"referred_to_by\": { \"right\": \"tag\" } }) [\"referred_to_by_right_tag\"]",
+            "fetchByName({\"type\":\"place\"}) [\"type_place\"]",
+            "fetchByName({\"type\": \"Project\"}) [\"type_project\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 7,
+          "marks": [
+            "fetchByName(tags+*right+*content options) [452]",
+            "fetchByName(Central Places+*right+*content options) [523]",
+            "fetchByName(Related Project+*right+*content options) [498]",
+            "fetchByName(Frequent Processes+*right+*content options) [547]",
+            "fetchByName(musings+*right+*content options) [2978]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 6,
+          "marks": [
+            "fetchByName(central_place+*right) [521]",
+            "fetchByName(related_project+*right) [492]",
+            "fetchByName(frequent_process+*right) [545]",
+            "fetchByName(musing+*right) [2976]",
+            "fetchByName(*recent_setting+*self) [23809]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 6,
+          "marks": [
+            "phase:render [\"why_call_it_aikido_2_0\",\"aikido_2pt0_martial_nonviolence_class_and_demonstrati",
+            "phase:render [\"ab_cglobal_board\",\"low_impact_body_art_research\",\"mr_to_im_name_change_project",
+            "phase:render [\"huston_smith_and_brandon_williamscraig\",\"conversation_with_huston_smith\",\"hust",
+            "phase:render [\"the_red_book_considered\",\"david_and_julie_william_january_2011\",\"meditation_10",
+            "phase:render [\"regina_hackett_jefferson_award_cheryl_honey_a_weaver_of_neighborhood_network\","
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"aikido_2\",\"kayla_feder\",\"kayla_feder\",\"kayla_feder\",\"kayla_feder\",\"david_willi",
+            "phase:render [\"richard_page\",\"richard_page\",\"richard_page\",\"richard_page\",\"mair_alight\",\"mair",
+            "phase:render [\"conflict_done_well\",\"conflict_done_well\",\"conflict_done_well\",\"conflict_done_w",
+            "phase:render [\"conflict_done_well\",\"automatic_billing\",\"automatic_billing\",\"automatic_billing"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"m_nv\",\"px_px\",\"cdw\"]",
+            "phase:render [\"movement_education_org\",\"embody_peace_website\",\"martha_hart_eddy_article_bmc_l",
+            "phase:render [\"huston_smith_on_fresh_air_with_terry_gross_19960219\",\"huston_smith_remembered_",
+            "phase:render [\"20141220\",\"20120124\",\"doctor_myth\"]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [442,146,41953,675,41953,1879,14152,19,14152,146,14152,675,14152,1879,14152,1014",
+            "phase:render [1263,13229,1263,23613,1263,23002,583,13229,583,23613,583,23002,727,13229,727,23",
+            "phase:render [23615,22057,23615,22065,23615,2015,23615,668,23615,130,11232,19]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [\"*type\",\"by_name\"]",
+            "phase:render [\"team\",\"dream_team\"]",
+            "phase:render [\"infrastructure\",\"journal\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "fetchByName(Place+*type+by name) [473,184]",
+            "fetchByName(Image+*type+by name) [3383,184]",
+            "fetchByName(Item+*type+by name) [17720,184]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "fetchByName(Conflict Done Well+Classes+Online+Infrastructure) [35389,35516]",
+            "fetchByName(Conflict Done Well+Classes+Online+Infrastructure) [35728,35703]",
+            "fetchByName(Conflict Done Well+class+Online+Journal) [35728,19903]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored ke",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"*structure\",\"*structure\"]",
+            "phase:render [\"*default\",\"*default\"]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [41198,14155]",
+            "phase:render [40301,18145]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:fetchTypeIdForPart",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(project__organizing) [\"project_organizing\"]",
+            "fetchByName(*content_option) [\"*content_option\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"aikido_oak_cliff\",\"gallery\"]",
+            "phase:render [\"intellectual_property\",\"index\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:cqlItemTypeId",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(process) [\"process\"]",
+            "fetchByName(consideration) [\"consideration\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(Conflict Done Well+Classes+Online+Infrastructure) [35397]",
+            "fetchByName(Conflict Done Well+class+Online+Journal) [36327]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Aikido Oak Cliff) [\"aikido_oak_cliff\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [442]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [41953,442]"
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject'",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [442]"
+          ]
+        },
+        {
+          "shape": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*self\",\"*type\",\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*title\",\"*favicon\",\"*all+*style\",\"*all+*style+*asset_output\",\"*all+*script\",\"*"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [1856,1857,16663,16684]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"image01\",\"bio\",\"company\",\"skill\",\"related_person\",\"article\",\"gallery10\",\"refer"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?) JOIN",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"place\",\"image\",\"item\",\"*type\",\"*type\",\"*type\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash =",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*create\",\"*update\",\"*delete\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [6568,6569]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:seatBlankKeyReadVerdict",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [22283]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:resolveViewerKey",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchById(15) [15]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JO",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278]"
+          ]
+        },
+        {
+          "shape": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN card",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(*all) [\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN ca",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(project__organizing+*right) [\"project_organizing\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AN",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*structure\",\"*script\",\"*content_option\",\"*input_type\",\"*default\",\"*lay"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN ca",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"dr_myth\",\"20120124\",\"20141220\",\"dr_myth\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByKey( :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [
+            "readThroughLeftCard",
+            "canReadByRuleLookupDepth"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByKey(20120124,record) [\"20120124\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"conflict_done_well_method\",\"conflict_done_well_aikido_training_at_ssumc\",\"busi"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"peace_practice\",\"aikido\",\"subscribe_to_my_newsletter\",\"we_greiner\",\"100\",\"50\","
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Aikido Oak Cliff+*self+*open) [41953,264]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Aikido Oak Cliff+*self+*open) [\"*open\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "About",
+      "outcome": "ok",
+      "html_bytes": 9106,
+      "wall_ms": 448.4,
+      "round_trips": 208,
+      "statements_total": 255,
+      "consumers": [
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 50,
+          "marks": [
+            "fetchByName(*recent settings+*self+*content options) [23808,264]",
+            "fetchByName(*recent settings+*self+*content options) [23809,86]",
+            "fetchByName(Process Arts+Core Project+*self+*content options) [717,264]",
+            "fetchByName(Project+Core Project+*type plus right+*content options) [398,586]",
+            "fetchByName(Core Project+*right+*content options) [586,260]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 35,
+          "marks": [
+            "fetchByName(*comment) [\"*comment\"]",
+            "fetchByName({\"type\":\"setting\"}) [\"type_setting\"]",
+            "fetchByName({\"type\": \"Project\"}) [\"type_project\"]",
+            "fetchByName({\"type\":\"consideration\"}) [\"type_consideration\"]",
+            "fetchByName(mytho-psychology) [\"mytho_psychology\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 21,
+          "marks": [
+            "phase:render [\"\",\"\"]",
+            "phase:render [\"\",\"\"]",
+            "phase:render [\"\",\"\"]",
+            "phase:render [\"\",\"\"]",
+            "phase:render [\"\",\"\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?) JOIN",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 21,
+          "marks": [
+            "phase:render [\"\",\"\",\"image\",\"description\",\"*type_card\",\"*type_card\"]",
+            "phase:render [\"\",\"\",\"image\",\"description\",\"*type_card\",\"*type_card\"]",
+            "phase:render [\"\",\"\",\"image\",\"description\",\"*type_card\",\"*type_card\"]",
+            "phase:render [\"\",\"\",\"image\",\"description\",\"*type_card\",\"*type_card\"]",
+            "phase:render [\"\",\"\",\"image\",\"description\",\"*type_card\",\"*type_card\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:enrichAndStore",
+          "consumerFrames": [
+            "composeAndCache",
+            "prefetchInclusionClosure"
+          ],
+          "calls": 19,
+          "marks": [
+            "fetchById(5) [5]",
+            "fetchById(19) [19]",
+            "fetchById(4) [4]",
+            "fetchById(398) [398]",
+            "fetchById(22281) [22281]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 15,
+          "marks": [
+            "phase:render [\"twitterfeed\"]",
+            "phase:render [\"*right\"]",
+            "phase:render [\"ab_cglobal\"]",
+            "phase:render [\"ncdd\"]",
+            "phase:render [\"intraview_lorie_pott_interview_brandon_williamscraig\"]"
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "consumer": "phase:render :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 12,
+          "marks": [
+            "phase:render [5]",
+            "phase:render [19]",
+            "phase:render [4]",
+            "phase:render [398]",
+            "phase:render [22281]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 5,
+          "marks": [
+            "fetchByName(*recent settings+*self+*content options) [23810]",
+            "fetchByName(Core Project+*right+*content options) [506]",
+            "fetchByName(Related Project+*right+*content options) [498]",
+            "fetchByName(Project(s) Organizing+*right+*content options) [1739]",
+            "fetchByName(musings+*right+*content options) [2978]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "phase:render [\"twitterfeed\",\"*right\"]",
+            "phase:render [\"brandon_william_craig\",\"video\"]",
+            "phase:render [\"intellectual_property\",\"index\"]",
+            "phase:render [\"process_art\",\"*referred_to_by\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 4,
+          "marks": [
+            "fetchByName(*recent_setting+*self) [23809]",
+            "fetchByName(core_project+*right) [509]",
+            "fetchByName(related_project+*right) [492]",
+            "fetchByName(musing+*right) [2976]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [\"bio\",\"company\",\"skill\",\"musing\",\"page\",\"document\",\"project__organizing\",\"proje",
+            "phase:render [\"martial_nonviolence_context\",\"m_nv_instructor_training_manual_itm\",\"three_phas",
+            "phase:render [\"culturesmith\",\"online_learning\",\"archetypal\",\"aikido\",\"aikido_2\",\"conflict_don"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [3,146,393,146]",
+            "phase:render [393,23613,393,23002,393,675,393,418,393,491,393,512,393,544,393,548,393,552,393",
+            "phase:render [23615,22057,23615,22065,23615,2015,23615,668,23615,130]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [\"*type\",\"by_name\"]",
+            "phase:render [\"healing_friction_context\",\"the_art_of_getting_up_again\"]",
+            "phase:render [\"free_aiki_dojo\",\"golden_bear_aikido_at_uc_berkeley\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "fetchByName(RichText+*type+by name) [273,184]",
+            "fetchByName(Image+*type+by name) [3383,184]",
+            "fetchByName(Martial Nonviolence+Description+twitterfeed) [1003,634]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 3,
+          "marks": [
+            "phase:render [577,146]",
+            "phase:render [634,260]",
+            "phase:render [579,3945]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored ke",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"*structure\",\"*structure\"]",
+            "phase:render [\"*default\",\"*default\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"brandon_william_craig\",\"brandon_william_craig\",\"brandon_william_craig\",\"brando",
+            "phase:render [\"m_nv_drill\",\"m_nv_drill\",\"m_nv_drill\",\"m_nv_drill\",\"m_nv_drill\",\"m_nv_drill\",\""
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:fetchTypeIdForPart",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(project__organizing) [\"project_organizing\"]",
+            "fetchByName(*content_option) [\"*content_option\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN ca",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"rich_text\",\"image\",\"*type\",\"*type\"]",
+            "phase:render [\"martial_nonviolence\",\"intellectual_property\",\"example\",\"statement\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"example\",\"intellectual_property\",\"statement\"]",
+            "phase:render [\"the_myth_of_peace_outline\",\"the_myth_of_peace_acknowledgment\",\"the_myth_of_pea"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "phase:render [\"professional_material\",\"bw_press\",\"bw_link\",\"bw_previou_blog\",\"bw_original\",\"p",
+            "phase:render [\"it_all_make_sense_trumpery_explained\",\"a_taste_of_your_own_medicine_the_proble"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(MNv Drills+Scenario+Duologue) [36734,36735]",
+            "fetchByName(MNv Drills+Scenario+Duologue+Ask For What You Want 011) [36736,36737]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:prepareItemForRender",
+          "consumerFrames": [],
+          "calls": 2,
+          "marks": [
+            "fetchByName(MNv Drills+Scenario+Duologue) [36736]",
+            "fetchByName(MNv Drills+Scenario+Duologue+Ask For What You Want 011) [36738]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(About) [\"about\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [3]"
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [9923,3]"
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject'",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [3]"
+          ]
+        },
+        {
+          "shape": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*self\",\"*type\",\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE ",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*title\",\"*favicon\",\"*all+*style\",\"*all+*style+*asset_output\",\"*all+*script\",\"*"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"introduction\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"thought_leader_image\",\"method\",\"make_contact\",\"c_logo1\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"associative_inquiry\",\"image\",\"process_art\",\"image\",\"healing_friction\",\"image\","
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"associative_inquiry\",\"process_art\",\"healing_friction\",\"martial_nonviolence\",\"t"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"\",\"description\",\"\",\"*type_card\",\"description\",\"*type_card\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) J",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"\",\"\",\"image\",\"image\",\"description\",\"*type_card\",\"description\",\"*type_card\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"px_px_you_tube_v1_playlist\",\"conflict_well_logo_figures01framed\",\"m_nv_f_book_"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(Martial Nonviolence+Description+twitterfeed) [2674]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+          "consumer": "phase:render :: phase:applyStructureContent",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"culturesmith_collage_01\"]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash =",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*create\",\"*update\",\"*delete\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+          "consumer": "phase:render :: phase:seatUnknownRefReadVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [6568,6569]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:seatBlankKeyReadVerdict",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [22283]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchById( :: phase:resolveViewerKey",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchById(15) [15]"
+          ]
+        },
+        {
+          "shape": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JO",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278]"
+          ]
+        },
+        {
+          "shape": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN card",
+          "consumer": "phase:render :: phase:render",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [259,278,6568,6640,8556,8927,9056,9475,9558,9586,9695,9697,9699,9814,10482,10689"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AN",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"*read\",\"*structure\",\"*script\",\"*content_option\",\"*input_type\",\"*default\",\"*lay"
+          ]
+        },
+        {
+          "shape": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN ca",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render []"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:resolveOptionsCard",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(*all) [\"*all\"]"
+          ]
+        },
+        {
+          "shape": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?) JOIN",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"m_nv\",\"martial_nonviolence\",\"martial_nonviolence\",\"instructor_training\",\"impro"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:enrichAndStore",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(project__organizing+*right) [\"project_organizing\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:cqlItemTypeId",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "fetchByName(consideration) [\"consideration\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"aiki_extension\",\"aiki_peace_week\",\"peace_training_project\",\"peace_practice\"]"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"aikido_into_language\",\"basic_movement\",\"basic_while_marching\",\"basic_movement_"
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+          "consumer": "phase:render :: phase:seatNamesByWave",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [\"monologue\",\"duologue\",\"triologue\",\"tetralogue\",\"pentalogue\"]"
+          ]
+        },
+        {
+          "shape": "SELECT id, db_content FROM cards WHERE id IN (?)",
+          "consumer": "phase:render :: phase:ensurePointerItemVerdicts",
+          "consumerFrames": [],
+          "calls": 1,
+          "marks": [
+            "phase:render [9903]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(About+*self+*open) [9923,264]"
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "consumer": "fetchByName( :: phase:render",
+          "consumerFrames": [
+            "findRule"
+          ],
+          "calls": 1,
+          "marks": [
+            "fetchByName(RichText+*type+*open) [\"*open\"]"
+          ]
+        }
+      ]
+    }
+  ]
+}

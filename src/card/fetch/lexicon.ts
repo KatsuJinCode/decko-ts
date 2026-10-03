@@ -95,6 +95,18 @@ export class DbLexicon {
     return this.durableIdNames.get(id);
   }
 
+  /** db-roundtrip-elimination lane (W1): record a durable id->name entry for
+   *  a row the caller HOLDS (a batched warm/closure read, not an async
+   *  name(id) read). Same invariant as the field doc: the entry is db truth
+   *  (the row was just fetched), so the sync fallback can only gain answers
+   *  Ruby's synchronous db fallback would also give, never wrong ones. The
+   *  removed per-row fetchById ladder populated this map implicitly through
+   *  lexicon.name(id); the own-rows composer calls this instead so its
+   *  durable coverage is not smaller than the ladder's. */
+  noteDurableName(id: number, name: string): void {
+    this.recordDurableName(id, name);
+  }
+
   private recordDurableName(id: number, name: string): void {
     if (this.durableIdNames.has(id)) return;
     if (this.durableIdNames.size >= DbLexicon.DURABLE_ID_NAMES_CAP) {
@@ -203,6 +215,18 @@ export class DbLexicon {
     for (const entry of entries) {
       this.cache.write(cacheKey(entry.key), entry.id);
     }
+  }
+
+  /** db-roundtrip-elimination lane (W2): prime one lex_to_id entry by LEX -
+   *  the pair form (or the key form via primeIdsByKey). Writes exactly what
+   *  lexToId's cacheFetch would write for the same lex - the id, or the
+   *  negative (undefined) entry a junction that does not exist caches - so
+   *  a later lexToId(lex) is a cache hit (zero queries) answering what the
+   *  point query would have answered. Callers hold the pair ids from a
+   *  batched existence check; the negative is only written when the caller
+   *  KNOWS the pair was asked and absent (never speculatively). */
+  primeIdByLex(lex: Lex, id: number | undefined): void {
+    this.cache.write(cacheKey(lex), id);
   }
 
   /** lexicon.rb#delete - used by the write path (act integration). */

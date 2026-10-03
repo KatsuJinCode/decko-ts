@@ -190,7 +190,8 @@ import {
 import { viewRequiresTask, type CrudTask } from "./permissions/view-perms.js";
 import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import { setPrototypeTypeCode } from "./render/views.js";
-import type { SQLQueryResult } from "../server/driver.js";
+import type { SQLQueryResult, SQLStatement } from "../server/driver.js";
+import type { Lex } from "./fetch/lexicon.js";
 import type { TokenRuntimeConfig } from "./auth/token.js";
 
 export { UnsupportedViewError };
@@ -944,6 +945,16 @@ export class RenderEngine implements RenderEngineLike {
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
     await this.ensureConfigureVerdict(record);
+    // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
+    // the SYNC render resolves by name at view time - every prepared
+    // record's TYPE card (the enrichAndStore type reads) and the rule
+    // candidates the view-time resolvers walk (resolveOptionsCard /
+    // setHostOptionsParseFailure's settings). Measured position: AFTER
+    // ensureConfigureVerdict (covers the options-parse boundaries + seams);
+    // a second call before view dispatch measured NET WORSE (+5 to +20
+    // RT/page: its fresh asks cost more than the point queries they
+    // displaced) and was reverted.
+    await this.primePreparedCardDerivedState();
     // The cwwrite-seam warm (the asset-output views): the right/asset_output
     // :not_found gate reads the LEFT card's set keys and the outputter
     // :asset_output_url reads the `+*asset output` child's identifier —
@@ -1475,6 +1486,7 @@ export class RenderEngine implements RenderEngineLike {
         await this.cacheFetchedRecord(followersJunction);
       }
     }
+    // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
     // gates through params.viewOpts; undefined for every prior caller -
@@ -2353,6 +2365,20 @@ export class RenderEngine implements RenderEngineLike {
           if (!foundKeys.has(missKey)) this.structureRefMisses.add(missKey);
         }
       }
+      // db-roundtrip-elimination lane (W2a): the compound refs resolve in
+      // BATCHED rounds (the driveClosure statement shapes) instead of one
+      // full fetch-ladder walk per name - the census measured this loop as
+      // the render path's single largest point-query family (up to ~550
+      // hops/page: per name up to two key->id side lookups, one pair
+      // existence check, one id row, and idToLex reads on compose). After
+      // the wave every ref is seated in the render-card map or primed
+      // negative in the lexicon, so the ladder walk below answers from
+      // cache - the name-by-name loop stays for its miss bookkeeping, now
+      // zero-query.
+      if (compoundNames.length > 0) {
+        const seatedAny = await this.seatNamesByWave(compoundNames);
+        if (seatedAny) enrichedAny = true;
+      }
       for (const refName of compoundNames) {
         const fetched = await this.fetcher.fetchByName(refName);
         const refKey = DeckoName.parse(refName).key;
@@ -2365,6 +2391,289 @@ export class RenderEngine implements RenderEngineLike {
       }
       if (!enrichedAny) return; // all misses recorded; nothing new to process
     }
+  }
+
+  /**
+   * db-roundtrip-elimination lane (W2b + W3b): prime the derived state the
+   * sync render resolves by name at view time, in batched waves:
+   *
+   *   1. TYPE CARDS - one chunked IN-list over every prepared record's
+   *      typeId; the view-time enrichAndStore type reads then hit the
+   *      fetch cache (census: 18-26 point queries per page, ids 5/50/52/19
+   *      - the seed type cards).
+   *   2. RULE CANDIDATES - for every prepared card, the candidate rule
+   *      names of the settings the view-time resolvers walk
+   *      (resolveOptionsCard's *content options + setHostOptionsParse-
+   *      Failure's *help/*structure/*default) seat through seatNamesByWave
+   *      - the findRule ladder then answers from the seated map (hit) or
+   *      the primed negative (miss). Census: 26-82 pair queries per page.
+   *
+   * Everything here writes exactly what the per-name point path would
+   * have written (rows through composeCardRecord + cacheFetchedRecord +
+   * Lexicon#write; negatives through the wave's priming), so the sync
+   * render's answers are byte-identical - only the round trips change.
+   */
+  private async primePreparedCardDerivedState(): Promise<void> {
+    const typeIds = new Set<number>();
+    for (const card of this.renderCards.values()) {
+      const t = card.record.typeId;
+      if (typeof t === "number" && Number.isSafeInteger(t) && t > 0) typeIds.add(t);
+    }
+    if (typeIds.size > 0) {
+      const ids = [...typeIds];
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
+        const placeholders = chunk.map(() => "?").join(", ");
+        const result = await this.fetcher.driver.query<CardsRow>(
+          `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+          chunk,
+        );
+        for (const row of result.rows as CardsRow[]) {
+          const record = await composeCardRecord(row, this.fetcher.lexicon);
+          if (record.name === undefined || record.id === undefined) continue;
+          if (row.name !== null && row.name !== undefined) {
+            this.fetcher.lexicon.write(record.id, record.name, row.name);
+          }
+          await this.cacheFetchedRecord(record);
+        }
+      }
+    }
+    const candidateSettings = ["*content options", "*help", "*structure", "*default"];
+    const names = new Set<string>();
+    for (const card of this.renderCards.values()) {
+      if (card.record.isNew) continue;
+      for (const setting of candidateSettings) {
+        let candidates: string[];
+        try {
+          candidates = ruleNamesForCard(this.structurePatternInputForSync(card), setting);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+            continue;
+          }
+          throw err;
+        }
+        for (const candidate of candidates) names.add(candidate);
+      }
+    }
+    if (names.size > 0) await this.seatNamesByWave([...names]);
+  }
+
+  /**
+   * db-roundtrip-elimination lane (W2a): seat ABSOLUTE names into the
+   * render-card map in BATCHED rounds - the driveClosure statement shapes
+   * (prefetch.ts) over this engine's render-card map as the known-set:
+   *
+   *   - simple names ride chunked `"key" COLLATE NOCASE IN` statements,
+   *   - depth-2 junctions ride the side-key join (and their simple sides
+   *     ride the same round's IN-list so the junction composes),
+   *   - junctions whose sides are both seated ride the chunked
+   *     (left_id, right_id) tuple form keyed on the seated ids,
+   *   - a compound side that is not seated yet joins the next round
+   *     (resolution-first, the driveClosure contract).
+   *
+   * Every fetched row composes sides-first within the batch, primes the
+   * lexicon both directions (Lexicon#write, the prefetch composer's
+   * contract), and lands in the enriched render-card map through
+   * cacheFetchedRecord - the same write path the closure walk uses, so the
+   * seated state is indistinguishable from the per-name ladder's. Names
+   * that asked and missed prime NEGATIVE lexicon entries (the pair key
+   * where both sides' ids are known, the key form for simple names) so the
+   * ladder walk answers the miss from cache with the same placeholder the
+   * point-query path would have cached.
+   *
+   * Returns whether any name seated (the caller's enrichedAny signal).
+   */
+  private async seatNamesByWave(names: string[]): Promise<boolean> {
+    if (names.length === 0) return false;
+    const knownId = (key: string): number | undefined => {
+      const card = this.renderCards.get(key);
+      const id = card?.record.id;
+      return typeof id === "number" && id > 0 ? id : undefined;
+    };
+    const MAX_WAVE_ROUNDS = 25; // prefetch.ts MAX_CLOSURE_ROUNDS parity
+    const pending = new Set<string>();
+    for (const raw of names) {
+      let key: string;
+      try {
+        key = DeckoName.parse(raw).key;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+          continue; // unresolved mark: the ladder walk reports it
+        }
+        throw err;
+      }
+      if (this.renderCards.has(key) || this.structureRefMisses.has(key)) continue;
+      pending.add(raw);
+    }
+    const askedSimpleKeys = new Map<string, string>(); // canonical key -> name str
+    const askedPairs = new Map<string, { leftId: number; rightId: number; lex: Lex }>();
+    let seatedAny = false;
+    for (let round = 0; round < MAX_WAVE_ROUNDS && pending.size > 0; round++) {
+      const simpleKeys: string[] = [];
+      const sideKeyPairs: { left: string; right: string; raw: string }[] = [];
+      const sideIdPairs: { leftId: number; rightId: number; lex: Lex }[] = [];
+      const nextRound: string[] = [];
+      for (const raw of pending) {
+        let name: DeckoName;
+        try {
+          name = DeckoName.parse(raw);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+            continue;
+          }
+          throw err;
+        }
+        if (this.renderCards.has(name.key)) continue; // seated by an earlier round
+        const left = name.leftName;
+        const right = name.rightName;
+        if (!name.isCompound || left === undefined || right === undefined) {
+          const key = name.key;
+          if (!this.renderCards.has(key) && !askedSimpleKeys.has(key)) {
+            askedSimpleKeys.set(key, raw);
+            simpleKeys.push(key);
+          }
+          continue;
+        }
+        const leftId = knownId(left.key);
+        const rightId = knownId(right.key);
+        if (leftId !== undefined && rightId !== undefined) {
+          const lex: Lex = [leftId, rightId];
+          const pairKey = `L-${leftId}-${rightId}`;
+          if (!askedPairs.has(pairKey)) {
+            askedPairs.set(pairKey, { leftId, rightId, lex });
+            sideIdPairs.push({ leftId, rightId, lex });
+          }
+        } else if (!left.isCompound && !right.isCompound) {
+          // depth-2 pair: side-key join; the sides ride this round's
+          // IN-list so the junction composes (driveClosure shape).
+          sideKeyPairs.push({ left: left.key, right: right.key, raw });
+          if (!this.renderCards.has(left.key) && !askedSimpleKeys.has(left.key)) {
+            askedSimpleKeys.set(left.key, left.s);
+            simpleKeys.push(left.key);
+          }
+          if (!this.renderCards.has(right.key) && !askedSimpleKeys.has(right.key)) {
+            askedSimpleKeys.set(right.key, right.s);
+            simpleKeys.push(right.key);
+          }
+        } else {
+          // a compound side is not seated yet: resolve the sides first.
+          nextRound.push(left.s, right.s);
+        }
+      }
+      if (simpleKeys.length === 0 && sideKeyPairs.length === 0 && sideIdPairs.length === 0) {
+        // Nothing fetchable: every pending name waits on sides that resolve
+        // next round or is already seated/asked.
+        if (nextRound.length === 0) break;
+        pending.clear();
+        for (const raw of nextRound) pending.add(raw);
+        continue;
+      }
+      const statements: SQLStatement[] = [];
+      if (simpleKeys.length > 0) {
+        for (let i = 0; i < simpleKeys.length; i += 90) {
+          const chunk = simpleKeys.slice(i, i + 90);
+          const placeholders = chunk.map(() => "?").join(", ");
+          statements.push({
+            sql: `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
+            params: chunk,
+          });
+        }
+      }
+      if (sideKeyPairs.length > 0) {
+        for (let i = 0; i < sideKeyPairs.length; i += 45) {
+          const chunk = sideKeyPairs.slice(i, i + 45);
+          const leftKeys = chunk.map((pair) => pair.left);
+          const rightKeys = chunk.map((pair) => pair.right);
+          const placeholdersL = leftKeys.map(() => "?").join(", ");
+          const placeholdersR = rightKeys.map(() => "?").join(", ");
+          statements.push({
+            sql:
+              `SELECT DISTINCT j.* FROM cards j\n` +
+              `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
+              `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
+              ` WHERE j.trash = 0`,
+            params: [...leftKeys, ...rightKeys],
+          });
+        }
+      }
+      if (sideIdPairs.length > 0) {
+        for (let i = 0; i < sideIdPairs.length; i += 400) {
+          const chunk = sideIdPairs.slice(i, i + 400);
+          const tuple = chunk.map(() => "(j.left_id = ? AND j.right_id = ?)").join(" OR ");
+          const params = chunk.flatMap((pair) => [pair.leftId, pair.rightId]);
+          statements.push({
+            sql: `SELECT j.* FROM cards j WHERE j.trash = 0 AND (${tuple})`,
+            params,
+          });
+        }
+      }
+      // Side priming rides LAST (the driveClosure batch contract): the
+      // sides of every row this round fetched join the next round so their
+      // records compose + enrich (junction names need them).
+      const rows = (await this.fetcher.driver.batch(statements)).flatMap(
+        (result) => (result.rows as CardsRow[]) ?? [],
+      );
+      const fetchedPairs = new Set<string>();
+      for (const row of rows) {
+        if (row.left_id !== null && row.left_id !== undefined && row.right_id !== null && row.right_id !== undefined) {
+          fetchedPairs.add(`L-${row.left_id}-${row.right_id}`);
+        }
+        const record = await composeCardRecord(row, this.fetcher.lexicon);
+        if (record.name === undefined || record.key === undefined || record.key === "") continue;
+        if (row.name !== null && row.name !== undefined) {
+          this.fetcher.lexicon.write(record.id!, record.name, row.name);
+        } else if (
+          row.left_id !== null &&
+          row.left_id !== undefined &&
+          row.right_id !== null &&
+          row.right_id !== undefined
+        ) {
+          this.fetcher.lexicon.write(record.id!, record.name, [row.left_id, row.right_id]);
+        }
+        await this.cacheFetchedRecord(record);
+        seatedAny = true;
+      }
+      // Negative priming for the asked-and-missed questions: the exact
+      // entries lexToId's cacheFetch would have cached.
+      const missingSimple: { key: string; id: undefined }[] = [];
+      for (const [key] of askedSimpleKeys) {
+        if (!this.renderCards.has(key)) missingSimple.push({ key, id: undefined });
+      }
+      if (missingSimple.length > 0) this.fetcher.lexicon.primeIdsByKey(missingSimple);
+      for (const [pairKey, { lex }] of askedPairs) {
+        // the positive rows primed via lexicon.write above; the negative
+        // only for pairs no row answered (fetchedPairs, not a cache peek).
+        if (!fetchedPairs.has(pairKey)) this.fetcher.lexicon.primeIdByLex(lex, undefined);
+      }
+      pending.clear();
+      for (const raw of nextRound) pending.add(raw);
+      // A side-key-pair name whose junction row did not come back retries
+      // NEXT round as a side-id pair (its sides just seated): that ask is
+      // final - it lands in askedPairs and primes the negative there. A
+      // name whose final-form ask missed is dropped: its negative is
+      // primed, so the ladder walk below answers the miss from cache with
+      // the same placeholder the point-query path would have cached
+      // (zero queries).
+      for (const pair of sideKeyPairs) {
+        let retry: DeckoName;
+        try {
+          retry = DeckoName.parse(pair.raw);
+        } catch {
+          continue;
+        }
+        const left = retry.leftName;
+        const right = retry.rightName;
+        if (left === undefined || right === undefined) continue;
+        const leftId = knownId(left.key);
+        const rightId = knownId(right.key);
+        if (leftId === undefined || rightId === undefined) continue; // side missed: negative already primed
+        const pairKey = `L-${leftId}-${rightId}`;
+        if (!askedPairs.has(pairKey) && !this.renderCards.has(retry.key)) {
+          pending.add(pair.raw);
+        }
+      }
+    }
+    return seatedAny;
   }
 
   /** Seat the read verdicts of UNKNOWN nest-target refs. Ruby fetches such
@@ -3163,6 +3472,14 @@ export class RenderEngine implements RenderEngineLike {
       collectLinkTargetNames(staticHelp, targets);
     }
     let seated = false;
+    // db-roundtrip-elimination lane (W3a): the harvested targets seat in
+    // ONE batched wave (seatNamesByWave, the driveClosure shapes) before
+    // the ladder loop; the loop below stays for its exact hit/miss
+    // bookkeeping (unknown flags, wanted-card pins) and now answers from
+    // the seated map / primed negatives at zero queries.
+    if (targets.length > 0) {
+      await this.seatNamesByWave([...targets]);
+    }
     for (const target of targets) {
       if (this.fetchRenderCard(target) !== undefined) continue;
       // NO registry-hit skip here: the codename memo answers the classifier
@@ -3447,6 +3764,12 @@ export class RenderEngine implements RenderEngineLike {
         if (this.fetchRenderCard(t) === undefined) need.add(t);
       }
     }
+    // db-roundtrip-elimination lane (W3a): batch-seat the type-option
+    // targets before the ladder loop (same wave contract as the other
+    // prepare sweeps).
+    if (need.size > 0) {
+      await this.seatNamesByWave([...need]);
+    }
     for (const name of need) {
       this.nestTypeOptTargetsDone.add(name);
       await this.prepareItemForRender(name);
@@ -3566,6 +3889,11 @@ export class RenderEngine implements RenderEngineLike {
         need.add(composed.s);
         this.templateLinkJunctionTargetsDone.add(composed.key);
       }
+    }
+    // db-roundtrip-elimination lane (W3a): batch-seat the junction targets
+    // before the ladder loop (same wave contract as the other sweeps).
+    if (need.size > 0) {
+      await this.seatNamesByWave([...need]);
     }
     for (const name of need) await this.prepareItemForRender(name);
   }
@@ -4014,6 +4342,16 @@ export class RenderEngine implements RenderEngineLike {
       // path resolves — signup alert email+*from's "_user" item.
       .map((s) => resolvePointerItemName(s, card.name));
     const missNames: string[] = [];
+    // db-roundtrip-elimination lane (W3a): the card's item names seat in
+    // ONE batched wave before the per-item ladder loop (the census's
+    // biggest prepareItemForRender family - up to ~230 point-query hops
+    // per page on the pointer-heavy probe pages). The loop below keeps its
+    // exact tolerance and miss bookkeeping; each iteration now answers
+    // from the seated map (hit) or the primed negative (miss, zero
+    // queries).
+    if (items.length > 0) {
+      await this.seatNamesByWave(items);
+    }
     for (const name of items) {
       // An item line carrying an unresolvable ID/codename mark ("~393")
       // throws at DeckoName.PARSE time (name.ts#parse resolves id marks

@@ -191,15 +191,19 @@ function collectViewFns(manifest: DeckoModManifest): Map<string, ViewFn> {
 }
 
 /** A ModEngineHost stub for the prepareEngine warm: codenames peek from a
- *  map, batch returns the given role ids for the roles statement, and
- *  fetchById resolves the given id -> name table. cacheFetchedRecord is
- *  counted so the test can pin the engine-cache warm. */
+ *  map, batch returns the given role ids for the roles statement, and the
+ *  own-rows composer (composeAndCacheRows, the W1 seam that replaced the
+ *  per-row fetchById storm) resolves the given id -> name table, caching
+ *  through the same counted cacheFetchedRecord seam. */
 function fakeHost(opts: {
   codenames: Record<string, number>;
   roleIds: number[];
   cardsById: Record<number, string>;
 }): ModEngineHost & { cachedRecords: unknown[] } {
   const cachedRecords: unknown[] = [];
+  const cacheFetchedRecord = async (record: unknown) => {
+    cachedRecords.push(record);
+  };
   return {
     fetchRenderCard: () => undefined,
     isDenied: () => false,
@@ -213,8 +217,17 @@ function fakeHost(opts: {
       if (name === undefined) return undefined;
       return { name: { s: name }, key: DeckoName.parse(name).key };
     },
-    cacheFetchedRecord: async (record: unknown) => {
-      cachedRecords.push(record);
+    cacheFetchedRecord,
+    composeAndCacheRows: async (rows) => {
+      const out: Array<{ id?: number; name?: { s: string }; key?: string }> = [];
+      for (const row of rows as Array<{ id: number }>) {
+        const name = opts.cardsById[row.id];
+        if (name === undefined) continue;
+        const record = { name: { s: name }, key: DeckoName.parse(name).key };
+        await cacheFetchedRecord(record);
+        out.push({ id: row.id, ...record });
+      }
+      return out;
     },
     cachedRecords,
   };

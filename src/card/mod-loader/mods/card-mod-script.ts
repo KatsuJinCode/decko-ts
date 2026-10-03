@@ -429,11 +429,13 @@ function scriptRuleChildrenStatement(settingTypeId: number): {
 }
 
 /** One batch, once per engine: the rule cards, their sides, and their
- *  fields enter the prepared render-card map (the same compose-and-cache
- *  walk card-mod-help.ts#prepareHelpRules runs - junction records reached
- *  by id compose names from their side records, multi-pass, sides first).
- *  After this the script views resolve every card they touch
- *  synchronously - zero queries on the render path. */
+ *  fields enter the prepared render-card map. db-roundtrip-elimination lane
+ *  (W1): records are composed from the batch's OWN `SELECT c.*` rows
+ *  through ModEngineHost#composeAndCacheRows - value-identical to the
+ *  per-row host.fetchById storm this replaces (one idToLex + one id-row
+ *  point query per uncached row), same sides-before-junctions multi-pass,
+ *  same cacheFetchedRecord write path. After this the script views resolve
+ *  every card they touch synchronously - zero queries on the render path. */
 async function prepareScriptRules(host: ModEngineHost): Promise<void> {
   await host.codenames.ensureLoaded(); // memoized; first call only
   const settingTypeId = host.codenames.peekId("setting");
@@ -442,70 +444,13 @@ async function prepareScriptRules(host: ModEngineHost): Promise<void> {
     scriptRuleSidesStatement(settingTypeId),
     scriptRuleChildrenStatement(settingTypeId),
   ]);
-  type FetchedRow = {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-  };
-  interface PreparedRecord {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-    record: NonNullable<Awaited<ReturnType<ModEngineHost["fetchById"]>>>;
-  }
-  const byId = new Map<number, PreparedRecord>();
+  const rows: Record<string, unknown>[] = [];
   for (const result of results) {
-    const rows = (result as { rows: FetchedRow[] } | undefined)?.rows ?? [];
-    for (const row of rows) {
-      if (byId.has(row.id)) continue;
-      const record = await host.fetchById(row.id);
-      if (record === undefined) continue;
-      byId.set(row.id, {
-        id: row.id,
-        leftId: record.leftId ?? null,
-        rightId: record.rightId ?? null,
-        name: record.name?.s ?? null,
-        record,
-      });
-    }
+    const resultRows = (result as { rows: Record<string, unknown>[] } | undefined)?.rows ?? [];
+    rows.push(...resultRows);
   }
-  if (byId.size === 0) return;
-
-  // multi-pass junction composition (sides before junctions)
-  const names = new Map<number, string>();
-  let pending = [...byId.values()];
-  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
-    const still: PreparedRecord[] = [];
-    for (const row of pending) {
-      let composed: string | undefined = row.name ?? undefined;
-      if (composed === undefined && row.leftId !== null && row.rightId !== null) {
-        const left = names.get(row.leftId);
-        const right = names.get(row.rightId);
-        if (left !== undefined && right !== undefined) composed = `${left}+${right}`;
-      }
-      if (composed === undefined) {
-        still.push(row);
-        continue;
-      }
-      names.set(row.id, composed);
-    }
-    if (still.length === pending.length) break; // unresolvable sides stay
-    pending = still;
-  }
-
-  // Assign the composed name onto junction records and cache them (the
-  // fetch ladder's assign_name semantics).
-  for (const row of byId.values()) {
-    const composed = names.get(row.id);
-    if (composed === undefined) continue;
-    if (row.name === null) {
-      row.record.name = DeckoName.parse(composed);
-      row.record.key = DeckoName.parse(composed).key;
-    }
-    await host.cacheFetchedRecord(row.record);
-  }
+  if (rows.length === 0) return;
+  await host.composeAndCacheRows(rows);
 }
 
 // ---------------------------------------------------------------------------

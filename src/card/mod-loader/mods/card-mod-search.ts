@@ -321,70 +321,42 @@ async function prepareSearchCounts(host: ModEngineHost): Promise<void> {
     nameToId.set(row.key, row.id);
   }
 
-  interface PreparedRecord {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-    record: NonNullable<Awaited<ReturnType<ModEngineHost["fetchById"]>>>;
+  // db-roundtrip-elimination lane (W1): the records compose from the batch's
+  // OWN rows through ModEngineHost#composeAndCacheRows - value-identical to
+  // the per-row host.fetchById storm this replaces (one idToLex + one id-row
+  // point query per uncached row). The composed records carry exactly the
+  // key/display-name pair the hand-rolled multi-pass below used to derive.
+  interface ComposedRecord {
+    id?: number;
+    name?: { s: string };
+    key?: string;
   }
-  const byId = new Map<number, PreparedRecord>();
+  const composedRecords = (await host.composeAndCacheRows(rows)) as ComposedRecord[];
+  const rowById = new Map<number, SearchRow>();
   for (const row of rows) {
-    const record = await host.fetchById(row.id);
-    if (record === undefined) continue;
-    byId.set(row.id, {
-      id: row.id,
-      leftId: record.leftId ?? null,
-      rightId: record.rightId ?? null,
-      name: record.name?.s ?? null,
-      record,
-    });
+    if (!rowById.has(row.id)) rowById.set(row.id, row);
   }
-
-  // multi-pass junction composition (sides before junctions) - the help
-  // mod's prepareHelpRules shape
-  const names = new Map<number, string>();
-  let pending = [...byId.values()];
-  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
-    const still: PreparedRecord[] = [];
-    for (const row of pending) {
-      let composed: string | undefined = row.name ?? undefined;
-      if (composed === undefined && row.leftId !== null && row.rightId !== null) {
-        const left = names.get(row.leftId);
-        const right = names.get(row.rightId);
-        if (left !== undefined && right !== undefined) composed = `${left}+${right}`;
-      }
-      if (composed === undefined) {
-        still.push(row);
-        continue;
-      }
-      names.set(row.id, composed);
-    }
-    if (still.length === pending.length) break; // unresolvable sides stay
-    pending = still;
-  }
-
   // name-key -> row (for found_by "_left" resolution) and key -> row
   const rowByName = new Map<string, SearchRow>();
   const rowByKey = new Map<string, SearchRow>();
-  for (const row of rows) {
-    const composed = names.get(row.id);
-    if (composed === undefined) continue;
-    rowByName.set(DeckoName.parse(composed).key, row);
-    rowByKey.set(DeckoName.parse(composed).key, row);
-  }
-
-  // Merge every count CQL in memory, generate SQL, then run it all as ONE
-  // batch. typeNames = id -> name for every reached card (the CTE pulls the
-  // reached rows' TYPE cards too, so found_by error messages can embed the
-  // real type name).
+  // id -> display composed name (the found_by error-message source)
   const typeNames = new Map<number, string>();
-  for (const [id, name] of names) typeNames.set(id, name);
+  for (const record of composedRecords) {
+    const id = record.id;
+    const key = record.key;
+    if (id === undefined || key === undefined || key === "") continue;
+    const row = rowById.get(id);
+    if (row === undefined) continue;
+    rowByName.set(key, row);
+    rowByKey.set(key, row);
+    const display = record.name?.s;
+    if (display !== undefined) typeNames.set(id, display);
+  }
   const entries: { key: string }[] = [];
   const statements: { sql: string; params: unknown[] }[] = [];
   for (const [key, row] of rowByKey) {
     if (row.type_id !== searchTypeId) continue;
-    const composed = names.get(row.id) ?? "";
+    const composed = typeNames.get(row.id) ?? "";
     let merged: Record<string, unknown> | undefined;
     try {
       merged = mergedCountCql(row.db_content, composed, rowByName, searchTypeId, typeNames, 0);

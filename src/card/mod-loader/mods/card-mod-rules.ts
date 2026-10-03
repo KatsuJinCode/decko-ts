@@ -1491,87 +1491,38 @@ function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
 }
 
 /** One batch, once per engine: every rule card enters the prepared
- *  render-card map (composition shape identical to card-mod-help.ts's
- *  prepareHelpRules - sides fetched by id, junction names composed
- *  multi-pass, records cached through the host). After this the :rule_help
- *  dispatch resolves its nested cards synchronously - zero queries on the
- *  render path. */
+ *  render-card map. db-roundtrip-elimination lane (W1): the records are
+ *  composed from the batch's OWN `SELECT c.*` rows through
+ *  ModEngineHost#composeAndCacheRows (sides-before-junctions multi-pass,
+ *  lexicon primed both directions, records through cacheFetchedRecord) -
+ *  value-identical to the per-row host.fetchById storm this replaces, which
+ *  walked every uncached row back through the fetch ladder (one idToLex +
+ *  one id-row point query per row, ~170 hops per cold engine on the trial
+ *  deck). The :rule_help dispatch still resolves its nested cards
+ *  synchronously - zero queries on the render path. */
 async function prepareRuleCache(host: ModEngineHost): Promise<void> {
   await host.codenames.ensureLoaded(); // memoized; first call only
   const setTypeId = host.codenames.peekId("set");
   const settingTypeId = host.codenames.peekId("setting");
   if (setTypeId === undefined || settingTypeId === undefined) return; // degenerate deck
-  const results = await host.batch([ruleSidesStatement(setTypeId, settingTypeId)]);
   // setting_categories.rb:64-67 recent_settings reads Card[:recent_settings]
-  // - warm the list card into the prepared map so the sync category walk
-  // (recentSettingsCodenames) reads it with zero queries.
+  // - its row rides the SAME batch (statement 2) instead of a post-batch
+  // fetchById ladder walk.
   const recentSettingsId = host.codenames.peekId("recent_settings");
+  const results = await host.batch([
+    ruleSidesStatement(setTypeId, settingTypeId),
+    ...(recentSettingsId !== undefined
+      ? [{ sql: "SELECT * FROM cards WHERE id = ? AND trash = 0", params: [recentSettingsId] }]
+      : []),
+  ]);
+  const rows = (results[0] as { rows: Record<string, unknown>[] } | undefined)?.rows ?? [];
+  if (rows.length > 0) {
+    await host.composeAndCacheRows(rows);
+  }
   if (recentSettingsId !== undefined) {
-    const recentCard = await host.fetchById(recentSettingsId);
-    if (recentCard !== undefined) await host.cacheFetchedRecord(recentCard);
-  }
-  type FetchedRow = {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-  };
-  const rows = (results[0] as { rows: FetchedRow[] } | undefined)?.rows ?? [];
-  if (rows.length === 0) return;
-
-  interface PreparedRecord {
-    id: number;
-    leftId: number | null;
-    rightId: number | null;
-    name: string | null;
-    record: NonNullable<Awaited<ReturnType<ModEngineHost["fetchById"]>>>;
-  }
-  const byId = new Map<number, PreparedRecord>();
-  for (const row of rows) {
-    const record = await host.fetchById(row.id);
-    if (record === undefined) continue;
-    byId.set(row.id, {
-      id: row.id,
-      leftId: record.leftId ?? null,
-      rightId: record.rightId ?? null,
-      name: record.name?.s ?? null,
-      record,
-    });
-  }
-
-  // multi-pass junction composition (sides before junctions)
-  const names = new Map<number, string>();
-  let pending = [...byId.values()];
-  for (let pass = 0; pass < 64 && pending.length > 0; pass++) {
-    const still: PreparedRecord[] = [];
-    for (const row of pending) {
-      let composed: string | undefined = row.name ?? undefined;
-      if (composed === undefined && row.leftId !== null && row.rightId !== null) {
-        const left = names.get(row.leftId);
-        const right = names.get(row.rightId);
-        if (left !== undefined && right !== undefined) composed = `${left}+${right}`;
-      }
-      if (composed === undefined) {
-        still.push(row);
-        continue;
-      }
-      names.set(row.id, composed);
-    }
-    if (still.length === pending.length) break; // unresolvable sides stay
-    pending = still;
-  }
-
-  // Assign the composed name onto junction records and cache them (the
-  // fetch ladder's assign_name semantics - a record reached by id carries
-  // no name mark, so the composed name is assigned here).
-  for (const row of byId.values()) {
-    const composed = names.get(row.id);
-    if (composed === undefined) continue;
-    if (row.name === null) {
-      row.record.name = DeckoName.parse(composed);
-      row.record.key = DeckoName.parse(composed).key;
-    }
-    await host.cacheFetchedRecord(row.record);
+    const recentRows =
+      (results[1] as { rows: Record<string, unknown>[] } | undefined)?.rows ?? [];
+    if (recentRows.length > 0) await host.composeAndCacheRows(recentRows);
   }
 }
 
