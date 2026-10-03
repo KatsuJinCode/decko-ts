@@ -20,14 +20,16 @@ import {
   closeAttachmentWorld,
   freshAttachmentWorld,
   storedFileBytes,
+  storedVariantBytes,
   thenFileCardShowsDownload,
   walkStoredTree,
   whenUploadFile,
   ATTACH_IDS,
   type AttachmentWorld,
 } from "./gherkin-attachment-steps.js";
-import { thenCardTrashed, whenDeleteCard } from "./gherkin-steps.js";
+import { thenCardTrashed, whenDeleteCard, whenGoToCard } from "./gherkin-steps.js";
 import { seedCard } from "./gherkin-storage.js";
+import { lastContentActionIdFromIdentifier } from "../../../src/card/attachments/attachment-content.js";
 
 /** The fixtures' upload payloads. "file.txt" is the 9-byte text the
  *  upstream asserts as "file.txt 9 Bytes"; the png/jpg bytes are
@@ -118,31 +120,61 @@ describe("Gherkin port: attach.feature / File Upload", () => {
   });
 
   // ---------------------------------------------------------------------
-  // Scenario: Uploading and changing an image — NOT-PORTABLE-TODAY
-  // (renditions) with the boundary pinned
+  // Scenario: Uploading and changing an image — the rendition/version
+  // machinery (image_card_uploader.rb:16-27 + :44-57) is the capability
+  // under test; the original-swap half rides with it
   // ---------------------------------------------------------------------
 
-  it("NOT-PORTABLE-TODAY (image rendition/version machinery) / Uploading and changing an image — the original swap ports; the size/type views do not", async () => {
+  it("image renditions — an image upload stores the original (-original) plus the four size versions; the update writes the new action's set; the core view emits the version URL", async () => {
     aw = await freshAttachmentWorld();
-    // Upstream asserts rendered RENDITIONS: "I should see an image of size
-    // 'large' and type 'png'", then after uploading image2.jpg "of size
-    // 'large' and type 'jpg'". The port has NO rendition/version machinery
-    // (image_card_uploader.rb:16-27 create_versions! — the captured oracle
-    // tree carries zero rendition files and the port writes originals
-    // only; upload-tree-oracle-pattern.test.ts documents the class). The
-    // swap half DOES port: the update writes the new original under a new
-    // action. This pin holds the boundary so the rendition machinery's
-    // arrival must update this file.
-    await whenUploadFile(aw, {
+    // upstream: new Image + upload image.png + Submit + Then "I should see
+    // an image of size 'large' and type 'png'" (attachment_steps.rb:24-26,
+    // find("img[src*='large.png']") — the rendered src carries the version
+    // suffix; the size comes from image.rb:48-50 main_size :large on the
+    // card's own page, a page-assembly context — the render lane's surface;
+    // the engine facts the port pins are the stored rendition files, their
+    // resolution through the store, and the core view's version URL).
+    const identifier = await whenUploadFile(aw, {
       name: "a test image",
       bytes: PNG_BYTES,
       originalFilename: "image.png",
       typeCode: "image",
     });
-    const engine = aw.engine;
     const card = await aw.world.storage.fetcher.fetchByName("a test image");
     expect(card).toBeDefined();
-    const update = await engine.updateCard({
+    const actionId = lastContentActionIdFromIdentifier(identifier);
+    expect(actionId).not.toBeNull();
+    // create_versions! (image_card_uploader.rb:16-27, every version `if:
+    // :create_versions?`; create_versions? = extension != "svg",
+    // set/type/image.rb:4-7): the original under the -original spelling
+    // (image_card_uploader.rb:44-57 — carrierwave's store_path applies
+    // full_filename, gem 3.1.4 uploader/store.rb:80-82) plus
+    // icon/small/medium/large (decko's Versions#full_filename puts the
+    // version at the end dash-joined, file_card_uploader.rb:266-283).
+    const tree = await walkStoredTree(aw.filesDir);
+    expect(tree.filter((p) => p.startsWith(`${card!.id}/`)).sort()).toEqual([
+      `${card!.id}/${actionId}-icon.png`,
+      `${card!.id}/${actionId}-large.png`,
+      `${card!.id}/${actionId}-medium.png`,
+      `${card!.id}/${actionId}-original.png`,
+      `${card!.id}/${actionId}-small.png`,
+    ]);
+    // The rendered src resolves: the 'large' variant serves bytes (the img
+    // src the card page emits — the resolution arm of the step above).
+    const large = await storedVariantBytes(aw, identifier, "large");
+    expect(large.length).toBe(PNG_BYTES.length);
+    // The core view emits the version URL (determine_image_size's default
+    // arm: default_size :medium, image.rb:52-53 — the variant suffix is
+    // the fact; formatImageCore's local arm appends it).
+    await whenGoToCard(aw.world, "a test image", "core");
+    expect(aw.world.lastHtml).toContain(`/files/${card!.id}/${actionId}-medium.png`);
+
+    // upstream: edit + upload image2.jpg + Save and Close + "image of size
+    // 'large' and type 'jpg'" — the update stores the NEW action's
+    // rendition set (files are per-action; the old action's files remain
+    // its revision history — delete_files_for_action runs on action
+    // deletion only, attachment.rb:99-107).
+    const update = await aw.engine.updateCard({
       cardId: card!.id!,
       attachment: { bytes: JPG_BYTES, originalFilename: "image2.jpg" },
     });
@@ -152,14 +184,24 @@ describe("Gherkin port: attach.feature / File Upload", () => {
       [card!.id],
     );
     expect(row?.db_content).toMatch(/\.jpg$/); // the swap landed
-    const stored = await storedFileBytes(aw, row!.db_content!);
-    expect(stored.length).toBe(JPG_BYTES.length);
-    // The boundary: no rendition files exist for the image (no
-    // -icon/-small/-medium/-large/-original spellings anywhere).
-    const tree = await walkStoredTree(aw.filesDir);
-    for (const p of tree) {
-      expect(p).not.toMatch(/-(icon|small|medium|large|original)\./);
-    }
+    const updateActionId = lastContentActionIdFromIdentifier(row!.db_content!);
+    expect(updateActionId).not.toBeNull();
+    expect(updateActionId).not.toBe(actionId);
+    const treeAfterUpdate = await walkStoredTree(aw.filesDir);
+    expect(treeAfterUpdate.filter((p) => p.startsWith(`${card!.id}/`)).sort()).toEqual([
+      `${card!.id}/${actionId}-icon.png`,
+      `${card!.id}/${actionId}-large.png`,
+      `${card!.id}/${actionId}-medium.png`,
+      `${card!.id}/${actionId}-original.png`,
+      `${card!.id}/${actionId}-small.png`,
+      `${card!.id}/${updateActionId}-icon.jpg`,
+      `${card!.id}/${updateActionId}-large.jpg`,
+      `${card!.id}/${updateActionId}-medium.jpg`,
+      `${card!.id}/${updateActionId}-original.jpg`,
+      `${card!.id}/${updateActionId}-small.jpg`,
+    ]);
+    const largeJpg = await storedVariantBytes(aw, row!.db_content!, "large");
+    expect(largeJpg.length).toBe(JPG_BYTES.length);
   });
 
   // ---------------------------------------------------------------------

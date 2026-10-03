@@ -90,10 +90,36 @@ export async function whenUploadFile(
 
 /** The on-disk bytes of a stored identifier ("~<cid>/<aid>.ext" ->
  *  <filesDir>/<cid>/<aid>.ext, set/abstract/attachment/paths.rb:10-17 +
- *  file_card_uploader/path.rb:33-39). */
+ *  file_card_uploader/path.rb:33-39). An IMAGE card's original stores
+ *  under the -original spelling (image_card_uploader.rb:44-57 —
+ *  carrierwave's store_path applies full_filename), so the bare spelling
+ *  falls back to <aid>-original<ext> when the bare file is absent. */
 export async function storedFileBytes(aw: AttachmentWorld, identifier: string): Promise<Buffer> {
   const rel = identifier.replace(/^~/, "");
-  return readFileSync(join(aw.filesDir, rel));
+  try {
+    return readFileSync(join(aw.filesDir, rel));
+  } catch (err) {
+    const dot = rel.lastIndexOf(".");
+    const originalSpelling =
+      dot === -1 ? `${rel}-original` : `${rel.slice(0, dot)}-original${rel.slice(dot)}`;
+    return readFileSync(join(aw.filesDir, originalSpelling)); // throws if truly absent
+  }
+}
+
+/** The on-disk bytes of one action's stored VARIANT file — the rendition
+ *  spelling "<aid>-<variant><ext>" (decko's Versions#full_filename,
+ *  file_card_uploader.rb:266-283 — the version joins the basename with a
+ *  dash before the extension). */
+export async function storedVariantBytes(
+  aw: AttachmentWorld,
+  identifier: string,
+  variant: string,
+): Promise<Buffer> {
+  const rel = identifier.replace(/^~/, "");
+  const dot = rel.lastIndexOf(".");
+  const variantSpelling =
+    dot === -1 ? `${rel}-${variant}` : `${rel.slice(0, dot)}-${variant}${rel.slice(dot)}`;
+  return readFileSync(join(aw.filesDir, variantSpelling));
 }
 
 /** "Then I should see 'Download <name>'" — the file card's :core view
