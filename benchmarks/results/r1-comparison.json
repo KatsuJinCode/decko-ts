@@ -1,0 +1,592 @@
+{
+  "benchmark": "r1-comparison",
+  "commitments": [
+    "R1",
+    "R2",
+    "R4"
+  ],
+  "generated_at": "2026-10-03T12:39:36.950Z",
+  "inputs": {
+    "ruby_live": {
+      "path": "benchmarks/results/deep-nesting-fixtures-ruby.json",
+      "measured_at": "2026-10-03T12:36:27Z",
+      "environment": {
+        "card_gem": "1.110.0",
+        "cpu": "Intel(R) Core(TM) i7-14700F",
+        "db_engine": "sqlite3",
+        "db_path": "db/development.sqlite3",
+        "db_size_bytes": 5271552,
+        "decko_gem": "0.20.0",
+        "host": "Jace2",
+        "live_cards_in_db_after_cleanup": 604,
+        "live_cards_in_db_before_seed": 604,
+        "os": "x64-mingw-ucrt",
+        "rails": "7.2.4",
+        "ram_bytes": 34188599296,
+        "ruby": "3.3.12"
+      },
+      "config": {
+        "background_cards": 400,
+        "render_n": 7,
+        "warmup": 1,
+        "prefix": "BenchDN",
+        "depths": [
+          1,
+          2,
+          4,
+          8,
+          10,
+          16,
+          20,
+          50,
+          100,
+          200
+        ],
+        "fanouts": [
+          1,
+          4,
+          16,
+          50,
+          100,
+          200
+        ],
+        "trees": [
+          "d4xf4",
+          "d3xf10"
+        ],
+        "nest_syntax": "{{name|open}}",
+        "ts_counterpart": "benchmarks/results/deep-nesting-fixtures-ts.json",
+        "note": "fixture names shared with the TS sweep (BenchDN prefix); content filler differs (random a-z vs deterministic) - query axes are unaffected"
+      }
+    },
+    "ts_live": {
+      "path": "benchmarks/results/deep-nesting-fixtures-ts.json",
+      "measured_at": "2026-10-03T12:38:46.856Z",
+      "environment": {
+        "host": "Jace2",
+        "os": "win32",
+        "osVersion": "Microsoft Windows [Version 10.0.26200.9457]",
+        "node": "v24.19.0",
+        "cpuModel": "Intel(R) Core(TM) i7-14700F",
+        "cpuCount": 28,
+        "ramBytes": 34188599296,
+        "dbEngine": "better-sqlite3 :memory: over production-schema DDL (db/schema.sqlite.sql)",
+        "dbPath": ":memory:",
+        "dbSizeBytes": null,
+        "dbSizeNote": "in-memory; live card counts are recorded per fixture row",
+        "driverAxes": "round trips = driver calls (query() + batch() each ONE; on the edge drivers batch() is one HTTP request); statements = individual SQL statements (batch members count one each)"
+      }
+    },
+    "ruby_parity_recording": {
+      "path": "benchmarks/results/ruby-nesting-r1-r2.json",
+      "measured_at": "2026-09-19T23:12:45Z",
+      "environment": {
+        "card_gem": "1.110.0",
+        "cpu": "Intel(R) Core(TM) i7-14700F",
+        "db_engine": "sqlite3",
+        "db_path": "db/development.sqlite3",
+        "db_size_bytes": 4751360,
+        "decko_gem": "0.20.0",
+        "host": "Jace2",
+        "live_cards_in_db_after_cleanup": 617,
+        "os": "x64-mingw-ucrt",
+        "rails": "7.2.3.2",
+        "ram_bytes": 34188599296,
+        "ruby": "3.3.12"
+      }
+    },
+    "ts_content_view_sweep": {
+      "path": "benchmarks/results/depth-sweep-ts.json",
+      "measured_at": "2026-09-27T18:45:33.147Z",
+      "environment": "local better-sqlite3 over production-schema DDL; synthetic chains"
+    }
+  },
+  "axes_note": {
+    "ruby_query": "one ActiveRecord sql.active_record event = one database round trip (AR has no batch)",
+    "ts_round_trip": "one driver call; driver.batch = ONE round trip carrying N statements (on the edge drivers that is literally one HTTP request)",
+    "comparability": "both axes count database round trips per render; the TS batch is the scaling mechanism itself (a whole inclusion LEVEL rides one round trip), so TS statements are reported next to its round trips",
+    "environments": "both engines measured on the same host (see both environment blocks); Ruby renders against an on-disk sqlite3 file through ActiveRecord 7.2, TS against better-sqlite3 :memory: over the production-schema DDL - wall-clock comparisons carry that difference; query-count comparisons are storage-independent"
+  },
+  "cross_check_vs_2026_09_19_recording": {
+    "note": "the live Ruby rerun's open-chain cold query counts vs the recorded oracle-app run - reproduces the depth+3 formula",
+    "rows": [
+      {
+        "depth": 1,
+        "recorded": 4,
+        "live": 4,
+        "matches": true
+      },
+      {
+        "depth": 2,
+        "recorded": 5,
+        "live": 5,
+        "matches": true
+      },
+      {
+        "depth": 4,
+        "recorded": 7,
+        "live": 7,
+        "matches": true
+      },
+      {
+        "depth": 8,
+        "recorded": 11,
+        "live": 11,
+        "matches": true
+      },
+      {
+        "depth": 10,
+        "recorded": null,
+        "live": 13
+      },
+      {
+        "depth": 16,
+        "recorded": 19,
+        "live": 19,
+        "matches": true
+      },
+      {
+        "depth": 20,
+        "recorded": null,
+        "live": 23
+      },
+      {
+        "depth": 50,
+        "recorded": null,
+        "live": 24
+      },
+      {
+        "depth": 100,
+        "recorded": null,
+        "live": 24
+      },
+      {
+        "depth": 200,
+        "recorded": null,
+        "live": 24
+      }
+    ]
+  },
+  "content_view_parity": {
+    "note": "content-view chains from depth-sweep-ts.json vs the recording's content rows (Ruby content = depth+2)",
+    "rows": [
+      {
+        "depth": 1,
+        "rubyQueries": 4,
+        "tsRoundTrips": 2
+      },
+      {
+        "depth": 2,
+        "rubyQueries": 5,
+        "tsRoundTrips": 3
+      },
+      {
+        "depth": 4,
+        "rubyQueries": 7,
+        "tsRoundTrips": 5
+      },
+      {
+        "depth": 8,
+        "rubyQueries": 11,
+        "tsRoundTrips": 9
+      },
+      {
+        "depth": 16,
+        "rubyQueries": 19,
+        "tsRoundTrips": 17
+      }
+    ]
+  },
+  "rows": [
+    {
+      "shape": "chain/open/d1",
+      "liveCards": 2,
+      "ruby": {
+        "queries": 4,
+        "wallMs": 28.48,
+        "warmQueries": 0,
+        "warmWallMs": 5.801,
+        "response": "3013B HTML"
+      },
+      "ts": {
+        "roundTrips": 2,
+        "statements": 9,
+        "wallMs": 7.774,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.433,
+        "response": "3011B HTML"
+      },
+      "queriesPerCard": 2,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d2",
+      "liveCards": 3,
+      "ruby": {
+        "queries": 5,
+        "wallMs": 43.759,
+        "warmQueries": 0,
+        "warmWallMs": 17.47,
+        "response": "5984B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 2.649,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.543,
+        "response": "5993B HTML"
+      },
+      "queriesPerCard": 1.667,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d4",
+      "liveCards": 5,
+      "ruby": {
+        "queries": 7,
+        "wallMs": 70.713,
+        "warmQueries": 0,
+        "warmWallMs": 28.104,
+        "response": "11926B HTML"
+      },
+      "ts": {
+        "roundTrips": 5,
+        "statements": 12,
+        "wallMs": 2.172,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.574,
+        "response": "11957B HTML"
+      },
+      "queriesPerCard": 1.4,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d8",
+      "liveCards": 9,
+      "ruby": {
+        "queries": 11,
+        "wallMs": 131.893,
+        "warmQueries": 0,
+        "warmWallMs": 73.469,
+        "response": "23810B HTML"
+      },
+      "ts": {
+        "roundTrips": 9,
+        "statements": 16,
+        "wallMs": 2.396,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.89,
+        "response": "23885B HTML"
+      },
+      "queriesPerCard": 1.222,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d10",
+      "liveCards": 11,
+      "ruby": {
+        "queries": 13,
+        "wallMs": 154.304,
+        "warmQueries": 0,
+        "warmWallMs": 77.365,
+        "response": "29752B HTML"
+      },
+      "ts": {
+        "roundTrips": 11,
+        "statements": 18,
+        "wallMs": 2.601,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 1.074,
+        "response": "29849B HTML"
+      },
+      "queriesPerCard": 1.182,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d16",
+      "liveCards": 17,
+      "ruby": {
+        "queries": 19,
+        "wallMs": 237.744,
+        "warmQueries": 0,
+        "warmWallMs": 141.574,
+        "response": "47578B HTML"
+      },
+      "ts": {
+        "roundTrips": 17,
+        "statements": 24,
+        "wallMs": 5.042,
+        "cpuMs": 46,
+        "warmRoundTrips": 0,
+        "warmWallMs": 1.958,
+        "response": "47747B HTML"
+      },
+      "queriesPerCard": 1.118,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d20",
+      "liveCards": 21,
+      "ruby": {
+        "queries": 23,
+        "wallMs": 334.668,
+        "warmQueries": 0,
+        "warmWallMs": 197.673,
+        "response": "59462B HTML"
+      },
+      "ts": {
+        "roundTrips": 21,
+        "statements": 28,
+        "wallMs": 4.254,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 2.531,
+        "response": "59679B HTML"
+      },
+      "queriesPerCard": 1.095,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "chain/open/d50",
+      "liveCards": 51,
+      "ruby": {
+        "queries": 24,
+        "wallMs": 282.983,
+        "response": "rejected: Card::Error::UserError: Man, you're too deep.  (Too many lev"
+      },
+      "ts": {
+        "roundTrips": 43,
+        "statements": 50,
+        "wallMs": 3.545,
+        "cpuMs": 0,
+        "warmRoundTrips": 34,
+        "warmWallMs": 1.99,
+        "response": "rejected: Error: nest depth exceeded (BenchDN_chain_open_d50_n22)"
+      },
+      "queriesPerCard": 0.471,
+      "roundTripsPerCard": 0.843
+    },
+    {
+      "shape": "chain/open/d100",
+      "liveCards": 101,
+      "ruby": {
+        "queries": 24,
+        "wallMs": 229.187,
+        "response": "rejected: Card::Error::UserError: Man, you're too deep.  (Too many lev"
+      },
+      "ts": {
+        "roundTrips": 43,
+        "statements": 50,
+        "wallMs": 4.904,
+        "cpuMs": 0,
+        "warmRoundTrips": 42,
+        "warmWallMs": 2.295,
+        "response": "rejected: Error: nest depth exceeded (BenchDN_chain_open_d100_n22)"
+      },
+      "queriesPerCard": 0.238,
+      "roundTripsPerCard": 0.426
+    },
+    {
+      "shape": "chain/open/d200",
+      "liveCards": 201,
+      "ruby": {
+        "queries": 24,
+        "wallMs": 317.892,
+        "response": "rejected: Card::Error::UserError: Man, you're too deep.  (Too many lev"
+      },
+      "ts": {
+        "roundTrips": 43,
+        "statements": 50,
+        "wallMs": 2.765,
+        "cpuMs": 0,
+        "warmRoundTrips": 42,
+        "warmWallMs": 2.748,
+        "response": "rejected: Error: nest depth exceeded (BenchDN_chain_open_d200_n22)"
+      },
+      "queriesPerCard": 0.119,
+      "roundTripsPerCard": 0.214
+    },
+    {
+      "shape": "fan/open/f1",
+      "liveCards": 3,
+      "ruby": {
+        "queries": 5,
+        "wallMs": 30.021,
+        "warmQueries": 0,
+        "warmWallMs": 16.759,
+        "response": "5748B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 1.236,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.377,
+        "response": "5746B HTML"
+      },
+      "queriesPerCard": 1.667,
+      "roundTripsPerCard": 1
+    },
+    {
+      "shape": "fan/open/f4",
+      "liveCards": 6,
+      "ruby": {
+        "queries": 8,
+        "wallMs": 74.729,
+        "warmQueries": 0,
+        "warmWallMs": 45.546,
+        "response": "14892B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 1.591,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 0.371,
+        "response": "14890B HTML"
+      },
+      "queriesPerCard": 1.333,
+      "roundTripsPerCard": 0.5
+    },
+    {
+      "shape": "fan/open/f16",
+      "liveCards": 18,
+      "ruby": {
+        "queries": 20,
+        "wallMs": 257.962,
+        "warmQueries": 0,
+        "warmWallMs": 158.432,
+        "response": "51468B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 2.439,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 1.166,
+        "response": "51466B HTML"
+      },
+      "queriesPerCard": 1.111,
+      "roundTripsPerCard": 0.167
+    },
+    {
+      "shape": "fan/open/f50",
+      "liveCards": 52,
+      "ruby": {
+        "queries": 54,
+        "wallMs": 771.06,
+        "warmQueries": 0,
+        "warmWallMs": 402.284,
+        "response": "155100B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 5.381,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 4.815,
+        "response": "155098B HTML"
+      },
+      "queriesPerCard": 1.038,
+      "roundTripsPerCard": 0.058
+    },
+    {
+      "shape": "fan/open/f100",
+      "liveCards": 102,
+      "ruby": {
+        "queries": 104,
+        "wallMs": 1085.097,
+        "warmQueries": 0,
+        "warmWallMs": 700.773,
+        "response": "309417B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 10.505,
+        "cpuMs": 0,
+        "warmRoundTrips": 0,
+        "warmWallMs": 8.083,
+        "response": "309415B HTML"
+      },
+      "queriesPerCard": 1.02,
+      "roundTripsPerCard": 0.029
+    },
+    {
+      "shape": "fan/open/f200",
+      "liveCards": 202,
+      "ruby": {
+        "queries": 204,
+        "wallMs": 2586.561,
+        "warmQueries": 0,
+        "warmWallMs": 1268.71,
+        "response": "618017B HTML"
+      },
+      "ts": {
+        "roundTrips": 3,
+        "statements": 10,
+        "wallMs": 17.617,
+        "cpuMs": 32,
+        "warmRoundTrips": 0,
+        "warmWallMs": 14.263,
+        "response": "618015B HTML"
+      },
+      "queriesPerCard": 1.01,
+      "roundTripsPerCard": 0.015
+    },
+    {
+      "shape": "tree/open/d3xf10",
+      "liveCards": 1112,
+      "ruby": {
+        "queries": 1114,
+        "wallMs": 15574.443,
+        "warmQueries": 0,
+        "warmWallMs": 6622.017,
+        "response": "3595955B HTML"
+      },
+      "ts": {
+        "roundTrips": 5,
+        "statements": 12,
+        "wallMs": 90.463,
+        "cpuMs": 126,
+        "warmRoundTrips": 0,
+        "warmWallMs": 71.34,
+        "response": "3595955B HTML"
+      },
+      "queriesPerCard": 1.002,
+      "roundTripsPerCard": 0.004
+    },
+    {
+      "shape": "tree/open/d4xf4",
+      "liveCards": 342,
+      "ruby": {
+        "queries": 344,
+        "wallMs": 4288.802,
+        "warmQueries": 0,
+        "warmWallMs": 2939.276,
+        "response": "1092781B HTML"
+      },
+      "ts": {
+        "roundTrips": 6,
+        "statements": 13,
+        "wallMs": 30.47,
+        "cpuMs": 46,
+        "warmRoundTrips": 0,
+        "warmWallMs": 25.263,
+        "response": "1092781B HTML"
+      },
+      "queriesPerCard": 1.006,
+      "roundTripsPerCard": 0.018
+    }
+  ]
+}

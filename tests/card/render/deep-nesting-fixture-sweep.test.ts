@@ -1,0 +1,421 @@
+// Deep-nesting fixture sweep: the #1282 scaling-proof fixture battery that
+// goes PAST the parity range. depth-sweep.test.ts measures every renderable
+// chain depth 1..20; this sweep adds the DEEP and WIDE fixture decks the
+// scaling promise names - chains at 10/20/50/100/200 nesting levels, wide
+// fans at 1/4/16/50/100/200, and whole inclusion TREES (depth x breadth) -
+// and records for every shape: the cold response (wall ms, CPU ms, round
+// trips, statements, response class), the warm steady state, and the live
+// card count of the fixture deck, so the query axis can be read against
+// CARD COUNT as well as depth. That is the set-based prefetch promise: the
+// render cost tracks the requested page's inclusion TREE SHAPE, and the
+// fan/tree rows show round trips holding CONSTANT while the card count
+// grows to 1111.
+//
+// Fixture naming is SHARED with the Ruby harness: every card name here is
+// seeded under the identical name by
+// benchmarks/run_ruby_deep_nesting_bench.rb (BenchDN prefix, the
+// run_ruby_bench.rb name formats), so both engines measure the same decks.
+// Ruby-side truth lives in benchmarks/results/deep-nesting-fixtures-ruby.json
+// (live rerun of these fixtures) and benchmarks/results/ruby-nesting-r1-r2.json
+// (the 2026-09-19 parity recording: chains depth+3 queries open / depth+2
+// content, fans fanout+4, warm 0 queries everywhere, depth 32 recorded the
+// Card::Error::UserError "Man, you're too deep" cap).
+//
+// Past the render cap (RUBY_MAX_DEPTH = 20, format.ts:323) the response IS
+// the too-deep rejection - both engines refuse past the cap; the sweep
+// records time-to-rejection and queries-to-rejection as the measured
+// response, mirroring how the Ruby recording records its depth-32 row.
+//
+// Run via enumerated manifest only (never a bare `vitest run`):
+//   npx vitest run tests/card/render/deep-nesting-fixture-sweep.test.ts
+//
+// Reported numbers populate benchmarks/results/deep-nesting-fixtures-ts.json
+// per the METHODOLOGY iron rule (full environment block or it is not a
+// benchmark result).
+
+import { describe, expect, it } from "vitest";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { cpus, totalmem, hostname, platform } from "node:os";
+import {
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "./render-test-storage.js";
+import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
+
+// ---- fixture shapes ---------------------------------------------------------
+
+const PARITY_CHAIN_DEPTHS = [1, 2, 4, 8, 16] as const;
+const DEEP_RENDERABLE_CHAIN_DEPTHS = [10, 20] as const;
+const DEEP_REJECTED_CHAIN_DEPTHS = [50, 100, 200] as const;
+const FANOUTS = [1, 4, 16, 50, 100, 200] as const;
+const TREES = [
+  { depth: 4, fanout: 4 }, // 1 + 4 + 16 + 64 + 256 = 341 cards
+  { depth: 3, fanout: 10 }, // 1 + 10 + 100 + 1000 = 1111 cards
+] as const;
+
+const PREFIX = "BenchDN";
+
+const pad = (n: number, w: number): string => String(n).padStart(w, "0");
+
+/** Deterministic ~200-byte body filler (the Ruby harness seeds random a-z;
+ *  content SIZE is what matters to the query axes, not the exact bytes). */
+function filler(bytes: number): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  const unit = alphabet.repeat(Math.ceil(bytes / alphabet.length));
+  return unit.slice(0, bytes);
+}
+
+const chainName = (depth: number, i: number): string =>
+  `${PREFIX}_chain_open_d${pad(depth, 2)}_n${pad(i, 2)}`;
+const fanChildName = (f: number, i: number): string => `${PREFIX}_fan_f${pad(f, 2)}_c${pad(i, 2)}`;
+const fanRootName = (f: number): string => `${PREFIX}_fan_f${pad(f, 2)}_root`;
+const treeRootName = (d: number, f: number): string =>
+  `${PREFIX}_tree_d${pad(d, 2)}_f${pad(f, 2)}_root`;
+const treeNodeName = (d: number, f: number, level: number, j: number): string =>
+  `${PREFIX}_tree_d${pad(d, 2)}_f${pad(f, 2)}_l${pad(level, 2)}_n${pad(j, 4)}`;
+
+async function seedRichTextType(storage: RenderTestStorage): Promise<void> {
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+}
+
+async function seedChain(storage: RenderTestStorage, depth: number): Promise<void> {
+  await seedRichTextType(storage);
+  for (let i = 1; i <= depth; i++) {
+    const content =
+      i < depth ? `level ${i} body {{${chainName(depth, i + 1)}|open}}` : `leaf body ${filler(200)}`;
+    await seedCard(storage, {
+      id: 100 + i,
+      name: chainName(depth, i),
+      typeId: 2,
+      dbContent: content,
+    });
+  }
+}
+
+async function seedFan(storage: RenderTestStorage, fanout: number): Promise<void> {
+  await seedRichTextType(storage);
+  for (let i = 0; i < fanout; i++) {
+    await seedCard(storage, {
+      id: 1000 + i,
+      name: fanChildName(fanout, i),
+      typeId: 2,
+      dbContent: `fan leaf ${filler(200)}`,
+    });
+  }
+  const nests = Array.from({ length: fanout }, (_, i) => `{{${fanChildName(fanout, i)}|open}}`);
+  await seedCard(storage, {
+    id: 999,
+    name: fanRootName(fanout),
+    typeId: 2,
+    dbContent: nests.join("\n"),
+  });
+}
+
+/** Whole inclusion tree: root -> f^1 -> ... -> f^depth leaves. Every level's
+ *  nodes nest all their children; the leaves carry body text. */
+async function seedTree(storage: RenderTestStorage, depth: number, fanout: number): Promise<void> {
+  await seedRichTextType(storage);
+  let nextId = 2000;
+  for (let level = depth; level >= 1; level--) {
+    const count = Math.pow(fanout, level);
+    for (let j = 1; j <= count; j++) {
+      const content =
+        level < depth
+          ? Array.from({ length: fanout }, (_, k) => {
+              const childIndex = (j - 1) * fanout + k + 1;
+              return `{{${treeNodeName(depth, fanout, level + 1, childIndex)}|open}}`;
+            }).join("\n")
+          : `tree leaf ${filler(200)}`;
+      await seedCard(storage, {
+        id: nextId++,
+        name: treeNodeName(depth, fanout, level, j),
+        typeId: 2,
+        dbContent: content,
+      });
+    }
+  }
+  const rootChildren = Array.from({ length: fanout }, (_, k) => {
+    return `{{${treeNodeName(depth, fanout, 1, k + 1)}|open}}`;
+  }).join("\n");
+  await seedCard(storage, {
+    id: 1999,
+    name: treeRootName(depth, fanout),
+    typeId: 2,
+    dbContent: rootChildren,
+  });
+}
+
+// ---- measurement ------------------------------------------------------------
+
+interface Measure {
+  roundTrips: number;
+  statements: number;
+  wallMs: number;
+  cpuMs: number;
+  htmlBytes: number | null;
+  renderError: string | null;
+}
+
+async function measureRender(
+  storage: RenderTestStorage,
+  root: string,
+  view: string,
+): Promise<Measure> {
+  storage.counting.reset();
+  const cpu0 = process.cpuUsage();
+  const t0 = performance.now();
+  let html: string | undefined;
+  let renderError: string | null = null;
+  try {
+    html = await storage.engine.render(root, view);
+  } catch (err) {
+    renderError =
+      err instanceof Error ? `${err.constructor.name}: ${err.message}` : String(err);
+  }
+  const t1 = performance.now();
+  const cpu = process.cpuUsage(cpu0);
+  const snap = storage.counting.snapshot();
+  return {
+    roundTrips: snap.roundTrips,
+    statements: snap.statements,
+    wallMs: Number((t1 - t0).toFixed(3)),
+    cpuMs: Number(((cpu.user + cpu.system) / 1000).toFixed(3)),
+    htmlBytes: html !== undefined ? html.length : null,
+    renderError,
+  };
+}
+
+interface FixtureRow {
+  shape: "chain" | "fan" | "tree";
+  view: string;
+  depth?: number;
+  fanout?: number;
+  treeDims?: string;
+  root: string;
+  liveCards: number;
+  cold: Measure;
+  warm: Measure;
+}
+
+async function measureShape(
+  shape: FixtureRow["shape"],
+  seed: (storage: RenderTestStorage) => Promise<void>,
+  root: string,
+  liveCards: number,
+  meta: Pick<FixtureRow, "depth" | "fanout" | "treeDims">,
+  view = "open",
+): Promise<FixtureRow> {
+  const storage = await createRenderTestStorage();
+  try {
+    await seed(storage);
+    const cold = await measureRender(storage, root, view);
+    const warm = await measureRender(storage, root, view);
+    return { shape, view, root, liveCards, cold, warm, ...meta };
+  } finally {
+    storage.close();
+  }
+}
+
+// ---- the sweep --------------------------------------------------------------
+
+describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture deck)", () => {
+  it(
+    "measures cold/warm response time + query counts on deep chains, wide fans, and whole trees",
+    { timeout: 300_000 },
+    async () => {
+      const rows: FixtureRow[] = [];
+
+      for (const depth of [...PARITY_CHAIN_DEPTHS, ...DEEP_RENDERABLE_CHAIN_DEPTHS]) {
+        rows.push(
+          await measureShape(
+            "chain",
+            (s) => seedChain(s, depth),
+            chainName(depth, 1),
+            depth + 1,
+            { depth },
+          ),
+        );
+      }
+      for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
+        rows.push(
+          await measureShape(
+            "chain",
+            (s) => seedChain(s, depth),
+            chainName(depth, 1),
+            depth + 1,
+            { depth },
+          ),
+        );
+      }
+      for (const fanout of FANOUTS) {
+        rows.push(
+          await measureShape("fan", (s) => seedFan(s, fanout), fanRootName(fanout), fanout + 2, {
+            fanout,
+          }),
+        );
+      }
+      for (const { depth, fanout } of TREES) {
+        const cards = 1 + Array.from({ length: depth }, (_, i) => Math.pow(fanout, i + 1)).reduce(
+          (a, b) => a + b,
+          0,
+        );
+        rows.push(
+          await measureShape(
+            "tree",
+            (s) => seedTree(s, depth, fanout),
+            treeRootName(depth, fanout),
+            cards + 1,
+            { treeDims: `d${depth}xf${fanout}` },
+          ),
+        );
+      }
+
+      // ---- structural invariants (the scaling claims, asserted) ------------
+
+      const byRoot = new Map(rows.map((r) => [r.root, r]));
+
+      // 1. Renderable open chains: round trips = 2 + (depth - 1) - the fixed
+      //    cost is the root fetch + the prelude batch; each inclusion level
+      //    costs exactly one batched round trip, independent of deck size.
+      for (const depth of [...PARITY_CHAIN_DEPTHS, ...DEEP_RENDERABLE_CHAIN_DEPTHS]) {
+        const row = byRoot.get(chainName(depth, 1))!;
+        expect(row.cold.renderError).toBeNull();
+        expect(row.cold.roundTrips).toBe(2 + Math.max(0, depth - 1));
+      }
+
+      // 2. Past the cap the response is the too-deep rejection, and its query
+      //    cost is BOUNDED and depth-independent. Measured composition (the
+      //    d50 diagnostic, statement log + lastRenderStats attribution):
+      //    1 root fetch + 1 prelude batch + 25 closure rounds (the prefetch's
+      //    MAX_CLOSURE_ROUNDS cap, prefetch.ts:68) + 8 rounds of
+      //    applyStructureContent pass #1 (render.ts:460, loop cap
+      //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) = 43 round
+      //    trips. On a chain each chase round's batched IN-query degenerates
+      //    to one key, so each round is one round trip; the walk itself
+      //    renders cached rows only and throws the guard at nest depth 21
+      //    (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
+      for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
+        const row = byRoot.get(chainName(depth, 1))!;
+        expect(row.cold.renderError).toMatch(/^Error: nest depth exceeded/);
+        expect(row.cold.roundTrips).toBe(43);
+        expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
+      }
+
+      // 3. Wide fans: round trips are CONSTANT across fanouts 1..200 (the
+      //    whole level is one IN-list batch), while the fixture deck grows
+      //    from 3 to 202 live cards.
+      const fanRows = FANOUTS.map((f) => byRoot.get(fanRootName(f))!);
+      const fanRt = fanRows[0]!.cold.roundTrips;
+      for (const row of fanRows) {
+        expect(row.cold.renderError).toBeNull();
+        expect(row.cold.roundTrips).toBe(fanRt);
+      }
+      expect(fanRows[0]!.liveCards).toBe(3);
+      expect(fanRows[fanRows.length - 1]!.liveCards).toBe(202);
+      expect(fanRows[fanRows.length - 1]!.cold.htmlBytes!).toBeGreaterThan(
+        fanRows[0]!.cold.htmlBytes!,
+      );
+
+      // 4. Whole trees: round trips = 2 + tree DEPTH - the closure costs one
+      //    round per LEVEL (not per card): d4xf4 serves 342 cards in 6 round
+      //    trips; d3xf10 serves 1112 cards in 5.
+      const treeRows = TREES.map(({ depth, fanout }) => byRoot.get(treeRootName(depth, fanout))!);
+      for (const row of treeRows) {
+        expect(row.cold.renderError).toBeNull();
+        const depthLevels = Number(row.treeDims!.match(/^d(\d+)/)![1]);
+        expect(row.cold.roundTrips).toBe(2 + depthLevels);
+      }
+      expect(treeRows[1]!.liveCards).toBe(1112);
+
+      // 5. Warm steady state: zero queries on every renderable shape.
+      for (const row of rows) {
+        if (row.cold.renderError === null) {
+          expect(row.warm.roundTrips).toBe(0);
+          expect(row.warm.statements).toBe(0);
+        }
+      }
+
+      // ---- results artifact (the METHODOLOGY iron rule: environment block
+      //      or the numbers are not quotable) --------------------------------
+
+      let engineCommit = "unknown";
+      let engineBranch = "unknown";
+      try {
+        engineCommit = execSync("git rev-parse --short HEAD").toString().trim();
+        engineBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+      } catch {
+        // metadata only - never fail the measurement for it
+      }
+
+      mkdirSync("benchmarks/results", { recursive: true });
+      const outPath = "benchmarks/results/deep-nesting-fixtures-ts.json";
+      writeFileSync(
+        outPath,
+        JSON.stringify(
+          {
+            benchmark: "deep-nesting-fixtures-ts",
+            commitments: ["R1", "R2", "R4"],
+            measured_at: new Date().toISOString(),
+            engine: "decko-ts",
+            engine_commit: engineCommit,
+            engine_branch: engineBranch,
+            environment: {
+              host: hostname(),
+              os: platform(),
+              osVersion: platform() === "win32" ? execSync("cmd /c ver").toString().trim() : null,
+              node: process.version,
+              cpuModel: cpus()[0]?.model ?? null,
+              cpuCount: cpus().length,
+              ramBytes: totalmem(),
+              dbEngine: "better-sqlite3 :memory: over production-schema DDL (db/schema.sqlite.sql)",
+              dbPath: ":memory:",
+              dbSizeBytes: null,
+              dbSizeNote: "in-memory; live card counts are recorded per fixture row",
+              driverAxes:
+                "round trips = driver calls (query() + batch() each ONE; on the edge drivers batch() is one HTTP request); statements = individual SQL statements (batch members count one each)",
+            },
+            axes: {
+              cold: "fresh engine instance per shape; first render",
+              warm: "second render of the same shape in the same engine instance",
+              renderError:
+                "the too-deep rejection IS the response past the render cap (RUBY_MAX_DEPTH=20); time-to-rejection and queries-to-rejection are the measured response",
+            },
+            fixture_naming: {
+              prefix: PREFIX,
+              shared_with: "benchmarks/run_ruby_deep_nesting_bench.rb",
+              note: "both engines seed identically-named BenchDN fixtures",
+            },
+            ruby_measured_truth: {
+              source_parity_recording: "benchmarks/results/ruby-nesting-r1-r2.json",
+              source_deep_rerun: "benchmarks/results/deep-nesting-fixtures-ruby.json",
+            },
+            rows,
+          },
+          null,
+          2,
+        ) + "\n",
+      );
+
+      // eslint-disable-next-line no-console
+      console.log(`\ndeep-nesting fixture sweep (TS) - wrote ${outPath}\n`);
+      // eslint-disable-next-line no-console
+      console.log("shape          | cards | cold RT | cold SQL | cold ms | cpu ms | warm ms | response");
+      // eslint-disable-next-line no-console
+      console.log("---------------+-------+---------+----------+---------+--------+---------+---------");
+      for (const r of rows) {
+        const label =
+          r.shape === "chain"
+            ? `chain d${String(r.depth).padEnd(3)}`
+            : r.shape === "fan"
+              ? `fan f${String(r.fanout).padEnd(4)}`
+              : `tree ${r.treeDims!.padEnd(6)}`;
+        // eslint-disable-next-line no-console
+        console.log(
+          `${label.padEnd(14)} | ${String(r.liveCards).padEnd(5)} | ${String(r.cold.roundTrips).padEnd(7)} | ${String(r.cold.statements).padEnd(8)} | ${String(r.cold.wallMs).padEnd(7)} | ${String(r.cold.cpuMs).padEnd(6)} | ${String(r.warm.wallMs).padEnd(7)} | ${(r.cold.renderError ?? `${r.cold.htmlBytes}B`).slice(0, 40)}`,
+        );
+      }
+    },
+  );
+});
