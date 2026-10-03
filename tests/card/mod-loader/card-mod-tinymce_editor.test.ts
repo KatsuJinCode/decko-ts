@@ -387,11 +387,20 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     expect(report.registeredViews).toContain("open_nest_editor");
     // the two js views plus the tinymce-views-port's two html link
     // editors (link_editor, modal_link_editor - see
-    // card-mod-tinymce-editor-views.test.ts for their byte pins), plus the
-    // form-substrate suite's :new_image_buttons port (nest_image.rb:21-24;
-    // merge-resolution count: HEAD's 4 + this suite's port = 5)
+    // card-mod-tinymce-editor-views.test.ts for their byte pins), the
+    // form-substrate suite's :new_image_buttons port (nest_image.rb:21-24),
+    // and the mod-completion-100 lane's six census views (nest_editor,
+    // modal_nest_editor, nest_content, nest_image, modal_nest_image,
+    // new_image - the harness probe card-mod-tinymce-editor-harness-probe
+    // .test.ts pins their bytes; count: 5 + 6 = 11)
     expect(report.registeredViews).toContain("new_image_buttons");
-    expect(report.registeredViews).toHaveLength(5);
+    expect(report.registeredViews).toContain("nest_editor");
+    expect(report.registeredViews).toContain("modal_nest_editor");
+    expect(report.registeredViews).toContain("nest_content");
+    expect(report.registeredViews).toContain("nest_image");
+    expect(report.registeredViews).toContain("modal_nest_image");
+    expect(report.registeredViews).toContain("new_image");
+    expect(report.registeredViews).toHaveLength(11);
   });
 
   it("WITH the mod: both views carry Ruby's unknown: true config (nest_image.rb:41,45)", () => {

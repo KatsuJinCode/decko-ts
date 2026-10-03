@@ -161,8 +161,10 @@ import { DeckoName } from "../../name.js";
 import { stripTags } from "../../render/nest-syntax.js";
 import { h } from "../../render/slot-html.js";
 import { modViewSlotWrap } from "../../render/views.js";
+import { modSlotWrap } from "../mod-view-helpers.js";
 import {
   buttonFormGroup,
+  createFormShell,
   standardSaveButtonBody,
 } from "../mod-form-substrate.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
@@ -786,6 +788,1014 @@ const newImageButtonsView: ViewFn = (ctx) =>
   );
 
 // ---------------------------------------------------------------------------
+// mod-completion-100 lane (2026-10-03): the census chrome views
+// :nest_editor/:modal_nest_editor/:nest_image/:modal_nest_image plus the
+// :nest_content/:new_image dispatches - PORTED through the harness with the
+// LIVE-VERIFIED static-ruby oracle
+// (ruby-oracles/card-mod-tinymce_editor/reference-editor-chrome-views.rb:
+// the gems' verbatim source + real Haml 5.2.2 + real ActionView 7.2.4 + real
+// cardname + real Card::Tab under ruby.exe 3.3.12; the params-ABSENT arms are
+// byte-exact substrings of the prior lane's live capture
+// fixtures/captured/tinymce-editor-views.json, no_write_proof actions
+// 4929 -> 4929). The probe: card-mod-tinymce-editor-harness-probe.test.ts.
+//
+// THE PARAMS SEAM (named in the lane receipt): the chrome's snippet state is
+// request-param driven (tm_snippet_raw / tinymce_id / tm_snippet_start /
+// index). The headless render engine models no request params (the
+// documented convention), so the REGISTERED views below render the
+// absent-params arm - NestParser.defaultSnippet() - the arm the live capture
+// pinned. The SEEDED arms are the composition cores
+// (tinymceProbeSurface.nestEditorChrome with an explicit params record):
+// the oracle feeds the gem's own js-insert example shape
+// (nest_image.rb:47) and pins the pass-through contracts; the probe replays
+// them through these same functions with the seeded record.
+// ---------------------------------------------------------------------------
+
+/** The _nest_editor.haml tab select list (card-mod-format set/all/demo.rb:
+ *  14-16 verbatim): the fixed literal the basics tab's view select offers. */
+const NEST_VIEW_LIST = [
+  "content",
+  "titled",
+  "labeled",
+  "bar",
+  "box",
+  "open",
+  "closed",
+] as const;
+
+/** all_views (card-mod-format set/all/demo.rb:40-42): the union of the view
+ *  names declared across the html format class's ancestor format modules -
+ *  the LIVE Ruby view registry read, uniq, sorted. THE RECORDED FACT: the
+ *  prior lane's live capture helper_facts.all_views (191 names,
+ *  no_write_proof actions 4929 -> 4929), the same recorded-capture-constant
+ *  basis as head-views.ts's REMOTE_STYLE_TAG; the oracle cross-checks the
+ *  list against helper_facts.all_views_count before every capture. The
+ *  show/hide template select (_options.haml's ._templates.d-none block,
+ *  nest_editor_options.rb:83-85) offers exactly these. */
+const NEST_ALL_VIEWS: readonly string[] = [
+  "accordion_bar", "act", "act_legend", "acted_at", "action_expanded", "action_summary",
+  "add_autocomplete_item", "bad_address", "bar", "bar_body", "bar_bottom", "bar_left",
+  "bar_menu", "bar_middle", "bar_right", "blank", "board", "board_act", "board_link",
+  "board_type_formgroup", "box", "box_bottom", "box_middle", "box_top", "card_select",
+  "cardboard", "carousel", "change", "close_modal_link", "closed", "closed_bar",
+  "closed_content", "codename", "comment_box", "compact_missing", "conflict",
+  "conflict_tracker", "content", "content_formgroup", "content_formgroups",
+  "content_panel", "content_with_title", "core", "count", "created_at",
+  "creator_credit", "debug_server_error", "demo", "denial", "draft_legend", "edit",
+  "edit_button", "edit_buttons", "edit_form", "edit_in_form", "edit_inline",
+  "edit_inline_buttons", "edit_link", "edit_name", "edit_name_row", "edit_nests",
+  "edit_row", "edit_rules", "edit_structure", "edit_type", "edit_type_form",
+  "edit_type_row", "email_page", "engage_tab", "errors", "expanded_bar",
+  "favicon_tag", "flash", "follow_button", "follow_section", "followed",
+  "follower", "full_bar", "full_page_link", "goto_autocomplete_item", "guide",
+  "guide_tab", "head", "header", "header_title", "help", "help_link", "help_text",
+  "hidden_content_field", "history", "history_tab", "icons", "id", "id_url",
+  "input", "javascript_include_tag", "javascript_tags", "just_deleted", "key",
+  "label", "labeled", "labeled_content", "last_action", "last_action_verb",
+  "lead", "link", "link_editor", "linkname", "list_of_changes", "menu",
+  "menu_block", "meta_tags", "mini_bar", "mini_unknown", "modal", "modal_footer",
+  "modal_link", "modal_link_editor", "modal_menu", "modal_nest_editor",
+  "modal_nest_image", "modal_title", "name", "name_form", "name_formgroup",
+  "nav_item", "nav_link", "nav_link_in_dropdown", "navbar_links", "nest_content",
+  "nest_editor", "nest_image", "new", "new_buttons", "new_fields", "new_image",
+  "new_image_buttons", "new_in_modal", "new_in_modal_buttons",
+  "new_type_formgroup", "not_found", "one_line_content", "open", "open_bar",
+  "open_content", "overlay_guide", "overlay_header", "overlay_help_link",
+  "overlay_menu", "overlay_title", "page_title", "page_title_tag", "pills",
+  "pills_static", "pop_out_modal_link", "raw", "raw_one_line_content",
+  "read_form", "read_formgroup", "related_tab", "rss_links", "rules_tab",
+  "script_calls", "script_variables", "server_error", "short_content",
+  "simple_new", "smart_label", "stylesheet_tags", "subedit_notice", "subedits",
+  "tabs", "tabs_static", "template_nest", "text_without_nests", "title",
+  "title_link", "title_no_link", "titled", "titled_content", "type",
+  "type_formgroup", "type_info", "unfollow_url", "universal_edit_button",
+  "unknown", "updated_at", "updated_by", "url", "url_link", "view_list",
+];
+
+/** The material icon basket (card-mod-bootstrap icon.rb:1-11): the keys the
+ *  chrome reads - close (the header dismiss + the options-row delete), help
+ *  (the help_link popovers). icon_libraries = [:material]
+ *  (lib/card/mod/bootstrap.rb:2). */
+const MATERIAL_ICONS: Record<string, string> = {
+  close: "close",
+  help: "help",
+  remove: "close",
+};
+
+function materialIcon(key: string): string {
+  return `<i class="notranslate material-icons">${MATERIAL_ICONS[key] ?? key}</i>`;
+}
+
+/** The chrome composition context: the card facts the templates read plus
+ *  the two ENGINE SEAMS. The id counter drives the option-select names and
+ *  the tab ids in Ruby's evaluation order (the tab CONTENT renders before
+ *  the tab BUTTONS - the pinned counter sequence). */
+export interface ChromeContext {
+  /** the card's name (data-left-name). */
+  cardName: string;
+  /** the card's safe key (the unique_id prefix + the tab ids). */
+  cardKey: string;
+  /** left_type_for_nest_editor_set_selection (nest_editor.rb:2-4 = the
+   *  card's type name). */
+  leftType: string;
+  /** id_counter (card core format/content.rb:50-53) - fresh per format. */
+  idCounter: { n: number };
+  /** THE NEST SEAM: the deep engine render (the rules tab's nest_rules
+   *  view, the image tabs' new_image view). */
+  nest: (target: string, view: string) => string;
+  /** THE SLOT-WRAP SEAM (image_preview_tab's wrap true): the engine's slot
+   *  wrapper around the nested core view - the live capture randomizes the
+   *  wrapper's ids. */
+  wrap: () => string;
+}
+
+/** Rails content_tag emission (the `=` helper outputs): double-quoted,
+ *  insertion-ordered attributes; nil values drop. */
+function railsTag(
+  tag: string,
+  attrs: Array<[string, string | undefined]>,
+  content: string,
+): string {
+  const rendered = attrs
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => ` ${k}="${v}"`);
+  return `<${tag}${rendered.join("")}>${content}</${tag}>`;
+}
+
+/** Rails text_field_tag (form_tag_helper.rb:255-271): type, name, id
+ *  (the name verbatim), value (nil omits the attribute), then the caller
+ *  opts in their hash order. */
+function railsTextFieldTag(
+  name: string,
+  value: string | undefined,
+  opts: Array<[string, string | undefined]>,
+): string {
+  const attrs: Array<[string, string | undefined]> = [
+    ["type", "text"],
+    ["name", name],
+    ["id", name],
+  ];
+  if (value !== undefined) attrs.push(["value", value]);
+  attrs.push(...opts);
+  return railsTag("input", attrs, "").replace("></input>", " />");
+}
+
+/** Rails select_tag (form_tag_helper.rb:830-845): name, id, then the caller
+ *  opts; options_for_select's body joins "\n", blank first when the list
+ *  leads nil, selected="selected" on the match (selected nil = none). */
+function railsSelectTag(
+  name: string,
+  optionList: ReadonlyArray<string | undefined>,
+  opts: Array<[string, string | undefined]>,
+  selected?: string | undefined,
+): string {
+  const attrs: Array<[string, string | undefined]> = [
+    ["name", name],
+    ["id", name],
+    ...opts,
+  ];
+  const attrStr = attrs
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => ` ${k}="${v}"`)
+    .join("");
+  const options = optionList
+    .map((v) =>
+      v === undefined
+        ? `<option value=""></option>`
+        : `<option${v === selected ? ` selected="selected"` : ""} value="${h(v)}">${h(v)}</option>`,
+    )
+    .join("\n");
+  return `<select${attrStr}>${options}</select>`;
+}
+
+/** decko help_link (card-mod-format menu.rb:97-100) + bootstrap popover_opts
+ *  (helper.rb:46-58) + link_to (links.rb:101-106, href appended LAST): the
+ *  pinned attr order - tabindex, data-bs-toggle, data-bs-trigger,
+ *  data-bs-content, data-bs-placement, class, data-bs-title, href. */
+function helpLink(text: string, title: string): string {
+  const cls = "help-link ps-1 _popover_link _card-menu-popover";
+  return (
+    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"` +
+    ` data-bs-content="${h(text)}" data-bs-placement="left" class="${cls}"` +
+    ` data-bs-title="${h(title)}" href="#">${materialIcon("help")}</a>`
+  );
+}
+
+/** decko button_tag (bootstrap form.rb:14-17 bootstrapify_button appends
+ *  "btn btn-#{situation}" AFTER the caller class; Rails button_tag leads
+ *  name="button" type="submit") over apply_tm_snippet_data's attrs
+ *  (reference_editor.rb:18-37 write order: data-tinymce-id, the snippet
+ *  vars - start, size - then data-index, the modal data-bs-dismiss, class
+ *  from the merge LAST). */
+function applyButton(
+  applyOpts: Array<[string, string | undefined]>,
+  refType: string,
+  modal: boolean,
+): string {
+  const label = modal ? "Apply and Close" : "Apply";
+  const attrs: Array<[string, string | undefined]> = [
+    ["name", "button"],
+    ["type", "submit"],
+    ...applyOpts,
+  ];
+  if (modal) attrs.push(["data-bs-dismiss", "modal"]);
+  attrs.push(["class", `_${refType}-apply btn-sm me-3 btn btn-primary`]);
+  return `<button${attrs
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => ` ${k}="${v}"`)
+    .join("")}>${label}</button>`;
+}
+
+/** reference_editor.haml (verbatim template): the chrome both editors share.
+ *  Haml renders the static tags single-quoted SORTED; the `=` helper outputs
+ *  keep double quotes and Rails insertion order. The blank line before the
+ *  footer is the template's own blank line. */
+function referenceEditorChrome(
+  args: {
+    title: string;
+    editorMode: "overlay" | "modal";
+    refType: string;
+    partial: string;
+    applyOpts: Array<[string, string | undefined]>;
+    snippetRaw: string;
+    /** the closes between the partial and the footer (the haml blank-line
+     *  structure the capture pins: the nest partial closes its own groups,
+     *  one close follows; the image tabs are bare content, two follow). */
+    closesAfterPartial: 1 | 2;
+  },
+): string {
+  const modal = args.editorMode !== "overlay";
+  const out: string[] = [];
+  out.push(`<div class='_nest-editor'>`);
+  out.push(`<div class='card-header d-flex'>`);
+  out.push(`<h5 class='mt-1'>`);
+  out.push(h(args.title));
+  out.push(`</h5>`);
+  out.push(`<div class='ms-auto'>`);
+  out.push(
+    `<a data-bs-dismiss="${args.editorMode}" class="text-dark p-1 ms-1" href="#">${materialIcon("close")}</a>`,
+  );
+  out.push(`</div>`);
+  out.push(`</div>`);
+  out.push(`<div class='card-body'>`);
+  out.push(`<div class='form'>`);
+  out.push(args.partial);
+  for (let i = 0; i < args.closesAfterPartial; i += 1) out.push(`</div>`);
+  out.push(`<div class='card-footer p-0'>`);
+  out.push(`<div class='preview mx-1 my-1 form-control-feedback'>`);
+  out.push(`Syntax preview`);
+  out.push(
+    railsTextFieldTag("preview", args.snippetRaw, [
+      ["class", `_${args.refType}-preview w-100 text-muted`],
+      ["readonly", "readonly"],
+    ]),
+  );
+  out.push(`</div>`);
+  out.push(`<hr class='mt-1 mb-1'>`);
+  out.push(`<div class='form-group-inline d-flex justify-content-center py-3'>`);
+  out.push(applyButton(args.applyOpts, args.refType, modal));
+  out.push(
+    `<a class='border-light text-dark btn btn-sm btn-secondary' data-bs-dismiss='${args.editorMode}' href='#'>`,
+  );
+  out.push(modal ? "Cancel" : "Close");
+  out.push(`</a>`);
+  out.push(`</div>`);
+  out.push(`</div>`);
+  out.push(`</div>`);
+  return out.join("\n") + "\n";
+}
+
+/** nest_editor_options.rb:3-5 + :8-19 nest_option_name_select: select over
+ *  "" + NEST_OPTIONS (view dropped unless include_view_option), class
+ *  "form-control _nest-option-name" + " _new-row" unless selected +
+ *  " _no-select2" if template; the name carries unique_id; id nil. */
+function nestOptionNameSelect(
+  ctx: ChromeContext,
+  opts: {
+    selected?: string;
+    level: number;
+    includeViewOption: boolean;
+    template: boolean;
+    snippet: NestParser;
+  },
+): string {
+  let cls = "form-control _nest-option-name";
+  if (opts.selected === undefined) cls += " _new-row";
+  if (opts.template) cls += " _no-select2";
+  const uid = `${ctx.cardKey}-${(ctx.idCounter.n += 1)}`;
+  const names = [
+    "",
+    ...(opts.includeViewOption ? ["view" as const] : []),
+    ...NEST_OPTION_NAMES,
+  ];
+  // nest_option_name_disabled (nest_editor_options.rb:33-51): the disabled
+  // candidates are the snippet's OWN option keys at this level (level 0 ->
+  // options, deeper -> item_options[level-1], else []); the selected name is
+  // removed (Ruby's pairs carry the keys as the same objects the select
+  // compares, so the delete hits). The remaining candidates disable their
+  // options (options_for_select's disabled list).
+  const disabled = (opts.level === 0
+    ? opts.snippet.options
+    : (opts.snippet.itemOptions[opts.level - 1] ?? [])
+  ).map(([k]) => k).filter((k) => k !== opts.selected);
+  const attrStr = ` name="nest_option_name_${uid}" id="nest_option_name_${uid}"`.replace(
+    / id="[^"]*"/,
+    "",
+  );
+  const options = names
+    .map((v) =>
+      v === ""
+        ? `<option value=""></option>`
+        : `<option${v === opts.selected ? ` selected="selected"` : ""}${disabled.includes(v) ? ` disabled="disabled"` : ""} value="${v}">${v}</option>`,
+    )
+    .join("\n");
+  return `<select${attrStr} class="${cls}" data-placeholder="Select option">${options}</select>`;
+}
+
+/** nest_parser.rb:6 NEST_OPTIONS minus :view (the name-select list order). */
+const NEST_OPTION_NAMES = [
+  "title",
+  "show",
+  "hide",
+  "wrap",
+  "help",
+  "variant",
+  "size",
+  "params",
+] as const;
+
+/** nest_editor_options.rb:71-75 nest_option_value_select: text :value,
+ *  class "_nest-option-value form-control", disabled when no value, id nil. */
+function nestOptionValueSelect(value: string | undefined): string {
+  const attrs: Array<[string, string | undefined]> = [
+    ["type", "text"],
+    ["name", "value"],
+    ["value", value],
+    ["class", "_nest-option-value form-control"],
+    ["disabled", value ? undefined : "disabled"],
+  ];
+  return `<input${attrs
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => ` ${k}="${v}"`)
+    .join("")} />`;
+}
+
+/** _options_select_row.haml (verbatim): the option row; the array-class
+ *  values lead ([template && "_template"], [!name && "d-none"]). */
+function optionsSelectRow(
+  ctx: ChromeContext,
+  opts: {
+    template: boolean;
+    name?: string;
+    level: number;
+    value?: string;
+    viewSelectable: boolean;
+    snippet: NestParser;
+  },
+): string {
+  const rowCls = `${opts.template ? "_template " : ""}row _nest-option-row`;
+  const btnCls = `${opts.name === undefined ? "d-none " : ""}btn btn-secondary input-group-text p-1 _nest-delete-option`;
+  const out: string[] = [];
+  out.push(`<div class='${rowCls}'>`);
+  out.push(`<div class='col-6'>`);
+  out.push(`<div class='input-group mb-2 me-2 d-flex flex-nowrap'>`);
+  out.push(`<button class='${btnCls}' type='button'>`);
+  out.push(`<small class='text-muted'>`);
+  out.push(materialIcon("remove"));
+  out.push(`</small>`);
+  out.push(`</button>`);
+  out.push(
+    nestOptionNameSelect(ctx, {
+      selected: opts.name,
+      level: opts.level,
+      includeViewOption: opts.viewSelectable,
+      template: opts.template,
+      snippet: opts.snippet,
+    }),
+  );
+  out.push(`</div>`);
+  out.push(`</div>`);
+  out.push(`<div class='col-6 _nest-option-value-col'>`);
+  out.push(nestOptionValueSelect(opts.value));
+  out.push(`</div>`);
+  out.push(`</div>`);
+return out.join("\n");
+}
+
+/** _options_select.haml (verbatim): the data rows, the blank row, the
+ *  template row when !template; the haml whitespace keeps one blank line
+ *  after the last row (before the partial's own close). */
+function optionsSelect(
+  ctx: ChromeContext,
+  opts: {
+    template: boolean;
+    level: number;
+    data: ReadonlyArray<readonly [string, string]>;
+    viewSelectable: boolean;
+    snippet: NestParser;
+  },
+): string {
+  const rows: string[] = [];
+  for (const [name, value] of opts.data) {
+    rows.push(
+      optionsSelectRow(ctx, {
+        template: false,
+        name,
+        level: opts.level,
+        value,
+        viewSelectable: opts.viewSelectable,
+        snippet: opts.snippet,
+      }),
+    );
+  }
+  rows.push(
+    optionsSelectRow(ctx, {
+      template: opts.template,
+      level: opts.level,
+      viewSelectable: opts.viewSelectable,
+      snippet: opts.snippet,
+    }),
+  );
+  if (!opts.template) {
+    rows.push(
+      optionsSelectRow(ctx, {
+        template: true,
+        level: opts.level,
+        viewSelectable: opts.viewSelectable,
+        snippet: opts.snippet,
+      }),
+    );
+  }
+  return `<div class='${opts.template ? "_template " : ""}_options-select'>\n${rows.join("\n\n")}\n\n</div>`;
+}
+
+/** nest_editor_options.rb:77-79 size_select_options (default :medium). */
+function sizeSelectOptions(selected = "medium"): string {
+  return railsSelectTag(
+    "size",
+    ["icon", "small", "medium", "large", "original"],
+    [],
+    selected,
+  );
+}
+
+/** nest_editor_options.rb:87-103: the ._templates.d-none block's four
+ *  templates (default value; size; view over view_list; show+hide over
+ *  all_views - the recorded registry fact). */
+function templatesBlock(): string {
+  const out: string[] = [];
+  out.push(`<div class='_templates d-none'>`);
+  out.push(
+    `<input type="text" name="value" class="_nest-option-template-default _nest-option-value form-control" />`,
+  );
+  out.push(
+    railsTag(
+      "div",
+      [["class", "_nest-option-template-size"]],
+      railsSelectTag("size", ["icon", "small", "medium", "large", "original"], [
+        ["class", "_no-select2 _nest-option-value form-control"],
+      ], "medium"),
+    ),
+  );
+  out.push(
+    railsTag(
+      "div",
+      [["class", "_nest-option-template-view"]],
+      railsSelectTag("size", [...NEST_VIEW_LIST], [
+        ["class", "_no-select2 _nest-option-value form-control"],
+      ]),
+    ),
+  );
+  out.push(
+    railsTag(
+      "div",
+      [["class", "_nest-option-template-show _nest-option-template-hide"]],
+      railsSelectTag("size", [...NEST_ALL_VIEWS], [
+        ["class", "_no-select2 _nest-option-value form-control"],
+      ]),
+    ),
+  );
+  out.push(`</div>`);
+  return out.join("\n");
+}
+
+/** _options.haml (verbatim): the options containers over the snippet's
+ *  options + item options + the template container + the templates block;
+ *  the container closes carry the haml blank lines the capture pins. */
+function optionsPartial(ctx: ChromeContext, snippet: NestParser): string {
+  const out: string[] = [];
+  out.push(`<div class='_nest-options'>`);
+  out.push(`<div class='options-container'>`);
+  out.push(`<label>Options</label>`);
+  out.push(
+    optionsSelect(ctx, {
+      template: false,
+      level: 0,
+      data: snippet.options,
+      viewSelectable: false,
+      snippet,
+    }),
+  );
+  out.push("");
+  out.push(`</div>`);
+  snippet.itemOptions.forEach((options, i) => {
+    out.push(`<div class='options-container _configure-items'>`);
+    out.push(`<label>`);
+    out.push(cap(`${"sub".repeat(i)} item options`));
+    out.push(`</label>`);
+    out.push(
+      optionsSelect(ctx, {
+        template: false,
+        level: i + 1,
+        data: options,
+        viewSelectable: true,
+        snippet,
+      }),
+    );
+    out.push("");
+    out.push(`</div>`);
+  });
+  out.push(`<div class='options-container _configure-items'>`);
+  out.push(
+    `<button name="button" type="submit" class="_configure-items-button btn-sm btn btn-secondary">Add ${"sub".repeat(snippet.itemOptions.length)}item options</button>`,
+  );
+  out.push(
+    optionsSelect(ctx, {
+      template: true,
+      level: snippet.itemOptions.length + 1,
+      data: [],
+      viewSelectable: true,
+      snippet,
+    }),
+  );
+  out.push("");
+  out.push(`</div>`);
+  out.push(templatesBlock());
+  out.push(`</div>`);
+  return out.join("\n") + "\n";
+}
+
+/** Ruby String#capitalize (first char upcase, REST downcase). */
+function cap(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1).toLowerCase();
+}
+
+/** _image_find.haml (verbatim; the commented autocomplete line keeps its
+ *  blank line): the image name select group. */
+function imageFindPartial(): string {
+  const out: string[] = [];
+  out.push(`<div class='form-group'>`);
+  out.push(`<label for='nest_name'>Name</label>`);
+  // t(:tinymce_editor_image_nest_editor_name_help_text/_title): "Hello"/"World"
+  out.push(helpLink("Hello", "World"));
+  out.push("");
+  out.push(
+    `<select name="image-name-select" id="image-name-select" class="_image-card-select _image-name _no-select2-init" data-dropdown-parent="true"></select>`,
+  );
+  out.push(`</div>`);
+  return out.join("\n") + "\n";
+}
+
+/** nest_editor_options.rb:61-65 image_view_select + :67-69
+ *  image_size_select (the seeded image snippet's view "content" selects). */
+function imageViewSelect(selected: string | undefined): string {
+  return railsSelectTag(
+    "view",
+    [undefined, ...NEST_VIEW_LIST],
+    [["class", "tags _image-view-select"], ["data-placeholder", "Select view"]],
+    selected,
+  );
+}
+
+function imageSizeSelect(): string {
+  return railsSelectTag(
+    "size",
+    ["icon", "small", "medium", "large", "original"],
+    [["class", "_image-size-select"]],
+    "medium",
+  );
+}
+
+/** _image_options.haml (verbatim): the View + Size groups. */
+function imageOptionsPartial(snippet: NestParser): string {
+  const out: string[] = [];
+  out.push(`<div class='form-group'>`);
+  out.push(`<label>View</label>`);
+  // t(:tinymce_editor_image_nest_editor_view_help_text/_title): "World"/"Hello"
+  out.push(helpLink("World", "Hello"));
+  out.push(imageViewSelect(snippet.view));
+  out.push(`</div>`);
+  out.push(`<div class='form-group'>`);
+  out.push(`<label>Size</label>`);
+  out.push(imageSizeSelect());
+  out.push(`</div>`);
+  return out.join("\n") + "\n";
+}
+
+/** name.to_name.safe_key (cardname generate_key: underscore + singularize)
+ *  for the fixed tab-name set the two editors use. */
+function tabSafeKey(name: string): string {
+  const table: Record<string, string> = { options: "option", rules: "rule" };
+  return table[name] ?? name;
+}
+
+/** Card::Tab (card-mod-tabs lib/tab.rb) + tab_panel.haml: the tab machinery.
+ *  Tab ids "tab-#{unique_id}-#{safe_key}": the CONTENT renders before the
+ *  BUTTONS (the tab hash evaluates first), pinning the counter order. The
+ *  active tab: the requested name when among the keys, else the FIRST key. */
+function tabsPanel(
+  ctx: ChromeContext,
+  tabHash: ReadonlyArray<readonly [string, string]>,
+  activeName: string | undefined,
+  args: { tabType: string; panelClass?: string; navClasses?: string },
+): string {
+  const entries = tabHash.map(([name, content]) => ({
+    name,
+    content,
+    id: `tab-${ctx.cardKey}-${(ctx.idCounter.n += 1)}-${tabSafeKey(name)}`,
+  }));
+  const active = entries.some((e) => e.name === activeName)
+    ? (activeName as string)
+    : entries[0].name;
+  const buttons = entries
+    .map((e) =>
+      railsTag(
+        "li",
+        [
+          ["role", "presentation"],
+          // Card::Tab#tab_button: the li's class comes from the wrap_with args
+          // (no active marker - button_attrib feeds the <a> only)
+          ["class", `nav-item tab-li-${tabSafeKey(e.name)}`],
+        ],
+        `<a class="${e.name === active ? "active " : ""}nav-link" role="tab" data-bs-toggle="tab" data-tab-name="${e.name}" href="#${e.id}">${e.name}</a>`,
+      ),
+    )
+    .join("\n");
+  const panes = entries
+    .map((e) =>
+      railsTag(
+        "div",
+        [
+          ["role", "tabpanel"],
+          ["id", e.id],
+          ["class", `tab-pane tab-pane-${e.name}${e.name === active ? " active" : ""}`],
+        ],
+        e.content,
+      ),
+    )
+    .join("\n");
+  const panelAttrs = args.panelClass
+    ? ` class='tabbable tab-panel ${args.panelClass}' role='tabpanel'`
+    : ` class='tabbable tab-panel' role='tabpanel'`;
+  return (
+    `<div${panelAttrs}>\n` +
+    `<ul class='${args.navClasses ?? "nav"} nav-${args.tabType}' role='tablist'>\n` +
+    `${buttons}\n</ul>\n` +
+    `<div class='tab-content'>\n` +
+    `${panes}\n</div>\n` +
+    `</div>`
+  );
+}
+
+/** nest_editor_tabs.rb:7-18 nest_editor_tabs + :60-77 (the blank-name arms
+ *  of name_dependent_slot: the visible alert + the placeholder div; the
+ *  named arm yields the nest_rules SEAM with no wrapper). */
+function nestEditorTabs(ctx: ChromeContext, snippet: NestParser): string {
+  const rulesTab =
+    snippet.name === ""
+      ? `<div class="mb-0 _empty-nest-name-alert  alert alert-warning" role="alert">nest name required</div>\n<div class="card-slot"></div>`
+      : `<div class="mb-0 _empty-nest-name-alert d-none alert alert-warning" role="alert">nest name required</div>\n${ctx.nest(`${ctx.leftType}+${snippet.name}+type_plus_right`, "nest_rules")}`;
+  const tabHash: ReadonlyArray<readonly [string, string]> = [
+    ["view", basicsPartial(ctx, snippet)],
+    ["options", optionsPartial(ctx, snippet)],
+    ["rules", rulesTab],
+  ];
+  return tabsPanel(ctx, tabHash, "basics", {
+    tabType: "tabs",
+    panelClass: "nest-options",
+  });
+}
+
+/** nest_editor_options.rb:56-58 nest_view_select (the basics tab). */
+function nestViewSelect(selected: string | undefined): string {
+  return railsSelectTag(
+    "view",
+    [undefined, ...NEST_VIEW_LIST],
+    [
+      ["class", "tags _view-select _nest-option-value"],
+      ["data-placeholder", "Select view"],
+    ],
+    selected,
+  );
+}
+
+/** _basics.haml (verbatim): the view select group. */
+function basicsPartial(_ctx: ChromeContext, snippet: NestParser): string {
+  const out: string[] = [];
+  out.push(`<div class='form-group'>`);
+  out.push(`<label>View</label>`);
+  // t(:tinymce_editor_nest_editor_view_help_text/_title): "World" / "Hello"
+  out.push(helpLink("World", "Hello"));
+  out.push(nestViewSelect(snippet.view));
+  out.push(`</div>`);
+  return out.join("\n") + "\n";
+}
+
+/** The _nest_editor.haml partial (verbatim): the card name field group +
+ *  the tabs; the field?'s array class leads. The mt-4/form-group closes
+ *  carry the haml blank lines the capture pins. */
+function nestEditorPartial(ctx: ChromeContext, snippet: NestParser): string {
+  const prefixClass = snippet.field ? "show-prefix" : "hide-prefix";
+  const out: string[] = [];
+  out.push(`<div class='form-group'>`);
+  out.push(`<label for='nest_name'>Card</label>`);
+  // t(:tinymce_editor_nest_editor_card_help_text/_title) - the gem's own
+  // en.yml: "Hello" / "Title"
+  out.push(helpLink("Hello", "Title"));
+  out.push(`<div class='${prefixClass} input-group'>`);
+  out.push(`<div class='input-group-text text-muted _field-indicator'>`);
+  out.push(`+`);
+  out.push(`</div>`);
+  out.push(
+    railsTextFieldTag("nest_name", snippet.name ?? "", [
+      ["class", "form-control _nest-name _autocomplete "],
+      ["data-left-name", ctx.cardName],
+      ["data-left-type", ctx.leftType],
+      ["data-options-card", "*all+by name"],
+    ]),
+  );
+  out.push(`<div class='input-group-text btn btn-secondary _nest-field-toggle'>`);
+  out.push(`+`);
+  out.push(`</div>`);
+  out.push(`</div>`);
+  out.push(`</div>`);
+  out.push(`<div class='mt-4'>`);
+  out.push(nestEditorTabs(ctx, snippet));
+  out.push("");
+  out.push(`</div>`);
+  out.push("");
+  out.push(`</div>`);
+  return out.join("\n");
+}
+
+/** reference_editor.rb:18-37 apply_tm_snippet_data over the params record:
+ *  data-tinymce-id always (nil drops), the snippet vars (start from
+ *  tm_snippet_start, size from raw.size) when present, data-index when
+ *  present. The modal data-bs-dismiss appends LAST in the button builder. */
+function tmApplyOpts(
+  params: Record<string, string | undefined>,
+  snippet: NestParser,
+): Array<[string, string | undefined]> {
+  const opts: Array<[string, string | undefined]> = [
+    ["data-tinymce-id", params.tinymce_id],
+  ];
+  if (params.tm_snippet_start !== undefined) {
+    opts.push(["data-tm-snippet-start", params.tm_snippet_start]);
+  }
+  // apply_tm_snippet_var's guard reads the PARAM (tm_param :raw), not the
+  // computed size - the size var only writes when tm_snippet_raw is present
+  if (params.tm_snippet_raw !== undefined) {
+    opts.push(["data-tm-snippet-size", String(snippet.raw.length)]);
+  }
+  return opts;
+}
+
+/** The snippet the view renders: NestParser.new params[:tm_snippet_raw]
+ *  (nest_editor.rb:55-57) - the String arm for a seeded param, the default
+ *  Nest struct for the absent arm. */
+function snippetFromParams(
+  params: Record<string, string | undefined>,
+): NestParser {
+  const raw = params.tm_snippet_raw;
+  return typeof raw === "string"
+    ? NestParser.parse(raw)
+    : NestParser.defaultSnippet();
+}
+
+/** view :nest_editor (nest_editor.rb:10-16 + 29-38) + :modal_nest_editor
+ *  (:17-20 + 60-63): the editor-mode arg picks the footer copy and the
+ *  modal wrapper (modal_nest_editor = wrap_with :modal = content_tag(:modal),
+ *  wrap.rb:128-131 - a LITERAL <modal> element, the basis the committed
+ *  link editors pin). */
+export function nestEditorChrome(
+  ctx: ChromeContext,
+  editorMode: "overlay" | "modal",
+  params: Record<string, string | undefined> = {},
+): string {
+  const snippet = snippetFromParams(params);
+  const partial = nestEditorPartial(ctx, snippet);
+  const applyOpts = tmApplyOpts(params, snippet);
+  const body = referenceEditorChrome({
+    title: "Nest",
+    editorMode,
+    refType: "nest",
+    partial,
+    applyOpts,
+    snippetRaw: snippet.raw,
+    closesAfterPartial: 1,
+  });
+  return editorMode === "modal" ? `<modal>${body}</modal>` : body;
+}
+
+/** nest_image.rb:28-37 nest_image_editor + adapt_reference_editor_for_images:
+ *  the IN-PROCESS new_image snippet (autoname census - the recorded fixture
+ *  fact "image01"; not params-driven), the upload tab's new_image nest + the
+ *  preview tab's wrapped core nest as the seams. */
+export function nestImageChrome(
+  ctx: ChromeContext,
+  editorMode: "overlay" | "modal",
+  autoname: string,
+): string {
+  const snippet = NestParser.newImage(autoname);
+  const partial =
+    tabsPanel(
+      ctx,
+      [
+        ["upload", ctx.nest(snippet.name ?? "", "new_image")],
+        ["select", imageFindPartial()],
+        ["options", imageOptionsPartial(snippet)],
+        ["preview", ctx.wrap()],
+      ],
+      "content",
+      { tabType: "tabs", panelClass: "nest-options", navClasses: "nav nav-fill" },
+    ) + "\n\n";
+  const applyOpts = tmApplyOpts({}, snippet);
+  const body = referenceEditorChrome({
+    title: "Image",
+    editorMode,
+    refType: "nest",
+    partial,
+    applyOpts,
+    snippetRaw: snippet.raw,
+    closesAfterPartial: 2,
+  });
+  // NOTE: view :modal_nest_image (nest_image.rb:8-11) calls nest_image_editor
+  // :modal DIRECTLY - no wrap_with :modal wrapper (unlike view
+  // :modal_nest_editor, which calls the modal_nest_editor METHOD) - the
+  // editor_mode only flips the footer copy + the dismiss target.
+  return body;
+}
+
+/** nest_image.rb:28-37
+
+/** The registered views' ChromeContext: the render card's facts + the
+ *  ENGINE's real seam renders (fmt.nest dispatches the rules mod's
+ *  nest_rules view and the image card's new_image view; the wrap seam is
+ *  the engine's slot wrapper around the nested core view). */
+function engineChromeContext(ctx: ViewContext, imageMark: string): ChromeContext {
+  const { fmt } = ctx;
+  return {
+    cardName: fmt.card.name.s,
+    cardKey: fmt.card.name.safeKey,
+    leftType: fmt.card.typeName ?? "",
+    idCounter: { n: 0 },
+    nest: (target, view) => {
+      // the raw seam target's codename segment resolves to the card mark
+      // (Array#to_name's compose routes :type_plus_right through the
+      // codename table -> "*type plus right")
+      const mark = target.replace(/\+type_plus_right$/, "+*type plus right");
+      return fmt.nest({
+        syntax: `{{${mark}|${view}}}`,
+        name: mark,
+        options: { view, extra: {} },
+        comment: undefined,
+      });
+    },
+    wrap: () =>
+      modSlotWrap(
+        ctx,
+        "nest_image",
+        fmt.nest({
+          syntax: `{{${imageMark}|core}}`,
+          name: imageMark,
+          options: { view: "core", extra: {} },
+          comment: undefined,
+        }),
+      ),
+  };
+}
+
+/** view :nest_editor, cache: :never, unknown: true, wrap: { slot: { class:
+ *  "_overlay d0-card-overlay card nodblclick" } } (nest_editor.rb:10-16) -
+ *  the absent-params arm (the live capture's arm); the wrap config rides
+ *  modViewSlotWrap. */
+const nestEditorView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "nest_editor",
+    "_overlay d0-card-overlay card nodblclick",
+    nestEditorChrome(engineChromeContext(ctx, "image01"), "overlay"),
+  );
+
+/** view :modal_nest_editor, cache: :never, unknown: true, wrap: { slot:
+ *  { class: "nodblclick" } } (nest_editor.rb:17-20). */
+const modalNestEditorView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "modal_nest_editor",
+    "nodblclick",
+    nestEditorChrome(engineChromeContext(ctx, "image01"), "modal"),
+  );
+
+/** view :nest_image, unknown: true, cache: :never, wrap: { slot: { class:
+ *  "_overlay d0-card-overlay card nodblclick" } } (nest_image.rb:2-6). */
+const nestImageView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "nest_image",
+    "_overlay d0-card-overlay card nodblclick",
+    nestImageChrome(engineChromeContext(ctx, "image01"), "overlay", "image01"),
+  );
+
+/** view :modal_nest_image, unknown: true, cache: :never, wrap: { slot:
+ *  { class: "nodblclick" } } (nest_image.rb:8-11). */
+const modalNestImageView: ViewFn = (ctx) =>
+  modViewSlotWrap(
+    ctx,
+    "modal_nest_image",
+    "nodblclick",
+    nestImageChrome(engineChromeContext(ctx, "image01"), "modal", "image01"),
+  );
+
+/** view :nest_content, perms: :create, cache: :never, unknown: true,
+ *  wrap: :slot (nest_editor.rb:22-27): the known arm - voo.hide!
+ *  :cancel_button; add_name_context; with_nest_mode :edit { wrap true
+ *  { render :edit_inline } } - the edit mod's ported inline-editing surface
+ *  under the engine's real nest-mode state; the unknown arm - voo.hide!
+ *  :guide; voo.show! :new_type_formgroup; voo.buttons_view =
+ *  :new_image_buttons; wrap true { create_form success: { tinymce_id:
+ *  Env.params[:tinymce_id] } } - the params-absent hash drops the key
+ *  (Rails' success_tags nil-value omission), the engine's real create-form
+ *  shell. */
+const nestContentView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const inner = fmt.card.unknown
+    ? (() => {
+        voo.hide("guide");
+        voo.showViz("new_type_formgroup");
+        voo.opts["buttons_view"] = "new_image_buttons";
+        return createFormShell(ctx, {
+          htmlAttrs: [],
+          // success: { tinymce_id: Env.params[:tinymce_id] } - params absent ->
+          // the nil value's value-less hidden tag
+          success: { tinymce_id: null },
+          body: "",
+        });
+      })()
+    : (() => {
+        voo.hide("cancel_button");
+        return fmt.withNestMode("edit", () =>
+          modSlotWrap(ctx, "nest_content", fmt.renderView("edit_inline")),
+        );
+      })();
+  return modSlotWrap(ctx, "nest_content", inner);
+};
+
+/** view :new_image, perms: :create, unknown: true, cache: :never, wrap:
+ *  :slot (nest_image.rb:13-19): voo.buttons_view = :new_image_buttons;
+ *  create_form success: { tinymce_id: Env.params[:tinymce_id] (absent ->
+ *  dropped), view: :new_image, type: :image, slot: { hide: :guide, type:
+ *  :image, show: :preview_redirect }, id: card.autoname(card.name.next) }. */
+const newImageView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  voo.opts["buttons_view"] = "new_image_buttons";
+  // card.autoname(card.name.next): the census double returns the candidate
+  // unchanged on the fresh probe deck - the LIVE capture pins id "image02"
+  // for the card named image01 (fixtures/captured/tinymce-editor-views.json)
+  const autoname = fmt.card.name.succ().s;
+  return modSlotWrap(
+    ctx,
+    "new_image",
+    createFormShell(ctx, {
+      htmlAttrs: [],
+      // the nil tinymce_id renders the VALUE-LESS success[tinymce_id] hidden
+      // tag (hidden_field_tag nil omits the value attribute) - the live bytes
+      success: {
+        tinymce_id: null,
+        view: "new_image",
+        type: "image",
+        slot: { hide: "guide", type: "image", show: "preview_redirect" },
+        id: autoname,
+      },
+      body: "",
+    }),
+  );
+};
+
+/** The chrome PROBE SURFACE: the composition cores the harness probe replays
+ *  the oracle bytes against (the same functions the registered views call;
+ *  the params record is the named params seam). */
+export const tinymceProbeSurface = {
+  /** the fixed view_list (demo.rb:14-16). */
+  nestViewList: NEST_VIEW_LIST,
+  /** the recorded all_views registry fact (191 names). */
+  allViews: NEST_ALL_VIEWS,
+  nestEditorChrome,
+  nestImageChrome,
+};
+
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem set file; setPaths mirror the gem tree)
 // ---------------------------------------------------------------------------
 
@@ -838,7 +1848,27 @@ const cardModTinymceEditor: DeckoModManifest = {
       // see header) plus the name_dependent_slot / set_name_for_nest_rules
       // helpers.
       setPath: "all/reference_editor/nest_editor",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [
+            {
+              view: "nest_editor",
+              viewFn: nestEditorView,
+              config: { cache: "never", unknown: true },
+            },
+            {
+              view: "modal_nest_editor",
+              viewFn: modalNestEditorView,
+              config: { cache: "never", unknown: true },
+            },
+            {
+              view: "nest_content",
+              viewFn: nestContentView,
+              config: { perms: "create", cache: "never", unknown: true },
+            },
+          ],
+        },
+      },
     },
     passiveSetModule("all/reference_editor/nest_editor/nest_editor_options"),
     passiveSetModule("all/reference_editor/nest_editor/nest_editor_tabs"),
@@ -854,7 +1884,24 @@ const cardModTinymceEditor: DeckoModManifest = {
       setPath: "all/reference_editor/nest_image",
       formats: {
         html: {
-          views: [{ view: "new_image_buttons", viewFn: newImageButtonsView }],
+          views: [
+            { view: "new_image_buttons", viewFn: newImageButtonsView },
+            {
+              view: "nest_image",
+              viewFn: nestImageView,
+              config: { cache: "never", unknown: true },
+            },
+            {
+              view: "modal_nest_image",
+              viewFn: modalNestImageView,
+              config: { cache: "never", unknown: true },
+            },
+            {
+              view: "new_image",
+              viewFn: newImageView,
+              config: { perms: "create", cache: "never", unknown: true },
+            },
+          ],
         },
         js: {
           views: [

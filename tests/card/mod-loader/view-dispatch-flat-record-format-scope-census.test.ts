@@ -118,8 +118,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // when wave-1's follow family registered :subedit_notice + :follower
     // on the all-set all/notify/base_views module (base key); abstract
     // moved 29 -> 30 when wave-1's account family registered :account_tab
-    // on the abstract-set abstract/account_holder module.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(147);
+    // on the abstract-set abstract/account_holder module; base moved
+    // 147 -> 153 when the mod-completion-100 lane (2026-10-03) registered
+    // the six census chrome views (nest_editor, modal_nest_editor,
+    // nest_content, nest_image, modal_nest_image, new_image) on the
+    // all-set reference_editor modules (html key - admitted, not foreign).
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 

@@ -189,7 +189,7 @@ describe("card-mod-tinymce_editor link editors (A/B)", () => {
     );
   });
 
-  it("WITH the mod: the load report lists all five ported views", () => {
+  it("WITH the mod: the load report lists all eleven ported views", () => {
     const report = loader!.load();
     // the two format :js views (change_create_to_update, open_nest_editor)
     // plus this suite's two html views, plus the form-substrate port's
@@ -201,7 +201,7 @@ describe("card-mod-tinymce_editor link editors (A/B)", () => {
     expect(report.registeredViews).toContain("link_editor");
     expect(report.registeredViews).toContain("modal_link_editor");
     expect(report.registeredViews).toContain("new_image_buttons");
-    expect(report.registeredViews).toHaveLength(5);
+    expect(report.registeredViews).toHaveLength(11);
   });
 
   it("WITH the mod: both new views carry Ruby's view config (link_editor.rb:2,9)", () => {
