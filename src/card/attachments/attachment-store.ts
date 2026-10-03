@@ -20,6 +20,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { filenameWithVariant, localAttachmentIdentifier } from "./attachment-content.js";
+import { renditionFileNames } from "./image-renditions.js";
 
 /** The bytes + names one upload carries into the store. */
 export interface AttachmentStoreInput {
@@ -30,6 +31,12 @@ export interface AttachmentStoreInput {
    *  then reports the upload invalid for URL emission). */
   ext: string;
   bytes: Uint8Array;
+  /** The rendition spellings to create alongside the original (the
+   *  ImageCardUploader port — image-renditions.ts renditionFileNames:
+   *  the original's -original spelling + one file per version). ABSENT =
+   *  the plain FileCardUploader shape: exactly one file
+   *  <action_id><ext>. */
+  renditionNames?: readonly string[];
 }
 
 /** What a store returns per successful write. */
@@ -44,9 +51,9 @@ export interface StoredAttachment {
 /** The storage seam the engine's save path calls. */
 export interface AttachmentStore {
   store(input: AttachmentStoreInput): Promise<StoredAttachment>;
-  /** The bytes of one action's file (variant pass-through: any requested
-   *  variant resolves to the stored original — the mini_magick RESIZE is
-   *  the named remainder). undefined = no such file. */
+  /** The bytes of one action's file. `variant` resolves the rendition
+   *  spelling <action_id>-<variant><ext> (the img src the image views
+   *  emit); undefined = no such file. */
   read(cardId: number, actionId: number, ext: string, variant?: string): Promise<Uint8Array | undefined>;
 }
 
@@ -59,16 +66,18 @@ export class LocalAttachmentStore implements AttachmentStore {
     this.filesDir = filesDir;
   }
 
-  /** <files_dir>/<card_id>/<action_id(-<variant>)<ext> — upload_dir
-   *  (paths.rb:14-16) + store_path (path.rb:33-39) + Versions#full_filename. */
-  private storagePath(cardId: number, actionId: number, ext: string, variant?: string): string {
-    return join(this.filesDir, String(cardId), filenameWithVariant(actionId, ext, variant));
-  }
-
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
-    const path = this.storagePath(input.cardId, input.actionId, input.ext);
     await mkdir(join(this.filesDir, String(input.cardId)), { recursive: true });
-    await writeFile(path, input.bytes);
+    // The stored filenames: FileCardUploader shape = <action_id><ext>;
+    // ImageCardUploader shape (renditionNames present) = the -original
+    // file + one file per version (image_card_uploader.rb:16-27, :44-57;
+    // file_card_uploader.rb:266-283). Version bytes are the original's
+    // byte-copy (the mini_magick resize is the named seam,
+    // image-renditions.ts versionBytes).
+    const names = input.renditionNames ?? [`${input.actionId}${input.ext}`];
+    for (const name of names) {
+      await writeFile(join(this.filesDir, String(input.cardId), name), input.bytes);
+    }
     return {
       identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
       size: input.bytes.length,
@@ -81,20 +90,28 @@ export class LocalAttachmentStore implements AttachmentStore {
     ext: string,
     variant?: string,
   ): Promise<Uint8Array | undefined> {
-    // Variant pass-through (the zero-dep remainder): every variant spelling
-    // resolves to the STORED ORIGINAL's bytes — store() writes only the
-    // original (<action_id><ext>), so the variant suffix must not enter the
-    // lookup path or every variant GET 404s. The `variant` argument stays in
-    // the signature for a future backend that stores resized variants
-    // (the mini_magick resize remains the named remainder).
-    void variant;
-    try {
-      const path = this.storagePath(cardId, actionId, ext);
-      return new Uint8Array(await readFile(path));
-    } catch {
-      // ENOENT and friends read as "no such stored file" — the route turns
-      // that into the 404 (Ruby: send_file raises, controller 404s).
-      return undefined;
+    // Path resolution per the uploader classes. A VARIANT request resolves
+    // the version file <action_id>-<variant><ext> (Versions#full_filename)
+    // and falls back to the bare spelling (uploads that predate the
+    // rendition machinery / File cards, which have no versions). A
+    // version-LESS request (the identifier's own spelling) tries
+    // <action_id><ext> first, then <action_id>-original<ext> — the
+    // ImageCardUploader's stored spelling for the version-less file
+    // (image_card_uploader.rb:44-57; the store seam does not know the
+    // card's uploader class, so both spellings resolve). ENOENT and
+    // friends read as "no such stored file" — the route turns that into
+    // the 404 (Ruby: send_file raises, controller 404s).
+    const candidates =
+      variant === undefined || variant === ""
+        ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
+        : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
+    for (const name of candidates) {
+      try {
+        return new Uint8Array(await readFile(join(this.filesDir, String(cardId), name)));
+      } catch {
+        // try the next spelling
+      }
     }
+    return undefined;
   }
 }

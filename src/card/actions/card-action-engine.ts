@@ -125,6 +125,11 @@ import {
   lastContentActionIdFromIdentifier,
   localAttachmentIdentifier,
 } from "../attachments/attachment-content.js";
+import {
+  createVersionsFor,
+  mountUsesImageUploader,
+  renditionFileNames,
+} from "../attachments/image-renditions.js";
 import type { AttachmentStore } from "../attachments/attachment-store.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
@@ -471,7 +476,26 @@ export class CardActionEngine {
       );
     }
     const ext = detectAttachmentExtension(attachment.originalFilename, attachment.bytes);
-    const stored = await this.attachmentStore.store({ cardId, actionId, ext, bytes: attachment.bytes });
+    // The uploader class selection (set/type/image.rb:1 vs
+    // set/type/file.rb:1): an IMAGE-typed card stores the rendition set —
+    // the -original spelling + one file per version (image_card_uploader.rb
+    // :16-27, :44-57; create_versions? = ext != ".svg", image.rb:4-7).
+    // File cards store exactly one plain file. The card row's type codename
+    // decides (two SELECTs; attachment saves are already multi-statement).
+    const cardRow = await this.fetchRowById(cardId);
+    const typeRow = cardRow !== undefined ? await this.fetchRowById(cardRow.type_id) : undefined;
+    const codename = typeRow?.codename ?? undefined;
+    const renditionNames =
+      codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
+        ? renditionFileNames(actionId, ext)
+        : undefined;
+    const stored = await this.attachmentStore.store({
+      cardId,
+      actionId,
+      ext,
+      bytes: attachment.bytes,
+      renditionNames,
+    });
     const identifier = localAttachmentIdentifier(cardId, actionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
