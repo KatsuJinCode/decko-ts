@@ -1,0 +1,1782 @@
+{
+  "reports": [
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Home",
+      "outcome": "ok",
+      "html_bytes": 15409,
+      "wall_ms": 383.7,
+      "round_trips": 813,
+      "query_calls": 806,
+      "batch_calls": 7,
+      "round_trip_ms_total": 230.7,
+      "statements_total": 825,
+      "point_query_statements": 799,
+      "point_query_rows": 470,
+      "point_query_ms_total": 379.2,
+      "point_query_shapes": [
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[3]"
+          ],
+          "ms_total": 120.8,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 120.8,
+              "mean_ms": 120.8,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[80,3]"
+          ],
+          "ms_total": 120.8,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 120.8,
+              "mean_ms": 120.8,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[3]"
+          ],
+          "ms_total": 120.8,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 120.8,
+              "mean_ms": 120.8,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 413,
+          "distinct_params": 413,
+          "param_samples": [
+            "[3,146]",
+            "[3,266]",
+            "[273,184]",
+            "[814,146]",
+            "[814,266]",
+            "[815,184]",
+            "[23701,19]",
+            "[23701,13229]",
+            "[23701,437]",
+            "[23701,146]",
+            "[23701,23613]",
+            "[23701,23002]",
+            "[23701,2975]",
+            "[23701,668]",
+            "[23701,675]",
+            "[23701,1638]",
+            "[23701,418]",
+            "[23701,586]",
+            "[23701,491]",
+            "[23701,512]",
+            "[23701,544]",
+            "[23701,548]",
+            "[23701,552]",
+            "[23701,556]",
+            "[23701,560]"
+          ],
+          "ms_total": 6.3,
+          "rows_total": 106,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 403,
+              "ms_total": 6.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 10,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 137,
+          "distinct_params": 137,
+          "param_samples": [
+            "[\"home\"]",
+            "[\"description\"]",
+            "[\"kaori_suzuki\"]",
+            "[\"recommendation\"]",
+            "[\"huston_smith\"]",
+            "[\"martha_hart_eddy\"]",
+            "[\"ed_correium\"]",
+            "[\"kayla_feder\"]",
+            "[\"robert_kent\"]",
+            "[\"morag_warrack\"]",
+            "[\"mair_alight\"]",
+            "[\"christine_pari\"]",
+            "[\"richard_page\"]",
+            "[\"cheryl_honey\"]",
+            "[\"don_mc_clure\"]",
+            "[\"paul_rest\"]",
+            "[\"david_lukoff\"]",
+            "[\"glen_slater\"]",
+            "[\"levi_mason\"]",
+            "[\"som_pourfarzaneh\"]",
+            "[\"shannon_kelley\"]",
+            "[\"paul_lord\"]",
+            "[\"gabrielle_thorpe\"]",
+            "[\"rhette_marsh\"]",
+            "[\"scott_mattoon\"]"
+          ],
+          "ms_total": 5.5,
+          "rows_total": 123,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 135,
+              "ms_total": 5.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "composeAndCacheSqlRows",
+              "calls": 2,
+              "ms_total": 0.2,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "retrieveFromDb",
+                "composeAndCacheSqlRows"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 121,
+          "distinct_params": 121,
+          "param_samples": [
+            "[5]",
+            "[50]",
+            "[52]",
+            "[19]",
+            "[30]",
+            "[47]",
+            "[3928]",
+            "[273]",
+            "[259]",
+            "[15]",
+            "[814]",
+            "[4]",
+            "[1023]",
+            "[14193]",
+            "[18]",
+            "[37855]",
+            "[37816]",
+            "[37815]",
+            "[37812]",
+            "[37814]",
+            "[37863]",
+            "[37813]",
+            "[37817]",
+            "[37818]",
+            "[37819]"
+          ],
+          "ms_total": 2.4,
+          "rows_total": 121,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 105,
+              "ms_total": 1.9,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 5,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 3,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            },
+            {
+              "caller": "composeAndCacheSqlRows",
+              "calls": 2,
+              "ms_total": 0.1,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "retrieveFromDb",
+                "composeAndCacheSqlRows"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 6,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 62,
+          "distinct_params": 62,
+          "param_samples": [
+            "[5]",
+            "[50]",
+            "[52]",
+            "[19]",
+            "[30]",
+            "[374]",
+            "[376]",
+            "[388]",
+            "[1023]",
+            "[3459]",
+            "[3100]",
+            "[2303]",
+            "[1263]",
+            "[741]",
+            "[37862]",
+            "[16455]",
+            "[1075]",
+            "[3475]",
+            "[16660]",
+            "[740]",
+            "[37821]",
+            "[22281]",
+            "[37823]",
+            "[37825]",
+            "[37827]"
+          ],
+          "ms_total": 1.6,
+          "rows_total": 59,
+          "callers": [
+            {
+              "caller": "composeCardRecord",
+              "calls": 50,
+              "ms_total": 1,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeCardRecord"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 5,
+              "ms_total": 0.4,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 7,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": []
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 63,
+          "distinct_params": 63,
+          "param_samples": [
+            "[\"news_item\"]",
+            "[\"bio\"]",
+            "[\"how_to_contact_me\"]",
+            "[\"company\"]",
+            "[\"skill\"]",
+            "[\"musing\"]",
+            "[\"page\"]",
+            "[\"document\"]",
+            "[\"project__organizing\"]",
+            "[\"project__participating\"]",
+            "[\"core_project\"]",
+            "[\"related_project\"]",
+            "[\"potential_project\"]",
+            "[\"related_person\"]",
+            "[\"frequent_process\"]",
+            "[\"regular_process\"]",
+            "[\"occasional_process\"]",
+            "[\"vocational_practice\"]",
+            "[\"avocational_practice\"]",
+            "[\"general_practice\"]",
+            "[\"huston_smith\"]",
+            "[\"martha_hart_eddy\"]",
+            "[\"ed_correium\"]",
+            "[\"kayla_feder\"]",
+            "[\"robert_kent\"]"
+          ],
+          "ms_total": 1,
+          "rows_total": 60,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 62,
+              "ms_total": 0.9,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "ensureStatementCardNamesCached",
+              "calls": 1,
+              "ms_total": 0.1,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "ensureStatementCardNamesCached",
+                "executeQuery"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Laundry",
+      "outcome": "ok",
+      "html_bytes": 76,
+      "wall_ms": 927,
+      "round_trips": 1150,
+      "query_calls": 1122,
+      "batch_calls": 28,
+      "round_trip_ms_total": 691.1,
+      "statements_total": 1208,
+      "point_query_statements": 1106,
+      "point_query_rows": 771,
+      "point_query_ms_total": 499,
+      "point_query_shapes": [
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[21884]"
+          ],
+          "ms_total": 157.1,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 157.1,
+              "mean_ms": 157.1,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[23291,21884]"
+          ],
+          "ms_total": 157.1,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 157.1,
+              "mean_ms": 157.1,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[21884]"
+          ],
+          "ms_total": 157.1,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 157.1,
+              "mean_ms": 157.1,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 313,
+          "distinct_params": 313,
+          "param_samples": [
+            "[\"laundry\"]",
+            "[\"overview\"]",
+            "[\"sign_in_only\"]",
+            "[\"bio\"]",
+            "[\"musing\"]",
+            "[\"project_organizing\"]",
+            "[\"bw_to_do\"]",
+            "[\"today\"]",
+            "[\"strategy\"]",
+            "[\"upon_gaining_employment\"]",
+            "[\"application\"]",
+            "[\"client\"]",
+            "[\"community\"]",
+            "[\"martial\"]",
+            "[\"kith_kin\"]",
+            "[\"pgi\"]",
+            "[\"professional_development\"]",
+            "[\"self_care\"]",
+            "[\"writing_publishing\"]",
+            "[\"narrative\"]",
+            "[\"bw_issue\"]",
+            "[\"bw_learning\"]",
+            "[\"card_tool\"]",
+            "[\"change\"]",
+            "[\"c_dev\"]"
+          ],
+          "ms_total": 11.1,
+          "rows_total": 267,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 312,
+              "ms_total": 11,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 408,
+          "distinct_params": 408,
+          "param_samples": [
+            "[21884,146]",
+            "[21884,266]",
+            "[21904,184]",
+            "[23291,30731]",
+            "[23291,25947]",
+            "[23291,23371]",
+            "[23291,398]",
+            "[23291,1124]",
+            "[23291,11739]",
+            "[23291,11742]",
+            "[23291,128]",
+            "[23291,23018]",
+            "[23291,23020]",
+            "[23291,21885]",
+            "[23291,25961]",
+            "[398,146]",
+            "[398,266]",
+            "[403,184]",
+            "[21885,146]",
+            "[21885,266]",
+            "[21893,184]",
+            "[576,22057]",
+            "[576,22065]",
+            "[576,2015]",
+            "[576,668]"
+          ],
+          "ms_total": 7.6,
+          "rows_total": 150,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 392,
+              "ms_total": 7.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 15,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": []
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 169,
+          "distinct_params": 169,
+          "param_samples": [
+            "[5]",
+            "[22281]",
+            "[3]",
+            "[18]",
+            "[814]",
+            "[50]",
+            "[1023]",
+            "[47]",
+            "[278]",
+            "[4]",
+            "[259]",
+            "[423]",
+            "[22]",
+            "[650]",
+            "[11746]",
+            "[30]",
+            "[17754]",
+            "[52]",
+            "[25769]",
+            "[744]",
+            "[28172]",
+            "[782]",
+            "[27997]",
+            "[2000]",
+            "[23996]"
+          ],
+          "ms_total": 4.1,
+          "rows_total": 169,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 136,
+              "ms_total": 3.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 17,
+              "ms_total": 0.5,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 6,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 10,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 123,
+          "distinct_params": 123,
+          "param_samples": [
+            "[\"hour\"]",
+            "[\"deadline\"]",
+            "[\"related\"]",
+            "[\"legacy\"]",
+            "[\"overview\"]",
+            "[\"20140113\"]",
+            "[\"sign_in_only\"]",
+            "[\"bio\"]",
+            "[\"company\"]",
+            "[\"skill\"]",
+            "[\"musing\"]",
+            "[\"project__organizing\"]",
+            "[\"project__participating\"]",
+            "[\"related_person\"]",
+            "[\"plan\"]",
+            "[\"body\"]",
+            "[\"original_work\"]",
+            "[\"bw_to_do\"]",
+            "[\"today\"]",
+            "[\"thought\"]",
+            "[\"correspondence\"]",
+            "[\"narrative\"]",
+            "[\"pjc\"]",
+            "[\"dsw\"]",
+            "[\"lmw\"]"
+          ],
+          "ms_total": 2.9,
+          "rows_total": 94,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 113,
+              "ms_total": 2.6,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 10,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": []
+            }
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 90,
+          "distinct_params": 90,
+          "param_samples": [
+            "[5]",
+            "[22281]",
+            "[3]",
+            "[18]",
+            "[814]",
+            "[50]",
+            "[1023]",
+            "[47]",
+            "[278]",
+            "[4]",
+            "[259]",
+            "[423]",
+            "[2525]",
+            "[22]",
+            "[650]",
+            "[11746]",
+            "[30]",
+            "[17754]",
+            "[22065]",
+            "[15964]",
+            "[13229]",
+            "[2975]",
+            "[1638]",
+            "[14041]",
+            "[14893]"
+          ],
+          "ms_total": 2,
+          "rows_total": 90,
+          "callers": [
+            {
+              "caller": "composeCardRecord",
+              "calls": 60,
+              "ms_total": 0.9,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeCardRecord"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 17,
+              "ms_total": 0.8,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 12,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": []
+            },
+            {
+              "caller": "sideName",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "sideName",
+                "tryComposeName",
+                "composeAndCache",
+                "driveClosure",
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "1145",
+      "outcome": "ok",
+      "html_bytes": 76,
+      "wall_ms": 221.4,
+      "round_trips": 45,
+      "query_calls": 42,
+      "batch_calls": 3,
+      "round_trip_ms_total": 209.9,
+      "statements_total": 57,
+      "point_query_statements": 42,
+      "point_query_rows": 36,
+      "point_query_ms_total": 441,
+      "point_query_shapes": [
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[22281]"
+          ],
+          "ms_total": 146.3,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 146.3,
+              "mean_ms": 146.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[12877,22281]"
+          ],
+          "ms_total": 146.3,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 146.3,
+              "mean_ms": 146.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[22281]"
+          ],
+          "ms_total": 146.3,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 146.3,
+              "mean_ms": 146.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 22,
+          "distinct_params": 22,
+          "param_samples": [
+            "[\"1145\"]",
+            "[\"*content_option\"]",
+            "[\"*read\"]",
+            "[\"*structure\"]",
+            "[\"*script\"]",
+            "[\"*input_type\"]",
+            "[\"*default\"]",
+            "[\"*layout\"]",
+            "[\"*thank\"]",
+            "[\"*update\"]",
+            "[\"*guide\"]",
+            "[\"*head\"]",
+            "[\"*style\"]",
+            "[\"*content_option_view\"]",
+            "[\"*create\"]",
+            "[\"*follow_field\"]",
+            "[\"*delete\"]",
+            "[\"*captcha\"]",
+            "[\"*table_of_content\"]",
+            "[\"*comment\"]",
+            "[\"type_setting\"]",
+            "[\"brandon_william_craig\"]"
+          ],
+          "ms_total": 1.6,
+          "rows_total": 20,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 22,
+              "ms_total": 1.6,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 11,
+          "distinct_params": 11,
+          "param_samples": [
+            "[5]",
+            "[52]",
+            "[19]",
+            "[47]",
+            "[22282]",
+            "[259]",
+            "[15]",
+            "[23810]",
+            "[30]",
+            "[23809]",
+            "[4]"
+          ],
+          "ms_total": 0.2,
+          "rows_total": 11,
+          "callers": [
+            {
+              "caller": "composeAndCache",
+              "calls": 1,
+              "ms_total": 0.1,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "retrieveFromDb",
+              "calls": 7,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 2,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 5,
+          "distinct_params": 5,
+          "param_samples": [
+            "[22281,146]",
+            "[22281,266]",
+            "[22282,184]",
+            "[23808,264]",
+            "[23809,86]"
+          ],
+          "ms_total": 0.2,
+          "rows_total": 3,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 4,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[5]"
+          ],
+          "ms_total": 0.1,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "composeAndCache",
+              "calls": 1,
+              "ms_total": 0.1,
+              "mean_ms": 0.1,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "Aikido Oak Cliff",
+      "outcome": "ok",
+      "html_bytes": 40826,
+      "wall_ms": 691.6,
+      "round_trips": 771,
+      "query_calls": 743,
+      "batch_calls": 28,
+      "round_trip_ms_total": 546.2,
+      "statements_total": 811,
+      "point_query_statements": 745,
+      "point_query_rows": 330,
+      "point_query_ms_total": 411.2,
+      "point_query_shapes": [
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[442]"
+          ],
+          "ms_total": 124.2,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 124.2,
+              "mean_ms": 124.2,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[41953,442]"
+          ],
+          "ms_total": 124.2,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 124.2,
+              "mean_ms": 124.2,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[442]"
+          ],
+          "ms_total": 124.2,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 124.2,
+              "mean_ms": 124.2,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+          "calls": 2,
+          "distinct_params": 2,
+          "param_samples": [
+            "[41198,14155]",
+            "[40301,18145]"
+          ],
+          "ms_total": 25,
+          "rows_total": 2,
+          "callers": [
+            {
+              "caller": "driveClosure",
+              "calls": 2,
+              "ms_total": 25,
+              "mean_ms": 12.5,
+              "example_frames": [
+                "driveClosure",
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 454,
+          "distinct_params": 454,
+          "param_samples": [
+            "[442,146]",
+            "[442,266]",
+            "[473,184]",
+            "[41953,675]",
+            "[41953,1879]",
+            "[19,266]",
+            "[3383,184]",
+            "[14152,19]",
+            "[14152,146]",
+            "[14152,675]",
+            "[14152,1879]",
+            "[14152,1014]",
+            "[14152,25961]",
+            "[14152,130]",
+            "[14152,544]",
+            "[14152,548]",
+            "[14152,552]",
+            "[14152,556]",
+            "[14152,560]",
+            "[14152,532]",
+            "[14152,536]",
+            "[14152,540]",
+            "[14152,564]",
+            "[14152,586]",
+            "[14152,491]"
+          ],
+          "ms_total": 6.8,
+          "rows_total": 65,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 441,
+              "ms_total": 6.7,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 13,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 137,
+          "distinct_params": 137,
+          "param_samples": [
+            "[\"aikido_oak_cliff\"]",
+            "[\"image01\"]",
+            "[\"project_organizing\"]",
+            "[\"bio\"]",
+            "[\"article\"]",
+            "[\"reference\"]",
+            "[\"intellectual_property\"]",
+            "[\"statement\"]",
+            "[\"*all\"]",
+            "[\"gallery\"]",
+            "[\"*content_option\"]",
+            "[\"m_nv\"]",
+            "[\"px_px\"]",
+            "[\"cdw\"]",
+            "[\"kayla_feder_bio\"]",
+            "[\"aikido_of_berkeley\"]",
+            "[\"aikido_of_berkeley_and_free_aiki\"]",
+            "[\"why_call_it_aikido_2_0\"]",
+            "[\"aikido_2pt0_martial_nonviolence_class_and_demonstration\"]",
+            "[\"conflict_done_well_brazil_seminar_2020_video\"]",
+            "[\"aikido_2_delivering_on_the_promise_to_practice_conflict_done_well\"]",
+            "[\"brandon_william_craig\"]",
+            "[\"ab_cglobal_board\"]",
+            "[\"low_impact_body_art_research\"]",
+            "[\"mr_to_im_name_change_project\"]"
+          ],
+          "ms_total": 3.7,
+          "rows_total": 118,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 136,
+              "ms_total": 3.7,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 1,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 80,
+          "distinct_params": 80,
+          "param_samples": [
+            "[5]",
+            "[22281]",
+            "[18]",
+            "[3]",
+            "[47]",
+            "[423]",
+            "[398]",
+            "[4]",
+            "[50]",
+            "[814]",
+            "[17754]",
+            "[34843]",
+            "[650]",
+            "[22]",
+            "[52]",
+            "[34369]",
+            "[27993]",
+            "[27859]",
+            "[3474]",
+            "[3127]",
+            "[3274]",
+            "[11399]",
+            "[2637]",
+            "[3458]",
+            "[3130]"
+          ],
+          "ms_total": 1.4,
+          "rows_total": 80,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 55,
+              "ms_total": 0.8,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 14,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 7,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 4,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 30,
+          "distinct_params": 30,
+          "param_samples": [
+            "[\"image01\"]",
+            "[\"bio\"]",
+            "[\"company\"]",
+            "[\"skill\"]",
+            "[\"related_person\"]",
+            "[\"article\"]",
+            "[\"gallery10\"]",
+            "[\"reference\"]",
+            "[\"intellectual_property\"]",
+            "[\"statement\"]",
+            "[\"gallery\"]",
+            "[\"project_organizing\"]",
+            "[\"business\"]",
+            "[\"class\"]",
+            "[\"online_class\"]",
+            "[\"online_class_preparation\"]",
+            "[\"online\"]",
+            "[\"infrastructure\"]",
+            "[\"production\"]",
+            "[\"journal\"]",
+            "[\"20141220\"]",
+            "[\"20120124\"]",
+            "[\"index\"]",
+            "[\"we_greiner\"]",
+            "[\"100\"]"
+          ],
+          "ms_total": 1,
+          "rows_total": 25,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 30,
+              "ms_total": 1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 39,
+          "distinct_params": 39,
+          "param_samples": [
+            "[5]",
+            "[22281]",
+            "[18]",
+            "[3]",
+            "[47]",
+            "[423]",
+            "[398]",
+            "[4]",
+            "[50]",
+            "[814]",
+            "[17754]",
+            "[34843]",
+            "[650]",
+            "[22]",
+            "[10518]",
+            "[13229]",
+            "[658]",
+            "[1975]",
+            "[23615]",
+            "[2002]",
+            "[2776]",
+            "[15649]",
+            "[26556]",
+            "[21884]",
+            "[35336]"
+          ],
+          "ms_total": 0.7,
+          "rows_total": 39,
+          "callers": [
+            {
+              "caller": "composeAndCache",
+              "calls": 14,
+              "ms_total": 0.4,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "composeCardRecord",
+              "calls": 22,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeCardRecord"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 3,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "driver": "local-sqlite-mirror",
+      "name": "About",
+      "outcome": "ok",
+      "html_bytes": 9106,
+      "wall_ms": 530.9,
+      "round_trips": 472,
+      "query_calls": 444,
+      "batch_calls": 28,
+      "round_trip_ms_total": 470.9,
+      "statements_total": 507,
+      "point_query_statements": 441,
+      "point_query_rows": 336,
+      "point_query_ms_total": 424.4,
+      "point_query_shapes": [
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[3]"
+          ],
+          "ms_total": 138.3,
+          "rows_total": 1,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 138.3,
+              "mean_ms": 138.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[9923,3]"
+          ],
+          "ms_total": 138.3,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 138.3,
+              "mean_ms": 138.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') ",
+          "calls": 1,
+          "distinct_params": 1,
+          "param_samples": [
+            "[3]"
+          ],
+          "ms_total": 138.3,
+          "rows_total": 0,
+          "callers": [
+            {
+              "caller": "prefetchInclusionClosure",
+              "calls": 1,
+              "ms_total": 138.3,
+              "mean_ms": 138.3,
+              "example_frames": [
+                "prefetchInclusionClosure"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 173,
+          "distinct_params": 173,
+          "param_samples": [
+            "[\"about\"]",
+            "[\"bio\"]",
+            "[\"musing\"]",
+            "[\"page\"]",
+            "[\"project_organizing\"]",
+            "[\"core_project\"]",
+            "[\"overview\"]",
+            "[\"discussion\"]",
+            "[\"twitterfeed\"]",
+            "[\"intellectual_property\"]",
+            "[\"statement\"]",
+            "[\"example\"]",
+            "[\"*content_option\"]",
+            "[\"*read\"]",
+            "[\"*structure\"]",
+            "[\"*script\"]",
+            "[\"*input_type\"]",
+            "[\"*default\"]",
+            "[\"*layout\"]",
+            "[\"*thank\"]",
+            "[\"*update\"]",
+            "[\"*guide\"]",
+            "[\"*head\"]",
+            "[\"*style\"]",
+            "[\"*content_option_view\"]"
+          ],
+          "ms_total": 4.5,
+          "rows_total": 137,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 173,
+              "ms_total": 4.5,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+          "calls": 112,
+          "distinct_params": 112,
+          "param_samples": [
+            "[3,146]",
+            "[3,266]",
+            "[273,184]",
+            "[19,266]",
+            "[3383,184]",
+            "[393,13229]",
+            "[393,146]",
+            "[393,23613]",
+            "[393,23002]",
+            "[393,2975]",
+            "[393,668]",
+            "[393,675]",
+            "[393,1638]",
+            "[393,418]",
+            "[393,586]",
+            "[393,491]",
+            "[393,512]",
+            "[393,544]",
+            "[393,548]",
+            "[393,552]",
+            "[393,556]",
+            "[393,560]",
+            "[393,564]",
+            "[405,22057]",
+            "[405,22065]"
+          ],
+          "ms_total": 2.2,
+          "rows_total": 52,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 104,
+              "ms_total": 2.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 8,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          "calls": 69,
+          "distinct_params": 69,
+          "param_samples": [
+            "[5]",
+            "[19]",
+            "[4]",
+            "[398]",
+            "[22281]",
+            "[52]",
+            "[47]",
+            "[3928]",
+            "[26026]",
+            "[2259]",
+            "[3057]",
+            "[792]",
+            "[1743]",
+            "[791]",
+            "[1434]",
+            "[744]",
+            "[22646]",
+            "[755]",
+            "[23538]",
+            "[28172]",
+            "[782]",
+            "[27997]",
+            "[806]",
+            "[30902]",
+            "[50]"
+          ],
+          "ms_total": 1.4,
+          "rows_total": 69,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 57,
+              "ms_total": 1.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 5,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "readThroughLeftCard",
+              "calls": 3,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "readThroughLeftCard"
+              ]
+            },
+            {
+              "caller": "findRule",
+              "calls": 4,
+              "ms_total": 0,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb",
+                "findRule"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          "calls": 46,
+          "distinct_params": 46,
+          "param_samples": [
+            "[\"bio\"]",
+            "[\"company\"]",
+            "[\"skill\"]",
+            "[\"musing\"]",
+            "[\"page\"]",
+            "[\"document\"]",
+            "[\"project__organizing\"]",
+            "[\"project__participating\"]",
+            "[\"core_project\"]",
+            "[\"related_project\"]",
+            "[\"potential_project\"]",
+            "[\"related_person\"]",
+            "[\"frequent_process\"]",
+            "[\"regular_process\"]",
+            "[\"occasional_process\"]",
+            "[\"vocational_practice\"]",
+            "[\"avocational_practice\"]",
+            "[\"general_practice\"]",
+            "[\"legacy\"]",
+            "[\"overview\"]",
+            "[\"twitterfeed\"]",
+            "[\"intellectual_property\"]",
+            "[\"statement\"]",
+            "[\"example\"]",
+            "[\"video\"]"
+          ],
+          "ms_total": 0.8,
+          "rows_total": 39,
+          "callers": [
+            {
+              "caller": "retrieveFromDb",
+              "calls": 46,
+              "ms_total": 0.8,
+              "mean_ms": 0,
+              "example_frames": [
+                "retrieveFromDb"
+              ]
+            }
+          ]
+        },
+        {
+          "shape": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+          "calls": 38,
+          "distinct_params": 38,
+          "param_samples": [
+            "[5]",
+            "[19]",
+            "[4]",
+            "[398]",
+            "[22281]",
+            "[13229]",
+            "[2975]",
+            "[668]",
+            "[1638]",
+            "[586]",
+            "[22065]",
+            "[634]",
+            "[23615]",
+            "[2002]",
+            "[27850]",
+            "[1833]",
+            "[22054]",
+            "[650]",
+            "[1205]",
+            "[22621]",
+            "[29424]",
+            "[444]",
+            "[23539]",
+            "[28237]",
+            "[36388]"
+          ],
+          "ms_total": 0.6,
+          "rows_total": 38,
+          "callers": [
+            {
+              "caller": "composeCardRecord",
+              "calls": 26,
+              "ms_total": 0.3,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeCardRecord"
+              ]
+            },
+            {
+              "caller": "composeAndCache",
+              "calls": 5,
+              "ms_total": 0.2,
+              "mean_ms": 0,
+              "example_frames": [
+                "composeAndCache"
+              ]
+            },
+            {
+              "caller": "(no named frame)",
+              "calls": 7,
+              "ms_total": 0.1,
+              "mean_ms": 0,
+              "example_frames": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
