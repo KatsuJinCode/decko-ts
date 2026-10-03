@@ -1,7 +1,8 @@
 // selftest-staging-graded-truth-family-and-skin.mjs -- the harness-corpus-repair
-// lane's verify instrument: does a FRESH staging build (the committed seeding
+// lane's verify instrument, extended by the m8-envelope-completion lane to the
+// whole M8 skin:record class: does a FRESH staging build (the committed seeding
 // home + the capture-restored override table) reproduce the oracle's graded
-// truth for the two entry classes this lane repairs?
+// truth for the entry classes this lane repairs?
 //
 // CHECKS (exit 0 only when all pass)
 //   1. Family content references reach staging: 21 card_references rows with
@@ -18,11 +19,14 @@
 //      name composition runs through the lexicon cache, an engine-side path
 //      this lane does not own (render.ts runSearch `record.name === undefined`
 //      guard; the rows themselves ARE staged).
-//   2. journal skin customized (34179): staged content == the oracle record
-//      capture's content (473,221 chars, byte-equal), and the record envelope
+//   2. EVERY row of the capture-restored override table
+//      (tests/card/render/raw-corpus-override-capture-restored-rows.json --
+//      the 20 M8 class skins + journal skin customized): the staged card's
+//      dbContent is byte-equal to the override row, and the record envelope
 //      rebuilt through the graded runner's own card-engine record handler
-//      (dual-lane-direct-runner-core.ts:708-757) field-matches the p21 oracle
-//      capture (496,142 B file).
+//      (dual-lane-direct-runner-core.ts:708-757) is FIELD-EQUAL to that
+//      card's oracle capture record (expected-v2 view-lane shard; for 34179
+//      additionally the p21 capture file, the original proven comparison).
 //   3. journal skin customized+parent 1 (45365): the +parent subcard the
 //      Customize-button gate reads is present in staging with its corpus
 //      content ("journal skin").
@@ -32,7 +36,7 @@
 //     [--capture <p21 expected record html>] [--out tmp/harness-corpus-repair/selftest.json]
 
 import { register } from "node:module";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
@@ -52,6 +56,28 @@ const OUT = path.isAbsolute(argValue("--out", ""))
 const CAPTURE =
   argValue("--capture", "") ||
   "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
+const VIEW_LANE_DIR = path.join(REPO, "tmp", "raw-ground-truth", "expected-v2", "view-lane");
+
+// ---- the capture records: name -> record, from the expected-v2 view-lane shards ----
+const captureRecords = new Map();
+const captureShardOf = new Map();
+if (existsSync(VIEW_LANE_DIR)) {
+  for (const f of readdirSync(VIEW_LANE_DIR).filter((n) => n.endsWith(".jsonl"))) {
+    for (const l of readFileSync(path.join(VIEW_LANE_DIR, f), "utf8").split("\n").filter(Boolean)) {
+      let o;
+      try {
+        o = JSON.parse(l);
+      } catch {
+        continue;
+      }
+      if (o.record && o.record.name !== undefined && !captureRecords.has(o.record.name)) {
+        captureRecords.set(o.record.name, o.record);
+        captureShardOf.set(o.record.name, f);
+      }
+    }
+  }
+}
+console.log(`CAPTURES ${captureRecords.size} records from ${VIEW_LANE_DIR}`);
 
 // The COMMITTED HOME -- the same module the graded runner imports
 // (dual-lane-direct-runner-core.ts:522-526).
@@ -131,86 +157,112 @@ check(
   `Family page search hosts [${hostDetail.join("; ")}] -- referred_to_by runSearch-shaped query rows=${familyItems} (oracle page renders 5 items); page-render seating=${familySeated} is the engine-side lexicon-composition residual, not a staged-rows gap`,
 );
 
-// ---- check 2: journal skin customized content + record envelope ----
-const expectedCaptureBytes = readFileSync(CAPTURE);
-const expectedRecord = JSON.parse(expectedCaptureBytes.toString("utf8"));
-const staged = await storage.fetcher.fetchByName("journal skin customized");
-if (staged === undefined) {
-  check("skin-content-restored", false, "journal skin customized NOT in staged deck");
-} else {
-  const contentMatches = staged.dbContent === expectedRecord.content;
-  check(
-    "skin-content-restored",
-    contentMatches,
-    `staged content ${staged.dbContent.length} chars vs oracle capture ${expectedRecord.content.length} chars, byteEqual=${contentMatches} (corpus row held 252,170)`,
-  );
+// ---- check 2: EVERY override row -- staged content + record envelope ----
+// The graded runner's own card-engine record handler, line-for-line
+// (dual-lane-direct-runner-core.ts:708-757); the structure universe batch is
+// hoisted so it runs once for the whole loop.
+const engineFetcher = storage.fetcher;
+const { structureRuleUniverseStatement, structureUniverseFromResults, structuredCardContent } =
+  await import(pathToFileURL(path.join(REPO, "src", "card", "rules", "structure.ts")).href);
+const uB = await engineFetcher.driver.batch([structureRuleUniverseStatement()]);
+const universe = structureUniverseFromResults(uB[0]);
 
-  // The graded runner's own card-engine record handler, line-for-line
-  // (dual-lane-direct-runner-core.ts:708-757).
-  const engineFetcher = storage.fetcher;
+async function runnerRecordEnvelope(card) {
   const typeCard =
-    staged.typeId === undefined ? undefined : await engineFetcher.fetchById(staged.typeId);
+    card.typeId === undefined ? undefined : await engineFetcher.fetchById(card.typeId);
   const typeCode =
-    staged.typeId === undefined
-      ? undefined
-      : ((await engineFetcher.codenames.nameForId(staged.typeId)) ?? "");
+    card.typeId === undefined ? undefined : (await engineFetcher.codenames.nameForId(card.typeId)) ?? "";
   const typeName = typeCard?.name;
   let leftTypeName;
-  if (staged.leftId !== undefined) {
-    const leftCard = await engineFetcher.fetchById(staged.leftId);
+  if (card.leftId !== undefined) {
+    const leftCard = await engineFetcher.fetchById(card.leftId);
     if (leftCard?.typeId !== undefined) {
       const leftTypeCard = await engineFetcher.fetchById(leftCard.typeId);
       leftTypeName = leftTypeCard?.name;
     }
   }
-  const { structureRuleUniverseStatement, structureUniverseFromResults, structuredCardContent } =
-    await import(pathToFileURL(path.join(REPO, "src", "card", "rules", "structure.ts")).href);
-  const uB = await engineFetcher.driver.batch([structureRuleUniverseStatement()]);
-  const universe = structureUniverseFromResults(uB[0]);
-  const isSimple = staged.name === undefined || staged.name.isSimple;
+  const isSimple = card.name === undefined || card.name.isSimple;
   const content = structuredCardContent(
     {
-      name: staged.name ?? "",
-      id: staged.id,
-      typeId: staged.typeId,
+      name: card.name ?? "",
+      id: card.id,
+      typeId: card.typeId,
       typeName,
       leftTypeName,
-      isNew: staged.isNew,
+      isNew: card.isNew,
     },
-    staged.dbContent,
+    card.dbContent,
     universe,
   );
   const record = {
-    name: staged.name?.s ?? "",
-    key: staged.key ?? "",
+    name: card.name?.s ?? "",
+    key: card.key ?? "",
     type: typeCard?.name?.s ?? "",
     type_code: typeCode ?? "",
-    codename: staged.codename ?? null,
+    codename: card.codename ?? null,
     content,
-    left: isSimple ? null : (staged.name?.leftName?.s ?? null),
-    right: isSimple ? null : (staged.name?.rightName?.s ?? null),
+    left: isSimple ? null : (card.name?.leftName?.s ?? null),
+    right: isSimple ? null : (card.name?.rightName?.s ?? null),
   };
   // Serialize with the capture's shape: sorted keys, compact separators.
   const sorted = {};
   for (const k of Object.keys(record).sort()) sorted[k] = record[k];
-  const envelopeText = JSON.stringify(sorted);
-  const envelopeBytes = Buffer.byteLength(envelopeText);
-  const captureBytes = expectedCaptureBytes.length;
-  const deepEqual =
-    JSON.stringify(sorted) === JSON.stringify(expectedRecord) ||
-    (sorted.content === expectedRecord.content &&
-      sorted.key === expectedRecord.key &&
-      sorted.name === expectedRecord.name &&
-      sorted.type === expectedRecord.type &&
-      sorted.type_code === expectedRecord.type_code &&
-      sorted.codename === expectedRecord.codename &&
-      sorted.left === expectedRecord.left &&
-      sorted.right === expectedRecord.right);
-  check(
-    "skin-record-envelope",
-    deepEqual,
-    `record envelope ${envelopeBytes} B vs capture ${captureBytes} B; fieldsEqual=${deepEqual} (pre-repair grade: 262,193 B actual vs 496,142 B oracle)`,
-  );
+  return sorted;
+}
+
+const RECORD_FIELDS = ["name", "key", "type", "type_code", "codename", "content", "left", "right"];
+
+const overridePath = path.join(REPO, "tests", "card", "render", "raw-corpus-override-capture-restored-rows.json");
+const override = JSON.parse(readFileSync(overridePath, "utf8"));
+const nameById = new Map(override.meta.provenance.map((p) => [p.cardId, p.cardName]));
+console.log(
+  `OVERRIDE TABLE ${override.cards.length} cards, corpusSha ${override.meta.corpusSha256.slice(0, 12)}...`,
+);
+const p21Journal = JSON.parse(readFileSync(CAPTURE, "utf8"));
+
+for (const row of override.cards) {
+  const cardName = nameById.get(row.id) ?? `(unknown name for ${row.id})`;
+  const label = `skin-record-envelope[${row.id} ${cardName}]`;
+  const staged = await storage.fetcher.fetchById(row.id);
+  if (staged === undefined) {
+    check(label, false, "card NOT in staged deck");
+    continue;
+  }
+  const nameMatches = staged.name?.s === cardName;
+  const contentMatches = staged.dbContent === row.content;
+  if (!contentMatches || !nameMatches) {
+    check(
+      label,
+      false,
+      `override not applied as emitted: name=${staged.name?.s} nameMatches=${nameMatches} dbContent ${staged.dbContent.length} chars vs override ${row.content.length} chars byteEqual=${contentMatches}`,
+    );
+    continue;
+  }
+  // Shard capture (expected-v2 view-lane): the graded comparison source.
+  const shardRecord = captureRecords.get(cardName);
+  const p21Record = row.id === 34179 ? p21Journal : undefined;
+  if (shardRecord === undefined && p21Record === undefined) {
+    check(label, false, `no capture record found for ${cardName}`);
+    continue;
+  }
+  const envelope = await runnerRecordEnvelope(staged);
+  const envelopeBytes = Buffer.byteLength(JSON.stringify(envelope));
+  let ok = true;
+  const details = [];
+  for (const [srcName, rec] of [
+    ...(shardRecord ? [[`shard ${captureShardOf.get(cardName)}`, shardRecord]] : []),
+    ...(p21Record ? [["p21 capture file", p21Record]] : []),
+  ]) {
+    const fieldsEqual = RECORD_FIELDS.every((k) => envelope[k] === rec[k]);
+    const contentByteEqual = envelope.content === rec.content;
+    // Full-JSON equality additionally holds when the capture has no extra keys.
+    const jsonEqual = JSON.stringify(envelope) === JSON.stringify(rec);
+    details.push(
+      `${srcName}: envelope ${envelopeBytes} B vs capture content ${rec.content.length} chars, contentByteEqual=${contentByteEqual} fieldsEqual=${fieldsEqual}${jsonEqual ? " jsonEqual" : ""}`,
+    );
+    if (!fieldsEqual || !contentByteEqual) ok = false;
+  }
+  check(label, ok, details.join(" | ") + " (pre-repair grade: the 50-byte corpus markup rendered instead)");
 }
 
 // ---- check 3: the +parent subcard reaches staging ----

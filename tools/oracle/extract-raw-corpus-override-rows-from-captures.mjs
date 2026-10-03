@@ -1,6 +1,7 @@
 // extract-raw-corpus-override-rows-from-captures.mjs -- build the raw-corpus
 // OVERRIDE TABLE from the oracle capture artifacts (harness-corpus-repair
-// lane, 2026-10-02).
+// lane 2026-10-02, extended by the m8-envelope-completion lane 2026-10-02 to
+// every entry of the M8 skin:record class).
 //
 // WHAT THIS IS
 //   The oracle deck's stored bytes for some cards are unobtainable from
@@ -8,19 +9,49 @@
 //   held materialized bytes the dump does not carry (scss-double-emit-fix-lane.md:
 //   card 34179 "journal skin customized" = [corpus prefix 251,225][M 221,051
 //   bytes of compiled decko application CSS][corpus tail 945]; an instr search
-//   for the M head over the whole corpus returns 0 rows). The p21 capture pair
-//   holds the oracle's record envelope, so the bytes ARE recoverable -- from
-//   the capture, not hand-authored.
+//   for the M head over the whole corpus returns 0 rows). The oracle captures
+//   hold the oracle's record envelope, so the bytes ARE recoverable -- from
+//   the captures, not hand-authored.
 //
-//   This script re-derives the restoration from the capture files, verifies
-//   every envelope equality the receipt recorded, cross-checks the +parent
-//   capture records against the corpus rows, and writes the override table
-//   the seeding module (tests/card/render/raw-corpus-seeding.ts) applies to
-//   the STAGED deck. The pinned corpus file itself is never mutated.
+//   The M8 skin:record class (residual-classes-dfe642b-w5.txt class [20],
+//   lines 104-123; negative deltas -495,051..-509,306) is the same mechanism
+//   for the 20 bootswatch skin cards themselves: each corpus row holds the
+//   50-byte un-materialized markup "[[themeless bootstrap skin]]\n[[+bootswatch
+//   theme]]" while the oracle record envelope holds ~473K-486K chars of
+//   compiled theme CSS. This script re-derives every restoration from the
+//   capture files, verifies the envelope decompositions and cross-capture
+//   agreement, and writes the override table the seeding module
+//   (tests/card/render/raw-corpus-seeding.ts) applies to the STAGED deck.
+//   The pinned corpus file itself is never mutated.
+//
+// CLEANLINESS GATE (per row; a row that fails any gate is documented in
+// meta.skipped and EMITTED AS NOTHING -- never forced):
+//   1. identity: the capture record's id resolves to a live corpus row of the
+//      same name.
+//   2. decomposition: oracle.content = [corpus prefix][M][corpus tail] with
+//      prefix/tail equalities re-checked at the JS-string level and the
+//      recomposition exact. (For the 20 plain skins the decomposition is
+//      degenerate -- prefix 0, M = whole content, tail 0 -- because the corpus
+//      row is the 50-byte markup, which shares no bytes with compiled CSS.)
+//   3. corpus-absence: no corpus row CONTAINS the restored content. Exact
+//      form: containment implies length(content) >= |content|, so only rows
+//      that long are candidates, and each candidate is probed with a
+//      full-needle instr. (The journal lane's 80-char M-head probe is kept
+//      for 34179, where the head is unique materialized decko CSS; for the
+//      skins that probe is NOT decisive -- the compiled themes share their
+//      10,624-char "// Bootstrap functions..." preamble and verbatim-passed
+//      library regions with the SCSS SOURCE rows the corpus holds (classic
+//      bootstrap skin 22736, journal/litera/slate skin customized), so head
+//      probes legitimately hit those 4 source rows. Measured, documented in
+//      provenance, not gating.)
+//   4. cross-capture agreement: where a second capture artifact holds the same
+//      card's record envelope (the p21 probe's `_record_.expected.html`
+//      files), its content must be byte-equal and its envelope fields equal.
 //
 // OVERRIDE TABLE CONTRACT (consumed by the seeding module)
 //   {
-//     meta: { corpusSha256, generatedBy, generatedAt, provenance: [...] },
+//     meta: { corpusSha256, generatedBy, generatedAt, provenance: [...],
+//             skipped: [...] },
 //     cards: [ { id, content, note } ]            // column patches for rows
 //                                                 // that exist in the corpus
 //   }
@@ -31,10 +62,9 @@
 // USAGE
 //   node tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs \
 //     [--capture <000028-journal_skin_customized-_record_.expected.html>] \
-//     [--expected-shard <page-lane/recapture-raw-shard-000039.jsonl>] \
 //     [--out tests/card/render/raw-corpus-override-capture-restored-rows.json]
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { register } from "node:module";
 import { pathToFileURL, fileURLToPath } from "node:url";
@@ -50,9 +80,36 @@ const { RAW_CORPUS_DB } = await import(
 const EXPECTED_CAPTURE_DEFAULT =
   "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/" +
   "nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
-const EXPECTED_SHARD_DEFAULT =
-  "C:/localProjects/decko-ts-lane-negdelta-zero/tmp/raw-ground-truth/expected-v2/" +
-  "page-lane/recapture-raw-shard-000039.jsonl";
+const REPO_ROOT = path.resolve(HERE, "..", "..");
+const VIEW_LANE_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2", "view-lane");
+const P21_HTML_DIR =
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html";
+
+// The M8 skin:record class, residual-classes-dfe642b-w5.txt lines 104-123
+// (class [20], header line 103). Shard membership as captured there; the
+// extractor re-locates every record by exact name and re-checks the id.
+const M8_CLASS_SKINS = [
+  { skin: "cerulean skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "cosmo skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "cyborg skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "darkly skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "flatly skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "journal skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "lumen skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "sandstone skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "simplex skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "slate skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "spacelab skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "superhero skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "united skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "yeti skin", shard: "recapture-raw-shard-000017.jsonl" },
+  { skin: "lux skin", shard: "recapture-raw-shard-000028.jsonl" },
+  { skin: "materia skin", shard: "recapture-raw-shard-000028.jsonl" },
+  { skin: "minty skin", shard: "recapture-raw-shard-000028.jsonl" },
+  { skin: "pulse skin", shard: "recapture-raw-shard-000028.jsonl" },
+  { skin: "sketchy skin", shard: "recapture-raw-shard-000028.jsonl" },
+  { skin: "solar skin", shard: "recapture-raw-shard-000028.jsonl" },
+];
 
 function argValue(flag, fallback) {
   const i = process.argv.indexOf(flag);
@@ -60,7 +117,6 @@ function argValue(flag, fallback) {
 }
 
 const CAPTURE = argValue("--capture", EXPECTED_CAPTURE_DEFAULT);
-const SHARD = argValue("--expected-shard", EXPECTED_SHARD_DEFAULT);
 const OUT =
   argValue("--out", "") !== "" && path.isAbsolute(argValue("--out", ""))
     ? argValue("--out")
@@ -77,74 +133,308 @@ const OUT =
 // ---------- corpus side ----------
 const corpusSha = createHash("sha256").update(readFileSync(RAW_CORPUS_DB)).digest("hex");
 const corpus = new Database(RAW_CORPUS_DB, { readonly: true });
+console.log(`CORPUS ${RAW_CORPUS_DB}`);
+console.log(`  sha256 ${corpusSha}`);
+
+const RECORD_FIELDS = ["key", "name", "type", "type_code", "codename", "left", "right"];
+
+// Decompose oracleContent against corpusContent and re-check every equality
+// at the JS-string level. Returns { clean, prefix, tail, mBlock, reason }.
+function decompose(oracleContent, corpusContent) {
+  let prefix = 0;
+  while (
+    prefix < Math.min(oracleContent.length, corpusContent.length) &&
+    oracleContent[prefix] === corpusContent[prefix]
+  )
+    prefix++;
+  let tail = 0;
+  while (
+    tail < Math.min(oracleContent.length, corpusContent.length) - prefix &&
+    oracleContent[oracleContent.length - 1 - tail] ===
+      corpusContent[corpusContent.length - 1 - tail]
+  )
+    tail++;
+  const mBlock = oracleContent.slice(prefix, oracleContent.length - tail);
+  if (oracleContent.slice(0, prefix) !== corpusContent.slice(0, prefix)) {
+    return { clean: false, reason: "prefix equality broke at the JS-string level" };
+  }
+  if (
+    oracleContent.slice(oracleContent.length - tail) !==
+    corpusContent.slice(corpusContent.length - tail)
+  ) {
+    return { clean: false, reason: "tail equality broke at the JS-string level" };
+  }
+  if (
+    oracleContent !==
+    corpusContent.slice(0, prefix) + mBlock + corpusContent.slice(corpusContent.length - tail)
+  ) {
+    return { clean: false, reason: "recomposition is not exactly prefix + M + tail" };
+  }
+  return { clean: true, prefix, tail, mBlock };
+}
+
+function mHeadInCorpusRows(mBlock) {
+  return corpus
+    .prepare("SELECT COUNT(*) AS n FROM cards WHERE instr(content, ?) > 0")
+    .get(mBlock.slice(0, 80)).n;
+}
+
+// Exact corpus-containment probe: a row can only contain `content` if it is
+// at least that long, so only length-qualified rows are probed, and each is
+// probed with the FULL needle. Returns the number of rows containing it (the
+// honest answer is always 0) plus the candidates examined.
+function rowsContainingContent(content) {
+  const candidates = corpus
+    .prepare("SELECT id, name FROM cards WHERE length(content) >= ?")
+    .all(content.length);
+  const probe = corpus.prepare("SELECT COUNT(*) AS n FROM cards WHERE id = ? AND instr(content, ?) > 0");
+  let hits = 0;
+  for (const c of candidates) {
+    hits += probe.get(c.id, content).n;
+  }
+  return { hits, candidatesExamined: candidates.length };
+}
+
+// Informational: which rows hold the generic compiled preamble head (the SCSS
+// source rows), and where the compile banner sits. Not a gate -- see the
+// header comment for why head probes are not decisive for compiled themes.
+function preambleHeadHits(content) {
+  return corpus
+    .prepare("SELECT id, name, length(content) AS len FROM cards WHERE instr(content, ?) > 0")
+    .all(content.slice(0, 80));
+}
+
+// ---------- the 20 M8 class rows (capture side: expected-v2 view-lane shards) ----------
+const cards = [];
+const provenance = [];
+const skipped = [];
+for (const { skin, shard } of M8_CLASS_SKINS) {
+  const shardPath = path.join(VIEW_LANE_DIR, shard);
+  const entry = { skin, shard };
+  let record;
+  try {
+    const lines = readFileSync(shardPath, "utf8").split("\n").filter(Boolean);
+    for (const l of lines) {
+      let o;
+      try {
+        o = JSON.parse(l);
+      } catch {
+        continue;
+      }
+      if (o.record && o.record.name === skin) {
+        record = o.record;
+        break;
+      }
+    }
+  } catch (err) {
+    skipped.push({ ...entry, reason: `shard unreadable: ${err.message.slice(0, 80)}` });
+    console.log(`SKIP ${skin}: shard unreadable (${err.message.slice(0, 60)})`);
+    continue;
+  }
+  if (record === undefined) {
+    skipped.push({ ...entry, reason: "no capture record with this exact name in the shard" });
+    console.log(`SKIP ${skin}: no capture record in ${shard}`);
+    continue;
+  }
+  const row = corpus
+    .prepare("SELECT id, name, content, length(content) AS len FROM cards WHERE id = ?")
+    .get(record.id);
+  if (row === undefined || row.name !== skin) {
+    skipped.push({
+      ...entry,
+      captureId: record.id,
+      reason: `capture id ${record.id} does not resolve to a live corpus row of the same name (found ${row ? JSON.stringify(row.name) : "nothing"})`,
+    });
+    console.log(`SKIP ${skin}: identity gate failed (capture id ${record.id})`);
+    continue;
+  }
+  const d = decompose(record.content, row.content);
+  if (!d.clean) {
+    skipped.push({ ...entry, captureId: record.id, reason: d.reason });
+    console.log(`SKIP ${skin}: ${d.reason}`);
+    continue;
+  }
+  const mRows = mHeadInCorpusRows(d.mBlock);
+  const containment = rowsContainingContent(record.content);
+  if (containment.hits !== 0) {
+    skipped.push({
+      ...entry,
+      captureId: record.id,
+      reason: `${containment.hits} corpus rows CONTAIN the full restored content -- the override premise is stale for this row`,
+    });
+    console.log(`SKIP ${skin}: full content contained in ${containment.hits} corpus rows`);
+    continue;
+  }
+  // Cross-capture agreement: where the p21 probe photographed the same record
+  // envelope, its content must be byte-equal and its fields equal.
+  const p21File = path.join(
+    P21_HTML_DIR,
+    `000028-${skin.replace(/ /g, "_")}-_record_.expected.html`,
+  );
+  let crossCheck = null;
+  if (existsSync(p21File)) {
+    let p21Env = null;
+    try {
+      p21Env = JSON.parse(readFileSync(p21File, "utf8"));
+    } catch {
+      p21Env = null;
+    }
+    if (p21Env === null) {
+      skipped.push({
+        ...entry,
+        captureId: record.id,
+        reason: "p21 cross-capture file is not a JSON envelope",
+      });
+      console.log(`SKIP ${skin}: p21 cross-capture file unparseable`);
+      continue;
+    }
+    const contentByteEqual = p21Env.content === record.content;
+    const fieldsEqual = RECORD_FIELDS.every((k) => p21Env[k] === record[k]);
+    crossCheck = { file: p21File, contentByteEqual, fieldsEqual };
+    if (!contentByteEqual || !fieldsEqual) {
+      skipped.push({
+        ...entry,
+        captureId: record.id,
+        reason: `cross-capture disagreement (contentByteEqual=${contentByteEqual} fieldsEqual=${fieldsEqual})`,
+      });
+      console.log(`SKIP ${skin}: cross-capture disagreement`);
+      continue;
+    }
+  }
+  cards.push({
+    id: record.id,
+    content: record.content,
+    note:
+      `${skin} -- oracle deck's stored content ` +
+      `(${record.content.length} chars = corpus prefix ${d.prefix} + M ${d.mBlock.length} + corpus tail ${d.tail}); ` +
+      "the corpus row holds the 50-byte un-materialized markup.",
+  });
+  provenance.push({
+    cardId: record.id,
+    cardName: skin,
+    classRow: "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
+    source: `expected-v2 view-lane capture record (${shard})`,
+    file: shardPath,
+    captureId: record.id,
+    envelopeFields: {
+      name: record.name,
+      key: record.key,
+      type: record.type,
+      type_code: record.type_code,
+      codename: record.codename,
+    },
+    contentChars: record.content.length,
+    envelopeEqualities: {
+      prefixBytes: d.prefix,
+      middleBytes: d.mBlock.length,
+      tailBytes: d.tail,
+    },
+    corpusRowBytes: row.len,
+    corpusAbsence: {
+      test: "no corpus row contains the full restored content (full-needle instr over length-qualified candidates)",
+      candidatesExamined: containment.candidatesExamined,
+      containingRows: 0,
+      informationalPreambleHeadRows: mRows,
+      preambleHeadRowsNote:
+        "rows holding the generic '// Bootstrap functions...' compiled preamble head -- these are the SCSS source rows (compiled and source share the preamble and verbatim library regions), not stored compile output; the exact containment test above is the gate",
+      compileBanner:
+        record.content.indexOf("// " + skin.split(" ")[0].replace(/^./, (ch) => ch.toUpperCase()) + " 5.1.3") > 0
+          ? {
+              banner:
+                "// " + skin.split(" ")[0].replace(/^./, (ch) => ch.toUpperCase()) + " 5.1.3",
+              offset: record.content.indexOf(
+                "// " + skin.split(" ")[0].replace(/^./, (ch) => ch.toUpperCase()) + " 5.1.3",
+              ),
+            }
+          : null,
+    },
+    crossCapture: crossCheck,
+  });
+  console.log(
+    `OK   ${skin} id ${record.id}: content ${record.content.length} chars = prefix ${d.prefix} + M ${d.mBlock.length} + tail ${d.tail}` +
+      ` | containment candidates ${containment.candidatesExamined}, hits 0` +
+      ` | preamble-head rows (informational): ${mRows}` +
+      `${crossCheck ? " | p21 cross-capture byte-equal" : ""}`,
+  );
+}
+
+// ---------- journal skin customized 34179 (the proven original row) ----------
 const card34179 = corpus
   .prepare("SELECT id, name, key, content, length(content) AS len FROM cards WHERE id = 34179")
   .get();
-console.log(`CORPUS ${RAW_CORPUS_DB}`);
-console.log(`  sha256 ${corpusSha}`);
-console.log(`  34179 "${card34179.name}" content ${card34179.len} bytes`);
-
-// ---------- capture side: the oracle record envelope ----------
+console.log(`JOURNAL 34179 "${card34179.name}" corpus content ${card34179.len} bytes`);
 const expectedBytes = readFileSync(CAPTURE);
 const envelope = JSON.parse(expectedBytes.toString("utf8"));
 const oracleContent = envelope.content;
 console.log(`CAPTURE ${CAPTURE}`);
 console.log(`  envelope bytes ${expectedBytes.length}, content ${oracleContent.length} chars`);
-
-// Envelope equalities (scss-double-emit-fix-lane.md section 2), re-measured:
-//   oracle.content[0..P] === corpus.content[0..P]  (prefix)
-//   oracle.content.slice(-T) === corpus.content.slice(-T)  (tail)
-//   M = oracle.content[P .. len-T] is decko application CSS absent from the corpus.
-let prefix = 0;
-while (
-  prefix < Math.min(oracleContent.length, card34179.content.length) &&
-  oracleContent[prefix] === card34179.content[prefix]
-) prefix++;
-let tail = 0;
-while (
-  tail < Math.min(oracleContent.length, card34179.content.length) - prefix &&
-  oracleContent[oracleContent.length - 1 - tail] === card34179.content[card34179.content.length - 1 - tail]
-) tail++;
-const mBlock = oracleContent.slice(prefix, oracleContent.length - tail);
-console.log(`  prefix match ${prefix} bytes, tail match ${tail} bytes, middle M ${mBlock.length} bytes`);
-const mInCorpus = corpus.prepare("SELECT COUNT(*) AS n FROM cards WHERE instr(content, ?) > 0").get(
-  mBlock.slice(0, 80),
-);
-console.log(`  corpus rows containing the M head: ${mInCorpus.n} (expected 0)`);
-if (mInCorpus.n !== 0) {
+const dj = decompose(oracleContent, card34179.content);
+if (!dj.clean) {
+  throw new Error(`journal 34179 decomposition no longer clean: ${dj.reason}`);
+}
+const jRows = mHeadInCorpusRows(dj.mBlock);
+const jContainment = rowsContainingContent(oracleContent);
+console.log(`  prefix match ${dj.prefix} bytes, tail match ${dj.tail} bytes, middle M ${dj.mBlock.length} bytes`);
+console.log(`  corpus rows containing the M head: ${jRows} (expected 0)`);
+console.log(`  corpus rows containing the FULL restored content: ${jContainment.hits} over ${jContainment.candidatesExamined} length-qualified candidates (expected 0)`);
+if (jRows !== 0) {
   throw new Error("M block found in corpus -- the override premise is stale, refusing to emit");
 }
-if (oracleContent.slice(0, prefix) !== card34179.content.slice(0, prefix)) {
-  throw new Error("prefix equality broke at the JS-string level");
+if (jContainment.hits !== 0) {
+  throw new Error("full restored content found in corpus -- the override premise is stale, refusing to emit");
 }
-if (oracleContent.slice(oracleContent.length - tail) !== card34179.content.slice(card34179.content.length - tail)) {
-  throw new Error("tail equality broke at the JS-string level");
-}
-const restored = oracleContent;
-if (restored.length !== prefix + mBlock.length + tail) {
-  throw new Error("restored content is not exactly prefix + M + tail");
-}
+cards.push({
+  id: 34179,
+  content: oracleContent,
+  note:
+    "journal skin customized -- oracle deck's stored content " +
+    `(${oracleContent.length} chars = corpus prefix ${dj.prefix} + M ${dj.mBlock.length} + corpus tail ${dj.tail}); ` +
+    "the corpus row holds the 252,170-byte pre-materialization bytes.",
+});
+provenance.push({
+  cardId: 34179,
+  cardName: "journal skin customized",
+  classRow: "harness-corpus-repair lane 2026-10-02 (landed at dfe642b)",
+  source: "p21 oracle record capture (2026-09-30)",
+  file: CAPTURE,
+  captureId: envelope.id ?? 34179,
+  envelopeFields: {
+    name: envelope.name,
+    key: envelope.key,
+    type: envelope.type,
+    type_code: envelope.type_code,
+    codename: envelope.codename,
+  },
+  contentChars: oracleContent.length,
+  envelopeEqualities: {
+    prefixBytes: dj.prefix,
+    middleBytes: dj.mBlock.length,
+    tailBytes: dj.tail,
+  },
+  corpusRowBytes: card34179.len,
+  corpusHeadAbsentRows: 0,
+});
 
-// ---------- capture side: the +parent records ----------
-// scss-double-emit-fix-lane.md section 3 claimed the corpus holds 0 rows for
-// the +parent subcards. The rows EXIST as junction children (name/key NULL;
-// the name lives in left_id/right_id), so the override needs no +parent rows
-// -- but the cross-check below pins the corpus rows to the capture records so
-// the correction is measured, not asserted.
+// ---------- +parent cross-check (unchanged from the proven lane) ----------
 let shardRecords = [];
 try {
-  shardRecords = readFileSync(SHARD, "utf8")
+  const parentShard =
+    "C:/localProjects/decko-ts-lane-negdelta-zero/tmp/raw-ground-truth/expected-v2/" +
+    "page-lane/recapture-raw-shard-000039.jsonl";
+  shardRecords = readFileSync(parentShard, "utf8")
     .split("\n")
     .filter(Boolean)
     .map((l) => JSON.parse(l))
     .filter((o) => o.record && /^journal skin customized\+parent/.test(o.record.name ?? ""))
     .map((o) => o.record);
 } catch (err) {
-  console.log(`SHARD ${SHARD} unreadable (${err.message.slice(0, 80)}) -- +parent cross-check skipped`);
+  console.log(`+parent shard unreadable (${err.message.slice(0, 80)}) -- +parent cross-check skipped`);
 }
 const parentChecks = [];
 for (const rec of shardRecords) {
-  const row = corpus.prepare("SELECT id, left_id, right_id, type_id, content FROM cards WHERE id = ?").get(rec.id);
+  const row = corpus
+    .prepare("SELECT id, left_id, right_id, type_id, content FROM cards WHERE id = ?")
+    .get(rec.id);
   const left = row ? corpus.prepare("SELECT name FROM cards WHERE id = ?").get(row.left_id) : null;
   const right = row ? corpus.prepare("SELECT name FROM cards WHERE id = ?").get(row.right_id) : null;
   const check = {
@@ -157,53 +447,36 @@ for (const rec of shardRecords) {
     contentMatches: row !== undefined && row.content === rec.content,
   };
   parentChecks.push(check);
-  console.log(`  +parent cross-check id ${rec.id}: corpusRow=${check.corpusRowExists} contentMatches=${check.contentMatches} joinedName=${check.corpusJoinedName}`);
+  console.log(
+    `  +parent cross-check id ${rec.id}: corpusRow=${check.corpusRowExists} contentMatches=${check.contentMatches} joinedName=${check.corpusJoinedName}`,
+  );
 }
 
 corpus.close();
 
-// ---------- emit ----------
+// ---------- emit (id-ordered) ----------
+cards.sort((a, b) => a.id - b.id);
+provenance.sort((a, b) => a.cardId - b.cardId);
 const override = {
   meta: {
     what:
       "Capture-restored card rows the raw corpus dump lacks. Applied by " +
       "tests/card/render/raw-corpus-seeding.ts to the STAGED deck only; the " +
-      "sha-pinned corpus file is never mutated.",
+      "sha-pinned corpus file is never mutated. M8 skin:record class " +
+      "(20 bootswatch skins, residual-classes-dfe642b-w5.txt class [20]) plus " +
+      "journal skin customized 34179 (harness-corpus-repair).",
     corpusSha256: corpusSha,
     generatedBy: "tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs",
     generatedAt: new Date().toISOString(),
-    provenance: [
-      {
-        source: "p21 oracle record capture (2026-09-30)",
-        file: CAPTURE,
-        envelopeBytes: expectedBytes.length,
-        contentChars: oracleContent.length,
-        envelopeEqualities: {
-          prefixBytes: prefix,
-          middleBytes: mBlock.length,
-          tailBytes: tail,
-        },
-      },
-    ],
-    parentCrossChecks: parentChecks,
+    provenance,
+    skipped,
   },
-  cards: [
-    {
-      id: 34179,
-      content: restored,
-      note:
-        "journal skin customized -- oracle deck's stored content " +
-        `(${restored.length} chars = corpus prefix ${prefix} + M ${mBlock.length} + corpus tail ${tail}); ` +
-        "the corpus row holds the 252,170-byte pre-materialization bytes.",
-    },
-  ],
+  cards,
   references: [],
 };
 writeFileSync(OUT, JSON.stringify(override, null, 2));
+console.log(`WROTE ${OUT} (cards: ${override.cards.map((c) => c.id).join(", ")})`);
 console.log(
-  `WROTE ${OUT} (cards: ${override.cards.map((c) => `${c.id}@${c.content.length}`).join(", ")})`,
-);
-console.log(
-  `ENVELOPE RECOVER: record envelope ${expectedBytes.length} B <- content ${restored.length} chars ` +
-    `(corpus 252,170 -> oracle 473,221, +221,051)`,
+  `M8 CLASS: ${cards.length - 1} of ${M8_CLASS_SKINS.length} class rows emitted, ` +
+    `${skipped.length} skipped (documented in meta.skipped), + journal 34179`,
 );
