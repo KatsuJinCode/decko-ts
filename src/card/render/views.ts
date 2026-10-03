@@ -44,6 +44,7 @@ import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
+
 import {
   UnsupportedViewError,
   RenderFormat,
@@ -70,6 +71,7 @@ import { readMiniBarCols, readBarCols, readFullBarCols } from "./bar-cols.js";
 import { permissionInheritContentHtml, ruleBarRightHtml } from "./rule-bar-right.js";
 import { modBarRightSections, modChildAssetGroups } from "../mod-loader/mods/core-admin-runtime.js";
 import { modAssetGroupsCoreHtml } from "./haml-file-views.js";
+import { signinCoreHtml } from "./signin-core-form-view.js";
 import { processHelpContent } from "./help-popover.js";
 import { registeredSettingHelpText } from "./setting-help-text.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
@@ -291,6 +293,7 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // whitespace next to a joint - see the helper census).
   const parts = wrappedTitleInner(title);
   return `<span class="card-title" title="${attr}">${parts}</span>`;
+
 };
 
 /** title.rb:14-16 view :title: `show_view?(:title_link, :hide) ?
@@ -1511,6 +1514,20 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
 };
 
 const coreView: ViewFn = (ctx) => {
+  // set/self/signin.rb:119-125 view :core — the sign-in form. HEADLESS
+  // branch (the SELF_SET_TITLE_OVERRIDES pattern, edge-signin-form-fix lane
+  // 2026-10-03): the Self::Signin set module applies to the card NAMED
+  // *signin (the codename IS the set membership), and on the mod-less edge
+  // engines no manifest registration ever dispatches — without this branch
+  // the flat core rendered the card's stored RichText content, which on the
+  // real deck is EMPTY, and the edge served (and 24h-cached) a heading-only
+  // sign-in page. The loader-bound path never reaches this branch (the
+  // account mod's own :core registration wins the chain walk first); both
+  // share the ONE emitter (signin-core-form-view.ts), so the two paths
+  // cannot drift.
+  if (ctx.fmt.card.record.codename === "signin") {
+    return signinCoreHtml(ctx);
+  }
   const base = isTemplatedNestsCard(ctx.fmt.card)
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
@@ -1882,6 +1899,7 @@ const emailScopedContentView: ViewFn = (ctx) => {
   if (tagCodename === "html_message") return contentWithLinkBody(ctx);
   return contentView(ctx);
 };
+
 
 /** card-mod-toggle-0.20.0 set/type/toggle.rb view :core — the content
  *  rendered as the localized truthy/falsy string ("yes" / "no"). The raw

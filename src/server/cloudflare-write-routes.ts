@@ -68,10 +68,15 @@ import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./drivers/d1.js";
 import {
+  handleAuthOnlyRequest,
   handleWriteRequest,
   SESSION_COOKIE_NAME,
   type WriteRouteResponse,
 } from "./write-routes.js";
+// Re-exported so the second host (the Bunny edge surface) imports the
+// auth-only dispatch from THIS module, the one it already depends on —
+// one import graph edge fewer to drift.
+export { handleAuthOnlyRequest };
 import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 
@@ -453,7 +458,33 @@ export async function handleWorkersWriteSurface(
   }
 
   if (readMethod) return null;
-  if (!write) return writePathOffResponse();
+  if (!write) {
+    // AUTH IS NOT A CARD WRITE (edge-signin-form-fix lane, 2026-10-03):
+    // with the write path off, the login action still dispatches —
+    // /update/*signin mints an auth_sessions row and no card rows, and Ruby
+    // decko never gates sign-in behind a deploy flag. The auth-only dispatch
+    // resolves to handleSigninUpdate for POST /update/*signin and null for
+    // everything else, so every card create/update/delete keeps the exact
+    // off-response it has always answered here.
+    const auth = await handleAuthOnlyRequest(
+      {
+        driver: resolveDriver(ctx, env),
+        fetcher: ctx.fetcher,
+        ipAddress: req.ipAddress,
+      },
+      {
+        method: req.method,
+        pathname: req.pathname,
+        host: req.host,
+        scheme: req.scheme,
+        headers: req.headers,
+        body: req.body,
+        bodyBytes: req.bodyBytes,
+      },
+    );
+    if (auth !== null) return auth;
+    return writePathOffResponse();
+  }
   return mountWrite(ctx, resolveDriver(ctx, env), req);
 }
 

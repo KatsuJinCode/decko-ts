@@ -161,11 +161,16 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // so it exists on every Ruby card — and the engine now registers it in
     // the shared HTML_VIEWS table the same way. Raising here was the
     // engine's gap, not Ruby's behaviour. It renders now, which is the
-    // faithful shape; this mod's own signin.rb registration
-    // (card-mod-account.ts) shadows it with the same body, so the
-    // WITH-the-mod case is unchanged.
-    expect(await s.engine.render("*signin", "open_content")).toBe(
-      await s.engine.render("*signin", "core"),
+    // faithful shape. (edge-signin-form-fix lane 2026-10-03: :core on
+    // *signin is now the SIGN-IN FORM on BOTH dispatch paths — the flat
+    // coreView self/signin branch renders it even WITHOUT the mod, which is
+    // the headless pattern the mod-less edge needs; see
+    // signin-core-form-view.test.ts. The two renders differ only in the
+    // per-render random slot ids, normalized here.)
+    const normalizeSlotIds = (html: string) =>
+      html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
+    expect(normalizeSlotIds(await s.engine.render("*signin", "open_content"))).toBe(
+      normalizeSlotIds(await s.engine.render("*signin", "core")),
     );
     await expect(s.engine.render("Oracle Closed Probe", "closed_account")).rejects.toThrow(
       UnsupportedViewError,
@@ -238,8 +243,15 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // `_render_core` — is what this mod registers. The sign-in FORM bytes stay the
     // named rails remainder in card-mod-account.ts's header ("signin
     // core/open/title"), the forms/signin stack's territory.
-    expect(await s.engine.render("*signin", "open_content")).toBe(
-      await s.engine.render("*signin", "core"),
+    // (edge-signin-form-fix lane 2026-10-03: :core IS PORTED now — the
+    // sign-in form, byte-first against the live oracle; dedicated pins in
+    // signin-core-form-view.test.ts. The delegation pin normalizes the
+    // per-render random slot ids, because the form's help slots each carry
+    // one — two raw renders can never be byte-equal.)
+    const normalizeSlotIds = (html: string) =>
+      html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
+    expect(normalizeSlotIds(await s.engine.render("*signin", "open_content"))).toBe(
+      normalizeSlotIds(await s.engine.render("*signin", "core")),
     );
   });
 

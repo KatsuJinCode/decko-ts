@@ -713,6 +713,7 @@ function recaptchaEventRuntime(): Promise<ModEventRuntime> {
 export async function handleWriteRequest(
   ctx: WriteRouteContext,
   req: WriteRouteRequest,
+  opts?: { authOnly?: boolean },
 ): Promise<WriteRouteResponse | null> {
   // Response format: the .json suffix on the mark, or the Accept header
   // (routes.rb ":(.:format)" grammar; rest.rb responds per format).
@@ -741,6 +742,16 @@ export async function handleWriteRequest(
       return handleSigninUpdate(ctx, req, json, parsed);
     }
   }
+
+  // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
+  // below this line is CARD CREATE/UPDATE/DELETE — the surface a deployment
+  // flag may lawfully switch off. Sign-in is not a card write (the :signin
+  // event aborts the save — no card/act rows — and only mints an
+  // auth_sessions row), and Ruby decko never gates the login action behind
+  // a deploy flag. A host that wants auth alive while card writes stay off
+  // dispatches through handleAuthOnlyRequest, which returns exactly this
+  // branch and nothing else.
+  if (opts?.authOnly === true) return null;
 
   // authenticate (rest.rb:37-40): header/param token first, else the
   // cookie session (auth/current.rb:50-63); unresolvable = Anonymous.
@@ -893,6 +904,22 @@ export async function handleWriteRequest(
     if (error instanceof CardActionError) return errorResponse(json, error);
     throw error;
   }
+}
+
+/** The AUTH-ONLY dispatch (edge-signin-form-fix lane, 2026-10-03): the
+ *  login action and NOTHING else. Resolves to handleSigninUpdate for
+ *  POST /update/*signin (both the HTML 303 flavor and the .json/ajax
+ *  flavor), null for every other method/path — including a card-hash update
+ *  that merely NAMES *signin, a delete/put spoof against it, and every
+ *  create/delete route. The caller (the shared Workers surface's disarmed
+ *  arm, the Bunny edge surface's disarmed arm) answers its own
+ *  write-path-off response when this returns null, so card writes keep the
+ *  exact gating they had. */
+export async function handleAuthOnlyRequest(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+): Promise<WriteRouteResponse | null> {
+  return handleWriteRequest(ctx, req, { authOnly: true });
 }
 
 /** Card params for CREATE — uri_fetch_opts (card_class.rb:128-133): the

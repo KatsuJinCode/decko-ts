@@ -46,8 +46,14 @@
 // - signin edit (:154-157): the base :edit form super() target is
 //   card-mod-edit's (still unported); reset_password_voo's
 //   edit_structure rides the same machinery.
-// - signin core/open/title: rails (nest_mode with_nest_mode :edit,
-//   card_form, haml :core)
+// - signin core IS PORTED now (edge-signin-form-fix lane 2026-10-03 —
+//   signinCoreView, the sign-in form against the live-wire oracle; the
+//   multi-card editor machinery its Ruby body rides stays unported, so
+//   the emitter reproduces the captured shape directly, deriving the
+//   per-deck values from the deck's rows where the render cache holds
+//   them). :open stays unported (the base :open super() target);
+//   :title rides the render layer's SELF_SET_TITLE_OVERRIDES (see
+//   oneLineContentView's comment).
 // - signup new/new_buttons/content_formgroups: rails (the base :new
 //   form, standard_create_button + multi_card_editor - card-mod-edit's
 //   surface; account_formgroups recurses into the account right's
@@ -116,6 +122,12 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { h } from "../../render/slot-html.js";
+// set/self/signin.rb:119-125 view :core — the sign-in form. The emitter
+// lives in the render layer (signin-core-form-view.ts) because it is consumed
+// by TWO registrations: this manifest entry (the loader-bound path) and the
+// render layer's flat coreView self/signin branch (the headless pattern —
+// the edge engines run mod-less, so only the flat branch dispatches there).
+import { signinCoreHtml } from "../../render/signin-core-form-view.js";
 import { modSlotWrap, superView } from "../mod-view-helpers.js";
 import { setModuleShortname } from "../mod-registrar.js";
 // set/type/role.rb's :configs view body — the all/admin.rb machinery is the
@@ -270,8 +282,6 @@ const openContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
  *  empty body returns the empty string. */
 const oneLineContentView: ViewFn = () => "";
 
-// ===========================================================================
-// lane-follow (2026-09-28): the account views whose bodies need the actor
 // session + the form shapes. Bytes are RENDERED-UNPINNED (no oracle
 // captures exist for these names - verified against the capture shards).
 // The actor boundary is EXPLICIT: every Auth.current walk resolves through
@@ -998,13 +1008,17 @@ const setModules: ModSetModuleFile[] = [
     // set/self/signin.rb:114-203 format :html do block - :before :core,
     // :core (template :haml), :open, :title, :open_content,
     // :one_line_content, :reset_password_success, :edit, :edit_buttons
-    // + helper methods. Ported: open_content (the _render_core
-    // delegation - delegates to :core via ctx.fmt.renderView("core"))
-    // and one_line_content (the empty body).
+    // + helper methods. Ported: :core (signin.rb:119-125, the sign-in
+    // form — edge-signin-form-fix lane 2026-10-03; without it the
+    // /*signin titled body rendered the card's EMPTY RichText content and
+    // the edge cached the heading-only page), open_content (the
+    // _render_core delegation - delegates to :core via
+    // ctx.fmt.renderView("core")) and one_line_content (the empty body).
     setPath: "self/signin",
     formats: {
       html: {
         views: [
+          { view: "core", viewFn: (ctx) => signinCoreHtml(ctx), config: { cache: "never" } },
           { view: "open_content", viewFn: openContentView },
           { view: "one_line_content", viewFn: oneLineContentView },
           { view: "reset_password_success", viewFn: resetPasswordSuccessView },

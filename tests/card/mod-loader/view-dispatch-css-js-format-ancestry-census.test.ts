@@ -179,6 +179,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     // added the two base-keyed all/notify/base_views rows (:subedit_notice
     // + :follower) and the two html-keyed set views (:rule_editor,
     // :errors) - html +12, base +2 total.
+
     const entries = censusEntries();
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
@@ -186,7 +187,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       ["base", 7],
       ["email_html", 2],
       ["email_text", 3],
-      ["html", 324],
+      // fold-10 union measurement: the signin fix pick (4d7b008) landed its
+      // registration surface on top of the wave-1 line; the composed-deck
+      // census MEASURES 329 on the merged tree (324 wave-1 tip + 5 net-new
+      // html-keyed registrations the fix carries).
+      ["html", 329],
+
       ["js", 2],
       ["json", 3],
     ]);

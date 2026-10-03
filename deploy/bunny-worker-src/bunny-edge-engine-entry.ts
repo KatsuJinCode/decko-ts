@@ -25,6 +25,7 @@
 //   - Read-only: the write surface (sign-in, /setup, card writes) is NOT
 //     armed. Non-GET/HEAD verbs answer 403, matching the Cloudflare worker's
 //     behavior with both DECKO_WRITE_PATH and DECKO_FIRST_RUN unset.
+
 //
 // RUNTIME FACTS THIS ENTRY DEPENDS ON (verified empirically on script 93646
 // unless cited):
@@ -56,6 +57,7 @@
 // drive (tests/deploy/bunny-edge-engine-handler-parity.test.ts); this
 // entry is the SDK registration shim the edge bundles.
 
+
 import * as BunnySDK from "@bunny.net/edgescript-sdk";
 import process from "node:process";
 
@@ -64,4 +66,5 @@ import { handleBunnyEngineRequest, type EdgeEnv } from "./bunny-edge-engine-hand
 BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const env = process.env as EdgeEnv;
   return await handleBunnyEngineRequest(request, env);
+
 });

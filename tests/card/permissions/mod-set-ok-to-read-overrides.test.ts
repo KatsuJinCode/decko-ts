@@ -404,7 +404,16 @@ describe("self-set read overrides (version/signin/account_links)", () => {
 
   it("allows the *signin card itself despite its denying stored rule", async () => {
     const s = storage!;
-    expect(await s.engine.render("*signin", "content")).toContain("signin text");
+    // The verdict is this lane's subject. The BYTES are signin.rb's own
+    // :core override (card-mod-account set/self/signin.rb:119-125 — the
+    // sign-in form; edge-signin-form-fix lane 2026-10-03 ported it and the
+    // html :content view wraps core, so the form is the readable body here
+    // in Ruby too) — rendered, not the denial span, and not the seeded
+    // dbContent either.
+    const html = await s.engine.render("*signin", "content");
+    expect(html).not.toContain("don't have permission");
+    expect(html).toContain('action="/update/*signin"');
+    expect(html).toContain('type="password"');
   });
 
   it("allows the *account links card itself despite its denying stored rule", async () => {

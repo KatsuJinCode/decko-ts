@@ -226,6 +226,80 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
       const signinBody = await signin.text();
       expect(signinBody).not.toContain("/update/*signin");
     });
+
+    // -----------------------------------------------------------------
+    // edge-signin-form-fix lane (2026-10-03): AUTH IS NOT A CARD WRITE.
+    // The login action dispatches at EVERY flag state — Ruby decko never
+    // gates sign-in behind a deploy flag (set/self/signin.rb:6 "/update/
+    // :signin is the login action"; the :signin event aborts the save, so
+    // no card/act rows — only an auth_sessions row). Card writes keep the
+    // exact 403 they always answered. Pins below live in the DISARMED boot
+    // deliberately: this is the posture the trial edge ships with
+    // (DECKO_WRITE_PATH="0").
+    // -----------------------------------------------------------------
+
+    it("signs a real account in while DISARMED (the login-action exemption)", async () => {
+      // The fixture owner, minted the same way the DECKO_WRITE_PATH=1 case
+      // mints its own: createOwnerAccount runs HERE in the vitest process
+      // (both gates set for the direct call, restored after), while the
+      // WORKER this test talks to stays booted with both gates unset.
+      process.env.DECKO_FIRST_RUN = "1";
+      process.env.DECKO_WRITE_PATH = "1";
+      try {
+        const { createOwnerAccount } = await import("../../src/card/auth/first-run-setup.js");
+        const { FetchEngine } = await import("../../src/card/fetch.js");
+        const outcome = await createOwnerAccount(
+          { driver: booted.adapter, fetcher: new FetchEngine(booted.adapter) },
+          { email: DEPLOY_OWNER_EMAIL, password: DEPLOY_OWNER_PASSWORD },
+        );
+        if (!outcome.ok) {
+          throw new Error(`fixture owner create failed: ${outcome.reason} ${outcome.message}`);
+        }
+      } finally {
+        delete process.env.DECKO_FIRST_RUN;
+        delete process.env.DECKO_WRITE_PATH;
+      }
+
+      const res = await booted.fetch(
+        "/update/*signin",
+        urlencoded(signinFormBody(DEPLOY_OWNER_EMAIL, DEPLOY_OWNER_PASSWORD)),
+      );
+      expect(res.status, await res.clone().text()).toBe(303);
+      const cookie = res.headers.get("set-cookie");
+      expect(cookie).toContain("decko_ts_session=");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      // The minted row is real: the sha256 digest form the Workers host
+      // stores (the armed case's own pin covers the digest shape).
+      const rows = await booted.adapter.query<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM auth_sessions",
+        [],
+      );
+      expect(Number(rows.rows[0].n)).toBeGreaterThan(0);
+      // (/_signout is the EDGE entry's route, not worker.ts — its revocation
+      // pin lives on the edge surface suite,
+      // bunny-edge-signin-session-roundtrip.test.ts.)
+    });
+
+    it("still answers the auth failure ladder while DISARMED", async () => {
+      const res = await booted.fetch(
+        "/update/*signin",
+        urlencoded(signinFormBody(DEPLOY_OWNER_EMAIL, "not the password")),
+      );
+      expect(res.status).toBe(422);
+      expect(await res.text()).toContain("signin-failure");
+    });
+
+    it("does NOT let the *signin mark smuggle a delete or a create while DISARMED", async () => {
+      // _method=delete against /update/*signin is a CARD DELETE route, not
+      // the login action (effectiveMethod rewrites the verb; matchRoute
+      // answers verb=delete) — it keeps the write-off 403.
+      const res = await booted.fetch("/update/*signin", urlencoded("_method=delete"));
+      expect(res.status).toBe(403);
+      expect(await res.text()).toContain("Writes are off on this deployment");
+      // and a bare single-segment POST (the create-card grammar) stays off.
+      const res2 = await booted.fetch("/_signin", urlencoded("card[content]=x"));
+      expect(res2.status).toBe(403);
+    });
   });
 
   describe("DECKO_FIRST_RUN=1 alone — the window stays shut", () => {
