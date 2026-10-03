@@ -164,6 +164,16 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(await response.text()).toContain('data-card-name="Search"');
   });
 
+  it("an id mark for a card that does not exist answers 404 Card not found (NotFound family, the twins' /~999999 pin on the third twin)", async () => {
+    const response = await get("/~999999");
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toContain("<h1>Card not found</h1>");
+    // the verbatim engine message rides the page (mapRenderError's
+    // "id doesn't exist:" arm, name/errors.ts -> error.rb:93)
+    expect(body).toContain("999999");
+  });
+
   it("?view= fills the view-less arm (rest.rb:100-103)", async () => {
     const response = await get("/About?view=closed");
     expect(response.status).toBe(200);
@@ -214,5 +224,17 @@ describe("bunny edge engine handler — the shared read surface", () => {
     const body = (await response.json()) as { error?: string; name?: string };
     expect(body).toMatchObject({ error: "permission denied", name: "Probe Restricted" });
     expect(JSON.stringify(body)).not.toContain("Restricted secret body");
+  });
+
+  it("a malformed-% name on /api/card refuses SAFELY (root's arm shape: shared decodeName -> 400, never an unhandled throw)", async () => {
+    // The twins' shared-surface rule (worker-shared-surface.ts decodeName):
+    // decodeURIComponent must never escape the handler — root answers
+    // 400 {"error":"empty card name"}; the third twin must not throw
+    // unhandled where the twins refuse safely (the A2 classified
+    // edge-of-edge divergence is the STATUS, never an escaped throw).
+    const response = await get("/api/card/%zz");
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error?: string };
+    expect(body).toMatchObject({ error: "empty card name" });
   });
 });

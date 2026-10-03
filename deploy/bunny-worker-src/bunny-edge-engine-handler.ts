@@ -18,6 +18,7 @@ import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { layoutPage, parsePath } from "../../worker.js";
 import {
+  decodeName,
   historyViewParams,
   installDeckNameEnvironment,
   mapRenderError,
@@ -197,31 +198,45 @@ async function handleEngineRequest(
       });
     }
     if (url.pathname.startsWith("/api/card/")) {
-      const name = decodeURIComponent(url.pathname.slice("/api/card/".length));
-      const deck = await getDeck(config);
-      const record = await deck.fetcher.fetchByName(name);
-      if (record === undefined || record.name === undefined) {
-        return json(404, { error: "card not found", name });
+      // Root's arm shape verbatim (worker.ts /api/card): the shared hardened
+      // decode (a malformed % answers 400, never an escaped URIError — the
+      // twins' decodeName rule), the whole arm inside a structured-500 try
+      // so no engine error escapes the handler unhandled.
+      try {
+        const name = decodeName(url.pathname.slice("/api/card/".length));
+        if (name === undefined || name === "") {
+          return json(400, { error: "empty card name" });
+        }
+        const deck = await getDeck(config);
+        const record = await deck.fetcher.fetchByName(name);
+        if (record === undefined || record.name === undefined) {
+          return json(404, { error: "card not found", name });
+        }
+        // The read gate (the same probe-battery batch-05 leak class the
+        // Cloudflare twins closed): Ruby's GET of a denied card renders the
+        // denial (ok_to_read? fails, set/all/permissions.rb:139-146); the
+        // JSON surface answers 403 without the protected fields. Same engine
+        // verdict the HTML path judges with (RenderEngine#canReadCard).
+        const typeRecord =
+          record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+        const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
+        if (!readable) {
+          return json(403, { error: "permission denied", name });
+        }
+        return json(200, {
+          id: record.id ?? null,
+          name: record.name.s,
+          key: record.name.key,
+          type_id: record.typeId ?? null,
+          codename: record.codename ?? null,
+          db_content_preview: (record.dbContent ?? "").slice(0, 200),
+        });
+      } catch (error) {
+        return json(500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-      // The read gate (the same probe-battery batch-05 leak class the
-      // Cloudflare twins closed): Ruby's GET of a denied card renders the
-      // denial (ok_to_read? fails, set/all/permissions.rb:139-146); the
-      // JSON surface answers 403 without the protected fields. Same engine
-      // verdict the HTML path judges with (RenderEngine#canReadCard).
-      const typeRecord =
-        record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
-      const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
-      if (!readable) {
-        return json(403, { error: "permission denied", name });
-      }
-      return json(200, {
-        id: record.id ?? null,
-        name: record.name.s,
-        key: record.name.key,
-        type_id: record.typeId ?? null,
-        codename: record.codename ?? null,
-        db_content_preview: (record.dbContent ?? "").slice(0, 200),
-      });
     }
     return html(404, layoutPage("Not found", "<h1>Not found</h1>"));
   }
