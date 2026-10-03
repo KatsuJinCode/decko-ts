@@ -54,6 +54,7 @@ import {
 import { wrappedTitleInner } from "./format.js";
 import type { RenderCard, RenderEngineLike, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
+  isInputTypeRuleCard,
   isPointerOrListCard,
   isRuleCardWithPermissionRight,
   pointerListCoreHtml,
@@ -996,14 +997,23 @@ const coreViewBase: ViewFn = (ctx) => {
     // (card-mod-list set/abstract/01_list.rb:39-44) and the wrapper + item
     // classes parameterize on it (html_views.rb:9 "card-list card-list-#{
     // item_view_options[:view]} pointer-list"; html_views.rb:28-30
-    // "item-#{item_view}"). Absent, html's default_item_view :bar applies
-    // (card-mod-format set/all/html.rb:21-23) - the corpus-pinned shape.
+    // "item-#{item_view}"). Absent, html's default_item_view applies.
+    //
+    // THE DEFAULT IS NOT ALWAYS :bar. `implicit_item_view`
+    // (decko/mod/collection set/all/item.rb:134-140) is
+    // `voo_items_view || default_item_view`, and `default_item_view` is a
+    // SET-MODULE method: card-mod-format's set/all/html.rb:20-22 says
+    // `:bar`, but decko/mod/edit/set/right/input_type.rb:3-5 -- a
+    // `set/right/*` module, which Cardio's precedence ranks ABOVE
+    // `set/all` -- says `:name` for every card whose right is
+    // `*input type`. Those cards are `assign_type :pointer` (input_type.rb
+    // :1), so standard_pointer_core runs on them and reads the override.
     const itemsOpt: unknown = fmt.voo?.opts["items"];
     const itemView =
       itemsOpt !== null && typeof itemsOpt === "object" &&
       typeof (itemsOpt as { view?: unknown }).view === "string"
         ? (itemsOpt as { view: string }).view
-        : "bar";
+        : isInputTypeRuleCard(fmt.card) ? "name" : "bar";
     return pointerListCoreHtml(
       fmt.card,
       items,
@@ -3205,6 +3215,44 @@ function settingCodenameForRule(fmt: RenderFormat, rule: RenderCard): string | u
  *     mini_bar). The prior unconditional swap produced mini_bar for
  *     these readable items and failed both oracle families. */
 function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string): string {
+  // The :name item view (decko/mod/edit set/right/input_type.rb:3-5
+  // default_item_view) renders the ITEM CARD'S NAME and nothing else, with
+  // no slot element: `view :name, compact: true, perms: :none`
+  // (card-mod-format set/all/base.rb:14-16) returns
+  // `name_variant safe_name` -> `card&.name`, and the declaration carries
+  // NO `wrap: :slot`, so `Card::Format#wrap_and_render` (render.rb:14-16)
+  // adds no card-slot div around it. `perms: :none` also means no
+  // permission gate and no unknown-card substitution.
+  //
+  // The name is the RESOLVED card's, not the raw item line:
+  // `safe_name` is `card&.name` and `pointer_items` maps over
+  // `card.item_cards` (decko/mod/list set/abstract/01_list/other_views.rb
+  // :11-14), so a wanted item still renders its own name. The oracle
+  // pins the difference twice in this family: `*script+*right+*input type`
+  // lists the raw line `list`, and Ruby renders `List` -- the item line
+  // resolves through the lexicon to the REAL card 47 (`List`, the cardtype
+  // whose key is `list`), whose `name.s` is capitalized. `*follow+*right+
+  // *input type` lists `radio`, absent from the deck, so its phantom name
+  // IS the raw line.
+  //
+  // The oracle bytes pin the whole shape:
+  //   <div class="card-list card-list-name pointer-list">
+  //   <div class="pointer-item item-name">radio</div></div>
+  // for all 16 item-name entries (the eight `*X+*Y+*input type` cards x
+  // {content, open}) -- see isInputTypeRuleCard's census.
+  if (itemView === "name") {
+    let named: ReturnType<RenderFormat["engine"]["fetchRenderCard"]>;
+    try {
+      named = fmt.engine.fetchRenderCard(name);
+    } catch {
+      // An ID/codename mark the name environment cannot resolve: the
+      // :name view renders `card&.name`, and an unresolved mark keeps the
+      // raw line (the same tolerance the fetch miss below takes).
+      named = undefined;
+    }
+    return named?.name.s ?? name;
+  }
+
   // The HOST's item_type_name (card-mod-collection item.rb:149-162
   // determine_item_view_options_type): every item nest carries
   // `options[:type] = card.item_type_name` when the host resolves one, so

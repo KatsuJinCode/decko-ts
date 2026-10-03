@@ -105,7 +105,8 @@
   "tests/card/render/bootswatch-skin-virtual-field-type-identity.test.ts",
   "tests/card/render/wiki-link-title-escape-pins.test.ts",
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts",
-  "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts"
+  "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts",
+  "tests/card/render/pointer-list-input-type-rule-item-name-view.test.ts"
  ],
- "manifestFileCount": 76
+ "manifestFileCount": 77
 }

@@ -190,6 +190,49 @@ export function isRuleCardWithPermissionRight(card: RenderCard): boolean {
   return PERMISSION_RIGHT_NAMES.has(bare);
 }
 
+/** The right-setting key whose html `default_item_view` is `:name` rather
+ *  than the deck-wide `:bar`: `*input_type`, the underscore-slugged KEY form
+ *  of `*input type`. Read off `DeckoName#rightName.key`, the same field
+ *  `isRuleCardWithPermissionRight` reads for `*read` / `*delete`.
+ *
+ *  `decko/mod/edit/set/right/input_type.rb:3-5` is a `set/right/*` module,
+ *  so Cardio's set-module precedence puts it ABOVE
+ *  `card-mod-format set/all/html.rb:20-22` (whose `default_item_view` is
+ *  `:bar`) for every card whose right name is `*input type` — the
+ *  `assign_type :pointer` line above it makes those cards List/Pointer
+ *  typed, so `standard_pointer_core` runs on them and reads the override.
+ *
+ *  The override is what makes those cards emit `<div class="card-list
+ *  card-list-name pointer-list"><div class="pointer-item item-name">NAME
+ *  </div></div>`: `implicit_item_view` (decko/mod/collection set/all/item.rb
+ *  :134-140) is `voo_items_view || default_item_view`, and both
+ *  `standard_pointer_core`'s wrapper class
+ *  (decko/mod/list set/abstract/01_list/html_views.rb:6-13,
+ *  `"card-list card-list-#{item_view_options[:view]} pointer-list"`) and
+ *  `wrap_item` (same file :28-30, `"item-#{item_view}"`) read that value.
+ *
+ *  ORACLE CENSUS (2026-10-02, all 48 expected-v2 view-lane shards, every
+ *  `<div class="card-list card-list-X pointer-list">` and
+ *  `<div class="pointer-item item-X">` occurrence): `bar` 1,041 /
+ *  `link` 6,265 / `name` 16. ALL SIXTEEN `name` entries are exactly the
+ *  eight `*X+*Y+*input type` cards x {content, open} —
+ *  `*style+*right`, `Collection+*right`, `*script+*right`,
+ *  `Project+*right`, `*follow+*right`, `*debugger+*self`,
+ *  `*layout+*right`, `Topic+*right`. No other card in the capture renders
+ *  this view, so the gate is a name shape with a census behind it, not a
+ *  guess. */
+const INPUT_TYPE_RIGHT_KEY = "*input_type";
+
+/** Whether the pointer/list HOST's html default item view is `:name`
+ *  (the `set/right/input_type` override) rather than the deck-wide
+ *  `:bar`. Same shape test as {@link isRuleCardWithPermissionRight}: the
+ *  name's right part, not the setKeys "RULE" token (a seeded-but-not-
+ *  enriched RenderCard carries no RULE token while its name still says
+ *  the rule). */
+export function isInputTypeRuleCard(card: RenderCard): boolean {
+  return card.name?.rightName?.key === INPUT_TYPE_RIGHT_KEY;
+}
+
 /** The pointer/list content view body. For non-rule-permission cards the
  *  outer wrapper reads `<div class="card-list card-list-bar pointer-list">`
  *  (corpus:77 *home pointer card, shard-000000:44 — full prefix). For
