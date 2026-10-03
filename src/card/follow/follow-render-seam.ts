@@ -22,7 +22,11 @@ import type { RenderCard } from "../render/format.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
 import { DeckoName } from "../name.js";
 import { FOLLOW_OPTION_ALL } from "./follow-options.js";
-import { followRuleNameFor, followRuleOptionFor } from "./follow-rule-walk.js";
+import {
+  followRuleNameFor,
+  followRuleOptionFor,
+  followSetCardName,
+} from "./follow-rule-walk.js";
 
 /** The views whose bodies read the seam. Gated so a :titled/:open/:content
  *  render never touches the walk (the history seam's rule). :closure is the
@@ -38,6 +42,10 @@ export const FOLLOW_SEAM_VIEWS: ReadonlySet<string> = new Set([
   // engage_tab's render_follow_section + follow_section itself
   "follow_section",
   "engage_tab",
+  // wave-1 follow family: right/following.rb's :rule_editor reads the
+  // session actor (preference_name's Auth.current.name) + the applied
+  // preference walk (current_follow_rule_card).
+  "rule_editor",
 ]);
 
 /** The resolved current actor — Ruby Auth.current (card id + name).
@@ -103,6 +111,19 @@ export interface FollowRenderBundle {
    *  identically at the sizes the corpus carries; DISCLOSED in the receipt:
    *  no oracle bytes exist to split the two orderings). */
   readonly closureDeletions: readonly { readonly name: string }[];
+  /** Wave-1 rule_editor inputs (right/following.rb:32-38). The APPLIED
+   *  preference rule's db_content on the render root's LEFT card
+   *  (following.rb:49-51 current_follow_rule_card = card.left.preference
+   *  :follow, rule/all.rb:17-19 — a CONTENT STRING or undefined), the
+   *  composed preference_name (:40-43), and the subformat dispatch target
+   *  the string arm implies (format/nesting/subformat.rb:57-61 — the
+   *  content string fetches AS a card name, the follow-OPTION card).
+   *  Computed only for rule_editor renders; the names are pre-warmed into
+   *  the render-card map by the engine (render.ts, the seam-prepare tail)
+   *  so the sync ViewFn's fetchRenderCard hits. */
+  readonly leftFollowPreference: string | undefined;
+  readonly ruleEditorPreferenceName: string | undefined;
+  readonly ruleEditorTargetName: string | undefined;
 }
 
 /** Ruby: the FollowLink mark for Anonymous — the name is still built
@@ -423,6 +444,9 @@ export async function prepareFollowRender(
   let followTabRows: readonly FollowTabRow[] = [];
   let ignoreTabRows: readonly FollowTabRow[] = [];
   let deletions: readonly { readonly name: string }[] = [];
+  let leftFollowPreference: string | undefined;
+  let ruleEditorPreferenceName: string | undefined;
+  let ruleEditorTargetName: string | undefined;
 
   const record: CardRecord | undefined = await fetch.fetchByName(rootCard.name.s);
 
@@ -476,6 +500,35 @@ export async function prepareFollowRender(
     deletions = await closureDeletions(fetch, record.leftId);
   }
 
+  if (view === "rule_editor" && session !== undefined) {
+    // right/following.rb:32-38 view :rule_editor's two seam reads:
+    // preference_name (:40-43: set_name = card.left.follow_set_card.name
+    // [all/follow.rb:19-21 Card.fetch name, :self — the set/cardtype
+    // overrides ride the LEFT card's type] + Auth.current.name + :follow)
+    // and current_follow_rule_card (:49-51 = card.left.preference :follow,
+    // rule/all.rb:17-19 preference_card(...)&.db_content — the APPLIED
+    // rule's CONTENT STRING, or nil). Signed-out carries no walk here
+    // (the Anonymous actor's preference_name composes on the sync side —
+    // Auth.current.name is "Anonymous" for every deck).
+    const leftName = rootCard.name.leftName?.s;
+    if (leftName !== undefined) {
+      const leftRecord = await fetch.fetchByName(leftName);
+      const leftTypeCard =
+        leftRecord?.typeId !== undefined
+          ? await fetch.fetchById(leftRecord.typeId)
+          : undefined;
+      const setName = followSetCardName(leftName, leftTypeCard?.codename);
+      ruleEditorPreferenceName = followRuleNameFor(setName, session.actorName);
+      leftFollowPreference = await appliedFollowPreferenceContent(
+        fetch,
+        leftName,
+        leftTypeCard?.name?.s,
+        session.actorId,
+      );
+      ruleEditorTargetName = leftFollowPreference ?? ruleEditorPreferenceName;
+    }
+  }
+
   return {
     session,
     followed,
@@ -485,7 +538,68 @@ export async function prepareFollowRender(
     followTabRows,
     ignoreTabRows,
     closureDeletions: deletions,
+    leftFollowPreference,
+    ruleEditorPreferenceName,
+    ruleEditorTargetName,
   };
+}
+
+/** rule/all.rb:66-73 rule_id_lookup over the LEFT card's simple-card set
+ *  chain for the :follow setting: the first chain set holding a preference
+ *  rule for the SESSION actor ("follow+<uid>"), falling back per chain set
+ *  to the *all-user rule ("follow+<AllID>", all/rule.rb:28-30) — the
+ *  applied rule's db_content, or undefined when no rule applies. The chain
+ *  shape is followerCountInto's documented simple-card arms (<name>+*self,
+ *  <type>+*type, *all). Read-only SELECT. */
+async function appliedFollowPreferenceContent(
+  fetch: FetchEngine,
+  leftName: string,
+  leftTypeName: string | undefined,
+  actorId: number,
+): Promise<string | undefined> {
+  const chain: string[] = [DeckoName.parse(`${leftName}+*self`).key];
+  if (leftTypeName !== undefined && leftTypeName !== "") {
+    chain.push(DeckoName.parse(`${leftTypeName}+*type`).key);
+  }
+  chain.push(DeckoName.parse("*all").key);
+  const followId = await fetch.codenames.id("follow");
+  const allUserId = await fetch.codenames.id("all");
+  if (followId === undefined) return undefined;
+  const r = await fetch.driver.query<{
+    set_key: string | null;
+    user_id: number;
+    user_codename: string | null;
+    content: string | null;
+  }>(
+    `SELECT s.key AS set_key, u.id AS user_id,
+            u.codename AS user_codename, p.db_content AS content
+       FROM cards p
+       JOIN cards us ON p.left_id = us.id
+       JOIN cards s  ON us.left_id = s.id
+       JOIN cards u  ON us.right_id = u.id
+      WHERE p.right_id = ? AND p.trash = 0 AND s.trash = 0
+        AND us.trash = 0 AND u.trash = 0
+        AND (u.id = ? OR u.codename = 'all')`,
+    [followId, actorId],
+  );
+  const rows = r.rows ?? [];
+  for (const chainKey of chain) {
+    // Ruby's lookup: the FIRST chain key with a rule wins (rule_id_lookup
+    // returns on the first hit); within one key the actor's own rule beats
+    // the *all-user fallback (all.rb:68-69 rule_id ||= fallback). The SET
+    // side reads the stored KEY column (junction rows carry key, name NULL
+    // - the seed/render-test storage discipline).
+    const mine = rows.find(
+      (row) => row.user_id === actorId && row.set_key === chainKey,
+    );
+    if (mine !== undefined) return mine.content ?? "";
+    const allRow =
+      allUserId !== undefined
+        ? rows.find((row) => row.user_codename === "all" && row.set_key === chainKey)
+        : undefined;
+    if (allRow !== undefined) return allRow.content ?? "";
+  }
+  return undefined;
 }
 
 /** follower_ids.rb:95-115 direct_follower_ids - the simple-card set chain

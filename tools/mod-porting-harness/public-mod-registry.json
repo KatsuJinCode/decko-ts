@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T15:25:53.467Z",
+  "generatedAt": "2026-10-03T18:12:56.933Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -232,12 +232,42 @@
       "gem": "card-mod-follow-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "11 mod-specific view(s) ported: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...",
+      "statusEvidence": "harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-follow/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "not harness-validated yet",
+      "harnessScorecard": "4/96 validated",
       "reMeasureMissingViews": 4,
-      "wave1": null,
+      "wave1": {
+        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "portedViews": [
+          {
+            "view": "subedit_notice",
+            "source": "set/all/notify/base_views.rb:25-31 (the BASE format block)",
+            "oracle": "static-ruby x11 scenarios (follow-census-views.rb; the changed-field rows ride the render-time history seam)",
+            "status": "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the email lane's page arm - the divergence named in the view comment)"
+          },
+          {
+            "view": "follower",
+            "source": "set/all/notify/base_views.rb:41-43 (the BASE format block)",
+            "oracle": "static-ruby (follow-census-views.rb; active_notice nil headlessly -> the literal fallback)",
+            "status": "ported, verify GREEN (harness capture + probe; the send-path ivar is the same disclosed basis the flat record's followed/unfollow_url arms carry)"
+          },
+          {
+            "view": "rule_editor",
+            "source": "set/right/following.rb:32-38",
+            "oracle": "static-ruby (follow-census-views.rb; the dispatch contract + the applied-string arm's raise - rule? is false on the simple option card)",
+            "status": "ported, verify GREEN (harness capture + probe; the seam's rule_editor branch resolves the actor + the applied content, the rules mod's ruleFormView owns the form bytes)"
+          },
+          {
+            "view": "errors",
+            "source": "set/type_plus_right/user/follow.rb:65-78",
+            "oracle": "static-ruby (follow-census-views.rb; the no-errors arm is the only arm a headless render reaches)",
+            "status": "ported, verify GREEN (harness capture + probe; the permission arm's pieces probe-pinned, the super() arm dispatches card-mod-format's all-set body)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-follow-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
     },

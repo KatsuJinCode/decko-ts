@@ -26,7 +26,8 @@
       "Pointer-item per-nest verdict pin (tests/card/render/pointer-item-per-nest-read-verdict-not-global.test.ts), added 2026-10-03: the waves' negative priming re-primed NIL over its own round-1 positives in multi-round calls, and the stored nils answered the render's rule ladders 'absent' for junctions the db holds — the reader host's item-type rule vanished and every phantom typed BasicCs. Fixed in the db-roundtrip-elimination continuation (call-local ask/answer sets); the suite sat OUTSIDE the manifest while the regression landed, so it is listed now: the net guards the per-nest phantom verdict in both render orders.",
       "Mod-porting harness probe (tests/card/mod-loader/card-mod-history-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby board_act oracle (fixtures/oracle-surfaces/card-mod-history.harness.jsonl) against the ported board renderer cores; the capture is provenance-carrying and the title bytes cross-check the live board capture in the oracle script itself",
       "Mod-porting harness probe (tests/card/mod-loader/card-mod-format-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby demo oracle (fixtures/oracle-surfaces/card-mod-format.harness.jsonl - the codename list parsed from the frozen admin.yml files) against the admin-config accessor and the demo form composition",
-      "Mod-porting harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby style-oracle lines (fixtures/oracle-surfaces/card-mod-style.harness.jsonl - the remote tag bytes cross-checked against the captured corpus constant) against the wave-1 style view compositions"
+      "Mod-porting harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby style-oracle lines (fixtures/oracle-surfaces/card-mod-style.harness.jsonl - the remote tag bytes cross-checked against the captured corpus constant) against the wave-1 style view compositions",
+      "Mod-porting harness probe (tests/card/mod-loader/card-mod-follow-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby follow-oracle lines (fixtures/oracle-surfaces/card-mod-follow.harness.jsonl - the notify base views, rule_editor's dispatch contract + the applied-string raise, the errors arms) against the wave-1 follow view compositions AND renders them through the seeded runtime (the history seam's subedit_notice rows, the follow seam's rule_editor dispatch)"
     ],
     "droppedDeadFilters": [
       "tests/card/mod/card-mod-search-list-oracle-pinned.test.ts",
@@ -35,7 +36,7 @@
       "tests/card/rules/nest-miss-unknown-view-selection-corpus-replay.test.ts",
       "tests/card/render/highlighter-seams-h1-h2-oracle-pins.test.ts"
     ],
-    "manifestFileCount": 99
+    "manifestFileCount": 100
   },
   "files": [
     "tests/card/actions/anon-fix-fresh-variants.test.ts",
@@ -136,7 +137,8 @@
     "tests/card/render/pointer-item-per-nest-read-verdict-not-global.test.ts",
     "tests/card/mod-loader/card-mod-history-harness-probe.test.ts",
     "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-    "tests/card/mod-loader/card-mod-style-harness-probe.test.ts"
+    "tests/card/mod-loader/card-mod-style-harness-probe.test.ts",
+    "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts"
   ],
-  "manifestFileCount": 99
+  "manifestFileCount": 100
 }

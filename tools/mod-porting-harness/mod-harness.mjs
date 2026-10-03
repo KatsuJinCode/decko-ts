@@ -158,6 +158,19 @@ const NAMED_REMAINDERS = {
     "<seed:.*>":
       "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
+  "card-mod-follow": {
+    // CLASS remainders: the notification WRITE-PATH events (the notify
+    // stream: Card::Director integrate phases, ActiveJob's
+    // integrate_with_delay, ActionMailer.deliver, the FollowerStash write)
+    // and the yml seed cards (data/real.yml's setting surfaces + the
+    // follower notification email template, or data/test*.yml TEST-suite
+    // fixtures). The mod header's documented remainder; no census-gap
+    // view is in either class.
+    "<event:.*>":
+      "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+    "<seed:.*>":
+      "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+  },
 };
 
 /** Exact key first, then <regex> class keys. */
@@ -213,6 +226,32 @@ const WAVE1 = {
         source: "set/type_plus_right/set/style.rb:28-33",
         oracle: "static-ruby (style-tag-views.rb; the headless params absence computes the else arm)",
         status: "ported, verify GREEN (harness capture + probe; the params[:debug] arm is the named remainder)",
+      },
+    ],
+    "card-mod-follow": [
+      {
+        view: "subedit_notice",
+        source: "set/all/notify/base_views.rb:25-31 (the BASE format block)",
+        oracle: "static-ruby x11 scenarios (follow-census-views.rb; the changed-field rows ride the render-time history seam)",
+        status: "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the email lane's page arm - the divergence named in the view comment)",
+      },
+      {
+        view: "follower",
+        source: "set/all/notify/base_views.rb:41-43 (the BASE format block)",
+        oracle: "static-ruby (follow-census-views.rb; active_notice nil headlessly -> the literal fallback)",
+        status: "ported, verify GREEN (harness capture + probe; the send-path ivar is the same disclosed basis the flat record's followed/unfollow_url arms carry)",
+      },
+      {
+        view: "rule_editor",
+        source: "set/right/following.rb:32-38",
+        oracle: "static-ruby (follow-census-views.rb; the dispatch contract + the applied-string arm's raise - rule? is false on the simple option card)",
+        status: "ported, verify GREEN (harness capture + probe; the seam's rule_editor branch resolves the actor + the applied content, the rules mod's ruleFormView owns the form bytes)",
+      },
+      {
+        view: "errors",
+        source: "set/type_plus_right/user/follow.rb:65-78",
+        oracle: "static-ruby (follow-census-views.rb; the no-errors arm is the only arm a headless render reaches)",
+        status: "ported, verify GREEN (harness capture + probe; the permission arm's pieces probe-pinned, the super() arm dispatches card-mod-format's all-set body)",
       },
     ],
     "card-mod-format": [

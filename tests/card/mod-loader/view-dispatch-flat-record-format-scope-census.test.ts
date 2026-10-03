@@ -106,14 +106,19 @@ describe("flat-record format-scope census (composed deck)", () => {
 
   it("census is non-vacuous: the composed deck registers all-set+abstract views", () => {
     // A broken walk (empty deck, wrong filter) must not read as "zero
-    // foreign rows". Measured: 144 base + 28 abstract rows. The abstract
+    // foreign rows". Measured: 147 base + 29 abstract rows. The abstract
     // count moved 25 -> 28 when the surface-queue fold (1ab8318) landed
     // the list mod's select/multiselect/autocomplete editor registrations
     // (three all-set abstract-kind rows); base moved 143 -> 144 when the
     // mod-porting wave-1 lane (2026-10-03) registered :board_act on the
-    // all-set all/history_board module (cache: never).
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(144);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(28);
+    // all-set all/history_board module (cache: never); 144/28 -> 145/29
+    // at the style family's own commit (8b56256, the abstract/style_group
+    // stylesheet_include_tag raising-arm row - the census re-bump that
+    // receipt's "net run in flight" never landed); base moved 145 -> 147
+    // when wave-1's follow family registered :subedit_notice + :follower
+    // on the all-set all/notify/base_views module (base key).
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(147);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(29);
   });
 
   it("the foreign-key flat rows are exactly the eight measured rows", () => {
@@ -196,14 +201,19 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly eighteen views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
     // always carries ALL - registry.ts `applies: () => true`; the only
     // viewChain("") calls are the abstract-pseudo-pattern probes in
     // card-mod-content/default-mod-deck/view-dispatch-superview tests) -
-    // pinned here so a widening registration names itself.
+    // pinned here so a widening registration names itself. Eighteen
+    // views at the surface-queue fold; +stylesheet_include_tag at the
+    // style family's own commit (8b56256, the abstract/style_group
+    // raising-arm row, census re-bump folded here); +errors at wave-1's
+    // follow family (the type_plus_right/user/follow :errors registration
+    // joining the format mod's all-set :errors row).
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
@@ -222,6 +232,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "edit",
       "edit_buttons",
       "edit_inline",
+      "errors",
       "help_text",
       "input",
       "javascript_include_tag",
@@ -230,6 +241,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "overlay_title",
       "raw",
       "raw_one_line_content",
+      "stylesheet_include_tag",
       "titled_content",
       "url_link",
       "view_list",

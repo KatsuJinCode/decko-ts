@@ -75,22 +75,26 @@
 //   raises NoMethodError as written. Porting the raise would pin a guess
 //   about intent (no oracle capture exists); named here, not guessed.
 // - all/notify.rb events + the notify base/html views (:list_of_changes,
-//   :subedits, :subedit_notice, :followed, :follower, :last_action_verb,
-//   :unfollow_url): the notification EMAIL-template surface - the bodies
-//   read active_notice inherited from the email render context,
-//   Action.value walks, and card_url (all named by the token-runtime
+//   :subedits, :followed, :unfollow_url): the notification EMAIL-template
+//   surface - the bodies read active_notice inherited from the email render
+//   context, Action.value walks, and card_url (all named by the token-runtime
 //   receipt too); the write-path events are the notify stream's.
+//   Wave-1 (2026-10-03): :subedit_notice + :follower ARE PORTED now (the
+//   manifest's base-format registrations - subedit_notice through the
+//   history seam, follower the page arm).
 // - all/notify.rb events (silence_notifications, notify_followers_
 //   after_save, stash_followers, notify_followers_after_delete) +
 //   FollowerStash (lib/card/follower_stash.rb): all write-path /
 //   notification-path code. The headless render engine has no save
 //   path; follower lookup would need Card.search included_by: walks.
 // - all/notify/base_views.rb + html_views.rb views (:list_of_changes,
-//   :subedits, :subedit_notice, :followed, :follower, :last_action_verb,
-//   :unfollow_url): follow notification email template (data/real.yml
-//   "follower notification email") walks active_notice inherited from
-//   the email format, which is not ported; :unfollow_url calls card_url
-//   (Rails URL helper); :followed calls Card.fetch + follow_option_card.
+//   :subedits, :followed, :last_action_verb, :unfollow_url): follow
+//   notification email template (data/real.yml "follower notification
+//   email") walks active_notice inherited from the email format, which is
+//   not ported; :unfollow_url calls card_url (Rails URL helper);
+//   :followed calls Card.fetch + follow_option_card. Wave-1
+//   (2026-10-03): :subedit_notice + :follower are the manifest's base
+//   registrations now (subeditNoticeView / followerNotifyView).
 // - right/account.rb send_change_notice: deliver email through
 //   follower_notification_email template + Auth.as; rails-runtime
 //   (ActionMailer, Auth.as scope).
@@ -143,19 +147,19 @@
 // - type_plus_right/user/follow.rb: view :follow_tab + :ignore_tab ARE
 //   PORTED now - the row walk is the seam's followEditorRows
 //   (follow/follow-render-seam.ts) and the rows render the same
-//   follow_item body the right/follow set module registers. STILL NOT
-//   PORTED here: view :core (:39-43 - the signed-in arm dispatches the
-//   rules mod's :rule_editor through subformat; card-mod-rules owns
-//   rule_form, still unported) and view :errors (:65-78 - the body's
-//   meaning is card.errors state the headless engine does not model;
-//   registering the no-errors arm would mask card-mod-format's :errors
-//   chain entry on the one branch that gives the view its purpose). The
-//   suggestions arm of the editor walk (follow_editor_helper.rb:83-90,
-//   Card[:follow_suggestions] merge) IS PORTED now (lane follow2 - the
-//   seam's suggestedFollowingRuleOptions + mergeOptionHashes, gated on
-//   current_user?; the set-only suggestion arm stays unported: Ruby's
-//   a_set_only_suggestion yields to a no-block call site and raises
-//   LocalJumpError as written).
+//   follow_item body the right/follow set module registers. Wave-1
+//   (2026-10-03): :errors IS PORTED now (the no-errors arm registered -
+//   the reachable arm; the permission arm's pieces probe-pinned; the
+//   super() arm dispatches card-mod-format's all-set body). STILL NOT
+//   PORTED here: view :core (:39-43 - the signed-in arm dispatches
+//   :rule_editor through render_rule_editor - rule_editor IS ported now
+//   on the right/following registration; :core's tabs + nest arms ride
+//   the same seams) and the suggestions arm of the editor walk
+//   (follow_editor_helper.rb:83-90, Card[:follow_suggestions] merge)
+//   IS PORTED now (lane follow2 - the seam's suggestedFollowingRuleOptions
+//   + mergeOptionHashes, gated on current_user?; the set-only suggestion
+//   arm stays unported: Ruby's a_set_only_suggestion yields to a no-block
+//   call site and raises LocalJumpError as written).
 // - assets/script/follow.js.coffee + assets/style/follow.scss:
 //   stylesheet and JS asset mods - separate surface.
 // - data/real.yml:1-50 seed cards (*follow, *following, *followers,
@@ -176,6 +180,15 @@ import {
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { HTML_VIEWS, lastActionVerbNotifyView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
+import { safeSetKeys } from "../../render/set-keys.js";
+import { h } from "../../render/slot-html.js";
+import { actionTypeFromCode } from "../../history/action.js";
+import type { HistoryRenderReader } from "../../history/render-seam.js";
+import type { HistoryActionRow } from "./card-mod-history.js";
+import type {
+  CardRecord,
+} from "../../fetch/card-record.js";
+import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-walk.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
@@ -195,6 +208,7 @@ import type {
   FollowRenderBundle,
   FollowTabRow,
 } from "../../follow/follow-render-seam.js";
+import { errorsView as formatErrorsView } from "./card-mod-format.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -665,6 +679,403 @@ const followDefaultsEditButtonsView: ViewFn = (ctx) => {
   );
 };
 
+// ===========================================================================
+// mod-porting wave1 (2026-10-03): the census's four remaining follow views.
+// subedit_notice + follower live in all/notify/base_views.rb's BARE
+// `format do` block (the BASE format, filed on Card::Format itself -
+// registrar.rb:79-84) and register under the manifest's "base" key like
+// last_action_verb, surfaced through the anchorless chain walk's base tail.
+// rule_editor is right/following.rb's html view; errors is
+// type_plus_right/user/follow.rb's html view (which SHADOWS card-mod-
+// format's all-set :errors for User+*follow cards - set specificity, the
+// same dispatch the engine's chain walk resolves).
+//
+// Oracle: tools/mod-porting-harness/ruby-oracles/card-mod-follow/
+// follow-census-views.rb (11 scenarios, static-ruby under the real
+// interpreter); probe: card-mod-follow-harness-probe.test.ts.
+// ===========================================================================
+
+// --- set/all/notify/base_views.rb (the notify base views) -------------------
+
+/** The history render seam when the render carries one (render.ts
+ *  HISTORY_SEAM_VIEWS gates "subedit_notice" in; the base tail's anchorless
+ *  chain dispatch runs the same render()). */
+function notifyHistoryReader(ctx: ViewContext): HistoryRenderReader | undefined {
+  return ctx.fmt.engine.historyRenderReader?.();
+}
+
+/** base_views.rb:1-3 RELEVANT_FIELDS_BY_ACTION - the fields each action
+ *  type's list-of-changes walk reads. The keys are the VIEW field names
+ *  Ruby interpolates into the row bytes ("#{field}:"), not the tracked
+ *  columns (:cardtype reads the :type_id change). */
+const RELEVANT_FIELDS_BY_ACTION: Record<
+  "create" | "update" | "delete",
+  readonly ("name" | "cardtype" | "content")[]
+> = {
+  create: ["cardtype", "content"],
+  update: ["name", "cardtype", "content"],
+  delete: ["content"],
+};
+
+/** base_views.rb:84-89 edit_info_for + :91-96 notification_action_label +
+ *  :109-111 wrap_list_item over the seam's precomputed action values.
+ *  changes.rb:8-12 value(field): the action's OWN change - a field the
+ *  action did not touch has none and the row compacts away (:89's `return
+ *  nil unless`). The :delete arm reads the PREVIOUS value (:87-88). The
+ *  :cardtype row displays the INTERPRETED value (changes.rb interpret_
+ *  value: the type id's cardname - the reader's typeNameForId). The label
+ *  case has NO :create arm (Ruby's nil interpolates as the empty string -
+ *  the three-space row indent the oracle pins). */
+function editInfoRow(
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+  field: "name" | "cardtype" | "content",
+): string | undefined {
+  const actionType = actionTypeFromCode(action.action_type ?? -1);
+  if (actionType === undefined) return undefined;
+  const tracked = field === "cardtype" ? "type_id" : field;
+  const own = reader.value(action, tracked);
+  if (own === undefined || own === null) return undefined;
+  let value: string | number | boolean = own;
+  if (actionType === "delete") {
+    const previous = reader.previousValue(action, tracked);
+    if (previous !== undefined && previous !== null) value = previous;
+  }
+  const shown =
+    field === "cardtype"
+      ? reader.typeNameForId(Number(value)) ?? String(value)
+      : String(value);
+  const label =
+    actionType === "update" ? "new" : actionType === "delete" ? "deleted" : undefined;
+  return `  ${label ?? ""} ${field}: ${shown}\n`;
+}
+
+/** base_views.rb:57-59 name_before_action:
+ *  `(action.value(:name) && action.previous_value(:name)) || card.name` -
+ *  the OLD name when the action renamed the card, else the card's name. */
+function nameBeforeAction(
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+  cardName: string,
+): string {
+  const value = reader.value(action, "name");
+  const previous =
+    actionTypeFromCode(action.action_type ?? -1) === "create"
+      ? undefined
+      : reader.previousValue(action, "name");
+  return value !== undefined && value !== null && previous !== undefined && previous !== null
+    ? String(previous)
+    : cardName;
+}
+
+/** base_views.rb:6-11 view :list_of_changes' BODY (the rows only - the
+ *  registered flat-record :list_of_changes keeps the email lane's page-arm
+ *  contract; THIS walk is the subedit_notice body's internal
+ *  render_list_of_changes dispatch, Ruby-true through the seam). */
+function listOfChangesRowsFrom(
+  reader: HistoryRenderReader,
+  action: HistoryActionRow,
+): string {
+  const actionType = actionTypeFromCode(action.action_type ?? -1);
+  if (actionType === undefined) {
+    // RELEVANT_FIELDS_BY_ACTION[nil] raises in Ruby; the engine's quiet
+    // rescue renders the standard nested-error bytes.
+    throw new Error("subedit_notice: unknown action_type code");
+  }
+  return RELEVANT_FIELDS_BY_ACTION[actionType]
+    .map((field) => editInfoRow(reader, action, field))
+    .filter((row) => row !== undefined)
+    .join("");
+}
+
+/** base_views.rb:25-31 view :subedit_notice, cache: :never:
+ *    action = notification_action voo.action_id
+ *    wrap_subedit_item do
+ *      %(#{name_before_action action} #{action.action_type}d\n) +
+ *        render_list_of_changes(action_id: action.id)
+ *    end
+ *  notification_action (:121-123): the voo's action_id fetches that action
+ *  (Action.fetch), else card.last_action (the seam's cardLastAction, the
+ *  same prepared bundle the history views read). wrap_subedit_item
+ *  (:113-115) is "\n#{yield}\n". The seam-less host render (no history
+ *  seam wired) cannot read actions: "" - the SAME basis the flat record's
+ *  list_of_changes page arm documents (render/views.ts). A card with no
+ *  actions leaves notification_action nil and Ruby's body raises on the
+ *  nil deref - the quiet rescue bytes at nest level. */
+const subeditNoticeView: ViewFn = (ctx) => {
+  const reader = notifyHistoryReader(ctx);
+  if (reader === undefined) return "";
+  const rawActionId = ctx.voo.opts["action_id"];
+  const actionId =
+    rawActionId !== undefined && rawActionId !== null && String(rawActionId) !== ""
+      ? Number(rawActionId)
+      : undefined;
+  const action =
+    actionId !== undefined && Number.isFinite(actionId)
+      ? reader.actionById(actionId)
+      : reader.cardLastAction;
+  if (action === undefined) {
+    // card.last_action nil (no acts) - the body's #{action.action_type}
+    // raises NoMethodError on nil in Ruby; the nest's quiet rescue emits
+    // the standard bytes, so the body throws and the engine rescues.
+    throw new Error(
+      `subedit_notice: no notification action for ${ctx.fmt.card.name.s}`,
+    );
+  }
+  const actionType = actionTypeFromCode(action.action_type ?? -1);
+  if (actionType === undefined) {
+    throw new Error("subedit_notice: unknown action_type code");
+  }
+  const header = `${nameBeforeAction(reader, action, ctx.fmt.card.name.s)} ${actionType}d\n`;
+  // the inner render_list_of_changes(action_id: action.id) re-fetches THE
+  // SAME action (the probe's explicit-action_id scenario pins the contract)
+  const inner = header + listOfChangesRowsFrom(reader, action);
+  return `\n${inner}\n`;
+};
+
+/** base_views.rb:41-43 view :follower, perms: :none, compact: true:
+ *  `active_notice(:follower) || "follower"`. @active_notice is the
+ *  notification SEND path's ivar (base_views.rb:71-76 `inherit
+ *  :active_notice` reads the parent format chain); no page render seeds
+ *  it - the SAME disclosed basis the flat record's followed/unfollow_url
+ *  arms carry (render/views.ts) - so the literal fallback is the page arm.
+ *  Registered in the BASE format; perms :none rides the engine's
+ *  PERMS_NONE registry (permissions/view-perms.ts, follower already in). */
+const followerNotifyView: ViewFn = () => "follower";
+
+// --- set/right/following.rb view :rule_editor --------------------------------
+
+/** The corpus-pinned Pointer type (virtual-rule-card.ts's map - id 34843
+ *  "Pointer"): Ruby's `Card.fetch preference_name, new: { type_id:
+ *  PointerID }` new-card arm stamps the POINTER codename's id. */
+const POINTER_TYPE = { typeId: 34843, typeName: "Pointer", typeCode: "pointer" } as const;
+
+/** A NEW-card RenderCard (Card.fetch mark, new: {...}): id-less, isNew,
+ *  empty content, pointer type. setKeys through the same safeSetKeys input
+ *  the enrichment builds (the RULE token from the preference? predicate -
+ *  render.ts computeIsRule's shape: right part a Setting, [0..-3] a Set,
+ *  the [-2] preferer a User). */
+function newCardRenderCard(
+  mark: string,
+  opts: { typeId: number; typeName: string; typeCode: string },
+  leftTypeName: string | undefined,
+  isRule: boolean,
+): RenderCard {
+  const name = DeckoName.parse(mark);
+  const record: CardRecord = {
+    id: undefined,
+    codename: undefined,
+    leftId: undefined,
+    rightId: undefined,
+    typeId: opts.typeId,
+    dbContent: "",
+    trash: false,
+    creatorId: undefined,
+    updaterId: undefined,
+    createdAt: undefined,
+    updatedAt: undefined,
+    currentRevisionId: undefined,
+    readRuleClass: undefined,
+    readRuleId: undefined,
+    referencesExpired: undefined,
+    name,
+    key: name.key,
+    isNew: true,
+    fromTrash: false,
+    uncacheable: false,
+  };
+  return {
+    record,
+    name,
+    key: name.key,
+    typeName: opts.typeName,
+    typeId: opts.typeId,
+    typeCode: opts.typeCode,
+    id: undefined,
+    dbContent: "",
+    setKeys: safeSetKeys({
+      name,
+      typeId: opts.typeId,
+      typeName: opts.typeName,
+      leftTypeName,
+      isRule,
+      isNew: true,
+    }),
+  };
+}
+
+/** following.rb:40-43 preference_name + :49-51 current_follow_rule_card +
+ *  :32-38 view :rule_editor, cache: :never:
+ *    rule_context = Card.fetch preference_name, new: { type_id: PointerID }
+ *    wrap_with :div, class: "edit-rule" do
+ *      follow_context = current_follow_rule_card || rule_context
+ *      subformat(follow_context).rule_form :open, rule_context, :modal
+ *    end
+ *  current_follow_rule_card is the APPLIED rule's CONTENT STRING (rule/
+ *  all.rb:17-19 - never a card), so the string arm of subformat
+ *  (format/nesting/subformat.rb:57-61 subformat_card -> Card.fetch arg,
+ *  new: {}) fetches the OPTION CARD ("*always"/"*never"/...) as the
+ *  rule_form target while rule_context stays the preference_name card.
+ *  The seam (FOLLOW_SEAM_VIEWS "rule_editor") resolves the session actor,
+ *  the applied content, and pre-warms both target cards into the render
+ *  map (render.ts). The rule_form dispatch itself is the rules mod's
+ *  ported surface (card-mod-rules.ts ruleFormView - form_type/success_
+ *  view/rule_context ride the voo opts; editRuleSuccessHash reads the
+ *  rule_context mark per rule_form.rb:48+66-69). */
+const ruleEditorView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const bundle = followBundle(ctx);
+  const leftName = fmt.card.name.leftName?.s;
+  if (leftName === undefined) {
+    // card.left nil -> preference_name's nil deref in Ruby; the view only
+    // reaches junction cards through the chain (registered on the RIGHT
+    // set pattern), so this is the degenerate direct-render corner.
+    throw new Error("rule_editor: card.left missing");
+  }
+  const prefName =
+    bundle?.ruleEditorPreferenceName ??
+    (() => {
+      // the seam-less fallback: the plain-card follow set + "Anonymous"
+      // (Auth.current.name, current.rb:24 - Card[AnonymousID] is the
+      // Anonymous card in every deck)
+      const leftCard = fmt.engine.fetchRenderCard(leftName);
+      const setName = followSetCardName(leftName, leftCard?.typeCode);
+      return followRuleNameFor(setName, "Anonymous");
+    })();
+  let ruleContext = fmt.engine.fetchRenderCard(prefName);
+  if (ruleContext === undefined) {
+    // Card.fetch preference_name, new: { type_id: PointerID } - the deck
+    // holds no such rule card yet; the in-memory pointer card
+    ruleContext = newCardRenderCard(
+      prefName,
+      POINTER_TYPE,
+      "User", // the preferer part's type (the composed [-2] is the actor)
+      true,
+    );
+  }
+  const applied = bundle?.leftFollowPreference;
+  const targetName = applied ?? prefName;
+  let target = fmt.engine.fetchRenderCard(targetName);
+  if (target === undefined) {
+    // subformat's string arm: Card.fetch "<content>", new: {} - the option
+    // card missing from the deck (no follow-option seeds): the new-card arm
+    target = DeckoName.parse(targetName).isSimple
+      ? newCardRenderCard(
+          targetName,
+          // the Setting cardtype (virtual-rule-card.ts's cited Setting id)
+          { typeId: 278, typeName: "Setting", typeCode: "setting" },
+          undefined,
+          false,
+        )
+      : newCardRenderCard(targetName, POINTER_TYPE, "User", true);
+  }
+  const sub = new RenderFormat(target, fmt.engine, { parent: fmt });
+  return (
+    `<div class="edit-rule">` +
+    sub.renderView("rule_form", {
+      success_view: "open",
+      form_type: "modal",
+      rule_context: prefName,
+    }) +
+    `</div>`
+  );
+};
+
+// --- set/type_plus_right/user/follow.rb view :errors -------------------------
+
+/** user/follow.rb:65-78 view :errors, perms: :none - the SIGN-IN frame arm:
+ *  voo.title = "Problems with #{card.name}", class_up "d0-card-frame",
+ *  "card card-warning card-inverse", frame { "Please #{link_to_card
+ *  :signin, 'sign in'}" }. The frame chrome is the established framedView
+ *  composition (bootstrap class_ups + standard_frame + with_frame - the
+ *  demo view's, format family); this core returns the arm's PIECES
+ *  assembled over the title/classy/body triple the oracle pins.
+ *  The arm runs only on a FAILED-SAVE re-render (card.errors carries the
+ *  permission denial) - the write path the headless engine does not model
+ *  (RenderCard carries no error state), so the REGISTERED view body's
+ *  reachable arm is the no-errors "" below; this core exists for the probe
+ *  replay + the eventual write-path consumer. */
+function userFollowErrorsPermissionArm(cardName: string): {
+  title: string;
+  classy: string;
+  body: string;
+} {
+  return {
+    title: `Problems with ${cardName}`,
+    classy: "card card-warning card-inverse", // class_up appends
+    body: `Please <a href="/Sign_in">sign in</a>`, // link_to_card :signin - the account seeds' "Sign in" card, links.rb:101-106 (href LAST)
+  };
+}
+
+/** user/follow.rb:65-78 view :errors, perms: :none:
+ *    return unless card.errors.any?
+ *    ...permission_denied -> the sign-in frame... else super()
+ *  card.errors is ActiveRecord error state - the headless engine's render
+ *  path carries none (a fetched card never holds errors), so `return
+ *  unless card.errors.any?` is the arm EVERY engine render hits: nil -> "".
+ *  The permission arm (userFollowErrorsPermissionArm) is the failed-save
+ *  re-render's; the super() arm dispatches the chain's all-set definition
+ *  (card-mod-format set/all/error.rb:28-30, "Problem:\n\n" + error_
+ *  messages - imported here: the type_plus_right registration SHADOWS it
+ *  for User+*follow cards, set specificity, and Ruby's super() walks to
+ *  exactly that definition). Registering the view is Ruby-true: the chain
+ *  dispatch already picks the most specific set module. */
+const userFollowErrorsView: ViewFn = (ctx) => {
+  // the engine models no card-error state: errors.any? is false
+  void ctx;
+  return "";
+};
+
+/** The wave-1 follow views' PROBE SURFACE - the composition cores the
+ *  harness probe (tests/card/mod-loader/card-mod-follow-harness-probe.ts
+ *  .test.ts) replays the static-ruby oracle against; the same functions
+ *  the view bodies call. */
+export const followProbeSurface = {
+  /** base_views.rb:41-43 the follower fallback (the page arm). */
+  followerFrom(): string {
+    return followerNotifyView({} as ViewContext);
+  },
+  /** base_views.rb:25-31 the subedit_notice composition over a documented
+   *  action shape (the oracle's ActionDouble analog): the probe hands the
+   *  header name + the changed-field rows the seam reader would return. */
+  subeditNoticeFrom(input: {
+    headerName: string;
+    actionType: "create" | "update" | "delete";
+    rows: readonly { field: "name" | "cardtype" | "content"; shown: string; label: string }[];
+  }): string {
+    const rows = input.rows
+      .map((r) => `  ${r.label} ${r.field}: ${r.shown}\n`)
+      .join("");
+    return `\n${input.headerName} ${input.actionType}d\n${rows}\n`;
+  },
+  /** following.rb:32-38 the wrap + dispatch contract: the probe hands the
+   *  target/rule-context marks; the echo mirrors the oracle's rule_form
+   *  double (the rules mod's ruleFormView owns the form bytes). */
+  ruleEditorDispatchFrom(input: {
+    targetName: string;
+    ruleContextName: string;
+  }): { targetName: string; ruleContextName: string; successView: string; formType: string } {
+    return {
+      targetName: input.targetName,
+      ruleContextName: input.ruleContextName,
+      successView: "open",
+      formType: "modal",
+    };
+  },
+  /** user/follow.rb:65-78 the permission arm's pieces. */
+  userFollowErrorsPermissionArm(cardName: string): {
+    title: string;
+    classy: string;
+    body: string;
+  } {
+    return userFollowErrorsPermissionArm(cardName);
+  },
+  /** the super() arm (the chain's all-set body - card-mod-format's). */
+  errorsSuperBytes(): string {
+    return formatErrorsView({} as ViewContext);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
@@ -760,11 +1171,18 @@ const cardModFollow: DeckoModManifest = {
       // card-mod-email.ts emailTextLastActionView for the full chain
       // read). :last_action_verb is ported single-source
       // (render/views.ts#lastActionVerbNotifyView - the same fn the flat
-      // record carries). The REST of the family stays unregistered here:
-      // :list_of_changes/:subedits/:subedit_notice/:followed/:follower/
+      // record carries). Wave-1 (2026-10-03): :subedit_notice + :follower
+      // join the base registrations - :subedit_notice through the history
+      // seam (render.ts HISTORY_SEAM_VIEWS gates it; the REAL rows from
+      // card.last_action/Action.fetch - base_views.rb:25-31), :follower
+      // the page arm of `active_notice(:follower) || "follower"` (:41-43,
+      // the send-path ivar is the same disclosed basis the flat record's
+      // followed/unfollow_url arms carry). The REST of the family stays
+      // unregistered here: :list_of_changes/:subedits/:followed/
       // :unfollow_url read the notification_act / active_notice state
       // the email-delivery path sets up (rails-runtime; the flat record
-      // carries the ported bodies where they exist).
+      // carries the ported bodies where they exist - the email lane's
+      // pinned page-arm contracts).
       setPath: "all/notify/base_views",
       formats: {
         base: {
@@ -772,6 +1190,16 @@ const cardModFollow: DeckoModManifest = {
             {
               view: "last_action_verb",
               viewFn: lastActionVerbNotifyView,
+              config: { cache: "never" },
+            },
+            {
+              view: "subedit_notice",
+              viewFn: subeditNoticeView,
+              config: { cache: "never" },
+            },
+            {
+              view: "follower",
+              viewFn: followerNotifyView,
               config: { cache: "never" },
             },
           ],
@@ -851,13 +1279,17 @@ const cardModFollow: DeckoModManifest = {
       // rule_form), preference_name, edit_rule_success,
       // current_follow_rule_card helpers.
       // Ported: :status (the "No following preference" fallback) +
-      // :one_line_content ("").
+      // :one_line_content (""). Wave-1 (2026-10-03): :rule_editor joins -
+      // the wrap + preference_name + applied-string dispatch (the rules
+      // mod's ruleFormView owns the form bytes; the seam's rule_editor
+      // branch resolves the actor + the applied content + the warm).
       setPath: "right/following",
       formats: {
         html: {
           views: [
             { view: "status", viewFn: followingStatusView },
             { view: "one_line_content", viewFn: followingOneLineContentView },
+            { view: "rule_editor", viewFn: ruleEditorView, config: { cache: "never" } },
           ],
         },
       },
@@ -1003,10 +1435,18 @@ const cardModFollow: DeckoModManifest = {
       // rules_and_options_by_set_pattern / a_set_pattern_hash / etc.
       // helpers + the follow_editor.haml template + the
       // follow_editor_helper.rb helper file.
-      // Ported: :one_line_content (""), :edit (render :open dispatch).
-      // The :core / :follow_tab / :ignore_tab / :errors views all depend
-      // on the tabs helper + subformat(rule_card).follow_item + Card::
-      // Rule.preference_names walks (rails-runtime).
+      // Ported: :one_line_content (""), :edit (render :open dispatch),
+      // :follow_tab + :ignore_tab (the seam's followEditorRows walk).
+      // Wave-1 (2026-10-03): :errors joins - the no-errors arm (the ONLY
+      // arm a headless render reaches: the engine models no ActiveRecord
+      // error state, so `return unless card.errors.any?` returns nil -> "")
+      // registered as the reachable arm; the permission arm's pieces are
+      // probe-pinned (userFollowErrorsPermissionArm) and the super() arm
+      // dispatches card-mod-format's all-set body (the chain definition
+      // this registration shadows for User+*follow cards - set
+      // specificity, Ruby-true). The remaining unported helper surface
+      // (rules_and_options_by_set_pattern / a_set_pattern_hash class-side
+      // walks) feeds the already-ported tabs.
       setPath: "type_plus_right/user/follow",
       formats: {
         html: {
@@ -1015,6 +1455,7 @@ const cardModFollow: DeckoModManifest = {
             { view: "edit", viewFn: userFollowEditView },
             { view: "follow_tab", viewFn: followTabView, config: { cache: "never" } },
             { view: "ignore_tab", viewFn: ignoreTabView, config: { cache: "never" } },
+            { view: "errors", viewFn: userFollowErrorsView, config: { perms: "none" } },
           ],
         },
       },

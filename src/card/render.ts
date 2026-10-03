@@ -135,6 +135,12 @@ const HISTORY_SEAM_VIEWS = new Set([
   "act_legend",
   "last_action",
   "change",
+  // wave-1 follow family: base_views.rb's :subedit_notice reads the same
+  // prepared act bundle (notification_action's card.last_action / Action
+  // .fetch walk over the changed fields — set/all/notify/base_views.rb:
+  // 25-31 + 84-96 + 121-123; the sibling :list_of_changes stays gated out,
+  // its flat-record page arm is the email lane's pinned contract).
+  "subedit_notice",
 ]);
 import type {
   HistoryActionCardInfo,
@@ -1484,6 +1490,20 @@ export class RenderEngine implements RenderEngineLike {
       );
       if (followersJunction !== undefined) {
         await this.cacheFetchedRecord(followersJunction);
+      }
+      // wave-1 rule_editor warm: the view's two sync fetchRenderCard reads
+      // (card-mod-follow.ts ruleEditorView) need the preference_name card +
+      // the string arm's dispatch target in the prepared map - the same
+      // seam-prepare warm shape the user-follow card above rides.
+      if (view === "rule_editor") {
+        for (const warmName of [
+          this.followBundle.ruleEditorPreferenceName,
+          this.followBundle.ruleEditorTargetName,
+        ]) {
+          if (warmName === undefined) continue;
+          const warmed = await this.fetcher.fetchByName(warmName);
+          if (warmed !== undefined) await this.cacheFetchedRecord(warmed);
+        }
       }
     }
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state

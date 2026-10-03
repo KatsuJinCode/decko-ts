@@ -1,0 +1,985 @@
+{
+  "mod": "card-mod-follow",
+  "gem": "card-mod-follow-0.20.0",
+  "generatedAt": "2026-10-03T18:12:41.520Z",
+  "totals": {
+    "behaviors": 96,
+    "validated": 4,
+    "standingNet": 57,
+    "namedRemainder": 35,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts",
+      "tests/card/mod-loader/card-mod-follow.test.ts",
+      "tests/card/mod-loader/card-mod-follow-views.test.ts"
+    ],
+    "ran": true,
+    "detail": "34 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:follow_status",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follow_link_views.rb:12",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follow_status\""
+    },
+    {
+      "behaviorId": "view:follow_button",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follow_link_views.rb:26",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follow_button\""
+    },
+    {
+      "behaviorId": "event:cache_expired_for_type_change",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:5",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"cache_expired_for_type_change\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:expire_preferences_cache",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:19",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"expire_preferences_cache\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:silence_notifications",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:5",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"silence_notifications\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:notify_followers_after_save",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:13",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"notify_followers_after_save\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:stash_followers",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:22",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"stash_followers\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:notify_followers_after_delete",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/all/notify.rb:27",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"notify_followers_after_delete\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "view:list_of_changes",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"list_of_changes\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:subedits",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:13",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"subedits\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:subedit_notice",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:25",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"subedit_notice\""
+    },
+    {
+      "behaviorId": "view:followed",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:33",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"followed\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:follower",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:41",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follower\""
+    },
+    {
+      "behaviorId": "view:last_action_verb",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:45",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"last_action_verb\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:unfollow_url",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:49",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"unfollow_url\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:follow_status",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:58",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follow_status\""
+    },
+    {
+      "behaviorId": "view:follow_item",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:63",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follow_item\""
+    },
+    {
+      "behaviorId": "event:cache_expired_for_new_preference",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/right/follow.rb:7",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"cache_expired_for_new_preference\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:follow_fields_changed",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/right/follow_fields.rb:3",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"follow_fields_changed\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/followers.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:8",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:status",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:16",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"status\""
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:28",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:rule_editor",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/right/following.rb:32",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"rule_editor\""
+    },
+    {
+      "behaviorId": "view:edit_buttons",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:49",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"edit_buttons\""
+    },
+    {
+      "behaviorId": "view:confirm_update_all",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:70",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"confirm_update_all\""
+    },
+    {
+      "behaviorId": "event:update_follow_rules",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:17",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"update_follow_rules\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "event:cache_expired_for_new_set",
+      "kind": "event",
+      "source": "card-mod-follow-0.20.0/set/type/set.rb:1",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
+      "evidence": "no event \"cache_expired_for_new_set\" registration in card-mod-follow.ts"
+    },
+    {
+      "behaviorId": "view:one_line_content",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:30",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"one_line_content\""
+    },
+    {
+      "behaviorId": "view:edit",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:34",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"edit\""
+    },
+    {
+      "behaviorId": "view:core",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:39",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
+    },
+    {
+      "behaviorId": "view:follow_tab",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:45",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"follow_tab\""
+    },
+    {
+      "behaviorId": "view:ignore_tab",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:49",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"ignore_tab\""
+    },
+    {
+      "behaviorId": "view:errors",
+      "kind": "view",
+      "source": "card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:65",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-follow.ts registers view \"errors\""
+    },
+    {
+      "behaviorId": "seed:notification_template",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/core-admin-runtime.ts"
+    },
+    {
+      "behaviorId": "seed:follow",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:following",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:followers",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:follow_fields",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:always",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:never",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:follow_defaults",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"follow_defaults\""
+    },
+    {
+      "behaviorId": "seed:follow_suggestions",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"follow_suggestions\""
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:contextual_class",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"contextual_class\""
+    },
+    {
+      "behaviorId": "seed:message",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"message\""
+    },
+    {
+      "behaviorId": "seed:disappear",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"disappear\""
+    },
+    {
+      "behaviorId": "seed:follower_notification_email",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/real.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"follower_notification_email\""
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/rules.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:John",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"John\""
+    },
+    {
+      "behaviorId": "seed:Sara",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Sara\""
+    },
+    {
+      "behaviorId": "seed:Big Brother",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Big Brother\""
+    },
+    {
+      "behaviorId": "seed:Optic fan",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Optic fan\""
+    },
+    {
+      "behaviorId": "seed:Sunglasses fan",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Sunglasses fan\""
+    },
+    {
+      "behaviorId": "seed:Narcissist",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/users.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Narcissist\""
+    },
+    {
+      "behaviorId": "seed:card with fields",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"card with fields\""
+    },
+    {
+      "behaviorId": "seed:card with fields and admin fields",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"card with fields and admin fields\""
+    },
+    {
+      "behaviorId": "seed:admin card with fields and admin fields",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"admin card with fields and admin fields\""
+    },
+    {
+      "behaviorId": "seed:admin card with admin fields",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"admin card with admin fields\""
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test/with_fields.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:Optic",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Optic\""
+    },
+    {
+      "behaviorId": "seed:All Eyes On Me",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"All Eyes On Me\""
+    },
+    {
+      "behaviorId": "seed:No One Sees Me",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"No One Sees Me\""
+    },
+    {
+      "behaviorId": "seed:Look At Me",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Look At Me\""
+    },
+    {
+      "behaviorId": "seed:Sara Following",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Sara Following\""
+    },
+    {
+      "behaviorId": "seed:John Following",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"John Following\""
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:Sunglasses",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Sunglasses\""
+    },
+    {
+      "behaviorId": "seed:Google glass",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Google glass\""
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "seed:Created card",
+      "kind": "seed",
+      "source": "card-mod-follow-0.20.0/data/test.yml",
+      "registration": "no",
+      "captured": null,
+      "state": "named-remainder",
+      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+      "evidence": "no TS registration naming \"Created card\""
+    },
+    {
+      "behaviorId": "config:settings",
+      "kind": "config",
+      "source": "card-mod-follow-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "config:cardtypes",
+      "kind": "config",
+      "source": "card-mod-follow-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-carrierwave.ts"
+    }
+  ]
+}

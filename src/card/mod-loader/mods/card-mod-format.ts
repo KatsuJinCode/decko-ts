@@ -893,8 +893,11 @@ function cardtypeConfigureLinkView({ fmt }: ViewContext): string {
  *  join("\\n")`. error_messages walks card.errors; the headless
  *  engine's RenderCard carries no `errors` list (the engine has no
  *  error attachment surface), so the join is over an empty list and
- *  the body reduces to the "Problem:\\n\\n" prefix + blank join. */
-const errorsView: ViewFn = () => "Problem:\n\n";
+ *  the body reduces to the "Problem:\\n\\n" prefix + blank join.
+ *  Exported (wave-1 follow family): the follow mod's User+*follow :errors
+ *  view's super() arm dispatches THIS body (user/follow.rb:76-78) - the
+ *  chain's all-set definition the type_plus_right registration shadows. */
+export const errorsView: ViewFn = () => "Problem:\n\n";
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :label, :closed_content, :raw_one_line_content

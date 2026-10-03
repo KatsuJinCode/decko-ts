@@ -172,15 +172,21 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     // Measured on this tree (job-1790896607499, this suite's census dump):
     // base=5 email_html=2 email_text=3 html=312 js=2 json=3. No css, no
     // scss, no rss, no csv/text/xml/yaml rows exist. A NEW key (or a
-    // css/scss row) fails here and names itself.
+    // css/scss row) fails here and names itself. base 5 -> 7 and html
+    // 312 -> 324: the style family's ten html-keyed registrations +
+    // abstract/style_group row landed at its own commit (8b56256) without
+    // this re-bump (html +10, base-keyed 0), and wave-1's follow family
+    // added the two base-keyed all/notify/base_views rows (:subedit_notice
+    // + :follower) and the two html-keyed set views (:rule_editor,
+    // :errors) - html +12, base +2 total.
     const entries = censusEntries();
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
     expect([...counts.entries()].sort()).toEqual([
-      ["base", 5],
+      ["base", 7],
       ["email_html", 2],
       ["email_text", 3],
-      ["html", 312],
+      ["html", 324],
       ["js", 2],
       ["json", 3],
     ]);
@@ -215,17 +221,24 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: the base-kind base-keyed row is exactly follow's last_action_verb", () => {
+  it("composed-deck census: the base-kind base-keyed rows are exactly follow's three notify views", () => {
     // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
-    // both-ways-green row.
+    // both-ways-green rows. Wave-1's follow family added :subedit_notice
+    // + :follower to the same base-keyed all/notify/base_views module
+    // (all/notify/base_views.rb's bare `format do` block).
     const entries = censusEntries();
     expect(
       entries
         .filter((e) => e.kind === "base" && e.formatKey === "base")
-        .map((e) => `${e.mod} ${e.setPath} :${e.view}`),
-    ).toEqual(["follow all/notify/base_views :last_action_verb"]);
+        .map((e) => `${e.mod} ${e.setPath} :${e.view}`)
+        .sort(),
+    ).toEqual([
+      "follow all/notify/base_views :follower",
+      "follow all/notify/base_views :last_action_verb",
+      "follow all/notify/base_views :subedit_notice",
+    ]);
   });
 });
 

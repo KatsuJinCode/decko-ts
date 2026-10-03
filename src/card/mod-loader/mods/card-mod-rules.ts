@@ -170,6 +170,15 @@ function isRuleCard(ctx: ViewContext): boolean {
   const card = ctx.fmt.card;
   if (ctx.fmt.engine.cardIsRule?.(card) ?? false) return true;
   if (card.unknown === true || !card.name.isCompound) return false;
+  // The RULE pattern verdict the set-keys carry (safe_set_keys' bare RULE
+  // key - set_pattern/06_rule.rb pattern_applies? -> card.rule?; render.ts
+  // computeIsRule for stored cards - wave-2 71c46c5's preference? port -
+  // and the isRule construction input for NEW cards). Wave-1 follow
+  // family: the follow mod's rule_editor dispatches rule_form at the
+  // in-memory/new preference cards (following.rb:32-38) whose 4-part
+  // names the parts.length!==3 / left-typeCode checks below cannot see;
+  // the RULE token IS the pattern verdict those arms ride.
+  if (card.setKeys.split(/\s+/).includes("RULE")) return true;
   const rightKey = card.name.rightName?.key;
   const leftKey = card.name.leftName?.key;
   if (rightKey === undefined || leftKey === undefined) return false;
@@ -1921,12 +1930,28 @@ function knownCardLink(target: string | undefined, urlKey: string, content: stri
  *  TS port threads them as parameters (the format-ivar state has no TS
  *  twin), with the view opts carrying the caller's form_type/success_view
  *  (current_rule_form's :41-44 subformat dispatch passes them through
- *  renderView opts). */
+ *  renderView opts).
+ *  Wave-1 follow family: the mark reads the caller's RULE CONTEXT
+ *  (rule_form.rb:48 @rule_context = rule_context — the follow mod's
+ *  rule_editor dispatches subformat(follow_context).rule_form(:open,
+ *  rule_context, :modal) where follow_context can be the applied-OPTION
+ *  card while @rule_context stays the preference_name card; edit_rule_
+ *  success reads @rule_context.name.url_key). The opt carries the rule
+ *  context NAME; absent (every direct/current_rule_form dispatch — where
+ *  @rule_context IS the format's own card) the mark stays this card's. */
 function editRuleSuccessHash(ctx: ViewContext): { mark: string; view: string } {
   const successView = typeof ctx.voo.opts["success_view"] === "string"
     ? String(ctx.voo.opts["success_view"])
     : "open";
-  return { mark: ctx.fmt.urlKey(), view: successView };
+  const ruleContext = typeof ctx.voo.opts["rule_context"] === "string"
+    ? String(ctx.voo.opts["rule_context"])
+    : undefined;
+  return {
+    mark: ruleContext !== undefined
+      ? DeckoName.parse(ruleContext).urlKey
+      : ctx.fmt.urlKey(),
+    view: successView,
+  };
 }
 
 /** rule_form.haml (set/rule/rule_form/rule_form.haml) - the two guide-line

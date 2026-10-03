@@ -1,6 +1,6 @@
 # Public mod registry — the porting-harness progress tracker
 
-Generated 2026-10-03T15:25:53.467Z by tools/mod-porting-harness/mod-harness.mjs registry
+Generated 2026-10-03T18:12:56.933Z by tools/mod-porting-harness/mod-harness.mjs registry
 
 Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).
 
@@ -8,7 +8,7 @@ Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only e
 
 **Honest gap note:** the mod-level ported status does not mask behavior gaps — 6 ported mod(s) still carry 23 missing view(s) per the re-measurement (card-mod-account: 6, card-mod-follow: 4, card-mod-format: 2, card-mod-history: 1, card-mod-style: 4, card-mod-tinymce_editor: 6). Those behaviors are unported INSIDE ported mods; their rows show them in the re-measure column until their harness scorecards land.
 
-**Harness coverage of the registry:** 7 of 35 rows carry a harness scorecard; the other 28 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
+**Harness coverage of the registry:** 8 of 35 rows carry a harness scorecard; the other 27 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
 
 Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views.
 
@@ -30,7 +30,7 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 | `card-mod-delayed_job` | ported | 0 | not harness-validated yet | legacy-labeled per upstream (#1282): ignored (legacy-labeled per upstream maintainer guidance); nothing to port |
 | `card-mod-edit` | ported | 0 | not harness-validated yet | 41 mod-specific view(s) ported: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
 | `card-mod-email` | ported | 0 | not harness-validated yet | 2 mod-specific view(s) ported: compact_missing, email_page |
-| `card-mod-follow` | ported | 4 | not harness-validated yet | 11 mod-specific view(s) ported: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ... |
+| `card-mod-follow` | ported | 4 | 4/96 validated | harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/report |
 | `card-mod-format` | ported | 2 | 1/168 validated | harness scorecard, 0 RED: 1/168 harness-oracle-validated, 137 pinned by the mod's standing suite, 30 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/repo |
 | `card-mod-help` | ported | 0 | not harness-validated yet | 5 mod-specific view(s) ported: guide, help, help_text, lead, popover |
 | `card-mod-history` | ported | 1 | 1/26 validated | harness scorecard, 0 RED: 1/26 harness-oracle-validated, 21 pinned by the mod's standing suite, 4 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports |
