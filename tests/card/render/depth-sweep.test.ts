@@ -142,13 +142,38 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // (job-1790792062952-890df2dd). Round trips are UNTOUCHED — the batch
     // rides the existing prelude round trip. Same re-pin the email port
     // itself applied to junction-depth-closure.test.ts (13/12 -> 15/14).
-    const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
     // 2026-10-02 rule-defaults lane re-pin (12 -> 13 base): the template
     // TYPE-NAME read (templateTypeNameStatement — newCardDefaultType's
     // dup_structure leg must resolve a *structure rule card's type NAME
     // synchronously) rides the SAME prelude batch — +1 statement at every
     // depth, round trips untouched (the p20-email 10 -> 12 re-pin shape).
-    const expectedSts = (depth: number): number => 13 + Math.max(0, depth - 1);
+    // Structural shape (2026-10-03 net-reds-fixforward re-pin, after the
+    // lane's W4 fold): round trips = 4 + max(0, depth-1) and statements =
+    // 18 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
+    // batch per unfetched inclusion level, Ruby's nesting truth is depth+3,
+    // so the TS curve is 3 BELOW Ruby at depth 1 and 4 below at depth 5+).
+    // The two wave round trips above the old base are the db-roundtrip
+    // lane's enumerated justification classes, measured on the depth-1
+    // fixture (RT1 root key row, RT2 prelude batch, RT3 wave round 1 [the
+    // W2b type-card prime folded in as the batch preamble - the net-reds-
+    // fixforward W4 fold that removed the waves' third extra round trip],
+    // RT4 wave round 2 [depth-3 junction candidates whose sides round 1
+    // seated - "a junction's ids are the previous round's ANSWERS", the
+    // receipt's justification class 3; genuinely sequential, not fusion
+    // gap]). Ruby derivation: the wave asks the rule-candidate names of the
+    // view-time settings (*content options, *help, *structure, *default)
+    // that Ruby resolves per lookup through Set#rule/rule_card (rule/all.rb)
+    // plus the prepared records' type cards (Card#type_card, type.rb:32-35)
+    // - batched here, point-by-point in Ruby's cache. The +6 statements =
+    // type-prime IN-list (1) + wave round 1 (key IN-list 5 + side-key
+    // junction join 1) + wave round 2 (key IN-list 2 + junction join 1);
+    // the misses prime negative lexicon entries so the view-time ladders
+    // answer from cache exactly as Ruby's cache-negative misses do.
+    // Prior shape history: 2 + max(0, depth-1) RTs / 12 statements at the
+    // 2026-09-27 cold-query lane (the waves took depth 1 to 5/17; the fold
+    // brought 5 -> 4).
+    const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 18 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

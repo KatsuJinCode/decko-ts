@@ -2438,14 +2438,60 @@ export class RenderEngine implements RenderEngineLike {
     if (typeIds.size > 0) {
       for (const id of typeIds) this.typeCardsPrimed.add(id);
       const ids = [...typeIds];
+      const typeStatements: SQLStatement[] = [];
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         const placeholders = chunk.map(() => "?").join(", ");
-        const result = await this.fetcher.driver.query<CardsRow>(
-          `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
-          chunk,
+        typeStatements.push({
+          sql: `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+          params: chunk,
+        });
+      }
+      // W4 batch fusion (net-reds-fixforward lane): the type prime no longer
+      // spends its own round trip before the candidate seat. When the seat
+      // will run, the statements ride seatNamesByWave's FIRST batch as its
+      // preamble - one round trip carries the priming rows AND the wave's
+      // own asks, and the preamble rows seat before the wave rows so the
+      // seated cards' enrichAndStore type reads hit the fresh cache. The
+      // priming population nuance: the type cards themselves seat with the
+      // wave now, so THIS render's candidate collection (memory over the
+      // prepared map) runs without them - their rule candidates prime on a
+      // later render's population instead. Answers are untouched (priming
+      // only fills the cache; the findRule ladder computes the same verdicts
+      // either way - the byte oracles are the proof).
+      const candidateSettings = ["*content options", "*help", "*structure", "*default"];
+      let seatCandidates = true;
+      if (rootKey !== undefined && rootKey !== "") {
+        // warm re-render of this page: nothing to seat; the type prime (the
+        // documented late-seat warm exception) runs standalone below.
+        if (this.ruleCandidatesPrimedFor.has(rootKey)) seatCandidates = false;
+        else this.ruleCandidatesPrimedFor.add(rootKey);
+      }
+      const names = new Set<string>();
+      if (seatCandidates) {
+        for (const card of this.renderCards.values()) {
+          if (card.record.isNew) continue;
+          for (const setting of candidateSettings) {
+            let candidates: string[];
+            try {
+              candidates = ruleNamesForCard(this.structurePatternInputForSync(card), setting);
+            } catch (err) {
+              if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+                continue;
+              }
+              throw err;
+            }
+            for (const candidate of candidates) names.add(candidate);
+          }
+        }
+      }
+      if (seatCandidates && names.size > 0) {
+        await this.seatNamesByWave([...names], typeStatements);
+      } else {
+        const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
+          (result) => (result.rows as CardsRow[]) ?? [],
         );
-        for (const row of result.rows as CardsRow[]) {
+        for (const row of rows as CardsRow[]) {
           const record = await composeCardRecord(row, this.fetcher.lexicon);
           if (record.name === undefined || record.id === undefined) continue;
           if (row.name !== null && row.name !== undefined) {
@@ -2455,28 +2501,6 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
-    const candidateSettings = ["*content options", "*help", "*structure", "*default"];
-    if (rootKey !== undefined && rootKey !== "") {
-      if (this.ruleCandidatesPrimedFor.has(rootKey)) return; // warm re-render of this page: nothing to ask
-      this.ruleCandidatesPrimedFor.add(rootKey);
-    }
-    const names = new Set<string>();
-    for (const card of this.renderCards.values()) {
-      if (card.record.isNew) continue;
-      for (const setting of candidateSettings) {
-        let candidates: string[];
-        try {
-          candidates = ruleNamesForCard(this.structurePatternInputForSync(card), setting);
-        } catch (err) {
-          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
-            continue;
-          }
-          throw err;
-        }
-        for (const candidate of candidates) names.add(candidate);
-      }
-    }
-    if (names.size > 0) await this.seatNamesByWave([...names]);
   }
 
   /**
@@ -2504,7 +2528,10 @@ export class RenderEngine implements RenderEngineLike {
    *
    * Returns whether any name seated (the caller's enrichedAny signal).
    */
-  private async seatNamesByWave(names: string[]): Promise<boolean> {
+  private async seatNamesByWave(
+    names: string[],
+    preambleStatements?: SQLStatement[],
+  ): Promise<boolean> {
     if (names.length === 0) return false;
     const knownId = (key: string): number | undefined => {
       const card = this.renderCards.get(key);
@@ -2549,6 +2576,16 @@ export class RenderEngine implements RenderEngineLike {
     const callAskedPairs = new Set<string>();
     const callAnsweredSimple = new Set<string>();
     const callAnsweredPairs = new Set<string>();
+    // W4 batch fusion (net-reds-fixforward lane): a caller's preamble
+    // statements (the W2b type-card prime) ride the FIRST round's batch -
+    // one round trip carries the priming rows and the wave's own asks. The
+    // preamble rows flow through the same compose/write/seat pipeline as the
+    // round's rows; they are ordinary cards, not wave asks, so they never
+    // enter the ask sets and the negative priming below is untouched. If the
+    // wave finishes without ever batching (every pending name already
+    // seated), the preamble runs as its own batch after the loop - the
+    // priming is never lost.
+    let preamble = preambleStatements ?? [];
     let seatedAny = false;
     for (let round = 0; round < MAX_WAVE_ROUNDS && pending.size > 0; round++) {
       const simpleKeys: string[] = [];
@@ -2623,6 +2660,13 @@ export class RenderEngine implements RenderEngineLike {
         continue;
       }
       const statements: SQLStatement[] = [];
+      if (preamble.length > 0) {
+        // The preamble rows return FIRST in the batch results and seat
+        // before the wave rows (the flatMap below preserves statement
+        // order) - exactly the order the priming needs.
+        statements.push(...preamble);
+        preamble = [];
+      }
       if (simpleKeys.length > 0) {
         for (let i = 0; i < simpleKeys.length; i += 90) {
           const chunk = simpleKeys.slice(i, i + 90);
@@ -2743,6 +2787,22 @@ export class RenderEngine implements RenderEngineLike {
         if (!askedPairs.has(pairKey) && !this.renderCards.has(retry.key)) {
           pending.add(pair.raw);
         }
+      }
+    }
+    if (preamble.length > 0) {
+      // The wave never reached a batch (all candidate names already seated
+      // or asked): the priming still runs, one batch.
+      const rows = (await this.fetcher.driver.batch(preamble)).flatMap(
+        (result) => (result.rows as CardsRow[]) ?? [],
+      );
+      for (const row of rows as CardsRow[]) {
+        const record = await composeCardRecord(row, this.fetcher.lexicon);
+        if (record.name === undefined || record.id === undefined) continue;
+        if (row.name !== null && row.name !== undefined) {
+          this.fetcher.lexicon.write(record.id, record.name, row.name);
+        }
+        await this.cacheFetchedRecord(record);
+        seatedAny = true;
       }
     }
     return seatedAny;

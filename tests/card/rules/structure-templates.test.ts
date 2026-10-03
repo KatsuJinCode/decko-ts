@@ -291,8 +291,46 @@ describe("RenderEngine structured content", () => {
       // IN-list would need the universe rows first, so the name read is a
       // self-contained JOIN pushed with the universes. Zero render-byte
       // change (this deck's other tests pass unchanged).
-      expect(cold.statements).toBe(17);
-      expect(cold.roundTrips).toBe(6);
+      //
+      // 2026-10-03 net-reds-fixforward re-pin (16 -> 24 statements, 6 -> 10
+      // round trips), per-statement Ruby derivation (the waves' batched
+      // priming answers the SAME questions Ruby resolves per-card through
+      // Card::Cache - the byte oracles prove the answers; only the request
+      // batching differs):
+      //  +1  templateTypeNameStatement rides the prelude batch (the deploy
+      //      port of the rule-defaults lane's 53cc57d: type_id_from_template
+      //      reads the template rule card's own type_id AND its NAME -
+      //      templating.rb:25-27 + type.rb:78-80; the restored-side commit
+      //      re-pinned its own pins with this justification, the deploy-side
+      //      cherry-pick dropped the pin bump). +0 round trips.
+      //  +1  W2b type-card prime (one chunked IN-list over every prepared
+      //      record's typeId - Ruby's Card#type_card quick_fetch(type_id)
+      //      per prepared card, type.rb:32-35) folded INTO the first wave
+      //      batch by the net-reds-fixforward W4 fold (was its own round
+      //      trip at the waves tip; measured 11 RT there).
+      //  +2  wave seating round 1 (the rule candidates of the view-time
+      //      settings - resolveOptionsCard's *content options,
+      //      setHostOptionsParseFailure's *help/*structure/*default; Ruby's
+      //      Set#rule/rule_card fetches walk the same candidate names,
+      //      rule/all.rb - as chunked key IN-list + the depth-2 side-key
+      //      junction join).
+      //  +1  wave round 1's composition type fetch (a seated row's type
+      //      card - enrichAndStore's retrieveFromCacheById miss; the same
+      //      ladder-residue class the root composition has always paid).
+      //  +2  wave seating round 2 (depth-3 junction candidates whose sides
+      //      round 1 seated - "a junction's ids are the previous round's
+      //      ANSWERS", the receipt's justification class 3).
+      //  +1  wave round 2's composition type fetch (same class as above).
+      //  -1  REMOVED: the pre-waves rule-candidate PAIR point query
+      //      (SELECT .. left_id=? AND right_id=? - Ruby's rule_card fetch
+      //      by composed name): the wave seats (or negatively primes) the
+      //      candidates, so the findRule ladder answers from cache.
+      //  Net statements 16 + 8 = 24 (8 additions - 1 removal + the port's
+      //  +1 counted above); net round trips 6 - 1 (removed pair point) + 4
+      //  (wave rounds 1+2 and their two composition type fetches) = 10; the
+      //  warm re-render stays 0 (ask memory + ruleCandidatesPrimedFor).
+      expect(cold.statements).toBe(24);
+      expect(cold.roundTrips).toBe(10);
       // Warm re-render: the structured pass is pure memory.
       fresh.counting.reset();
       await fresh.engine.render("Doc1", "title");
