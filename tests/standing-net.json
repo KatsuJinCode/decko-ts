@@ -18,7 +18,8 @@
    "Collision-order pins (tests/card/mod-loader/view-dispatch-same-pattern-collision-order.test.ts), added 2026-10-01: four suites, kept byte-identical so the before/after comparison is like-for-like. Verified at the fold tip: 99 passed / 1 expected fail",
    "Anchored-arm format-scope census (tests/card/mod-loader/view-dispatch-anchored-cross-format-collision-census.test.ts), added 2026-10-01 so the net guards the zero-collision adjudication",
    "Flat-table format-scope census (tests/card/mod-loader/view-dispatch-flat-record-format-scope-census.test.ts), added 2026-10-01 so the net guards the flat-record format filter",
-   "Select-editor suite (tests/card/mod-loader/card-mod-list-select-editor.test.ts), added 2026-10-02 so the net guards the editor port; its bytes are derived from the ActionView gems"
+   "Select-editor suite (tests/card/mod-loader/card-mod-list-select-editor.test.ts), added 2026-10-02 so the net guards the editor port; its bytes are derived from the ActionView gems",
+   "Surface-scoped decko.rootUrl pin (tests/card/render/deck-origin-surface-scoped-root-url.test.ts), added 2026-10-02: head_javascript.rb:35 card_url(\"\") is Env.origin + card_path(\"\") and Env.origin is per-render (env/serializable.rb:20-22), so the view lane carries / and the page lane carries the capture deck_origin. page.ts#scriptVariablesTag interpolated the DECK_ORIGIN constant; the bare-view-lane seat (render.ts:1385) reaches the same builder and emitted the page-surface bytes on cards 34754/34758 (+24). Listed so the net guards the surface split in both directions."
   ],
   "droppedDeadFilters": [
    "tests/card/mod/card-mod-search-list-oracle-pinned.test.ts",
@@ -108,7 +109,8 @@
   "tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts",
   "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts",
   "tests/card/render/pointer-list-input-type-rule-item-name-view.test.ts",
-  "tests/deploy/deploy-origin-deck-inflection-boot.test.ts"
+  "tests/deploy/deploy-origin-deck-inflection-boot.test.ts",
+  "tests/card/render/deck-origin-surface-scoped-root-url.test.ts"
  ],
- "manifestFileCount": 79
+ "manifestFileCount": 80
 }

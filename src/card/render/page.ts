@@ -57,7 +57,6 @@ import {
   type HeadReadSet,
 } from "./head-views.js";
 import type { RenderEngine } from "../render.js";
-import { DECK_ORIGIN } from "./deck-origin.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
 // production-equivalent setting 4; Env.origin with no request) now lives in
@@ -764,9 +763,27 @@ async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   // chrome session (engine.pageSession) carries it; undefined = signed out
   // (the anonymous corpus surface's false, byte-identical).
   const signedIn = engine.pageSession?.signedIn === true;
+  // decko.rootUrl is card_url("") (mod/script/set/all/head_javascript.rb:35)
+  // = Env.origin + card_path("") (card/lib/card/env/location.rb:19-21 + :6-16,
+  // card_path "" -> relative_url_root + "/"). Env.origin is PER RENDER
+  // (card/lib/card/env/serializable.rb:20-22: Cardio.config.deck_origin ||
+  // "#{protocol}#{request&.host_with_port}"), and this builder is reached on
+  // BOTH surfaces since the bare-view-lane fix (render.ts:1385 seats this
+  // same headContent for an unseated root whose content nests the head
+  // card's :core). The page lane runs it under runWithPageConfig
+  // (renderPageBytes, page.ts:130-142) with the capture's
+  // deck_origin = "https://culturesmith.com" (capture-dual-lane-page-and-view
+  // .rb:343); the VIEW lane runs it with the railtie default
+  // (card/lib/cardio/railtie.rb:28 config.deck_origin = nil) and no
+  // controller (card/lib/card/env.rb:17), so origin is "" and card_url("")
+  // is the bare "/". engine.envOriginConfig() is that per-surface value
+  // (render.ts:1770-1772, render/deck-origin.ts:73-75) — reading it here
+  // is what the constant could not do. Oracle: 6588/6588 page rows carry
+  // 'https://culturesmith.com/', cards 34754 / 34758 views carry '/'.
+  const rootUrl = `${engine.envOriginConfig()}/`;
   return (
     `<script>\n//<![CDATA[\n` +
-    `decko.rootUrl='${DECK_ORIGIN}/';\n` +
+    `decko.rootUrl='${rootUrl}';\n` +
     `decko.doubleClick='signed_in';\n` +
     `decko.cssPath='${cssPath}';\n` +
     `decko.signed_in=${signedIn};\n` +
