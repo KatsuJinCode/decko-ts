@@ -6490,6 +6490,53 @@ export class RenderEngine implements RenderEngineLike {
         const refCard = this.renderCards.get(refKey);
         if (refCard !== undefined && !visited.has(refKey)) queue.push(refCard.record);
       }
+      // RELATIVE references resolve contextually here too (the referencing
+      // card is the resolution context - the same semantics the sync nest
+      // dispatch and prepareNestClosureSearches use). cardReferenceKeys
+      // skips them, which is exactly the view-lane gap this loop closes:
+      // children's content `<p>{{_self+*referred_to_by}}</p>` carries a
+      // RELATIVE reference to its search card, so the search never joined
+      // the walk, never pre-executed, and the dispatched card_list read
+      // searchResults.get(key) ?? [] - the search-no-results bytes on the
+      // graded children:open entry (probe-green3: -6186) where live renders
+      // the two referer bars (corpus 30315 + 31591). Ruby has no such gap
+      // to close: set/abstract/0_search/views.rb view :card_list calls
+      // search_with_params INSIDE the view dispatch (see the
+      // prepareNestClosureSearches doc's Ruby-parity note), so every
+      // readable search the render will read executes before the bytes
+      // complete - on every lane, not just the page lane.
+      for (const ref of referencedNames(card.dbContent)) {
+        if (!ref.relative) continue;
+        const pipe = ref.name.indexOf("|");
+        const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
+        let resolvedName: string;
+        try {
+          resolvedName = DeckoName.parse(base).absolute(card.name);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+          throw err;
+        }
+        if (resolvedName === undefined || resolvedName === "") continue;
+        const refKey = DeckoName.parse(resolvedName).key;
+        let refCard = this.renderCards.get(refKey);
+        if (refCard === undefined) {
+          // The contextually-resolved reference never joined the prepared
+          // map - the VIRTUAL-card class: children+*referred_to_by is a
+          // composed search card (the *referred to by codename's default
+          // CQL), which no prefetch closure fetches because the only
+          // reference to it was the relative one every earlier walk
+          // skipped. Prepare it exactly like the sync nest dispatch would
+          // (fetchByName resolves the virtual composition; enrichAndStore
+          // joins the map), then walk it. The RESOLVED NAME goes in - not
+          // the key: fetchByName(key) on a null-name junction row composes
+          // from parts and can land a wrong-cased record in the prepared
+          // map ahead of the nest dispatch's own correctly-cased fetch
+          // (the Anyone Signed In Anonymous+*created bar regressed to
+          // data-card-name "anonymous+*created" on exactly that).
+          refCard = await this.prepareItemForRender(resolvedName);
+        }
+        if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard.record);
+      }
       // Skip cards that the permission engine has already denied — Ruby
       // short-circuits the denied branches before the Search card's
       // JSON.parse fires (corpus:34 captured as the denial span, not a
