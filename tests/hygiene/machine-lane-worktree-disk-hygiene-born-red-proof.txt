@@ -1,0 +1,99 @@
+
+ RUN  v5.0.1 C:/localProjects/decko-ts-lane-hygiene-gate
+
+ ❯ tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts (1 test | 1 failed) 1232ms
+   ❯ machine lane worktree disk hygiene (operator law: cleanup that doesn't manage itself is illegal) (1)
+     × every lane worktree is tracked-or-kept, disallowed floor under 1 GB, at most 15 lane worktrees on disk 1231ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts > machine lane worktree disk hygiene (operator law: cleanup that doesn't manage itself is illegal) > every lane worktree is tracked-or-kept, disallowed floor under 1 GB, at most 15 lane worktrees on disk
+Error: MACHINE LANE WORKTREE DISK HYGIENE GATE: 48 violation(s). The failure message IS the remediation — run exactly these commands (no pruning may rely on any agent's memory or discipline):
+  20 lane worktree(s) on disk are neither tracked in IN-FLIGHT.json nor in tests/hygiene/keep-worktrees.json:
+    - brandonDojoTech-lane-progressreport  (depth-2 size floor: 9.6 MB)
+    - decko-ts-lane-bunnyengine  (depth-2 size floor: 42.6 MB)
+    - decko-ts-lane-cold-render  (depth-2 size floor: 28.1 MB)
+    - decko-ts-lane-denialfix  (depth-2 size floor: 256.0 MB)
+    - decko-ts-lane-denialfix-basecheck  (depth-2 size floor: 48.8 MB)
+    - decko-ts-lane-deploygaps  (depth-2 size floor: 41.7 MB)
+    - decko-ts-lane-final-dataset  (depth-2 size floor: 270.9 MB)
+    - decko-ts-lane-jargon2  (depth-2 size floor: 41.6 MB)
+    - decko-ts-lane-jargon3  (depth-2 size floor: 42.2 MB)
+    - decko-ts-lane-jargon4  (depth-2 size floor: 49.1 MB)
+    - decko-ts-lane-miniflare  (depth-2 size floor: 62.7 MB)
+    - decko-ts-lane-negdelta  (depth-2 size floor: 283.6 MB)
+    - decko-ts-lane-one-key-fixsrc  (depth-2 size floor: 0 KB)
+    - decko-ts-lane-postfix-canvas  (depth-2 size floor: 1.00 GB)
+    - decko-ts-lane-pub-generic  (depth-2 size floor: 36.6 MB)
+    - decko-ts-lane-restore-w2-format-2026-10-03  (depth-2 size floor: 277.9 MB)
+    - decko-ts-lane-staletest  (depth-2 size floor: 41.6 MB)
+    - decko-ts-lane-staletest-basecheck  (depth-2 size floor: 0 KB)
+    - decko-ts-lane-viewfix  (depth-2 size floor: 41.6 MB)
+    - decko-ts-lane-w3-w3-recapture-generation  (depth-2 size floor: 63.7 MB)
+  disallowed lane worktree size floor is 2.60 GB, over the 1.00 GB budget (floor is a LOWER BOUND — true disallowed mass is at least this)
+  25 lane worktrees on disk, over the population cap of 15 (allowlists do not exempt a fleet from this cap):
+    - brandonDojoTech-lane-progressreport
+    - decko-ts-lane-bunnyengine
+    - decko-ts-lane-cold-render
+    - decko-ts-lane-dbroundtrip-deploy
+    - decko-ts-lane-denialfix
+    - decko-ts-lane-denialfix-basecheck
+    - decko-ts-lane-deploygaps
+    - decko-ts-lane-final-dataset
+    - decko-ts-lane-gherkin-port-wave
+    - decko-ts-lane-hygiene-gate
+    - decko-ts-lane-jargon2
+    - decko-ts-lane-jargon3
+    - decko-ts-lane-jargon4
+    - decko-ts-lane-miniflare
+    - decko-ts-lane-mod-completion
+    - decko-ts-lane-negdelta
+    - decko-ts-lane-one-key-fixsrc
+    - decko-ts-lane-one-trip
+    - decko-ts-lane-postfix-canvas
+    - decko-ts-lane-pub-generic
+    - decko-ts-lane-restore-w2-format-2026-10-03
+    - decko-ts-lane-staletest
+    - decko-ts-lane-staletest-basecheck
+    - decko-ts-lane-viewfix
+    - decko-ts-lane-w3-w3-recapture-generation
+
+REMEDIATION COMMANDS:
+  git -C C:/localProjects/brandonDojoTech worktree remove "C:/localProjects/brandonDojoTech-lane-progressreport"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-bunnyengine"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-cold-render"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-denialfix"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-denialfix-basecheck"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-deploygaps"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-final-dataset"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-jargon2"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-jargon3"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-jargon4"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-miniflare"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-negdelta"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-one-key-fixsrc"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-postfix-canvas"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-pub-generic"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-restore-w2-format-2026-10-03"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-staletest"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-staletest-basecheck"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-viewfix"
+  git -C C:/localProjects/decko-ts-restored worktree remove "C:/localProjects/decko-ts-lane-w3-w3-recapture-generation"
+  # a dirty worktree refuses `git worktree remove` until its WIP is committed or its owning lane signs off;
+  # a path already gone by the time you run it is closed by the repo-scoped prune below
+ ❯ tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts:329:15
+    327|             ? "\n\nREMEDIATION COMMANDS:\n  " + remediation.join("\n  …
+    328|             : "";
+    329|         throw new Error(header + fix);
+       |               ^
+    330|       }
+    331|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  12:50:33
+   Duration  1.40s (tests 97%, transform 2%, import 1%)
+

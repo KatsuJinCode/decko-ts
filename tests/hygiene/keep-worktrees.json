@@ -1,0 +1,10 @@
+[
+  {
+    "path": "C:/localProjects/decko-ts-lane-dbroundtrip-deploy",
+    "reason": "live-release rollback anchor: lineage of published release 1128005 (db-roundtrip W4 + hops gate deploy stack rebuilt on signin tip 4d7b008 + cherry-picks) - removal orphans the live rollback path"
+  },
+  {
+    "path": "C:/localProjects/decko-ts-lane-hygiene-gate",
+    "reason": "this gate's own lane worktree (branch lane-worktree-hygiene-gate-2026-10-03): the standing-net member runs from here, and a lane must not fail its own net run"
+  }
+]
