@@ -1879,7 +1879,40 @@ export class RenderFormat {
     // TYPE_PLUS_RIGHT-rich_text-aikido, and
     // WilliamsCraig+Vacations+Oregon+20180623_0728 reads
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
-    return "RichText";
+    //
+    // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
+    // BRANCH (W2 restore lane, 2026-10-03). class_methods.rb:59-71:
+    //
+    //     def quick_type name
+    //       if name.present?
+    //         card = Card.fetch name, skip_modules: true, new: {}
+    //         card.include_set_modules if card.new? && name.to_name.compound?
+    //         card&.type_name
+    //       else
+    //         "RichText"
+    //       end
+    //     end
+    //
+    // The literal "RichText" fires ONLY when the name is BLANK. A PRESENT
+    // name that fetches to nothing still builds `Card.fetch name, new: {}`
+    // — a NEW card whose type comes from the *default template chain
+    // (type_id_from_template) — which for this deck's simple-name universe
+    // is the *all+*default template card (corpus 22281) typed BasicCs.
+    // The unconditional "RichText" return skipped that arm and keyed every
+    // absent-left junction's TYPE_PLUS_RIGHT anchor off the WRONG type:
+    // the password reset / verification email surfaces nest
+    // "Decko Bot+*account" (Decko Bot absent from the corpus), and the
+    // capture's mini_bar slot chain reads TYPE_PLUS_RIGHT-basic_c-Xaccount
+    // — basic_c = BasicCs.underscore.singularize — while the port emitted
+    // TYPE_PLUS_RIGHT-rich_text-Xaccount (8 email entries, view+page).
+    // The compound-left pins above hold through this arm: quick_type on a
+    // compound left ("Soma+tic") resolves the junction *default chain the
+    // same way and lands on rich_text there. Engines without the
+    // newCardDefaultType hook keep the pre-W2 shape (the "RichText"
+    // literal), matching this method's other optional hooks.
+    const quickType =
+      this.engine.newCardDefaultType?.(leftName) ?? undefined;
+    return quickType !== undefined ? quickType.typeName : "RichText";
   }
 
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
