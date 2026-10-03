@@ -1,21 +1,22 @@
 {
   "mod": "card-mod-account",
   "gem": "card-mod-account-0.20.0",
-  "generatedAt": "2026-10-03T18:39:16.101Z",
+  "generatedAt": "2026-10-03T21:43:10.340Z",
   "totals": {
     "behaviors": 99,
-    "validated": 4,
-    "standingNet": 41,
-    "namedRemainder": 54,
+    "validated": 6,
+    "standingNet": 40,
+    "namedRemainder": 53,
     "red": 0,
     "uncaptured": 0
   },
   "probeSuite": {
     "files": [
+      "tests/card/mod-loader/card-mod-account-harness-probe.test.ts",
       "tests/card/mod-loader/card-mod-account.test.ts"
     ],
     "ran": true,
-    "detail": "12 passed / 0 failed",
+    "detail": "23 passed / 0 failed",
     "failures": []
   },
   "behaviors": [
@@ -564,10 +565,10 @@
       "kind": "view",
       "source": "card-mod-account-0.20.0/set/type/signup/views.rb:11",
       "registration": "yes",
-      "captured": null,
-      "state": "registered-standing-net",
+      "captured": "static-ruby",
+      "state": "green",
       "remainderReason": null,
-      "evidence": "view \"content_formgroups\" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-edit.ts) - the surface mod's override dispatches through the mod chain"
+      "evidence": "card-mod-account.ts registers view \"content_formgroups\""
     },
     {
       "behaviorId": "view:new_buttons",
@@ -593,11 +594,11 @@
       "behaviorId": "view:setup",
       "kind": "view",
       "source": "card-mod-account-0.20.0/set/type/user.rb:10",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "double-gated: the needs_setup? deck-census predicate has no prepared-verdict seam in the sync view gate, and the body's account_formgroups recursion needs the structure-form machinery named under content_formgroups; the census + create machinery is src/card/auth/first-run-setup.ts",
-      "evidence": "no view \"setup\" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table"
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-account.ts registers view \"setup\""
     },
     {
       "behaviorId": "event:check_setup",

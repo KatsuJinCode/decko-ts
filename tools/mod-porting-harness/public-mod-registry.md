@@ -1,6 +1,6 @@
 # Public mod registry — the porting-harness progress tracker
 
-Generated 2026-10-03T19:05:03.829Z by tools/mod-porting-harness/mod-harness.mjs registry
+Generated 2026-10-03T21:43:56.326Z by tools/mod-porting-harness/mod-harness.mjs registry
 
 Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).
 
@@ -15,7 +15,7 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 | mod | status | re-measure missing views | harness scorecard | evidence |
 |-----|--------|-------------------------:|-------------------|----------|
 | `card (core mod, card-1.110.0 mod/core)` | ported | - | see the engine suites | the decko-ts engine IS the core port (src/card/*); not a card-mod-* gem |
-| `card-mod-account` | ported | 6 | 4/99 validated | harness scorecard, 0 RED: 4/99 harness-oracle-validated, 41 pinned by the mod's standing suite, 54 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/report |
+| `card-mod-account` | ported | 6 | 6/99 validated | harness scorecard, 0 RED: 6/99 harness-oracle-validated, 40 pinned by the mod's standing suite, 53 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/report |
 | `card-mod-ace_editor` | ported | 0 | 0/4 validated | harness scorecard, 0 RED: 0/4 harness-oracle-validated, 4 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-ace_editor/scorecard.md) |
 | `card-mod-api_key` | ported | 0 | not harness-validated yet | 6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link |
 | `card-mod-assets` | ported | 0 | not harness-validated yet | 2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag |
@@ -46,7 +46,7 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 | `card-mod-session` | ported | 0 | not harness-validated yet | manifest + byte-pinned test (5 pins across 7 it()):  |
 | `card-mod-style` | ported | 4 | 5/34 validated | harness scorecard, 0 RED: 5/34 harness-oracle-validated, 21 pinned by the mod's standing suite, 8 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports |
 | `card-mod-tabs` | ported | 0 | not harness-validated yet | 4 mod-specific view(s) ported: pills, pills_static, tabs, tabs_static |
-| `card-mod-tinymce_editor` | ported | 6 | 1/16 validated | harness scorecard, 0 RED: 1/16 harness-oracle-validated, 9 pinned by the mod's standing suite, 6 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/ |
+| `card-mod-tinymce_editor` | ported | 6 | 7/16 validated | harness scorecard, 0 RED: 7/16 harness-oracle-validated, 9 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-tinymce_editor/scorecard.md) |
 | `card-mod-virtual` | ported | 0 | not harness-validated yet | manifest + byte-pinned test (16 pins across 33 it()):  |
 | `card-mod-marketplace` | ported | - | not harness-validated yet | TS-only mod (no Ruby gem — no Ruby-declared surface; decko-ts marketplace mod) |
 

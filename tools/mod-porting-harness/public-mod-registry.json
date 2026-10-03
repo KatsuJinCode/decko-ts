@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T19:05:03.829Z",
+  "generatedAt": "2026-10-03T21:43:56.326Z",
   "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
   "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
@@ -22,13 +22,13 @@
       "gem": "card-mod-account-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "harness scorecard, 0 RED: 4/99 harness-oracle-validated, 41 pinned by the mod's standing suite, 54 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-account/scorecard.md)",
+      "statusEvidence": "harness scorecard, 0 RED: 6/99 harness-oracle-validated, 40 pinned by the mod's standing suite, 53 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-account/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "4/99 validated",
+      "harnessScorecard": "6/99 validated",
       "reMeasureMissingViews": 6,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "branch": "lane-mod-completion-2026-10-03",
         "portedViews": [
           {
             "view": "new",
@@ -53,10 +53,22 @@
             "source": "set/abstract/account_holder.rb:132-137",
             "oracle": "static-ruby (account-census-views.rb; the pill sections over the verbatim item walks)",
             "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "content_formgroups",
+            "source": "set/type/signup/views.rb:11-13 + set/abstract/account_holder.rb:143-145 + set/right/account/views.rb:59-61",
+            "oracle": "static-ruby (account-walk-views.rb: the explicit-edit-fields walk verbatim over the REAL cardname field marks - Probe Signup+*account+email/+password; the before-hook tuple; the fieldset bytes; the structure_link empty arm)",
+            "status": "ported, verify GREEN (harness capture + probe card-mod-account-harness-probe.test.ts; the walk arms live on the edit mod contentFormgroupsView - the engine render nests the REAL field editors)"
+          },
+          {
+            "view": "setup",
+            "source": "set/type/user.rb:10-19",
+            "oracle": "static-ruby (account-walk-views.rb: the voo contract, setup_help.haml under real Haml 5.2.2 with BOTH delivery arms, the hidden-fields chain verbatim, the submit_button reverse_merge over the pinned bootstrap button shape, the needs_setup? predicate shape)",
+            "status": "ported, verify GREEN (harness capture + probe; the perms gate reads the PREPARED census verdict - first-run-setup-verdict-seam.ts, setupWindowState is the census port; closed = Ruby perms denial span)"
           }
         ],
         "namedRemainderViews": [],
-        "censusMissingRemaining": 2
+        "censusMissingRemaining": 0
       },
       "privateUnknown": false,
       "publicEvidence": "installed gem card-mod-account-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
@@ -268,7 +280,7 @@
       "harnessScorecard": "4/96 validated",
       "reMeasureMissingViews": 4,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "branch": "lane-mod-completion-2026-10-03",
         "portedViews": [
           {
             "view": "subedit_notice",
@@ -312,7 +324,7 @@
       "harnessScorecard": "1/168 validated",
       "reMeasureMissingViews": 2,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "branch": "lane-mod-completion-2026-10-03",
         "portedViews": [
           {
             "view": "demo",
@@ -358,7 +370,7 @@
       "harnessScorecard": "1/26 validated",
       "reMeasureMissingViews": 1,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "branch": "lane-mod-completion-2026-10-03",
         "portedViews": [
           {
             "view": "board_act",
@@ -524,7 +536,7 @@
       "harnessScorecard": "5/34 validated",
       "reMeasureMissingViews": 4,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
+        "branch": "lane-mod-completion-2026-10-03",
         "portedViews": [
           {
             "view": "remote_include_tags",
@@ -576,46 +588,52 @@
       "gem": "card-mod-tinymce_editor-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "harness scorecard, 0 RED: 1/16 harness-oracle-validated, 9 pinned by the mod's standing suite, 6 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-tinymce_editor/scorecard.md)",
+      "statusEvidence": "harness scorecard, 0 RED: 7/16 harness-oracle-validated, 9 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-tinymce_editor/scorecard.md)",
       "compatStatus": "ported",
       "manifest": true,
-      "harnessScorecard": "1/16 validated",
+      "harnessScorecard": "7/16 validated",
       "reMeasureMissingViews": 6,
       "wave1": {
-        "branch": "lane-mod-porting-wave1-2026-10-03",
-        "portedViews": [],
-        "namedRemainderViews": [
+        "branch": "lane-mod-completion-2026-10-03",
+        "portedViews": [
           {
             "view": "nest_editor",
             "source": "set/all/reference_editor/nest_editor.rb:10-16",
-            "reason": "the reference-editor haml chrome over request-param snippet state (blocker A); ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding) - no oracle bytes exist to pin a port against"
+            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the live capture fixtures/captured/tinymce-editor-views.json, no_write_proof actions 4929->4929; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+            "status": "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)"
           },
           {
             "view": "modal_nest_editor",
             "source": "set/all/reference_editor/nest_editor.rb:17-20",
-            "reason": "the reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck"
+            "oracle": "static-ruby byte-PRODUCING (same script; the modal arm live-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact both arms)"
           },
           {
             "view": "nest_image",
             "source": "set/all/reference_editor/nest_image.rb:2-6",
-            "reason": "the image reference-editor chrome (blocker A); ZERO anchors on the migrated deck"
+            "oracle": "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the live capture; the upload/preview nest regions are the engine seams)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)"
           },
           {
             "view": "modal_nest_image",
             "source": "set/all/reference_editor/nest_image.rb:8-11",
-            "reason": "the image reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck"
+            "oracle": "static-ruby byte-PRODUCING (same script; the view calls nest_image_editor :modal DIRECTLY - no <modal> wrapper, the oracle bytes pin the bare chrome)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)"
           },
           {
             "view": "nest_content",
             "source": "set/all/reference_editor/nest_editor.rb:22-27",
-            "reason": "both arms ride unported form machinery: with_nest_mode :edit around the ported edit_inline (known) and the create_form chain (unknown, blocker D)"
+            "oracle": "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the live bytes; the seeded pass-through arm)",
+            "status": "ported, verify GREEN (harness capture + probe; the known arm rides withNestMode(:edit) + renderView(edit_inline), the unknown arm rides createFormDataShell - the edit mod real create_form)"
           },
           {
             "view": "new_image",
             "source": "set/all/reference_editor/nest_image.rb:13-19",
-            "reason": "the create_form chain (blocker D): the full create-form body + the params-driven success chain"
+            "oracle": "static-ruby contract lines (the success chain incl. autoname(name.next) over the REAL cardname - image01.next = image02 per the fixture fact; the nil-value tinymce_id tag)",
+            "status": "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the live capture form tag + success tags pinned)"
           }
         ],
+        "namedRemainderViews": [],
         "censusMissingRemaining": 0
       },
       "privateUnknown": false,

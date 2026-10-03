@@ -1,10 +1,10 @@
 # card-mod-account — harness scorecard
 
-Behaviors validated: **4 / 99** (standing-net: 41, named-remainder: 54, RED: 0, uncaptured: 0)
+Behaviors validated: **6 / 99** (standing-net: 40, named-remainder: 53, RED: 0, uncaptured: 0)
 
 State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.
 
-Probe suite: 12 passed / 0 failed (tests/card/mod-loader/card-mod-account.test.ts)
+Probe suite: 23 passed / 0 failed (tests/card/mod-loader/card-mod-account-harness-probe.test.ts, tests/card/mod-loader/card-mod-account.test.ts)
 
 | behavior | kind | state | ts registration | captured | evidence |
 |---|---|---|---|---|---|
@@ -62,10 +62,10 @@ Probe suite: 12 passed / 0 failed (tests/card/mod-loader/card-mod-account.test.t
 | `event:act_as_current_for_integrate_stage` | event | named-remainder | no | - | no event "act_as_current_for_integrate_stage" registration in card-mod-account.ts |
 | `basket:basket[:non_createable_types] << :signup` | basket-op | named-remainder | no | - | no TS literal "basket[:non_createable_types] << :signup" (no consumer seam yet) |
 | `view:new` | view | green | yes | static-ruby | card-mod-account.ts registers view "new" |
-| `view:content_formgroups` | view | registered-standing-net | yes | - | view "content_formgroups" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-edit.ts) - the surface mod's override disp |
+| `view:content_formgroups` | view | green | yes | static-ruby | card-mod-account.ts registers view "content_formgroups" |
 | `view:new_buttons` | view | green | yes | static-ruby | card-mod-account.ts registers view "new_buttons" |
 | `view:core` | view | registered-standing-net | yes | - | view "core" registered (engine HTML_VIEWS + manifest) |
-| `view:setup` | view | named-remainder | no | - | no view "setup" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table |
+| `view:setup` | view | green | yes | static-ruby | card-mod-account.ts registers view "setup" |
 | `event:check_setup` | event | named-remainder | no | - | no event "check_setup" registration in card-mod-account.ts |
 | `event:setup_first_user` | event | named-remainder | no | - | no event "setup_first_user" registration in card-mod-account.ts |
 | `event:signin_after_setup` | event | named-remainder | no | - | no event "signin_after_setup" registration in card-mod-account.ts |

@@ -158,32 +158,13 @@ const NAMED_REMAINDERS = {
     "<seed:.*>":
       "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
-  "card-mod-tinymce_editor": {
-    // The six census html views are the reference-editor UI the tinymce-
-    // views lane's own blockers A/D name (the mod manifest's nest_image
-    // entry header): the four reference-editor chrome views' state is
-    // REQUEST-PARAM driven (tm_snippet_raw / tinymce_id - absent in the
-    // headless render, the documented convention) and their bodies are the
-    // reference_editor.haml chrome + nest_editor_tabs.rb + the
-    // option-select/template machinery; :nest_content's unknown arm and
-    // :new_image ride the create_form chain (the full create-form body).
-    // The mod-coverage lane's usage-weight finding: tinymce carries ZERO
-    // anchors on the migrated deck (unreachable there) - ported-behavior
-    // risk would be pinned against no oracle bytes at all. The mod's OWN
-    // already-ported surface: :new_image_buttons + the two js views.
-    "view:nest_editor":
-      "the reference-editor haml chrome (reference_editor.haml + _nest_editor.haml + the tabs/options partials) over request-param snippet state (tm_snippet_raw absent headlessly) - the tinymce-views lane's blocker A; ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding)",
-    "view:modal_nest_editor":
-      "the reference-editor chrome in the modal wrapper (the same params-driven snippet state + partial machinery) - blocker A; ZERO anchors on the migrated deck",
-    "view:nest_image":
-      "the image reference-editor chrome (adapt_reference_editor_for_images + the image_nest partial) - blocker A; ZERO anchors on the migrated deck",
-    "view:modal_nest_image":
-      "the image reference-editor chrome in the modal wrapper - blocker A; ZERO anchors on the migrated deck",
-    "view:nest_content":
-      "both arms ride unported form machinery: the known arm needs with_nest_mode :edit (the Rails nest-mode state) around the ported edit_inline, the unknown arm is the create_form chain (blocker D) with the force-viz (hide!/show!) + buttons_view voo state",
-    "view:new_image":
-      "the create_form chain (blocker D): the full create-form body + the success chain (tinymce_id params-driven, the autoname(name.next) id mark)",
-  },
+  // mod-completion-100 (2026-10-03): the six tinymce census views and the
+  // two account census views (:content_formgroups, :setup) are PORTED (the
+  // WAVE1 rows below) - their named-remainder entries are retired. The
+  // tinymce-views lane's blockers A/D were settled by the LIVE-VERIFIED
+  // static-ruby chrome oracle (the params-ABSENT arms are byte-exact
+  // substrings of the prior lane's live capture): gem source, not usage
+  // weight, is the oracle basis.
   "card-mod-account": {
     // set/type/signup/views.rb:11-13 view :content_formgroups - the body's
     // account_formgroups recursion renders the +*account subformat's
@@ -193,16 +174,6 @@ const NAMED_REMAINDERS = {
     // formgroup.rb note: "the explicit-edit-fields arm is voo.edit_
     // structure (unset in the engine)"). Porting the body would pin
     // quiet-rescue bytes Ruby never renders.
-    "view:content_formgroups":
-      "the structure-driven formgroup walk (voo.edit_structure from the right/account before-hook) is the edit mod's disclosed remainder - porting the body would pin bytes Ruby never renders; the machinery is the structure-form engine's own lane",
-    // set/type/user.rb:10-19 view :setup - double-gated: perms
-    // :needs_setup? is a DECK-STATE census predicate (Card::Auth.needs_
-    // setup?) the sync view gate cannot answer without a prepared census
-    // verdict seam, and the body's account_formgroups recursion needs the
-    // same structure-form machinery. The census + the owner create live in
-    // src/card/auth/first-run-setup.ts (the /setup route surface).
-    "view:setup":
-      "double-gated: the needs_setup? deck-census predicate has no prepared-verdict seam in the sync view gate, and the body's account_formgroups recursion needs the structure-form machinery named under content_formgroups; the census + create machinery is src/card/auth/first-run-setup.ts",
     // CLASS remainders: the account WRITE-PATH events (validate/store/
     // integrate phases over Auth, SecureRandom, the token + password
     // ladders - the authenticate pair lives in src/card/auth/signin.ts,
@@ -253,7 +224,7 @@ function namedRemainderFor(modId, behaviorId) {
 // cites the lane branch. Views not listed stay uncaptured by name until
 // this wave lands them or names them.
 const WAVE1 = {
-  branch: "lane-mod-porting-wave1-2026-10-03",
+  branch: "lane-mod-completion-2026-10-03",
   portedViews: {
     "card-mod-history": [
       {
@@ -314,6 +285,18 @@ const WAVE1 = {
         oracle: "static-ruby (account-census-views.rb; the pill sections over the verbatim item walks)",
         status: "ported, verify GREEN (harness capture + probe)",
       },
+      {
+        view: "content_formgroups",
+        source: "set/type/signup/views.rb:11-13 + set/abstract/account_holder.rb:143-145 + set/right/account/views.rb:59-61",
+        oracle: "static-ruby (account-walk-views.rb: the explicit-edit-fields walk verbatim over the REAL cardname field marks - Probe Signup+*account+email/+password; the before-hook tuple; the fieldset bytes; the structure_link empty arm)",
+        status: "ported, verify GREEN (harness capture + probe card-mod-account-harness-probe.test.ts; the walk arms live on the edit mod contentFormgroupsView - the engine render nests the REAL field editors)",
+      },
+      {
+        view: "setup",
+        source: "set/type/user.rb:10-19",
+        oracle: "static-ruby (account-walk-views.rb: the voo contract, setup_help.haml under real Haml 5.2.2 with BOTH delivery arms, the hidden-fields chain verbatim, the submit_button reverse_merge over the pinned bootstrap button shape, the needs_setup? predicate shape)",
+        status: "ported, verify GREEN (harness capture + probe; the perms gate reads the PREPARED census verdict - first-run-setup-verdict-seam.ts, setupWindowState is the census port; closed = Ruby perms denial span)",
+      },
     ],
     "card-mod-follow": [
       {
@@ -349,6 +332,44 @@ const WAVE1 = {
         status: "ported, verify GREEN (harness capture + probe)",
       },
     ],
+    "card-mod-tinymce_editor": [
+      {
+        view: "nest_editor",
+        source: "set/all/reference_editor/nest_editor.rb:10-16",
+        oracle: "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the live capture fixtures/captured/tinymce-editor-views.json, no_write_proof actions 4929->4929; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+        status: "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)",
+      },
+      {
+        view: "modal_nest_editor",
+        source: "set/all/reference_editor/nest_editor.rb:17-20",
+        oracle: "static-ruby byte-PRODUCING (same script; the modal arm live-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
+        status: "ported, verify GREEN (harness capture + probe, byte-exact both arms)",
+      },
+      {
+        view: "nest_image",
+        source: "set/all/reference_editor/nest_image.rb:2-6",
+        oracle: "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the live capture; the upload/preview nest regions are the engine seams)",
+        status: "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)",
+      },
+      {
+        view: "modal_nest_image",
+        source: "set/all/reference_editor/nest_image.rb:8-11",
+        oracle: "static-ruby byte-PRODUCING (same script; the view calls nest_image_editor :modal DIRECTLY - no <modal> wrapper, the oracle bytes pin the bare chrome)",
+        status: "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)",
+      },
+      {
+        view: "nest_content",
+        source: "set/all/reference_editor/nest_editor.rb:22-27",
+        oracle: "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the live bytes; the seeded pass-through arm)",
+        status: "ported, verify GREEN (harness capture + probe; the known arm rides withNestMode(:edit) + renderView(edit_inline), the unknown arm rides createFormDataShell - the edit mod real create_form)",
+      },
+      {
+        view: "new_image",
+        source: "set/all/reference_editor/nest_image.rb:13-19",
+        oracle: "static-ruby contract lines (the success chain incl. autoname(name.next) over the REAL cardname - image01.next = image02 per the fixture fact; the nil-value tinymce_id tag)",
+        status: "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the live capture form tag + success tags pinned)",
+      },
+    ],
   },
   namedRemainderViews: {
     "card-mod-format": [
@@ -359,44 +380,9 @@ const WAVE1 = {
           "the BetterErrors dev-tool error page; the better_errors gem is NOT in the frozen gem set - the view raises NameError in the installed-gems environment, its behavior belongs to an external dev dependency",
       },
     ],
-    "card-mod-tinymce_editor": [
-      {
-        view: "nest_editor",
-        source: "set/all/reference_editor/nest_editor.rb:10-16",
-        reason:
-          "the reference-editor haml chrome over request-param snippet state (blocker A); ZERO anchors on the migrated deck (the mod-coverage lane's usage-weight finding) - no oracle bytes exist to pin a port against",
-      },
-      {
-        view: "modal_nest_editor",
-        source: "set/all/reference_editor/nest_editor.rb:17-20",
-        reason:
-          "the reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck",
-      },
-      {
-        view: "nest_image",
-        source: "set/all/reference_editor/nest_image.rb:2-6",
-        reason:
-          "the image reference-editor chrome (blocker A); ZERO anchors on the migrated deck",
-      },
-      {
-        view: "modal_nest_image",
-        source: "set/all/reference_editor/nest_image.rb:8-11",
-        reason:
-          "the image reference-editor chrome in the modal wrapper (blocker A); ZERO anchors on the migrated deck",
-      },
-      {
-        view: "nest_content",
-        source: "set/all/reference_editor/nest_editor.rb:22-27",
-        reason:
-          "both arms ride unported form machinery: with_nest_mode :edit around the ported edit_inline (known) and the create_form chain (unknown, blocker D)",
-      },
-      {
-        view: "new_image",
-        source: "set/all/reference_editor/nest_image.rb:13-19",
-        reason:
-          "the create_form chain (blocker D): the full create-form body + the params-driven success chain",
-      },
-    ],
+    // mod-completion-100 (2026-10-03): the tinymce 6 + account 2 named
+    // remainders are PORTED (the portedViews rows above) - the census gap
+    // closes at 22 ported + the 1 impossibility-evidenced remainder.
   },
   status(modId) {
     const ported = this.portedViews[modId];
