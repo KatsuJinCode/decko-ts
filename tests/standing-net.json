@@ -112,7 +112,8 @@
   "tests/card/render/pointer-list-input-type-rule-item-name-view.test.ts",
   "tests/deploy/deploy-origin-deck-inflection-boot.test.ts",
   "tests/card/render/deck-origin-surface-scoped-root-url.test.ts",
-  "tests/card/render/date-delegated-core-rescue-scope-pins.test.ts"
+  "tests/card/render/date-delegated-core-rescue-scope-pins.test.ts",
+  "tests/card/render/bar-setting-list-filter-nest-option-rides-voo.test.ts"
  ],
- "manifestFileCount": 81
+ "manifestFileCount": 82
 }

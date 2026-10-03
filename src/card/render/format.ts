@@ -1988,6 +1988,31 @@ export class RenderFormat {
     // The type opt rides the slot JSON too (the +agree oracle pin:
     // "nest_syntax":"+agree | type:Toggle ",...,"type":"Toggle"}).
     if (options.extra["type"] !== undefined) out["type"] = options.extra["type"];
+    // The `filter` opt: a SHARK key (nest-syntax.ts SHARK_KEYS), so it
+    // PARSES into options.extra — and was then dropped here, so the view
+    // never saw it. Ruby has no equivalent drop: format/nest.rb's
+    // `view_opts` IS the voo's option hash (Nest#initialize line 13,
+    // prepare_view_and_opts! only ADDS :nest_name and :home_view), so
+    // `voo.filter` reads the nest's own `filter:` verbatim.
+    //
+    // The one reader is card-mod-rules' :bar_setting_list
+    // (mod/rules/set/type/set/html_views/rule_lists.rb:11-14):
+    //   group = voo.filter&.to_sym || :all
+    //   category_setting_list_items(group, :bar, hide: :full_name)
+    // -> category_settings(:webpage) -> group_settings(:webpage)
+    // (setting_categories.rb:30-45, 58-60) = the :webpage SETTING GROUP
+    // (card/lib/card/setting.rb:46-55 `self.groups = %i[templating
+    // permission webpage editing event other]`).
+    //
+    // `Shark+Dashboard` (corpus row 34818, the card whose content is
+    // mod/defaults/data/real.yml:59-76) authors BOTH lists:
+    //   <blockquote>{{:all|bar_setting_list; filter:webpage}}</blockquote>
+    //   <blockquote>{{:all|bar_setting_list; filter:permission}}</blockquote>
+    // With the opt dropped, both fell back to :all and each rendered the
+    // full 21-setting sorted list — 42 bar nests where the oracle has 4
+    // (head, layout, style, script) and 5 (create, read, update, delete,
+    // captcha). Shark:page carried +82,590; 33 of those bytes are this.
+    if (options.extra["filter"] !== undefined) out["filter"] = options.extra["filter"];
     return out;
   }
 
