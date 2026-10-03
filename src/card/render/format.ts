@@ -1766,9 +1766,8 @@ export class RenderFormat {
    *  "RVW+working doc 02" items from INSIDE "RVW+File Storage Area"
    *  (RichText-typed) and the captured slot chain still reads
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
-   *  warm map; an unprepared left falls back to the context card's type
-   *  (the earlier shape, still correct when context == left, the common
-   *  field-nest case). */
+   *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
+   *  (see the last return below). */
   private leftTypeNameFor(name: DeckoName): string | undefined {
     if (!name.isCompound) return this.card.typeName;
     const leftName = name.leftName;
@@ -1776,8 +1775,8 @@ export class RenderFormat {
     const left = this.engine.fetchRenderCard(leftName.s);
     if (left !== undefined && left.typeName !== undefined) return left.typeName;
     // The left is not in the warm map (or carries no type yet): resolve
-    // through the engine's loaded *structure universe before the context
-    // fallback. Ruby's left_type reads the LEFT CARD's type — for a left
+    // through the engine's loaded *structure universe before the default.
+    // Ruby's left_type reads the LEFT CARD's type — for a left
     // that is itself virtual ("PlainText+*type" -> Set via the
     // *type+*right+*structure template) the context card's type is simply
     // the wrong card's type (the census page-22 defect:
@@ -1785,7 +1784,44 @@ export class RenderFormat {
     // TYPE_PLUS_RIGHT-set-by_name).
     const virtualLeftType = this.engine.virtualLeftTypeName?.(leftName);
     if (virtualLeftType !== undefined) return virtualLeftType;
-    return this.card.typeName;
+    // THE LAST FALLBACK IS NOT THE CONTEXT CARD — this is the cluster-6
+    // fix. card/lib/card/set/pattern/class_methods.rb:59-71 is the whole
+    // rule:
+    //
+    //     def left_type card
+    //       card.superleft&.type_name || quick_type(card.name.left_name)
+    //     end
+    //     def quick_type name
+    //       if name.present?
+    //         card = Card.fetch name, skip_modules: true, new: {}
+    //         card.include_set_modules if card.new? && name.to_name.compound?
+    //         card&.type_name
+    //       else
+    //         "RichText"
+    //       end
+    //     end
+    //
+    // The NESTING CONTEXT'S TYPE APPEARS NOWHERE IN IT. A left that is not
+    // a stored card is a NEW card (quick_type's `new: {}`), and a new
+    // compound card carrying no type assignment takes Card's DEFAULT type,
+    // RichText — the same default the pattern registry already uses one line
+    // away (src/card/set-patterns/registry.ts:186-191,
+    // `card.leftTypeName == null ? "RichText" : ...`). These two MUST agree;
+    // returning the context card's type made them disagree and produced
+    // TYPE_PLUS_RIGHT-list-<tag> wherever a new left was nested from inside
+    // a List-typed context card.
+    //
+    // The removed fallback was correct only when context.type == left.type,
+    // which is exactly the RVW case its own block comment describes — and
+    // that case is already served by the fetchRenderCard lookup above (RVW
+    // IS in the warm map). The pre-fix shape also silently papered over the
+    // census page-22 defect that the virtualLeftTypeName line exists to fix.
+    //
+    // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
+    // TYPE_PLUS_RIGHT-rich_text-aikido, and
+    // WilliamsCraig+Vacations+Oregon+20180623_0728 reads
+    // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
+    return "RichText";
   }
 
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
