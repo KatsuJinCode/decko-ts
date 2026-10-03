@@ -156,10 +156,31 @@ export class Voo {
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
 
-  constructor(parent: Voo | undefined, requestedView: string, opts: Record<string, unknown>) {
+  /** True ONLY for the bare view-lane ROOT render's voo (render.ts#render's
+   *  `format.renderView(view, ...)` entry — the one call site whose
+   *  `optional` render arg defaults to :show). The live serializer does not
+   *  carry the root render's own enrollment (the capture-harness artifact:
+   *  docs/serializer-spec-conditional-data-slot-show-key.md "root drops the
+   *  requested view"), so slotOptions drops view===viewField exactly here.
+   *  Parentless does NOT mean root: the page lane's processLayoutContent
+   *  runs on the root format AFTER renderView restored this.voo, so every
+   *  card-layout/body nest voo (the *footer content slot, the mod bar
+   *  items) is parentless in the port while Ruby's layout nests render with
+   *  a seated voo — and the live pages carry their own requested-view
+   *  enrollment (`*footer` slot show:["content"], mod bar slots
+   *  show:["bar"], Anyone Signed In +description show:["lead"]). */
+  readonly viewLaneRoot: boolean;
+
+  constructor(
+    parent: Voo | undefined,
+    requestedView: string,
+    opts: Record<string, unknown>,
+    viewLaneRoot = false,
+  ) {
     this.parent = parent;
     this.requestedView = requestedView;
     this.opts = opts;
+    this.viewLaneRoot = viewLaneRoot;
     // view/options/key_lists.rb heir_keys (= keymap[:both] + keymap[:heir])
     // + voo_api.rb:135-143 inherit_options_from_parent!: a child voo
     // inherits the parent's value for every heir key it did not set itself

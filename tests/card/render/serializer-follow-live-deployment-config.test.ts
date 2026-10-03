@@ -88,7 +88,7 @@ describe("deployment follow-live config: frozen default preserved", () => {
 describe("deployment follow-live config: live serializer era", () => {
   it("a plain closed root whose show list names only its own view OMITS show", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const closed = new Voo(undefined, "closed", {});
+    const closed = new Voo(undefined, "closed", {}, true);
     closed.processVisibility("show");
     closed.hide("bar_middle");
     expect(closed.slotOptions()).toEqual({
@@ -99,7 +99,7 @@ describe("deployment follow-live config: live serializer era", () => {
 
   it("a discussion open root carries only its body's comment_box", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const open = new Voo(undefined, "open", {});
+    const open = new Voo(undefined, "open", {}, true);
     open.processVisibility("show");
     open.setViz("comment_box", "show");
     open.hide("bar_middle");
@@ -112,9 +112,28 @@ describe("deployment follow-live config: live serializer era", () => {
 
   it("a root content slot whose show list names only content OMITS show", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const content = new Voo(undefined, "content", {});
+    const content = new Voo(undefined, "content", {}, true);
     content.processVisibility("show");
     expect(content.slotOptions()).toEqual({ view: "content" });
+  });
+
+  it("a page-lane layout nest (parentless voo, not the view-lane root) KEEPS its own requested-view enrollment", () => {
+    // The live *footer slot on every graded page carries
+    // show:["content"] (the {{:footer|content}} nest's own optional
+    // enrollment): the card-layout body's nests render parentless in the
+    // port (processLayoutContent runs on the root format after renderView
+    // restored this.voo) but they are NOT the view-lane root — Ruby's
+    // layout nests render with a seated voo and the live serializer keeps
+    // their enrollment. Same shape on the mod bar slots (show:["bar"]) and
+    // Anyone Signed In (+description show:["lead"], +Dashboard
+    // show:["content"], _user+*created/_user+*edited show:["bar"]).
+    setDeploymentFollowLiveConfig({ serializerEra: "live" });
+    const footerNest = new Voo(undefined, "content", {});
+    footerNest.processVisibility("show");
+    expect(footerNest.slotOptions()).toEqual({
+      view: "content",
+      show: ["content"],
+    });
   });
 
   it("a child nest keeps its optional-enrolled requested view (+tags|closed)", () => {
@@ -148,7 +167,7 @@ describe("deployment follow-live config: live serializer era", () => {
 
   it("a child nest keeps an inherited entry that names its own requested view", () => {
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
-    const parent = new Voo(undefined, "open", {});
+    const parent = new Voo(undefined, "open", {}, true);
     parent.processVisibility("show");
     const child = new Voo(parent, "open", {});
     child.processVisibility("show");
