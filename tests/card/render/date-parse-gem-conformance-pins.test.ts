@@ -65,7 +65,7 @@ interface TableRow {
   rendered?: string;
 }
 const TABLE = JSON.parse(
-  readFileSync("tmp/addressed-wave1/date-parse-conformance-table.json", "utf8"),
+  readFileSync(new URL("./date-parse-conformance-table.json", import.meta.url), "utf8"),
 ) as { ruby_version: string; date_gem: string; date_today: string; rows: TableRow[] };
 
 /** The four rows the engine does not match, each with the gem's answer.

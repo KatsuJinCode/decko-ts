@@ -1,0 +1,7832 @@
+{
+  "ruby_version": "3.3.12",
+  "date_gem": "3.5.1",
+  "date_today": "2026-10-03",
+  "note": "Date.parse fills MISSING components from Date.today, so any input without a full year+month+day is TODAY-DEPENDENT.",
+  "rows": [
+    {
+      "input": "1981-10",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "20-0405",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "2016",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1980",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "123",
+      "parsed": true,
+      "iso": "2026-05-03",
+      "rendered": "May 3, 2026"
+    },
+    {
+      "input": "12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "09/10/2021 8:01 AM",
+      "parsed": true,
+      "iso": "2021-10-09",
+      "rendered": "October 9, 2021"
+    },
+    {
+      "input": "05/18/2023 12:00 AM",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "<p>{{+date}}</p>",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "20190319",
+      "parsed": true,
+      "iso": "2019-03-19",
+      "rendered": "March 19, 2019"
+    },
+    {
+      "input": "20220323",
+      "parsed": true,
+      "iso": "2022-03-23",
+      "rendered": "March 23, 2022"
+    },
+    {
+      "input": "20161231",
+      "parsed": true,
+      "iso": "2016-12-31",
+      "rendered": "December 31, 2016"
+    },
+    {
+      "input": "20190101",
+      "parsed": true,
+      "iso": "2019-01-01",
+      "rendered": "January 1, 2019"
+    },
+    {
+      "input": "18-12-22",
+      "parsed": true,
+      "iso": "2018-12-22",
+      "rendered": "December 22, 2018"
+    },
+    {
+      "input": "2010-7-19",
+      "parsed": true,
+      "iso": "2010-07-19",
+      "rendered": "July 19, 2010"
+    },
+    {
+      "input": "999-1-1",
+      "parsed": true,
+      "iso": "0999-01-01",
+      "rendered": "January 1, 0999"
+    },
+    {
+      "input": "38-12-31",
+      "parsed": true,
+      "iso": "2038-12-31",
+      "rendered": "December 31, 2038"
+    },
+    {
+      "input": "39-01-01",
+      "parsed": true,
+      "iso": "2039-01-01",
+      "rendered": "January 1, 2039"
+    },
+    {
+      "input": "68-05-05",
+      "parsed": true,
+      "iso": "2068-05-05",
+      "rendered": "May 5, 2068"
+    },
+    {
+      "input": "69-1-1",
+      "parsed": true,
+      "iso": "1969-01-01",
+      "rendered": "January 1, 1969"
+    },
+    {
+      "input": "2019-13-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2021-02-29",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2019-05-0",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2019-03-19",
+      "parsed": true,
+      "iso": "2019-03-19",
+      "rendered": "March 19, 2019"
+    },
+    {
+      "input": "2020-02-29",
+      "parsed": true,
+      "iso": "2020-02-29",
+      "rendered": "February 29, 2020"
+    },
+    {
+      "input": "2024-02-29",
+      "parsed": true,
+      "iso": "2024-02-29",
+      "rendered": "February 29, 2024"
+    },
+    {
+      "input": "0001-01-01",
+      "parsed": true,
+      "iso": "0001-01-01",
+      "rendered": "January 1, 0001"
+    },
+    {
+      "input": "9999-12-31",
+      "parsed": true,
+      "iso": "9999-12-31",
+      "rendered": "December 31, 9999"
+    },
+    {
+      "input": "0-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "0-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "0-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "0-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "0-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "0-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "0-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "0-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "0-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "0-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "0-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "0-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "0-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "0-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "0-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "0-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "0-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "0-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "0-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "0-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "0-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "0-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "0-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "0-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "0-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "0-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "0-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "0-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "0-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "0-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "0-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "0-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "1-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "1-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "1-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "1-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "1-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "1-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "1-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "1-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "1-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "1-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "1-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "1-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "1-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "1-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "1-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "1-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "1-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "1-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "1-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "1-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "1-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "1-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "1-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "1-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "1-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "1-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "1-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "1-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "1-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "1-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "1-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "2-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "2-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "2-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "2-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "2-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "2-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "2-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "2-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "2-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "2-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "2-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "2-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "2-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "2-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "2-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "2-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "2-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "2-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "2-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "2-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "2-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "2-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "2-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "2-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "2-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "2-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "2-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "2-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "2-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "2-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "2-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "3-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "3-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "3-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "3-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "3-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "3-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "3-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "3-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "3-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "3-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "3-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "3-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "3-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "3-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "3-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "3-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "3-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "3-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "3-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "3-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "3-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "3-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "3-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "3-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "3-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "3-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "3-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "3-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "3-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "3-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "3-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "4-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "4-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "4-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "4-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "4-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "4-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "4-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "4-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "4-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "4-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "4-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "4-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "4-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "4-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "4-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "4-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "4-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "4-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "4-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "4-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "4-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "4-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "4-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "4-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "4-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "4-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "4-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "4-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "4-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "4-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "4-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "4-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "4-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "4-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "4-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "4-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "5-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "5-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "5-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "5-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "5-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "5-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "5-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "5-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "5-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "5-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "5-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "5-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "5-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "5-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "5-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "5-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "5-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "5-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "5-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "5-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "5-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "5-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "5-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "5-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "5-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "5-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "5-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "5-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "5-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "5-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "5-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "5-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "5-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "5-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "5-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "5-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "6-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "6-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "6-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "6-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "6-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "6-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "6-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "6-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "6-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "6-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "6-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "6-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "6-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "6-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "6-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "6-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "6-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "6-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "6-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "6-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "6-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "6-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "6-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "6-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "6-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "6-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "6-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "6-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "6-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "6-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "6-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "6-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "6-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "6-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "6-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "6-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "7-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "7-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "7-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "7-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "7-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "7-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "7-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "7-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "7-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "7-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "7-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "7-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "7-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "7-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "7-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "7-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "7-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "7-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "7-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "7-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "7-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "7-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "7-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "7-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "7-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "7-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "7-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "7-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "7-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "7-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "7-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "7-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "7-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "7-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "7-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "7-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "8-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "8-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "8-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "8-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "8-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "8-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "8-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "8-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "8-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "8-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "8-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "8-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "8-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "8-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "8-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "8-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "8-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "8-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "8-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "8-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "8-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "8-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "8-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "8-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "8-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "8-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "8-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "8-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "8-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "8-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "8-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "8-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "8-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "8-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "8-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "8-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "9-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "9-01",
+      "parsed": true,
+      "iso": "2026-10-01",
+      "rendered": "October 1, 2026"
+    },
+    {
+      "input": "9-02",
+      "parsed": true,
+      "iso": "2026-10-02",
+      "rendered": "October 2, 2026"
+    },
+    {
+      "input": "9-03",
+      "parsed": true,
+      "iso": "2026-10-03",
+      "rendered": "October 3, 2026"
+    },
+    {
+      "input": "9-04",
+      "parsed": true,
+      "iso": "2026-10-04",
+      "rendered": "October 4, 2026"
+    },
+    {
+      "input": "9-05",
+      "parsed": true,
+      "iso": "2026-10-05",
+      "rendered": "October 5, 2026"
+    },
+    {
+      "input": "9-06",
+      "parsed": true,
+      "iso": "2026-10-06",
+      "rendered": "October 6, 2026"
+    },
+    {
+      "input": "9-07",
+      "parsed": true,
+      "iso": "2026-10-07",
+      "rendered": "October 7, 2026"
+    },
+    {
+      "input": "9-08",
+      "parsed": true,
+      "iso": "2026-10-08",
+      "rendered": "October 8, 2026"
+    },
+    {
+      "input": "9-09",
+      "parsed": true,
+      "iso": "2026-10-09",
+      "rendered": "October 9, 2026"
+    },
+    {
+      "input": "9-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "9-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "9-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "9-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "9-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "9-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "9-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "9-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "9-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "9-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "9-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "9-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "9-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "9-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "9-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "9-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "9-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "9-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "9-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "9-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "9-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "9-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "9-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "9-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "9-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "9-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "10-00",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-01",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-02",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-03",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-04",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-05",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-06",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-07",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-08",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-09",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-10",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-11",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-12",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-13",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-14",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-15",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-16",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-17",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-18",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-19",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-20",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-21",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-22",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-23",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-24",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-25",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-26",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-27",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-28",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-29",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-30",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-31",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-32",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-33",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-34",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "10-35",
+      "parsed": true,
+      "iso": "2026-10-10",
+      "rendered": "October 10, 2026"
+    },
+    {
+      "input": "11-00",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-01",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-02",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-03",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-04",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-05",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-06",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-07",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-08",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-09",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-10",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-11",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-12",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-13",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-14",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-15",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-16",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-17",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-18",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-19",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-20",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-21",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-22",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-23",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-24",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-25",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-26",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-27",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-28",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-29",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-30",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-31",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-32",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-33",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-34",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "11-35",
+      "parsed": true,
+      "iso": "2026-10-11",
+      "rendered": "October 11, 2026"
+    },
+    {
+      "input": "12-00",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-01",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-02",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-03",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-04",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-05",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-06",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-07",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-08",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-09",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-10",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-11",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-12",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-13",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-14",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-15",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-16",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-17",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-18",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-19",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-20",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-21",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-22",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-23",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-24",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-25",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-26",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-27",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-28",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-29",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-30",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-31",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-32",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-33",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-34",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "12-35",
+      "parsed": true,
+      "iso": "2026-10-12",
+      "rendered": "October 12, 2026"
+    },
+    {
+      "input": "13-00",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-01",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-02",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-03",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-04",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-05",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-06",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-07",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-08",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-09",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-10",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-11",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-12",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-13",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-14",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-15",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-16",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-17",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-18",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-19",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-20",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-21",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-22",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-23",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-24",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-25",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-26",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-27",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-28",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-29",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-30",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-31",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-32",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-33",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-34",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "13-35",
+      "parsed": true,
+      "iso": "2026-10-13",
+      "rendered": "October 13, 2026"
+    },
+    {
+      "input": "14-00",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-01",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-02",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-03",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-04",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-05",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-06",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-07",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-08",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-09",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-10",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-11",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-12",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-13",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-14",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-15",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-16",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-17",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-18",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-19",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-20",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-21",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-22",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-23",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-24",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-25",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-26",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-27",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-28",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-29",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-30",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-31",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-32",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-33",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-34",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "14-35",
+      "parsed": true,
+      "iso": "2026-10-14",
+      "rendered": "October 14, 2026"
+    },
+    {
+      "input": "15-00",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-01",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-02",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-03",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-04",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-05",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-06",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-07",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-08",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-09",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-10",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-11",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-12",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-13",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-14",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-15",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-16",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-17",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-18",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-19",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-20",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-21",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-22",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-23",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-24",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-25",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-26",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-27",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-28",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-29",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-30",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-31",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-32",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-33",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-34",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "15-35",
+      "parsed": true,
+      "iso": "2026-10-15",
+      "rendered": "October 15, 2026"
+    },
+    {
+      "input": "16-00",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-01",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-02",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-03",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-04",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-05",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-06",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-07",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-08",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-09",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-10",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-11",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-12",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-13",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-14",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-15",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-16",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-17",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-18",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-19",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-20",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-21",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-22",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-23",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-24",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-25",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-26",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-27",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-28",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-29",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-30",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-31",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-32",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-33",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-34",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "16-35",
+      "parsed": true,
+      "iso": "2026-10-16",
+      "rendered": "October 16, 2026"
+    },
+    {
+      "input": "17-00",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-01",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-02",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-03",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-04",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-05",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-06",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-07",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-08",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-09",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-10",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-11",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-12",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-13",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-14",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-15",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-16",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-17",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-18",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-19",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-20",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-21",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-22",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-23",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-24",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-25",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-26",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-27",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-28",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-29",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-30",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-31",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-32",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-33",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-34",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "17-35",
+      "parsed": true,
+      "iso": "2026-10-17",
+      "rendered": "October 17, 2026"
+    },
+    {
+      "input": "18-00",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-01",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-02",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-03",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-04",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-05",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-06",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-07",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-08",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-09",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-10",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-11",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-12",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-13",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-14",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-15",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-16",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-17",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-18",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-19",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-20",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-21",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-22",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-23",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-24",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-25",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-26",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-27",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-28",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-29",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-30",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-31",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-32",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-33",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-34",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "18-35",
+      "parsed": true,
+      "iso": "2026-10-18",
+      "rendered": "October 18, 2026"
+    },
+    {
+      "input": "19-00",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-01",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-02",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-03",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-04",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-05",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-06",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-07",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-08",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-09",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-10",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-11",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-12",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-13",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-14",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-15",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-16",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-17",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-18",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-19",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-20",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-21",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-22",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-23",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-24",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-25",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-26",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-27",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-28",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-29",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-30",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-31",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-32",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-33",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-34",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "19-35",
+      "parsed": true,
+      "iso": "2026-10-19",
+      "rendered": "October 19, 2026"
+    },
+    {
+      "input": "20-00",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-01",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-02",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-03",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-04",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-05",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-06",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-07",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-08",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-09",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-10",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-11",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-12",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-13",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-14",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-15",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-16",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-17",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-18",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-19",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-20",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-21",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-22",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-23",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-24",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-25",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-26",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-27",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-28",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-29",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-30",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-31",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-32",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-33",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-34",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "20-35",
+      "parsed": true,
+      "iso": "2026-10-20",
+      "rendered": "October 20, 2026"
+    },
+    {
+      "input": "21-00",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-01",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-02",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-03",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-04",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-05",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-06",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-07",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-08",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-09",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-10",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-11",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-12",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-13",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-14",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-15",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-16",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-17",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-18",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-19",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-20",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-21",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-22",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-23",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-24",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-25",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-26",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-27",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-28",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-29",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-30",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-31",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-32",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-33",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-34",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "21-35",
+      "parsed": true,
+      "iso": "2026-10-21",
+      "rendered": "October 21, 2026"
+    },
+    {
+      "input": "22-00",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-01",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-02",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-03",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-04",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-05",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-06",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-07",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-08",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-09",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-10",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-11",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-12",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-13",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-14",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-15",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-16",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-17",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-18",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-19",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-20",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-21",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-22",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-23",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-24",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-25",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-26",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-27",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-28",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-29",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-30",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-31",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-32",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-33",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-34",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "22-35",
+      "parsed": true,
+      "iso": "2026-10-22",
+      "rendered": "October 22, 2026"
+    },
+    {
+      "input": "23-00",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-01",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-02",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-03",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-04",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-05",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-06",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-07",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-08",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-09",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-10",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-11",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-12",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-13",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-14",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-15",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-16",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-17",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-18",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-19",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-20",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-21",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-22",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-23",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-24",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-25",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-26",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-27",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-28",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-29",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-30",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-31",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-32",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-33",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-34",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "23-35",
+      "parsed": true,
+      "iso": "2026-10-23",
+      "rendered": "October 23, 2026"
+    },
+    {
+      "input": "24-00",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-01",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-02",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-03",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-04",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-05",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-06",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-07",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-08",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-09",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-10",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-11",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-12",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-13",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-14",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-15",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-16",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-17",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-18",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-19",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-20",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-21",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-22",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-23",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-24",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-25",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-26",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-27",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-28",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-29",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-30",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-31",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-32",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-33",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-34",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "24-35",
+      "parsed": true,
+      "iso": "2026-10-24",
+      "rendered": "October 24, 2026"
+    },
+    {
+      "input": "25-00",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-01",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-02",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-03",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-04",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-05",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-06",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-07",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-08",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-09",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-10",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-11",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-12",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-13",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-14",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-15",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-16",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-17",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-18",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-19",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-20",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-21",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-22",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-23",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-24",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-25",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-26",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-27",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-28",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-29",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-30",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-31",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-32",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-33",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-34",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "25-35",
+      "parsed": true,
+      "iso": "2026-10-25",
+      "rendered": "October 25, 2026"
+    },
+    {
+      "input": "26-00",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-01",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-02",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-03",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-04",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-05",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-06",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-07",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-08",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-09",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-10",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-11",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-12",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-13",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-14",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-15",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-16",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-17",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-18",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-19",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-20",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-21",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-22",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-23",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-24",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-25",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-26",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-27",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-28",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-29",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-30",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-31",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-32",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-33",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-34",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "26-35",
+      "parsed": true,
+      "iso": "2026-10-26",
+      "rendered": "October 26, 2026"
+    },
+    {
+      "input": "27-00",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-01",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-02",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-03",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-04",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-05",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-06",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-07",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-08",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-09",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-10",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-11",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-12",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-13",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-14",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-15",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-16",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-17",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-18",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-19",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-20",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-21",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-22",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-23",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-24",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-25",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-26",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-27",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-28",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-29",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-30",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-31",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-32",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-33",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-34",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "27-35",
+      "parsed": true,
+      "iso": "2026-10-27",
+      "rendered": "October 27, 2026"
+    },
+    {
+      "input": "28-00",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-01",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-02",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-03",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-04",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-05",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-06",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-07",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-08",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-09",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-10",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-11",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-12",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-13",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-14",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-15",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-16",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-17",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-18",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-19",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-20",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-21",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-22",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-23",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-24",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-25",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-26",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-27",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-28",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-29",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-30",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-31",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-32",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-33",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-34",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "28-35",
+      "parsed": true,
+      "iso": "2026-10-28",
+      "rendered": "October 28, 2026"
+    },
+    {
+      "input": "29-00",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-01",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-02",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-03",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-04",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-05",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-06",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-07",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-08",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-09",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-10",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-11",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-12",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-13",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-14",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-15",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-16",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-17",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-18",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-19",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-20",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-21",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-22",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-23",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-24",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-25",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-26",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-27",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-28",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-29",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-30",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-31",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-32",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-33",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-34",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "29-35",
+      "parsed": true,
+      "iso": "2026-10-29",
+      "rendered": "October 29, 2026"
+    },
+    {
+      "input": "30-00",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-01",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-02",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-03",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-04",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-05",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-06",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-07",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-08",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-09",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-10",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-11",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-12",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-13",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-14",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-15",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-16",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-17",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-18",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-19",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-20",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-21",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-22",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-23",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-24",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-25",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-26",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-27",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-28",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-29",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-30",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-31",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-32",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-33",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-34",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "30-35",
+      "parsed": true,
+      "iso": "2026-10-30",
+      "rendered": "October 30, 2026"
+    },
+    {
+      "input": "31-00",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-01",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-02",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-03",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-04",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-05",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-06",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-07",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-08",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-09",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-10",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-11",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-12",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-13",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-14",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-15",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-16",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-17",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-18",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-19",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-20",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-21",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-22",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-23",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-24",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-25",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-26",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-27",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-28",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-29",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-30",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-31",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-32",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-33",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-34",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "31-35",
+      "parsed": true,
+      "iso": "2026-10-31",
+      "rendered": "October 31, 2026"
+    },
+    {
+      "input": "32-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-02",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-03",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-04",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-05",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-06",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-07",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-08",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-09",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-10",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-11",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-12",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-13",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-14",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-15",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-16",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-17",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-18",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-19",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-20",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-21",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-22",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-23",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-24",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-25",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-26",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-27",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-28",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-29",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-30",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-31",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "32-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-02",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-03",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-04",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-05",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-06",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-07",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-08",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-09",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-10",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-11",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-12",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-13",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-14",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-15",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-16",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-17",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-18",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-19",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-20",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-21",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-22",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-23",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-24",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-25",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-26",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-27",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-28",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-29",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-30",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-31",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "33-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-02",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-03",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-04",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-05",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-06",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-07",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-08",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-09",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-10",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-11",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-12",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-13",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-14",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-15",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-16",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-17",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-18",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-19",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-20",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-21",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-22",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-23",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-24",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-25",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-26",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-27",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-28",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-29",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-30",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-31",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "34-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-02",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-03",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-04",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-05",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-06",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-07",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-08",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-09",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-10",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-11",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-12",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-13",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-14",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-15",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-16",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-17",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-18",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-19",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-20",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-21",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-22",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-23",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-24",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-25",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-26",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-27",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-28",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-29",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-30",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-31",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-32",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-33",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-34",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "35-35",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2020-01",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "99-99",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2020-1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2020-13",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "00-00",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "1-0",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "0-1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "3/19/2019",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "19/3/2019",
+      "parsed": true,
+      "iso": "2019-03-19",
+      "rendered": "March 19, 2019"
+    },
+    {
+      "input": "2019/3/19",
+      "parsed": true,
+      "iso": "2019-03-19",
+      "rendered": "March 19, 2019"
+    },
+    {
+      "input": "2019/13/1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    },
+    {
+      "input": "2019/0/1",
+      "parsed": false,
+      "error": "Date::Error: invalid date"
+    }
+  ]
+}
