@@ -1889,6 +1889,15 @@ export class RenderEngine implements RenderEngineLike {
    * shape for those, never throws.
    */
   private async preloadDefaultTypeNames(): Promise<void> {
+    // An UNLOADED universe (defaultRuleTypes undefined — the *default rule
+    // statement has not parsed yet, e.g. a first render that skipped the cold
+    // batch) must NOT latch the map: the map is set here defined-but-empty,
+    // and every later fill path (the folded parse's === undefined guard, the
+    // defensive batch's, this method's own) is then defeated for the engine's
+    // lifetime — newCardDefaultType degraded to untyped forever. Leave it
+    // undefined; the load paths fill it. Genuinely EMPTY universes (parsed,
+    // zero rules) still latch the empty map exactly as before.
+    if (this.defaultRuleTypes === undefined) return;
     if (this.defaultTypeNameById !== undefined) return;
     const map = new Map<number, string>();
     // The *default universe's rule-card types AND the *structure universe's

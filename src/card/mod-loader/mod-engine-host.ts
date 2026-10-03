@@ -22,6 +22,26 @@ export function modEngineHost(
   engine: ModEngineLike,
   fetcher: FetchEngine,
 ): ModEngineHost {
+  // The seat-enrichment invariant: engine.cacheFetchedRecord -> enrichAndStore
+  // reads the ENGINE'S OWN fetcher codename registry synchronously (render.ts
+  // enrichAndStore: typeCode = this.fetcher.codenames.peekNameForId(typeId)) —
+  // never the host fetcher's. An engine whose codenames were never loaded (a
+  // fresh RenderEngine over its own FetchEngine — the multi-actor harness
+  // shape) seated every warm row with typeCode undefined, closureWarm's SEARCH
+  // gate (the SEARCH_TYPE_CODE match) then mis-fired on the seated search
+  // cards, the cold batch was skipped, the *default/*structure universes never
+  // loaded, preloadDefaultTypeNames latched an EMPTY defaultTypeNameById, and
+  // newCardDefaultType degraded every nest-miss child to the raw phantom
+  // constants (the card-mod-search-list oracle's BasicCs-vs-RichText byte
+  // divergence on the sara/anonymous arms). Both seat paths below therefore
+  // ensure the engine's registry is loaded first; ensureLoaded is memoized
+  // (one codehash read per registry, a no-op once loaded).
+  const ensureEngineCodenamesLoaded = async (): Promise<void> => {
+    const engineFetcher = (engine as unknown as {
+      fetcher?: { codenames?: { ensureLoaded(): Promise<void> } };
+    }).fetcher;
+    await engineFetcher?.codenames?.ensureLoaded();
+  };
   return {
     fetchRenderCard: (name: string) => engine.fetchRenderCard(name),
     isDenied: (card: unknown) => engine.isDenied(card as RenderCard),
@@ -32,6 +52,7 @@ export function modEngineHost(
     // enriched render-card map - the only write path into the sync render
     // surface.
     cacheFetchedRecord: async (record: unknown) => {
+      await ensureEngineCodenamesLoaded();
       await (engine as unknown as {
         cacheFetchedRecord(record: CardRecord): Promise<void>;
       }).cacheFetchedRecord(record as CardRecord);
@@ -42,6 +63,7 @@ export function modEngineHost(
     // fetch ladder would have used, so the records are value-identical to
     // the fetchById storm's (see the interface doc).
     composeAndCacheRows: async (rows) => {
+      await ensureEngineCodenamesLoaded();
       const composed = await composeAndCacheSqlRows(
         rows as unknown as Parameters<typeof composeAndCacheSqlRows>[0],
         {
