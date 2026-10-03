@@ -51,6 +51,17 @@ import { resolveContentOverride } from "./content-overrides.js";
 import { NO_REQUEST_ORIGIN } from "./deck-origin.js";
 import { mainNestWithoutMainError } from "./errors.js";
 
+/** The self-set title overrides, keyed on the rendered card's codename.
+ *  Lives HERE, not in views.ts, because TWO surfaces read it: the
+ *  readable header (views.ts titleNoLinkView) and the loud-denial frame
+ *  (RenderFormat#mainLoudDenialHtml). views.ts imports format.ts, so a
+ *  table in views.ts could not be read by format.ts without a cycle. */
+const SELF_SET_TITLE_OVERRIDES: ReadonlyMap<string, string> = new Map([
+  ["search", "Search Results"],
+  ["recent", "Recent Changes"],
+  ["signin", "Sign In"],
+]);
+
 /** card-1.110.0 lib/card/env/location.rb:6-16 `card_path` — makes a
  *  relative path site-absolute when it is not already rooted. `relative_
  *  url_root` is `Cardio.config.relative_url_root`, nil at boot
@@ -1084,16 +1095,63 @@ export class RenderFormat {
    *  denial-view <set-keys>`, data attrs from the real card, data-slot
    *  from the ORIGINAL main-nest opts (identical to the readable main
    *  render's slot JSON except the id/class view and the hide list). */
+  /** The self-set title overrides (card-mod-search set/self/search.rb:39-42
+   *  `view :title do voo.title ||= t(:search_results_title); super end`;
+   *  mod/search/set/self/recent.rb:4-7 `voo.title ||= "Recent Changes"`;
+   *  card-mod-account set/self/signin.rb:134-137
+   *  `voo.title ||= t(:account_sign_in_title)` - en.yml:32 "Sign In").
+   *  Ruby binds these to the SELF set modules, which anchor by CODENAME
+   *  (set.rb:42-44); the oracle pins the bytes (*search -> "Search Results",
+   *  *recent -> "Recent Changes", *signin -> "Sign In"; base dump
+   *  000003-_search-title/-closed, 000003-_recent-title,
+   *  000015-_signin-title/-closed). Served in the render layer (not as
+   *  setModule registrations) because the headless view-lane engine runs
+   *  with NO ModLoader bound - the same pattern as openView's discussion
+   *  comment_box check. Keys are card codenames. */
+  selfSetTitleOverride(): string | undefined {
+    return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
+  }
+
   private mainLoudDenialHtml(voo: Voo): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
     const name = card.name.s;
-    const titleInner = h(name).split("+").join("<span>+</span>");
+    // THE DENIAL HEADER'S TITLE IS THE CARD'S `:title` VIEW'S TITLE, not
+    // the bare name. Ruby builds this header through the standard chain:
+    // mod/format/set/all/html/error.rb:191-198 `loud_denial` calls `frame`,
+    // and mod/format/set/all/html/frame.rb:9-11 `frame` -> `standard_frame`
+    // -> :13-17 `with_frame slot=true, header=frame_header`, whose
+    // `frame_header` is :29-31 `_render_header` — the SAME header the
+    // readable page renders, which dispatches render_title and therefore
+    // the card's own `view :title`.
+    //
+    // For `*recent` that is the whole difference. mod/search/set/self/
+    // recent.rb:4-7
+    //
+    //     view :title do
+    //       voo.title ||= "Recent Changes"
+    //       super()
+    //     end
+    //
+    // so a denied `*recent` page's <h1> reads "Recent Changes". The engine
+    // inlined `card.name.s` here, which bypassed the view entirely and
+    // rendered "*recent" — the sole open cluster-12 divergence
+    // (recapture-raw-shard-000003 `*recent:page`, -14: the override is
+    // seven characters longer than the bare name, in the title attribute
+    // AND in the span text).
+    //
+    // THE LOOKUP LIVES IN ONE PLACE. SELF_SET_TITLE_OVERRIDES moved from
+    // views.ts to this file so the readable header and the denial header
+    // read the same table — views.ts imports format.ts, so the dependency
+    // only runs this way (the cluster-3 rootUrl fix's "one builder, two
+    // surfaces" shape).
+    const title = this.selfSetTitleOverride() ?? name;
+    const titleInner = h(title).split("+").join("<span>+</span>");
     const header =
       `<div class="d0-card-header card-header">` +
       `<h1 class="d0-card-header-title">` +
-      `<span class="card-title" title="${h(name)}">${titleInner}</span></h1></div>`;
+      `<span class="card-title" title="${h(title)}">${titleInner}</span></h1></div>`;
     const message = this.loudDenialMessageHtml();
     const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
@@ -2503,8 +2561,16 @@ export class RenderFormat {
       }
     }
     let href: string;
+    // The RESOLVED name, when the mark resolves. `Eagle+:members` is a
+    // codename mark: its `.urlKey` and its `.s` are both `Eagle+*members`,
+    // because `:members` resolves to the codenamed `*members` card. Ruby's
+    // Card::Path is handed a Cardname, and a Cardname in this position is
+    // the resolved one, so BOTH halves of its standardish test see the
+    // resolved string. Keeping the resolved form is what lets the decision
+    // below compare like with like.
     try {
-      href = `/${DeckoName.parse(hrefSource).urlKey}`;
+      const parsedSource = DeckoName.parse(hrefSource);
+      href = `/${parsedSource.urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
         href = `/${target.replace(/ /g, "_")}`; // unresolved mark: plain underscore form
@@ -2517,6 +2583,18 @@ export class RenderFormat {
     // ?card[name]=<name> (query, path.rb:84-87) — the mindfulness oracle's
     // href `/mytho_psychology?card%5Bname%5D=mytho-psychology` (entry 28173
     // @12,123). Standardish wanted names (People_Green) stay bare.
+    //
+    // THE COMPARISON IS AGAINST THE RESOLVED NAME, not the authored mark.
+    // Pre-fix this passed `hrefSource`, which for a codename mark is the
+    // UNRESOLVED `Eagle+:members`, and compared its `urlKey`
+    // (`Eagle+*members`) against that same unresolved string — two different
+    // spellings of one name, so the test could never be satisfied and the
+    // query fired on every codename-marked wanted link. The href beside it
+    // was already built from the resolved url_key, so the anchor rendered
+    // `/Eagle+*members?card[name]=Eagle+:members` where the capture has a
+    // bare `/Eagle+*members` (recapture-raw-shard-000029 `Eagle:page`, +36 —
+    // the whole delta is that query). Card 34824 `Eagle+description` is the
+    // authored mark: `[[Eagle+:members|Eagle users]]`.
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
@@ -4134,9 +4212,38 @@ function linkTitleInContext(
  *  the plain-underscore fallback href, the corpus's only wanted shape). */
 function wantedHrefQuerySuffix(hrefSource: string): string {
   try {
-    const key = DeckoName.parse(hrefSource).urlKey;
-    if (key === hrefSource.replace(/ /g, "_")) return "";
-    return `?card%5Bname%5D=${cgiEscape(hrefSource)}`;
+    const parsed = DeckoName.parse(hrefSource);
+    // BOTH SIDES OF THE STANDARDISH TEST MUST SEE THE RESOLVED NAME.
+    //
+    // Ruby's Cardname is a String subclass and Card::Path is handed the
+    // Card the mark resolved to, so `name.url_key` (path.rb:107-109) and
+    // `name.tr(" ", "_")` are two spellings of ONE already-resolved name.
+    //
+    // The pre-fix code compared `parsed.urlKey` — which resolves — against
+    // `hrefSource` — which does not — so a mark carrying a codename could
+    // never satisfy the test and the query fired on every such link. Card
+    // 34824 `Eagle+description` authors `[[Eagle+:members|Eagle users]]`:
+    //
+    //     hrefSource          "Eagle+:members"   (authored)
+    //     parsed.urlKey       "Eagle+*members"   (resolved)
+    //     resolved nameParts  ["Eagle","*members"] -> "Eagle+*members"
+    //
+    // The href beside this was ALREADY built from the resolved url_key, so
+    // the anchor came out `/Eagle+*members?card%5Bname%5D=Eagle%2B%3Amembers`
+    // where the capture has a bare `/Eagle+*members` (recapture-raw-shard-
+    // 000029 `Eagle:page`, +36 — the whole delta is that query).
+    //
+    // `parts.join(joint)` (src/card/name.ts:354-356, `nameParts.map(p => p.s)`)
+    // is the same construction url_key uses (cardname/lib/cardname/variants.rb
+    // :8-13 maps part_names), without the lossy key-stripping, so it IS the
+    // resolved name.
+    const resolved = parsed.parts.join(DeckoName.JOINT);
+    if (parsed.urlKey === resolved.replace(/ /g, "_")) return "";
+    // The query carries the RESOLVED name too — path.rb:89-96 assigns the
+    // same Cardname to `opts[:card][:name]` that it tested. The mindfulness
+    // pin is unaffected: `mytho_psychology` has no codename mark, so its
+    // resolved and authored spellings are the same string.
+    return `?card%5Bname%5D=${cgiEscape(resolved)}`;
   } catch {
     return "";
   }

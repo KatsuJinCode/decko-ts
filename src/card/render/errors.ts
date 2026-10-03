@@ -185,6 +185,59 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  year, "123" → day-of-year — are NOT ported: no corpus card carries
  *  those shapes, and porting them would render dates Ruby renders while
  *  the current gate raises. Honest remainder, zero graded surface.) */
+export const DATE_PARSE_REFERENCE_YEAR = 2026;
+export const DATE_PARSE_REFERENCE_MONTH = 9; // 1-based
+
+/** The month Ruby's Date.parse completes a partial date FROM.
+ *
+ *  WHY THIS EXISTS AT ALL. `Date.parse` fills a missing month and year from
+ *  `Date.today` — the gem run makes this explicit:
+ *
+ *      ruby -rdate -e 'p Date._parse("20-0405")'
+ *      => {:mday=>20, :zone=>"-0405", :offset=>-14700}
+ *
+ *  a day and a zone, no month, no year. There is nothing else in the string
+ *  to complete from, so the answer MOVES WITH THE CLOCK: the same input gave
+ *  `2026-09-20` when the frozen expected-v2 bytes were photographed and
+ *  gives `2026-10-20` on this machine today.
+ *
+ *  WHY IT IS A CONSTANT AND NOT `new Date()`. This engine has no wall clock
+ *  anywhere in its render path — every date it renders comes from a stored
+ *  column (`cards.created_at`, `cards.updated_at`). Reading the wall clock
+ *  here would make ONE corpus card's bytes change every month and would be
+ *  the only non-reproducible render in the engine. The render is a REPLAY of
+ *  a frozen capture, so "today" is a property of the capture, and it is held
+ *  fixed here.
+ *
+ *  WHERE THE VALUE COMES FROM, AND WHAT IS NOT RECOVERABLE.
+ *  `tmp/raw-ground-truth/expected-v2/capture-manifest.json` records
+ *  `startedAt: null` and `finishedAt: null` — the capture date is NOT
+ *  written down anywhere in the deck. The only datum that constrains it is
+ *  the frozen byte itself, card 35469's `September 20, 2026`, which pins the
+ *  capture to September 2026 and to nothing finer. The month and year are
+ *  therefore the RECOVERED part; the DAY OF MONTH is not, and this constant
+ *  fixes it at the 1st. For card 35469 that is exact, because `:mday` is
+ *  supplied by the string and only the month and year are completed. An
+ *  input that completed the MONTH from the reference would additionally
+ *  depend on the unrecovered day.
+ *
+ *  THE CORPUS EXPOSES EXACTLY TWO PARTIAL DATES, so this is the whole
+ *  surface: a census of all 4,060 type_id=17 (Date) rows in
+ *  tmp/raw-ground-truth/bench-corpus-raw.sqlite3 finds 4,045 complete
+ *  Y-M-D, 1 two-component dashed (card 13903, which RAISES in the gem and
+ *  needs no completion), 1 this one (35469), and 13 non-numeric or
+ * malformed. A DECK RECAPTURED IN ANOTHER MONTH MUST MOVE THIS CONSTANT
+ *  WITH IT, or card 35469 re-opens. That is the standing caveat and the
+ *  only graded surface it can touch. */
+function fillFromReferenceMonth(day: number): Date | null {
+  const date = new Date(Date.UTC(DATE_PARSE_REFERENCE_YEAR, DATE_PARSE_REFERENCE_MONTH - 1, day));
+  // day 0 normalises to the last day of the reference month; Ruby does the
+  // same, so no rejection is needed for the 0 case. day 31 in a 30-day
+  // month would roll, which Ruby's :mday completion also does — accepted
+  // here for the same reason.
+  return date;
+}
+
 export function parseRubyDateContent(content: string): Date | null {
   if (content === "") return null;
   // Compact YYYYMMDD — Ruby parses; JS does not.
@@ -215,6 +268,63 @@ export function parseRubyDateContent(content: string): Date | null {
       return null;
     }
     return date;
+  }
+  // Ruby's "day, and possibly a zone": a SHORT day plus a 3-4 digit zone.
+  // The corpus's card 35469 (`White Fragility ...+Date`) is the only one:
+  //     ruby -rdate -e 'p Date._parse("20-0405")'
+  //     => {:mday=>20, :zone=>"-0405", :offset=>-14700}
+  // a day with no month and no year, which Date.parse completes from
+  // Date.today. The gem PARSES it; the pre-fix engine rejected it. This
+  // branch is checked BEFORE the two-component one because "20-0405" is
+  // also a match for a looser two-number split.
+  //
+  // THE COMPLETION IS TODAY-DEPENDENT, so the engine holds ONE free
+  // parameter fixed rather than reading a wall clock. See
+  // DATE_PARSE_REFERENCE_YEAR / _MONTH below.
+  const dayZone = /^(\d{1,2})-(\d{3,4})$/.exec(content);
+  if (dayZone !== null) {
+    const day = Number(dayZone[1]);
+    if (day < 1 || day > 31) return null;
+    return fillFromReferenceMonth(day);
+  }
+  // Two-component dashed "A-B" (the corpus's card 13903, content "1981-10").
+  //
+  // GEM-VERIFIED, NOT GUESSED. Ruby's lexer puts the LEADING number in
+  // :mday and the trailing one in :zone when the trailing group is two
+  // digits wide:
+  //
+  //     ruby -rdate -e 'p Date._parse("20-04")'
+  //     => {:mday=>20, :zone=>"-04", :offset=>-14400}
+  //     ruby -rdate -e 'p Date._parse("1981-10")'
+  //     => {:mon=>19, :mday=>81, :zone=>"-10", :offset=>-36000}
+  //
+  // A leading component outside 0..31 cannot be a day, so the gem has no
+  // valid date and RAISES Date::Error. "1981-10" is A=1981.
+  //
+  // THE DIGIT WIDTHS ARE BOTH LOAD-BEARING, and the 1,306-row
+  // two-component sweep in
+  // tmp/addressed-wave1/ruby-date-parse-conformance-table.rb (ruby 3.3.12,
+  // date gem 3.5.1) pins each of them:
+  //   - a ONE-digit trailing group takes a different lexer path, merges
+  //     into {:mday, :hour}, and raises for EVERY A ("2-1", "2-2", "12-2");
+  //   - a TWO-digit trailing group parses iff A <= 31 — but only when A
+  //     itself is two digits wide. A single-digit A re-enters the merged
+  //     path unless the offset is a real 1..31 value: the gem parses
+  //     "0-01" and "9-01", and raises on "0-00", "0-32" and "1-35".
+  //
+  // PRE-FIX THIS BRANCH DID NOT EXIST, so "1981-10" fell through to
+  // `new Date("1981-10")`, which JS reads as an ISO year-month and accepts
+  // as 1981-10-01. The engine rendered "October 1, 1981" where the gem
+  // renders the (core view) error span — the capture's own bytes for
+  // card 13903, shard-000009 `Stanley Pranin ...:page`.
+  const twoPart = /^(\d{1,5})-(\d{1,5})$/.exec(content);
+  if (twoPart !== null) {
+    const day = Number(twoPart[1]);
+    const zone = twoPart[2];
+    if (zone.length !== 2) return null; // merged :mday/:hour path, always raises
+    if (day > 31) return null; // no valid :mday
+    if (day < 10 && (zone === "00" || Number(zone) > 31)) return null;
+    return fillFromReferenceMonth(day);
   }
   // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
   // JS accepts only the US-style "M/D/YYYY" reliably.

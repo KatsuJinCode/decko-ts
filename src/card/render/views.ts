@@ -226,25 +226,6 @@ function slotWrap(
   return `<div${attrs}>${inner}${trailingNewline}</div>`;
 }
 
-/** The self-set title overrides (card-mod-search set/self/search.rb:39-42
- *  `view :title do voo.title ||= t(:search_results_title); super end`;
- *  set/self/recent.rb:4-7 `voo.title ||= "Recent Changes"`;
- *  card-mod-account set/self/signin.rb:134-137
- *  `voo.title ||= t(:account_sign_in_title)` - en.yml:32 "Sign In").
- *  Ruby binds these to the SELF set modules, which anchor by CODENAME
- *  (set.rb:42-44); the oracle pins the bytes (*search -> "Search Results",
- *  *recent -> "Recent Changes", *signin -> "Sign In"; base dump
- *  000003-_search-title/-closed, 000003-_recent-title,
- *  000015-_signin-title/-closed). Served in the render layer (not as
- *  setModule registrations) because the headless view-lane engine runs
- *  with NO ModLoader bound - the same pattern as openView's discussion
- *  comment_box check. Keys are card codenames. */
-const SELF_SET_TITLE_OVERRIDES: ReadonlyMap<string, string> = new Map([
-  ["search", "Search Results"],
-  ["recent", "Recent Changes"],
-  ["signin", "Sign In"],
-]);
-
 /** title.rb:22-24 `view :title_no_link, compact: true, perms: none do
  *  wrapped_title standard_title end` + title.rb:40-44 #wrapped_title
  *  (`wrap_with :span, class: classy("card-title"), title: title do
@@ -278,7 +259,7 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // attribute is h()'d here while the derived arm's already carries the
   // escape.
   const override =
-    explicit ?? SELF_SET_TITLE_OVERRIDES.get(fmt.card.record.codename ?? "");
+    explicit ?? fmt.selfSetTitleOverride()
   // The EXPLICIT arm goes through standardTitle — its explicit branch is
   // the relativization (title.rb:34-37 absolutize+from-context); handing
   // the raw opt here (the pre-p20 shape) skipped it and rendered the full
