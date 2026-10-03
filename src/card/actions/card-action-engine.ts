@@ -764,6 +764,26 @@ export class CardActionEngine {
         "UPDATE card_actions SET action_type = ? WHERE id = ?",
         [actionTypeCode("create"), saved.actionId],
       );
+      // :store_attachment! + :correct_identifier for the revival save. The
+      // attachment events run on EVERY save of a mount-typed card
+      // (card-mod-carrierwave set/abstract/attachment.rb:20-39 — on: :save,
+      // no new_record? guard), and pull_from_trash! (trash.rb:57-62) routes
+      // the revival through the normal save stack, so a revived File/Image
+      // card's upload stores its bytes and its identifier exactly like any
+      // other save. The finalizer's "update" arm rewrites THIS action's
+      // db_content change row (the revival writer recorded the
+      // attachment-less after state) to the final identifier, keeping the
+      // module's pinned contract: the action resolves to the bytes it
+      // stored. Runs BEFORE the cache expiry, as on the fresh-create path.
+      if (input.attachment !== undefined) {
+        await this.finalizeAttachment(
+          trashed.id,
+          saved.actionId,
+          input.attachment,
+          trashed.db_content ?? null,
+          "update",
+        );
+      }
       await this.expireAfterWrite({
         cardId: trashed.id,
         nameAfter: name,
