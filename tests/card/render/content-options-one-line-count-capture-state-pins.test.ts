@@ -121,25 +121,43 @@ describe.runIf(existsSync(ARCHIVE))("MEMBER 2: the input-type catalogs in the Ru
 });
 
 describe.runIf(existsSync(CORPUS))("MEMBER 2: corpus row 11745 carries ONE item", () => {
-  const db = new Database(CORPUS, { readonly: true });
-  const row = db.prepare("SELECT * FROM cards WHERE id = 11745").get() as {
+  // vitest executes a describe body even when runIf is false (probe-proven
+  // 2026-10-03: the body runs to collect names for the skip report), so the
+  // corpus open MUST be lazy. It was collection-time (`const db = new
+  // Database(...)` directly in this body), which failed the whole file
+  // deterministically on every machine lineage once the corpus home worktree
+  // (decko-ts-lane-fama-remainder) was deleted by the 2026-10-03 worktree
+  // cleanup — the runIf guard could not protect a collection-time open.
+  // Lazy open restores the guard's own intent: corpus absent -> suite skips.
+  let db: InstanceType<typeof Database> | undefined;
+  let row: {
     name: string | null;
     left_id: number;
     right_id: number;
     type_id: number;
     content: string;
   };
-  const sameContent = db
-    .prepare("SELECT COUNT(*) AS n FROM cards WHERE content = ?")
-    .get("overridden") as { n: number };
+  let sameContent: { n: number };
+  const loadCorpusRow = (): { row: typeof row; sameContent: typeof sameContent } => {
+    if (db === undefined) {
+      db = new Database(CORPUS, { readonly: true });
+      row = db.prepare("SELECT * FROM cards WHERE id = 11745").get() as typeof row;
+      sameContent = db
+        .prepare("SELECT COUNT(*) AS n FROM cards WHERE content = ?")
+        .get("overridden") as typeof sameContent;
+    }
+    return { row: row!, sameContent: sameContent! };
+  };
 
   it("is the Pointer-typed `*input type+*right+*content options` rule", () => {
+    const { row } = loadCorpusRow();
     expect(row).toBeDefined();
     expect(row.type_id).toBe(34843); // Pointer
     expect(row.content).toBe("overridden");
   });
 
   it("'overridden' is ONE item, so Ruby's count == 1 arm renders it, not '11 items'", () => {
+    const { row } = loadCorpusRow();
     const items = row.content
       .split("\n")
       .map((s) => s.trim())
@@ -149,6 +167,7 @@ describe.runIf(existsSync(CORPUS))("MEMBER 2: corpus row 11745 carries ONE item"
   });
 
   it("is the ONLY row in the corpus with that content (a one-off, not a list)", () => {
+    const { sameContent } = loadCorpusRow();
     expect(sameContent.n).toBe(1);
   });
 });
