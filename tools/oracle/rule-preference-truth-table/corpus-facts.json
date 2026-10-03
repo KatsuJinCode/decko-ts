@@ -1,0 +1,1577 @@
+{
+ "what": "corpus card facts (id/typeId/codename) for rule-preference-truth-table-oracle.rb",
+ "sourceDb": "tmp\\raw-ground-truth\\bench-corpus-raw.sqlite3",
+ "generatedBy": "tools/oracle/rule-preference-truth-table/generate-facts-from-corpus.mjs",
+ "fetchedNamesNote": "keys are the EXACT name spellings Ruby's predicate fetches (name.right, name.left, name[0..-3], self[-2]); the Ruby oracle stubs Card.fetch_type_id / Card#[] over this table",
+ "typeConstantIds": {
+  "set": 259,
+  "setting": 278,
+  "user": 4
+ },
+ "families": {
+  "overAdmitted": [
+   {
+    "name": "mod: account+*style",
+    "parts": [
+     "mod: account",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: account",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45465,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45464,
+      "typeId": 45410,
+      "codename": "mod_account"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: api key+*style",
+    "parts": [
+     "mod: api key",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: api key",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45479,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45478,
+      "typeId": 45410,
+      "codename": "mod_api_key"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: bar and box+*style",
+    "parts": [
+     "mod: bar and box",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: bar and box",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45485,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45482,
+      "typeId": 45410,
+      "codename": "mod_bar_and_box"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: bootstrap+*style",
+    "parts": [
+     "mod: bootstrap",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: bootstrap",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45489,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45486,
+      "typeId": 45410,
+      "codename": "mod_bootstrap"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: carrierwave+*style",
+    "parts": [
+     "mod: carrierwave",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: carrierwave",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45471,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45468,
+      "typeId": 45410,
+      "codename": "mod_carrierwave"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: comment+*style",
+    "parts": [
+     "mod: comment",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: comment",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45491,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45490,
+      "typeId": 45410,
+      "codename": "mod_comment"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: edit+*style",
+    "parts": [
+     "mod: edit",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: edit",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45461,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45458,
+      "typeId": 45410,
+      "codename": "mod_edit"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: follow+*style",
+    "parts": [
+     "mod: follow",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: follow",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45497,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45494,
+      "typeId": 45410,
+      "codename": "mod_follow"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: format+*style",
+    "parts": [
+     "mod: format",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: format",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45440,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45437,
+      "typeId": 45410,
+      "codename": "mod_format"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: help+*style",
+    "parts": [
+     "mod: help",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: help",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45449,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45448,
+      "typeId": 45410,
+      "codename": "mod_help"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: history+*style",
+    "parts": [
+     "mod: history",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: history",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45467,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45466,
+      "typeId": 45410,
+      "codename": "mod_history"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: layout+*style",
+    "parts": [
+     "mod: layout",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: layout",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45505,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45502,
+      "typeId": 45410,
+      "codename": "mod_layout"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: list+*style",
+    "parts": [
+     "mod: list",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: list",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45444,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45441,
+      "typeId": 45410,
+      "codename": "mod_list"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: permissions+*style",
+    "parts": [
+     "mod: permissions",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: permissions",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45447,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45446,
+      "typeId": 45410,
+      "codename": "mod_permissions"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: rules+*style",
+    "parts": [
+     "mod: rules",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: rules",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45457,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45454,
+      "typeId": 45410,
+      "codename": "mod_rules"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: search+*style",
+    "parts": [
+     "mod: search",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: search",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45453,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45450,
+      "typeId": 45410,
+      "codename": "mod_search"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: style+*style",
+    "parts": [
+     "mod: style",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: style",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45481,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45480,
+      "typeId": 45410,
+      "codename": "mod_style"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: tinymce editor+*style",
+    "parts": [
+     "mod: tinymce editor",
+     "*style"
+    ],
+    "fetchedNames": {
+     "right": "*style",
+     "left": "mod: tinymce editor",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45512,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 17450,
+      "typeId": 278,
+      "codename": "style"
+     },
+     "left": {
+      "id": 45509,
+      "typeId": 45410,
+      "codename": "mod_tinymce_editor"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: account+*script",
+    "parts": [
+     "mod: account",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: account",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 49305,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45464,
+      "typeId": 45410,
+      "codename": "mod_account"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: ace editor+*script",
+    "parts": [
+     "mod: ace editor",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: ace editor",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45476,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45475,
+      "typeId": 45410,
+      "codename": "mod_ace_editor"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: bar and box+*script",
+    "parts": [
+     "mod: bar and box",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: bar and box",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45483,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45482,
+      "typeId": 45410,
+      "codename": "mod_bar_and_box"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: bootstrap+*script",
+    "parts": [
+     "mod: bootstrap",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: bootstrap",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45487,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45486,
+      "typeId": 45410,
+      "codename": "mod_bootstrap"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: carrierwave+*script",
+    "parts": [
+     "mod: carrierwave",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: carrierwave",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45469,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45468,
+      "typeId": 45410,
+      "codename": "mod_carrierwave"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: edit+*script",
+    "parts": [
+     "mod: edit",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: edit",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45459,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45458,
+      "typeId": 45410,
+      "codename": "mod_edit"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: follow+*script",
+    "parts": [
+     "mod: follow",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: follow",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45495,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45494,
+      "typeId": 45410,
+      "codename": "mod_follow"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: format+*script",
+    "parts": [
+     "mod: format",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: format",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45438,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45437,
+      "typeId": 45410,
+      "codename": "mod_format"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: layout+*script",
+    "parts": [
+     "mod: layout",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: layout",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45503,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45502,
+      "typeId": 45410,
+      "codename": "mod_layout"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: list+*script",
+    "parts": [
+     "mod: list",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: list",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45442,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45441,
+      "typeId": 45410,
+      "codename": "mod_list"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: recaptcha+*script",
+    "parts": [
+     "mod: recaptcha",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: recaptcha",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45507,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45506,
+      "typeId": 45410,
+      "codename": "mod_recaptcha"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: rules+*script",
+    "parts": [
+     "mod: rules",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: rules",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45455,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45454,
+      "typeId": 45410,
+      "codename": "mod_rules"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: search+*script",
+    "parts": [
+     "mod: search",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: search",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45451,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45450,
+      "typeId": 45410,
+      "codename": "mod_search"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: shades+*script",
+    "parts": [
+     "mod: shades",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: shades",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 49309,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 49308,
+      "typeId": 45410,
+      "codename": "mod_shades"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: tabs+*script",
+    "parts": [
+     "mod: tabs",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: tabs",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45500,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45499,
+      "typeId": 45410,
+      "codename": "mod_tabs"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   },
+   {
+    "name": "mod: tinymce editor+*script",
+    "parts": [
+     "mod: tinymce editor",
+     "*script"
+    ],
+    "fetchedNames": {
+     "right": "*script",
+     "left": "mod: tinymce editor",
+     "trunk": null,
+     "preferer": null
+    },
+    "resolved": {
+     "row": {
+      "id": 45510,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 20596,
+      "typeId": 278,
+      "codename": "script"
+     },
+     "left": {
+      "id": 45509,
+      "typeId": 45410,
+      "codename": "mod_tinymce_editor"
+     },
+     "trunk": null,
+     "preferer": null
+    }
+   }
+  ],
+  "guards": [
+   {
+    "name": "*all+*all+*follow",
+    "parts": [
+     "*all",
+     "*all",
+     "*follow"
+    ],
+    "fetchedNames": {
+     "right": "*follow",
+     "left": "*all+*all",
+     "trunk": "*all",
+     "preferer": "*all"
+    },
+    "resolved": {
+     "row": {
+      "id": 22735,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 22720,
+      "typeId": 278,
+      "codename": "follow"
+     },
+     "left": {
+      "id": 22734,
+      "typeId": 3,
+      "codename": null
+     },
+     "trunk": {
+      "id": 274,
+      "typeId": 259,
+      "codename": "all"
+     },
+     "preferer": {
+      "id": 274,
+      "typeId": 259,
+      "codename": "all"
+     }
+    }
+   },
+   {
+    "name": "Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow",
+    "parts": [
+     "Don't Wait For The Study",
+     "*self",
+     "Brandon WilliamsCraig",
+     "*follow"
+    ],
+    "fetchedNames": {
+     "right": "*follow",
+     "left": "Don't Wait For The Study+*self+Brandon WilliamsCraig",
+     "trunk": "Don't Wait For The Study+*self",
+     "preferer": "Brandon WilliamsCraig"
+    },
+    "resolved": {
+     "row": {
+      "id": 26851,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 22720,
+      "typeId": 278,
+      "codename": "follow"
+     },
+     "left": {
+      "id": 26850,
+      "typeId": 3,
+      "codename": null
+     },
+     "trunk": {
+      "id": 26849,
+      "typeId": 259,
+      "codename": null
+     },
+     "preferer": {
+      "id": 393,
+      "typeId": 4,
+      "codename": null
+     }
+    }
+   },
+   {
+    "name": "Make Contact+*self+Brandon WilliamsCraig+*follow",
+    "parts": [
+     "Make Contact",
+     "*self",
+     "Brandon WilliamsCraig",
+     "*follow"
+    ],
+    "fetchedNames": {
+     "right": "*follow",
+     "left": "Make Contact+*self+Brandon WilliamsCraig",
+     "trunk": "Make Contact+*self",
+     "preferer": "Brandon WilliamsCraig"
+    },
+    "resolved": {
+     "row": {
+      "id": 34896,
+      "typeId": 47,
+      "codename": null
+     },
+     "right": {
+      "id": 22720,
+      "typeId": 278,
+      "codename": "follow"
+     },
+     "left": {
+      "id": 34895,
+      "typeId": 3,
+      "codename": null
+     },
+     "trunk": {
+      "id": 6854,
+      "typeId": 259,
+      "codename": null
+     },
+     "preferer": {
+      "id": 393,
+      "typeId": 4,
+      "codename": null
+     }
+    }
+   }
+  ]
+ },
+ "facts": {
+  "mod: account+*style": {
+   "id": 45465,
+   "typeId": 47,
+   "codename": null
+  },
+  "*style": {
+   "id": 17450,
+   "typeId": 278,
+   "codename": "style"
+  },
+  "mod: account": {
+   "id": 45464,
+   "typeId": 45410,
+   "codename": "mod_account"
+  },
+  "mod: api key+*style": {
+   "id": 45479,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: api key": {
+   "id": 45478,
+   "typeId": 45410,
+   "codename": "mod_api_key"
+  },
+  "mod: bar and box+*style": {
+   "id": 45485,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: bar and box": {
+   "id": 45482,
+   "typeId": 45410,
+   "codename": "mod_bar_and_box"
+  },
+  "mod: bootstrap+*style": {
+   "id": 45489,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: bootstrap": {
+   "id": 45486,
+   "typeId": 45410,
+   "codename": "mod_bootstrap"
+  },
+  "mod: carrierwave+*style": {
+   "id": 45471,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: carrierwave": {
+   "id": 45468,
+   "typeId": 45410,
+   "codename": "mod_carrierwave"
+  },
+  "mod: comment+*style": {
+   "id": 45491,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: comment": {
+   "id": 45490,
+   "typeId": 45410,
+   "codename": "mod_comment"
+  },
+  "mod: edit+*style": {
+   "id": 45461,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: edit": {
+   "id": 45458,
+   "typeId": 45410,
+   "codename": "mod_edit"
+  },
+  "mod: follow+*style": {
+   "id": 45497,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: follow": {
+   "id": 45494,
+   "typeId": 45410,
+   "codename": "mod_follow"
+  },
+  "mod: format+*style": {
+   "id": 45440,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: format": {
+   "id": 45437,
+   "typeId": 45410,
+   "codename": "mod_format"
+  },
+  "mod: help+*style": {
+   "id": 45449,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: help": {
+   "id": 45448,
+   "typeId": 45410,
+   "codename": "mod_help"
+  },
+  "mod: history+*style": {
+   "id": 45467,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: history": {
+   "id": 45466,
+   "typeId": 45410,
+   "codename": "mod_history"
+  },
+  "mod: layout+*style": {
+   "id": 45505,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: layout": {
+   "id": 45502,
+   "typeId": 45410,
+   "codename": "mod_layout"
+  },
+  "mod: list+*style": {
+   "id": 45444,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: list": {
+   "id": 45441,
+   "typeId": 45410,
+   "codename": "mod_list"
+  },
+  "mod: permissions+*style": {
+   "id": 45447,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: permissions": {
+   "id": 45446,
+   "typeId": 45410,
+   "codename": "mod_permissions"
+  },
+  "mod: rules+*style": {
+   "id": 45457,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: rules": {
+   "id": 45454,
+   "typeId": 45410,
+   "codename": "mod_rules"
+  },
+  "mod: search+*style": {
+   "id": 45453,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: search": {
+   "id": 45450,
+   "typeId": 45410,
+   "codename": "mod_search"
+  },
+  "mod: style+*style": {
+   "id": 45481,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: style": {
+   "id": 45480,
+   "typeId": 45410,
+   "codename": "mod_style"
+  },
+  "mod: tinymce editor+*style": {
+   "id": 45512,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: tinymce editor": {
+   "id": 45509,
+   "typeId": 45410,
+   "codename": "mod_tinymce_editor"
+  },
+  "mod: account+*script": {
+   "id": 49305,
+   "typeId": 47,
+   "codename": null
+  },
+  "*script": {
+   "id": 20596,
+   "typeId": 278,
+   "codename": "script"
+  },
+  "mod: ace editor+*script": {
+   "id": 45476,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: ace editor": {
+   "id": 45475,
+   "typeId": 45410,
+   "codename": "mod_ace_editor"
+  },
+  "mod: bar and box+*script": {
+   "id": 45483,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: bootstrap+*script": {
+   "id": 45487,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: carrierwave+*script": {
+   "id": 45469,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: edit+*script": {
+   "id": 45459,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: follow+*script": {
+   "id": 45495,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: format+*script": {
+   "id": 45438,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: layout+*script": {
+   "id": 45503,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: list+*script": {
+   "id": 45442,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: recaptcha+*script": {
+   "id": 45507,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: recaptcha": {
+   "id": 45506,
+   "typeId": 45410,
+   "codename": "mod_recaptcha"
+  },
+  "mod: rules+*script": {
+   "id": 45455,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: search+*script": {
+   "id": 45451,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: shades+*script": {
+   "id": 49309,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: shades": {
+   "id": 49308,
+   "typeId": 45410,
+   "codename": "mod_shades"
+  },
+  "mod: tabs+*script": {
+   "id": 45500,
+   "typeId": 47,
+   "codename": null
+  },
+  "mod: tabs": {
+   "id": 45499,
+   "typeId": 45410,
+   "codename": "mod_tabs"
+  },
+  "mod: tinymce editor+*script": {
+   "id": 45510,
+   "typeId": 47,
+   "codename": null
+  },
+  "*all+*all+*follow": {
+   "id": 22735,
+   "typeId": 47,
+   "codename": null
+  },
+  "*follow": {
+   "id": 22720,
+   "typeId": 278,
+   "codename": "follow"
+  },
+  "*all+*all": {
+   "id": 22734,
+   "typeId": 3,
+   "codename": null
+  },
+  "*all": {
+   "id": 274,
+   "typeId": 259,
+   "codename": "all"
+  },
+  "Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow": {
+   "id": 26851,
+   "typeId": 47,
+   "codename": null
+  },
+  "Don't Wait For The Study+*self+Brandon WilliamsCraig": {
+   "id": 26850,
+   "typeId": 3,
+   "codename": null
+  },
+  "Don't Wait For The Study+*self": {
+   "id": 26849,
+   "typeId": 259,
+   "codename": null
+  },
+  "Brandon WilliamsCraig": {
+   "id": 393,
+   "typeId": 4,
+   "codename": null
+  },
+  "Make Contact+*self+Brandon WilliamsCraig+*follow": {
+   "id": 34896,
+   "typeId": 47,
+   "codename": null
+  },
+  "Make Contact+*self+Brandon WilliamsCraig": {
+   "id": 34895,
+   "typeId": 3,
+   "codename": null
+  },
+  "Make Contact+*self": {
+   "id": 6854,
+   "typeId": 259,
+   "codename": null
+  }
+ }
+}
