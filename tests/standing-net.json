@@ -29,7 +29,8 @@
       "Mod-porting harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby style-oracle lines (fixtures/oracle-surfaces/card-mod-style.harness.jsonl - the remote tag bytes cross-checked against the captured corpus constant) against the wave-1 style view compositions",
       "Mod-porting harness probe (tests/card/mod-loader/card-mod-follow-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby follow-oracle lines (fixtures/oracle-surfaces/card-mod-follow.harness.jsonl - the notify base views, rule_editor's dispatch contract + the applied-string raise, the errors arms) against the wave-1 follow view compositions AND renders them through the seeded runtime (the history seam's subedit_notice rows, the follow seam's rule_editor dispatch)",
       "Mod-porting harness probe (tests/card/mod-loader/card-mod-account-harness-probe.test.ts), added 2026-10-03 (wave-1 lane): replays the static-ruby account-oracle lines (fixtures/oracle-surfaces/card-mod-account.harness.jsonl - the signup title/buttons, the forgot-password voo contract, the account-tab pill sections) against the wave-1 account view compositions AND renders the signup :new super() dispatch through the seeded runtime",
-      "Machine lane worktree disk hygiene gate (tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts, with its checked-in permanent-keeps file tests/hygiene/keep-worktrees.json), added 2026-10-03: the operator law 'cleanup that doesn't manage itself is illegal — no durable system may rely on the lead agent's memory or discipline' as a mechanical gate. Enumerates lane worktrees on this machine (C:/localProjects/decko-ts-lane-* and brandonDojoTech-lane-* directories, plus registered-but-missing entries from git worktree list in both repos) and fails the build when (a) a lane worktree is neither actively tracked in IN-FLIGHT.json lanes[] nor in keep-worktrees.json — the failure names each with its exact 'git worktree remove' command, the failure message IS the remediation; (b) the disallowed worktrees' depth-2-capped size FLOOR (an honest lower bound of true size) exceeds 1 GB; or (c) more than 15 lane worktrees exist on disk regardless of allowlists; stale registrations are named with the repo-scoped 'git worktree prune' remediation. BORN RED BY DESIGN (proof committed beside the gate: 20 disallowed named, 2.60 GB disallowed floor vs 1 GB budget, 25 on disk vs cap 15, captured while the cleanup lane was actively pruning); it turns GREEN only when the cleanup finishes and IN-FLIGHT.json reflects reality — the budgets must never be weakened to force green, and raising any of them requires a receipt justification in the same commit. Machine-scoped on purpose: on a machine without C:/localProjects it fails loud instead of passing silent. Verified at 61d65e6: standalone run 1 test / 1 failed (the born-red failure IS the guard working), tsc 0, new files LF."
+      "Machine lane worktree disk hygiene gate (tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts, with its checked-in permanent-keeps file tests/hygiene/keep-worktrees.json), added 2026-10-03: the operator law 'cleanup that doesn't manage itself is illegal — no durable system may rely on the lead agent's memory or discipline' as a mechanical gate. Enumerates lane worktrees on this machine (C:/localProjects/decko-ts-lane-* and brandonDojoTech-lane-* directories, plus registered-but-missing entries from git worktree list in both repos) and fails the build when (a) a lane worktree is neither actively tracked in IN-FLIGHT.json lanes[] nor in keep-worktrees.json — the failure names each with its exact 'git worktree remove' command, the failure message IS the remediation; (b) the disallowed worktrees' depth-2-capped size FLOOR (an honest lower bound of true size) exceeds 1 GB; or (c) more than 15 lane worktrees exist on disk regardless of allowlists; stale registrations are named with the repo-scoped 'git worktree prune' remediation. BORN RED BY DESIGN (proof committed beside the gate: 20 disallowed named, 2.60 GB disallowed floor vs 1 GB budget, 25 on disk vs cap 15, captured while the cleanup lane was actively pruning); it turns GREEN only when the cleanup finishes and IN-FLIGHT.json reflects reality — the budgets must never be weakened to force green, and raising any of them requires a receipt justification in the same commit. Machine-scoped on purpose: on a machine without C:/localProjects it fails loud instead of passing silent. Verified at 61d65e6: standalone run 1 test / 1 failed (the born-red failure IS the guard working), tsc 0, new files LF.",
+      "gherkin-port-wave feature tests (tests/card/gherkin/ — reset_password 1, signup 1, setup 1, attach 7, update_includers 6; the 16 not-yet-ported scenarios), added 2026-10-03: same gherkin environment as the behavior layer (seedStandardDeck + installGherkinNameEnvironment, closeWorld uninstall) with account/attachment/notify step worlds beside it (gherkin-account-steps.ts, gherkin-attachment-steps.ts, gherkin-notify-steps.ts). Two of the 16 are classified NOT-PORTABLE-TODAY with the missing capability named in the it() header and pinned as boundary tests (multi-action act mail dedupe; multiedit single-act). Listed so the net guards the wave in every standing-net run. Verified green at 55fe0d8: 16/16."
     ],
     "droppedDeadFilters": [
       "tests/card/mod/card-mod-search-list-oracle-pinned.test.ts",
@@ -38,7 +39,7 @@
       "tests/card/rules/nest-miss-unknown-view-selection-corpus-replay.test.ts",
       "tests/card/render/highlighter-seams-h1-h2-oracle-pins.test.ts"
     ],
-    "manifestFileCount": 102
+    "manifestFileCount": 107
   },
   "files": [
     "tests/card/actions/anon-fix-fresh-variants.test.ts",
@@ -142,9 +143,14 @@
     "tests/card/mod-loader/card-mod-style-harness-probe.test.ts",
     "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts",
     "tests/card/mod-loader/card-mod-account-harness-probe.test.ts",
-    "tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts"
+    "tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts",
+    "tests/card/gherkin/attach.feature.test.ts",
+    "tests/card/gherkin/reset-password.feature.test.ts",
+    "tests/card/gherkin/setup.feature.test.ts",
+    "tests/card/gherkin/signup.feature.test.ts",
+    "tests/card/gherkin/update-includers.feature.test.ts"
   ],
-  "manifestFileCount": 102,
+  "manifestFileCount": 107,
   "envGuard": {
     "what": "Standing-net env pin (auditor F16). The queue runner is long-lived and spawns the net from ITS OWN environment, so oracle env exported in a submitting shell dies at the queue boundary; a no-env run silently becomes a skip-heavy invalid net that still exits 0. requiredEnv must be present in run-standing-net's own environment, or forwarded with --env (the queue's persisted env channel, which reaches the job and is counted in the dedupe key).",
     "requiredEnv": [
