@@ -171,6 +171,26 @@ Currently passing the full suite:
    prove the conformance suite is strict against a second independent
    implementation. Its types map cleanly onto the driver contract; the only
    awkwardness is `unknown[]` params needing an `InValue[]` cast.
+5. Cross-adapter BYTE PARITY: `tests/server/drivers/adapter-test-deck.ts`
+   defines ONE test deck (same fixtures, same queries, same expected
+   outputs) that `tests/server/drivers/cross-adapter-byte-parity.test.ts`
+   runs through ALL FOUR drivers. Each run yields a canonical transcript
+   (per-step rows, counters, bytes) that must equal the deck's fixed
+   EXPECTED_TRANSCRIPT byte for byte — and therefore every other adapter's.
+   The per-adapter suite above pins each adapter to fixed expectations;
+   this suite additionally pins the adapters to EACH OTHER, so two
+   adapters cannot drift apart while each still passes. The deck
+   normalizes the documented provider differences (rules in the deck
+   module header): provider error TEXT becomes the fact of a throw;
+   rowsRead/rowsWritten are omitted (D1-only, "not surfaced" in the
+   contract); lastInsertRowId is BigInt-normalized and recorded for
+   writes only; byte wrappers (Buffer / Uint8Array / ArrayBuffer) become
+   hex. Findings baked in: miniflare's LOCAL D1 emulation returns BLOB
+   columns as plain Arrays of numbers (verified live — the emulation's
+   serialization drops the typed-array wrapper; production D1 remains
+   unverified); the deck's all-bytes guard normalizes that shape. Blob
+   round-trips are proven at the VALUE level across all four drivers by
+   this deck.
 
 The mock Hrana server (`tests/server/drivers/mock-hrana-server.ts`) is
 protocol-faithful but sqlite-backed: it decodes requests with the same
@@ -190,7 +210,7 @@ the Authorization header.
 | Batch atomicity | transactional | transactional | NOT transactional (per-statement autocommit) | transactional ("write" mode) |
 | bigint params | supported | rejected (`D1_TYPE_ERROR`) | supported (i64 range) | supported |
 | Boolean params | rejected natively | unverified | rejected up front | coerced by client (0/1) |
-| Blob params / returns | Buffer in / Buffer out | ArrayBuffer or Uint8Array in / ArrayBuffer out | Uint8Array in (base64 on wire) / Uint8Array out | ArrayBuffer-style in / ArrayBuffer out |
+| Blob params / returns | Buffer in / Buffer out | ArrayBuffer or Uint8Array in / plain Array of numbers out under LOCAL miniflare (verified live 2026-10-03: the emulation's serialization drops the typed-array wrapper; production blob type unverified) | Uint8Array in (base64 on wire) / Uint8Array out | ArrayBuffer-style in / ArrayBuffer out |
 | Rows shape | plain objects, duplicate columns: last wins | plain objects | plain objects built from `cols` | hybrid Row instances; wrapper converts to plain objects |
 | SELECT `rowsAffected` | 0 | `meta.changes` (0) | `affected_row_count` (0) | 0 |
 
@@ -210,10 +230,10 @@ comparing.
   (stateless requests), which is correct but not the fastest pattern; a
   baton-carrying session is a possible future optimization and is
   unexercised.
-- Blob round-trips: all three adapters support blobs, but the conformance
-  suite covers only null/integer/float/text (per the stream's scope), and
-  the adapters disagree on the returned JS type (see table) — a
-  normalization decision belongs to the engine layer.
+- Blob round-trips: covered at the VALUE level by the cross-adapter parity
+  deck (byte-identical hex across all four drivers, local D1 included).
+  Still provider-specific by design: the returned JS wrapper type (see
+  table), and production D1's actual blob JS type is unverified here.
 - Concurrent writers on local-sqlite: single-process assumption, no
   `busy_timeout` configured.
 - Request timeout defaults: `timeoutMs` is optional and enforced with
