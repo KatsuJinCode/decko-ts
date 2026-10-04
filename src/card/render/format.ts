@@ -1600,47 +1600,9 @@ export class RenderFormat {
     // truth: both shapes are one machinery, split by view unknown-capability,
     // never by a blanket empty-string return.
     const isBlankReference = targetName.trim() === "";
-    const fetched =
-      isBlankReference || contextTarget !== undefined
-        ? undefined // retrieve.rb:7 skips blank marks - straight to the new card
-        : this.engine.fetchRenderCard(targetName);
-    // results.rb:30-32 `assign_name` runs on EVERY fetch, so the MARK names
-    // the card the caller gets back even when the shared cache already holds
-    // that card under its key (store.rb:21-28 keys the placeholder by key;
-    // the returned object's @name still follows the mark that named it). The
-    // port's render-side read is `fetchRenderCard` — a PURE map lookup on the
-    // key (render.ts#fetchRenderCard) — so it cannot apply that rule, and the
-    // name has to be re-bound here where the mark is still in scope.
-    //
-    // THE AIKI PAGE IS THE MEASURED INSTANCE (parity-restore-runbook.md:184,
-    // mechanism #4 "unknown-card name casing"). The corpus row
-    // `Aiki+references` (27199) stores its reference in KEY case, so the
-    // structure walk's compound-ref warm
-    // (render.ts#applyStructureContent -> fetcher.fetchByName) fetched
-    // "aiki+*referred_to_by", MISSED (corpus: left_id 2705 + right_id 3945
-    // -> no row), and cached a `Card.new` placeholder named FROM THE MARK
-    // (the key form) in the render-card map. The page's own
-    // `{{_self+*referred_to_by}}` then resolved correctly — instrumented,
-    // resolveNestName logged cardName "Aiki" cardId 2705 and DeckoName
-    // .absoluteName answers "Aiki+*referred_to_by" — looked the KEY up, hit
-    // that placeholder, and rendered the key-cased name. The capture renders
-    // the mark-cased one.
-    //
-    // ONLY a record-less miss placeholder is re-bound. A STORED card keeps
-    // its row's name: Ruby's retrieve path returns the row, whose @name came
-    // from the database, and re-binding a stored card's name from an authored
-    // mark would let an authored `{{aiki}}` rename the "Aiki" card's slots.
-    const target =
-      fetched !== undefined &&
-      fetched.id === undefined &&
-      fetched.record.isNew === true &&
-      fetched.name.s !== targetName
-        ? {
-            ...fetched,
-            name: DeckoName.parse(targetName),
-            key: DeckoName.parse(targetName).key,
-          }
-        : fetched;
+    const target = isBlankReference
+      ? undefined // retrieve.rb:7 skips blank marks - straight to the new card
+      : (contextTarget ?? this.engine.fetchRenderCard(targetName));
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
