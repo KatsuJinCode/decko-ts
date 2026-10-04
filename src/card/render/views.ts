@@ -3578,13 +3578,23 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // (quietRenderError; error.rb:52-54) — the capture's exact bytes.
   try {
     if (itemView !== "bar") {
-      return fmt.nestRecord(target, itemView, {
-        nest_name: target.name.s,
-        show: [itemView],
-        ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
-        home_view: itemView === "closed" ? "open" : itemView,
-        ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-      });
+      return fmt.nestRecord(
+        target,
+        itemView,
+        {
+          nest_name: target.name.s,
+          show: [itemView],
+          ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
+          home_view: itemView === "closed" ? "open" : itemView,
+          ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+        },
+        // relnames (2026-10-04): this IS the pointer/list item shape the
+        // census-M1 view-lane bar-context seat was fitted to — the Guns:open
+        // census (Weapons+rifles renders title="+Rifles", Standards stays
+        // ctx-less). Every other bar nest leaves the flag off, so the seat
+        // does not fire on the set card's accordion rule bars.
+        { pointerListItem: true },
+      );
     }
     // NO hide in the opts: Ruby's nest_item args (card-mod-collection
     // item.rb) carry none - bar_middle enters through prepare_bar INSIDE
@@ -3597,12 +3607,22 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
     // item slot, recapture-raw-shard-000030). prepareBar writes
     // bar_middle for every live bar body, so the key is a duplicate
     // whose position alone reversed the order.
-    return fmt.nestRecord(target, "bar", {
-      nest_name: target.name.s,
-      show: ["bar"],
-      home_view: "bar",
-      ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-    });
+    return fmt.nestRecord(
+      target,
+      "bar",
+      {
+        nest_name: target.name.s,
+        show: ["bar"],
+        home_view: "bar",
+        ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+      },
+      // relnames (2026-10-04): this IS the pointer/list item shape the
+      // census-M1 view-lane bar-context seat was fitted to  the Guns:open
+      // census (Weapons+rifles renders title="+Rifles", Standards stays
+      // ctx-less). Every other bar nest leaves the flag off, so the seat
+      // does not fire on the set card's accordion rule bars.
+      { pointerListItem: true },
+    );
   } catch (error) {
     return quietRenderError(error, target, itemView);
   }
@@ -3811,12 +3831,19 @@ function renderUnknownPointerListItem(
   // viz insertion order on Search-typed items; prepareBar writes
   // bar_middle inside the body for every live bar/closed render, so the
   // single-hide slots this arm produces are byte-unchanged.
-  return fmt.nestRecord(phantom, itemView, {
-    nest_name: name,
-    show: [itemView],
-    home_view: itemView === "closed" ? "open" : itemView,
-    ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-  });
+  return fmt.nestRecord(
+    phantom,
+    itemView,
+    {
+      nest_name: name,
+      show: [itemView],
+      home_view: itemView === "closed" ? "open" : itemView,
+      ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+    },
+    // relnames (2026-10-04): the phantom sibling of the pointer/list item
+    // nest  same shape, same seat eligibility.
+    { pointerListItem: true },
+  );
 }
 
 /** The unknown-item identity chain (new_unknown_item_args, item.rb:245-248

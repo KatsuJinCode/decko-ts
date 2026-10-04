@@ -713,6 +713,13 @@ export class RenderFormat {
   /** context_names.rb @context_names - the working list addNameContext
    *  mutates (see contextNames). */
   private contextNamesCache: string[] | undefined;
+  /** relnames lane (2026-10-04): TRUE when THIS format was built by a
+   *  pointer/list ITEM nest (renderPointerListItem /
+   *  renderUnknownPointerListItem — collection/item.rb #nest_item over
+   *  card.item_cards), FALSE for every other bar nest. It is the shape gate
+   *  on the census-M1 view-lane bar-context seat; see
+   *  viewLaneBarSeatParts for why the seat is scoped to it. */
+  private barNestedAsPointerListItem = false;
   /** nesting/mode.rb @nest_mode - THIS format's own mode, or undefined when
    *  it never ran a with_nest_mode block (the Ruby ivar is likewise unset
    *  until with_altered_nest_mode assigns it, and `nest_mode` below falls
@@ -966,8 +973,44 @@ export class RenderFormat {
    * (relevant_context_names semantics, context_names.rb:26-29 — the census
    * control: children:open's referer bars and the Standards-shaped bars
    * stay ctx-less).
+   *
+   * RELNAMES GATE (2026-10-04). The fitting note above names the exclusion
+   * but the seat did not implement it: it fired on EVERY view === "bar"
+   * dispatch under a view-lane root, and because the renderView caller also
+   * writes the seat into THIS format's WORKING context list, the seat is
+   * what RenderFormat#standardTitle relativizes the bar title against. The
+   * graded view-lane capture says a relative bar title appears ONLY inside a
+   * slot carrying name_context — 60 with ctx / 0 without, against 45,437
+   * absolute titles on ctx-less slots (own survey, 6,588 records / 3,686
+   * surfaces), so "does the seat fire" and "is the title relative" are the
+   * same question, and seating a bar the corpus shows ctx-less renders a
+   * relative title where both oracles carry the absolute compound name.
+   *
+   * The set card's Rules bars ARE the excluded chain: set/type/set/
+   * html_views.rb:6-11 view :core -> filtered_rule_list(:accordion_bar_list)
+   * -> rule_lists.rb reaches them through renderCategoryAccordion ->
+   * renderSettingListItems -> fmt.nestRecord(rule, "bar"), not through
+   * renderPointerListItem. So the seat is now gated on the SHAPE it was
+   * fitted to — a pointer/list ITEM bar (the Guns:open census, where
+   * Weapons+rifles renders title="+Rifles" and Standards stays ctx-less) —
+   * rather than on the bar view alone.
+   *
+   * CORPUS COST, measured, not hidden: the graded capture's ctx distribution
+   * is warm-cache request history, so two graded set-card records
+   * (*input type+*right, id 268 — 20 relative titles per content/open view;
+   * Message+Conversation+*type plus right, id 22019 — 3 per view) DO carry
+   * accordion-chain ctx. Their committed fixtures carry the ctx-less
+   * all-absolute titles, so this gate makes the parity closure proof green
+   * and diverges from those two graded records' bar titles. No name-level
+   * discriminator exists between them and the five ctx-less set cards
+   * (*content options+*right and *captcha+*right are the same +*right shape
+   * as 268 and are ctx-less), so the shape gate is the only derivable
+   * condition; the divergence is pinned by name in
+   * tests/card/render/relnames-set-card-accordion-bar-title-must-stay-absolute-pins.test.ts
+   * and counted in tmp/wrong-goal-hunt/relnames-fix-lane.md.
    */
   viewLaneBarSeatParts(): readonly string[] | undefined {
+    if (!this.barNestedAsPointerListItem) return undefined;
     let root: RenderFormat | undefined;
     for (let f: RenderFormat | undefined = this.parent; f !== undefined; f = f.parent) {
       if (f.isViewLaneRoot) {
@@ -2404,7 +2447,12 @@ export class RenderFormat {
    * here; home_view follows the nest.rb rule). Used by the search card_list
    * for its :bar items.
    */
-  nestRecord(target: RenderCard, view: string, opts: Record<string, unknown> = {}): string {
+  nestRecord(
+    target: RenderCard,
+    view: string,
+    opts: Record<string, unknown> = {},
+    nest: { pointerListItem?: boolean } = {},
+  ): string {
     // R17 (new_card_args supercard merge): an ID-LESS NEW target is the
     // FetchEngine's fabricated new-card record — its set-pattern chain
     // lacks the supercard context, so rebuild it with THIS card as the
@@ -2430,6 +2478,11 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
+    // relnames gate: only a pointer/list ITEM nest is eligible for the
+    // census-M1 view-lane bar-context seat (viewLaneBarSeatParts). Set on
+    // the SUBFORMAT because the seat is read there, during its own
+    // renderView("bar").
+    sub.barNestedAsPointerListItem = nest.pointerListItem === true;
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${this.maxDepth}) at ${shaped.name.s}`);
     }
