@@ -1,36 +1,48 @@
 // deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts — the deploy
-// lineage's root worker.ts URL/request surface (SUPPORTED_VIEWS + parsePath +
-// PAGE_STYLE + escapeHtml + layoutPage), carried VERBATIM from
-// lane-dbroundtrip-deploy tip 12bd5236 by the fold-11 integrator.
+// lineage's root worker.ts URL/request surface (parsePath + PAGE_STYLE +
+// escapeHtml + layoutPage), carried VERBATIM from lane-dbroundtrip-deploy
+// tip 12bd5236 by the fold-11 integrator.
 //
 // WHY THIS EXISTS: the four p2 lanes (error-shell / history-seam / person /
 // codename) were built on the deploy lineage, whose root worker.ts exports
 // escapeHtml and a two-arg parsePath(pathname, searchParams) that returns the
 // wire params (act_id / action_id / page / ...). The integration line's root
 // worker.ts evolved independently: its parsePath takes only a pathname and
-// returns no params, and escapeHtml is not exported there. Merging the two
-// worker surfaces is the deliberate cross-lineage project fold-10 deferred,
-// NOT a fold-11 item. This shim gives the carried p2 request surface
+// returns no params. This shim gives the carried p2 request surface
 // (bunny-edge-engine-request.ts + bunny-edge-error-page.ts + their pin
-// files) the exact worker contract it was written and gated against, while
-// the integration line's serving worker stays untouched. Unwired from the
-// entry — the fold-10 session-surface precedent.
+// files) the exact worker contract it was written and gated against.
 //
-// Byte-provenance: everything below is verbatim 12bd5236:worker.ts (lines
-// 75-86, 87-122, 144-151, 153-166, 168-178).
+// THE deploy-surface-union LANE (2026-10-03) WIRED this surface: the serving
+// handler (bunny-edge-engine-handler.ts) dispatches through the carried
+// request core, whose URL grammar is THIS parsePath. Union resolution
+// (superset-of-information, recorded in
+// tmp/wrong-goal-hunt/deploy-union-lane.md): parsePath below is the
+// LINEAGE grammar PLUS the integration root worker.ts's three verified
+// upgrades, because the wired serving path must lose no capability either
+// lineage carried:
+//   1. the hardened decodeName (a malformed % answers the no-route 404,
+//      never an unescaped URIError — worker-shared-surface.ts, the twins'
+//      rule; the lineage's raw decodeURIComponent threw unhandled);
+//   2. ANY-view two-segment arm (the root worker's divergence fix: Ruby's
+//      route matches any view and the ENGINE decides — engine_routes.rb:51
+//      constrains nothing; an unregistered view raises
+//      UnsupportedViewError and maps to 422; the lineage's 17-view
+//      allowlist 404'd mod-registered views this line's engine carries);
+//   3. the three-segment /:mark/view/:view arm (root worker + the CF
+//      harness's documented route).
+// The lineage's own additions are RETAINED: the wire-param extraction
+// (act_id/action_id/page/act_seq/action_view/hide_diff/act_context) on
+// card routes — the history views read them, every other view ignores
+// them (Rack hands the controller all params and the views pick), so the
+// extraction rides any card route. The former SUPPORTED_VIEWS allowlist
+// is retired as a strict subset of the any-view arm. escapeHtml and
+// layoutPage below remain byte-verbatim 12bd5236:worker.ts.
+//
+// Byte-provenance of the unchanged members: escapeHtml/PAGE_STYLE/
+// layoutPage are verbatim 12bd5236:worker.ts (lines 144-151, 153-166,
+// 168-178); parsePath is the union shape documented above.
 
-const SUPPORTED_VIEWS = new Set([
-  "open", "closed", "content", "title", "titled", "menu",
-  "core", "card_list", "naked", "bar", "bar_left", "bar_middle",
-  "bar_right", "bar_bottom",
-  // card-mod-history render-time views (src/card/history/render-seam.ts):
-  // GET /<name>/history[?act_id=&page=], /<name>/act[?act_id=],
-  // /<name>/action_summary[?action_id=] - anonymous reads history exactly
-  // when it reads the card (the views carry no perms directive; the render
-  // gate enforces the card's read rule).
-  "history", "act", "action_summary",
-]);
-
+import { decodeName } from "../../src/server/worker-shared-surface.js";
 
 function parsePath(
   pathname: string,
@@ -42,24 +54,48 @@ function parsePath(
   if (path === "api/status") return { kind: "api" };
   if (path.startsWith("api/card/")) return { kind: "api" };
 
-  const segments = path.split("/");
-  if (segments.length === 1) return { name: decodeURIComponent(segments[0]), view: "open" };
-  if (segments.length === 2 && SUPPORTED_VIEWS.has(segments[1])) {
-    // The history views read Card::Env.params equivalents (act_id /
-    // action_id / page / act_seq / action_view / hide_diff / act_context)
-    // from the query string; other views ignore them.
+  // The history views' wire params (Card::Env.params equivalents — the
+  // lineage's addition, retained): extracted on every card route; the
+  // history views read them, every other view ignores them.
+  const wireParams = (): Record<string, string> | undefined => {
+    if (searchParams === undefined) return undefined;
     const params: Record<string, string> = {};
-    if (searchParams !== undefined) {
-      for (const key of ["act_id", "action_id", "page", "act_seq", "action_view", "hide_diff", "act_context"]) {
-        const value = searchParams.get(key);
-        if (value !== null) params[key] = value;
-      }
+    for (const key of ["act_id", "action_id", "page", "act_seq", "action_view", "hide_diff", "act_context"]) {
+      const value = searchParams.get(key);
+      if (value !== null) params[key] = value;
     }
-    return {
-      name: decodeURIComponent(segments[0]),
-      view: segments[1],
-      ...(Object.keys(params).length > 0 ? { params } : {}),
-    };
+    return Object.keys(params).length > 0 ? params : undefined;
+  };
+
+  const segments = path.split("/");
+  if (segments.length === 1) {
+    const name = decodeName(segments[0]!);
+    if (name === undefined || name === "") return { kind: "notFound" };
+    // Bare single-segment arm: Ruby's card#read -> show(nil) — the page
+    // path re-derives bareness for the requestedView (the "open" here is
+    // parsePath's pinned default, not a requested view).
+    return { name, view: "open" };
+  }
+  if (segments.length === 2) {
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[1]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "notFound" };
+    }
+    // Any view, verbatim — the engine decides (root worker's rule): an
+    // unregistered view raises UnsupportedViewError and maps to 422.
+    const params = wireParams();
+    return { name, view, ...(params !== undefined ? { params } : {}) };
+  }
+  if (segments.length === 3 && segments[1] === "view") {
+    // The /:mark/view/:view arm (root worker + the CF harness route).
+    const name = decodeName(segments[0]!);
+    const view = decodeName(segments[2]!);
+    if (name === undefined || view === undefined || name === "" || view === "") {
+      return { kind: "notFound" };
+    }
+    const params = wireParams();
+    return { name, view, ...(params !== undefined ? { params } : {}) };
   }
   return { kind: "notFound" };
 }
