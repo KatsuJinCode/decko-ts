@@ -622,6 +622,14 @@ export interface RenderFormatOptions {
    *  withFormatName's re-format (the ivar survives card.format in Ruby
    *  because it lives on the card). */
   contextCard?: RenderCard;
+  /** Marks THE bare view-lane root format (render.ts#render's root — the
+   *  engine.render(card, view) entry; page.ts builds its own rootFormat
+   *  without this). The census-M1 bar-seat reads it: bar-view slots nested
+   *  under this root carry the root card's part-filtered name_context
+   *  (serializer-followup2-lane.md step 5 row 1 — the graded Guns:open
+   *  bytes pin ctx="gun" on the item bars and ctx-less on every non-bar
+   *  slot of the same walk). Never set on the page lane. */
+  isViewLaneRoot?: boolean;
 }
 
 /** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
@@ -719,6 +727,10 @@ export class RenderFormat {
    * long it is.
    */
   private charCount: number | undefined;
+  /** The bare view-lane root marker (RenderFormatOptions.isViewLaneRoot) —
+   *  true on exactly the engine.render root format; the census-M1 bar-seat
+   *  climbs the parent chain looking for it. */
+  readonly isViewLaneRoot: boolean;
 
   constructor(
     card: RenderCard,
@@ -733,6 +745,7 @@ export class RenderFormat {
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
     this.formatName = opts.formatName ?? opts.parent?.formatName ?? "html";
     this.contextCard = opts.contextCard;
+    this.isViewLaneRoot = opts.isViewLaneRoot ?? false;
   }
 
   /** THIS format's format class name ("html" default — see
@@ -937,6 +950,55 @@ export class RenderFormat {
     }
   }
 
+  /**
+   * Census M1 bar-seat (serializer-followup2-lane.md step 5 row 1): the
+   * root card's part keys filtered to THIS card's parts — the name_context
+   * value the graded view-lane bytes pin on bar-view slots (Guns:open's
+   * item bars carry ctx="gun"; Message:open's sibling rule bars carry the
+   * set trunk) while every non-bar slot on the same render stays ctx-less.
+   *
+   * The 0.20 walk has NO cold seat producing this (bar.rb:40's accordion
+   * :open chain never runs add_name_context; the only cold sites are the
+   * titled naming, frames, the edit views, nest_editor and rss), so the
+   * seat is FITTED to the graded bytes — the same fitting class as
+   * Voo.viewLaneRoot. Undefined when no view-lane root ancestor exists
+   * (the page lane), when this IS the root, or when the part filter empties
+   * (relevant_context_names semantics, context_names.rb:26-29 — the census
+   * control: children:open's referer bars and the Standards-shaped bars
+   * stay ctx-less).
+   */
+  viewLaneBarSeatParts(): readonly string[] | undefined {
+    let root: RenderFormat | undefined;
+    for (let f: RenderFormat | undefined = this.parent; f !== undefined; f = f.parent) {
+      if (f.isViewLaneRoot) {
+        root = f;
+        break;
+      }
+    }
+    if (root === undefined) return undefined;
+    const partKeys = new Set(this.card.name.partKeys);
+    const seat: string[] = [];
+    for (const key of root.card.name.partKeys) {
+      if (partKeys.has(key)) seat.push(key);
+    }
+    return seat.length > 0 ? seat : undefined;
+  }
+
+  /**
+   * The name_context key list the slot JSON carries (wrap.rb:74-78
+   * name_context_slot_option emits initial_context_names) — the bar-seat
+   * value when this is a seated bar render, else the parent-derived
+   * initial context. slot-html.ts#slotOptionsWithNameContext reads this.
+   */
+  slotNameContextKeys(): readonly string[] {
+    if (this.barSeatCache !== undefined) return this.barSeatCache;
+    return this.initialContextNames;
+  }
+
+  /** The seated bar context, memoized per renderView dispatch (set when a
+   *  "bar" view dispatches under a view-lane root — see renderView). */
+  private barSeatCache: readonly string[] | undefined;
+
   /** The format rendering the page root (context card for relative names). */
   get contextFormat(): RenderFormat {
     return this.parent ?? this;
@@ -1039,6 +1101,25 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
+      // Census M1 bar-seat: a "bar" view dispatched under a view-lane root
+      // renders with the root card's part-filtered context — the slot JSON
+      // carries it (slotNameContextKeys -> barSeatCache) and the bar title
+      // relativizes against it (contextNames). Scoped to view === "bar" so
+      // the closed/mini_bar/content/open slots of the same walk stay
+      // ctx-less, exactly as the graded Guns:open bytes pin them.
+      //
+      // NOTE: no per-dispatch reset — the bar body re-dispatches bar_left/
+      // bar_right/menu on the SAME fmt BEFORE slotWrapCommon reads the
+      // memo, and none of those views emit slot wraps of their own; a fmt
+      // that renders "bar" and then a wrapping non-bar view does not exist
+      // in the port (every nest is a fresh format).
+      if (normalized === "bar") {
+        const seat = this.viewLaneBarSeatParts();
+        if (seat !== undefined) {
+          this.barSeatCache = seat;
+          this.contextNamesCache = [...seat];
+        }
+      }
       // view/permission.rb #altered_view (:19-23): the unknown branch ran
       // above; for KNOWN cards the view-permission gate replaces the view
       // before any hook or body runs. Task resolution (view_perms, :13-15),

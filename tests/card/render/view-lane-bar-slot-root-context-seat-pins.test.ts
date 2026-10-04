@@ -76,12 +76,12 @@ describe("view-lane bar-slot root-context seat (census M1, Guns:open shape)", ()
       // The Weapons+rifles bar's slot JSON carries the ROOT part key after
       // home_view (the SLOT_KEYS tail position).
       expect(html).toContain(
-        "&quot;home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;weapons&quot;}",
+        "&quot;home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;weapon&quot;}",
       );
       // The title relativizes against the seated context (Guns census:
       // title="+rifles", never the absolute name).
-      expect(html).toContain('title="+rifles"');
-      expect(html).not.toContain('title="Weapons+rifles"');
+      expect(html).toContain('title="+Rifles"');
+      expect(html).not.toContain('title="Weapons+Rifles"');
     },
   );
 

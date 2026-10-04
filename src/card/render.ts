@@ -1433,7 +1433,13 @@ export class RenderEngine implements RenderEngineLike {
     // depth guard is always reachable on fully-prefetched chains and the
     // battery's depth-44 envelope {200,500} collapses to a deterministic
     // guard hit instead of depending on fallback-round ordering.
-    const format = new RenderFormat(rootCard, this, { maxDepth: RUBY_MAX_DEPTH });
+    const format = new RenderFormat(rootCard, this, {
+      maxDepth: RUBY_MAX_DEPTH,
+      // THE bare view-lane root (render.ts renders nothing else at this
+      // entry; page.ts builds its own rootFormat without the marker). The
+      // census-M1 bar-seat climbs the parent chain for this flag.
+      isViewLaneRoot: true,
+    });
     // card-mod-layout set/self/head.rb:9-17 view :core reads the head bytes
     // for the RENDER ROOT (`nest root.card, view: :head`, escape_in_main at
     // :27-29). The page path has always seated them before the main render
