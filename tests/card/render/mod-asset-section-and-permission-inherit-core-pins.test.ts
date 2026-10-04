@@ -195,32 +195,40 @@ describe("a permission rule card's :core branches on its own content (permission
 });
 
 describe("a Mod card's Scripts section is gated on the +*script child card (type/mod.rb:56-65)", () => {
-  it("the shades arm: the corpus child row and the graded group body agree (post-M5)", async () => {
+  it("the shades arm: the table is SILENT and the graded body is EMPTY", async () => {
     // The fix is a UNION of two sources, so both halves matter. The FIRST
     // half — a `mod: shades+*script` corpus row (id 49309, with
     // `mod: shades+*script+*asset output` id 49310 under it) — is verified
     // by a direct query against
-    // tmp/raw-ground-truth/bench-corpus-raw.sqlite3 and is not re-derivable
-    // in this fixture: a `+*`-prefixed right part does not resolve through
-    // the seeded junction walk, so the row cannot be reached from here.
+    // tmp/raw-ground-truth/bench-corpus-raw.sqlite3 (row 49309 is
+    // {id:49309, name:null, type_id:47, left_id:49308, right_id:20596}; row
+    // 49310 is {left_id:49309, right_id:45411, type_id:18, content
+    // "(my_bucket)/49310/1747076460.js"}) and is not re-derivable in this
+    // fixture: a `+*`-prefixed right part does not resolve through the
+    // seeded junction walk, so the row cannot be reached from here.
     //
-    // The SECOND half was pinned here as "the table is SILENT for shades" —
-    // the empty-body fit from the older recapture generation
-    // (recapture-raw-shard-000043). Census M5 (serializer-followup2,
-    // 0377f4d3) refuted that fit: the GRADED expected-v2 capture carries the
-    // four-file local group, MOD_ASSET_GROUPS_SRC gained the shades entry,
-    // and this premise flipped with it (the stale silence assertion failed
-    // from 0377f4d3 onward — found and fixed forward at census M10). The
-    // union predicate's two halves now AGREE for shades: corpus row present,
-    // table carries the graded body.
-    const scripts = modAssetGroups("shades", "script");
-    expect(scripts, "the graded four-file local group").toBeDefined();
-    expect(scripts?.[0]?.[1]).toEqual([
-      "decko_logo.js",
-      "decko_org.js.coffee",
-      "snap.js",
-      "snap_svg.js",
-    ]);
+    // The SECOND half is the graded capture, and for shades it is SILENT.
+    // recapture-raw-shard-000043 id 49308's main-slot card body is
+    // `<p></p><br/><p><h3>Scripts</h3></p>` — the section is present, its
+    // body is empty — and id 49309's is the empty string. Ruby agrees
+    // byte for byte: there is no shades gem among the 32 installed
+    // card-mod-* gems, so mod_assets.rb:57-59 `assets_path` is nil,
+    // :24-30 `folder_group_card` returns nil, :15-22 `local_group_cards` is
+    // [], and :171-181 hands `haml :group_list, groups: []` to a template
+    // whose whole body is an `each` over that array — the empty string.
+    //
+    // Census M5 (serializer-followup2, 0377f4d3) briefly read this the other
+    // way, fitting a four-file local group from
+    // tmp/serializer-followup/probe-green5/expected--mod_shades__page.html.
+    // That file is a live recapture of the production site 44.3 days after
+    // this yardstick's capture (DigitalOcean CSS 1790384218 = 2026-09-26 vs
+    // this capture's s3 CSS 1786554352 = 2026-08-12), not the graded
+    // expected-v2 corpus it was cited as. Adjudicated and repaired
+    // 2026-10-04; see tmp/wrong-goal-hunt/shades-adjudication-lane.md.
+    expect(
+      modAssetGroups("shades", "script"),
+      "the graded capture gives the section an empty body: the table carries nothing",
+    ).toBeUndefined();
     expect(modAssetGroups("shades", "style"), "shades ships no styles dir")
       .toBeUndefined();
   });
