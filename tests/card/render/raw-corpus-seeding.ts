@@ -154,6 +154,7 @@ interface CorpusRow {
   read_rule_class: string | null;
   created_at: string | null;
   creator_id: number | null;
+  updated_at: string | null;
 }
 
 interface CorpusReferenceRow {
@@ -167,7 +168,7 @@ interface CorpusReferenceRow {
 
 const CORPUS_ROW_COLUMNS =
   `id, name, codename, left_id, right_id, trash, type_id, content, ` +
-  `read_rule_id, read_rule_class, created_at, creator_id`;
+  `read_rule_id, read_rule_class, created_at, creator_id, updated_at`;
 
 export async function createRawStructureSeededStorage(
   ids: Set<number>,
@@ -531,6 +532,16 @@ export async function createRawStructureSeededStorage(
       // (card-mod-account set/type/signup/views.rb:35-45).
       createdAt: row.created_at ?? undefined,
       creatorId: row.creator_id ?? undefined,
+      // CQL-WAVE: updated_at rides through too. The staging deck previously
+      // gave EVERY row the same seed default, so any `sort: "update"` CQL
+      // (SqlStatement::Order ORDER_MAP["update"] -> updated_at,
+      // DEFAULT_ORDER_DIRS["update"] = desc) ordered a TOTAL TIE and fell to
+      // the join emission tier -- the media+GBA Control block rendered in
+      // List content order where the corpus expects updated_at DESC. The
+      // corpus rows carry the real capture-era timestamps; staging them is
+      // the data half of the sort (the ORDER BY itself already works,
+      // src/cql/sql.ts:455).
+      updatedAt: row.updated_at ?? undefined,
     });
   }
   // BFS frontier extension (CLUSTER 1 / read-rule-grant-vs-deny residue,
@@ -745,6 +756,9 @@ export async function createRawStructureSeededStorage(
       readRuleClass: row.read_rule_class,
       createdAt: row.created_at ?? undefined,
       creatorId: row.creator_id ?? undefined,
+      // CQL-WAVE: see the first seedCard pass -- real updated_at so
+      // sort:"update" orders real ties, not the uniform seed default.
+      updatedAt: row.updated_at ?? undefined,
     });
   }
 

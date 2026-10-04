@@ -6645,6 +6645,17 @@ export class RenderEngine implements RenderEngineLike {
     if (statement === null || typeof statement !== "object" || Array.isArray(statement)) {
       return [];
     }
+    // Run#alter_results? (run.rb:116-118) reads the statement's OWN
+    // prepend/append keys after the SQL has run — caller-facing keys the
+    // parser preserves in statementExtras (ast.ts:129 "accepted but not
+    // affecting SQL, for callers") and nothing ever consumed. Read here at
+    // the result-shaping layer, exactly where Ruby's Run module applies them.
+    const stmtHash = statement as Record<string, unknown>;
+    const prependRaw = stmtHash["prepend"];
+    const appendRaw = stmtHash["append"];
+    const prepend = typeof prependRaw === "string" ? prependRaw : undefined;
+    const append = typeof appendRaw === "string" ? appendRaw : undefined;
+    const alterResults = prepend !== undefined || append !== undefined;
     // The html search view's paging limit (card-mod-search
     // set/abstract/0_search/search_params.rb:38-40 format :html
     // default_limit = Cardio.config.paging_limit || 20; cql_search.rb:85-87
@@ -6789,6 +6800,35 @@ export class RenderEngine implements RenderEngineLike {
       // view-renders a nameless card (fetch returns nil); skipping mirrors
       // that instead of crashing the listing.
       if (record.name === undefined) continue;
+      if (alterResults) {
+        // Run#process_name/alter_result (run.rb:96-109): the result name is
+        // Card::Name[[prepend, name, append].compact] and the RESULT CARD is
+        // `Card.fetch altered_name, new: {}` (run.rb:100) — the real row when
+        // one exists, the placeholder new card otherwise. The port rides the
+        // FetchEngine's own fetch-new idiom (FetchOptions.new, results.rb
+        // quick_renew), then resolves the NEW card's type through the same
+        // *default template chain the nest path uses (type.rb:58-66
+        // ensure_type_id -> type_id_from_template; newCardDefaultType) and
+        // its content through the template's db_content (content/all.rb
+        // 17-19 standard_content new_card branch; newCardDefaultContent).
+        const parts = [prepend, record.name.s, append].filter(
+          (p): p is string => p !== undefined,
+        );
+        const altered = DeckoName.parse(parts.join("+"));
+        const fetched = await this.fetcher.fetchByName(altered, { new: {} });
+        if (fetched !== undefined) {
+          if (fetched.typeId === undefined) {
+            const defaulted = this.newCardDefaultType(altered);
+            if (defaulted !== undefined) fetched.typeId = defaulted.typeId;
+          }
+          if (fetched.dbContent === undefined || fetched.dbContent === "") {
+            const content = this.newCardDefaultContent(altered);
+            if (content !== undefined && content !== "") fetched.dbContent = content;
+          }
+          items.push(await this.enrichAndStore(fetched));
+          continue;
+        }
+      }
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
     }
