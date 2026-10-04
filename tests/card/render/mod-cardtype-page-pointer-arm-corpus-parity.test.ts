@@ -44,6 +44,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
+import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -89,6 +90,15 @@ describe("Mod cardtype page: the self-set pointer arm is oracle-pinned", () => {
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
       expect(SHARDS_PRESENT, `page-lane shards missing: ${PAGE_LANE_DIR}`).toBe(true);
+      // The graded environment's cloud asset host (the corpus boot is a
+      // DEPLOYMENT of the engine — fog asset_host; same block the
+      // first-diff probe and the cloud-asset-host-deployment-config pin
+      // set, BEFORE the corpus boot and the first render). Without it the
+      // head bytes carry the engine-default fog s3 form and every
+      // attachment URL diverges.
+      setDeploymentCloudAssetHost(
+        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+      );
       const yardstick = loadModYardstick();
       expect(yardstick, "no page-lane yardstick entry for Mod").toBeDefined();
       const expected = normalizeSlotIds(yardstick?.entry.page_html ?? "");

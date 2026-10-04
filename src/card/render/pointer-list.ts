@@ -248,6 +248,17 @@ export function pointerListCoreHtml(
   items: string[],
   renderItem: (name: string) => string,
   itemView: string = POINTER_LIST_ITEM_VIEW,
+  /** Ruby's paging split: the ITEMS are the with_paging limit/offset slice
+   *  (html_views.rb:12 standard_pointer_items extracts limit/offset from
+   *  paging_args), while show_paging? and the nav's paging-context read the
+   *  SEPARATE count search (card-mod-search set/abstract/0_search.rb:52-54,
+   *  offset 0 / limit 0). Call sites that hand over an ALREADY-LIMITED item
+   *  list (the Mod cardtype page's pre-executed type-member search seat)
+   *  pass the seated full count here so `count > POINTER_PAGING_LIMIT`
+   *  fires and the context renders "of <full count>" — corpus pin:
+   *  Mod page 20 pointer-items + "1 - 20 of 36" nav. Absent, count stays
+   *  filtered.length (every existing call site: unpaginated content). */
+  countOverride?: number,
 ): string {
   const filtered = items.filter((s) => s.length > 0);
   // view-fail class V8 (view-fail dump classes "V8 oracle paginates set
@@ -268,7 +279,7 @@ export function pointerListCoreHtml(
   // *recent settings, AI+Replacement+Documents. Its CB_role+*members
   // LIST-core oracle is covered by this same arm — the nav emitter is
   // byte-identical for the headless page-0 case.)
-  const count = filtered.length;
+  const count = countOverride ?? filtered.length;
   const paged =
     parent.name !== undefined && count > POINTER_PAGING_LIMIT;
   const listed = paged ? filtered.slice(0, POINTER_PAGING_LIMIT) : filtered;

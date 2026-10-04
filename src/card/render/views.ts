@@ -1326,7 +1326,76 @@ const coreViewBase: ViewFn = (ctx) => {
     }
     return fmt.processContent(body, chunkList);
   }
-  return fmt.processContent(fmt.renderRaw());
+  // The Mod cardtype page's pointer arm (card-1.110.0 mod/core
+  // set/self/mod.rb:1 `include_set Abstract::List` — the SELF set on the
+  // card NAMED Mod, not a type predicate). Set modules load in pattern
+  // order 01_all .. 09_self (mod/core/set_pattern/), so the self-set's
+  // List html format block executes LAST and its `view :core`
+  // (`standard_pointer_core`, card-mod-list set/abstract/01_list/
+  // html_views.rb:2-13) overrides the Cardtype type-set's CqlSearch core
+  // (card-mod-search set/abstract/search_views.rb search_result_view ->
+  // :card_list) for THIS card ONLY — the other 74 Cardtype-typed pages
+  // keep the member-search card_list (the pass-15 cardtype-template class
+  // pins those byte-identical WITH the add_button anchor, so widening
+  // isPointerOrListCard to cardtype would be a falsification; the mandate
+  // guess "cardtype-inclusive" is refuted by set/self/mod.rb being a
+  // name-keyed self set).
+  //
+  // The ITEMS still come from the type-set's search: Abstract::Search's
+  // `item_cards` (card-mod-search set/abstract/0_search.rb:20-22 over
+  // `cql_content {type_id: id, sort_by: :name}`, set/type/cardtype.rb:3-5)
+  // outranks the ALL-set content default (card-mod-collection
+  // set/all/item.rb:26 `standard_item_cards`) — Self::Mod's own chain
+  // (Abstract::List) defines NO item_cards, so the first definition in
+  // Card's ancestor walk is the search one. The oracle page is the
+  // name-ordered Mod-typed search result list rendered through
+  // standard_pointer_core: `card-list card-list-bar pointer-list` wrapping
+  // `pointer-item item-bar` bars, sliced to default_limit 20
+  // (01_list/other_views.rb:3-5) with the paging nav
+  // (pointerListCoreHtml's paged form; corpus pin: 36 items, context
+  // "1 - 20 of 36", recapture-raw-shard-000039 Mod). The card's STORED
+  // wiggle template (`<p>{{+description|content}}</p>
+  // <p>{{_|add_button}}{{_|configure_button}}</p>
+  // <p>{{+*type+by name|content}}</p>` — the corpus Mod row's content)
+  // never renders in Ruby, which is where the engine's spurious
+  // `Add Mod` anchor dies: it was the rendered `{{_|add_button}}` wiggle
+  // of that template, not an engine-side addition. set/self/mod.rb's own
+  // `item_codes`/`content` body yields `"#{mod}_mod"` names that resolve
+  // to nothing (Cardio::Mod has no custom to_s; the stored codenames are
+  // `mod_<name>`), so the search results are the only item source the
+  // oracle bytes support.
+  //
+  // The search is ALREADY pre-executed on this seam: the stored template's
+  // `{{+*type+by name|content}}` reference puts the virtual search card on
+  // the prepared map and `prepareNestClosureSearches` seats its results at
+  // the virtual key before the sync render (render.ts:3824). This branch
+  // reads the SAME seat the dispatched card_list would read —
+  // executeSearch opens ONLY fmt.card.key (render.ts:5246-5248), so the
+  // stub fmt below is the exact read surface. Pin:
+  // tests/card/render/mod-cardtype-page-pointer-arm-corpus-parity.test.ts.
+  if (fmt.card.name.key === "mod") {
+    const searchKey = DeckoName.parse("+*type+by name")
+      .absoluteName(DeckoName.parse(fmt.card.name.s)).key;
+    const stubFmt = { card: { key: searchKey } } as unknown as RenderFormat;
+    const items = fmt.engine.executeSearch(stubFmt);
+    // show_paging? reads the SEPARATE count search (card-mod-search
+    // set/abstract/0_search.rb:52-54, offset 0 / limit 0): the seat exists
+    // only when the nav shows (render.ts runSearch seats the record in the
+    // show_paging? == true case) and its count is the FULL result count the
+    // nav's paging-context renders ("of 36") while the item list stays the
+    // limit-20 slice  the countOverride split pointerListCoreHtml now
+    // carries.
+    const paging = fmt.engine.searchResultPaging?.(stubFmt);
+    const itemView = "bar";
+    return pointerListCoreHtml(
+      fmt.card,
+      items.map((item) => item.name.s),
+      (name) => renderPointerListItem(fmt, name, itemView),
+      itemView,
+      paging?.count,
+    );
+  }
+    return fmt.processContent(fmt.renderRaw());
 };
 
 /** The dispatched :core — the base body above wrapped with the
