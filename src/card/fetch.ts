@@ -54,7 +54,7 @@ import {
 import type { VirtualCardResolution } from "./fetch/virtual-cards.js";
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import { DeckoName, type Nameish } from "./name.js";
-import { setNameEnvironment, type NameEnvironment } from "./name/environment.js";
+import { getNameEnvironment, setNameEnvironment, type NameEnvironment } from "./name/environment.js";
 
 /** The fetch options (fetch/card_class.rb:21-29 doc + option readers in
  *  fetch.rb). `new` opts cross into the write path; only the parts fetch
@@ -148,6 +148,27 @@ export class FetchEngine {
     this.cardCache.afterWriteToTempCache = (value) => {
       if (isCardValue(value)) this.writeLexiconTemp(value);
     };
+    // THE COLD-ISOLATE DEFAULT (parity-harness S3 fix, 2026-10-02; the
+    // codename-warmup-fix lane's 19aac91, ported to this line by the fold-11
+    // integrator): install the sync name environment unless a boot already
+    // installed one. Ruby's ":codename" mark parse cannot fail while the row
+    // exists — the codehash loads synchronously on first use
+    // (codename.rb#load_codehash). This port's substitute is the
+    // process-global environment (below + installNameEnvironment) whose
+    // adapters PEEK the codehash memo, and a boot that skips the explicit
+    // prime left getNameEnvironment() undefined — DeckoName.idFromString
+    // then threw CodenameNotFoundError for rows that exist. On THIS line the
+    // fold-11 carrier surfaced it: the p2 request-surface pins inject raw
+    // {fetcher, render} decks with no boot, and the page head's ":title"
+    // read 500'd despite the seeded codenames row. Construction-time install
+    // makes the default boot safe: the adapters are warm-only peeks (inert
+    // until a parse runs), and every render entry folds the codehash before
+    // the view dispatch parses content, so the peeks see the prime with no
+    // boot-side cooperation. First engine wins, and an explicit
+    // installNameEnvironment() still overwrites — boots that warm keep
+    // exactly their pre-fix composition. Ruby-faithfulness note: the env is
+    // process-global because Ruby's codehash is (one per process).
+    if (getNameEnvironment() === undefined) this.installNameEnvironment();
   }
 
   // ---------------------------------------------------------------------
