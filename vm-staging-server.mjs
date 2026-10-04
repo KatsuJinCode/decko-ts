@@ -3268,10 +3268,26 @@ const server = http.createServer(async (req, res) => {
       // (renderCardView above); its absence or emptiness keeps the proven
       // page path byte-identical. The query is the dispatch key (the corpus
       // URL convention "/<name>?view=<view>"), not the request headers.
+      //
+      // FOLD-12 UNION ADJUDICATION (lane-fold12-2026-10-03): the bare view
+      // lane answers a RAISING render with the CAPTURE_ERROR sentinel at
+      // status 200 — the shadow parity stage's byte-comparison semantics —
+      // but the graded/session surface pins Ruby's unsupported-view shape
+      // (422, format/render.rb:60-64 via error.rb:21; live-verified 422
+      // view-not-supported by the w5-live-alignment lane) in the
+      // standing-net member tests/server/edit-session-replay.test.ts
+      // ("unported view names 422 and deep paths 404"). Both contracts hold
+      // by scoping the sentinel lane to the process that asks for it: the
+      // shadow tool sets DECKO_SHADOW_VIEW_LANE=1 on the servers it spawns
+      // (bin/migration-parity-shadow.mjs); every other boot — the graded
+      // pins, the session-replay surface, default staging — keeps the
+      // pre-view-lane fall-through to renderCardPage, whose unsupported-view
+      // answer is the pinned 422.
       const requestedView = url.searchParams.get("view");
+      const shadowViewLane = process.env.DECKO_SHADOW_VIEW_LANE === "1";
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
-      } else if (requestedView !== null && requestedView !== "") {
+      } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
         response = await renderCardView(name, requestedView, requestEngine);
       } else {
         response = await renderCardPage(name, requestEngine, requestedView);

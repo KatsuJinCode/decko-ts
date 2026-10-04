@@ -977,11 +977,21 @@ export async function runShadow(opts) {
   const divergenceDir = path.join(outDir, "divergences");
 
   // Spawn BOTH engines' render servers (the parallel run behind the policy).
+  // FOLD-12 UNION ADJUDICATION: the spawned instruments get
+  // DECKO_SHADOW_VIEW_LANE=1 so vm-staging-server.mjs serves its BARE view
+  // lane (raise -> CAPTURE_ERROR sentinel at 200 — this stage's
+  // byte-comparison contract). Servers NOT spawned here (the graded pins,
+  // the session-replay surface, default staging) never see the flag and
+  // keep Ruby's unsupported-view 422 — the standing-net member
+  // tests/server/edit-session-replay.test.ts pins that shape.
+  const shadowLaneEnv = { ...process.env, DECKO_SHADOW_VIEW_LANE: "1" };
   const baseProc = spawn(process.execPath, [baseInstrument, copyBase, String(urls.basePort)], {
     stdio: ["ignore", "pipe", "pipe"],
+    env: shadowLaneEnv,
   });
   const candidateProc = spawn(process.execPath, [candidateInstrument, copyCandidate, String(urls.candidatePort)], {
     stdio: ["ignore", "pipe", "pipe"],
+    env: shadowLaneEnv,
   });
   collectOutput(baseProc);
   collectOutput(candidateProc);
