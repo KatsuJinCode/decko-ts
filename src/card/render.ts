@@ -3472,10 +3472,55 @@ export class RenderEngine implements RenderEngineLike {
   // -------------------------------------------------------------------------
 
   /** Cache-first card resolution for the render path. Returns undefined for
-   *  anything the prefetch did not prepare (the nest machinery reports). */
+   *  anything the prefetch did not prepare (the nest machinery reports).
+   *
+   *  THE MARK NAMES THE CARD THIS FETCH RETURNS (results.rb:30-32
+   *  `assign_name mark`, reached from `new_result_card` on every fetch
+   *  that lands on a `new_card?` record). Ruby keeps two things apart that
+   *  this port's single key-keyed map had merged:
+   *
+   *    store.rb:21-28  `new_for_cache` instantiates `Card.new name: mark`
+   *                     - the placeholder is built FROM THE MARK;
+   *    store.rb:9      `Card.write_to_cache card` keys it by `card.key`,
+   *                     so the shared cache holds it under the FOLDED name;
+   *    results.rb:8    a KNOWN card skips `new_result_card` and goes to
+   *                     `finalize_result_card` - a stored row's name is the
+   *                     row's, never a mark's.
+   *
+   *  So the cache entry is keyed (shared, unchanged) while the object a
+   *  fetch HANDS BACK carries the mark that named it. That is the whole
+   *  semantic, and it belongs at the fetch - not at the name layer. A prior
+   *  lane ported it at format.ts#nest instead (dddb01cd, reverted forward-
+   *  only by fbb6eda3); the nest is the one consumer that must not carry it,
+   *  because a `{{`_}}` / `{{_self}}` nest resolves its target from the
+   *  CONTEXT card and never reaches this function at all (format.ts:1601,
+   *  `contextTarget ?? this.engine.fetchRenderCard(targetName)`).
+   *
+   *  THE MEASURED DEFECT (parity-restore-runbook.md:184, mechanism #4,
+   *  Aiki:page): the corpus row `Aiki+references` (27199) stores its
+   *  reference in KEY case, so the structure walk's compound-ref warm
+   *  (render.ts#applyStructureContent -> fetcher.fetchByName) fetched
+   *  "aiki+*referred_to_by", MISSED (corpus: left_id 2705 + right_id 3945
+   *  -> no row) and seated a placeholder named FROM THAT MARK - the key
+   *  form. The page's own `{{_self+*referred_to_by}}` then resolved the
+   *  RIGHT name ("Aiki+*referred_to_by") and read the KEY, hitting the
+   *  key-named placeholder.
+   *
+   *  ONLY a fabricated, id-less placeholder is re-bound, and only onto the
+   *  mark that reached it. A STORED card keeps its row's name: re-binding
+   *  one would let an authored `{{aiki}}` rename the "Aiki" card's slots
+   *  (Ruby's known? path never calls assign_name for a stored card). The map
+   *  entry is never mutated - a copy is returned, which is what Ruby's
+   *  per-fetch `Card.new` gives for free and a shared map does not. */
   fetchRenderCard(name: string): RenderCard | undefined {
-    const key = DeckoName.parse(name).key;
-    return this.renderCards.get(key);
+    const requested = DeckoName.parse(name);
+    const card = this.renderCards.get(requested.key);
+    if (card === undefined) return undefined;
+    if (card.id !== undefined || card.record.isNew !== true) return card; // stored: results.rb:8
+    if (card.name.s === requested.s) return card; // the mark already named it
+    // Same key by construction - the lookup above is keyed on it - so the
+    // two spellings differ by case alone and the re-bind is a pure case fix.
+    return { ...card, name: requested, key: requested.key };
   }
 
   /** M9 - `Card.exist?` as an ASYNC EXACT-stored-name query (the
