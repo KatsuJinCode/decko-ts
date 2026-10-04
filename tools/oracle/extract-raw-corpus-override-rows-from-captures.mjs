@@ -4,7 +4,10 @@
 // every entry of the M8 skin:record class, extended by the m8-siblings-litera
 // lane 2026-10-03 to the two bootstrap SCSS source siblings and to litera
 // skin -- the one bootswatch skin with no capture record -- via a LIVE
-// ?view=raw capture of culturesmith.com under the same gates).
+// ?view=raw capture of culturesmith.com under the same gates, and by the
+// litera-custom-skin lane 2026-10-03 to litera skin customized 34530 via the
+// same LIVE ?view=raw route, class-calibrated on journal skin customized
+// 34179 whose oracle envelope the live raw view reproduces byte-exact).
 //
 // WHAT THIS IS
 //   The oracle deck's stored bytes for some cards are unobtainable from
@@ -751,6 +754,253 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
   );
 }
 
+// ---------- litera skin customized 34530 (LIVE-capture arm, litera-custom-skin lane 2026-10-03) ----------
+// The corpus row (253,810 bytes of litera SCSS source) is one of the four
+// documented shared-source family rows; no expected-v2 capture record exists
+// for the plain name (the m8 lane swept: only adjacent junction cards 34533 /
+// 45366 were captured). The LIVE site serves the card's stored bytes through
+// the same ?view=raw route (titles verified "litera skin customized -
+// Culturesmith", so the right card was served). Class calibration: the same
+// wrapper rule on journal skin customized's live raw view reproduces 34179's
+// ORACLE envelope content byte-exact (single occurrence) -- pins
+// live-stored==oracle-stored for the customized class, complementing the
+// plain-class pins (cerulean/journal) the 33872 arm carries. The restored
+// content decomposes against the corpus row in the proven 34179 double-emit
+// shape: [corpus prefix][compiled M][corpus tail]. Measured deck-state fact,
+// recorded not hidden: the live deck's stored bytes for litera skin (33872)
+// and litera skin customized (34530) are byte-identical (the same holds for
+// journal base vs journal customized vs 34179's oracle envelope).
+{
+  const LIVE_CUSTOMIZED_DIR =
+    "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/litera-custom-live-probe";
+  const LIVE_LITERA_CUSTOMIZED_FETCHES = [
+    {
+      file: "live-raw-view-litera-skin-customized-culturesmith-2026-10-04.html",
+      fetchedAt: "2026-10-04T04:39:58.838Z",
+      url: "https://culturesmith.com/litera_skin_customized?view=raw",
+      status: 200,
+      sha256: "c2366910a2d4f65a137e50117e58dffc7482231a581280b154a4e9bf6dc3424f",
+    },
+    {
+      file: "live-raw-view-litera-skin-customized-culturesmith-2026-10-04-refetch.html",
+      fetchedAt: "2026-10-04T04:40:00.977Z",
+      url: "https://culturesmith.com/litera_skin_customized?view=raw",
+      status: 200,
+      sha256: "bbe43a9803b516d53baf11f470b58d02c7021e110a6dda80104ebfc06cd5fee4",
+    },
+  ];
+  // rule calibration (plain class, m8 lane's recorded fetches) + class
+  // calibration (customized class, this lane's recorded fetch vs 34179's
+  // oracle envelope; canonical p21 file, independent of --capture).
+  const P21_JOURNAL_CUSTOMIZED_CANONICAL =
+    "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/" +
+    "nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
+  const oracleEnvelope34179 = JSON.parse(readFileSync(P21_JOURNAL_CUSTOMIZED_CANONICAL, "utf8"));
+  // the rule-calibration oracle envelopes (plain class) -- the shard-record
+  // map is built here (the 33872 arm's map is block-scoped to that arm)
+  const calibrationShardPath = path.join(VIEW_LANE_DIR, "recapture-raw-shard-000017.jsonl");
+  const calibrationOracleByName = new Map();
+  for (const l of readFileSync(calibrationShardPath, "utf8").split("\n").filter(Boolean)) {
+    let o;
+    try {
+      o = JSON.parse(l);
+    } catch {
+      continue;
+    }
+    if (o.record && o.record.name !== undefined && !calibrationOracleByName.has(o.record.name)) {
+      calibrationOracleByName.set(o.record.name, o.record);
+    }
+  }
+  const calibrationEvidence = [];
+  for (const cal of LIVE_CALIBRATION_SKINS) {
+    const oracle = calibrationOracleByName.get(cal.name);
+    const liveBody = readFileSync(path.join(LIVE_RAW_VIEW_DIR, cal.file), "utf8");
+    const ex = extractLiveRawContent(liveBody);
+    const byteEqual = ex.ok && ex.content === oracle.content;
+    calibrationEvidence.push({
+      skin: cal.name,
+      cardClass: "plain bootswatch skin",
+      file: cal.file,
+      dir: LIVE_RAW_VIEW_DIR,
+      oracleSource: "expected-v2 view-lane shard record",
+      oracleContentChars: oracle.content.length,
+      liveRawBodyChars: liveBody.length,
+      extractionBounds: ex.ok ? { from: ex.from, to: ex.to } : null,
+      contentByteEqual: byteEqual,
+    });
+    if (!byteEqual) {
+      throw new Error(
+        `live raw-view extraction rule FAILED calibration on ${cal.name} ` +
+          `(ok=${ex.ok} byteEqual=${byteEqual}) -- refusing to emit the 34530 row`,
+      );
+    }
+  }
+  {
+    const liveBody = readFileSync(
+      path.join(LIVE_CUSTOMIZED_DIR, "live-raw-view-journal-skin-customized-culturesmith-2026-10-04.html"),
+      "utf8",
+    );
+    const ex = extractLiveRawContent(liveBody);
+    const byteEqual = ex.ok && ex.content === oracleEnvelope34179.content;
+    calibrationEvidence.push({
+      skin: "journal skin customized",
+      cardClass: "customized bootswatch skin",
+      file: "live-raw-view-journal-skin-customized-culturesmith-2026-10-04.html",
+      oracle: "p21-journal-skin-customized",
+      oracleSource: "p21 oracle record capture 2026-09-30 (envelope id 34179)",
+      oracleContentChars: oracleEnvelope34179.content.length,
+      liveRawBodyChars: liveBody.length,
+      extractionBounds: ex.ok ? { from: ex.from, to: ex.to } : null,
+      contentByteEqual: byteEqual,
+    });
+    if (!byteEqual) {
+      throw new Error(
+        `live raw-view extraction rule FAILED class calibration on journal skin customized ` +
+          `(ok=${ex.ok} byteEqual=${byteEqual}) -- refusing to emit the 34530 row`,
+      );
+    }
+  }
+  // content from BOTH recorded fetches; the two must agree byte-exact
+  const perFetch = [];
+  for (const f of LIVE_LITERA_CUSTOMIZED_FETCHES) {
+    const bodyPath = path.join(LIVE_CUSTOMIZED_DIR, f.file);
+    const body = readFileSync(bodyPath, "utf8");
+    const actualSha = createHash("sha256").update(readFileSync(bodyPath)).digest("hex");
+    if (actualSha !== f.sha256) {
+      throw new Error(
+        `live raw-view capture file ${f.file} sha256 ${actualSha} does not match the recorded fetch sha ${f.sha256} -- refusing to emit`,
+      );
+    }
+    const ex = extractLiveRawContent(body);
+    if (!ex.ok) {
+      throw new Error(`live raw-view extraction failed for ${f.file}: ${ex.reason}`);
+    }
+    perFetch.push({ ...f, bodyChars: body.length, content: ex.content, bounds: { from: ex.from, to: ex.to } });
+  }
+  const stable = perFetch.every((p) => p.content === perFetch[0].content);
+  if (!stable) {
+    throw new Error("live raw-view litera skin customized content is NOT byte-identical across the two recorded fetches -- refusing to emit");
+  }
+  const customContent = perFetch[0].content;
+  // the proven gates: identity, non-degenerate double-emit decomposition,
+  // M-head absence, full-content containment absence
+  const row = corpus
+    .prepare("SELECT id, name, content, length(content) AS len FROM cards WHERE id = 34530")
+    .get();
+  if (row === undefined || row.name !== "litera skin customized") {
+    throw new Error(`identity gate failed for litera skin customized 34530 (found ${row ? JSON.stringify(row.name) : "nothing"})`);
+  }
+  const d = decompose(customContent, row.content ?? "");
+  if (!d.clean) {
+    throw new Error(`litera skin customized decomposition not clean: ${d.reason}`);
+  }
+  if (d.prefix === 0 || d.tail === 0) {
+    throw new Error(
+      `litera skin customized decomposition is degenerate (prefix ${d.prefix} tail ${d.tail}) -- ` +
+        "the proven 34179 double-emit shape is [corpus prefix][M][corpus tail] with both non-zero; " +
+        "a degenerate result means the corpus row or the live bytes changed shape, refusing to emit",
+    );
+  }
+  const mRows = mHeadInCorpusRows(d.mBlock);
+  if (mRows !== 0) {
+    throw new Error(
+      `litera skin customized M head found in ${mRows} corpus rows -- the override premise is stale, refusing to emit`,
+    );
+  }
+  const containment = rowsContainingContent(customContent);
+  if (containment.hits !== 0) {
+    throw new Error(
+      `litera skin customized live content contained in ${containment.hits} corpus rows -- the override premise is stale, refusing to emit`,
+    );
+  }
+  // measured cross-facts, recorded not gated: M block vs 34179's M, and the
+  // restored content vs the 33872 base-litera row emitted by this same run
+  const mEquals34179 = d.mBlock === oracleEnvelope34179.content.slice(251225, oracleEnvelope34179.content.length - 945);
+  const baseLiteraCard = cards.find((c) => c.id === 33872);
+  const contentEqualsBaseLiteraRow = baseLiteraCard !== undefined && customContent === baseLiteraCard.content;
+  const typeRow = corpus
+    .prepare(
+      "SELECT c.id, c.name, c.key, c.codename FROM cards c WHERE c.id = (SELECT type_id FROM cards WHERE id = 34530)",
+    )
+    .get();
+  const corpusCard = corpus.prepare("SELECT codename FROM cards WHERE id = 34530").get();
+  cards.push({
+    id: 34530,
+    content: customContent,
+    note:
+      "litera skin customized -- the live deck's stored content " +
+      `(live raw view, ${customContent.length} chars = corpus prefix ${d.prefix} + M ${d.mBlock.length} + corpus tail ${d.tail}, ` +
+      "the 34179 double-emit shape over the 253,810-byte SCSS source row). " +
+      "No expected-v2 capture record exists for this card (swept 2026-10-03); class-calibrated live capture. " +
+      "Measured deck state: byte-identical to litera skin's (33872) restored content.",
+  });
+  provenance.push({
+    cardId: 34530,
+    cardName: "litera skin customized",
+    classRow:
+      "M8 skin:record class sibling -- litera skin customized, no capture record, " +
+      "restored from the LIVE site (litera-custom-skin lane 2026-10-03)",
+    source: "LIVE culturesmith.com ?view=raw capture (2026-10-04T04:39/04:40Z, two byte-stable fetches)",
+    file: path.join(LIVE_CUSTOMIZED_DIR, LIVE_LITERA_CUSTOMIZED_FETCHES[0].file),
+    captureId: 34530,
+    envelopeFields: {
+      name: row.name,
+      type: typeRow.name,
+      type_code: typeRow.codename,
+      codename: corpusCard.codename,
+      keySource: "engine-derived from the name (DeckoName key of 'litera skin customized')",
+    },
+    contentChars: customContent.length,
+    envelopeEqualities: {
+      prefixBytes: d.prefix,
+      middleBytes: d.mBlock.length,
+      tailBytes: d.tail,
+    },
+    corpusRowBytes: row.len,
+    corpusAbsence: {
+      test: "no corpus row contains the full restored content (full-needle instr over length-qualified candidates); M head absent from every corpus row (strict, the 34179 gate)",
+      candidatesExamined: containment.candidatesExamined,
+      containingRows: 0,
+      mHeadContainingRows: mRows,
+    },
+    liveCapture: {
+      captureDir: LIVE_CUSTOMIZED_DIR,
+      route: "?view=raw (served page title verified 'litera skin customized - Culturesmith')",
+      fetches: perFetch.map((p) => ({
+        file: p.file,
+        fetchedAt: p.fetchedAt,
+        url: p.url,
+        status: p.status,
+        sha256: p.sha256,
+        bodyChars: p.bodyChars,
+        extractionBounds: p.bounds,
+      })),
+      crossFetchContentByteEqual: stable,
+      extractionRule: "content sits between '<div id=\"main\">' and '</div><script>' in the raw-view body",
+      calibration: calibrationEvidence,
+      calibrationNote:
+        "rule pins (cerulean skin, journal skin -- oracle shard contents reproduced byte-exact from the m8 lane's recorded live fetches) plus the " +
+        "customized-class pin (journal skin customized's live raw view reproduces 34179's ORACLE envelope content byte-exact, single occurrence) -- " +
+        "this pins both the extraction rule and live-stored==oracle-stored for the customized card class",
+      measuredCrossFacts: {
+        mBlockByteEqualTo34179M: mEquals34179,
+        mBlockNote:
+          "the compiled 221,051-char block inserted into the customized source rows is the same compiled decko application CSS for journal and litera",
+        contentByteEqualToBaseLiteraRow33872: contentEqualsBaseLiteraRow,
+        contentEqualityNote:
+          "the live deck's stored bytes for litera skin and litera skin customized are byte-identical (same measured for journal base vs customized vs 34179's oracle); the corpus rows differ (50-byte markup vs 253,810-byte SCSS source) but the materialized bytes coincide",
+      },
+    },
+    crossCapture: null,
+  });
+  console.log(
+    `OK   litera skin customized id 34530 (LIVE capture): content ${customContent.length} chars = prefix ${d.prefix} + M ${d.mBlock.length} + tail ${d.tail}` +
+      ` | M-head rows ${mRows}, containment candidates ${containment.candidatesExamined}, hits 0` +
+      ` | 2 live fetches byte-stable, class-calibrated on journal-customized vs 34179 oracle` +
+      ` | M==34179M ${mEquals34179}, ==baseLiteraRow ${contentEqualsBaseLiteraRow}`,
+  );
+}
+
 // ---------- journal skin customized 34179 (the proven original row) ----------
 const card34179 = corpus
   .prepare("SELECT id, name, key, content, length(content) AS len FROM cards WHERE id = 34179")
@@ -861,7 +1111,9 @@ const override = {
       "bootstrap SCSS source siblings 33852/33848 (m8-siblings-litera, " +
       "M8 corpus-materialization remainder) plus litera skin 33872, the one " +
       "bootswatch skin with no capture record, restored from the LIVE site's " +
-      "?view=raw route (m8-siblings-litera).",
+      "?view=raw route (m8-siblings-litera), plus litera skin customized " +
+      "34530, restored from the same LIVE route and class-calibrated on " +
+      "journal skin customized 34179's oracle envelope (litera-custom-skin).",
     corpusSha256: corpusSha,
     generatedBy: "tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs",
     generatedAt: new Date().toISOString(),
@@ -876,9 +1128,10 @@ console.log(`WROTE ${OUT} (cards: ${override.cards.map((c) => c.id).join(", ")})
 const siblingEmitted = provenance.filter((p) =>
   M8_BOOTSTRAP_SIBLINGS.some((s) => s.name === p.cardName),
 ).length;
+const liveArmRows = provenance.filter((p) => p.liveCapture !== undefined).length;
 console.log(
-  `M8 CLASS: ${cards.length - siblingEmitted - 2} of ${M8_CLASS_SKINS.length} class rows emitted, ` +
+  `M8 CLASS: ${cards.length - siblingEmitted - liveArmRows - 1} of ${M8_CLASS_SKINS.length} class rows emitted, ` +
     `${siblingEmitted} of ${M8_BOOTSTRAP_SIBLINGS.length} bootstrap siblings emitted, ` +
-    `1 litera skin (LIVE capture) emitted, ` +
+    `${liveArmRows} LIVE-capture rows emitted (33872 litera skin, 34530 litera skin customized), ` +
     `${skipped.length} skipped (documented in meta.skipped), + journal 34179`,
 );
