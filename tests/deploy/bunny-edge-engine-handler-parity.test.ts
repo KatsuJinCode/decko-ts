@@ -112,6 +112,41 @@ beforeAll(async () => {
       await driver.query(statement, []);
     }
   }
+  // The page shell's rows (deploy-surface-union re-anchor, 2026-10-03): the
+  // wired serving path is the engine's OWN page assembly (renderPageBytes —
+  // the per-card *layout rule, the *header/*footer nests, the html_page
+  // head), whose layout machinery resolves exactly these rows. The demo seed
+  // predates the page path: without them the code-default-layout interior
+  // raises on the first codename-mark nest (CodenameNotFoundError: header —
+  // the p2-codename lane's recorded boundary: body-mark parses in
+  // format.ts resolveNestName are outside the head-guard's scope), and Ruby
+  // answers an error page for such a deck the same way (wrap_and_render ->
+  // rescue_view). The row set mirrors tests/deploy/bunny-edge-error-page.ts
+  // seedShellHeadDeck (the page-head codename cards, *all+*layout ->
+  // Default Layout with a body, *header, *footer) over the demo schema.
+  const T = "2026-09-20 00:00:00.000";
+  const insert = (values: string): string =>
+    `INSERT OR IGNORE INTO cards (\n` +
+    `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
+    `  created_at, updated_at, creator_id, updater_id,\n` +
+    `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
+    `) VALUES (\n${values}\n)`;
+  for (const statement of [
+    insert(`22746, '*all', 'all', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22747, '*layout', 'layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22748, '*all+*layout', 'all+layout', NULL, 22746, 22747, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Default Layout'`),
+    insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
+    insert(`22750, '*header', 'header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
+    insert(`22751, '*footer', 'footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
+    insert(`22752, '*title', 'title', 'title', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Test Site'`),
+    insert(`22753, '*favicon', 'favicon', 'favicon', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '(my_bucket)/103/3649.jpg'`),
+    insert(`22754, '*ace', 'ace', 'ace', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
+    insert(`22755, '*tiny_mce', 'tiny_mce', 'tiny_mce', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
+    insert(`22756, 'Html', 'html', 'html', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22757, 'Basic', 'basic', 'basic', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+  ]) {
+    await driver.query(statement, []);
+  }
   // The stub must exist BEFORE the first request boots the deck: the
   // driver binds globalThis.fetch at construction.
   globalThis.fetch = makeBunnyFetchStub(driver!);
@@ -140,10 +175,16 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(await response.text()).not.toContain("only synthetic demo content");
   });
 
-  it("a missing card answers 404 Card not found (error.rb:88-89 — the defect the entry shared with root's pre-fix catch)", async () => {
+  it("a missing card answers 404 Decko's not_found page in the served chrome (error.rb:88-89; the bare <h1>Card not found</h1> shape the pre-union handler served moved with the p2-error-shell surfaces)", async () => {
     const response = await get("/No+Such+Card");
     expect(response.status).toBe(404);
-    expect(await response.text()).toContain("<h1>Card not found</h1>");
+    const body = await response.text();
+    // The full-chrome not_found page (the staging builder shape the carried
+    // bunny-edge-error-page.test.ts pins): noindex head line + the Could not
+    // find slot carrying the requested name as escaped text.
+    expect(body).toContain("<meta content='noindex' name='robots'>");
+    expect(body).toContain("Could not find");
+    expect(body).toContain("No+Such+Card");
   });
 
   it("an unregistered view answers the 422 UserError shape (error.rb:21)", async () => {
@@ -168,9 +209,13 @@ describe("bunny edge engine handler — the shared read surface", () => {
     const response = await get("/~999999");
     expect(response.status).toBe(404);
     const body = await response.text();
-    expect(body).toContain("<h1>Card not found</h1>");
-    // the verbatim engine message rides the page (mapRenderError's
-    // "id doesn't exist:" arm, name/errors.ts -> error.rb:93)
+    // deploy-surface-union re-anchor: the 404 answer is the not_found
+    // surface (the full chrome when the deck carries a Default Layout, the
+    // builder's minimal stub otherwise — this fixture has both states
+    // across its cards). The invariant is the STATUS (the NotFound family,
+    // error.rb:88-89 — the union's mapRenderError classification) and the
+    // requested mark reaching the answer; the bare <h1>Card not found</h1>
+    // byte this pin used to hold belonged to the pre-union bare surface.
     expect(body).toContain("999999");
   });
 
@@ -197,12 +242,15 @@ describe("bunny edge engine handler — the shared read surface", () => {
   });
 
   it("a read-denied card 403s on /api/card instead of serving db_content (permissions.rb:139-146)", async () => {
-    // The F3 denial fixture (mirror of tests/deploy/deploy-worker-miniflare.test.ts):
+    // The F3 denial fixture (mirror of tests/deploy/deploy-worker-miniflare.test.ts).
+    // deploy-surface-union: the shared base rows (*read/*all/Set/*self) are
+    // INSERT OR IGNORE — the page-shell fixture above now seeds *all, and the
+    // rule machinery needs one canonical row per name/key/codename:
     // codename carriers, a probe card, its *self set, a *read rule granting
     // NOBODY (no card_references rows).
     const T = "2026-09-20 00:00:00.000";
     const insert = (values: string): string =>
-      `INSERT INTO cards (\n` +
+      `INSERT OR IGNORE INTO cards (\n` +
       `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
       `  created_at, updated_at, creator_id, updater_id,\n` +
       `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +

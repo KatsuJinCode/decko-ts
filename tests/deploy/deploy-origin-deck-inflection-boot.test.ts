@@ -77,11 +77,14 @@ const ORIGINS = [
     keyDerivationSite: 'keyToId.set(DeckoName.parse(name).key, row.id)',
   },
   {
-    // The handler file, not the entry: the boot code moved to
-    // bunny-edge-engine-handler.ts (2026-10-03, worker-twins audit lane)
-    // so the request surface became drivable in-process — the entry is the
-    // SDK registration shim only.
-    file: "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+    // The boot module, not the handler: the boot moved twice — to
+    // bunny-edge-engine-handler.ts (2026-10-03, worker-twins audit lane),
+    // then to bunny-edge-deck-boot.ts (the p2-person-section lane's SDK-free
+    // boot extraction; the deploy-surface-union lane wired the serving
+    // handler through it, so the boot module is where the Bunny origin's
+    // inflection application lives). The handler delegates
+    // bootCorpusDeckEngines; the entry is the SDK registration shim only.
+    file: "deploy/bunny-worker-src/bunny-edge-deck-boot.ts",
     keyDerivationSite: "new FetchEngine(driver)",
   },
 ] as const;
