@@ -1,0 +1,5203 @@
+{
+  "label": "combined146",
+  "targets": 146,
+  "states": [
+    "UNARMED",
+    "CONSTANTS",
+    "FULL"
+  ],
+  "tally": {
+    "UNARMED": {
+      "PASS": 24,
+      "FAIL": 122,
+      "RAISE": 0
+    },
+    "CONSTANTS": {
+      "PASS": 40,
+      "FAIL": 106,
+      "RAISE": 0
+    },
+    "FULL": {
+      "PASS": 76,
+      "FAIL": 70,
+      "RAISE": 0
+    }
+  },
+  "movedByConstantsArm": 77,
+  "movedByEraArm": 128,
+  "flippedTags": [
+    "*favicon:page",
+    "*input type+*right:page",
+    "Administrator:page",
+    "Anyone Signed In:page",
+    "Archetypal:page",
+    "Family:page",
+    "Christmas:page",
+    "*alerts:page",
+    "*now:page",
+    "*recent:page",
+    "*search:page",
+    "Klickstein continues+discussion:page",
+    "*input type+*right+*content options:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image03+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image04+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:page",
+    "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:page",
+    "Williamscraig:page",
+    "Guns:page",
+    "Project+Task+*type plus right:page",
+    "Message+Conversation+*type plus right:page",
+    "Brandon feedback+discussion:page",
+    "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:page",
+    "*all+*head:page",
+    "Administrator+Dashboard:page",
+    "Help Desk:page",
+    "PCTS+*self+*head:page",
+    "Pointer:page",
+    "Shark:page",
+    "Kayla Feder 20230902+discussion:page",
+    "mod: account:page",
+    "mod: bootstrap:page",
+    "mod: carrierwave:page",
+    "mod: core:page",
+    "mod: date:page",
+    "mod: email:page",
+    "mod: follow:page",
+    "mod: format:page",
+    "mod: layout:page",
+    "mod: list:page",
+    "mod: script:page",
+    "mod: search:page",
+    "mod: session:page",
+    "mod: style:page",
+    "mod: tinymce editor:page",
+    "mod: shades:page",
+    "Klickstein continues+discussion:open",
+    "Andrew Porter:open",
+    "media+GBA+YouTube Browser:open",
+    "The Habit - a predictable travesty:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image03+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image04+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:open",
+    "20131018+BW+RVW+Plans:open",
+    "Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014:open",
+    "Guns:open",
+    "Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24:open",
+    "Brandon feedback+discussion:open",
+    "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
+    "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
+    "children:open",
+    "Perennial Wisdom Tradition:open",
+    "Belief about the rightness of Insert System Here establishes an axis:open",
+    "Wikirate:open",
+    "Work Week:open",
+    "Kayla Feder 20230902:open",
+    "Kayla Feder 20230902+discussion:open",
+    "Rosalie Williamscraig:open",
+    "Conflict Done Well+WE Greiner:open",
+    "Huston Williamscraig:open"
+  ],
+  "eraOnlyTags": [
+    "*input type+*right:page",
+    "Administrator:page",
+    "Anyone Signed In:page",
+    "Archetypal:page",
+    "Family:page",
+    "Christmas:page",
+    "*search:page",
+    "*input type+*right+*content options:page",
+    "Williamscraig:page",
+    "Guns:page",
+    "Project+Task+*type plus right:page",
+    "Message+Conversation+*type plus right:page",
+    "Administrator+Dashboard:page",
+    "Help Desk:page",
+    "Pointer:page",
+    "Shark:page",
+    "mod: account:page",
+    "mod: bootstrap:page",
+    "mod: carrierwave:page",
+    "mod: core:page",
+    "mod: date:page",
+    "mod: email:page",
+    "mod: follow:page",
+    "mod: format:page",
+    "mod: layout:page",
+    "mod: list:page",
+    "mod: script:page",
+    "mod: search:page",
+    "mod: session:page",
+    "mod: style:page",
+    "mod: tinymce editor:page",
+    "*all:content",
+    "*all:open",
+    "*favicon:closed",
+    "*favicon:open",
+    "*input type+*right:content",
+    "*input type+*right:open",
+    "Romain Barnard+Core Project:open",
+    "*all plus:content",
+    "*all plus:open",
+    "*rstar:content",
+    "*rstar:open",
+    "*star:content",
+    "*star:open",
+    "BDWC_academic_resume+*self:open",
+    "Plans+*self:content",
+    "Americanism+*self:content",
+    "Jeffrey Hohenstein+*self:open",
+    "Please pre-register+*self:open",
+    "Aikido video+*self:open",
+    "Klickstein continues+discussion:open",
+    "Library - BW+*self:open",
+    "Andrew Porter:open",
+    "How Can I Keep From Singing - Lyrics+discussion:open",
+    "*input type+*right+*content options:closed",
+    "*input type+*right+*content options:content",
+    "*input type+*right+*content options:open",
+    "media+GBA+YouTube Browser:open",
+    "Antero Alli - Astrology as Archetypal Language+tags:open",
+    "politics+Documents:open",
+    "The Habit - a predictable travesty:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image03+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image04+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:open",
+    "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:open",
+    "20131018+BW+RVW+Plans:open",
+    "Item+*type:content",
+    "Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014:open",
+    "Anonymous+*account+*email:open",
+    "Plans+*right:open",
+    "Guns:open",
+    "Person+discussion:open",
+    "Project+Task+*type plus right:content",
+    "Project+Task+*type plus right:open",
+    "Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24:open",
+    "Message+Conversation+*type plus right:content",
+    "Message+Conversation+*type plus right:open",
+    "darkly skin:open",
+    "Brandon feedback+discussion:open",
+    "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
+    "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
+    "Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates:open",
+    "Soma+tags:open",
+    "WilliamsCraig+Vacations+Pages:open",
+    "Wishlist+tags:open",
+    "children:open",
+    "Perennial Wisdom Tradition:open",
+    "Belief about the rightness of Insert System Here establishes an axis:open",
+    "journal skin customized:content",
+    "journal skin customized:open",
+    "signup alert email+*test context:open",
+    "*all+*head:content",
+    "*all+*head:open",
+    "Administrator+Dashboard:content",
+    "Administrator+Dashboard:open",
+    "PCTS+*self+*head:content",
+    "PCTS+*self+*head:open",
+    "TSYR+mythology+articles:open",
+    "democracy+tags:open",
+    "Wikirate:open",
+    "Intellectual Property+Unsecured:open",
+    "Pork Roast Clay Baked+discussion:open",
+    "Work Week:open",
+    "Kayla Feder 20230902:open",
+    "Kayla Feder 20230902+discussion:open",
+    "Mod:content",
+    "Mod:open",
+    "mod: account:closed",
+    "mod: bootstrap:closed",
+    "mod: carrierwave:closed",
+    "mod: core:closed",
+    "mod: date:closed",
+    "mod: email:closed",
+    "mod: follow:closed",
+    "mod: format:closed",
+    "mod: layout:closed",
+    "mod: list:closed",
+    "mod: script:closed",
+    "mod: search:closed",
+    "mod: session:closed",
+    "mod: style:closed",
+    "mod: tinymce editor:closed",
+    "Rosalie Williamscraig:open",
+    "Conflict Done Well+WE Greiner:open",
+    "Huston Williamscraig:open"
+  ],
+  "rows": [
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*favicon:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -387,
+          "firstDiffOffset": 601,
+          "normalizedSha": "760cb67a51f0f6db",
+          "rawSha": "89ffb53712115993",
+          "actualBytes": 14736
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 1,
+          "firstDiffOffset": 8990,
+          "normalizedSha": "0c11d6885720b0d9",
+          "rawSha": "bc9f2fb91a4f8ed8",
+          "actualBytes": 15124
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 1,
+          "firstDiffOffset": 8990,
+          "normalizedSha": "0c11d6885720b0d9",
+          "rawSha": "f7cdf1e8a3c7d99b",
+          "actualBytes": 15124
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*input type+*right:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -418,
+          "firstDiffOffset": 611,
+          "normalizedSha": "cde25d24eae13a39",
+          "rawSha": "63743a8fd9d76ec3",
+          "actualBytes": 80964
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -30,
+          "firstDiffOffset": 9900,
+          "normalizedSha": "52b6333683219e11",
+          "rawSha": "0c2a44e81d8eab6b",
+          "actualBytes": 81352
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -30,
+          "firstDiffOffset": 11074,
+          "normalizedSha": "d262e1ae9f8a17b2",
+          "rawSha": "56222a8985c0dbd8",
+          "actualBytes": 81352
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "Administrator:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 55142,
+          "firstDiffOffset": 606,
+          "normalizedSha": "48f9c4934ce96931",
+          "rawSha": "028477fc3687a1b0",
+          "actualBytes": 102120
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 9839,
+          "normalizedSha": "95064b2dbfb0a7d6",
+          "rawSha": "941324bd51f5dcf0",
+          "actualBytes": 102508
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 9839,
+          "normalizedSha": "e216636207946359",
+          "rawSha": "3068f0c3783c393b",
+          "actualBytes": 102508
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "Anyone Signed In:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 609,
+          "normalizedSha": "dcfb25811b9fac2d",
+          "rawSha": "a57f16ecfb7b0aaa",
+          "actualBytes": 20781
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 10467,
+          "normalizedSha": "69d188d2202fc8f5",
+          "rawSha": "0bcb7aee90990fdb",
+          "actualBytes": 21169
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "87519a485ad8c35d",
+          "rawSha": "e107c91f385be91c",
+          "actualBytes": 21169
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "Archetypal:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -1585,
+          "firstDiffOffset": 603,
+          "normalizedSha": "115acf5d9b58faa2",
+          "rawSha": "ef3cd00584d58f39",
+          "actualBytes": 99371
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -1197,
+          "firstDiffOffset": 11825,
+          "normalizedSha": "a4ad73733cf5a6ae",
+          "rawSha": "5af95676b2cc385c",
+          "actualBytes": 99759
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -1197,
+          "firstDiffOffset": 11825,
+          "normalizedSha": "436dfcf785ef8410",
+          "rawSha": "bb875204abdc11f8",
+          "actualBytes": 99759
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "Family:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -9914,
+          "firstDiffOffset": 599,
+          "normalizedSha": "f27b50805d6a5adf",
+          "rawSha": "be4bea6721a875ce",
+          "actualBytes": 30714
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -9526,
+          "firstDiffOffset": 8709,
+          "normalizedSha": "1557d199e1df12d3",
+          "rawSha": "082fdacd61384174",
+          "actualBytes": 31102
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -9526,
+          "firstDiffOffset": 8709,
+          "normalizedSha": "f534b9d7b7e89105",
+          "rawSha": "1c91878c0b98b0f3",
+          "actualBytes": 31102
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000002.jsonl",
+      "tag": "Christmas:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -6393,
+          "firstDiffOffset": 602,
+          "normalizedSha": "c18e103f32c91abb",
+          "rawSha": "f470db9b17c84278",
+          "actualBytes": 32991
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -6005,
+          "firstDiffOffset": 8751,
+          "normalizedSha": "b4e564d580f90262",
+          "rawSha": "f8674fd0add20435",
+          "actualBytes": 33379
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -6005,
+          "firstDiffOffset": 8751,
+          "normalizedSha": "af4ddb42286a5860",
+          "rawSha": "7f7e1a3fe62d4f46",
+          "actualBytes": 33379
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*alerts:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 600,
+          "normalizedSha": "cfe069b77a67822e",
+          "rawSha": "ca86aeac71cb20d2",
+          "actualBytes": 13240
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "668b5344dd9066a7",
+          "rawSha": "77425fb339a1ef05",
+          "actualBytes": 13628
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "668b5344dd9066a7",
+          "rawSha": "eec5330c3f9c3c00",
+          "actualBytes": 13628
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*now:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 597,
+          "normalizedSha": "f7eb9bb3d9a1c630",
+          "rawSha": "8fb35b3e672f289b",
+          "actualBytes": 13221
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a764978ff1583a6c",
+          "rawSha": "71f882096e009ea2",
+          "actualBytes": 13609
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a764978ff1583a6c",
+          "rawSha": "82f8cbfa0c9149db",
+          "actualBytes": 13609
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*recent:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 600,
+          "normalizedSha": "325a424cab931f71",
+          "rawSha": "606b28bc7d71f99a",
+          "actualBytes": 13251
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "82e28f976fe8f42a",
+          "rawSha": "4079b44ea8290ff3",
+          "actualBytes": 13639
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "82e28f976fe8f42a",
+          "rawSha": "921769e65224053e",
+          "actualBytes": 13639
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*search:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -4490,
+          "firstDiffOffset": 600,
+          "normalizedSha": "948a5884d07a5160",
+          "rawSha": "cf0ec6acd0de245c",
+          "actualBytes": 62488
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -4102,
+          "firstDiffOffset": 8209,
+          "normalizedSha": "6616e5205a908400",
+          "rawSha": "a6f1a4d1589e8496",
+          "actualBytes": 62876
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -4102,
+          "firstDiffOffset": 8209,
+          "normalizedSha": "764f64cbd3871fd2",
+          "rawSha": "415207e1befb2e90",
+          "actualBytes": 62876
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "tag": "Klickstein continues+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 624,
+          "normalizedSha": "708a81bc6e1fa1ed",
+          "rawSha": "0a349dc20fed46ad",
+          "actualBytes": 15972
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "53cc833a200c8511",
+          "rawSha": "939c5e24d2e7b111",
+          "actualBytes": 16360
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "53cc833a200c8511",
+          "rawSha": "9a709e27c220bed5",
+          "actualBytes": 16360
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "tag": "*input type+*right+*content options:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -9656,
+          "firstDiffOffset": 628,
+          "normalizedSha": "8e6037f9d3a73b61",
+          "rawSha": "d1bc423c1c24b355",
+          "actualBytes": 16525
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -9268,
+          "firstDiffOffset": 9947,
+          "normalizedSha": "40173c311b397a04",
+          "rawSha": "96cb002945349a02",
+          "actualBytes": 16913
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -9268,
+          "firstDiffOffset": 9947,
+          "normalizedSha": "177d28dcd5f62ab2",
+          "rawSha": "7c365ee2c1f27409",
+          "actualBytes": 16913
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "e2993a0e2123a2f6",
+          "rawSha": "2bc19f9a97ab99d0",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "aa15da3d9dc458a8",
+          "rawSha": "a478d7dd834b68c8",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "aa15da3d9dc458a8",
+          "rawSha": "e6b6125af3d9fb40",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "5565e904ec0dd7f2",
+          "rawSha": "7ab1e54dc34976c6",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "1b8d3ddc94a7d3aa",
+          "rawSha": "ea569ce3b65e8bfc",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "1b8d3ddc94a7d3aa",
+          "rawSha": "a638e597eceaa7d3",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image03+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "555d8c07796a34b4",
+          "rawSha": "4c3a38a127cc34f7",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ee78fa1a6c391a3d",
+          "rawSha": "666c89915ae8685e",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ee78fa1a6c391a3d",
+          "rawSha": "ce3c04477324c9c8",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image04+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "f2f4c20159a0809b",
+          "rawSha": "b15186ba56c879ed",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "e8d635b5cbac8a9f",
+          "rawSha": "799f93d06c3b5eb3",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "e8d635b5cbac8a9f",
+          "rawSha": "58a3d667adc8e986",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "9756cbf45b089a9d",
+          "rawSha": "59ed94e1b1a26ff1",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a6094550b1bda136",
+          "rawSha": "2a965d8c0ca390a8",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a6094550b1bda136",
+          "rawSha": "84b1225b609d36df",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "f31bb40c8bf414dd",
+          "rawSha": "bf1d49692fd7462a",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3f39bc627d2100ed",
+          "rawSha": "28a8ac248786cda7",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3f39bc627d2100ed",
+          "rawSha": "7d4edd1566a51e6e",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 651,
+          "normalizedSha": "1faa4a2827975362",
+          "rawSha": "d768914e32e26c72",
+          "actualBytes": 16472
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "84015b59be0d4c55",
+          "rawSha": "f8997e0fbd522929",
+          "actualBytes": 16860
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "84015b59be0d4c55",
+          "rawSha": "154860c6f6f9a5f1",
+          "actualBytes": 16860
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000013.jsonl",
+      "tag": "Williamscraig:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 44077,
+          "firstDiffOffset": 606,
+          "normalizedSha": "77ab783133c0d611",
+          "rawSha": "9b048748f1550abf",
+          "actualBytes": 60220
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 44465,
+          "firstDiffOffset": 9716,
+          "normalizedSha": "8a44c6671aa42e96",
+          "rawSha": "9974b8d53075c3da",
+          "actualBytes": 60608
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 44465,
+          "firstDiffOffset": 9716,
+          "normalizedSha": "4332a55af3eec3e6",
+          "rawSha": "8a4f04f99cecd2f6",
+          "actualBytes": 60608
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Guns:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 597,
+          "normalizedSha": "686392a711258b21",
+          "rawSha": "280cab8deb3730bc",
+          "actualBytes": 40183
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8921,
+          "normalizedSha": "5561f11def83dc4a",
+          "rawSha": "86ba45a257303eec",
+          "actualBytes": 40571
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "edd4e4546030a6d8",
+          "rawSha": "f067557421af02d2",
+          "actualBytes": 40571
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Project+Task+*type plus right:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -6470,
+          "firstDiffOffset": 622,
+          "normalizedSha": "39e68d58694f006a",
+          "rawSha": "06cba93d5d9a6f30",
+          "actualBytes": 77111
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -6082,
+          "firstDiffOffset": 10162,
+          "normalizedSha": "7f911a6a17f4e943",
+          "rawSha": "a6060f5f3ecf4421",
+          "actualBytes": 77499
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -6082,
+          "firstDiffOffset": 43749,
+          "normalizedSha": "4de9b91d1e6c0ad9",
+          "rawSha": "d1713d0719eb10d4",
+          "actualBytes": 77499
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "tag": "Message+Conversation+*type plus right:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -254,
+          "firstDiffOffset": 630,
+          "normalizedSha": "8c990b9cbf9a02b0",
+          "rawSha": "05658ef5592efe9d",
+          "actualBytes": 33138
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 134,
+          "firstDiffOffset": 10280,
+          "normalizedSha": "c01ca01793020d06",
+          "rawSha": "f47fbcfb59a1d5fb",
+          "actualBytes": 33526
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 134,
+          "firstDiffOffset": 11575,
+          "normalizedSha": "d0cb32153f7f3064",
+          "rawSha": "4ea6246534f73b3b",
+          "actualBytes": 33526
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000018.jsonl",
+      "tag": "Brandon feedback+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 620,
+          "normalizedSha": "65b275a04baca3b3",
+          "rawSha": "963de0fa93d7f7fe",
+          "actualBytes": 16730
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "88eefddcad242cca",
+          "rawSha": "13cdcd1b76277816",
+          "actualBytes": 17118
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "88eefddcad242cca",
+          "rawSha": "6c717912a8247034",
+          "actualBytes": 17118
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000019.jsonl",
+      "tag": "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 666,
+          "normalizedSha": "9c7de16e43598b23",
+          "rawSha": "1c16ac9464b0df65",
+          "actualBytes": 16510
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "06f9f91fa51220dc",
+          "rawSha": "f3785fef4c5f1404",
+          "actualBytes": 16898
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "06f9f91fa51220dc",
+          "rawSha": "3c7602ff077b7e43",
+          "actualBytes": 16898
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "*all+*head:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -776,
+          "firstDiffOffset": 603,
+          "normalizedSha": "4258d7c72c3cf8cd",
+          "rawSha": "526caab1eb985e06",
+          "actualBytes": 17182
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ae77569dc8831827",
+          "rawSha": "4e0706b7ada43b07",
+          "actualBytes": 17958
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ae77569dc8831827",
+          "rawSha": "d1aa15197acf1e8f",
+          "actualBytes": 17958
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Administrator+Dashboard:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 55142,
+          "firstDiffOffset": 616,
+          "normalizedSha": "3260f2c1c459c633",
+          "rawSha": "53f72d83c2b66001",
+          "actualBytes": 86588
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 8768,
+          "normalizedSha": "c90326a177b428f2",
+          "rawSha": "cb6771c899576aef",
+          "actualBytes": 86976
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 8768,
+          "normalizedSha": "aa3e7b063ec52131",
+          "rawSha": "e273a26f41082c58",
+          "actualBytes": 86976
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Help Desk:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -2707,
+          "firstDiffOffset": 602,
+          "normalizedSha": "000ae1cdd6b40bcf",
+          "rawSha": "ee382b1d640fd6f2",
+          "actualBytes": 38747
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -2319,
+          "firstDiffOffset": 9655,
+          "normalizedSha": "6796b3b98c14ee63",
+          "rawSha": "bf044c8f72a19f98",
+          "actualBytes": 39135
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -2319,
+          "firstDiffOffset": 9655,
+          "normalizedSha": "498b8cdc206c0dc4",
+          "rawSha": "eb13beeb955d5503",
+          "actualBytes": 39135
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "PCTS+*self+*head:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -776,
+          "firstDiffOffset": 609,
+          "normalizedSha": "00809cc64b2ab11b",
+          "rawSha": "dc2d870230e521d7",
+          "actualBytes": 17342
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2ef62245cbd367c1",
+          "rawSha": "97266f2d444ba166",
+          "actualBytes": 18118
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2ef62245cbd367c1",
+          "rawSha": "9a4ec46c0fe10679",
+          "actualBytes": 18118
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Pointer:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -386,
+          "firstDiffOffset": 600,
+          "normalizedSha": "afa352863e8dd9ae",
+          "rawSha": "108c8101781d30e6",
+          "actualBytes": 70298
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 2,
+          "firstDiffOffset": 10615,
+          "normalizedSha": "3a4b447e722dc7e8",
+          "rawSha": "40300c19ccd17458",
+          "actualBytes": 70686
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 2,
+          "firstDiffOffset": 12900,
+          "normalizedSha": "ab75fddbd0db7c8f",
+          "rawSha": "a77fdc6122c8455e",
+          "actualBytes": 70686
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Shark:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -4053,
+          "firstDiffOffset": 598,
+          "normalizedSha": "8e7609295c899085",
+          "rawSha": "b8440fcf923ad34c",
+          "actualBytes": 128698
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -3665,
+          "firstDiffOffset": 9694,
+          "normalizedSha": "621b56c51e3a0a1b",
+          "rawSha": "f24896c1f921aa41",
+          "actualBytes": 129086
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -3665,
+          "firstDiffOffset": 9957,
+          "normalizedSha": "0e315562baffbcae",
+          "rawSha": "b874a64594d70649",
+          "actualBytes": 129086
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "Kayla Feder 20230902+discussion:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 624,
+          "normalizedSha": "95021094d3e5d48e",
+          "rawSha": "3e90d5259931b9f0",
+          "actualBytes": 16296
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b7c0843f2d01c544",
+          "rawSha": "47a01302347b7b70",
+          "actualBytes": 16684
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b7c0843f2d01c544",
+          "rawSha": "63a423c9cf55b523",
+          "actualBytes": 16684
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: account:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 605,
+          "normalizedSha": "5c1711657ca5cc52",
+          "rawSha": "e48531f09d481cd5",
+          "actualBytes": 31080
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8416,
+          "normalizedSha": "9c766c7f7867292a",
+          "rawSha": "9bb6f0a6d2a39d23",
+          "actualBytes": 31468
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 13528,
+          "normalizedSha": "f4c2767e553c544d",
+          "rawSha": "90b62cfbc865af29",
+          "actualBytes": 31468
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: bootstrap:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 607,
+          "normalizedSha": "a62f2b46c7a13227",
+          "rawSha": "233b704ba3aefbc1",
+          "actualBytes": 28182
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8405,
+          "normalizedSha": "8105160816ef3cf3",
+          "rawSha": "37a2335eb9004cd8",
+          "actualBytes": 28570
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 12994,
+          "normalizedSha": "a5a8002be904360f",
+          "rawSha": "064d4056c43f5e30",
+          "actualBytes": 28570
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: carrierwave:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 609,
+          "normalizedSha": "5f7b84e8d820424f",
+          "rawSha": "5ed61b329b7c7615",
+          "actualBytes": 24343
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8443,
+          "normalizedSha": "6e5f316702749a35",
+          "rawSha": "46c525d264e56fb6",
+          "actualBytes": 24731
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "92200082513dc701",
+          "rawSha": "ebb2c43efaeb4c3b",
+          "actualBytes": 24731
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: core:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -434,
+          "firstDiffOffset": 602,
+          "normalizedSha": "84b0f177aaf233bf",
+          "rawSha": "7a4e818e8969dab8",
+          "actualBytes": 23952
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -46,
+          "firstDiffOffset": 8336,
+          "normalizedSha": "0345bc9b44ceb3ea",
+          "rawSha": "a3ceaf738c3d1d6a",
+          "actualBytes": 24340
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -46,
+          "firstDiffOffset": 15781,
+          "normalizedSha": "e9d1e223c87aca61",
+          "rawSha": "bc1a30fbc6ba2622",
+          "actualBytes": 24340
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: date:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 602,
+          "normalizedSha": "e84e85236a7a7584",
+          "rawSha": "71aae9a9bd55b75f",
+          "actualBytes": 16622
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8351,
+          "normalizedSha": "c7033c3ea0549fc9",
+          "rawSha": "a1c1334322e57b87",
+          "actualBytes": 17010
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b042bb9b66eb8a13",
+          "rawSha": "bdfcbb9a80b36642",
+          "actualBytes": 17010
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: email:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 603,
+          "normalizedSha": "b6554b008054d97b",
+          "rawSha": "fddccf4db5b2303d",
+          "actualBytes": 23940
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8362,
+          "normalizedSha": "3665078ebf4ce41b",
+          "rawSha": "1161853f7d87d749",
+          "actualBytes": 24328
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 11067,
+          "normalizedSha": "b0aee124dc91e8a4",
+          "rawSha": "b764924a69515466",
+          "actualBytes": 24328
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: follow:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 604,
+          "normalizedSha": "b3238d8440968ea5",
+          "rawSha": "fa249798ffff188e",
+          "actualBytes": 24381
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8763,
+          "normalizedSha": "41aaac245700b990",
+          "rawSha": "77020265511a72fb",
+          "actualBytes": 24769
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3a3918598a6b1fcf",
+          "rawSha": "d3b413cf9a925325",
+          "actualBytes": 24769
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: format:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 604,
+          "normalizedSha": "0e2c1a3d2d47b8b8",
+          "rawSha": "99232d5c6c925e91",
+          "actualBytes": 44538
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8718,
+          "normalizedSha": "5f1cfd30d9082c92",
+          "rawSha": "20218507a87a463b",
+          "actualBytes": 44926
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "bd6df25ebccd0f92",
+          "rawSha": "c3005e1b345fa8e4",
+          "actualBytes": 44926
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: layout:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 604,
+          "normalizedSha": "7b36fcf69f66ff82",
+          "rawSha": "f343a21092dbc33d",
+          "actualBytes": 28913
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8719,
+          "normalizedSha": "c22faebc45a96baa",
+          "rawSha": "4049f7d0184a16ce",
+          "actualBytes": 29301
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "bfe46d553a6c0710",
+          "rawSha": "89246edc127172cc",
+          "actualBytes": 29301
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: list:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 602,
+          "normalizedSha": "f3c6c7ec0589e8e8",
+          "rawSha": "134913d4d6684c14",
+          "actualBytes": 33633
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8737,
+          "normalizedSha": "01dc46afdc6ee98e",
+          "rawSha": "01028f3da2b3a30d",
+          "actualBytes": 34021
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 23021,
+          "normalizedSha": "6e106e63d326f5ff",
+          "rawSha": "73e7c178975c0c03",
+          "actualBytes": 34021
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: script:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 604,
+          "normalizedSha": "a3a7154b9a28fdb5",
+          "rawSha": "92f89e883956233b",
+          "actualBytes": 31679
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8738,
+          "normalizedSha": "1326cff1de52a2a7",
+          "rawSha": "125cb426a3913f81",
+          "actualBytes": 32067
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "4656080df8ac3e8e",
+          "rawSha": "775296f34e2b3efc",
+          "actualBytes": 32067
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: search:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 604,
+          "normalizedSha": "e4d6d9db1ed7c745",
+          "rawSha": "7296c846c3751e8e",
+          "actualBytes": 26450
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8714,
+          "normalizedSha": "d8bf2be19397458d",
+          "rawSha": "343e6f52a8c33466",
+          "actualBytes": 26838
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "fb87b83f8f8badc5",
+          "rawSha": "dc490e0d3c671648",
+          "actualBytes": 26838
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: session:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 605,
+          "normalizedSha": "de5e800be3d32752",
+          "rawSha": "899108833cf9a3ff",
+          "actualBytes": 19075
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8379,
+          "normalizedSha": "ba5367a5c5005085",
+          "rawSha": "6d78b447ee2872b7",
+          "actualBytes": 19463
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "240b177152e2f21f",
+          "rawSha": "ae952f828d7c205a",
+          "actualBytes": 19463
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: style:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -388,
+          "firstDiffOffset": 603,
+          "normalizedSha": "60b2f052c0f6483e",
+          "rawSha": "f7bf356ca304ca0b",
+          "actualBytes": 33845
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 0,
+          "firstDiffOffset": 8712,
+          "normalizedSha": "39bf9deba9ec2335",
+          "rawSha": "d5af6a2aec14b921",
+          "actualBytes": 34233
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "94dcc8fe497cb94a",
+          "rawSha": "3f7e596243b4ba12",
+          "actualBytes": 34233
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: tinymce editor:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5983,
+          "firstDiffOffset": 612,
+          "normalizedSha": "d4634a39e4cd884c",
+          "rawSha": "3af51acda17e455e",
+          "actualBytes": 18824
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 6371,
+          "firstDiffOffset": 6526,
+          "normalizedSha": "6e9d5d4d2fcbe1dd",
+          "rawSha": "d091ca58aa756402",
+          "actualBytes": 19212
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 6371,
+          "firstDiffOffset": 6526,
+          "normalizedSha": "b644daa658fcbc6e",
+          "rawSha": "540ad9324013e683",
+          "actualBytes": 19212
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000043.jsonl",
+      "tag": "mod: shades:page",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -635,
+          "firstDiffOffset": 604,
+          "normalizedSha": "079ce30a5346e421",
+          "rawSha": "c59ad529ffaa579b",
+          "actualBytes": 13979
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -247,
+          "firstDiffOffset": 8244,
+          "normalizedSha": "45a5aca3d518a038",
+          "rawSha": "790235eb1c1cd671",
+          "actualBytes": 14367
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -247,
+          "firstDiffOffset": 8244,
+          "normalizedSha": "45a5aca3d518a038",
+          "rawSha": "90ab0464882a80b1",
+          "actualBytes": 14367
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": false,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*all:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5531,
+          "firstDiffOffset": 30215,
+          "normalizedSha": "96443e0f8e31ef28",
+          "rawSha": "763dbfe0fc920cc6",
+          "actualBytes": 60695
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 5531,
+          "firstDiffOffset": 30215,
+          "normalizedSha": "96443e0f8e31ef28",
+          "rawSha": "d7a1af39699ce894",
+          "actualBytes": 60695
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 5492,
+          "firstDiffOffset": 295,
+          "normalizedSha": "125bda2cf0d34a0d",
+          "rawSha": "0e8f4042dbadecb2",
+          "actualBytes": 60656
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*all:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5531,
+          "firstDiffOffset": 32281,
+          "normalizedSha": "54dbb5fc6f1245cb",
+          "rawSha": "b856bad507dda13a",
+          "actualBytes": 62799
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 5531,
+          "firstDiffOffset": 32281,
+          "normalizedSha": "54dbb5fc6f1245cb",
+          "rawSha": "a84819e003ff4922",
+          "actualBytes": 62799
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 5478,
+          "firstDiffOffset": 277,
+          "normalizedSha": "54438326c91e1828",
+          "rawSha": "a35b6822469961fb",
+          "actualBytes": 62746
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*favicon:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 302,
+          "normalizedSha": "2cd69fffe73593c5",
+          "rawSha": "f426bc8677b97e6e",
+          "actualBytes": 2756
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 302,
+          "normalizedSha": "2cd69fffe73593c5",
+          "rawSha": "2f32423fbc064678",
+          "actualBytes": 2756
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d6236012c370ef31",
+          "rawSha": "e628b03dcbd5b3da",
+          "actualBytes": 2718
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*favicon:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 296,
+          "normalizedSha": "600dd17b307654c3",
+          "rawSha": "47f205236d364cb3",
+          "actualBytes": 3284
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 296,
+          "normalizedSha": "600dd17b307654c3",
+          "rawSha": "dc9ae3bf15ff8bd1",
+          "actualBytes": 3284
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "c8081242fc4c9d3f",
+          "rawSha": "ef7b2d442dfe34a6",
+          "actualBytes": 3231
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*input type+*right:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -201,
+          "firstDiffOffset": 405,
+          "normalizedSha": "f9b37f43fd0a5de9",
+          "rawSha": "4937c8fbeba220d1",
+          "actualBytes": 66816
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -201,
+          "firstDiffOffset": 405,
+          "normalizedSha": "f9b37f43fd0a5de9",
+          "rawSha": "82de282f8c3083b6",
+          "actualBytes": 66816
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -240,
+          "firstDiffOffset": 2773,
+          "normalizedSha": "66f8c75607a31898",
+          "rawSha": "2ed3beae4ba478f8",
+          "actualBytes": 66777
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "tag": "*input type+*right:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -187,
+          "firstDiffOffset": 387,
+          "normalizedSha": "fffcf124eb63e0f9",
+          "rawSha": "d200903a2b9bd69e",
+          "actualBytes": 69466
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -187,
+          "firstDiffOffset": 387,
+          "normalizedSha": "fffcf124eb63e0f9",
+          "rawSha": "83a506ca5ddae53e",
+          "actualBytes": 69466
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -240,
+          "firstDiffOffset": 5371,
+          "normalizedSha": "ba87f21acb1fca7f",
+          "rawSha": "a300dcc41c849f6d",
+          "actualBytes": 69413
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000001.jsonl",
+      "tag": "Romain Barnard+Core Project:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2cd0bd40182b2bce",
+          "rawSha": "2ab9bddf0cdcf7b0",
+          "actualBytes": 6043
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2cd0bd40182b2bce",
+          "rawSha": "2179c11a819648af",
+          "actualBytes": 6043
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 430,
+          "normalizedSha": "eb6ad2cfbfb77d45",
+          "rawSha": "306217ebe66f2538",
+          "actualBytes": 5990
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*all plus:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "93850d92333102c7",
+          "rawSha": "ebde627002fa3a1a",
+          "actualBytes": 58013
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "93850d92333102c7",
+          "rawSha": "539f6bfdb3985a04",
+          "actualBytes": 58013
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 314,
+          "normalizedSha": "42a0ac13caa6ea3c",
+          "rawSha": "bae12724a658e560",
+          "actualBytes": 57974
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*all plus:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a22d18b1b0db9758",
+          "rawSha": "c1f160909cd7c056",
+          "actualBytes": 60178
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a22d18b1b0db9758",
+          "rawSha": "52a5566f6711d211",
+          "actualBytes": 60178
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 296,
+          "normalizedSha": "ff7ed398ba357421",
+          "rawSha": "5c005bdca0cb7694",
+          "actualBytes": 60125
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*rstar:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7531baa6885a8425",
+          "rawSha": "c44bcc1b6bf29b4f",
+          "actualBytes": 57429
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7531baa6885a8425",
+          "rawSha": "2176b0a21b0d1494",
+          "actualBytes": 57429
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 304,
+          "normalizedSha": "ff5dfc8d191190a1",
+          "rawSha": "ee8b081a80048ccd",
+          "actualBytes": 57390
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*rstar:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "05819a943b79742b",
+          "rawSha": "470a2cdd91766b00",
+          "actualBytes": 59560
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "05819a943b79742b",
+          "rawSha": "dfa83bf2f99ed15c",
+          "actualBytes": 59560
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 286,
+          "normalizedSha": "0b300dcb94343d7e",
+          "rawSha": "0b3adf555d9b6005",
+          "actualBytes": 59507
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*star:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "29dc25a55291c248",
+          "rawSha": "4d932b6e663b1ed0",
+          "actualBytes": 57672
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "29dc25a55291c248",
+          "rawSha": "d2cf4483a8ea5c10",
+          "actualBytes": 57672
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 300,
+          "normalizedSha": "7588de78b11dc79e",
+          "rawSha": "afe9b983f069c184",
+          "actualBytes": 57633
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "*star:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "94f6d94b1a5a652f",
+          "rawSha": "ac719c3f97d7dbca",
+          "actualBytes": 59790
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "94f6d94b1a5a652f",
+          "rawSha": "6898fe771d74e643",
+          "actualBytes": 59790
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 282,
+          "normalizedSha": "6eab1fc92919058a",
+          "rawSha": "fe16285ef0a485d8",
+          "actualBytes": 59737
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "BDWC_academic_resume+*self:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "694257a0b62baa14",
+          "rawSha": "7624e5ffe8e394ec",
+          "actualBytes": 65740
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "694257a0b62baa14",
+          "rawSha": "eea38e0e34377400",
+          "actualBytes": 65740
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 415,
+          "normalizedSha": "1a9096291ee2eccb",
+          "rawSha": "87fd8f90db07667a",
+          "actualBytes": 65687
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "tag": "Plans+*self:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7cd8b2bdd8ed45ec",
+          "rawSha": "6509efb1f5fd0119",
+          "actualBytes": 58965
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7cd8b2bdd8ed45ec",
+          "rawSha": "3b47504aad79e5b0",
+          "actualBytes": 58965
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 376,
+          "normalizedSha": "3b0bedc64dd5e567",
+          "rawSha": "420a347e5f2063b5",
+          "actualBytes": 58926
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "tag": "Americanism+*self:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "e731b306fd2e63e7",
+          "rawSha": "702779b346f2228b",
+          "actualBytes": 60541
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "e731b306fd2e63e7",
+          "rawSha": "f53afba7e852d24d",
+          "actualBytes": 60541
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 402,
+          "normalizedSha": "dbfc0de386226828",
+          "rawSha": "ea5990891a2350e3",
+          "actualBytes": 60502
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "tag": "Jeffrey Hohenstein+*self:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "51cf0101a66c1f52",
+          "rawSha": "d3dc2f5ac95f04ad",
+          "actualBytes": 65200
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "51cf0101a66c1f52",
+          "rawSha": "bd15aa2d3abd29ed",
+          "actualBytes": 65200
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 409,
+          "normalizedSha": "338995e09cde6b22",
+          "rawSha": "14c7c4e49d64a942",
+          "actualBytes": 65147
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "tag": "Please pre-register+*self:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "76631ed9a13fc3a8",
+          "rawSha": "597bb5c47454a65c",
+          "actualBytes": 70050
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "76631ed9a13fc3a8",
+          "rawSha": "9a7402037aa1fba4",
+          "actualBytes": 70050
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 416,
+          "normalizedSha": "8948ee78fe75eccc",
+          "rawSha": "5dcd9f04d90fe39c",
+          "actualBytes": 69997
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "tag": "Aikido video+*self:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d2b89c8e0cfbc762",
+          "rawSha": "182aa40b8fbbf622",
+          "actualBytes": 63449
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d2b89c8e0cfbc762",
+          "rawSha": "e702c9afe75fcc6f",
+          "actualBytes": 63449
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 388,
+          "normalizedSha": "e3c4845d42221e0b",
+          "rawSha": "c7f29b965d09b39f",
+          "actualBytes": 63396
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "tag": "Klickstein continues+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 473,
+          "normalizedSha": "49f685f6ecf389f0",
+          "rawSha": "3285802a642d4cbc",
+          "actualBytes": 4586
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 473,
+          "normalizedSha": "58f407298db5898a",
+          "rawSha": "a7f245a018b9212f",
+          "actualBytes": 4586
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "1a2f47db6db26a0f",
+          "rawSha": "ed4a7fa4647fd972",
+          "actualBytes": 4552
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "tag": "Library - BW+*self:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "9d38c0dcfc126fe9",
+          "rawSha": "cceef9ac22bb88a9",
+          "actualBytes": 67181
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "9d38c0dcfc126fe9",
+          "rawSha": "eff7c28046604eb6",
+          "actualBytes": 67181
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 382,
+          "normalizedSha": "a1ddac7471003b22",
+          "rawSha": "f4a5d266da84e60a",
+          "actualBytes": 67128
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000006.jsonl",
+      "tag": "Andrew Porter:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5380,
+          "firstDiffOffset": 314,
+          "normalizedSha": "94affc5df5bb7483",
+          "rawSha": "ccdd251178582750",
+          "actualBytes": 23082
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 314,
+          "normalizedSha": "42319a39607df88e",
+          "rawSha": "63bd1ac30a31a880",
+          "actualBytes": 17755
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "98b1c8d372c3a60a",
+          "rawSha": "ffd60d0c8c67a2e0",
+          "actualBytes": 17702
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000006.jsonl",
+      "tag": "How Can I Keep From Singing - Lyrics+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "5ba447b193569896",
+          "rawSha": "287590a794f523eb",
+          "actualBytes": 3724
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "5ba447b193569896",
+          "rawSha": "8adeb2930cda6604",
+          "actualBytes": 3724
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -34,
+          "firstDiffOffset": 525,
+          "normalizedSha": "62cf499d68d32486",
+          "rawSha": "b52f6ac1b2d8379f",
+          "actualBytes": 3690
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "tag": "*input type+*right+*content options:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 40,
+          "firstDiffOffset": 490,
+          "normalizedSha": "ba8cce6e210f0ade",
+          "rawSha": "c8f32aa893b988f4",
+          "actualBytes": 3832
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 40,
+          "firstDiffOffset": 490,
+          "normalizedSha": "ba8cce6e210f0ade",
+          "rawSha": "6d766beedfc34d9c",
+          "actualBytes": 3832
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 2,
+          "firstDiffOffset": 1172,
+          "normalizedSha": "1919e1ec9c756234",
+          "rawSha": "e3dbe335e88ec1a4",
+          "actualBytes": 3794
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "tag": "*input type+*right+*content options:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -9229,
+          "firstDiffOffset": 502,
+          "normalizedSha": "82c5e7ebf2c1a4dd",
+          "rawSha": "dd62ca4482ffe363",
+          "actualBytes": 1500
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -9229,
+          "firstDiffOffset": 502,
+          "normalizedSha": "82c5e7ebf2c1a4dd",
+          "rawSha": "946f26111320149d",
+          "actualBytes": 1500
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -9268,
+          "firstDiffOffset": 599,
+          "normalizedSha": "0acf85234dd811cc",
+          "rawSha": "93906c19539a30ce",
+          "actualBytes": 1461
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "tag": "*input type+*right+*content options:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -9230,
+          "firstDiffOffset": 484,
+          "normalizedSha": "3eae98d37ff8b926",
+          "rawSha": "b348705fca5ed500",
+          "actualBytes": 4651
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -9230,
+          "firstDiffOffset": 484,
+          "normalizedSha": "3eae98d37ff8b926",
+          "rawSha": "dc1815a8e5d489ec",
+          "actualBytes": 4651
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -9266,
+          "firstDiffOffset": 1156,
+          "normalizedSha": "ad1a4691dfee4d07",
+          "rawSha": "80ba283174185ce9",
+          "actualBytes": 4615
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000008.jsonl",
+      "tag": "media+GBA+YouTube Browser:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -6276,
+          "firstDiffOffset": 6208,
+          "normalizedSha": "a5963370e75f5758",
+          "rawSha": "9de3cf87064feca6",
+          "actualBytes": 96696
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -9654,
+          "firstDiffOffset": 3791,
+          "normalizedSha": "18c55b975985eb01",
+          "rawSha": "600faedad9e24899",
+          "actualBytes": 93318
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -9707,
+          "firstDiffOffset": 438,
+          "normalizedSha": "01538ae3c069c290",
+          "rawSha": "d41de589cad5a97e",
+          "actualBytes": 93265
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000009.jsonl",
+      "tag": "Antero Alli - Astrology as Archetypal Language+tags:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "171b0313fc514fb3",
+          "rawSha": "fcc94e70ab41ca97",
+          "actualBytes": 8375
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "171b0313fc514fb3",
+          "rawSha": "4de0cac8d37ff5b7",
+          "actualBytes": 8375
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 499,
+          "normalizedSha": "880402deb29ac1e0",
+          "rawSha": "4098170e131019d0",
+          "actualBytes": 8322
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000010.jsonl",
+      "tag": "politics+Documents:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ed333eeb76e3a546",
+          "rawSha": "cb1976ccd922eea8",
+          "actualBytes": 5919
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ed333eeb76e3a546",
+          "rawSha": "9cb12e3543efa947",
+          "actualBytes": 5919
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 384,
+          "normalizedSha": "98bdcf9143a0e715",
+          "rawSha": "962c5db3ab710460",
+          "actualBytes": 5866
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000011.jsonl",
+      "tag": "The Habit - a predictable travesty:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 2297,
+          "firstDiffOffset": 400,
+          "normalizedSha": "0cb418d31f00f424",
+          "rawSha": "cae59cbaf5b6c1dd",
+          "actualBytes": 7095
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 400,
+          "normalizedSha": "b1c2d588cedaa157",
+          "rawSha": "b93d743b357137c2",
+          "actualBytes": 4851
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "50a0a0a6e85333ef",
+          "rawSha": "a964ab95658b56ce",
+          "actualBytes": 4798
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "f2195029dbfd09b3",
+          "rawSha": "039981ca3196416e",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "c0c908c68e1363a5",
+          "rawSha": "da3e171d6af4b3c3",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "c64c5578d870ba92",
+          "rawSha": "7dcd2cecba46b9e9",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "9bacc80e1a4134fc",
+          "rawSha": "9593864b31694782",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "19fac6a07500e41d",
+          "rawSha": "b7869f3b15787940",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "900a6f724455a580",
+          "rawSha": "8ad22d1a2ae9fdce",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image03+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "4eba2d63562c3afa",
+          "rawSha": "82f28ae8f8a32e33",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "bc2437a17b554f9c",
+          "rawSha": "012d8fe9c70df47f",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "388a77132ccb6b4b",
+          "rawSha": "093e3862724df7cc",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image04+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "65a131a08cea1428",
+          "rawSha": "41d5f0854dba5d77",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "94a24ebd7e13cb88",
+          "rawSha": "2b9ed6acc1e424f7",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b999b5cda072ddd1",
+          "rawSha": "11d6cf25b3702843",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "6f5fb13acd3549fd",
+          "rawSha": "988839546bb0c9f9",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "723cbb06bfc7f873",
+          "rawSha": "8f1b56964d82bf23",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "f8a57cca3b607925",
+          "rawSha": "659f03fb492177ee",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "dce2b07ae9dd14e1",
+          "rawSha": "f5eec802a6257ae8",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "a522b99c2f2e19c9",
+          "rawSha": "a7620c2ace0441ef",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "aef6552faef6d45c",
+          "rawSha": "6f2b6c0ddc21fe5a",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000012.jsonl",
+      "tag": "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "25d72e79b54c4578",
+          "rawSha": "399a09f172cd57f1",
+          "actualBytes": 5191
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 576,
+          "normalizedSha": "aaafc32af4d8ba6d",
+          "rawSha": "dfaa10152fe69822",
+          "actualBytes": 5191
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "9f1cf15f0f81e0e4",
+          "rawSha": "4b9f96486a4f91ef",
+          "actualBytes": 5157
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000013.jsonl",
+      "tag": "20131018+BW+RVW+Plans:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 2460,
+          "firstDiffOffset": 403,
+          "normalizedSha": "57ac7135d51ee251",
+          "rawSha": "327c3c449ab671e2",
+          "actualBytes": 6717
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 403,
+          "normalizedSha": "f1a6f27a7a975eb4",
+          "rawSha": "a10172bfd4e13c5e",
+          "actualBytes": 4310
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b3a5ca3a029b8f66",
+          "rawSha": "26937c65e0955ef3",
+          "actualBytes": 4257
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000013.jsonl",
+      "tag": "Item+*type:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a6fbb7a630780e07",
+          "rawSha": "63a6523d65f27797",
+          "actualBytes": 58754
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a6fbb7a630780e07",
+          "rawSha": "d7691fb4cc5c8498",
+          "actualBytes": 58754
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -39,
+          "firstDiffOffset": 374,
+          "normalizedSha": "8ddc5822156953fd",
+          "rawSha": "3d6f26e625e4b720",
+          "actualBytes": 58715
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000014.jsonl",
+      "tag": "Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 4459,
+          "firstDiffOffset": 570,
+          "normalizedSha": "f59581c0963a0b1f",
+          "rawSha": "3b9e4dd615a4432e",
+          "actualBytes": 14459
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 570,
+          "normalizedSha": "be62e35ad4a5a8c7",
+          "rawSha": "f0ba4c97581f3d03",
+          "actualBytes": 10053
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "6ac061d80f41716a",
+          "rawSha": "ea6c078de1b6bdf2",
+          "actualBytes": 10000
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000015.jsonl",
+      "tag": "Anonymous+*account+*email:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 424,
+          "normalizedSha": "e02bb3401bcc560a",
+          "rawSha": "aba89c2fdd496deb",
+          "actualBytes": 3364
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 424,
+          "normalizedSha": "e02bb3401bcc560a",
+          "rawSha": "15841990c3ee3457",
+          "actualBytes": 3364
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "18de72230a127cc5",
+          "rawSha": "9006ce76b5026948",
+          "actualBytes": 3311
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000015.jsonl",
+      "tag": "Plans+*right:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "641871f1b614241e",
+          "rawSha": "37978fd132b16b7d",
+          "actualBytes": 61572
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "641871f1b614241e",
+          "rawSha": "8e0f8a3c5f8485b9",
+          "actualBytes": 61572
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 365,
+          "normalizedSha": "39e1eaecacac5146",
+          "rawSha": "2345e4126c42997e",
+          "actualBytes": 61519
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Guns:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 3132,
+          "firstDiffOffset": 282,
+          "normalizedSha": "85d8d97fedf3072c",
+          "rawSha": "277e36fca379ad4e",
+          "actualBytes": 31494
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 20,
+          "firstDiffOffset": 282,
+          "normalizedSha": "2a83c5b45a2605e1",
+          "rawSha": "114442cbfa1956a9",
+          "actualBytes": 28382
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -33,
+          "firstDiffOffset": 22514,
+          "normalizedSha": "5ab749058adaf63e",
+          "rawSha": "087c66c2d429bbe6",
+          "actualBytes": 28329
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Person+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1443,
+          "firstDiffOffset": 3871,
+          "normalizedSha": "b6620d4380e99705",
+          "rawSha": "5d26c70583ab2386",
+          "actualBytes": 6097
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 1443,
+          "firstDiffOffset": 3871,
+          "normalizedSha": "b6620d4380e99705",
+          "rawSha": "49fe7c43a0d4379c",
+          "actualBytes": 6097
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 1409,
+          "firstDiffOffset": 415,
+          "normalizedSha": "ee123842db3ea7fa",
+          "rawSha": "6a06651ec61a9ea5",
+          "actualBytes": 6063
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Project+Task+*type plus right:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -5683,
+          "firstDiffOffset": 464,
+          "normalizedSha": "684ab0b62024f503",
+          "rawSha": "72c5e815911075e5",
+          "actualBytes": 63334
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -5683,
+          "firstDiffOffset": 464,
+          "normalizedSha": "684ab0b62024f503",
+          "rawSha": "14e15ae5a668a691",
+          "actualBytes": 63334
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -5722,
+          "firstDiffOffset": 2853,
+          "normalizedSha": "f378b117398f2488",
+          "rawSha": "15731833c15b3527",
+          "actualBytes": 63295
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "tag": "Project+Task+*type plus right:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": -5669,
+          "firstDiffOffset": 446,
+          "normalizedSha": "33c18ae4ac872f11",
+          "rawSha": "700628770da4e83c",
+          "actualBytes": 66244
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": -5669,
+          "firstDiffOffset": 446,
+          "normalizedSha": "33c18ae4ac872f11",
+          "rawSha": "ea8b38f0b9494bcc",
+          "actualBytes": 66244
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -5722,
+          "firstDiffOffset": 5711,
+          "normalizedSha": "124a30b954d931b3",
+          "rawSha": "b27accefd713524c",
+          "actualBytes": 66191
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "tag": "Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 6326,
+          "firstDiffOffset": 567,
+          "normalizedSha": "f2cb62803684e2e4",
+          "rawSha": "701555d2046905ae",
+          "actualBytes": 22134
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 567,
+          "normalizedSha": "770b3b385062103e",
+          "rawSha": "df623174fb368f56",
+          "actualBytes": 15861
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2f5f29471bdae154",
+          "rawSha": "f7920c32d65c0d06",
+          "actualBytes": 15808
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "tag": "Message+Conversation+*type plus right:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 277,
+          "firstDiffOffset": 499,
+          "normalizedSha": "f422af9a1683d682",
+          "rawSha": "bd80145554f3ae41",
+          "actualBytes": 19030
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 277,
+          "firstDiffOffset": 499,
+          "normalizedSha": "f422af9a1683d682",
+          "rawSha": "ede17632e60fe0f2",
+          "actualBytes": 19030
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 238,
+          "firstDiffOffset": 3008,
+          "normalizedSha": "80bc9d65afac2518",
+          "rawSha": "a9ba51af3ff6b108",
+          "actualBytes": 18991
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "tag": "Message+Conversation+*type plus right:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 291,
+          "firstDiffOffset": 481,
+          "normalizedSha": "26114615d84eaaa2",
+          "rawSha": "b98e70e5cf483d2a",
+          "actualBytes": 22058
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 291,
+          "firstDiffOffset": 481,
+          "normalizedSha": "26114615d84eaaa2",
+          "rawSha": "47928ab403792e47",
+          "actualBytes": 22058
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 238,
+          "firstDiffOffset": 5984,
+          "normalizedSha": "2b7e2cce9c15c2c9",
+          "rawSha": "d6f64b89b0dc4b87",
+          "actualBytes": 22005
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "tag": "darkly skin:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3a44b60160f48903",
+          "rawSha": "08d46a4331cefd14",
+          "actualBytes": 9298
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3a44b60160f48903",
+          "rawSha": "66b88dfa73d615ea",
+          "actualBytes": 9298
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -36,
+          "firstDiffOffset": 328,
+          "normalizedSha": "0f528b16b345b26d",
+          "rawSha": "f2ead69c1d647560",
+          "actualBytes": 9262
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000018.jsonl",
+      "tag": "Brandon feedback+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 456,
+          "normalizedSha": "b48a7aa2af1b7d3d",
+          "rawSha": "56fa6b826ec707f8",
+          "actualBytes": 5329
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 456,
+          "normalizedSha": "faafcc678095fa2b",
+          "rawSha": "c53a2c3593e99619",
+          "actualBytes": 5329
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "006e88a5f103f8a4",
+          "rawSha": "40c7000575f36058",
+          "actualBytes": 5295
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000018.jsonl",
+      "tag": "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1774,
+          "firstDiffOffset": 568,
+          "normalizedSha": "a8d4d4f7705cdc8b",
+          "rawSha": "15b4faf0c5f5264b",
+          "actualBytes": 7319
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 568,
+          "normalizedSha": "5f25dbcb68b9d8ac",
+          "rawSha": "92da1b74ed39b941",
+          "actualBytes": 5598
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2032e232d1f79555",
+          "rawSha": "3d064906f6be00cc",
+          "actualBytes": 5545
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000019.jsonl",
+      "tag": "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 640,
+          "normalizedSha": "3dff5cdb15d5c478",
+          "rawSha": "6e4b6daa23f2dc14",
+          "actualBytes": 5293
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 640,
+          "normalizedSha": "6755d07a61b7d739",
+          "rawSha": "be70cd7d838fee4e",
+          "actualBytes": 5293
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3c7a0151f856d6c4",
+          "rawSha": "3cb2dfe00030e8c7",
+          "actualBytes": 5259
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000021.jsonl",
+      "tag": "Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d1fe94d1695bf3bd",
+          "rawSha": "50b435765726ca0e",
+          "actualBytes": 6867
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d1fe94d1695bf3bd",
+          "rawSha": "5d0e8040aa7acd32",
+          "actualBytes": 6867
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 653,
+          "normalizedSha": "6a188d98f21f5627",
+          "rawSha": "aeecb2f94ebe97dd",
+          "actualBytes": 6814
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000022.jsonl",
+      "tag": "Soma+tags:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 121,
+          "firstDiffOffset": 341,
+          "normalizedSha": "2830f31fea8935b2",
+          "rawSha": "9e15a70bc3eaedf1",
+          "actualBytes": 10245
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 121,
+          "firstDiffOffset": 341,
+          "normalizedSha": "2830f31fea8935b2",
+          "rawSha": "17c94a1a70926d5d",
+          "actualBytes": 10245
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 68,
+          "firstDiffOffset": 5630,
+          "normalizedSha": "bd7b2baeced029fe",
+          "rawSha": "a51a24fb7c94fd5e",
+          "actualBytes": 10192
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000024.jsonl",
+      "tag": "WilliamsCraig+Vacations+Pages:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 56,
+          "firstDiffOffset": 420,
+          "normalizedSha": "e18a678d675c5c51",
+          "rawSha": "8f23a0f1ac3deea1",
+          "actualBytes": 22124
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 56,
+          "firstDiffOffset": 420,
+          "normalizedSha": "e18a678d675c5c51",
+          "rawSha": "4e8da0db9b59521b",
+          "actualBytes": 22124
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 3,
+          "firstDiffOffset": 7855,
+          "normalizedSha": "1118d897ff1591e2",
+          "rawSha": "4b83818ab502d692",
+          "actualBytes": 22071
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000024.jsonl",
+      "tag": "Wishlist+tags:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "bfb821b0ca47aedc",
+          "rawSha": "105306d2ea581469",
+          "actualBytes": 3231
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "bfb821b0ca47aedc",
+          "rawSha": "08d54a0bb3de1479",
+          "actualBytes": 3231
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 358,
+          "normalizedSha": "188856e1fcc5b8f0",
+          "rawSha": "6ec553560608d685",
+          "actualBytes": 3178
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000025.jsonl",
+      "tag": "children:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1627,
+          "firstDiffOffset": 293,
+          "normalizedSha": "107fd879002b77cf",
+          "rawSha": "1fe4093ad03fa68a",
+          "actualBytes": 10967
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 293,
+          "normalizedSha": "897c87898934f19a",
+          "rawSha": "5b06c3b4e835b275",
+          "actualBytes": 9393
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "23dc96078e5f19a4",
+          "rawSha": "c3b12d663ed4be49",
+          "actualBytes": 9340
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000027.jsonl",
+      "tag": "Perennial Wisdom Tradition:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1752,
+          "firstDiffOffset": 372,
+          "normalizedSha": "27bf280af02a4fa2",
+          "rawSha": "2207aef11a5f5262",
+          "actualBytes": 23776
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 372,
+          "normalizedSha": "9b8c5e8b3ceaee03",
+          "rawSha": "6e75db030057bf2f",
+          "actualBytes": 22077
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7b46bd71059dc8c6",
+          "rawSha": "4556d2912d36d11b",
+          "actualBytes": 22024
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000028.jsonl",
+      "tag": "Belief about the rightness of Insert System Here establishes an axis:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 2102,
+          "firstDiffOffset": 538,
+          "normalizedSha": "773ccf49eed8d252",
+          "rawSha": "0a0096e7620f3a75",
+          "actualBytes": 8375
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 538,
+          "normalizedSha": "dc0c418dfd53c17c",
+          "rawSha": "82506f0feb1d1120",
+          "actualBytes": 6326
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "886874478aa807f8",
+          "rawSha": "ce3275cac3a3640b",
+          "actualBytes": 6273
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000028.jsonl",
+      "tag": "journal skin customized:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 232,
+          "firstDiffOffset": 590,
+          "normalizedSha": "fc2f29697e372c25",
+          "rawSha": "70799f71aa6ff925",
+          "actualBytes": 10266
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 232,
+          "firstDiffOffset": 590,
+          "normalizedSha": "fc2f29697e372c25",
+          "rawSha": "b17e05c9324c0e2d",
+          "actualBytes": 10266
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 193,
+          "firstDiffOffset": 394,
+          "normalizedSha": "7686ff67defe56a2",
+          "rawSha": "7cdb352afb275dc7",
+          "actualBytes": 10227
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000028.jsonl",
+      "tag": "journal skin customized:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 232,
+          "firstDiffOffset": 2577,
+          "normalizedSha": "13cfc7abc86ede31",
+          "rawSha": "304f42b80f309140",
+          "actualBytes": 12282
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 232,
+          "firstDiffOffset": 2577,
+          "normalizedSha": "13cfc7abc86ede31",
+          "rawSha": "32a9da5f63999892",
+          "actualBytes": 12282
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 196,
+          "firstDiffOffset": 376,
+          "normalizedSha": "50296793b6e54304",
+          "rawSha": "653cd7c503bd3e98",
+          "actualBytes": 12246
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000028.jsonl",
+      "tag": "signup alert email+*test context:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2ed4c199f62c8268",
+          "rawSha": "1a64669a4085e7b5",
+          "actualBytes": 3555
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "2ed4c199f62c8268",
+          "rawSha": "7876533560d79240",
+          "actualBytes": 3555
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -53,
+          "firstDiffOffset": 467,
+          "normalizedSha": "f922aa713773be6b",
+          "rawSha": "17f23ae3397ed8cb",
+          "actualBytes": 3502
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "*all+*head:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 39,
+          "firstDiffOffset": 375,
+          "normalizedSha": "76ca88a9aac3f222",
+          "rawSha": "687539406d34ec4c",
+          "actualBytes": 3541
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 39,
+          "firstDiffOffset": 375,
+          "normalizedSha": "76ca88a9aac3f222",
+          "rawSha": "ec010223a1a5843d",
+          "actualBytes": 3541
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "1d372cbd89b9c438",
+          "rawSha": "b940e6ef60e55b6a",
+          "actualBytes": 3502
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "*all+*head:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 36,
+          "firstDiffOffset": 357,
+          "normalizedSha": "e843948fe47911b0",
+          "rawSha": "e1bf870ba96420ff",
+          "actualBytes": 5677
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 36,
+          "firstDiffOffset": 357,
+          "normalizedSha": "e843948fe47911b0",
+          "rawSha": "ad3402c9bd259c01",
+          "actualBytes": 5677
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "4c43c72a2478c424",
+          "rawSha": "1fea571ef9758239",
+          "actualBytes": 5641
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Administrator+Dashboard:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 55569,
+          "firstDiffOffset": 436,
+          "normalizedSha": "58c0c70210d46c22",
+          "rawSha": "375f88e60039e6d9",
+          "actualBytes": 72586
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 55569,
+          "firstDiffOffset": 436,
+          "normalizedSha": "58c0c70210d46c22",
+          "rawSha": "d48d68d0eab3a1e2",
+          "actualBytes": 72586
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 443,
+          "normalizedSha": "4a9a4547d88e1f00",
+          "rawSha": "949b69f6b15fc60b",
+          "actualBytes": 72547
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "Administrator+Dashboard:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 55583,
+          "firstDiffOffset": 418,
+          "normalizedSha": "ad11d950389660c8",
+          "rawSha": "8064456550e51387",
+          "actualBytes": 75273
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 55583,
+          "firstDiffOffset": 418,
+          "normalizedSha": "ad11d950389660c8",
+          "rawSha": "19f5aeaa7496a282",
+          "actualBytes": 75273
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 55530,
+          "firstDiffOffset": 3078,
+          "normalizedSha": "49c32a3f6fd746b5",
+          "rawSha": "b45ec976a5bd0cea",
+          "actualBytes": 75220
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "PCTS+*self+*head:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 39,
+          "firstDiffOffset": 397,
+          "normalizedSha": "f66e2f8dd3d1f88c",
+          "rawSha": "2d699eb450671132",
+          "actualBytes": 3569
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 39,
+          "firstDiffOffset": 397,
+          "normalizedSha": "f66e2f8dd3d1f88c",
+          "rawSha": "31d51d8e04c67a19",
+          "actualBytes": 3569
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ef1a6a21c66d9739",
+          "rawSha": "67922b8f22eaf6e1",
+          "actualBytes": 3530
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000029.jsonl",
+      "tag": "PCTS+*self+*head:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 36,
+          "firstDiffOffset": 379,
+          "normalizedSha": "5a580fc71fed091d",
+          "rawSha": "b5aaaf39b12e7b7e",
+          "actualBytes": 5841
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 36,
+          "firstDiffOffset": 379,
+          "normalizedSha": "5a580fc71fed091d",
+          "rawSha": "85ed06d9582b0bdf",
+          "actualBytes": 5841
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "1ad3211d610e2dd4",
+          "rawSha": "fe0d65b27ed04e78",
+          "actualBytes": 5805
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000030.jsonl",
+      "tag": "TSYR+mythology+articles:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 11,
+          "firstDiffOffset": 3809,
+          "normalizedSha": "110b91631231e1df",
+          "rawSha": "235625a782eb57bf",
+          "actualBytes": 5936
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 11,
+          "firstDiffOffset": 3809,
+          "normalizedSha": "110b91631231e1df",
+          "rawSha": "99e48046a7a03dff",
+          "actualBytes": 5936
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -42,
+          "firstDiffOffset": 405,
+          "normalizedSha": "487ab3fa22e08e2e",
+          "rawSha": "637f608bd3afb52d",
+          "actualBytes": 5883
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000030.jsonl",
+      "tag": "democracy+tags:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 360,
+          "normalizedSha": "67a61e7bbfca8dde",
+          "rawSha": "236ecef6a30faab2",
+          "actualBytes": 5712
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 360,
+          "normalizedSha": "67a61e7bbfca8dde",
+          "rawSha": "95793d052da45b5b",
+          "actualBytes": 5712
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7d22e88fd34b4661",
+          "rawSha": "33a82995a16fbb37",
+          "actualBytes": 5659
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000033.jsonl",
+      "tag": "Wikirate:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 3600,
+          "firstDiffOffset": 294,
+          "normalizedSha": "875e3aa60e3513b1",
+          "rawSha": "79e03c445129cdf3",
+          "actualBytes": 37401
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 294,
+          "normalizedSha": "38780c539728a1b6",
+          "rawSha": "67caddf52bb549c3",
+          "actualBytes": 33854
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "7df88da5c47a1a5b",
+          "rawSha": "251f6c8eedff3b6d",
+          "actualBytes": 33801
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000034.jsonl",
+      "tag": "Intellectual Property+Unsecured:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 8958,
+          "firstDiffOffset": 4194,
+          "normalizedSha": "28091561f718450e",
+          "rawSha": "3bb6da0df83f7f1c",
+          "actualBytes": 18154
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 8958,
+          "firstDiffOffset": 4194,
+          "normalizedSha": "28091561f718450e",
+          "rawSha": "068be54b5a0385ec",
+          "actualBytes": 18154
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 8905,
+          "firstDiffOffset": 450,
+          "normalizedSha": "88dbf775d283c88a",
+          "rawSha": "f260b2e41df4452c",
+          "actualBytes": 18101
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000036.jsonl",
+      "tag": "Pork Roast Clay Baked+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "377b560fcbd22c89",
+          "rawSha": "9782c15bc2833e89",
+          "actualBytes": 3417
+        },
+        "CONSTANTS": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "377b560fcbd22c89",
+          "rawSha": "6a7b7770ec0a1250",
+          "actualBytes": 3417
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": -34,
+          "firstDiffOffset": 473,
+          "normalizedSha": "2c000ef4433a708b",
+          "rawSha": "98926d2062941bbf",
+          "actualBytes": 3383
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000037.jsonl",
+      "tag": "Work Week:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 3205,
+          "firstDiffOffset": 304,
+          "normalizedSha": "ae444cf9cd44eb66",
+          "rawSha": "ce79c3077a300c35",
+          "actualBytes": 22185
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 304,
+          "normalizedSha": "e2dcf61b028edc7f",
+          "rawSha": "9d3fc54eccde9686",
+          "actualBytes": 19033
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "f269d724d12a9f02",
+          "rawSha": "95f1b02bc832d166",
+          "actualBytes": 18980
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "Kayla Feder 20230902:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 3846,
+          "firstDiffOffset": 348,
+          "normalizedSha": "850540a0a07a1f08",
+          "rawSha": "2ffdb5ae7c891466",
+          "actualBytes": 10549
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 348,
+          "normalizedSha": "f3732e1665a107f4",
+          "rawSha": "fc3dedc370bc64a5",
+          "actualBytes": 6756
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b1c3ebdd8546937d",
+          "rawSha": "fa69d7044e51370f",
+          "actualBytes": 6703
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "Kayla Feder 20230902+discussion:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 470,
+          "normalizedSha": "1775a80ff746322a",
+          "rawSha": "15efbb2207b2f5c3",
+          "actualBytes": 4909
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 34,
+          "firstDiffOffset": 470,
+          "normalizedSha": "7ed857845db9e05e",
+          "rawSha": "31a852b5765c2818",
+          "actualBytes": 4909
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "609a67c9beb0a14f",
+          "rawSha": "8b9bf7d1834e3510",
+          "actualBytes": 4875
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "Mod:content",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1416,
+          "firstDiffOffset": 339,
+          "normalizedSha": "e4517f339f888c7f",
+          "rawSha": "b557dba143ac2a67",
+          "actualBytes": 50610
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 1416,
+          "firstDiffOffset": 339,
+          "normalizedSha": "e4517f339f888c7f",
+          "rawSha": "dee0acadbf0638e0",
+          "actualBytes": 50610
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 1377,
+          "firstDiffOffset": 296,
+          "normalizedSha": "2ce7097106667a23",
+          "rawSha": "3de47f55ae8d2773",
+          "actualBytes": 50571
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "Mod:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 1416,
+          "firstDiffOffset": 2351,
+          "normalizedSha": "183d0369e57f26cb",
+          "rawSha": "7723a9ec3e46845b",
+          "actualBytes": 52660
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 1416,
+          "firstDiffOffset": 2351,
+          "normalizedSha": "183d0369e57f26cb",
+          "rawSha": "c4df125bc507919a",
+          "actualBytes": 52660
+        },
+        "FULL": {
+          "verdict": "FAIL",
+          "delta": 1363,
+          "firstDiffOffset": 278,
+          "normalizedSha": "326425e94cb948b1",
+          "rawSha": "7989281e7b5cf63a",
+          "actualBytes": 52607
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: account:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 311,
+          "normalizedSha": "327f81b73cb0e473",
+          "rawSha": "4f41b7ff1d81f49b",
+          "actualBytes": 2136
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 311,
+          "normalizedSha": "327f81b73cb0e473",
+          "rawSha": "0e12a31fa648760d",
+          "actualBytes": 2136
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "9f14d0557e65ed57",
+          "rawSha": "820d4e595eb27d5a",
+          "actualBytes": 2098
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: bootstrap:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 319,
+          "normalizedSha": "46f25d6cda2464db",
+          "rawSha": "30c42a0c0dd93458",
+          "actualBytes": 2164
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 319,
+          "normalizedSha": "46f25d6cda2464db",
+          "rawSha": "5c2ee5b7b2533765",
+          "actualBytes": 2164
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "be0d135448ee6db8",
+          "rawSha": "b91f5ecca7c72d54",
+          "actualBytes": 2126
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: carrierwave:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 327,
+          "normalizedSha": "b3e40dbf41334fb7",
+          "rawSha": "d3a4d30045d184f5",
+          "actualBytes": 2199
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 327,
+          "normalizedSha": "b3e40dbf41334fb7",
+          "rawSha": "2d5ec58dbc44052b",
+          "actualBytes": 2199
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "fb62feb437ffdcc4",
+          "rawSha": "9672a80fd75d024b",
+          "actualBytes": 2161
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: core:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "f1744da8365b3a6e",
+          "rawSha": "ebd5af8cbbffb87c",
+          "actualBytes": 2084
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "f1744da8365b3a6e",
+          "rawSha": "362a4fc99be925fa",
+          "actualBytes": 2084
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "d83071f69645bbca",
+          "rawSha": "7ca86eb03acea316",
+          "actualBytes": 2046
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: date:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "3eb858fe62f080c5",
+          "rawSha": "4b52290a1cfe24a6",
+          "actualBytes": 2077
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "3eb858fe62f080c5",
+          "rawSha": "6aa25c6debea5d01",
+          "actualBytes": 2077
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "4dfeb13bd7ea6651",
+          "rawSha": "4bd7910ef591c066",
+          "actualBytes": 2039
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: email:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 303,
+          "normalizedSha": "86cd084c94f0b7b3",
+          "rawSha": "c89276fe248234a5",
+          "actualBytes": 2091
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 303,
+          "normalizedSha": "86cd084c94f0b7b3",
+          "rawSha": "4e65c0eb9629f4f7",
+          "actualBytes": 2091
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "11a31b166802e3a7",
+          "rawSha": "e03fbded4402e4c7",
+          "actualBytes": 2053
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: follow:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "50a12a64dea0109c",
+          "rawSha": "68958f37c4b4e354",
+          "actualBytes": 2132
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "50a12a64dea0109c",
+          "rawSha": "65ca34857d417d57",
+          "actualBytes": 2132
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "a4b17b9de651f182",
+          "rawSha": "edf6d390ac8ce7c5",
+          "actualBytes": 2094
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: format:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "f2b6a45b62126690",
+          "rawSha": "db320930735cf537",
+          "actualBytes": 2138
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "f2b6a45b62126690",
+          "rawSha": "03d15bfaae46009f",
+          "actualBytes": 2138
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "46fa493045753bfb",
+          "rawSha": "7e63cbac7627b49e",
+          "actualBytes": 2100
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: layout:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "0bcd44f1860caa4f",
+          "rawSha": "6484aa8d1420153f",
+          "actualBytes": 2132
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "0bcd44f1860caa4f",
+          "rawSha": "a73e556288f371bc",
+          "actualBytes": 2132
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "92064cbe9ea04762",
+          "rawSha": "5b3902cd18ddf0df",
+          "actualBytes": 2094
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: list:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "edcf96dc2b211de8",
+          "rawSha": "a84085ffec179407",
+          "actualBytes": 2104
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 299,
+          "normalizedSha": "edcf96dc2b211de8",
+          "rawSha": "7112aedc1fd28a23",
+          "actualBytes": 2104
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "8d4e238f3a2510c2",
+          "rawSha": "1fbbf62febf6fb13",
+          "actualBytes": 2066
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: script:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "5e785cca0224aefb",
+          "rawSha": "b228fed1c7e67f56",
+          "actualBytes": 2115
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "5e785cca0224aefb",
+          "rawSha": "0f62c1a4d6740203",
+          "actualBytes": 2115
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "66ed46559992b0a6",
+          "rawSha": "616b152f9648b7d8",
+          "actualBytes": 2077
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: search:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "43c3e923f155c2cc",
+          "rawSha": "33b0f3a65b92531c",
+          "actualBytes": 2132
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 307,
+          "normalizedSha": "43c3e923f155c2cc",
+          "rawSha": "38876a3aa64679fc",
+          "actualBytes": 2132
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "4cc6edd2792b3874",
+          "rawSha": "3361b36e31f95a6f",
+          "actualBytes": 2094
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: session:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 311,
+          "normalizedSha": "06cd57354bebe53c",
+          "rawSha": "1b0df99d0758d429",
+          "actualBytes": 2119
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 311,
+          "normalizedSha": "06cd57354bebe53c",
+          "rawSha": "39de0a71c91640bd",
+          "actualBytes": 2119
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "c1aff394c95e770e",
+          "rawSha": "7e15d983c15d814a",
+          "actualBytes": 2081
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: style:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 303,
+          "normalizedSha": "6622160197c87175",
+          "rawSha": "c248ef122391f047",
+          "actualBytes": 2109
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 303,
+          "normalizedSha": "6622160197c87175",
+          "rawSha": "24da8ef4a242983b",
+          "actualBytes": 2109
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "bed614a8ff8a8e5d",
+          "rawSha": "5f1373fefd801ec4",
+          "actualBytes": 2071
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "tag": "mod: tinymce editor:closed",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 339,
+          "normalizedSha": "f02e819c3e955ed0",
+          "rawSha": "6574ed59c72768f4",
+          "actualBytes": 2239
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 38,
+          "firstDiffOffset": 339,
+          "normalizedSha": "f02e819c3e955ed0",
+          "rawSha": "e22648c8b106e3d0",
+          "actualBytes": 2239
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "3ce07775e787099f",
+          "rawSha": "f7484b66ecf9b0ea",
+          "actualBytes": 2201
+        }
+      },
+      "movedByConstantsArm": false,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000041.jsonl",
+      "tag": "Rosalie Williamscraig:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5496,
+          "firstDiffOffset": 346,
+          "normalizedSha": "39a13723d6a13ce2",
+          "rawSha": "a873d93eed2cb51e",
+          "actualBytes": 28880
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 346,
+          "normalizedSha": "11ef128207a7e970",
+          "rawSha": "33e5fb6388368c96",
+          "actualBytes": 23437
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "b4b2aecb627e869e",
+          "rawSha": "c86d52b8f23ddc43",
+          "actualBytes": 23384
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000043.jsonl",
+      "tag": "Conflict Done Well+WE Greiner:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 7317,
+          "firstDiffOffset": 444,
+          "normalizedSha": "ee0057b9b77f0fc0",
+          "rawSha": "f6ffcaac7ebcd4c5",
+          "actualBytes": 17045
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 444,
+          "normalizedSha": "614e787a09a1d97b",
+          "rawSha": "61358802f747ddf1",
+          "actualBytes": 9781
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "ccd7ab99deb2a4fd",
+          "rawSha": "6c097d316674bcec",
+          "actualBytes": 9728
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    },
+    {
+      "lane": "view",
+      "shard": "recapture-raw-shard-000045.jsonl",
+      "tag": "Huston Williamscraig:open",
+      "states": {
+        "UNARMED": {
+          "verdict": "FAIL",
+          "delta": 5472,
+          "firstDiffOffset": 342,
+          "normalizedSha": "6425725464874af9",
+          "rawSha": "2a407176133e0c9a",
+          "actualBytes": 13586
+        },
+        "CONSTANTS": {
+          "verdict": "FAIL",
+          "delta": 53,
+          "firstDiffOffset": 342,
+          "normalizedSha": "059f426bea74a478",
+          "rawSha": "1b79422cb754f24d",
+          "actualBytes": 8167
+        },
+        "FULL": {
+          "verdict": "PASS",
+          "delta": 0,
+          "firstDiffOffset": null,
+          "normalizedSha": "50307766d6c164c9",
+          "rawSha": "eb46baa93dc0a7bb",
+          "actualBytes": 8114
+        }
+      },
+      "movedByConstantsArm": true,
+      "movedByEraArm": true,
+      "rawShaMovedByConstantsArm": true
+    }
+  ]
+}

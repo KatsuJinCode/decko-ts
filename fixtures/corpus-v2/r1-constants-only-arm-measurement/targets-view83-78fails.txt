@@ -1,0 +1,78 @@
+view	recapture-raw-shard-000003.jsonl	*all plus	content
+view	recapture-raw-shard-000003.jsonl	*all plus	open
+view	recapture-raw-shard-000000.jsonl	*all	content
+view	recapture-raw-shard-000000.jsonl	*all	open
+view	recapture-raw-shard-000029.jsonl	*all+*head	content
+view	recapture-raw-shard-000029.jsonl	*all+*head	open
+view	recapture-raw-shard-000000.jsonl	*favicon	closed
+view	recapture-raw-shard-000000.jsonl	*favicon	open
+view	recapture-raw-shard-000000.jsonl	*input type+*right	content
+view	recapture-raw-shard-000000.jsonl	*input type+*right	open
+view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	closed
+view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	content
+view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	open
+view	recapture-raw-shard-000003.jsonl	*rstar	content
+view	recapture-raw-shard-000003.jsonl	*rstar	open
+view	recapture-raw-shard-000003.jsonl	*star	content
+view	recapture-raw-shard-000003.jsonl	*star	open
+view	recapture-raw-shard-000013.jsonl	20131018+BW+RVW+Plans	open
+view	recapture-raw-shard-000019.jsonl	A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion	open
+view	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	content
+view	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	open
+view	recapture-raw-shard-000006.jsonl	Andrew Porter	open
+view	recapture-raw-shard-000015.jsonl	Anonymous+*account+*email	open
+view	recapture-raw-shard-000028.jsonl	Belief about the rightness of Insert System Here establishes an axis	open
+view	recapture-raw-shard-000018.jsonl	Brandon feedback+discussion	open
+view	recapture-raw-shard-000025.jsonl	children	open
+view	recapture-raw-shard-000043.jsonl	Conflict Done Well+WE Greiner	open
+view	recapture-raw-shard-000018.jsonl	Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport	open
+view	recapture-raw-shard-000030.jsonl	democracy+tags	open
+view	recapture-raw-shard-000014.jsonl	Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014	open
+view	recapture-raw-shard-000017.jsonl	Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24	open
+view	recapture-raw-shard-000016.jsonl	Guns	open
+view	recapture-raw-shard-000045.jsonl	Huston Williamscraig	open
+view	recapture-raw-shard-000034.jsonl	Intellectual Property+Unsecured	open
+view	recapture-raw-shard-000028.jsonl	journal skin customized	content
+view	recapture-raw-shard-000028.jsonl	journal skin customized	open
+view	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902	open
+view	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902+discussion	open
+view	recapture-raw-shard-000005.jsonl	Klickstein continues+discussion	open
+view	recapture-raw-shard-000008.jsonl	media+GBA+YouTube Browser	open
+view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	content
+view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	open
+view	recapture-raw-shard-000039.jsonl	mod: account	closed
+view	recapture-raw-shard-000039.jsonl	mod: bootstrap	closed
+view	recapture-raw-shard-000039.jsonl	mod: carrierwave	closed
+view	recapture-raw-shard-000039.jsonl	mod: core	closed
+view	recapture-raw-shard-000039.jsonl	mod: date	closed
+view	recapture-raw-shard-000039.jsonl	mod: email	closed
+view	recapture-raw-shard-000039.jsonl	mod: follow	closed
+view	recapture-raw-shard-000039.jsonl	mod: format	closed
+view	recapture-raw-shard-000039.jsonl	mod: layout	closed
+view	recapture-raw-shard-000039.jsonl	mod: list	closed
+view	recapture-raw-shard-000039.jsonl	mod: script	closed
+view	recapture-raw-shard-000039.jsonl	mod: search	closed
+view	recapture-raw-shard-000039.jsonl	mod: session	closed
+view	recapture-raw-shard-000039.jsonl	mod: style	closed
+view	recapture-raw-shard-000039.jsonl	mod: tinymce editor	closed
+view	recapture-raw-shard-000039.jsonl	Mod	content
+view	recapture-raw-shard-000039.jsonl	Mod	open
+view	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	content
+view	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	open
+view	recapture-raw-shard-000027.jsonl	Perennial Wisdom Tradition	open
+view	recapture-raw-shard-000016.jsonl	Person+discussion	open
+view	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	content
+view	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	open
+view	recapture-raw-shard-000041.jsonl	Rosalie Williamscraig	open
+view	recapture-raw-shard-000022.jsonl	Soma+tags	open
+view	recapture-raw-shard-000011.jsonl	The Habit - a predictable travesty	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image01+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image02+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image03+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image04+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image05+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image06+discussion	open
+view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image07+discussion	open
+view	recapture-raw-shard-000033.jsonl	Wikirate	open
+view	recapture-raw-shard-000024.jsonl	WilliamsCraig+Vacations+Pages	open
+view	recapture-raw-shard-000037.jsonl	Work Week	open
