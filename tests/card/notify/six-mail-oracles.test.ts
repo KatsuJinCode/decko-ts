@@ -60,6 +60,7 @@ import {
   insertAccountCard,
   type AuthTestStorage,
 } from "../auth/auth-test-storage.js";
+import { runAuthMigrations } from "../../../src/card/auth/index.js";
 
 const ORACLE = JSON.parse(
   readFileSync(
@@ -137,6 +138,7 @@ const IDS = {
   salt: 9404,
   status: 9405,
   title: 9406,
+  decko_bot: 9407,
 } as const;
 
 const SITE_TITLE = "My Deck";
@@ -193,11 +195,13 @@ interface AccountMailFixture {
  *  addresses, under the site title the capture app's *title carries. */
 async function buildAccountFixture(): Promise<AccountMailFixture> {
   const storage = createAuthTestStorage();
+  await runAuthMigrations(storage.driver);
   insertCodenameCard(storage, IDS.account, "account", "*account");
   insertCodenameCard(storage, IDS.email, "email", "*email");
   insertCodenameCard(storage, IDS.password, "password", "*password");
   insertCodenameCard(storage, IDS.salt, "salt", "*salt");
   insertCodenameCard(storage, IDS.status, "status", "*status");
+  insertCodenameCard(storage, IDS.decko_bot, "decko_bot", "Decko Bot");
   insertCodenameCard(storage, IDS.title, "title", "*title", SITE_TITLE);
 
   const members = [
@@ -224,6 +228,10 @@ async function buildAccountFixture(): Promise<AccountMailFixture> {
     token,
     origin: "",
     siteTitle: SITE_TITLE,
+    // safe_from_and_reply_to!'s name resolution: the "Decko Bot" from
+    // FIELD reaches the envelope as the DeckoBot account's email
+    // (email_config.rb:52-79 via email_field.rb:20-30).
+    deckoBotEmail: "no-reply@decko.org",
   };
   return { storage, ctx, transport, token };
 }
@@ -233,8 +241,8 @@ async function buildAccountFixture(): Promise<AccountMailFixture> {
 describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () => {
   it("signup verification email", async () => {
     const { ctx, transport } = await buildAccountFixture();
-    const outcome = await sendAccountVerificationToken(ctx, "Jane Oracle Signup");
-    expect(outcome.ok).toBe(true);
+    const outcome = await sendAccountVerificationToken(ctx, "Jane Oracle Signup+*account");
+    if (!outcome.ok) throw new Error("outcome: " + JSON.stringify(outcome));
     const sent = firstCaptured(transport);
     expectEnvelopeMatches(sent, ORACLE.scenarios.signup_verification_email.delivered[0]);
   });
@@ -251,7 +259,7 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
     const { ctx, transport, token } = await buildAccountFixture();
     // the valid token the verify link carries (user_id = the holder)
     const validToken = await encodeAuthToken(token, 9420);
-    const outcome = await confirmAccountVerification(ctx, "Jane Oracle Signup", validToken);
+    const outcome = await confirmAccountVerification(ctx, "Jane Oracle Signup+*account", validToken);
     expect(outcome.ok).toBe(true);
     const sent = transport.captured().find((m) => m.subject === "");
     expect(sent).toBeDefined();
@@ -280,29 +288,114 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
     return { userName: "John", verb, cardName };
   }
 
+  // The stock template's view placeholders, resolved per scenario (the
+  // base_views.rb view bodies over the capture's acts; the render stream
+  // owns the anchor/row bytes — the canvas pins those views).
+  const BOT = "no-reply@decko.org";
+  const JOHN_LINK =
+    '<a class="known-card" href="/John"><span class="card-title" title="John">John</span></a>';
+  const UNFOLLOW_HEAD = '/update/Sara+*follow?card%5Bsubcards%5D%5B';
+  const ROW = "  new content: row8 update v2\n";
+  const UNFOLLOW = (rule: string): string => `${UNFOLLOW_HEAD}${rule}%5D=%2Anever`;
+  const liRow = (): string => "<li>  new content: row8 update v2</li>\n";
+
   it("watcher-on-type notify email (stock follower_notification_email)", () => {
+    const rule = 'Basic%2B%2Atype%2BSara%2B%2Afollow';
     const sent = renderMail(
       stockTemplate("sara@example.com"),
       followNotice("Basic+*type"),
       followAct("Oracle Follow Card", "updated"),
+      {
+        botAccountEmail: BOT,
+        wrapHtmlDocument: true,
+        text: {
+          "_|list_of_changes": ROW,
+          "_|subedits": "",
+          "_|url": "/Oracle_Follow_Card",
+          "_|followed": 'all "Basics"',
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+        html: {
+          "_|link":
+            '<a class="known-card" href="/Oracle_Follow_Card"><span class="card-title" title="Oracle Follow Card">Oracle Follow Card</span></a>',
+          "_|url": "/Oracle_Follow_Card",
+          "_|last_action_verb":
+            '<a rel="nofollow" class="last-edited slotter" href="/Oracle_Follow_Card/history" data-remote="true">edited</a>',
+          "_user|link": JOHN_LINK,
+          "_|list_of_changes": liRow(),
+          "_|subedits": "",
+          "_|followed": 'all "Basics"',
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+      },
     );
     expectEnvelopeMatches(sent, ORACLE.scenarios.watcher_on_type_notify.delivered[0]);
   });
 
   it("delete notify email (stash + notify_followers_after_delete)", () => {
+    // the deleted card's list_of_changes is EMPTY (the delete action
+    // carries no value rows) and its history anchor degrades to the bare
+    // verb word (no history page) — both pinned by the oracle bytes.
+    const rule = 'Basic%2B%2Atype%2BSara%2B%2Afollow';
     const sent = renderMail(
       stockTemplate("sara@example.com"),
       followNotice("Basic+*type"),
       followAct("Oracle Delete Card", "deleted"),
+      {
+        botAccountEmail: BOT,
+        wrapHtmlDocument: true,
+        text: {
+          "_|list_of_changes": "",
+          "_|subedits": "",
+          "_|url": "/Oracle_Delete_Card",
+          "_|followed": 'all "Basics"',
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+        html: {
+          "_|link":
+            '<a class="known-card" href="/Oracle_Delete_Card"><span class="card-title" title="Oracle Delete Card">Oracle Delete Card</span></a>',
+          "_|url": "/Oracle_Delete_Card",
+          "_|last_action_verb": "deleted",
+          "_user|link": JOHN_LINK,
+          "_|list_of_changes": "",
+          "_|subedits": "",
+          "_|followed": 'all "Basics"',
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+      },
     );
     expectEnvelopeMatches(sent, ORACLE.scenarios.delete_notify.delivered[0]);
   });
 
   it("includer/template notify email (one act, act-card context)", () => {
+    const rule = 'Oracle+Recipe+Card%2Bingredient%2B%2Aself%2BSara%2B%2Afollow';
     const sent = renderMail(
       stockTemplate("sara@example.com"),
       followNotice("Oracle Recipe Card+ingredient+*self"),
       followAct("Oracle Recipe Card", "updated"),
+      {
+        botAccountEmail: BOT,
+        wrapHtmlDocument: true,
+        text: {
+          "_|list_of_changes": ROW,
+          "_|subedits": "",
+          "_|url": "/Oracle_Recipe_Card",
+          "_|followed": "Oracle Recipe Card+ingredient",
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+        html: {
+          "_|link":
+            '<a class="known-card" href="/Oracle_Recipe_Card"><span class="card-title" title="Oracle Recipe Card">Oracle Recipe Card</span></a>',
+          "_|url": "/Oracle_Recipe_Card",
+          "_|last_action_verb":
+            '<a rel="nofollow" class="last-edited slotter" href="/Oracle_Recipe_Card/history" data-remote="true">edited</a>',
+          "_user|link": JOHN_LINK,
+          "_|list_of_changes": liRow(),
+          "_|subedits": "",
+          "_|followed": "Oracle Recipe Card+ingredient",
+          "_|unfollow_url": UNFOLLOW(rule),
+        },
+      },
     );
     expectEnvelopeMatches(sent, ORACLE.scenarios.includer_template_notify.delivered[0]);
   });
