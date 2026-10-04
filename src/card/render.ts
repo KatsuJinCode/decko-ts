@@ -952,6 +952,14 @@ export class RenderEngine implements RenderEngineLike {
     // prefetch walk's shape).
     this.populateTypeCodes();
     await this.ensureTaskVerdicts(view);
+    // The comment_box gate's update verdicts (views.ts commentBoxBaseView):
+    // +discussion cores inside :open/:content bodies render the form only
+    // on a POSITIVE update verdict, and the generic task warm above is
+    // view-gated (viewRequiresTask) - warm the discussion cards here (the
+    // page lane runs the same warm at page.ts; census M8: the graded
+    // Kayla_Feder_20230902+discussion:open pair renders the
+    // inherited-grant form on THIS lane).
+    await this.ensureDiscussionUpdateVerdicts();
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
@@ -5118,6 +5126,18 @@ export class RenderEngine implements RenderEngineLike {
    *  allTaskVerdictsForCard already walks. */
   async ensureDiscussionUpdateVerdicts(): Promise<void> {
     if (this.readPermission === undefined) return;
+    // Closure gate: a render whose closure carries no +discussion card
+    // must not pay the who_can batch - the junction-depth-closure /
+    // render-engine / depth-sweep query-count gates pin the round-trip
+    // shape, and the loop below would skip every card anyway.
+    let hasDiscussionCard = false;
+    for (const card of this.renderCards.values()) {
+      if (card.id !== undefined && card.name.rightName?.key === "discussion") {
+        hasDiscussionCard = true;
+        break;
+      }
+    }
+    if (!hasDiscussionCard) return;
     if (this.taskState === undefined) {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
