@@ -35,11 +35,11 @@
     },
     {
       "name": "Eagle",
-      "offTrips": 49,
-      "onTrips": 21,
+      "offTrips": 51,
+      "onTrips": 23,
       "attachTrips": 1,
       "dataFetchTrips": 1,
-      "residueTrips": 19,
+      "residueTrips": 21,
       "byteIdentical": true,
       "offBytes": 8990,
       "onBytes": 8990

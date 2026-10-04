@@ -73,11 +73,11 @@
     },
     {
       "name": "Eagle",
-      "baselineTrips": 49,
+      "baselineTrips": 51,
       "baselineHtmlBytes": 8990,
-      "oneTripTrips": 23,
+      "oneTripTrips": 25,
       "dataFetchTrips": 1,
-      "residueTrips": 19,
+      "residueTrips": 21,
       "htmlBytes": 8990,
       "byteIdentical": true,
       "residueClasses": {
@@ -88,7 +88,7 @@
         "reached-rules-cte": 4,
         "engine-fold-type-names": 1,
         "engine-fold-head-reads": 1,
-        "pair-exists-probe": 2,
+        "pair-exists-probe": 4,
         "template-link-id-read": 2,
         "point-row-by-key": 2,
         "lexicon-key-to-id": 1
