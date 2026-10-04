@@ -144,12 +144,15 @@ function slotCensus(html: string): string[] {
 }
 
 describe("relnames lane probe: engine bar-title slot census", () => {
-  it("dumps the engine's own bytes per target surface", { timeout: 600_000 }, async () => {
-    if (process.env.RELNAMES_DUMP !== "1") {
-      expect(process.env.RELNAMES_DUMP).toBe("1");
-      return;
-    }
-    const entries = proofEntries();
+  // skipIf, not an in-body expect: the probe is env-gated, so without
+  // RELNAMES_DUMP=1 it must SKIP. The first cut asserted the env inside the
+  // body, which turned the skip into a standing-net FAILURE — caught by
+  // net job-1791129726236-79fb68b5 (1 failed | 93 passed | 2 skipped).
+  it.skipIf(process.env.RELNAMES_DUMP !== "1")(
+    "dumps the engine's own bytes per target surface",
+    { timeout: 600_000 },
+    async () => {
+      const entries = proofEntries();
     const fixtures = new Map<number, Record<string, string>>();
     for (const line of readShardLines()) {
       if (!fixtures.has(line.id)) fixtures.set(line.id, line.views ?? {});
@@ -205,5 +208,6 @@ describe("relnames lane probe: engine bar-title slot census", () => {
     fs.writeFileSync(reportFile, report.join("\n"), "utf8");
     console.log(`relnames probe: wrote ${report.length} census lines to ${reportFile}`);
     expect(fs.existsSync(reportFile)).toBe(true);
-  });
+    },
+  );
 });
