@@ -151,10 +151,26 @@ decko data-slot-id hashes, the `src/testing/diff.ts rule), two-sided classificat
 sha-verified reference, and the N-consecutive-clean-runs cutover gate. Dry-run by default;
 nothing executes without `--execute; the mirror is never written (sha-bound writable copies per
 side); all traffic is 127.0.0.1 on ports the run spawned and tears down. Pinned by
-`tests/tools/shadow/migration-parity-shadow.test.mjs (52 tests). Honest limits: page-surface
-routes only in this build (view-lane shadowing is the named extension), and two-sided
-classification requires a reference — divergences without one classify UNATTRIBUTED and fail
-the gate. Honest gaps G1–G5 above are unchanged by this stage.
+`tests/tools/shadow/migration-parity-shadow.test.mjs (52 tests; 68 after the view-lane
+extension below). Honest limits: two-sided classification requires a reference — divergences
+without one classify UNATTRIBUTED and fail the gate. Honest gaps G1–G5 above are unchanged by
+this stage.
+
+VIEW-LANE EXTENSION (2026-10-03; lane-shadow-viewlane-2026-10-03; limit S1 CLOSED): the shadow
+stage samples view-lane routes — the corpus canvas fixture views (open, closed, content, title,
+plus the capture label unknown_view_sentinel executing as definitely_not_a_view), rendered by
+each checkout's own staging instrument at GET /<name>?view=<view> through the engine's bare view
+lane (RenderEngine.render — the exact (card, view) surface the corpus replay grades), fetched
+with the corpus XHR header convention. Policy matching stays on the bare path (the proven glob
+semantics treat "?" as a wildcard; strip query before matching); the sample signature binds
+(name, view) pairs, so a view-lane clean streak never mixes with page-lane runs. The noise
+normalizer is unchanged and lane-blind; the report adds a per-lane CF-carrier census pinning the
+close-71/live-check-71 asymmetry (all 34 live-fetched pages carried the Cloudflare block; zero
+of the 37 live-fetched views did). Remaining named limit: a RAISING view emits the corpus
+sentinel shape ("CAPTURE_ERROR: <class>: <message>") with the ENGINE's error naming, so a
+corpus-recaptured reference for a raising view records Ruby's class taxonomy and will not
+byte-match the engine sentinel (successful views are unaffected; base-vs-candidate comparison
+stays exact).
 
 Ruby-upstreamability: the comparison protocol is language-neutral — two renderers, one diff, one
 verdict — and is specified in `docs/migration-parity-tool-cli.md so a Ruby implementation can

@@ -38,10 +38,14 @@
 //   - The owner's mirror file is never opened for writing: each run copies
 //     it (sha256-bound) once per side, because the staging instrument's
 //     auth layer opens its copy read-write.
-//   - Page surface only in this build: route views other than `page are
-//     REFUSED with a named message (limit S1) instead of silently
-//     mis-rendering — the staging instrument serves full pages; in-process
-//     view probes are the named extension path.
+//   - Page AND view-lane surfaces: route views from the corpus canvas
+//     fixture set (open, closed, content, title — plus the capture label
+//     unknown_view_sentinel, which maps to the executable input
+//     definitely_not_a_view) render through each checkout's own
+//     vm-staging-server.mjs at GET /<name>?view=<view> — the engine's BARE
+//     view lane (RenderEngine.render), the exact path the corpus replay
+//     grades. Limit S1 (page-surface-only) is CLOSED as of this build;
+//     remaining limits are named in the report's `limitations` array.
 //
 // Docs: docs/migration-parity-tool-cli.md (shadow section). Plan:
 // deliverables/migration-parity-tool-PLAN.md (stage table, honest gaps).
@@ -80,6 +84,8 @@ export const EXIT_USAGE = 2;
  * The 5 standard probe pages — the same set the one-trip lane pinned
  * byte-identical (tmp/wrong-goal-hunt/one-trip-implementation-lane.md).
  * Literal card names; the tool URL-encodes them for the staging server.
+ * The DEFAULT sample stays the proven page set; view routes join a sample
+ * through the targets file.
  */
 export const DEFAULT_PROBE_ROUTES = Object.freeze([
   { name: "Home", view: "page" },
@@ -88,6 +94,57 @@ export const DEFAULT_PROBE_ROUTES = Object.freeze([
   { name: "Eagle", view: "page" },
   { name: "Taking_Stock", view: "page" },
 ]);
+
+// ===========================================================================
+// 1b. The view-lane surface — the corpus canvas fixture view set
+// ===========================================================================
+
+/**
+ * The valid VIEW routes: exactly the view set the corpus canvas fixtures
+ * define. Verified 2026-10-03 by scan — fixtures/captured/smoke.json
+ * rendered keys carry open/closed/content/title per card, and the full
+ * corpus-v2 recapture across all 48 shards carries the same four views
+ * (open 2,431 / content 1,060 / closed 261 / title 28 view rows, nothing
+ * else). A targets line outside this set is REFUSED with a named message
+ * (typo protection, the same discipline as unknown policy keys) — never
+ * silently downgraded to a page.
+ */
+export const VALID_VIEW_ROUTES = Object.freeze(["open", "closed", "content", "title"]);
+
+/**
+ * The capture LABEL vs EXECUTABLE INPUT convention
+ * (src/testing/fixture-schema.ts): capture.rb recorded one sentinel per
+ * card under the label unknown_view_sentinel, but the view it actually
+ * rendered was definitely_not_a_view. A targets line may use the label;
+ * the executable view is the mapping below.
+ */
+export const UNKNOWN_VIEW_SENTINEL_LABEL = "unknown_view_sentinel";
+export const UNKNOWN_VIEW_INPUT = "definitely_not_a_view";
+
+/** The executable view a targets-file view column names. */
+export function viewQueryValue(view) {
+  return view === UNKNOWN_VIEW_SENTINEL_LABEL ? UNKNOWN_VIEW_INPUT : view;
+}
+
+/**
+ * The fetch headers for a VIEW route — the corpus convention from the
+ * live-check-71 capture (live-check-71-fetch-culturesmith-2026-10-03.mjs):
+ * views are fetched XHR-shaped (narrow Accept + X-Requested-With) while
+ * pages are document navigations. The local staging instrument keys its
+ * view dispatch off the ?view= query, so these headers are fidelity to the
+ * capture convention, not a functional dependency. (The capture's Referer
+ * header named the live origin and is intentionally omitted — the local
+ * origins are per-side ports.)
+ */
+export const VIEW_FETCH_HEADERS = Object.freeze({
+  Accept: "text/html, */*; q=0.01",
+  "X-Requested-With": "XMLHttpRequest",
+});
+
+/** The comparison lane of a route: "page" or "view". */
+export function routeLane(route) {
+  return route.view === "page" ? "page" : "view";
+}
 
 // ===========================================================================
 // 1. Noise normalization — the two documented per-response regions
@@ -125,11 +182,37 @@ const CF_SCRIPT_BLOCK_PATTERN =
 /**
  * Normalize the two documented noise regions out of a rendered page.
  * Everything else is spec: any remaining difference is a real divergence.
+ *
+ * LANE-BLIND BY CONSTRUCTION: the SAME two regions apply to page-lane and
+ * view-lane bytes — no lane special-casing exists or is needed. The
+ * close-71/live-check-71 census (live-check-71-lane.md steps 6-7) measured
+ * the asymmetry that makes this safe: all 34 PAGE entries of the 71-entry
+ * live fetch carried the Cloudflare block while ZERO of the 37 VIEW entries
+ * did (33 views byte-exact, 4 views slot-id-norm only) — view references
+ * never need region 1, and applying it to them is a measured no-op. The
+ * function stays lane-blind so a view body that DOES carry an unexpected
+ * edge artifact still normalizes rather than false-diverging.
  */
 export function normalizeNoiseHtml(html) {
   return html
     .replace(CF_SCRIPT_BLOCK_PATTERN, "")
     .replace(SLOT_ID_PATTERN, RANDOMIZED_SLOT_ATTRIBUTE);
+}
+
+/** Non-global twin of CF_SCRIPT_BLOCK_PATTERN for presence TESTS (a /g
+ *  regex carries lastIndex state between .test calls — never reuse the
+ *  global pattern for testing). */
+const CF_CARRIER_TEST_PATTERN = new RegExp(CF_SCRIPT_BLOCK_PATTERN.source, "i");
+
+/**
+ * Whether one rendered body carries the Cloudflare per-response block.
+ * Used for the per-run NOISE-CARRIER CENSUS the report emits per lane
+ * (counts.noiseCarriers.{page,view}) — the observable form of the
+ * close-71 asymmetry: page-lane references carry the block (34/34 in the
+ * census), view-lane references never do (0/37).
+ */
+export function cfCarrierPresent(buffer) {
+  return CF_CARRIER_TEST_PATTERN.test(buffer.toString("utf8"));
 }
 
 /** First differing byte offset between two buffers, or -1 if identical. */
@@ -328,11 +411,26 @@ export function loadReferenceFile(referencePath) {
 // 3. Route sample — name-and-view routes through the proven sampling
 // ===========================================================================
 
-/** URL path for a route, exactly as the staging instrument decodes it
- *  (decodeName = decodeURIComponent; "+" is Decko's joint and must
- *  survive — encodeURIComponent preserves it as %2B). */
+/** URL PATH for a route — policy matching and FNV sampling see THIS string
+ *  only. Query strings never enter matching: the proven shadow-router glob
+ *  language treats "?" as a ONE-CHAR wildcard and its header convention is
+ *  "match the full URL path (no query string — strip before matching)".
+ *  decodeName on the instrument side = decodeURIComponent; "+" is Decko's
+ *  joint and must survive — encodeURIComponent preserves it as %2B. */
 export function routePath(route) {
   return "/" + encodeURIComponent(route.name);
+}
+
+/** The full FETCH URL for a route — routePath plus the view query for
+ *  view-lane routes, the corpus convention
+ *  ("/<Name_underscored>?view=<view>", live-check-71 fetch). Page routes
+ *  carry no query (byte-identical to the proven page-surface fetches).
+ *  The instrument's view dispatch keys off this query (vm-staging-server
+ *  serve branch), not off the headers. */
+export function routeUrl(route) {
+  const p = routePath(route);
+  if (route.view === "page") return p;
+  return `${p}?view=${encodeURIComponent(viewQueryValue(route.view))}`;
 }
 
 export function routeKey(route) {
@@ -342,8 +440,12 @@ export function routeKey(route) {
 /**
  * Parse a route-sample TSV: one route per line, `name or `name<TAB>view.
  * `# comments and blank lines are ignored (the capture instrument's TSV
- * convention). View must be `page in this build (limit S1 — REFUSED with a
- * named message otherwise, never silently downgraded).
+ * convention). The view column accepts `page (the default) and the corpus
+ * canvas fixture view set — open, closed, content, title — plus the
+ * capture label unknown_view_sentinel (mapped to the executable input
+ * definitely_not_a_view, the fixture-schema.ts convention). Anything else
+ * is REFUSED with a named message listing the valid set (typo protection,
+ * never a silent downgrade).
  */
 export function parseTargetsFile(text, sourceLabel = "targets") {
   const routes = [];
@@ -363,12 +465,15 @@ export function parseTargetsFile(text, sourceLabel = "targets") {
     if (name === "") {
       throw new Error(`${sourceLabel}: line ${lineNo}: empty route name`);
     }
-    if (view !== "page") {
+    const viewKnown = view === "page" || view === UNKNOWN_VIEW_SENTINEL_LABEL || VALID_VIEW_ROUTES.includes(view);
+    if (!viewKnown) {
       throw new Error(
-        `${sourceLabel}: line ${lineNo}: route ${JSON.stringify(name)} requests view ` +
-          `${JSON.stringify(view)} — this build shadows the PAGE surface only (limit S1). ` +
-          `The staging instrument serves full pages; view-lane probing needs the ` +
-          `in-process probe instrument (named extension, not built here).`,
+        `${sourceLabel}: line ${lineNo}: route ${JSON.stringify(name)} requests unknown view ` +
+          `${JSON.stringify(view)} — valid views: page (the full page render) and the ` +
+          `corpus canvas fixture views ${VALID_VIEW_ROUTES.join(", ")} ` +
+          `(smoke.json rendered keys + the corpus-v2 recapture view rows) plus the capture ` +
+          `label ${JSON.stringify(UNKNOWN_VIEW_SENTINEL_LABEL)} ` +
+          `(executes as ${JSON.stringify(UNKNOWN_VIEW_INPUT)}).`,
       );
     }
     routes.push({ name, view });
@@ -557,6 +662,11 @@ export function renderReportText(report) {
   lines.push(`    UNATTRIBUTED:            ${report.counts.classCounts["UNATTRIBUTED"]}`);
   lines.push(`    NOISE (byte strictness): ${report.counts.classCounts.NOISE}`);
   lines.push(`    FETCH-ERROR:             ${report.counts.classCounts["FETCH-ERROR"]}`);
+  lines.push(
+    `  noise carriers (CF block, base|candidate either side): ` +
+      `page ${report.counts.noiseCarriers.page}, view ${report.counts.noiseCarriers.view}` +
+      ` (close-71 census: page lanes carry it, view lanes measure 0)`,
+  );
   const divergentRoutes = report.routes.filter((r) => r.class !== null);
   if (divergentRoutes.length > 0) {
     lines.push("Divergent / errored routes:");
@@ -785,7 +895,7 @@ function describePlan(opts, policy, sample, urls) {
     `  routes sampled: ${sample.sampled.length} of ${sample.sampled.length + sample.excluded.length} in scope ` +
       `(policy ${policy.routing.mode} @ ${policy.routing.sampleRate}%)`,
   );
-  for (const r of sample.sampled) lines.push(`    ${routeKey(r)}  ->  ${routePath(r)}`);
+  for (const r of sample.sampled) lines.push(`    ${routeKey(r)}  ->  ${routeUrl(r)}  [${routeLane(r)} lane]`);
   for (const r of sample.excluded) lines.push(`    (excluded by policy) ${routeKey(r)}`);
   lines.push(
     `  reference: ${policy.reference ?? "(none — real divergences will classify UNATTRIBUTED and fail the gate)"}`,
@@ -890,10 +1000,13 @@ export async function runShadow(opts) {
     if (bothBootsOk) {
       let storedArtifacts = 0;
       for (const route of sample.sampled) {
-        const urlPath = routePath(route);
+        const urlPath = routeUrl(route);
+        // Pages keep the proven header shape ({}); view routes carry the
+        // corpus XHR convention (live-check-71 fetch).
+        const fetchHeaders = route.view === "page" ? {} : VIEW_FETCH_HEADERS;
         const [b, c] = await Promise.all([
-          forwardOnce({ baseUrl: urls.base, method: "GET", urlPath, headers: {} }).catch((err) => ({ error: err })),
-          forwardOnce({ baseUrl: urls.candidate, method: "GET", urlPath, headers: {} }).catch((err) => ({ error: err })),
+          forwardOnce({ baseUrl: urls.base, method: "GET", urlPath, headers: fetchHeaders }).catch((err) => ({ error: err })),
+          forwardOnce({ baseUrl: urls.candidate, method: "GET", urlPath, headers: fetchHeaders }).catch((err) => ({ error: err })),
         ]);
 
         if (b.error && c.error) {
@@ -914,6 +1027,7 @@ export async function runShadow(opts) {
         const rec = {
           route: routeKey(route),
           path: urlPath,
+          lane: routeLane(route),
           outcome: verdict.outcome,
           class: verdict.class,
           firstDiff: verdict.firstDiff,
@@ -923,6 +1037,11 @@ export async function runShadow(opts) {
           bytesCandidate: c.body.length,
           shaBase: sha256Hex(b.body),
           shaCandidate: sha256Hex(c.body),
+          // The per-route noise-carrier census (the observable form of the
+          // close-71 asymmetry: page lanes carry the CF block, view lanes
+          // measure 0).
+          cfCarrierBase: cfCarrierPresent(b.body),
+          cfCarrierCandidate: cfCarrierPresent(c.body),
         };
         if (b.status !== c.status) rec.statusMismatch = true;
 
@@ -1033,7 +1152,8 @@ export async function runShadow(opts) {
     boots: { base: baseBoot.ok, candidate: candidateBoot.ok },
     gate,
     limitations: [
-      "S1: page-surface routes only — view routes other than 'page are refused (the staging instrument serves full pages; in-process view probes are a named extension, not built).",
+      "S1 CLOSED in this build: view-lane routes are sampled and compared — the corpus canvas fixture views (open, closed, content, title; the capture label unknown_view_sentinel executes as definitely_not_a_view) render through each checkout's own vm-staging-server.mjs at GET /<name>?view=<view>, the engine's bare view lane (RenderEngine.render), the same surface the corpus replay grades.",
+      "View-lane raise fidelity: a view render that raises emits the corpus sentinel shape 'CAPTURE_ERROR: <error class>: <message>' with the ENGINE's own error naming — base-vs-candidate comparison stays exact, but a corpus-recaptured reference for a RAISING view records Ruby's class taxonomy and will not byte-match the engine sentinel (successful views are unaffected).",
       "The comparison covers the read surface of the routes sampled; write surfaces are out of scope by design (the plan's safety posture).",
       "Classification is two-sided only when a --reference is supplied; without one, real divergences classify UNATTRIBUTED and fail the gate (safe default).",
     ],
@@ -1047,6 +1167,7 @@ function errorRecord(route, urlPath, outcome) {
   return {
     route: routeKey(route),
     path: urlPath,
+    lane: routeLane(route),
     outcome,
     class: "FETCH-ERROR",
     firstDiff: -1,
@@ -1056,6 +1177,8 @@ function errorRecord(route, urlPath, outcome) {
     bytesCandidate: null,
     shaBase: null,
     shaCandidate: null,
+    cfCarrierBase: null,
+    cfCarrierCandidate: null,
   };
 }
 
@@ -1069,10 +1192,19 @@ function summarizeCounts(routeRecords, strictness, requested, bothBootsOk) {
   };
   let byteIdentical = 0;
   let noiseOnly = 0;
+  // The per-lane noise-carrier census: routes whose base OR candidate bytes
+  // carry the Cloudflare block, counted per comparison lane. The close-71
+  // census measured page lanes carrying it (34/34 live pages) and view
+  // lanes never (0/37 live views) — a nonzero view count in a run is the
+  // anomaly this number exists to surface.
+  const noiseCarriers = { page: 0, view: 0 };
   for (const r of routeRecords) {
     if (r.outcome === "byte-identical") byteIdentical += 1;
     else if (r.outcome === "noise-only") noiseOnly += 1;
     if (r.class !== null) classCounts[r.class] = (classCounts[r.class] ?? 0) + 1;
+    if ((r.cfCarrierBase === true || r.cfCarrierCandidate === true) && (r.lane === "page" || r.lane === "view")) {
+      noiseCarriers[r.lane] += 1;
+    }
   }
   return {
     totalSampled: bothBootsOk ? requested : 0,
@@ -1081,6 +1213,7 @@ function summarizeCounts(routeRecords, strictness, requested, bothBootsOk) {
     noiseOnly,
     divergent: countDivergentAtStrictness(routeRecords, strictness),
     classCounts,
+    noiseCarriers,
   };
 }
 
@@ -1109,9 +1242,13 @@ export function shadowUsage(exitCode = EXIT_OK) {
     "Options:",
     "  --policy <file>           Routing policy JSON (schema in docs; mode/allowlist/",
     "                            blocklist/sampleRate + targetsFile/comparison/gate/reference)",
-    "  --targets <file>          Route sample TSV: name<TAB>view per line (view optional,",
-    "                            default and only allowed value: page). Default: the 5",
-    "                            standard probe pages (Home, Aikido, About, Eagle, Taking_Stock)",
+    "  --targets <file>          Route sample TSV: name<TAB>view per line. Valid views: page",
+    "                            (default; the full page render) and the corpus canvas fixture",
+    "                            views open, closed, content, title (rendered at",
+    "                            /<name>?view=<view> through each checkout's own staging",
+    "                            instrument), plus the capture label unknown_view_sentinel",
+    "                            (executes as definitely_not_a_view). Default: the 5 standard",
+    "                            probe pages (Home, Aikido, About, Eagle, Taking_Stock)",
     "  --reference <file>        Reference JSONL: {route, sha256, bodyFile} lines — enables",
     "                            two-sided classification (ENGINE-GAP vs CONTENT-CHANGED)",
     "  --strictness <level>      byte | normalized (default normalized — the documented",

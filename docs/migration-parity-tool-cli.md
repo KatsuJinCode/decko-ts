@@ -146,7 +146,11 @@ class NOISE); `--strictness normalized (default) compares after the two-region n
   the same `loadPolicy (globs are anchored; `sampleRate is deterministic FNV-1a percent
   sampling, monotonic across rates — a route shadowed at rate r is shadowed at every r' > r).
 - `targetsFile — route sample TSV: one `name per line or `name<TAB>view; `# comments allowed.
-  Default: the 5 standard probe pages (Home, Aikido, About, Eagle, Taking_Stock).
+  The view column accepts `page (the default; the full page render) and the corpus canvas
+  fixture views `open, `closed, `content, `title — plus the capture label
+  `unknown_view_sentinel (executes as `definitely_not_a_view, the fixture-schema.ts
+  convention). Anything else is refused by name. Default: the 5 standard probe pages
+  (Home, Aikido, About, Eagle, Taking_Stock).
 - `comparison.strictness — normalized (default) or byte.
 - `gate.requireConsecutiveCleanRuns — N consecutive clean runs, signature-scoped.
 - `reference — JSONL lines `{ "route": "Name|view", "sha256": "<64 hex>, "bodyFile": "<path> };
@@ -157,11 +161,36 @@ class NOISE); `--strictness normalized (default) compares after the two-region n
 `node bin/migration-parity-tool.mjs policy --check <file> [--sample-path /Name] validates a
 policy and prints the resolved form (exit 0) or the named reason (exit 2).
 
+## The view-lane surface (S1 CLOSED — view routes are sampled and compared)
+
+A targets line `Name<TAB>open shadows the OPEN VIEW of that card. The URL form is the corpus
+convention `GET /<name>?view=<view>; each checkout's own staging instrument renders it through
+the engine's BARE view lane (`RenderEngine.render(name, view)` — the exact (card, view) surface
+the corpus replay grades: no layout chrome, capture-environment bytes). View fetches carry the
+corpus XHR header shape (`Accept: text/html, */*; q=0.01` + `X-Requested-With: XMLHttpRequest`,
+per the live-check-71 capture). A view render that RAISES emits the corpus sentinel bytes
+`CAPTURE_ERROR: <error class>: <message>` at status 200, so raising views compare as bytes
+like everything else.
+
+Two rules keep the view lane composited from proven pieces only:
+
+1. Policy matching sees the BARE PATH only (`/<Name>`). The proven glob language treats `?` as a
+   one-char wildcard and its convention is "strip query before matching" — so allowlist and
+   blocklist patterns select by card name, and a card's page and views sample as one unit. The
+   sample SIGNATURE binds (name, view) pairs, so a view-lane clean streak never mixes with a
+   page-lane run in the cutover gate.
+2. The noise normalizer is UNCHANGED and lane-blind (the same two regions apply to any bytes).
+   The close-71/live-check-71 census measured why that is safe: all 34 live-fetched PAGE entries
+   carried the Cloudflare block while ZERO of the 37 VIEW entries did. The report carries a
+   per-lane CF-carrier census (`counts.noiseCarriers.page / .view`) so a run shows the asymmetry
+   directly — a nonzero view-lane count is an anomaly to investigate.
+
 ## Honest limits (this build)
 
-- **S1 — page-surface routes only. Route views other than `page are REFUSED with a named
-  message: the staging instrument serves full pages; view-lane shadowing needs the in-process
-  probe instrument (a named extension, not built here).
+- **View-lane raise fidelity** — a raising view's sentinel uses the ENGINE's error class naming;
+  a corpus-recaptured reference for a raising view records Ruby's class taxonomy and will not
+  byte-match it. Base-vs-candidate comparison stays exact; only reference arbitration of
+  RAISING views is approximate (successful views are unaffected).
 - The comparison covers the read surface of the sampled routes; write surfaces are out of scope
   by design (the plan's safety posture).
 - Two-sided classification requires a reference; without one, divergences classify UNATTRIBUTED
