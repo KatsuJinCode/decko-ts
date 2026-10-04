@@ -869,16 +869,35 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
     styles: [["group: local", ["search.scss"]]],
     scripts: [["group: local", ["autocomplete.js.coffee", "search_box.js.coffee"]]],
   },
-  // Census M5 (serializer-followup2): the graded expected-v2 corpus carries
-  // mod: shades' Scripts section BODY — the four-file local group (the
-  // older recapture generation the empty-body fit was pinned to is not the
-  // graded capture). Ruby: view :scripts nests the mod's script asset card,
-  // whose core renders the Abstract::ModAssets group list.
-  shades: {
-    scripts: [
-      ["group: local", ["decko_logo.js", "decko_org.js.coffee", "snap.js", "snap_svg.js"]],
-    ],
-  },
+  // NO `shades` entry, deliberately, and the absence is the pinned state.
+  // Census M5 (serializer-followup2, 0377f4d3) added one — a four-file local
+  // group (decko_logo.js, decko_org.js.coffee, snap.js, snap_svg.js) —
+  // transcribed from tmp/serializer-followup/probe-green5/
+  // expected--mod_shades__page.html, which it cited as the graded
+  // expected-v2 corpus. It is not. That file is a LIVE recapture of the
+  // production site (taken 2026-10-03) carrying the DigitalOcean cssPath
+  // files/45514/1790384218.css = 2026-09-26; the graded yardstick's
+  // page-lane/recapture-raw-shard-000043 carries the s3 cssPath
+  // files/45514/1786554352.css = 2026-08-12, 44.3 days earlier. The site
+  // changed in between; the yardstick did not.
+  //
+  // The graded bytes: 49308 "mod: shades" main-slot card body is
+  // `<p></p><br/><p><h3>Scripts</h3></p>` (section present, body EMPTY) and
+  // 49309 "mod: shades+*script" is the empty string. Ruby derives both with
+  // no shades gem among the 32 installed card-mod-* gems —
+  // mod_assets.rb:57-59 assets_path nil -> :24-30 folder_group_card nil ->
+  // :15-22 local_group_cards [] -> :171-181 haml :group_list, groups: []
+  // -> group_list.haml's all-body `each` renders ""; type/mod.rb:7-13/:22-24
+  // joins it after the empty description's `<p></p>` with "<br/>".
+  //
+  // So the section is emitted by the union predicate's OTHER half (the
+  // corpus child row, type/mod.rb:115-117 `scripts?` = `fetch(:script)
+  // .present?`) with an EMPTY body, and `modChildAssetGroups` falls through
+  // parent -> MOD_CHILD_ASSET_GROUPS_SRC to undefined -> "". The four
+  // filenames exist nowhere in the installed gem set nor in the decko
+  // distribution (archive/decko-fork-study/decko/mod: 32 mod dirs, none of
+  // them shades). Adjudicated 2026-10-04; evidence and the superseded
+  // assertion: tmp/wrong-goal-hunt/shades-adjudication-lane.md.
   style: {
     styles: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
   },
