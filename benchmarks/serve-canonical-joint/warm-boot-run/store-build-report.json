@@ -1,0 +1,41 @@
+{
+  "storePath": "C:\\localProjects\\decko-ts-lane-warmboot-2026-10-04\\benchmarks\\serve-canonical-joint\\warm-boot-run\\one-trip-store.warm-boot.sqlite3",
+  "corpusPath": "C:\\localProjects\\decko-ts-lane-warmboot-2026-10-04\\benchmarks\\serve-canonical-joint\\canonical-production-order.sqlite3",
+  "pages": 5,
+  "buildMs": 6189,
+  "report": {
+    "liveCards": 19476,
+    "composedNames": 19430,
+    "edges": 73392,
+    "danglingEdges": 10736,
+    "searchNests": 104,
+    "pages": {
+      "Home": {
+        "pageId": 80,
+        "closureSize": 3507
+      },
+      "Aikido": {
+        "pageId": 947,
+        "closureSize": 3512
+      },
+      "About": {
+        "pageId": 9923,
+        "closureSize": 3507
+      },
+      "Eagle": {
+        "pageId": 34823,
+        "closureSize": 3508
+      },
+      "Taking_Stock": {
+        "pageId": 3252,
+        "closureSize": 3508
+      }
+    },
+    "edgeAgreement": {
+      "storedInclusionRows": 22581,
+      "parsedEdges": 16632,
+      "parsedNotStored": 2752,
+      "storedNotParsed": 8701
+    }
+  }
+}

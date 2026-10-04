@@ -1,0 +1,1420 @@
+{
+  "lane": "warm-boot-first-visitor",
+  "generatedAt": "2026-10-04T15:23:16.306Z",
+  "servingSurface": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts @ 921906fa (via committed benchmarks/one-trip-render/one-trip-serving-line-worker.ts bundle)",
+  "localBoot": "node:http on 127.0.0.1; BunnyDbDriver Hrana seam stubbed over LocalSqliteDriver on the CANONICAL-SHAPE DB copy (canonical-production-order.sqlite3, re-verified this lane by verify-canonical-db-copy.mjs: VERIFY PASS); one posture per process; ONE FRESH WORKER PROCESS PER (posture x regimen x page) CELL; workers self-terminate after the plan (never killed); cache stack UNARMED; requests cookieless = cache BYPASSED",
+  "tripsBoundary": "one stub POST = one BunnyDbDriver query/batch call = ONE wire round trip (the serving-line lane's counting boundary)",
+  "corpus": "21,670-card serving deck, canonical shape (backup dump-postscrub.sqlite3 sha 623f5fcb..., verified by digest)",
+  "probePages": [
+    "Home",
+    "Aikido",
+    "About",
+    "Eagle",
+    "Taking_Stock"
+  ],
+  "heavyPages": [
+    "Aikido",
+    "About",
+    "Home"
+  ],
+  "seedPage": "Home",
+  "store": {
+    "path": "C:\\localProjects\\decko-ts-lane-warmboot-2026-10-04\\benchmarks\\serve-canonical-joint\\warm-boot-run\\one-trip-store.warm-boot.sqlite3",
+    "buildMs": 6189,
+    "liveCards": 19476,
+    "edges": 73392,
+    "pageClosures": {
+      "Home": {
+        "pageId": 80,
+        "closureSize": 3507
+      },
+      "Aikido": {
+        "pageId": 947,
+        "closureSize": 3512
+      },
+      "About": {
+        "pageId": 9923,
+        "closureSize": 3507
+      },
+      "Eagle": {
+        "pageId": 34823,
+        "closureSize": 3508
+      },
+      "Taking_Stock": {
+        "pageId": 3252,
+        "closureSize": 3508
+      }
+    }
+  },
+  "regimens": [
+    {
+      "id": "a-cold-first",
+      "label": "(a) cold boot, first request immediately",
+      "targetPlanPosition": 1
+    },
+    {
+      "id": "b-status-warm",
+      "label": "(b) boot + one /_status warm",
+      "targetPlanPosition": 2
+    },
+    {
+      "id": "c-seed-warm",
+      "label": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "targetPlanPosition": 3
+    }
+  ],
+  "cells": [
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/Home"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 402,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Home",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2406,
+        "trips": 806,
+        "statements": 971,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 971,
+        "bytes": 22054
+      },
+      "bodyFile": "off\\a-cold-first\\_Home\\0-_Home.body",
+      "targetBodyFile": "off\\a-cold-first\\_Home\\0-_Home.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/Aikido"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 480,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2133,
+        "trips": 564,
+        "statements": 722,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 722,
+        "bytes": 108760
+      },
+      "bodyFile": "off\\a-cold-first\\_Aikido\\0-_Aikido.body",
+      "targetBodyFile": "off\\a-cold-first\\_Aikido\\0-_Aikido.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/About"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 226,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/About",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2398,
+        "trips": 703,
+        "statements": 884,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 884,
+        "bytes": 20965
+      },
+      "bodyFile": "off\\a-cold-first\\_About\\0-_About.body",
+      "targetBodyFile": "off\\a-cold-first\\_About\\0-_About.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/Eagle"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 341,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2190,
+        "trips": 572,
+        "statements": 720,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 720,
+        "bytes": 20947
+      },
+      "bodyFile": "off\\a-cold-first\\_Eagle\\0-_Eagle.body",
+      "targetBodyFile": "off\\a-cold-first\\_Eagle\\0-_Eagle.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 97,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 1932,
+        "trips": 532,
+        "statements": 670,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 670,
+        "bytes": 13659
+      },
+      "bodyFile": "off\\a-cold-first\\_Taking_Stock\\0-_Taking_Stock.body",
+      "targetBodyFile": "off\\a-cold-first\\_Taking_Stock\\0-_Taking_Stock.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/Home"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 97,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 248,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 248,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Home",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 2120,
+        "trips": 803,
+        "statements": 968,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 968,
+        "bytes": 22054
+      },
+      "bodyFile": "off\\b-status-warm\\_Home\\0-_status.body",
+      "targetBodyFile": "off\\b-status-warm\\_Home\\1-_Home.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/Aikido"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 99,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 297,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 297,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1831,
+        "trips": 561,
+        "statements": 719,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 719,
+        "bytes": 108760
+      },
+      "bodyFile": "off\\b-status-warm\\_Aikido\\0-_status.body",
+      "targetBodyFile": "off\\b-status-warm\\_Aikido\\1-_Aikido.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/About"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 89,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 213,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 213,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/About",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 2182,
+        "trips": 700,
+        "statements": 881,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 881,
+        "bytes": 20965
+      },
+      "bodyFile": "off\\b-status-warm\\_About\\0-_status.body",
+      "targetBodyFile": "off\\b-status-warm\\_About\\1-_About.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/_status",
+        "/Eagle"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 105,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 248,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 248,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1779,
+        "trips": 569,
+        "statements": 717,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 717,
+        "bytes": 20947
+      },
+      "bodyFile": "off\\b-status-warm\\_Eagle\\0-_status.body",
+      "targetBodyFile": "off\\b-status-warm\\_Eagle\\1-_Eagle.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/_status",
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 100,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 225,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 225,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1579,
+        "trips": 529,
+        "statements": 667,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 667,
+        "bytes": 13659
+      },
+      "bodyFile": "off\\b-status-warm\\_Taking_Stock\\0-_status.body",
+      "targetBodyFile": "off\\b-status-warm\\_Taking_Stock\\1-_Taking_Stock.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Home"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 95,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2147,
+          "trips": 806,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 971
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 6148,
+          "trips": 5541,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 5614
+        }
+      ],
+      "warmupTotalMs": 8295,
+      "warmupTotalTrips": 6347,
+      "target": {
+        "path": "/Home",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 2198,
+        "trips": 2054,
+        "statements": 2082,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 2082,
+        "bytes": 22054
+      },
+      "bodyFile": "off\\c-seed-warm\\_Home\\0-_Home.body",
+      "targetBodyFile": "off\\c-seed-warm\\_Home\\2-_Home.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Aikido"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 94,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2193,
+          "trips": 806,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 971
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 6274,
+          "trips": 5541,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 5614
+        }
+      ],
+      "warmupTotalMs": 8467,
+      "warmupTotalTrips": 6347,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 5133,
+        "trips": 4097,
+        "statements": 4148,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 4148,
+        "bytes": 108760
+      },
+      "bodyFile": "off\\c-seed-warm\\_Aikido\\0-_Home.body",
+      "targetBodyFile": "off\\c-seed-warm\\_Aikido\\2-_Aikido.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/About"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 93,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2191,
+          "trips": 806,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 971
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 6499,
+          "trips": 5541,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 5614
+        }
+      ],
+      "warmupTotalMs": 8690,
+      "warmupTotalTrips": 6347,
+      "target": {
+        "path": "/About",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 5405,
+        "trips": 4097,
+        "statements": 4148,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 4148,
+        "bytes": 20965
+      },
+      "bodyFile": "off\\c-seed-warm\\_About\\0-_Home.body",
+      "targetBodyFile": "off\\c-seed-warm\\_About\\2-_About.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Eagle"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 94,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2324,
+          "trips": 806,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 971
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 7269,
+          "trips": 5541,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 5614
+        }
+      ],
+      "warmupTotalMs": 9593,
+      "warmupTotalTrips": 6347,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 6420,
+        "trips": 4119,
+        "statements": 4171,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 4171,
+        "bytes": 20947
+      },
+      "bodyFile": "off\\c-seed-warm\\_Eagle\\0-_Home.body",
+      "targetBodyFile": "off\\c-seed-warm\\_Eagle\\2-_Eagle.body"
+    },
+    {
+      "posture": "off",
+      "postureLabel": "one-trip OFF (deployed default)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 307,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2346,
+          "trips": 806,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 971
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 6956,
+          "trips": 5541,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 5614
+        }
+      ],
+      "warmupTotalMs": 9302,
+      "warmupTotalTrips": 6347,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 5252,
+        "trips": 4094,
+        "statements": 4148,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 4148,
+        "bytes": 13659
+      },
+      "bodyFile": "off\\c-seed-warm\\_Taking_Stock\\0-_Home.body",
+      "targetBodyFile": "off\\c-seed-warm\\_Taking_Stock\\2-_Taking_Stock.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/Home"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 475,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Home",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2345,
+        "trips": 399,
+        "statements": 566,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 564,
+        "bytes": 22054
+      },
+      "bodyFile": "on\\a-cold-first\\_Home\\0-_Home.body",
+      "targetBodyFile": "on\\a-cold-first\\_Home\\0-_Home.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/Aikido"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 187,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2099,
+        "trips": 334,
+        "statements": 494,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 492,
+        "bytes": 108760
+      },
+      "bodyFile": "on\\a-cold-first\\_Aikido\\0-_Aikido.body",
+      "targetBodyFile": "on\\a-cold-first\\_Aikido\\0-_Aikido.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/About"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 134,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/About",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2409,
+        "trips": 446,
+        "statements": 628,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 626,
+        "bytes": 20965
+      },
+      "bodyFile": "on\\a-cold-first\\_About\\0-_About.body",
+      "targetBodyFile": "on\\a-cold-first\\_About\\0-_About.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/Eagle"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 166,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 2141,
+        "trips": 340,
+        "statements": 491,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 489,
+        "bytes": 20947
+      },
+      "bodyFile": "on\\a-cold-first\\_Eagle\\0-_Eagle.body",
+      "targetBodyFile": "on\\a-cold-first\\_Eagle\\0-_Eagle.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "a-cold-first",
+      "regimenLabel": "(a) cold boot, first request immediately",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 1,
+      "bootToServingMs": 99,
+      "warmup": [],
+      "warmupTotalMs": 0,
+      "warmupTotalTrips": 0,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 1,
+        "status": 200,
+        "wallMs": 1865,
+        "trips": 286,
+        "statements": 426,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 424,
+        "bytes": 13659
+      },
+      "bodyFile": "on\\a-cold-first\\_Taking_Stock\\0-_Taking_Stock.body",
+      "targetBodyFile": "on\\a-cold-first\\_Taking_Stock\\0-_Taking_Stock.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/Home"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 362,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 226,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 226,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Home",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1952,
+        "trips": 396,
+        "statements": 563,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 561,
+        "bytes": 22054
+      },
+      "bodyFile": "on\\b-status-warm\\_Home\\0-_status.body",
+      "targetBodyFile": "on\\b-status-warm\\_Home\\1-_Home.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/Aikido"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 393,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 226,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 226,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1777,
+        "trips": 331,
+        "statements": 491,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 489,
+        "bytes": 108760
+      },
+      "bodyFile": "on\\b-status-warm\\_Aikido\\0-_status.body",
+      "targetBodyFile": "on\\b-status-warm\\_Aikido\\1-_Aikido.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/_status",
+        "/About"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 359,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 248,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 248,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/About",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 2042,
+        "trips": 443,
+        "statements": 625,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 623,
+        "bytes": 20965
+      },
+      "bodyFile": "on\\b-status-warm\\_About\\0-_status.body",
+      "targetBodyFile": "on\\b-status-warm\\_About\\1-_About.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/_status",
+        "/Eagle"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 91,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 210,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 210,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1679,
+        "trips": 337,
+        "statements": 488,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 486,
+        "bytes": 20947
+      },
+      "bodyFile": "on\\b-status-warm\\_Eagle\\0-_status.body",
+      "targetBodyFile": "on\\b-status-warm\\_Eagle\\1-_Eagle.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "b-status-warm",
+      "regimenLabel": "(b) boot + one /_status warm",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/_status",
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 2,
+      "bootToServingMs": 89,
+      "warmup": [
+        {
+          "path": "/_status",
+          "planPosition": 1,
+          "wallMs": 214,
+          "trips": 4,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 4
+        }
+      ],
+      "warmupTotalMs": 214,
+      "warmupTotalTrips": 4,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 2,
+        "status": 200,
+        "wallMs": 1609,
+        "trips": 283,
+        "statements": 423,
+        "attach": 1,
+        "dataFetch": 1,
+        "other": 421,
+        "bytes": 13659
+      },
+      "bodyFile": "on\\b-status-warm\\_Taking_Stock\\0-_status.body",
+      "targetBodyFile": "on\\b-status-warm\\_Taking_Stock\\1-_Taking_Stock.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Home",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Home"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 309,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2253,
+          "trips": 399,
+          "status": 200,
+          "attach": 1,
+          "dataFetch": 1,
+          "other": 564
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 5825,
+          "trips": 2436,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 2498
+        }
+      ],
+      "warmupTotalMs": 8078,
+      "warmupTotalTrips": 2835,
+      "target": {
+        "path": "/Home",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 2324,
+        "trips": 1001,
+        "statements": 1024,
+        "attach": 0,
+        "dataFetch": 0,
+        "other": 1024,
+        "bytes": 22054
+      },
+      "bodyFile": "on\\c-seed-warm\\_Home\\0-_Home.body",
+      "targetBodyFile": "on\\c-seed-warm\\_Home\\2-_Home.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Aikido",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Aikido"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 104,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2062,
+          "trips": 399,
+          "status": 200,
+          "attach": 1,
+          "dataFetch": 1,
+          "other": 564
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 4944,
+          "trips": 2436,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 2498
+        }
+      ],
+      "warmupTotalMs": 7006,
+      "warmupTotalTrips": 2835,
+      "target": {
+        "path": "/Aikido",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 3657,
+        "trips": 897,
+        "statements": 942,
+        "attach": 0,
+        "dataFetch": 1,
+        "other": 941,
+        "bytes": 108760
+      },
+      "bodyFile": "on\\c-seed-warm\\_Aikido\\0-_Home.body",
+      "targetBodyFile": "on\\c-seed-warm\\_Aikido\\2-_Aikido.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "About",
+      "heavy": true,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/About"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 90,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2364,
+          "trips": 399,
+          "status": 200,
+          "attach": 1,
+          "dataFetch": 1,
+          "other": 564
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 6565,
+          "trips": 2436,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 2498
+        }
+      ],
+      "warmupTotalMs": 8929,
+      "warmupTotalTrips": 2835,
+      "target": {
+        "path": "/About",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 3454,
+        "trips": 896,
+        "statements": 941,
+        "attach": 0,
+        "dataFetch": 1,
+        "other": 940,
+        "bytes": 20965
+      },
+      "bodyFile": "on\\c-seed-warm\\_About\\0-_Home.body",
+      "targetBodyFile": "on\\c-seed-warm\\_About\\2-_About.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Eagle",
+      "heavy": false,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Eagle"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 103,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2157,
+          "trips": 399,
+          "status": 200,
+          "attach": 1,
+          "dataFetch": 1,
+          "other": 564
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 5230,
+          "trips": 2436,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 2498
+        }
+      ],
+      "warmupTotalMs": 7387,
+      "warmupTotalTrips": 2835,
+      "target": {
+        "path": "/Eagle",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 4139,
+        "trips": 909,
+        "statements": 955,
+        "attach": 0,
+        "dataFetch": 1,
+        "other": 954,
+        "bytes": 20947
+      },
+      "bodyFile": "on\\c-seed-warm\\_Eagle\\0-_Home.body",
+      "targetBodyFile": "on\\c-seed-warm\\_Eagle\\2-_Eagle.body"
+    },
+    {
+      "posture": "on",
+      "postureLabel": "one-trip ON (DECKO_ONE_TRIP=1 + store)",
+      "regimen": "c-seed-warm",
+      "regimenLabel": "(c) boot + full warm render of seeding page (Home x2), then measure",
+      "page": "Taking_Stock",
+      "heavy": false,
+      "planPaths": [
+        "/Home",
+        "/Home",
+        "/Taking_Stock"
+      ],
+      "targetPlanPosition": 3,
+      "bootToServingMs": 88,
+      "warmup": [
+        {
+          "path": "/Home",
+          "planPosition": 1,
+          "wallMs": 2105,
+          "trips": 399,
+          "status": 200,
+          "attach": 1,
+          "dataFetch": 1,
+          "other": 564
+        },
+        {
+          "path": "/Home",
+          "planPosition": 2,
+          "wallMs": 5103,
+          "trips": 2436,
+          "status": 200,
+          "attach": 0,
+          "dataFetch": 0,
+          "other": 2498
+        }
+      ],
+      "warmupTotalMs": 7208,
+      "warmupTotalTrips": 2835,
+      "target": {
+        "path": "/Taking_Stock",
+        "planPosition": 3,
+        "status": 200,
+        "wallMs": 3918,
+        "trips": 898,
+        "statements": 946,
+        "attach": 0,
+        "dataFetch": 1,
+        "other": 945,
+        "bytes": 13659
+      },
+      "bodyFile": "on\\c-seed-warm\\_Taking_Stock\\0-_Home.body",
+      "targetBodyFile": "on\\c-seed-warm\\_Taking_Stock\\2-_Taking_Stock.body"
+    }
+  ],
+  "regimenIdentity": [
+    {
+      "posture": "off",
+      "page": "Home",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        22054,
+        22054,
+        22054
+      ]
+    },
+    {
+      "posture": "off",
+      "page": "Aikido",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        108760,
+        108760,
+        108760
+      ]
+    },
+    {
+      "posture": "off",
+      "page": "About",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        20965,
+        20965,
+        20965
+      ]
+    },
+    {
+      "posture": "off",
+      "page": "Eagle",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        20947,
+        20947,
+        20947
+      ]
+    },
+    {
+      "posture": "off",
+      "page": "Taking_Stock",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        13659,
+        13659,
+        13659
+      ]
+    },
+    {
+      "posture": "on",
+      "page": "Home",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        22054,
+        22054,
+        22054
+      ]
+    },
+    {
+      "posture": "on",
+      "page": "Aikido",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        108760,
+        108760,
+        108760
+      ]
+    },
+    {
+      "posture": "on",
+      "page": "About",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        20965,
+        20965,
+        20965
+      ]
+    },
+    {
+      "posture": "on",
+      "page": "Eagle",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        20947,
+        20947,
+        20947
+      ]
+    },
+    {
+      "posture": "on",
+      "page": "Taking_Stock",
+      "byteIdenticalAcrossRegimens": true,
+      "bytes": [
+        13659,
+        13659,
+        13659
+      ]
+    }
+  ]
+}

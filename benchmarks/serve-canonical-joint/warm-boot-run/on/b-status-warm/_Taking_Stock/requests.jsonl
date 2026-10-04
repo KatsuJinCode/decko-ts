@@ -1,0 +1,2 @@
+{"seq":1,"method":"GET","path":"/_status","status":200,"trips":4,"attach":0,"dataFetch":0,"other":4,"wallMs":213,"responseBytes":370,"posture":"on"}
+{"seq":2,"method":"GET","path":"/Taking_Stock","status":200,"trips":283,"attach":1,"dataFetch":1,"other":421,"wallMs":1606,"responseBytes":13659,"posture":"on"}
