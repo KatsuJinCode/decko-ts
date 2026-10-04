@@ -1,0 +1,33 @@
+{
+  "backupSha256": "623f5fcbfdbdde6e38d6a5b179e33a23c04cd1f4ec35c85779f2ee5ee6c66afd",
+  "backupUntouched": true,
+  "integrity": "ok",
+  "census": [
+    {
+      "type": "index",
+      "c": 33
+    },
+    {
+      "type": "table",
+      "c": 13
+    }
+  ],
+  "tablesExcludingInternal": 12,
+  "cardsCount": 21670,
+  "refsCount": 48525,
+  "cardsDigest": {
+    "rows": 21670,
+    "sha256": "b841ac172934957b726b4d95cbfd0b309a180330f69e020e50c4fbc8d3754393"
+  },
+  "refsDigest": {
+    "rows": 48525,
+    "sha256": "d338d1b9d4afeec57f847ee9b7af624e91b8b87590a69611f9db8392b53bee30"
+  },
+  "cardsDigestMatchesBuild": true,
+  "refsDigestMatchesBuild": true,
+  "cardsIdTypeof": [
+    "integer"
+  ],
+  "journalMode": "delete"
+}
+VERIFY: PASS

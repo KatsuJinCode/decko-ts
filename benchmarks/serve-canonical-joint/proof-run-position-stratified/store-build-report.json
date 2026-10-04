@@ -1,0 +1,109 @@
+{
+  "storePath": "C:\\localProjects\\decko-ts-lane-position-trips-2026-10-04\\benchmarks\\serve-canonical-joint\\proof-run-position-stratified\\one-trip-store.serve-canonical-joint.sqlite3",
+  "corpusPath": "C:\\localProjects\\decko-ts-lane-position-trips-2026-10-04\\benchmarks\\serve-canonical-joint\\canonical-production-order.sqlite3",
+  "pages": 22,
+  "buildMs": 16002,
+  "report": {
+    "liveCards": 19476,
+    "composedNames": 19430,
+    "edges": 73392,
+    "danglingEdges": 10736,
+    "searchNests": 104,
+    "pages": {
+      "1145": {
+        "pageId": 12877,
+        "closureSize": 3508
+      },
+      "Home": {
+        "pageId": 80,
+        "closureSize": 3507
+      },
+      "Aikido": {
+        "pageId": 947,
+        "closureSize": 3512
+      },
+      "About": {
+        "pageId": 9923,
+        "closureSize": 3507
+      },
+      "Eagle": {
+        "pageId": 34823,
+        "closureSize": 3508
+      },
+      "Taking_Stock": {
+        "pageId": 3252,
+        "closureSize": 3508
+      },
+      "Laundry": {
+        "pageId": 23291,
+        "closureSize": 3509
+      },
+      "Aikido Oak Cliff": {
+        "pageId": 41953,
+        "closureSize": 3507
+      },
+      "Academic CV BW": {
+        "pageId": 1823,
+        "closureSize": 3507
+      },
+      "slate skin customized": {
+        "pageId": 38274,
+        "closureSize": 3507
+      },
+      "kombucha": {
+        "pageId": 18713,
+        "closureSize": 3507
+      },
+      "peace": {
+        "pageId": 2186,
+        "closureSize": 3510
+      },
+      "NorthBayAikidoGlossary": {
+        "pageId": 2712,
+        "closureSize": 3509
+      },
+      "UCOoPHTML": {
+        "pageId": 4106,
+        "closureSize": 3507
+      },
+      "Gopher Tuna": {
+        "pageId": 15497,
+        "closureSize": 3508
+      },
+      "AAR 2011 SF Schedule": {
+        "pageId": 10101,
+        "closureSize": 3508
+      },
+      "Aiki Peace Week 2010 Results": {
+        "pageId": 2494,
+        "closureSize": 3508
+      },
+      "The_Dojo_The_layout_and_structure_of_a_place_of_training": {
+        "pageId": 42854,
+        "closureSize": 3508
+      },
+      "litera skin customized": {
+        "pageId": 34530,
+        "closureSize": 3508
+      },
+      "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo": {
+        "pageId": 42855,
+        "closureSize": 3508
+      },
+      "PLflier": {
+        "pageId": 2889,
+        "closureSize": 3507
+      },
+      "Jumonville Randori Handout 201002v1": {
+        "pageId": 2219,
+        "closureSize": 3508
+      }
+    },
+    "edgeAgreement": {
+      "storedInclusionRows": 22581,
+      "parsedEdges": 16632,
+      "parsedNotStored": 2752,
+      "storedNotParsed": 8701
+    }
+  }
+}
