@@ -53,21 +53,31 @@ const SHARDS_PRESENT = existsSync(VIEW_LANE_DIR);
 
 const RUN = REPLAY_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT;
 
-let storage: ReturnType<typeof createRawStructureSeededStorage> | undefined;
+type RawStorage = Awaited<ReturnType<typeof createRawStructureSeededStorage>>;
+
+let storage: RawStorage | undefined;
 afterAll(() => {
   storage?.close();
 });
+
+/** One shared raw-corpus boot for the whole suite (seed ~30s). */
+async function seedShared(): Promise<RawStorage> {
+  if (storage === undefined) {
+    const everyLiveId = everyCardId();
+    storage = await createRawStructureSeededStorage(new Set(everyLiveId));
+    storage.fetcher.installNameEnvironment();
+    await storage.fetcher.warmLexicon(everyLiveId);
+  }
+  return storage;
+}
 
 describe.skipIf(!RUN)("unresolved-host phantom identity: simple names take the deck basic card (view187 census)", () => {
   it(
     "RVW:open renders its simple-named phantom item with the deck basic identity (BasicCs/22281/basic_c), not RichText",
     async () => {
       const expected = loadExpected("RVW", "open");
-      const everyLiveId = everyCardId();
-      storage = await createRawStructureSeededStorage(new Set(everyLiveId));
-      storage.fetcher.installNameEnvironment();
-      await storage.fetcher.warmLexicon(everyLiveId);
-      const actual = await storage.engine.render("RVW", "open");
+      const s = await seedShared();
+      const actual = await s.engine.render("RVW", "open");
 
       // The graded entry's ONLY divergence at the lane base was the phantom
       // identity tokens (single -2 region, first diff at 2503). Pin all four
@@ -97,13 +107,7 @@ describe.skipIf(!RUN)("unresolved-host phantom identity: simple names take the d
   it(
     "compound-named phantom items keep the RichText identity (the MNv-cascade corpus pins; compound control)",
     async () => {
-      const everyLiveId = everyCardId();
-      if (storage === undefined) {
-        storage = await createRawStructureSeededStorage(new Set(everyLiveId));
-        storage.fetcher.installNameEnvironment();
-        await storage.fetcher.warmLexicon(everyLiveId);
-      }
-      const s = storage;
+      const s = await seedShared();
       // "password reset email" content: its item "Decko_Bot+*account" is a
       // compound phantom the corpus pins RichText/3 (cross-tab compound x
       // RichText 52). This entry PASSES at the lane base via the RichText
@@ -123,7 +127,9 @@ describe.skipIf(!RUN)("unresolved-host phantom identity: simple names take the d
 
 function everyCardId(): number[] {
   const db = new Database(RAW_CORPUS_DB, { readonly: true });
-  const ids = db.prepare("SELECT id FROM cards WHERE trash = 0").all().map((r) => r.id as number);
+  const ids = (db.prepare("SELECT id FROM cards WHERE trash = 0").all() as Array<{ id: number }>).map(
+    (r) => r.id,
+  );
   db.close();
   return ids;
 }
