@@ -4852,17 +4852,43 @@ function barDivHtml(ctx: ViewContext): string {
   // [[Eagle+*members]] anchor is wanted-card in the capture — the class
   // answer therefore lives ONLY here (the renderLinkChunk known arm
   // stays warm-map + peek, view-fail V4).
-  // The carve-out is TWO-PART ONLY: a 2-part star-right compound names a
-  // SET card (fetch presents it - the Eagle Anonymous+*created oracle);
-  // a LONGER star-right name is a RULE-ROW shape (its left is itself a
-  // set) and Card.known? answers nil without a stored row - the
-  // Message+Conversation+*type plus right+*head bar menu is wanted-card
-  // in the capture (recapture-raw-shard-000017, delta +203 pre-fix).
+  // The carve-out is TWO-PART and LEFT-SPLIT (page42 lane 2026-10-04,
+  // corpus-refined): a corpus-wide census of every full-page-link pin in
+  // expected-v2 (57,463 anchors, page+view lanes) splits the 2-part
+  // star-right compounds by their LEFT part.
+  //   STAR-LEFT ("*all+*autoname", "*star+*default", ... - a rule-row name
+  //   "<set-marker>+<setting>"): the corpus pins the class by STORED-ROW
+  //   presence, 253/253 - the 82 known-pinned names all resolve present in
+  //   the staging corpus (*all+*create -> id 6551 family) and the 171
+  //   wanted-pinned names all resolve absent (*all+*autoname family). The
+  //   bb430e0e "fetch presents" reading is falsified for this subset: Ruby's
+  //   fetch presents no virtual card for a rule-row name without a stored
+  //   row, and the oracle pins wanted-card on those menus (recapture-raw-
+  //   shard-000000 *all:page first-diff 11074: exactly 8 wanted/known
+  //   regions, one per absent rule row, delta -8; the grade9-run4b page
+  //   entries *all/*star/*rstar/*all plus). The class therefore rides the
+  //   instance presence (card.id === undefined -> wanted), not the name
+  //   shape. The standing r16-rule-bar-and-stored-verdict-parity.test.ts
+  //   wanted-card pin (RED at 64572305 with the unsplit carve-out: 1 failed
+  //   | 3 passed) is the same pin.
+  //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): the corpus
+  //   pins known 97/97 - including five names whose staging rows are absent
+  //   (Anonymous+*created/-*edited, +*default, democracy+*referred to by,
+  //   Cs Dev+*self; the capture deck had those rows - the W5 seed family).
+  //   The known-class fiction stays on this subset ONLY, gated on the W5
+  //   seed landing (the parity-restore runbook's capture-derived creation
+  //   plan); a pure presence model here would flip the four currently-
+  //   passing entries List/Phrase/Eagle/democracy+tags.
+  // The LONGER star-right rule-row shape stays wanted via parts.length
+  // (Message+Conversation+*type plus right+*head, recapture-raw-shard-000017,
+  // delta +203 pre-fix) - unchanged.
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,
     card.name.s,
-    card.name.isRStar && card.name.parts.length === 2,
+    card.name.isRStar &&
+      card.name.parts.length === 2 &&
+      !(card.name.left ?? "").startsWith("*"),
   );
   return (
     `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${dataSlotId}>\n` +
