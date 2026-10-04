@@ -43,9 +43,23 @@ for (const f of base.fails) baseFails.set(norm(f.id), f);
 
 const viewOutcome = JSON.parse(readFileSync(path.join(artifactsDir, "w0-view.json"), "utf8"));
 const pageOutcome = JSON.parse(readFileSync(path.join(artifactsDir, "w0-page.json"), "utf8"));
+// The per-worker lane artifact nests its per-entry failure records under
+// attribution.failures; there is no top-level `failures` key. Reading the
+// wrong path yields tip fails=0 and reports every base fail as "fixed".
+// Fail loudly if neither shape is present rather than diffing against nothing.
+const outcomeFails = (outcome) => {
+  const list = outcome.attribution?.failures ?? outcome.failures;
+  if (!Array.isArray(list)) {
+    throw new Error(
+      `lane artifact for ${outcome.attribution?.lane ?? "?"} has no attribution.failures array ` +
+        `(top-level keys: ${Object.keys(outcome).join(", ")})`,
+    );
+  }
+  return list;
+};
 const myFails = new Map();
 for (const outcome of [viewOutcome, pageOutcome]) {
-  for (const f of outcome.failures ?? []) myFails.set(norm(f.id), f);
+  for (const f of outcomeFails(outcome)) myFails.set(norm(f.id), f);
 }
 
 const fixed = [];
@@ -72,8 +86,8 @@ const verdict = {
   base: basePath,
   baseFailCount: baseFails.size,
   tipFailCount: myFails.size,
-  viewAggregate: viewOutcome.aggregate ?? null,
-  pageAggregate: pageOutcome.aggregate ?? null,
+  viewAggregate: { entries: viewOutcome.entries, pass: viewOutcome.pass, fail: viewOutcome.fail },
+  pageAggregate: { entries: pageOutcome.entries, pass: pageOutcome.pass, fail: pageOutcome.fail },
   fixed: fixed.map((f) => ({ id: norm(f.id), lane: f.lane, shard: f.shard, legal: LEGAL_FIXED.has(norm(f.id)) })),
   illegalFixed: illegalFixed.map((f) => norm(f.id)),
   newFails: newFails.map((f) => ({ id: norm(f.id), lane: f.lane, shard: f.shard, sig: f.sig })),
@@ -91,8 +105,10 @@ writeFileSync(
 );
 
 console.log(`base fails=${baseFails.size} tip fails=${myFails.size}`);
+console.log(`tip artifact counts: view entries=${viewOutcome.entries} pass=${viewOutcome.pass.total} fail=${viewOutcome.fail.total} | page entries=${pageOutcome.entries} pass=${pageOutcome.pass.total} fail=${pageOutcome.fail.total}`);
 console.log(`fixed=${fixed.length} (illegal=${illegalFixed.length}) new=${newFails.length} sticky=${sticky.length}`);
 for (const f of fixed) console.log(`  FIXED ${norm(f.id)} legal=${LEGAL_FIXED.has(norm(f.id))}`);
 for (const f of newFails.slice(0, 20)) console.log(`  NEW ${norm(f.id)} sig=${f.sig}`);
+for (const id of verdict.stickyRecordIds) console.log(`  STICKY(record) ${id}`);
 console.log(`verdict: ${verdict.verdict}`);
 process.exit(illegalFixed.length === 0 && newFails.length === 0 ? 0 : 1);
