@@ -40,6 +40,11 @@ import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js"
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
 import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
+import {
+  decodeName,
+  mapRenderError,
+  queryViewFromUrl,
+} from "../../src/server/worker-shared-surface.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
   SPACES_ASSET_HOST,
@@ -354,47 +359,65 @@ async function dispatchEngineRequest(
       });
     }
     if (url.pathname.startsWith("/api/card/")) {
-      const name = decodeURIComponent(url.pathname.slice("/api/card/".length));
-      const record = await deck.fetcher.fetchByName(name);
-      if (record === undefined || record.name === undefined) {
-        return json(404, { error: "card not found", name });
+      // THE HARDENED DECODE (deploy-surface-union: the third twin's arm
+      // shape — the twins' shared decodeName rule,
+      // worker-shared-surface.ts): a malformed % answers 400
+      // {"error":"empty card name"}, never an unhandled URIError escaping
+      // the handler; an empty name answers the same 400. The whole arm
+      // sits inside the structured-500 try so no engine error escapes
+      // unhandled — the shape the old third-twin handler answered with
+      // and its parity pin holds.
+      try {
+        const name = decodeName(url.pathname.slice("/api/card/".length));
+        if (name === undefined || name === "") {
+          return json(400, { error: "empty card name" });
+        }
+        const record = await deck.fetcher.fetchByName(name);
+        if (record === undefined || record.name === undefined) {
+          return json(404, { error: "card not found", name });
+        }
+        // THE READ GATE (api-leak-fix lane, 2026-10-02): this route previously
+        // served db_content_preview for cards the HTML views replace with the
+        // denial span — the same hole the CF worker's record-JSON route had
+        // and closed (deploy/worker.ts cardRecordJson:469-492, the probe
+        // battery's batch-05 KNOWN HOLE there): verified live on script 93646
+        // (GET /api/card/Taking%20Stock -> 200 + 200 chars of the denied
+        // card's content while GET /Taking%20Stock rendered the denial).
+        // Ruby's GET of a denied card renders the denial (ok_to_read? fails,
+        // set/all/permissions.rb:139-146); the JSON surface answers the CF
+        // worker's exact shape, 403 {"error":"permission denied"} without the
+        // protected fields, the verdict from the same engine state the HTML
+        // path judges with (RenderEngine#canReadCard — the non-HTML-entry
+        // permission seam, src/card/render.ts: stored-rule verdict, the mod
+        // set-module overrides, and the fail-closed live rule walk incl.).
+        // Pin: tests/deploy/bunny-edge-engine-request-api-card-read-gate.test.ts
+        // (red with the gate removed — queue job api-leak-lane-j2 —, green
+        // with it). The concurrent edge-redeploy lane's 89efcab implemented
+        // the same gate as an inline anonymous walk (403 "read denied");
+        // unification keeps the canReadCard delegation — one verdict path
+        // shared with the HTML judgments, override layer included — and the
+        // CF worker's response shape; the redeploy pin's unique cases ride in
+        // tests/deploy/bunny-edge-engine-api-card-read-gate.test.ts.
+        const typeRecord =
+          record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+        const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
+        if (!readable) {
+          return json(403, { error: "permission denied", name });
+        }
+        return json(200, {
+          id: record.id ?? null,
+          name: record.name.s,
+          key: record.name.key,
+          type_id: record.typeId ?? null,
+          codename: record.codename ?? null,
+          db_content_preview: (record.dbContent ?? "").slice(0, 200),
+        });
+      } catch (error) {
+        return json(500, {
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-      // THE READ GATE (api-leak-fix lane, 2026-10-02): this route previously
-      // served db_content_preview for cards the HTML views replace with the
-      // denial span — the same hole the CF worker's record-JSON route had
-      // and closed (deploy/worker.ts cardRecordJson:469-492, the probe
-      // battery's batch-05 KNOWN HOLE there): verified live on script 93646
-      // (GET /api/card/Taking%20Stock -> 200 + 200 chars of the denied
-      // card's content while GET /Taking%20Stock rendered the denial).
-      // Ruby's GET of a denied card renders the denial (ok_to_read? fails,
-      // set/all/permissions.rb:139-146); the JSON surface answers the CF
-      // worker's exact shape, 403 {"error":"permission denied"} without the
-      // protected fields, the verdict from the same engine state the HTML
-      // path judges with (RenderEngine#canReadCard — the non-HTML-entry
-      // permission seam, src/card/render.ts: stored-rule verdict, the mod
-      // set-module overrides, and the fail-closed live rule walk incl.).
-      // Pin: tests/deploy/bunny-edge-engine-request-api-card-read-gate.test.ts
-      // (red with the gate removed — queue job api-leak-lane-j2 —, green
-      // with it). The concurrent edge-redeploy lane's 89efcab implemented
-      // the same gate as an inline anonymous walk (403 "read denied");
-      // unification keeps the canReadCard delegation — one verdict path
-      // shared with the HTML judgments, override layer included — and the
-      // CF worker's response shape; the redeploy pin's unique cases ride in
-      // tests/deploy/bunny-edge-engine-api-card-read-gate.test.ts.
-      const typeRecord =
-        record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
-      const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
-      if (!readable) {
-        return json(403, { error: "permission denied", name });
-      }
-      return json(200, {
-        id: record.id ?? null,
-        name: record.name.s,
-        key: record.name.key,
-        type_id: record.typeId ?? null,
-        codename: record.codename ?? null,
-        db_content_preview: (record.dbContent ?? "").slice(0, 200),
-      });
     }
     // Same no-route class as the parsePath notFound branch above (an api
     // subpath that is neither /api/status nor /api/card/<name>).
@@ -439,7 +462,14 @@ async function dispatchEngineRequest(
     // passed them untranslated, where the views could not read them — the
     // measured base state: ?act_id=<real> and no param rendered identical
     // last-act bodies.
-    const pageView = pathViewIsBareArm(url.pathname) ? undefined : parsed.view;
+    //
+    // deploy-surface-union: the query view REACHES the page path — the bare
+    // arm's requestedView is queryViewFromUrl (the shared view_from_params
+    // shape, rest.rb:100-103: first NON-BLANK of ?view=/ ?v=), the
+    // capability the old third-twin handler carried and its parity pin
+    // ("?view= fills the view-less arm") holds. An explicit path view still
+    // wins (the action arg never falls through to params).
+    const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
     const pageHtml = await renderPageBytes(
       deck.render,
       parsed.name,
@@ -464,9 +494,17 @@ async function dispatchEngineRequest(
     // staging shape (the unsupported-view mapping is the edge's own) and
     // keeps the bare page below, escape convention unchanged: the crafted
     // name rides the message, so every interpolation of it is escaped.
-    const isCardNotFound = /^card not found: /.test(message);
-    const isUnsupportedView = message.startsWith("view (");
-    if (isUnsupportedView) {
+    //
+    // THE CLASSIFICATION (deploy-surface-union): mapRenderError — the
+    // shared-surface table BOTH Cloudflare twins answer with — replaces the
+    // carried two-regex arm. Same coverage for the two carried classes
+    // (card not found: -> 404 chrome; view ( -> 422 bare) and one union
+    // addition: the id-doesn't-exist / codename-doesn't-exist NotFound
+    // family (name/errors.ts -> error.rb:88-89) now answers the not_found
+    // chrome instead of falling to the 500 Wild Card — the shape the old
+    // third-twin handler answered and its /~999999 parity pin holds.
+    const mapped = mapRenderError(message);
+    if (mapped.status === 422) {
       return html(
         422,
         layoutPage(
@@ -475,7 +513,7 @@ async function dispatchEngineRequest(
         ),
       );
     }
-    if (isCardNotFound) {
+    if (mapped.status === 404) {
       return renderDeckoNotFoundErrorPage(deck, parsed.name);
     }
     return renderDeckoServerErrorPage(deck, parsed.name);
