@@ -3010,11 +3010,27 @@ export function visibleSettingsForGroup(
 ): ReadonlyArray<string> {
   const settings = GROUP_TO_SETTINGS[groupName];
   if (engine.peekCodenameById === undefined) return settings;
-  const prototypeCode = setPrototypeTypeCode(engine, setCard);
+  const { code: prototypeCode, templateDerived } = setPrototypeTypeInfo(engine, setCard);
   return settings.filter((codename) => {
+    // The restricted pair (content_options/content_option_view) renders
+    // only for prototypes whose type is STORED or ASSIGNED - a
+    // TEMPLATE-derived type (the set's own *default rule card's type,
+    // type.rb type_id_from_template) does not satisfy restricted_to_type
+    // in the graded bytes: Message+Conversation+*type plus right's
+    // template-list prototype pins the editing badge at 3 while
+    // *home+*self (stored pointer) and *create+*right (assigned list)
+    // pin 5, and the assignment-typed TPR sets (List+*input type+*type
+    // plus right's *dummy+*input type -> pointer) badge 5 (base dumps
+    // 000016/000017/000029). The 0.20 gems' applies lambdas
+    // (supports_content_options?, constant false) cannot produce the
+    // badge-5 shapes - the oracle is the spec (serializer-followup2
+    // census M2).
     const restricted = SETTING_RESTRICTED_TO_TYPE.get(codename);
     if (restricted === undefined) return true;
-    return prototypeCode !== undefined && restricted.includes(prototypeCode);
+    if (prototypeCode === undefined || !restricted.includes(prototypeCode)) {
+      return false;
+    }
+    return !templateDerived;
   });
 }
 
@@ -3066,7 +3082,20 @@ const SETTING_RESTRICTED_TO_TYPE: ReadonlyMap<string, readonly string[]> = new M
  *  (assignment right::autoname) and `...+*create` carries List
  *  (assignment right::create) — the assignment layer visible directly in
  *  the captured bytes. */
-export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCard): string | undefined {
+/** The prototype-type resolution WITH its derivation - the census-M2 gate
+ *  reads templateDerived: the restricted_to_type pair (content_options /
+ *  content_option_view) renders only for prototypes whose type is STORED
+ *  or ASSIGNED; a type derived from the set's own *default rule card (the
+ *  template chain, type.rb type_id_from_template) does not satisfy the
+ *  restricted pair in the graded bytes (Message+Conversation+*type plus
+ *  right: template-list prototype -> editing badge 3, while *home+*self
+ *  stored-pointer and *create+*right assigned-list prototypes badge 5).
+ *  The oracle arbitrates: the 0.20 gems' constant-false applies lambdas
+ *  cannot produce the badge-5 shapes. */
+function setPrototypeTypeInfo(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): { code: string | undefined; templateDerived: boolean } {
   /** Card::Codename[id] — the registry lookup is generic id -> codename
    *  (peekCodenameById reads peekNameForId; the param name reflects its
    *  dominant type-id use). */
@@ -3118,7 +3147,7 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
     case "all":
     case "rstar":
     case "all_plus":
-      return undefined;
+      return { code: undefined, templateDerived: false };
     // 09_self.rb prototype_args {name: anchor}: the anchor card is REAL —
     // its stored type wins; an unseeded anchor falls through to the
     // template chain (the set's own *default rule card's type —
@@ -3127,19 +3156,19 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
       const anchorName = setCard.name.leftName?.s ?? setCard.name.s;
       const real = engine.fetchRenderCard?.(anchorName);
       if (real !== undefined && real.typeId !== undefined) {
-        return engine.peekCodenameById?.(real.typeId);
+        return { code: engine.peekCodenameById?.(real.typeId), templateDerived: false };
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     // 03_type.rb prototype_args {type: anchor}: the explicit type wins
     // (type.rb normalize_type_attributes) — the prototype's type id IS
     // the anchor cardtype card's id.
     case "type": {
       const anchorName = setCard.name.leftName?.s;
-      if (anchorName === undefined) return undefined;
+      if (anchorName === undefined) return { code: undefined, templateDerived: false };
       const typeCard = engine.fetchRenderCard?.(anchorName);
-      if (typeCard?.id === undefined) return undefined;
-      return engine.peekCodenameById?.(typeCard.id);
+      if (typeCard?.id === undefined) return { code: undefined, templateDerived: false };
+      return { code: engine.peekCodenameById?.(typeCard.id), templateDerived: false };
     }
     // 07_right.rb prototype_args {name: "*dummy+#{anchor}"}: a new
     // compound card; ensure_type (type.rb:63-79) tries type_id_from_code
@@ -3155,9 +3184,9 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
       const anchorCodename = codenameOf(anchorCard);
       if (anchorCodename !== undefined) {
         const assigned = RIGHT_SETTING_TYPE_ASSIGNMENT[anchorCodename];
-        if (assigned !== undefined) return assigned;
+        if (assigned !== undefined) return { code: assigned, templateDerived: false };
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     // 08_type_plus_right.rb: a `+<right>` part under a typed supercard;
     // type_id_from_code walks the prototype's assigning pattern modules in
@@ -3188,16 +3217,25 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
         const rightCodename = codenameOf(engine.fetchRenderCard?.(anchorRightName));
         if (typeCodename !== undefined && rightCodename !== undefined) {
           const assigned = TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT[`${typeCodename}::${rightCodename}`];
-          if (assigned !== undefined) return assigned;
+          if (assigned !== undefined) return { code: assigned, templateDerived: false };
           const rightAssigned = RIGHT_SETTING_TYPE_ASSIGNMENT[rightCodename];
-          if (rightAssigned !== undefined) return rightAssigned;
+          if (rightAssigned !== undefined) return { code: rightAssigned, templateDerived: false };
         }
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     default:
-      return undefined;
+      return { code: undefined, templateDerived: false };
   }
+}
+
+/** The bare code (the pre-census-M2 signature; the verdict preloads and
+ *  the ruleSetPrototypeTypeCode verdict arm read it). */
+export function setPrototypeTypeCode(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): string | undefined {
+  return setPrototypeTypeInfo(engine, setCard).code;
 }
 
 /** card-1.110.0 Type.assignment for right-pattern module keys — every
