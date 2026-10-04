@@ -93,9 +93,14 @@ export async function bootCorpusDeckEngines(
   // so a re-boot under amended tables cannot serve stale keys).
   applyDeckInflections(ORACLE_DECK_INFLECTIONS);
 
-  const fetcher = new FetchEngine(driver, {
-    maxTemporaryCacheKeys: opts.maxTemporaryCacheKeys,
-  });
+  // The OFF-default branch keeps the pinned boot expression verbatim
+  // (deploy-origin-deck-inflection-boot.test.ts scans this file for
+  // `new FetchEngine(driver)` and pins applyDeckInflections BEFORE it —
+  // both branches are below that call, the guard's property holds in
+  // each). The raised-cap branch is the one-trip deployment boot only.
+  const fetcher = opts.maxTemporaryCacheKeys === undefined
+    ? new FetchEngine(driver)
+    : new FetchEngine(driver, { maxTemporaryCacheKeys: opts.maxTemporaryCacheKeys });
   const render = new RenderEngine(fetcher);
 
   // The sync name environment: the FetchEngine constructor installs the
