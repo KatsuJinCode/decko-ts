@@ -161,7 +161,7 @@ export function normalizeCloudflareChallengeBlocks(html: string): string {
  * SLOT_ID_PATTERN above): a malformed address must SURFACE as a diff, not
  * hide behind the mask.
  */
-const MOD_OBJECT_ADDRESS_PATTERN = /#<Cardio::Mod:0x[0-9a-f]+>/g;
+const MOD_OBJECT_ADDRESS_PATTERN = /#<Cardio::Mod:0x[0-9a-f]{16}>/g;
 
 /** The placeholder the address carries once canonicalized. Not hex, so the
  *  normalized text is never re-matched - the rule is idempotent. */
