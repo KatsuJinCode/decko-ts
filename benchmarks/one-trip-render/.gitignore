@@ -3,3 +3,6 @@
 *.sqlite3
 *.sqlite3-shm
 *.sqlite3-wal
+
+# the serving-line proof run directory (machine-regenerated per run by the driver)
+serving-line-proof-run/
