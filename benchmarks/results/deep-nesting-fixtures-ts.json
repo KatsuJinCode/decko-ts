@@ -5,10 +5,10 @@
     "R2",
     "R4"
   ],
-  "measured_at": "2026-10-04T15:19:30.326Z",
+  "measured_at": "2026-10-04T16:24:39.801Z",
   "engine": "decko-ts",
-  "engine_commit": "1a8feabd",
-  "engine_branch": "lane-serializer-followup2-2026-10-03",
+  "engine_commit": "3d8dd42c",
+  "engine_branch": "lane-fold13-rehearsal-2026-10-04",
   "environment": {
     "host": "Jace2",
     "os": "win32",
@@ -44,9 +44,9 @@
       "root": "BenchDN_chain_open_d01_n01",
       "liveCards": 2,
       "cold": {
-        "roundTrips": 2,
-        "statements": 13,
-        "wallMs": 11.296,
+        "roundTrips": 4,
+        "statements": 18,
+        "wallMs": 12.757,
         "cpuMs": 16,
         "htmlBytes": 3011,
         "renderError": null,
@@ -55,7 +55,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.611,
+        "wallMs": 0.678,
         "cpuMs": 0,
         "htmlBytes": 3011,
         "renderError": null,
@@ -69,10 +69,10 @@
       "root": "BenchDN_chain_open_d02_n01",
       "liveCards": 3,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 3.163,
-        "cpuMs": 0,
+        "roundTrips": 5,
+        "statements": 19,
+        "wallMs": 6.122,
+        "cpuMs": 16,
         "htmlBytes": 5993,
         "renderError": null,
         "quietErrorSpan": null
@@ -80,7 +80,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.789,
+        "wallMs": 1.002,
         "cpuMs": 0,
         "htmlBytes": 5993,
         "renderError": null,
@@ -94,9 +94,9 @@
       "root": "BenchDN_chain_open_d04_n01",
       "liveCards": 5,
       "cold": {
-        "roundTrips": 5,
-        "statements": 16,
-        "wallMs": 2.714,
+        "roundTrips": 7,
+        "statements": 21,
+        "wallMs": 4.239,
         "cpuMs": 0,
         "htmlBytes": 11957,
         "renderError": null,
@@ -105,8 +105,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.173,
-        "cpuMs": 15,
+        "wallMs": 1.151,
+        "cpuMs": 0,
         "htmlBytes": 11957,
         "renderError": null,
         "quietErrorSpan": null
@@ -119,10 +119,10 @@
       "root": "BenchDN_chain_open_d08_n01",
       "liveCards": 9,
       "cold": {
-        "roundTrips": 9,
-        "statements": 20,
-        "wallMs": 5.091,
-        "cpuMs": 0,
+        "roundTrips": 11,
+        "statements": 25,
+        "wallMs": 6.624,
+        "cpuMs": 15,
         "htmlBytes": 23885,
         "renderError": null,
         "quietErrorSpan": null
@@ -130,7 +130,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 2.234,
+        "wallMs": 5.232,
         "cpuMs": 0,
         "htmlBytes": 23885,
         "renderError": null,
@@ -144,9 +144,9 @@
       "root": "BenchDN_chain_open_d16_n01",
       "liveCards": 17,
       "cold": {
-        "roundTrips": 17,
-        "statements": 28,
-        "wallMs": 9.385,
+        "roundTrips": 19,
+        "statements": 33,
+        "wallMs": 6.948,
         "cpuMs": 16,
         "htmlBytes": 47747,
         "renderError": null,
@@ -155,7 +155,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 2.139,
+        "wallMs": 2.198,
         "cpuMs": 0,
         "htmlBytes": 47747,
         "renderError": null,
@@ -169,9 +169,9 @@
       "root": "BenchDN_chain_open_d10_n01",
       "liveCards": 11,
       "cold": {
-        "roundTrips": 11,
-        "statements": 22,
-        "wallMs": 2.566,
+        "roundTrips": 13,
+        "statements": 27,
+        "wallMs": 4.788,
         "cpuMs": 0,
         "htmlBytes": 29849,
         "renderError": null,
@@ -180,7 +180,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.076,
+        "wallMs": 1.518,
         "cpuMs": 0,
         "htmlBytes": 29849,
         "renderError": null,
@@ -194,10 +194,10 @@
       "root": "BenchDN_chain_open_d20_n01",
       "liveCards": 21,
       "cold": {
-        "roundTrips": 21,
-        "statements": 32,
-        "wallMs": 4.151,
-        "cpuMs": 0,
+        "roundTrips": 23,
+        "statements": 37,
+        "wallMs": 6.907,
+        "cpuMs": 32,
         "htmlBytes": 59679,
         "renderError": null,
         "quietErrorSpan": null
@@ -205,7 +205,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 2.461,
+        "wallMs": 2.479,
         "cpuMs": 0,
         "htmlBytes": 59679,
         "renderError": null,
@@ -219,10 +219,10 @@
       "root": "BenchDN_chain_open_d50_n01",
       "liveCards": 51,
       "cold": {
-        "roundTrips": 43,
-        "statements": 54,
-        "wallMs": 7.141,
-        "cpuMs": 32,
+        "roundTrips": 45,
+        "statements": 59,
+        "wallMs": 9.993,
+        "cpuMs": 31,
         "htmlBytes": 62560,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d50_n21 (core view)</span>"
@@ -230,7 +230,7 @@
       "warm": {
         "roundTrips": 34,
         "statements": 37,
-        "wallMs": 4.531,
+        "wallMs": 4.187,
         "cpuMs": 0,
         "htmlBytes": 62560,
         "renderError": null,
@@ -244,10 +244,10 @@
       "root": "BenchDN_chain_open_d100_n01",
       "liveCards": 101,
       "cold": {
-        "roundTrips": 43,
-        "statements": 54,
-        "wallMs": 5.137,
-        "cpuMs": 31,
+        "roundTrips": 45,
+        "statements": 59,
+        "wallMs": 8.795,
+        "cpuMs": 15,
         "htmlBytes": 62958,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d100_n21 (core view)</span>"
@@ -255,7 +255,7 @@
       "warm": {
         "roundTrips": 42,
         "statements": 45,
-        "wallMs": 3.328,
+        "wallMs": 4.196,
         "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
@@ -269,10 +269,10 @@
       "root": "BenchDN_chain_open_d200_n01",
       "liveCards": 201,
       "cold": {
-        "roundTrips": 43,
-        "statements": 54,
-        "wallMs": 4.105,
-        "cpuMs": 0,
+        "roundTrips": 45,
+        "statements": 59,
+        "wallMs": 10.514,
+        "cpuMs": 16,
         "htmlBytes": 62958,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d200_n21 (core view)</span>"
@@ -280,8 +280,8 @@
       "warm": {
         "roundTrips": 42,
         "statements": 45,
-        "wallMs": 3.419,
-        "cpuMs": 15,
+        "wallMs": 5.166,
+        "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d200_n21 (core view)</span>"
@@ -294,9 +294,9 @@
       "root": "BenchDN_fan_f01_root",
       "liveCards": 3,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 1.343,
+        "roundTrips": 5,
+        "statements": 19,
+        "wallMs": 1.833,
         "cpuMs": 0,
         "htmlBytes": 5746,
         "renderError": null,
@@ -305,7 +305,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.294,
+        "wallMs": 0.336,
         "cpuMs": 0,
         "htmlBytes": 5746,
         "renderError": null,
@@ -319,10 +319,10 @@
       "root": "BenchDN_fan_f04_root",
       "liveCards": 6,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 1.791,
-        "cpuMs": 0,
+        "roundTrips": 5,
+        "statements": 19,
+        "wallMs": 2.966,
+        "cpuMs": 30,
         "htmlBytes": 14890,
         "renderError": null,
         "quietErrorSpan": null
@@ -330,7 +330,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.582,
+        "wallMs": 2.215,
         "cpuMs": 0,
         "htmlBytes": 14890,
         "renderError": null,
@@ -344,10 +344,10 @@
       "root": "BenchDN_fan_f16_root",
       "liveCards": 18,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 2.895,
-        "cpuMs": 16,
+        "roundTrips": 5,
+        "statements": 19,
+        "wallMs": 5.956,
+        "cpuMs": 0,
         "htmlBytes": 51466,
         "renderError": null,
         "quietErrorSpan": null
@@ -355,7 +355,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.546,
+        "wallMs": 2.168,
         "cpuMs": 0,
         "htmlBytes": 51466,
         "renderError": null,
@@ -369,9 +369,9 @@
       "root": "BenchDN_fan_f50_root",
       "liveCards": 52,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 8.681,
+        "roundTrips": 5,
+        "statements": 20,
+        "wallMs": 13.525,
         "cpuMs": 0,
         "htmlBytes": 155098,
         "renderError": null,
@@ -380,8 +380,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 3.723,
-        "cpuMs": 15,
+        "wallMs": 9.817,
+        "cpuMs": 16,
         "htmlBytes": 155098,
         "renderError": null,
         "quietErrorSpan": null
@@ -394,9 +394,9 @@
       "root": "BenchDN_fan_f100_root",
       "liveCards": 102,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 14.519,
+        "roundTrips": 5,
+        "statements": 21,
+        "wallMs": 22.365,
         "cpuMs": 31,
         "htmlBytes": 309415,
         "renderError": null,
@@ -405,8 +405,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 14.41,
-        "cpuMs": 32,
+        "wallMs": 19.657,
+        "cpuMs": 16,
         "htmlBytes": 309415,
         "renderError": null,
         "quietErrorSpan": null
@@ -419,10 +419,10 @@
       "root": "BenchDN_fan_f200_root",
       "liveCards": 202,
       "cold": {
-        "roundTrips": 3,
-        "statements": 14,
-        "wallMs": 38.691,
-        "cpuMs": 62,
+        "roundTrips": 5,
+        "statements": 23,
+        "wallMs": 54.366,
+        "cpuMs": 93,
         "htmlBytes": 618015,
         "renderError": null,
         "quietErrorSpan": null
@@ -430,8 +430,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 29.792,
-        "cpuMs": 32,
+        "wallMs": 37.471,
+        "cpuMs": 48,
         "htmlBytes": 618015,
         "renderError": null,
         "quietErrorSpan": null
@@ -444,10 +444,10 @@
       "root": "BenchDN_tree_d04_f04_root",
       "liveCards": 342,
       "cold": {
-        "roundTrips": 6,
-        "statements": 17,
-        "wallMs": 45.89,
-        "cpuMs": 78,
+        "roundTrips": 8,
+        "statements": 29,
+        "wallMs": 55.685,
+        "cpuMs": 62,
         "htmlBytes": 1092781,
         "renderError": null,
         "quietErrorSpan": null
@@ -455,8 +455,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 43.04,
-        "cpuMs": 46,
+        "wallMs": 28.547,
+        "cpuMs": 32,
         "htmlBytes": 1092781,
         "renderError": null,
         "quietErrorSpan": null
@@ -469,10 +469,10 @@
       "root": "BenchDN_tree_d03_f10_root",
       "liveCards": 1112,
       "cold": {
-        "roundTrips": 5,
-        "statements": 16,
-        "wallMs": 99.571,
-        "cpuMs": 110,
+        "roundTrips": 7,
+        "statements": 45,
+        "wallMs": 170.744,
+        "cpuMs": 312,
         "htmlBytes": 3595955,
         "renderError": null,
         "quietErrorSpan": null
@@ -480,8 +480,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 86.944,
-        "cpuMs": 124,
+        "wallMs": 124.431,
+        "cpuMs": 157,
         "htmlBytes": 3595955,
         "renderError": null,
         "quietErrorSpan": null
