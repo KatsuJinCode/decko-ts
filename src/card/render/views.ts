@@ -3815,24 +3815,71 @@ function phantomIdentity(
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): { typeName: string; typeId: number } | undefined {
   if (hostItemType !== undefined) return hostItemType;
-  // THE UNRESOLVED-HOST DEFAULT IS RICHTEXT, not the *all+*default walk.
-  // The corpus carries NO *all+*default rule row at all (verified
-  // 2026-10-03 against bench-corpus-raw.sqlite3: select * from cards where
-  // name='*all+*default' -> []), so Ruby's new-card type is Cardio's
-  // DEFAULT type - RichText. The live-oracle recapture pins it on the MNv
-  // phantom cascade (recapture-raw-shard-000016, MNv Instructor Training
-  // Manual ITM:page): the +Articles host is itself a phantom, so
-  // determine_item_view_options_type resolves nothing and the item
-  // phantoms carry data-card-type-id='3' data-card-type-name='RichText'
-  // with the NAME-SHAPED pattern keys "ALL ALL_PLUS TYPE-rich_text
-  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise"
-  // (safeSetKeys isNew:true - set-keys.ts's own doc oracle shape; the
-  // TYPE_PLUS_RIGHT anchor's left "MNv+ITM" is not stored, so
-  // quick_type's default applies, class_methods.rb:59-71 - the same rule
-  // cluster 6 landed). The pre-recapture BasicCs fallback byte-pinned an
-  // *all+*default 22281 walk whose rule row does not exist; the live
-  // capture supersedes it. Degenerate fetch (RichText absent) keeps the
-  // old walk shape.
+  // THE UNRESOLVED-HOST DEFAULT IS DERIVED FROM THE DECK, NOT CONSTANT.
+  //
+  // Ruby's `quick_type name` (lib/card/set/pattern/class_methods.rb:59-71)
+  // builds `Card.fetch name, new: {}` for a PRESENT name, and the new card's
+  // type comes from the *default template chain — `ensure_type_id`
+  // (mod/core/set/all/type.rb:58-66) `type_id_from_code ||
+  // type_id_from_template`. The engine's port of that walk is
+  // `newCardDefaultType`; it is the FIRST arm here. The RichText literal
+  // survives only as the no-rule-card fallback.
+  //
+  // THE PREVIOUS ORDERING RESTED ON A PREMISE THAT MEASUREMENT FALSIFIED
+  // (2026-10-04). The old comment read: "The corpus carries NO *all+*default
+  // rule row at all (verified 2026-10-03 against bench-corpus-raw.sqlite3:
+  // select * from cards where name='*all+*default' -> [])", and
+  // short-circuited to RichText BEFORE ever consulting the walk. The row
+  // EXISTS; that verification query could not see it because the raw
+  // capture stores every JUNCTION row with `name IS NULL` — the junction
+  // name is composed from left_id/right_id by the name walk, never stored.
+  // Measured on the graded corpus (sha256
+  // 6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e):
+  //   SELECT * FROM cards WHERE name = '*all+*default'      -> 0 rows
+  //   SELECT * FROM cards WHERE left_id = 274 AND right_id = 318
+  //     -> id 28, type_id 22281, trash 0, read_rule_class '*type',
+  //        read_rule_id 22283 ("Anyone Signed In")
+  // Rule 28 IS the `*all+*default` rule card and its type IS BasicCs
+  // (22281) — the exact tokens the captured corpus renders on every denied
+  // unknown-name mini_bar. The engine's own recursive name-walk universe
+  // statement (rules/structure.ts#ruleUniverseStatementBySetting) composes
+  // it as `*all+*default` -> 22281, and `newCardDefaultType` answers
+  // {typeId: 22281, typeName: "BasicCs"} for a simple absent name once the
+  // universe has loaded
+  // (tmp/lane-defaulttype/probe-default-type-universe.mjs). A hardcoded
+  // answer could not have produced that: the SAME walk answers RichText for
+  // a COMPOUND name (below), so the family splits on the deck, not on a
+  // constant.
+  //
+  // THE MNv CASCADE STILL READS RichText — NOW DERIVED, NOT LITERAL. The
+  // recapture (recapture-raw-shard-000016, MNv Instructor Training Manual
+  // ITM:page) pins data-card-type-id='3' / data-card-type-name='RichText'
+  // with the name-shaped keys "ALL ALL_PLUS TYPE-rich_text
+  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise".
+  // Those item names are COMPOUND and the compound's own *default walk
+  // answers RichText on this deck, so the cascade's bytes are unchanged
+  // because the WALK decided them. Measured:
+  // newCardDefaultType("MNv+ITM") -> {typeId: 3, typeName: "RichText"};
+  // newCardDefaultType of the simple absent names "mytho-psychology" /
+  // "Germany" / "Rosalie Victoria Williamscraig" -> {typeId: 22281,
+  // typeName: "BasicCs"}.
+  //
+  // The literal below is the arm the old premise actually reached: a deck
+  // with NO `*all+*default` rule card, where Ruby's type_id_from_template
+  // finds no template and Card.new falls back to the deck's default type.
+  // RichText absent there too -> undefined, and phantomPointerListItem's
+  // corpus-pinned constants carry the body.
+  const derived = (() => {
+    try {
+      return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return undefined;
+      }
+      throw err;
+    }
+  })();
+  if (derived !== undefined) return derived;
   const richText = (() => {
     try {
       return fmt.engine.fetchRenderCard("RichText");
@@ -3843,14 +3890,7 @@ function phantomIdentity(
   if (richText?.id !== undefined) {
     return { typeName: "RichText", typeId: richText.id };
   }
-  try {
-    return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
-  } catch (err) {
-    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
-      return undefined;
-    }
-    throw err;
-  }
+  return undefined;
 }
 
 /** Swap the OUTERMOST slot id + class suffix from `bar-view` to
