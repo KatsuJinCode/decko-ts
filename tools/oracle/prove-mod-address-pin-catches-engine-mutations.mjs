@@ -22,9 +22,9 @@
 //
 // Each mutation is restored and the restore is verified by sha256, so the tool
 // leaves the engine exactly as it found it.
-const fs = require("node:fs");
-const crypto = require("node:crypto");
-const { execFileSync } = require("node:child_process");
+import fs from "node:fs";
+import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const ENGINE = "src/card/set-module-content-overrides.ts";
 const TEST = "tests/card/content/mod-object-address-shape-parity.test.ts";
