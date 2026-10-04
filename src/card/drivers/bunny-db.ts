@@ -600,3 +600,11 @@ function describeTransportError(cause: unknown): string {
   if (cause instanceof Error) return cause.message;
   return String(cause);
 }
+
+/** The edge pipeline's default render-budget ceiling (deploy lineage:
+ *  bunny-edge-engine-request.ts's withBudget ceiling; 15s matches the
+ *  vm-staging host's pipeline timeout). Fold-11 host carry: the constant
+ *  rides verbatim from the deploy lineage (lane-dbroundtrip-deploy tip
+ *  12bd5236) as the host context for the p2 lane modules; additive only —
+ *  nothing on the integration line read it before the p2 modules landed. */
+export const DEFAULT_PIPELINE_TIMEOUT_MS = 15_000;
