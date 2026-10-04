@@ -51,7 +51,11 @@
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
-import { bootCorpusDeckEngines } from "./bunny-edge-deck-boot.js";
+import {
+  bootCorpusDeckEngines,
+  ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS,
+} from "./bunny-edge-deck-boot.js";
+import { oneTripWantsPayload } from "../../src/card/one-trip/render-gate.js";
 import {
   bunnyEdgeWriteArmed,
   mountBunnyEdgeWriteSurface,
@@ -169,7 +173,19 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
     authToken: config.authToken,
     timeoutMs: resolveEdgePipelineTimeoutMs(env),
   });
-  const { fetcher, render } = await bootCorpusDeckEngines(driver);
+  // THE ONE-TRIP DEPLOYMENT BOOT: when the config gate is armed the engine
+  // boots with the raised Temporary-cache cap (ONE_TRIP_BOOT_MAX_TEMPORARY_
+  // CACHE_KEYS in bunny-edge-deck-boot.ts — the default cap's 10k reset is
+  // measured to evict primed state mid-session and turn the ON posture
+  // into a pessimization). Unarmed, the boot is byte-for-byte the deployed
+  // default. The gate reads the process env (on the edge the env bag IS
+  // process.env) — the same var the render path's seat check reads.
+  const { fetcher, render } = await bootCorpusDeckEngines(
+    driver,
+    oneTripWantsPayload()
+      ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS }
+      : {},
+  );
   await installDeckNameEnvironment(driver, fetcher);
   render.imageCdnHost = SPACES_ASSET_HOST;
   return { fetcher, render };

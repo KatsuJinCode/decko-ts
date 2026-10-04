@@ -100,22 +100,27 @@ const encodeCell = (value: unknown): Record<string, unknown> => {
 };
 
 /** The stub BunnyDbDriver fetch lands on: ONE call per pipeline POST, i.e.
- *  one call per driver.query / driver.batch round trip. Executes run in
- *  order on the shared mirror connection (Hrana pipelines are explicitly
- *  NOT transactional — bunny-db.ts). */
+ *  one call per driver.query / driver.batch round trip. Every pipeline
+ *  request is answered IN ORDER — executes run on the shared mirror
+ *  connection (Hrana pipelines are explicitly NOT transactional —
+ *  bunny-db.ts), and the pipeline's `close` terminator gets its own ok
+ *  result entry (the driver validates sent-requests vs got-results —
+ *  measured: "sent 2 requests, got 1 results" 500s when the close entry is
+ *  dropped). */
 const stubFetch = (async (_url: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
   tripsThisRequest += 1;
   const body = JSON.parse(String(init?.body ?? "{}")) as WireRequest;
-  const executes = (body.requests ?? []).filter(
-    (r): r is WireExec => r.type === "execute",
-  );
   const results: unknown[] = [];
-  for (const exec of executes) {
-    const sql = exec.stmt.sql;
+  for (const request of body.requests ?? []) {
+    if (request.type !== "execute") {
+      results.push({ type: "ok", response: { type: "close" } });
+      continue;
+    }
+    const sql = request.stmt.sql;
     if (/^ATTACH DATABASE/i.test(sql)) attachThisRequest += 1;
     else if (/WITH RECURSIVE walk\(id\)/i.test(sql)) dataFetchThisRequest += 1;
     else otherThisRequest += 1;
-    const args = (exec.stmt.args ?? []).map(decodeArg);
+    const args = (request.stmt.args ?? []).map(decodeArg);
     const result = await driver.query<Record<string, unknown>>(sql, args);
     const cols: string[] = [];
     for (const row of result.rows) {

@@ -67,15 +67,35 @@ export interface DeckEngines {
   render: RenderEngine;
 }
 
+/** THE ONE-TRIP BOOT CAP (lane-one-trip-serve-2026-10-04). A one-trip
+ *  deployment boots the engine with the Temporary-cache reset threshold
+ *  RAISED: the Ruby-parity default is 10,000 keys
+ *  (src/card/fetch/cache.ts DEFAULT_MAX_TEMPORARY_CACHE_KEYS = cardio's
+ *  max_temporary_cache_keys = 10_000), and seating one page payload writes
+ *  ~3.5k keys on the trial deck — a multi-page session crosses the default
+ *  mid-session and the wholesale reset evicts primed state, so the ON
+ *  posture re-asks what the OFF posture still had. MEASURED on the serving
+ *  line at the default cap (one-trip-serving-line-posture-report.json,
+ *  proof run 1): ON cold exceeded OFF cold on Aikido (+77 trips), About
+ *  (+266) and Eagle (+7); the module fixture measured Eagle's 1,668
+ *  seating-induced re-queries going to 0 with the raised cap
+ *  (tests/card/one-trip/one-trip-fixture.ts). The cap is FetchEngine's own
+ *  boot option — a boot parameter, not an engine change. The OFF-default
+ *  posture never passes it: the deployed default boot is unchanged. */
+export const ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS = 200_000;
+
 export async function bootCorpusDeckEngines(
   driver: SQLDatabaseDriver,
+  opts: { maxTemporaryCacheKeys?: number } = {},
 ): Promise<DeckEngines> {
   // Inflection boot BEFORE any DeckoName.parse of deck-sourced names (the
   // Rails-initializer moment; applyDeckInflections clears the parse cache,
   // so a re-boot under amended tables cannot serve stale keys).
   applyDeckInflections(ORACLE_DECK_INFLECTIONS);
 
-  const fetcher = new FetchEngine(driver);
+  const fetcher = new FetchEngine(driver, {
+    maxTemporaryCacheKeys: opts.maxTemporaryCacheKeys,
+  });
   const render = new RenderEngine(fetcher);
 
   // The sync name environment: the FetchEngine constructor installs the
