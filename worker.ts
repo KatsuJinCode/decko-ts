@@ -200,10 +200,30 @@ const PAGE_STYLE = `
 
 /** Shared with the Bunny Edge engine entry
  *  (deploy/bunny-worker-src/bunny-edge-engine-entry.ts) so both edges wrap
- *  renders in the SAME layout shell. */
+ *  renders in the SAME layout shell. The title is escaped here, at the
+ *  emitter — every call site's title (200-pages, error pages) is covered;
+ *  the body is HTML-by-contract and its dynamic interpolations are escaped
+ *  at their own call sites.
+ *
+ *  deploy-surface-union (2026-10-03): the ESCAPE is the deploy lineage's
+ *  5dd6ab0 fix (deployed live, release dAZ4TRWv) — a parsed card name rides
+ *  the title on 200-pages, so a crafted URL-path name must land as text.
+ *  The lineage's root worker.ts has had this since edge-true-union; this
+ *  line's copy predated it (the carried layout-page-title-escape pin
+ *  exposed the gap). escapeHtml's body is verbatim
+ *  12bd5236:worker.ts:144-151 (the same body the carried shim
+ *  bunny-edge-lineage-worker-surface.ts serves the bunny path from). */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function layoutPage(title: string, body: string): string {
   return `<!doctype html>
-<html><head><meta charset="utf-8"><title>${title}</title><style>${PAGE_STYLE}</style></head>
+<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${PAGE_STYLE}</style></head>
 <body><div class="nav"><a href="/">Home</a><a href="/api/status">Status</a></div>${body}</body></html>`;
 }
 
