@@ -3815,24 +3815,58 @@ function phantomIdentity(
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): { typeName: string; typeId: number } | undefined {
   if (hostItemType !== undefined) return hostItemType;
-  // THE UNRESOLVED-HOST DEFAULT IS RICHTEXT, not the *all+*default walk.
-  // The corpus carries NO *all+*default rule row at all (verified
-  // 2026-10-03 against bench-corpus-raw.sqlite3: select * from cards where
-  // name='*all+*default' -> []), so Ruby's new-card type is Cardio's
-  // DEFAULT type - RichText. The live-oracle recapture pins it on the MNv
-  // phantom cascade (recapture-raw-shard-000016, MNv Instructor Training
-  // Manual ITM:page): the +Articles host is itself a phantom, so
-  // determine_item_view_options_type resolves nothing and the item
-  // phantoms carry data-card-type-id='3' data-card-type-name='RichText'
-  // with the NAME-SHAPED pattern keys "ALL ALL_PLUS TYPE-rich_text
-  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise"
-  // (safeSetKeys isNew:true - set-keys.ts's own doc oracle shape; the
-  // TYPE_PLUS_RIGHT anchor's left "MNv+ITM" is not stored, so
-  // quick_type's default applies, class_methods.rb:59-71 - the same rule
-  // cluster 6 landed). The pre-recapture BasicCs fallback byte-pinned an
-  // *all+*default 22281 walk whose rule row does not exist; the live
-  // capture supersedes it. Degenerate fetch (RichText absent) keeps the
-  // old walk shape.
+  // SIMPLE vs COMPOUND unresolved-host phantoms resolve through DIFFERENT
+  // arms of Ruby's ensure_type_id chain, and the corpus pins both (view187
+  // census cross-tab, all 48 view-lane shards, every mini_bar slot whose
+  // data-card-name has no row: simple x BasicCs 249, simple x RichText
+  // 0, compound x RichText 52, compound x BasicCs 0 -- the non-BasicCs
+  // simple types are the hostItemTypeName-resolved rule-typed phantoms).
+  //
+  // SIMPLE names: the assignment || *default template walk (type.rb:58-66,
+  // the engine's newCardDefaultType) then the deck's basic card --
+  // Cardio's default type. The fixture world resolves the walk to
+  // *all+*default (pointer-list-mini-bar-phantom.test.ts's "swtktey" SLOT
+  // pin); the raw graded corpus carries NO +*default rule rows at all
+  // (verified 2026-10-03/04 against bench-corpus-raw.sqlite3: every
+  // name/key LIKE '%+*default' -> []), so the walk returns undefined and
+  // phantomPointerListItem's raw-pinned PHANTOM_TYPE_* constants apply --
+  // exactly this deck's basic codename card, 22281 "BasicCs"
+  // (pointer-list.ts PHANTOM_TYPE_*; body identity already uses them). The
+  // unconditional RichText literal below contradicted all 249 simple pins
+  // (the view187 RED pin: RVW:open rendered RichText/3 where the corpus
+  // pins BasicCs/22281 -- 105 mini-bar regions across the canvas fails).
+  //
+  // COMPOUND names: the type assignment resolves through the
+  // left/pattern walks (quick_type, class_methods.rb:59-71) and the corpus
+  // pins RichText on the measured cascades -- keep the fitted literal.
+  let deckName: DeckoName;
+  try {
+    deckName = DeckoName.parse(name);
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return undefined;
+    }
+    throw err;
+  }
+  if (!deckName.isCompound) {
+    try {
+      return fmt.engine.newCardDefaultType?.(deckName);
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return undefined;
+      }
+      throw err;
+    }
+  }
+  // THE COMPOUND UNRESOLVED-HOST DEFAULT IS RICHTEXT (the MNv cascade,
+  // recapture-raw-shard-000016 ITM:page: the +Articles host is itself a
+  // phantom, determine_item_view_options_type resolves nothing, and the
+  // item phantoms carry data-card-type-id='3' data-card-type-name=
+  // 'RichText' with the NAME-SHAPED pattern keys -- safeSetKeys isNew:true;
+  // the TYPE_PLUS_RIGHT anchor's left "MNv+ITM" is not stored, so
+  // quick_type's default applies, class_methods.rb:59-71). The corpus
+  // cross-tab: compound x RichText 52, compound x BasicCs 0. Degenerate
+  // fetch (RichText absent) keeps the old walk shape.
   const richText = (() => {
     try {
       return fmt.engine.fetchRenderCard("RichText");
@@ -3844,7 +3878,7 @@ function phantomIdentity(
     return { typeName: "RichText", typeId: richText.id };
   }
   try {
-    return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
+    return fmt.engine.newCardDefaultType?.(deckName);
   } catch (err) {
     if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
       return undefined;
