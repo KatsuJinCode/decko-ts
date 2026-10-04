@@ -411,9 +411,21 @@ describe("bunny edge history page-path seam — full chrome on the three views",
     // the same catch as before the seam — the param now REACHES the engine
     // instead of being silently dropped on the wire-key floor (at base this
     // request answered 200 with the fallback act).
+    //
+    // FOLD-11 UNION ADJUDICATION: this lane and p2-error-shell are SIBLING
+    // branches off 12bd5236 — they were never integrated on the lineage.
+    // The former toContain("act not found") asserted the bare layoutPage
+    // 500's message-in-body surface (the pre-error-shell catch shape). At
+    // the union, the p2-error-shell contract governs the 500 shape: the
+    // Wild Card full-chrome page whose body carries the message NOWHERE
+    // (the escape-falsification contract). The raise still happens and the
+    // error status still answers — the no-silent-fallback contract this pin
+    // exists for is carried by the status assertion + the chrome identity;
+    // the message-surface assertion is superseded, recorded here and in
+    // tmp/wrong-goal-hunt/fold11-lane.md.
     const { status, body } = await getBody("/History_Probe_Renamed/act?act_id=999999999");
     expect(status).toBeGreaterThanOrEqual(400);
-    expect(body).toContain("act not found");
+    expect(body).toContain("Wild Card");
     expect(body).not.toContain(FIXTURE.rendered["probe#act(no_param)"].slice(0, 60));
   });
 });
