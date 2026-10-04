@@ -51,7 +51,7 @@
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";
 import { newSlotId } from "../../src/card/render/slot-html.js";
-import { escapeHtml } from "../../worker.js";
+import { escapeHtml } from "./bunny-edge-lineage-worker-surface.js";
 import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
 
 /** The deck the error pages build from. Structural, so tests can pass the

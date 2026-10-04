@@ -39,7 +39,7 @@ import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
-import { escapeHtml, layoutPage, parsePath } from "../../worker.js";
+import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
   SPACES_ASSET_HOST,
   applyServedEnvironmentDeltas,

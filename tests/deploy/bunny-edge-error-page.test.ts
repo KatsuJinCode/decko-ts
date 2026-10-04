@@ -42,7 +42,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { escapeHtml } from "../../worker.js";
+import { escapeHtml } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 import {
   EDGE_ERROR_PAGE_GRACE_MS,
