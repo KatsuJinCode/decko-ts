@@ -16,6 +16,12 @@ import { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
+import {
+  structureRuleTypesFromResults,
+  structureRuleUniverseStatement,
+  structureUniverseFromResults,
+} from "../../src/card/rules/structure.js";
 import { layoutPage, parsePath } from "../../worker.js";
 import {
   decodeName,
@@ -103,6 +109,20 @@ async function bootDeck(config: ResolvedDbConfig): Promise<Deck> {
   // only warm caches; install + warm at boot or the marks 500 (the same
   // prime the two Cloudflare twins run — the shared module's composition).
   await installDeckNameEnvironment(driver, fetcher);
+  // Virtual-card rule universe (the p2-person-section lane's fix, ported to
+  // this line's serving boot by the fold-11 integrator — the same wiring
+  // the carried bunny-edge-deck-boot.ts performs, deploy/worker.ts
+  // primeCqlNameResolver and vm-staging-server.mjs primeEngine): one
+  // indexed statement over THIS boot's driver. Without the hook,
+  // FetchEngine.fetchByName answers undefined for every missing-row +
+  // structure-rule junction (e.g. a Person's "+Project(s) Participating"
+  // structured search) and the serving path renders them as missing —
+  // the measured 171px person-page drop.
+  const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+  fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+    contents: structureUniverseFromResults(universeResult),
+    ruleTypeIds: structureRuleTypesFromResults(universeResult),
+  });
   return { fetcher, render };
 }
 
