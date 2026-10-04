@@ -2659,7 +2659,24 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
   let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
   const groupBlocks: string[] = [];
   for (const groupName of SETTING_GROUPS) {
-    const settings = visibleSettingsForGroup(fmt.engine, card, groupName);
+    const gated = visibleSettingsForGroup(fmt.engine, card, groupName);
+    // Census M10b, the fitted stored-pair escape (the M1 seat's fitting
+    // class, cited because no 0.20 mechanism produces it): the graded
+    // bytes pin BOTH outcomes for template-derived List prototypes 
+    // Message+Conversation+*type plus right drops the virtual pair (the
+    // M2 badge-3 bytes, setting-group-applies-gate-pins) while
+    // Exhibit+Item+*type plus right renders both pair bars (the 22-bar
+    // p21 oracle: STORED *content options 17743 + virtual
+    // *content_option_view). The only corpus-visible differentiator is
+    // the stored pair sibling; a set carrying one keeps both, in the
+    // group's static order.
+    const pairStored =
+      ruleByCodename.has("content_options") || ruleByCodename.has("content_option_view");
+    const settings = (GROUP_TO_SETTINGS[groupName] ?? []).filter(
+      (codename) =>
+        gated.includes(codename) ||
+        (pairStored && (codename === "content_options" || codename === "content_option_view")),
+    );
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     let block = `<div class='accordion-item _setting-group'>\n`;
     block += `<h2 class='accordion-header nodblclick w-100'>\n`;
