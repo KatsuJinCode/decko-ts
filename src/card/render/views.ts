@@ -1164,8 +1164,12 @@ const coreViewBase: ViewFn = (ctx) => {
       fmt.card.dbContent,
       fmt.card.id,
       fmt.card.name.s,
-      // image.rb determine_image_size: voo.size || default_size (:medium).
-      fmt.voo?.opts.size ?? "medium",
+      // image.rb determine_image_size: voo.size, then the MAIN? arm
+      // (main_size :large  the page's main card renders large), then
+      // default_size (:medium). Census M6: the live *favicon page pins
+      // -large while the bare view-lane :open capture pins -medium  both
+      // Ruby-correct, the main? arm was the missing branch.
+      fmt.voo?.opts.size ?? (fmt.isMain ? "large" : "medium"),
       fmt.engine.imageCdnHost,
     );
   }

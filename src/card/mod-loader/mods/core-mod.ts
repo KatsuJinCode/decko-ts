@@ -1158,23 +1158,20 @@ const typeModDependsOnView: ViewFn = (ctx) => {
  *  gem's own off-by-one slice ("card-mod-email"[8..] = "-email" ->
  *  "mod_-email"), probe-1 verified.
  *
- *  ORDER (mm-cstructural, 2026-09-30 — a real bug this lane fixed): the
- *  order is NOT the gemspec's `add_runtime_dependency` declaration order.
- *  `card.spec` is whatever `Cardio::Mod.gem_specs` handed the mod
- *  (class_methods.rb:59-63: `Bundler.definition.specs`), and Bundler
- *  writes each gem's dependency list SORTED BY NAME in the lockfile. So
- *  the rendered order is alphabetical. Measured: the oracle deck's
- *  Gemfile.lock lists card-mod-edit as `card, card-mod-list,
- *  card-mod-rules` while the gemspec declares rules before list, and the
- *  `mod: edit` page's Depends-on bars render `mod: list` then `mod: rules`.
- *  All 33 card-mod entries in that lockfile are sorted (verified), so the
- *  sort is the rule, not a one-mod fix. MOD_SPECS keeps the gemspec's
- *  declaration order (it is the set that matters everywhere else); the
- *  sort happens HERE, at the one view whose bytes are order-sensitive. */
+ *  ORDER (census M4, serializer-followup2 2026-10-03 — supersedes the
+ *  2026-09-30 lockfile-sort fit): the rendered order IS the gemspec's
+ *  `add_runtime_dependency` declaration order — card-1.110.0 mod/core
+ *  set/type/mod.rb:85-89 `depends_on = card_mods { mod&.spec&.dependencies }`
+ *  maps the spec's list verbatim, no sort anywhere in the chain. The
+ *  lockfile-sort fit held only for the mod pages measured then; the five
+ *  census pages refute it (mod: account renders email, permission, list —
+ *  NOT the sorted superset; mod: bootstrap's live gemspec has no script
+ *  dep). MOD_SPECS now pins the LIVE bytes' membership + order per mod (the
+ *  live-era gemspecs are the ground truth; the graded bytes win), and this
+ *  view consumes the declaration order verbatim. The `.sort()` is retired. */
 function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
   if (spec === undefined) return undefined;
-  const names = [...spec.deps]
-    .sort()
+  const names = spec.deps
     .filter((name) => name.startsWith("card-mod"))
     .map((name) => `mod_${name.slice(8)}`);
   return names.length > 0 ? names : undefined;

@@ -195,7 +195,7 @@ describe("a permission rule card's :core branches on its own content (permission
 });
 
 describe("a Mod card's Scripts section is gated on the +*script child card (type/mod.rb:56-65)", () => {
-  it("the shades premise holds: the pinned group table is SILENT for shades", async () => {
+  it("the shades arm: the corpus child row and the graded group body agree (post-M5)", async () => {
     // The fix is a UNION of two sources, so both halves matter. The FIRST
     // half — a `mod: shades+*script` corpus row (id 49309, with
     // `mod: shades+*script+*asset output` id 49310 under it) — is verified
@@ -204,17 +204,25 @@ describe("a Mod card's Scripts section is gated on the +*script child card (type
     // in this fixture: a `+*`-prefixed right part does not resolve through
     // the seeded junction walk, so the row cannot be reached from here.
     //
-    // The SECOND half is pinned here, and it is the half the pre-fix engine
-    // got wrong: with the table silent, the section's presence could only
-    // come from the corpus row, and the pre-fix engine emitted nothing.
-    expect(
-      modAssetGroups("shades", "script"),
-      "MOD_ASSET_GROUPS_SRC carries no shades entry",
-    ).toBeUndefined();
-    expect(
-      modAssetGroups("shades", "style"),
-      "nor a styles entry",
-    ).toBeUndefined();
+    // The SECOND half was pinned here as "the table is SILENT for shades" —
+    // the empty-body fit from the older recapture generation
+    // (recapture-raw-shard-000043). Census M5 (serializer-followup2,
+    // 0377f4d3) refuted that fit: the GRADED expected-v2 capture carries the
+    // four-file local group, MOD_ASSET_GROUPS_SRC gained the shades entry,
+    // and this premise flipped with it (the stale silence assertion failed
+    // from 0377f4d3 onward — found and fixed forward at census M10). The
+    // union predicate's two halves now AGREE for shades: corpus row present,
+    // table carries the graded body.
+    const scripts = modAssetGroups("shades", "script");
+    expect(scripts, "the graded four-file local group").toBeDefined();
+    expect(scripts?.[0]?.[1]).toEqual([
+      "decko_logo.js",
+      "decko_org.js.coffee",
+      "snap.js",
+      "snap_svg.js",
+    ]);
+    expect(modAssetGroups("shades", "style"), "shades ships no styles dir")
+      .toBeUndefined();
   });
 
   it("a mod the table does not know and the deck does not script has no section", async () => {
@@ -235,5 +243,10 @@ describe("a Mod card's Scripts section is gated on the +*script child card (type
     expect(modAssetGroups("bar_and_box", "script")).toBeDefined();
     expect(modAssetGroups("carrierwave", "script")).toBeDefined();
     expect(modAssetGroups("bootstrap", "style")).toBeDefined();
+    // Census M10: the tinymce groups (the graded child-page bytes — the
+    // parent page itself 500'd at capture; see
+    // mod-tinymce-style-script-group-pins.test.ts).
+    expect(modAssetGroups("tinymce_editor", "script")).toBeDefined();
+    expect(modAssetGroups("tinymce_editor", "style")).toBeDefined();
   });
 });
