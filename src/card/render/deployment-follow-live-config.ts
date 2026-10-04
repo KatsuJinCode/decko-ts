@@ -110,6 +110,52 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
   defaultHtmlViewNest: "content",
 };
 
+/** The GRADED arm — the five deployment constants the graded environment
+ *  installs, WITHOUT `defaultHtmlViewNest`.
+ *
+ *  DERIVED FROM `LIVE_DEPLOYMENT_CONSTANTS` BY REST-DESTRUCTURE, not copied.
+ *  The five values therefore cannot drift from the six they came from: a
+ *  future live-check that updates a value in the six is picked up here
+ *  automatically, and one that updates a value the six does not carry cannot
+ *  be picked up at all, which is the point.
+ *
+ *  WHY THE SIXTH IS EXCLUDED, measured (r1-constants-arm-lane.md step 3):
+ *    - `defaultHtmlViewNest` is the ONLY one of the six that moves view-lane
+ *      bytes. Per-field isolation put 100% of the 28-of-78 view83 movement on
+ *      it alone, and the other five moved zero view bytes, alone or together
+ *      (same sha as UNSET).
+ *    - It closed ZERO verdicts: all 28 moved entries were already FAIL. So the
+ *      corpus does not demand it.
+ *    - The five view-INERT constants are what deliver the graded page work:
+ *      16 of the 49 head/page entries FAIL->PASS with the serializer era
+ *      frozen (the ruling's "~26" is 16 constants + 11 serializer-era credits;
+ *      R1 freezes the era, so R1 as scoped delivers 16).
+ *
+ *  So this is the smallest-blast-radius form that still arms everything the
+ *  corpus is measured to demand, and it keeps the graded arm out of the view
+ *  lane entirely — the lane R2 is normalizing in the canonical corpus.
+ *  REVISIT ONLY IF GRADE EVIDENCE DEMANDS IT: the exclusion is a measured
+ *  judgement about the corpus as it stands, not a permanent claim that the
+ *  sixth field is wrong.
+ *
+ *  The TYPE omits BOTH `serializerEra` and `defaultHtmlViewNest`, so both
+ *  exclusions are compile-enforced rather than conventional.
+ *
+ *  USAGE — default OFF until a deployment installs it:
+ *      setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+ */
+const {
+  // The one field the graded arm excludes. Bound then discarded, so the rest
+  // destructures into exactly the five.
+  defaultHtmlViewNest: _excludedFromGradedArm,
+  ...gradedArmConstants
+} = LIVE_DEPLOYMENT_CONSTANTS;
+
+export const GRADED_ARM_DEPLOYMENT_CONSTANTS: Omit<
+  DeploymentFollowLiveConfig,
+  "serializerEra" | "defaultHtmlViewNest"
+> = gradedArmConstants;
+
 export function setDeploymentFollowLiveConfig(
   next: DeploymentFollowLiveConfig | undefined,
 ): void {
