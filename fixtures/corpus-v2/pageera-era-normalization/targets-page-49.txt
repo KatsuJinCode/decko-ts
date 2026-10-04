@@ -1,0 +1,49 @@
+page	recapture-raw-shard-000000.jsonl	*favicon	page
+page	recapture-raw-shard-000000.jsonl	*input type+*right	page
+page	recapture-raw-shard-000000.jsonl	Administrator	page
+page	recapture-raw-shard-000000.jsonl	Anyone Signed In	page
+page	recapture-raw-shard-000000.jsonl	Archetypal	page
+page	recapture-raw-shard-000000.jsonl	Family	page
+page	recapture-raw-shard-000002.jsonl	Christmas	page
+page	recapture-raw-shard-000003.jsonl	*alerts	page
+page	recapture-raw-shard-000003.jsonl	*now	page
+page	recapture-raw-shard-000003.jsonl	*recent	page
+page	recapture-raw-shard-000003.jsonl	*search	page
+page	recapture-raw-shard-000005.jsonl	Klickstein continues+discussion	page
+page	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image01+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image02+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image03+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image04+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image05+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image06+discussion	page
+page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image07+discussion	page
+page	recapture-raw-shard-000013.jsonl	Williamscraig	page
+page	recapture-raw-shard-000016.jsonl	Guns	page
+page	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	page
+page	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	page
+page	recapture-raw-shard-000018.jsonl	Brandon feedback+discussion	page
+page	recapture-raw-shard-000019.jsonl	A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion	page
+page	recapture-raw-shard-000029.jsonl	*all+*head	page
+page	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	page
+page	recapture-raw-shard-000029.jsonl	Help Desk	page
+page	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	page
+page	recapture-raw-shard-000029.jsonl	Pointer	page
+page	recapture-raw-shard-000029.jsonl	Shark	page
+page	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902+discussion	page
+page	recapture-raw-shard-000039.jsonl	mod: account	page
+page	recapture-raw-shard-000039.jsonl	mod: bootstrap	page
+page	recapture-raw-shard-000039.jsonl	mod: carrierwave	page
+page	recapture-raw-shard-000039.jsonl	mod: core	page
+page	recapture-raw-shard-000039.jsonl	mod: date	page
+page	recapture-raw-shard-000039.jsonl	mod: email	page
+page	recapture-raw-shard-000039.jsonl	mod: follow	page
+page	recapture-raw-shard-000039.jsonl	mod: format	page
+page	recapture-raw-shard-000039.jsonl	mod: layout	page
+page	recapture-raw-shard-000039.jsonl	mod: list	page
+page	recapture-raw-shard-000039.jsonl	mod: script	page
+page	recapture-raw-shard-000039.jsonl	mod: search	page
+page	recapture-raw-shard-000039.jsonl	mod: session	page
+page	recapture-raw-shard-000039.jsonl	mod: style	page
+page	recapture-raw-shard-000039.jsonl	mod: tinymce editor	page
+page	recapture-raw-shard-000043.jsonl	mod: shades	page

@@ -1,0 +1,2413 @@
+{
+  "schema": "pageera-era-field-census/1",
+  "probeDir": "tmp/pageera/probe-graded-prestate",
+  "entries": 11,
+  "regionsTotal": 149,
+  "unclassifiedRegions": 0,
+  "foreignRegions": 0,
+  "bucketTally": {
+    "accordion-body-class-order": 29,
+    "accordion-button-class": 28,
+    "accordion-collapse-class": 4,
+    "bar-class-token-order": 120
+  },
+  "seamTable": [
+    {
+      "id": "show-key-root-drop",
+      "file": "src/card/render/format.ts:406-414",
+      "note": "emittedShow = serializerFollowsLive() ? show.filter(...) : show -- the live serializer DROPS the view field from a view-lane root's show list; the frozen one emits show verbatim"
+    },
+    {
+      "id": "accordion-button-class",
+      "file": "src/card/mod-loader/mods/core-mod.ts:340-344",
+      "note": "class-token ORDER: live ['accordion-button', collapsed] vs frozen ['collapsed', 'accordion-button']"
+    },
+    {
+      "id": "accordion-collapse-class",
+      "file": "src/card/mod-loader/mods/core-mod.ts:345-350",
+      "note": "collapseClasses order: live [accordion-collapse, collapse, show] vs frozen [show, accordion-collapse, collapse]"
+    },
+    {
+      "id": "accordion-body-class-order",
+      "file": "src/card/mod-loader/mods/core-mod.ts:366",
+      "note": "live 'd0-card-body accordion-body' vs frozen 'accordion-body d0-card-body'"
+    },
+    {
+      "id": "bar-class-token-order",
+      "file": "src/card/render/pointer-list.ts:564 (bar class-token order seam)",
+      "note": "live computes classy() output FIRST then the haml statics; frozen emits the statics first then the computed output -- same token SET, different order"
+    }
+  ],
+  "foreignTable": [
+    {
+      "id": "css-revision-digits",
+      "file": "src/card/render/head-views.ts:213"
+    },
+    {
+      "id": "script-integrity",
+      "file": "src/card/render/page.ts:899"
+    },
+    {
+      "id": "footer-decko-version",
+      "file": "src/card/render/views.ts:774"
+    },
+    {
+      "id": "recaptcha-site-key",
+      "file": "src/card/render/views.ts:1498"
+    },
+    {
+      "id": "decko-root-url",
+      "file": "src/card/render/page.ts:829"
+    },
+    {
+      "id": "slot-name-context",
+      "file": "relnames port (M1 root-context seat)"
+    }
+  ],
+  "results": [
+    {
+      "tag": "Anyone_Signed_In:page",
+      "verdict": "DIVERGES",
+      "regions": 4,
+      "regionList": [
+        {
+          "expectedStart": 10467,
+          "actualStart": 10467,
+          "expectedLen": 127,
+          "actualLen": 127,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-search RSTAR RIGHT-Xcreated TYPE_PLUS_RIGHT-rich_text-Xcreated with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-search RSTAR RIGHT-Xcreated TYPE_PLUS_RIGHT-rich_text-Xcreated with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 10764,
+          "actualStart": 10764,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 13061,
+          "actualStart": 13061,
+          "expectedLen": 125,
+          "actualLen": 125,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-search RSTAR RIGHT-Xedited TYPE_PLUS_RIGHT-rich_text-Xedited with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-search RSTAR RIGHT-Xedited TYPE_PLUS_RIGHT-rich_text-Xedited with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 13354,
+          "actualStart": 13354,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "Guns:page",
+      "verdict": "DIVERGES",
+      "regions": 21,
+      "regionList": [
+        {
+          "expectedStart": 8921,
+          "actualStart": 8921,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 9052,
+          "actualStart": 9052,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10585,
+          "actualStart": 10585,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 12385,
+          "actualStart": 12385,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-collapse-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 12587,
+          "actualStart": 12587,
+          "expectedLen": 32,
+          "actualLen": 32,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-collapse-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-collapse collapse show",
+          "actualText": "show accordion-collapse collapse"
+        },
+        {
+          "expectedStart": 13955,
+          "actualStart": 13955,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 15224,
+          "actualStart": 15224,
+          "expectedLen": 132,
+          "actualLen": 132,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-rich_text RIGHT-rifle TYPE_PLUS_RIGHT-research-rifle SELF-gun-rifle with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-rich_text RIGHT-rifle TYPE_PLUS_RIGHT-research-rifle SELF-gun-rifle with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 15534,
+          "actualStart": 15534,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 17749,
+          "actualStart": 17749,
+          "expectedLen": 135,
+          "actualLen": 135,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-rich_text RIGHT-pistol TYPE_PLUS_RIGHT-research-pistol SELF-gun-pistol with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-rich_text RIGHT-pistol TYPE_PLUS_RIGHT-research-pistol SELF-gun-pistol with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 18064,
+          "actualStart": 18064,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 20261,
+          "actualStart": 20261,
+          "expectedLen": 126,
+          "actualLen": 126,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-rich_text RIGHT-air TYPE_PLUS_RIGHT-research-air SELF-gun-air with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-rich_text RIGHT-air TYPE_PLUS_RIGHT-research-air SELF-gun-air with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 20559,
+          "actualStart": 20559,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 22760,
+          "actualStart": 22760,
+          "expectedLen": 138,
+          "actualLen": 138,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-rich_text RIGHT-website TYPE_PLUS_RIGHT-research-website SELF-gun-website with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-rich_text RIGHT-website TYPE_PLUS_RIGHT-research-website SELF-gun-website with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 23078,
+          "actualStart": 23078,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 25387,
+          "actualStart": 25387,
+          "expectedLen": 125,
+          "actualLen": 125,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-rich_text RIGHT-reference TYPE_PLUS_RIGHT-research-reference with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-rich_text RIGHT-reference TYPE_PLUS_RIGHT-research-reference with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 25677,
+          "actualStart": 25677,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 28639,
+          "actualStart": 28639,
+          "expectedLen": 121,
+          "actualLen": 121,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-list RIGHT-tag TYPE_PLUS_RIGHT-research-tag SELF-gun-tag with-bar-menu",
+          "actualText": "bar ALL ALL_PLUS TYPE-list RIGHT-tag TYPE_PLUS_RIGHT-research-tag SELF-gun-tag with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 28931,
+          "actualStart": 28931,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 31673,
+          "actualStart": 31673,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-collapse-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 31879,
+          "actualStart": 31879,
+          "expectedLen": 32,
+          "actualLen": 32,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-collapse-class",
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-collapse collapse show",
+          "actualText": "show accordion-collapse collapse"
+        },
+        {
+          "expectedStart": 33268,
+          "actualStart": 33268,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        }
+      ]
+    },
+    {
+      "tag": "mod_carrierwave:page",
+      "verdict": "DIVERGES",
+      "regions": 10,
+      "regionList": [
+        {
+          "expectedStart": 8443,
+          "actualStart": 8443,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 8688,
+          "actualStart": 8688,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 9156,
+          "actualStart": 9156,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-file with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-file with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 9391,
+          "actualStart": 9391,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 11388,
+          "actualStart": 11388,
+          "expectedLen": 75,
+          "actualLen": 75,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-image with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-image with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11626,
+          "actualStart": 11626,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 14263,
+          "actualStart": 14263,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_history with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_history with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 14517,
+          "actualStart": 14517,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 16611,
+          "actualStart": 16611,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_permission with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_permission with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16876,
+          "actualStart": 16876,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_date:page",
+      "verdict": "DIVERGES",
+      "regions": 4,
+      "regionList": [
+        {
+          "expectedStart": 8351,
+          "actualStart": 8351,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 8580,
+          "actualStart": 8580,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 9048,
+          "actualStart": 9048,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-date with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-date with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 9283,
+          "actualStart": 9283,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_follow:page",
+      "verdict": "DIVERGES",
+      "regions": 10,
+      "regionList": [
+        {
+          "expectedStart": 8763,
+          "actualStart": 8763,
+          "expectedLen": 87,
+          "actualLen": 87,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xfollow_field with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xfollow_field with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 9035,
+          "actualStart": 9035,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 11110,
+          "actualStart": 11110,
+          "expectedLen": 81,
+          "actualLen": 81,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xfollow with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xfollow with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11362,
+          "actualStart": 11362,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 13075,
+          "actualStart": 13075,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 13312,
+          "actualStart": 13312,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 13868,
+          "actualStart": 13868,
+          "expectedLen": 91,
+          "actualLen": 91,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-notification_template with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-notification_template with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 14157,
+          "actualStart": 14157,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 16631,
+          "actualStart": 16631,
+          "expectedLen": 80,
+          "actualLen": 80,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_carrierwave with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_carrierwave with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16897,
+          "actualStart": 16897,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_format:page",
+      "verdict": "DIVERGES",
+      "regions": 30,
+      "regionList": [
+        {
+          "expectedStart": 8718,
+          "actualStart": 8718,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-phrase STAR SELF-Xtitle with-bar-menu",
+          "actualText": "bar ALL TYPE-phrase STAR SELF-Xtitle with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 8961,
+          "actualStart": 8961,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10977,
+          "actualStart": 10977,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xhead with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xhead with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11222,
+          "actualStart": 11222,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 13236,
+          "actualStart": 13236,
+          "expectedLen": 78,
+          "actualLen": 78,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-html STAR SELF-Xcredit with-bar-menu",
+          "actualText": "bar ALL TYPE-html STAR SELF-Xcredit with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 13481,
+          "actualStart": 13481,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 15194,
+          "actualStart": 15194,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 15427,
+          "actualStart": 15427,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 15916,
+          "actualStart": 15916,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-rich_text with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-rich_text with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16163,
+          "actualStart": 16163,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 18206,
+          "actualStart": 18206,
+          "expectedLen": 80,
+          "actualLen": 80,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-plain_text with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-plain_text with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 18457,
+          "actualStart": 18457,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 20479,
+          "actualStart": 20479,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-html with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-html with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 20714,
+          "actualStart": 20714,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 22716,
+          "actualStart": 22716,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-phrase with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-phrase with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 22957,
+          "actualStart": 22957,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 24636,
+          "actualStart": 24636,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 24874,
+          "actualStart": 24874,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 25345,
+          "actualStart": 25345,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-json with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-json with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 25583,
+          "actualStart": 25583,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 27250,
+          "actualStart": 27250,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 27483,
+          "actualStart": 27483,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 27961,
+          "actualStart": 27961,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-number with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-number with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 28202,
+          "actualStart": 28202,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 30216,
+          "actualStart": 30216,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-toggle with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-toggle with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 30457,
+          "actualStart": 30457,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 32459,
+          "actualStart": 32459,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-uri with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-uri with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 32694,
+          "actualStart": 32694,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 36677,
+          "actualStart": 36677,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_content with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_content with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 36931,
+          "actualStart": 36931,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_layout:page",
+      "verdict": "DIVERGES",
+      "regions": 14,
+      "regionList": [
+        {
+          "expectedStart": 8719,
+          "actualStart": 8719,
+          "expectedLen": 81,
+          "actualLen": 81,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xlayout with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xlayout with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 8969,
+          "actualStart": 8969,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10991,
+          "actualStart": 10991,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xhead with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xhead with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11236,
+          "actualStart": 11236,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 12937,
+          "actualStart": 12937,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 13173,
+          "actualStart": 13173,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 13654,
+          "actualStart": 13654,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-layout with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-layout with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 13898,
+          "actualStart": 13898,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 16549,
+          "actualStart": 16549,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_account with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_account with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16803,
+          "actualStart": 16803,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 18899,
+          "actualStart": 18899,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_session with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_session with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 19153,
+          "actualStart": 19153,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 21215,
+          "actualStart": 21215,
+          "expectedLen": 72,
+          "actualLen": 72,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_tab with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_tab with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 21459,
+          "actualStart": 21459,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_script:page",
+      "verdict": "DIVERGES",
+      "regions": 18,
+      "regionList": [
+        {
+          "expectedStart": 8738,
+          "actualStart": 8738,
+          "expectedLen": 81,
+          "actualLen": 81,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xscript with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xscript with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 8990,
+          "actualStart": 8990,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10703,
+          "actualStart": 10703,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 10941,
+          "actualStart": 10941,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 11444,
+          "actualStart": 11444,
+          "expectedLen": 81,
+          "actualLen": 81,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-java_script with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-java_script with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11701,
+          "actualStart": 11701,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 13774,
+          "actualStart": 13774,
+          "expectedLen": 83,
+          "actualLen": 83,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-coffee_script with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-coffee_script with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 14037,
+          "actualStart": 14037,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 15752,
+          "actualStart": 15752,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 15987,
+          "actualStart": 15987,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 16563,
+          "actualStart": 16563,
+          "expectedLen": 95,
+          "actualLen": 95,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-local_script_folder_group with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-local_script_folder_group with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16864,
+          "actualStart": 16864,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 19100,
+          "actualStart": 19100,
+          "expectedLen": 97,
+          "actualLen": 97,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-local_script_manifest_group with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-local_script_manifest_group with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 19407,
+          "actualStart": 19407,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 21618,
+          "actualStart": 21618,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_asset with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_asset with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 21868,
+          "actualStart": 21868,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 23917,
+          "actualStart": 23917,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_list with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_list with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 24162,
+          "actualStart": 24162,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_search:page",
+      "verdict": "DIVERGES",
+      "regions": 12,
+      "regionList": [
+        {
+          "expectedStart": 8714,
+          "actualStart": 8714,
+          "expectedLen": 81,
+          "actualLen": 81,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xscript with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xscript with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 8966,
+          "actualStart": 8966,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10679,
+          "actualStart": 10679,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 10916,
+          "actualStart": 10916,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 11394,
+          "actualStart": 11394,
+          "expectedLen": 76,
+          "actualLen": 76,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-search with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-search with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11635,
+          "actualStart": 11635,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 14074,
+          "actualStart": 14074,
+          "expectedLen": 79,
+          "actualLen": 79,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_collection with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_collection with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 14337,
+          "actualStart": 14337,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 16420,
+          "actualStart": 16420,
+          "expectedLen": 75,
+          "actualLen": 75,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_format with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_format with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 16671,
+          "actualStart": 16671,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 18762,
+          "actualStart": 18762,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_help with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_help with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 19007,
+          "actualStart": 19007,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_session:page",
+      "verdict": "DIVERGES",
+      "regions": 6,
+      "regionList": [
+        {
+          "expectedStart": 8379,
+          "actualStart": 8379,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 8615,
+          "actualStart": 8615,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 9101,
+          "actualStart": 9101,
+          "expectedLen": 77,
+          "actualLen": 77,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-session with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-session with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 9348,
+          "actualStart": 9348,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 11431,
+          "actualStart": 11431,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_list with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_list with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11676,
+          "actualStart": 11676,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    },
+    {
+      "tag": "mod_style:page",
+      "verdict": "DIVERGES",
+      "regions": 20,
+      "regionList": [
+        {
+          "expectedStart": 8712,
+          "actualStart": 8712,
+          "expectedLen": 80,
+          "actualLen": 80,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-setting STAR SELF-Xstyle with-bar-menu",
+          "actualText": "bar ALL TYPE-setting STAR SELF-Xstyle with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 8961,
+          "actualStart": 8961,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 10668,
+          "actualStart": 10668,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 10901,
+          "actualStart": 10901,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 11472,
+          "actualStart": 11472,
+          "expectedLen": 94,
+          "actualLen": 94,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-local_style_folder_group with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-local_style_folder_group with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 11770,
+          "actualStart": 11770,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 13995,
+          "actualStart": 13995,
+          "expectedLen": 96,
+          "actualLen": 96,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-local_style_manifest_group with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-local_style_manifest_group with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 14299,
+          "actualStart": 14299,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 16098,
+          "actualStart": 16098,
+          "expectedLen": 26,
+          "actualLen": 26,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "accordion-button collapsed",
+          "actualText": "collapsed accordion-button"
+        },
+        {
+          "expectedStart": 16332,
+          "actualStart": 16332,
+          "expectedLen": 22,
+          "actualLen": 22,
+          "delta": 0,
+          "class": "ERA-CONTENT",
+          "seams": [
+            "accordion-button-class",
+            "accordion-body-class-order"
+          ],
+          "foreign": [],
+          "orderOnly": false,
+          "expectedText": "d0-card-body accordion",
+          "actualText": "accordion-body d0-card"
+        },
+        {
+          "expectedStart": 16798,
+          "actualStart": 16798,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-css with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-css with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 17033,
+          "actualStart": 17033,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 19022,
+          "actualStart": 19022,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-scss with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-scss with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 19260,
+          "actualStart": 19260,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 21255,
+          "actualStart": 21255,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-cardtype SELF-skin with-bar-menu",
+          "actualText": "bar ALL TYPE-cardtype SELF-skin with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 21493,
+          "actualStart": 21493,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 23766,
+          "actualStart": 23766,
+          "expectedLen": 74,
+          "actualLen": 74,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_asset with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_asset with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 24016,
+          "actualStart": 24016,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        },
+        {
+          "expectedStart": 26065,
+          "actualStart": 26065,
+          "expectedLen": 73,
+          "actualLen": 73,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "nodblclick d-flex _card-link bar ALL TYPE-mod SELF-mod_list with-bar-menu",
+          "actualText": "bar ALL TYPE-mod SELF-mod_list with-bar-menu nodblclick d-flex _card-link"
+        },
+        {
+          "expectedStart": 26310,
+          "actualStart": 26310,
+          "expectedLen": 16,
+          "actualLen": 16,
+          "delta": 0,
+          "class": "ERA-ORDER",
+          "seams": [
+            "bar-class-token-order"
+          ],
+          "foreign": [],
+          "orderOnly": true,
+          "expectedText": "row g-0 bar-body",
+          "actualText": "bar-body row g-0"
+        }
+      ]
+    }
+  ]
+}

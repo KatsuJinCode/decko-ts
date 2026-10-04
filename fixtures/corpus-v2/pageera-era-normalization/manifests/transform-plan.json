@@ -1,0 +1,125 @@
+{
+  "schema": "pageera-transform-plan/1",
+  "builtFrom": {
+    "probeDir": "tmp/pageera/probe-graded-prestate",
+    "targets": "tmp/pageera/targets-era-11.txt",
+    "corpusRoot": "tmp/raw-ground-truth",
+    "engineArm": "graded (five head/body constants SET; serializerEra and defaultHtmlViewNest UNSET)",
+    "engineBase": "6bc861a2"
+  },
+  "engineCorpusPin": "6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e",
+  "corpusDbSha256": "6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e",
+  "targetCount": 11,
+  "targets": [
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "name": "Anyone Signed In",
+      "view": "page",
+      "preSha256": "dada714e508e8d36b9080f1ad69aa9bb178752e823ad8ac70eb1be1c93d09405",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--Anyone_Signed_In__page.html",
+      "postSha256": "69d188d2202fc8f5e7dff6d40c60cd2cf1f359586936842f8d8dabcb13385ffa",
+      "deltaBytes": -1018
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000016.jsonl",
+      "name": "Guns",
+      "view": "page",
+      "preSha256": "c4cb8c955e91a9bdecd18a27288ba2826a10ff0ec07ee7b966bc3fd8072f8951",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--Guns__page.html",
+      "postSha256": "5561f11def83dc4a6a4406a01b36bc705a315b8df8a978c75111b685886158bf",
+      "deltaBytes": -1148
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: carrierwave",
+      "view": "page",
+      "preSha256": "70529fc3e3cdca7462311c339ce5f664f832f6eb021e1651fe7e22b932abd793",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_carrierwave__page.html",
+      "postSha256": "f9ca751770490fbc17546302a75afccddb931f775768e902c3b428dc33f497f7",
+      "deltaBytes": -1056
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: date",
+      "view": "page",
+      "preSha256": "91e2bdc3b2f318c89ec63d474bcea1585c28c88d6e4f578cda433a7b1714b19b",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_date__page.html",
+      "postSha256": "460e1b16a7f3ae1949f6d520d46731d09792588f962ff5f37d0b950a1378093c",
+      "deltaBytes": -1002
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: follow",
+      "view": "page",
+      "preSha256": "5cf43bc1b99c8e910415664c96edfd64a90193d95aa94b4d03bd1a4d6b9c9151",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_follow__page.html",
+      "postSha256": "76371e7d08c9b446ac58bf9429ccfcb6ba1184676e13f35612eb00f84ebe4aff",
+      "deltaBytes": -1056
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: format",
+      "view": "page",
+      "preSha256": "9f5314cf0fe2d26013a0e94bf1f6efb1c844535e963c7b70ee9736df59d7c213",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_format__page.html",
+      "postSha256": "8b09fcb39af1b45055afdf369b76410235b61a96e459bf94664308a00b7a12b0",
+      "deltaBytes": -1262
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: layout",
+      "view": "page",
+      "preSha256": "4dd8e76302241a6ffa6b60c6a31c8be21632204a352862a7e77820920213d87a",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_layout__page.html",
+      "postSha256": "c622d33d52fbe6445d3a5b154122fe7da0fbcf6478db67a61d2b378c3f0fa2c8",
+      "deltaBytes": -1094
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: script",
+      "view": "page",
+      "preSha256": "7c3edb39b18d2f966ae5f5031cff4d7d1f17a0d9a5f2be1d2fdc666420b371fa",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_script__page.html",
+      "postSha256": "fc45c4accb3b920682de67bad07ef1d087730b81add223a71ee2aa1739ccd1d9",
+      "deltaBytes": -1132
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: search",
+      "view": "page",
+      "preSha256": "f5ccf02c90bfc6c82e37f48db0fe2fd71d7138af0ba567add50834fd7c94fb2d",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_search__page.html",
+      "postSha256": "2490e405bc8b11ce46c90ba507f5a21ad442fbb44a2af4bb592371f6627a2909",
+      "deltaBytes": -1078
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: session",
+      "view": "page",
+      "preSha256": "79bae1e9a48d7fa0b8e942bc7b826faa0f3a1317d43ab4c499bcd1f364aff9c0",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_session__page.html",
+      "postSha256": "7ad86c69eaba1ae8e523783d55248bef7a8ea0b69191f59b4628506b063094f4",
+      "deltaBytes": -1018
+    },
+    {
+      "lane": "page",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "name": "mod: style",
+      "view": "page",
+      "preSha256": "c5c692ce1e954bd416f7b7613031cbe49d694833c9fa4e7b35d1752a484f1c5d",
+      "frozenBytesFile": "tmp\\pageera\\probe-graded-prestate\\actual--mod_style__page.html",
+      "postSha256": "140233650a899d7e72ef69efca1ff970b1b40abd8086a1c323d759c10c5764b4",
+      "deltaBytes": -1152
+    }
+  ]
+}
