@@ -10,26 +10,39 @@
 //
 // Platform contract unchanged: web-standard Request/Response, credentials
 // via the passed env bag (process.env on the edge), read-only surface.
+//
+// THE deploy-surface-union LANE (2026-10-03): this handler USED TO carry its
+// own bare dispatch (parsePath -> engine.render -> layoutPage wrap, bare
+// error pages) while the p2 lanes' tested serving surface rode alongside it
+// UNWIRED (the fold-11 host carry + shim). This lane WIRES it: every
+// non-/_status read request now dispatches through the carried request core
+// (bunny-edge-engine-request.ts handleEngineRequest — the full page shell,
+// the full-chrome error surfaces, the history seam with its wire-key
+// translation, the /files attachment route, the /api/card read gate, the
+// render budget) over the carried lineage URL grammar
+// (bunny-edge-lineage-worker-surface.ts, now the union grammar — see that
+// file's header). The boot is the union boot (below). The bare dispatch this
+// replaces is superseded wholesale; its capabilities that the carried core
+// lacked were PORTED INTO the carried core (the hardened /api/card decode,
+// the ?view= query arm, the mapRenderError 404 family) — recorded per
+// resolution in tmp/wrong-goal-hunt/deploy-union-lane.md. What deliberately
+// does NOT ride (operator decision named, not this lane's to make): the
+// deploy lineage's content-cache / cache-headers / session-viewer stack and
+// the armed write surface — the read-only 403 posture below is unchanged,
+// and the cache/session wrap is a strict-superset commit at the same call
+// site when the operator names it.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
-import { FetchEngine } from "../../src/card/fetch.js";
-import { RenderEngine } from "../../src/card/render.js";
-import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
-import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
+import { bootCorpusDeckEngines } from "./bunny-edge-deck-boot.js";
 import {
-  structureRuleTypesFromResults,
-  structureRuleUniverseStatement,
-  structureUniverseFromResults,
-} from "../../src/card/rules/structure.js";
-import { layoutPage, parsePath } from "../../worker.js";
-import {
-  decodeName,
-  historyViewParams,
-  installDeckNameEnvironment,
-  mapRenderError,
-  queryViewFromUrl,
-} from "../../src/server/worker-shared-surface.js";
+  handleEngineRequest,
+  json,
+  resolveEdgePipelineTimeoutMs,
+  resolveEdgeRenderBudgetMs,
+  type Deck,
+} from "./bunny-edge-engine-request.js";
+import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
+import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 
 /** Environment bag; on the edge this is process.env, in tests a plain
  *  object. Same convention as the reader's WorkerEnv. */
@@ -85,50 +98,46 @@ export function resolveDbConfig(env: EdgeEnv): ResolvedDbConfig | { error: strin
   };
 }
 
-interface Deck {
-  fetcher: FetchEngine;
-  render: RenderEngine;
-}
-
 // One deck per isolate (the Workers reuse pattern worker.ts uses): the first
 // request boots the engine, later requests share the warm caches.
 let deckPromise: Promise<Deck> | undefined;
 
-async function bootDeck(config: ResolvedDbConfig): Promise<Deck> {
-  // The deck's inflection table, applied BEFORE any name is parsed --
-  // oracle-deck-inflections.ts:1-13 states the rule ("Every deck-serving
-  // origin MUST apply this table at boot") and deploy/worker.ts:95 is the
-  // Cloudflare origin's instance of it. Without it this edge derives the
-  // gem defaults (`anonymou`, `_carol`, `brandon_`, `delete_thi`) and the
-  // rendered slot class tokens carry them.
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
-  const driver = new BunnyDbDriver({ url: config.url, authToken: config.authToken });
-  const fetcher = new FetchEngine(driver);
-  const render = new RenderEngine(fetcher);
-  // The sync name environment (mark URLs /~<id> and /:<codename>) reads
-  // only warm caches; install + warm at boot or the marks 500 (the same
-  // prime the two Cloudflare twins run — the shared module's composition).
-  await installDeckNameEnvironment(driver, fetcher);
-  // Virtual-card rule universe (the p2-person-section lane's fix, ported to
-  // this line's serving boot by the fold-11 integrator — the same wiring
-  // the carried bunny-edge-deck-boot.ts performs, deploy/worker.ts
-  // primeCqlNameResolver and vm-staging-server.mjs primeEngine): one
-  // indexed statement over THIS boot's driver. Without the hook,
-  // FetchEngine.fetchByName answers undefined for every missing-row +
-  // structure-rule junction (e.g. a Person's "+Project(s) Participating"
-  // structured search) and the serving path renders them as missing —
-  // the measured 171px person-page drop.
-  const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
-  fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
-    contents: structureUniverseFromResults(universeResult),
-    ruleTypeIds: structureRuleTypesFromResults(universeResult),
+/** THE UNION BOOT — the composition neither lineage carried alone:
+ *
+ *  - the carried corpus boot (bunny-edge-deck-boot.ts, the p2 lanes' tested
+ *    boot): the deck inflection table applied BEFORE any name parse (the
+ *    Rails-initializer moment; the graded edge cards' slot-class keys), the
+ *    sync name environment install + codenames load, and the virtual-card
+ *    rule universe wired over THIS boot's driver (the person-section fix —
+ *    without the hook every structure-rule junction renders as missing, the
+ *    measured 171px person-page drop);
+ *  - plus the lexicon prime this line's serving boot has always run
+ *    (installDeckNameEnvironment: junction-name composition over the full
+ *    trash-0 scan, the id-mark /~<id> resolution warm — its
+ *    installNameEnvironment + codenames.ensureLoaded calls are idempotent
+ *    after the corpus boot's own);
+ *  - plus the deploy lineage's two serving-boot fields the bare boot
+ *    lacked: the per-pipeline hop timeout resolved off
+ *    DECKO_EDGE_PIPELINE_TIMEOUT_MS (the P1 incident fix; needs the
+ *    carried driver whose 0 maps to "no per-hop abort"), and
+ *    render.imageCdnHost = SPACES_ASSET_HOST (the edge-site-shell lane —
+ *    content images resolve exactly as live).
+ */
+async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
+  const driver = new BunnyDbDriver({
+    url: config.url,
+    authToken: config.authToken,
+    timeoutMs: resolveEdgePipelineTimeoutMs(env),
   });
+  const { fetcher, render } = await bootCorpusDeckEngines(driver);
+  await installDeckNameEnvironment(driver, fetcher);
+  render.imageCdnHost = SPACES_ASSET_HOST;
   return { fetcher, render };
 }
 
-function getDeck(config: ResolvedDbConfig): Promise<Deck> {
+function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   if (deckPromise === undefined) {
-    deckPromise = bootDeck(config).catch((error) => {
+    deckPromise = bootDeck(config, env).catch((error) => {
       // Do not cache a failed boot: the next request retries (a transient
       // database hiccup on first hit must not poison the edge isolate).
       deckPromise = undefined;
@@ -138,34 +147,15 @@ function getDeck(config: ResolvedDbConfig): Promise<Deck> {
   return deckPromise;
 }
 
-function html(status: number, body: string): Response {
-  return new Response(body, {
-    status,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-}
-
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body, null, 2), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-}
-
 async function statusResponse(
   config: ResolvedDbConfig | { error: string },
+  env: EdgeEnv,
 ): Promise<Response> {
   if ("error" in config) {
     return json(500, { ok: false, error: "database credentials missing", detail: config.error });
   }
   try {
-    const deck = await getDeck(config);
+    const deck = await getDeck(config, env);
     const r = await deck.fetcher.driver.query<{ n: unknown }>(
       "SELECT COUNT(*) AS n FROM cards WHERE trash = 0",
       [],
@@ -192,101 +182,13 @@ async function statusResponse(
   }
 }
 
-async function handleEngineRequest(
-  request: Request,
-  config: ResolvedDbConfig,
-): Promise<Response> {
-  const url = new URL(request.url);
-  const parsed = parsePath(url.pathname);
-
-  if ("kind" in parsed) {
-    if (parsed.kind === "notFound") {
-      return html(
-        404,
-        layoutPage(
-          "Not found",
-          "<h1>Not found</h1><p class='muted'>Try <a href='/'>the home page</a> or render a card by name, e.g. <code>/Hello_World</code>.</p>",
-        ),
-      );
-    }
-    if (url.pathname === "/api/status") {
-      return json(200, {
-        ok: true,
-        runtime: "bunny-edge-scripting",
-        engine: "decko-ts",
-        notes: "boot pattern: warm caches survive across requests in the same isolate",
-      });
-    }
-    if (url.pathname.startsWith("/api/card/")) {
-      // Root's arm shape verbatim (worker.ts /api/card): the shared hardened
-      // decode (a malformed % answers 400, never an escaped URIError — the
-      // twins' decodeName rule), the whole arm inside a structured-500 try
-      // so no engine error escapes the handler unhandled.
-      try {
-        const name = decodeName(url.pathname.slice("/api/card/".length));
-        if (name === undefined || name === "") {
-          return json(400, { error: "empty card name" });
-        }
-        const deck = await getDeck(config);
-        const record = await deck.fetcher.fetchByName(name);
-        if (record === undefined || record.name === undefined) {
-          return json(404, { error: "card not found", name });
-        }
-        // The read gate (the same probe-battery batch-05 leak class the
-        // Cloudflare twins closed): Ruby's GET of a denied card renders the
-        // denial (ok_to_read? fails, set/all/permissions.rb:139-146); the
-        // JSON surface answers 403 without the protected fields. Same engine
-        // verdict the HTML path judges with (RenderEngine#canReadCard).
-        const typeRecord =
-          record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
-        const readable = await deck.render.canReadCard(record, typeRecord?.name?.s);
-        if (!readable) {
-          return json(403, { error: "permission denied", name });
-        }
-        return json(200, {
-          id: record.id ?? null,
-          name: record.name.s,
-          key: record.name.key,
-          type_id: record.typeId ?? null,
-          codename: record.codename ?? null,
-          db_content_preview: (record.dbContent ?? "").slice(0, 200),
-        });
-      } catch (error) {
-        return json(500, {
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-    return html(404, layoutPage("Not found", "<h1>Not found</h1>"));
-  }
-
-  try {
-    const deck = await getDeck(config);
-    const view = parsed.view ?? queryViewFromUrl(url) ?? "open";
-    const htmlBody = await deck.render.render(parsed.name, view, historyViewParams(url.searchParams));
-    return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody));
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // The Card::Error status_code table (prototype/lib/card/error.rb),
-    // SHARED with both Cloudflare twins via mapRenderError: NotFound ->
-    // 404, the UserError raise for an unregistered view -> 422
-    // (error.rb:21), else 500. This entry carried root's pre-fix catch —
-    // the same missing-404 the deploy-button lane fixed everywhere else.
-    const mapped = mapRenderError(message);
-    return html(
-      mapped.status,
-      layoutPage(
-        mapped.title,
-        `<h1>${mapped.title}</h1><pre>${message}</pre>`,
-      ),
-    );
-  }
-}
-
 /** The serve callback body: the Bunny SDK registration in
  *  bunny-edge-engine-entry.ts delegates every request here with the edge
- *  env bag. */
+ *  env bag. /_status stays ahead of the engine dispatch (a read route the
+ *  request core does not own, byte-independent of the boot); everything
+ *  else read-shaped goes through the carried request core, which owns the
+ *  /api/status + /api/card branches, the /files route, the page path, and
+ *  every error surface. */
 export async function handleBunnyEngineRequest(
   request: Request,
   env: EdgeEnv,
@@ -300,12 +202,22 @@ export async function handleBunnyEngineRequest(
 
   const url = new URL(request.url);
   if (url.pathname.replace(/\/+$/, "") === "/_status") {
-    return await statusResponse(resolveDbConfig(env));
+    return await statusResponse(resolveDbConfig(env), env);
   }
 
   const resolved = resolveDbConfig(env);
   if ("error" in resolved) {
     return json(500, { error: "database credentials missing", detail: resolved.error });
   }
-  return await handleEngineRequest(request, resolved);
+
+  // THE RENDER BUDGET (cold-render reliability): resolved off env —
+  // DEFAULT_EDGE_RENDER_BUDGET_MS (20 s) unless DECKO_EDGE_RENDER_BUDGET_MS
+  // retunes it; an explicit "0" is the operator's no-republish rollback to
+  // unbounded. The carried core races the whole dispatch (database branches
+  // included) against it and answers a trip with the retry-able full-chrome
+  // 503.
+  const deck = await getDeck(resolved, env);
+  return await handleEngineRequest(request, deck, {
+    budgetMs: resolveEdgeRenderBudgetMs(env),
+  });
 }
