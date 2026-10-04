@@ -25,15 +25,47 @@
 // replaces is superseded wholesale; its capabilities that the carried core
 // lacked were PORTED INTO the carried core (the hardened /api/card decode,
 // the ?view= query arm, the mapRenderError 404 family) — recorded per
-// resolution in tmp/wrong-goal-hunt/deploy-union-lane.md. What deliberately
-// does NOT ride (operator decision named, not this lane's to make): the
-// deploy lineage's content-cache / cache-headers / session-viewer stack and
-// the armed write surface — the read-only 403 posture below is unchanged,
-// and the cache/session wrap is a strict-superset commit at the same call
-// site when the operator names it.
+// resolution in tmp/wrong-goal-hunt/deploy-union-lane.md.
+//
+// THE edge-session-cache-stack CARRY LANE (2026-10-03, the operator-named
+// strict-superset add at THIS call site): the deploy lineage's cache/session
+// stack now rides here, carried VERBATIM from 12bd5236 (bunny-edge-
+// content-cache.ts, bunny-edge-cache-headers.ts, bunny-edge-session-viewer.ts
+// — commit a6a8cff2) and wired in the lineage entry's own dispatch order
+// (bunny-edge-engine-entry.ts:288-442):
+//   /_status -> /_signout mount (ABOVE the write surface — mount-order fact:
+//   matchRoute claims a bare POST /_signout as create-card "signout",
+//   write-routes.ts:491-493, the measured union-2 incident) -> the armed
+//   write surface (DECKO_WRITE_PATH/DECKO_FIRST_RUN via
+//   bunnyEdgeWriteArmed; the AUTH routes — POST /update/*signin, GET|POST
+//   /_signout — dispatch at every flag state, edge-signin-form-fix lane:
+//   auth is not a card write) -> the read-only 403 -> the session-aware,
+//   cache-wrapped engine path. The union boot, budget and request core are
+//   unchanged underneath the wrap. OFF-default independence: DECKO_EDGE_CACHE
+//   (cache layers, strict "1") and the write gates are separate switches from
+//   the one-trip config gate (fold-12, also OFF-default) — three independent
+//   postures, none implies another. Unarmed + cookieless + read-verb is the
+//   byte-identical union path: a Cookie header scan finds nothing,
+//   serveWithEdgeCache calls render() directly, no cache contact, no extra
+//   headers. Receipt: tmp/wrong-goal-hunt/edge-stack-carry-lane.md.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
+import { SessionStore } from "../../src/card/auth/session-store.js";
 import { bootCorpusDeckEngines } from "./bunny-edge-deck-boot.js";
+import {
+  bunnyEdgeWriteArmed,
+  mountBunnyEdgeWriteSurface,
+} from "./bunny-edge-signin-session-surface.js";
+import {
+  ActorRenderEngines,
+  handleEdgeSignout,
+  resolveViewerFromToken,
+  sessionTokenFromRequest,
+} from "./bunny-edge-session-viewer.js";
+import {
+  resolveEdgeContentCache,
+  serveWithEdgeCache,
+} from "./bunny-edge-content-cache.js";
 import {
   handleEngineRequest,
   json,
@@ -102,6 +134,14 @@ export function resolveDbConfig(env: EdgeEnv): ResolvedDbConfig | { error: strin
 // request boots the engine, later requests share the warm caches.
 let deckPromise: Promise<Deck> | undefined;
 
+// The signed-in engines, one per actor, over the shared deck's FetchEngine.
+// Populated only by requests that arrive with a session cookie, so an edge
+// that never sees one never allocates one. See bunny-edge-session-viewer.ts
+// for why the session needs its own engine rather than a mutable viewer
+// field (the permission state memoizes per engine) — the same shape the
+// staging host runs at vm-staging-server.mjs:2535-2548.
+let actorEngines: ActorRenderEngines | undefined;
+
 /** THE UNION BOOT — the composition neither lineage carried alone:
  *
  *  - the carried corpus boot (bunny-edge-deck-boot.ts, the p2 lanes' tested
@@ -137,14 +177,34 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
 
 function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   if (deckPromise === undefined) {
-    deckPromise = bootDeck(config, env).catch((error) => {
-      // Do not cache a failed boot: the next request retries (a transient
-      // database hiccup on first hit must not poison the edge isolate).
-      deckPromise = undefined;
-      throw error;
-    });
+    deckPromise = bootDeck(config, env)
+      .then((deck) => {
+        // The actor engine registry hangs off the booted deck exactly as the
+        // lineage entry's sync boot did (bunny-edge-engine-entry.ts:238):
+        // built once per isolate, only reachable by cookie-carrying requests
+        // (every serve-callback call site awaits getDeck first).
+        actorEngines = new ActorRenderEngines(deck);
+        return deck;
+      })
+      .catch((error) => {
+        // Do not cache a failed boot: the next request retries (a transient
+        // database hiccup on first hit must not poison the edge isolate).
+        deckPromise = undefined;
+        throw error;
+      });
   }
   return deckPromise;
+}
+
+/** The actor engine registry. Ask only AFTER getDeck has booted the deck —
+ *  every call site in the serve callback awaits it first. */
+function getActorEngines(): ActorRenderEngines {
+  if (actorEngines === undefined) {
+    // Unreachable through the serve callback (getDeck always sets it), but
+    // a named failure beats a null dereference.
+    throw new Error("bunny edge: actor engine registry asked for before the deck booted");
+  }
+  return actorEngines;
 }
 
 async function statusResponse(
@@ -184,25 +244,108 @@ async function statusResponse(
 
 /** The serve callback body: the Bunny SDK registration in
  *  bunny-edge-engine-entry.ts delegates every request here with the edge
- *  env bag. /_status stays ahead of the engine dispatch (a read route the
- *  request core does not own, byte-independent of the boot); everything
- *  else read-shaped goes through the carried request core, which owns the
- *  /api/status + /api/card branches, the /files route, the page path, and
- *  every error surface. */
+ *  env bag. The dispatch order is the deploy lineage entry's own
+ *  (bunny-edge-engine-entry.ts:288-442), carried as the strict superset at
+ *  this call site:
+ *
+ *   1. /_status — ahead of everything, so its bytes stay independent of the
+ *      write gate (a read route neither the write surface nor the request
+ *      core owns);
+ *   2. the /_signout mount — ABOVE the write surface on purpose (mount-order
+ *      fact, measured live: matchRoute claims a bare `POST /_signout` as
+ *      create-card "signout", write-routes.ts:491-493). Ungated: a session
+ *      this edge's own ungated sign-in minted must be revocable on the same
+ *      terms — auth is not a card write. The handler is read-shaped (revokes
+ *      the CALLER'S OWN row, touches no cards) and the path test is one
+ *      string compare ahead of any driver work;
+ *   3. the armed write surface — mounted when DECKO_WRITE_PATH (or
+ *      DECKO_FIRST_RUN) is armed, or the verb is not a read (so the UNGATED
+ *      auth routes — POST /update/*signin — can dispatch; the mount's own
+ *      short-circuit keeps an unarmed edge's non-auth routes on the 403
+ *      below without answering writes from here);
+ *   4. the read-only 403 — every non-GET/HEAD that fell through, the union's
+ *      read-only posture unchanged;
+ *   5. the engine path — session-aware and cache-wrapped: a cookieless
+ *      request does one Cookie-header scan and takes the union's byte path
+ *      through serveWithEdgeCache (unarmed = render() direct, no cache
+ *      contact, no extra headers); a cookie resolves through the SAME
+ *      SessionStore.lookupSession SQL the write path uses, and only a
+ *      SIGNED-IN viewer renders through its own actor engine (per-viewer
+ *      cache bypass in both directions — the cache key is the URL alone).
+ *
+ *  The request core underneath (handleEngineRequest) owns the /api/status +
+ *  /api/card branches, the /files route, the page path, and every error
+ *  surface — unchanged by this carry. */
 export async function handleBunnyEngineRequest(
   request: Request,
   env: EdgeEnv,
 ): Promise<Response> {
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    // Read-only edge: mirrors the Cloudflare worker with both write flags
-    // unset (every non-GET/HEAD verb answers 403 and the engine is never
-    // called).
-    return json(403, { error: "forbidden: this edge deploy is read-only" });
-  }
+  const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
   const url = new URL(request.url);
   if (url.pathname.replace(/\/+$/, "") === "/_status") {
+    // Ahead of the write surface, as it always was: /_status is a read route
+    // the surface does not own, and answering it here keeps its bytes
+    // independent of whether the write gate is armed.
     return await statusResponse(resolveDbConfig(env), env);
+  }
+
+  const writeArmed = bunnyEdgeWriteArmed(env);
+
+  // Sign-out — the OTHER half of the session surface, and the one the
+  // edge did not have at all: sign-in minted an auth_sessions row and
+  // nothing on this host could ever revoke it (clearedSessionCookieHeader
+  // had exactly one caller repo-wide, and it was on the staging host).
+  // GET|POST /_signout -> revoke the row + clear the cookie.
+  //
+  // UNgated (edge-signin-form-fix lane, 2026-10-03): a session this edge's
+  // own sign-in minted must be revocable on the same terms — auth is not a
+  // card write, and gating sign-out behind DECKO_WRITE_PATH while sign-in
+  // runs ungated would strand live sessions. The handler itself is
+  // read-shaped: it revokes the CALLER'S OWN session row (or answers
+  // revoked:false) and never touches cards.
+  //
+  // MOUNT ORDER — fixed live 2026-10-03 (union-2 lane proof): this mount
+  // sits ABOVE the write surface because matchRoute claims a bare
+  // `POST /_signout` as create-card "signout" (write-routes.ts:491-493:
+  // single-segment POST path, no create/update/delete prefix). Measured on
+  // the first union-2 release: POST /_signout 303'd, CREATED the card, the
+  // session stayed live, and the second POST 422'd "name is already taken:
+  // signout". The path test below is one string compare and runs before any
+  // driver work, so a non-sign-out request still boots no deck here and the
+  // cache fast path below stays boot-free.
+  if (url.pathname.replace(/\/+$/, "") === "/_signout") {
+    const signoutConfig = resolveDbConfig(env);
+    if (!("error" in signoutConfig)) {
+      const signoutDeck = await getDeck(signoutConfig, env);
+      const signout = await handleEdgeSignout(signoutDeck, request);
+      if (signout !== null) return signout;
+    }
+  }
+
+  // The sign-in + session surface, mounted ONLY when the operator armed it.
+  // DECKO_WRITE_PATH=1 on the edge script is the whole switch; it is the same
+  // gate name and the same meaning the Cloudflare host reads off its [vars]
+  // (cloudflare-write-routes.ts:150-158), so the write surface, the session
+  // cookie, and the auth_sessions reads/writes all ride the existing
+  // BunnyDbDriver seam. Unarmed, this branch is one env read and a boolean:
+  // no deck boot, no query, and the read path below runs exactly as it did —
+  // EXCEPT the one disarm-time exception the mount itself owns (the ungated
+  // login action), which is why non-read verbs enter the branch too.
+  if (writeArmed || !isReadVerb) {
+    const writeConfig = resolveDbConfig(env);
+    if (!("error" in writeConfig)) {
+      const writeDeck = await getDeck(writeConfig, env);
+      const surface = await mountBunnyEdgeWriteSurface(writeDeck, request, env);
+      if (surface !== null) return surface;
+    }
+  }
+
+  if (!isReadVerb) {
+    // Reached only when the write gate is unset (or the request is not a
+    // route the surface owns). This is the read-only edge's original answer,
+    // unchanged and still reached with no driver work behind it.
+    return json(403, { error: "forbidden: this edge deploy is read-only" });
   }
 
   const resolved = resolveDbConfig(env);
@@ -210,14 +353,80 @@ export async function handleBunnyEngineRequest(
     return json(500, { error: "database credentials missing", detail: resolved.error });
   }
 
-  // THE RENDER BUDGET (cold-render reliability): resolved off env —
-  // DEFAULT_EDGE_RENDER_BUDGET_MS (20 s) unless DECKO_EDGE_RENDER_BUDGET_MS
-  // retunes it; an explicit "0" is the operator's no-republish rollback to
-  // unbounded. The carried core races the whole dispatch (database branches
-  // included) against it and answers a trip with the retry-able full-chrome
-  // 503.
+  // Content caching (armed only under DECKO_EDGE_CACHE=1), two layers behind
+  // one flag at this single wrap site — the engine path only; /_status
+  // (above), the 403 (above) and every non-200 keep the constructors'
+  // no-store in both modes:
+  //   L2 script-side Cache API (bunny-edge-content-cache.ts): match before
+  //     render, store cacheable 200s after — skips the render and its
+  //     Bunny-DB round-trips on hits. Exists because the outer Bunny layer
+  //     was MEASURED rewriting script Cache-Control to `no-cache` (so L1
+  //     alone cannot keep the script off the hot path).
+  //   L1 response headers (bunny-edge-cache-headers.ts): public, max-age=0,
+  //     s-maxage=<ttl> on 200 card pages + /api/card/* — harmless today
+  //     under the measured rewrite, decisive if a future zone config honors
+  //     origin cache headers.
+  // Unarmed, serveWithEdgeCache just calls render(): byte-identical behavior
+  // to the previous release, no cache contact, no extra headers.
+  //
+  // SESSION (edge-session-viewer lane): the cache key is the request URL
+  // alone, with no actor in it, so a signed-in render must bypass this
+  // cache in both directions — see EdgeCacheOptions.perViewer. Anonymous
+  // requests reach the identical call as before.
+  //
+  // The BYTE-IDENTITY fast path is the whole of the no-cookie case: read
+  // the Cookie header (a string scan), find nothing, and call the
+  // pre-session expression verbatim — same engine object, no session
+  // query, no extra allocation. Everything below the `token === null` test
+  // only runs for a request that actually carries a cookie.
+  //
+  // RENDER BUDGET (cold-render reliability, 2026-10-03, the union's own
+  // posture): the budget is resolved ONCE here, off env, and handed to every
+  // handleEngineRequest call below. A cold render is a ~1,000-hop serial
+  // database chain whose wall time had no upper bound in code; the deadline
+  // bounds it and answers a slow request with a retry-able 503 + Retry-After
+  // instead of leaving the platform to end it with an opaque 5xx after a
+  // long wait. See DEFAULT_EDGE_RENDER_BUDGET_MS for the measurement behind
+  // the number and DECKO_EDGE_RENDER_BUDGET_MS for the no-republish retune.
+  const renderBudgetMs = resolveEdgeRenderBudgetMs(env);
+
+  const sessionToken = sessionTokenFromRequest(request);
+  if (sessionToken === null) {
+    return serveWithEdgeCache(
+      request,
+      env,
+      async () =>
+        handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
+      resolveEdgeContentCache(env),
+    );
+  }
+
+  // A cookie is present. Resolve it through the SAME SessionStore
+  // lookupSession SQL the write path uses (session-store.ts:132-161), over
+  // the shared BunnyDbDriver. Absent/invalid/expired/revoked all come back
+  // as ANONYMOUS_VIEWER, and that case takes the anonymous engine through
+  // the identical cache call above.
   const deck = await getDeck(resolved, env);
-  return await handleEngineRequest(request, deck, {
-    budgetMs: resolveEdgeRenderBudgetMs(env),
-  });
+  const viewer = await resolveViewerFromToken(
+    sessionToken,
+    new SessionStore({ driver: deck.fetcher.driver }),
+  );
+  if (viewer.signedIn !== true) {
+    return serveWithEdgeCache(
+      request,
+      env,
+      async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
+      resolveEdgeContentCache(env),
+    );
+  }
+  return serveWithEdgeCache(
+    request,
+    env,
+    async () =>
+      handleEngineRequest(request, getActorEngines().deckFor(viewer.actorId as number), {
+        budgetMs: renderBudgetMs,
+      }),
+    resolveEdgeContentCache(env),
+    { perViewer: true },
+  );
 }
