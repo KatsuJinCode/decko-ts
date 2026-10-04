@@ -1,0 +1,64 @@
+{
+  "pageKey": "aikido",
+  "pageId": 947,
+  "closureMemberCount": 3512,
+  "bundleCardCount": 3512,
+  "in": {
+    "junction2180_aikidoParticipantList": {
+      "inDerivedClosure": false,
+      "inSeatedBundle": false
+    },
+    "listCard406_participant_s": {
+      "inDerivedClosure": true,
+      "inSeatedBundle": true
+    },
+    "analogJunction2174_aikidoCentralPlaces": {
+      "inDerivedClosure": false,
+      "inSeatedBundle": false,
+      "note": "renders in BOTH postures — the structural analog of 2180"
+    },
+    "analogListCard520_central_place": {
+      "inDerivedClosure": true,
+      "inSeatedBundle": true,
+      "note": "key 'central_place' IS in the OFF discovery key set; 406's key 'participant_s' is not"
+    },
+    "personCards": {
+      "393": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "741": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "742": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "743": {
+        "inDerivedClosure": false,
+        "inSeatedBundle": false
+      },
+      "1263": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "1301": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "2812": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      },
+      "2842": {
+        "inDerivedClosure": false,
+        "inSeatedBundle": false
+      },
+      "2844": {
+        "inDerivedClosure": true,
+        "inSeatedBundle": true
+      }
+    }
+  }
+}
