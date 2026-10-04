@@ -34941,6 +34941,8 @@ var server = createServer((req, res) => {
   const startedAt = Date.now();
   const url = `http://127.0.0.1:${port}${req.url ?? "/"}`;
   const request = new Request(url, { method: req.method, headers: toHeadersInit(req.headers) });
+  const planIndex = served;
+  const planPosition = planIndex === 0 ? "first-render-of-fresh-engine" : `in-plan-ordinal-${planIndex + 1}`;
   tripsThisRequest = 0;
   attachThisRequest = 0;
   dataFetchThisRequest = 0;
@@ -34957,6 +34959,8 @@ var server = createServer((req, res) => {
     });
     headers["x-decko-serve-trips"] = String(trips);
     headers["x-decko-serve-statements"] = String(attach + dataFetch + other);
+    headers["x-decko-serve-plan-index"] = String(planIndex);
+    headers["x-decko-serve-plan-position"] = planPosition;
     headers["content-length"] = String(body.byteLength);
     res.writeHead(response.status, headers);
     res.end(body);
@@ -34965,6 +34969,8 @@ var server = createServer((req, res) => {
       `${outDir}/requests.jsonl`,
       JSON.stringify({
         seq,
+        planIndex,
+        planPosition,
         method: req.method,
         path: req.url,
         status: response.status,
@@ -34992,7 +34998,7 @@ var server = createServer((req, res) => {
     seq += 1;
     appendFileSync(
       `${outDir}/requests.jsonl`,
-      JSON.stringify({ seq, method: req.method, path: req.url, status: 500, error: message, posture }) + "\n"
+      JSON.stringify({ seq, planIndex, planPosition, method: req.method, path: req.url, status: 500, error: message, posture }) + "\n"
     );
     served += 1;
     if (served >= paths.length) {

@@ -24,6 +24,21 @@
 // Prerequisites: node_modules junction; committed worker bundle
 // one-trip-render/one-trip-serving-line-worker.mjs; canonical DB copy verified
 // by verify-canonical-db-copy.mjs (run that first).
+//
+// POSITION-STRATIFIED EXTENSION (position-stratified-trips lane, 2026-10-04):
+// the joint-measurement auditor proved trip counts are plan-position-dependent,
+// not page-intrinsic (the layout warm-up chase, MAX_WARMUP_ROUNDS=60,
+// prefetch.ts:75/:1448). This driver now runs TWO phases per posture:
+//   - IN-PLAN: the original 45-GET plan (/_status + 22 cold + 22 warm) — the
+//     per-page numbers are plan-sequence RECORDS (each page at its plan
+//     ordinal, warm-up state inherited from every earlier request), not
+//     page-intrinsic constants.
+//   - FIRST-POSITION: one FRESH worker process PER PAGE (single-path plan),
+//     so each page is also measured as the first render of a fresh engine —
+//     a real visitor's first hit. That column is the visitor-bar number.
+// The report lands in position-stratified-posture-report.json; the joint
+// lane's committed serve-canonical-joint-posture-report.json is a record of
+// THAT lane's run and is never overwritten here.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -55,7 +70,13 @@ const WORKER_MJS = join(REPO, "benchmarks", "one-trip-render", "one-trip-serving
 const BUILDER_ENTRY_TS = join(HERE, "build-store-for-serve-canonical-joint.entry.ts");
 const BUILDER_MJS = join(HERE, "build-store-for-serve-canonical-joint.entry.mjs");
 const STORE_PATH = join(OUT_ROOT, "one-trip-store.serve-canonical-joint.sqlite3");
-const REPORT_PATH = join(HERE, "serve-canonical-joint-posture-report.json");
+// Position-stratified report (this lane). The joint lane's committed
+// serve-canonical-joint-posture-report.json is that run's record — never
+// overwritten by this driver.
+const REPORT_PATH = join(HERE, "position-stratified-posture-report.json");
+// First-position runs: one fresh worker per page per posture; distinct ports
+// per run so no listener ever races a predecessor's socket teardown.
+const FIRST_POSITION_PORT_BASE = { off: 3195, on: 3295 };
 
 const PLAN_PATHS = [
   "/_status",
@@ -109,8 +130,10 @@ function runNode(script, args, { cwd = REPO, timeoutMs = 20 * 60_000 } = {}) {
 }
 
 /** Spawn the worker for one posture, wait for its SERVING line, run the GET
- *  plan, then wait for its self-exit. Returns per-request records. */
-async function runPosture({ label, port, posture, storePath, planFile, runDir }) {
+ *  plan, then wait for its self-exit. Returns per-request records. `paths` is
+ *  the full request plan for THIS worker process (the 45-GET in-plan plan, or
+ *  a single-page plan for a first-position run). */
+async function runPosture({ label, port, posture, storePath, planFile, runDir, paths }) {
   mkdirSync(runDir, { recursive: true });
   const child = spawn(process.execPath, [
     WORKER_MJS,
@@ -136,12 +159,20 @@ async function runPosture({ label, port, posture, storePath, planFile, runDir })
   await serving;
 
   const requests = [];
-  for (const path of PLAN_PATHS) {
+  for (const [planIndex, path] of paths.entries()) {
     const startedAt = Date.now();
     const response = await fetch(`http://127.0.0.1:${port}${path}`);
     const body = Buffer.from(await response.arrayBuffer());
+    // Instrument-honesty cross-check: the worker's own position header must
+    // name exactly the plan slot this loop iteration is serving.
+    const workerPlanIndex = Number(response.headers.get("x-decko-serve-plan-index") ?? "-1");
+    if (workerPlanIndex !== planIndex) {
+      die(`worker ${label} plan-index drift: worker says ${workerPlanIndex}, driver served slot ${planIndex} (${path})`);
+    }
     requests.push({
       path,
+      planIndex,
+      planPosition: response.headers.get("x-decko-serve-plan-position") ?? "",
       status: response.status,
       wallMs: Date.now() - startedAt,
       trips: Number(response.headers.get("x-decko-serve-trips") ?? "-1"),
@@ -181,21 +212,47 @@ const buildReport = JSON.parse(build.stdout.trim().split("\n").pop());
 console.log(`store built in ${buildReport.buildMs} ms`);
 writeFileSync(join(OUT_ROOT, "store-build-report.json"), JSON.stringify(buildReport, null, 2));
 
-// Phase 2 — posture OFF (the deployed default; gate env absent).
-console.log("booting serving-line worker posture=OFF...");
+// Phase 2 — posture OFF (the deployed default; gate env absent), IN-PLAN.
+console.log("booting serving-line worker posture=OFF (in-plan 45-GET sequence)...");
 const offRequests = await runPosture({
   label: "OFF", port: PORT_OFF, posture: "off", storePath: undefined,
-  planFile, runDir: join(OUT_ROOT, "off"),
+  planFile, runDir: join(OUT_ROOT, "off"), paths: PLAN_PATHS,
 });
 console.log("OFF posture complete");
 
-// Phase 3 — posture ON (DECKO_ONE_TRIP=1 + the 22-page store).
-console.log("booting serving-line worker posture=ON...");
+// Phase 3 — posture ON (DECKO_ONE_TRIP=1 + the 22-page store), IN-PLAN.
+console.log("booting serving-line worker posture=ON (in-plan 45-GET sequence)...");
 const onRequests = await runPosture({
   label: "ON", port: PORT_ON, posture: "on", storePath: STORE_PATH,
-  planFile, runDir: join(OUT_ROOT, "on"),
+  planFile, runDir: join(OUT_ROOT, "on"), paths: PLAN_PATHS,
 });
 console.log("ON posture complete");
+
+// Phase 4 — FIRST-POSITION: one FRESH worker process PER PAGE per posture
+// (single-path plan), so each page is also measured as the first render of a
+// fresh engine — a real visitor's first hit. Each worker boots its own deck,
+// serves exactly one GET, and self-exits (no process ever killed).
+const firstPosition = { off: {}, on: {} };
+for (const posture of ["off", "on"]) {
+  for (let i = 0; i < PAGES.length; i++) {
+    const name = PAGES[i];
+    const path = `/${encodeURI(name)}`;
+    const planFile1 = join(OUT_ROOT, `plan-first-position-${posture}-${i}.json`);
+    writeFileSync(planFile1, JSON.stringify({ paths: [path] }));
+    const requests = await runPosture({
+      label: `${posture.toUpperCase()} first-position "${name}"`,
+      port: FIRST_POSITION_PORT_BASE[posture] + i,
+      posture,
+      storePath: posture === "on" ? STORE_PATH : undefined,
+      planFile: planFile1,
+      runDir: join(OUT_ROOT, `first-position-${posture}`, String(i)),
+      paths: [path],
+    });
+    firstPosition[posture][name] = requests[0];
+    console.log(`first-position ${posture} "${name}": position=${requests[0].planPosition} trips=${requests[0].trips} statements=${requests[0].statements} wall=${requests[0].wallMs}ms`);
+  }
+}
+console.log("FIRST-POSITION phase complete (44 fresh-engine single-page runs)");
 
 // --- grade --------------------------------------------------------------------
 const normalizeSlotIds = (html) => html
@@ -261,12 +318,57 @@ const identityCount = pages.filter((p) => p.byteIdentical).length;
 const comparativeGate = pages.every((p) =>
   p.gate.coldOnLeColdOff && p.gate.warmOnLeWarmOff && p.gate.statusOk);
 
+// --- position-stratified grading ----------------------------------------------
+// The auditor's proof: trip counts are plan-position-dependent, not
+// page-intrinsic. FIRST-POSITION (fresh engine, page is the very first render,
+// engine boot + full warm-up chase inside the request) is a real visitor's
+// first hit — that column is the visitor-bar number. IN-PLAN (the 45-GET
+// sequence: /_status boots, then each page at its ordinal with the warm-up
+// state of every earlier request inherited) is a plan-sequence RECORD.
+const stratified = PAGES.map((name, i) => {
+  const offFirst = firstPosition.off[name];
+  const onFirst = firstPosition.on[name];
+  const offFirstBody = readFileSync(join(OUT_ROOT, "first-position-off", String(i), `0-${slug(`/${encodeURI(name)}`)}.body`), "utf8");
+  const onFirstBody = readFileSync(join(OUT_ROOT, "first-position-on", String(i), `0-${slug(`/${encodeURI(name)}`)}.body`), "utf8");
+  // Ledger visitor-bar arithmetic, PREDICTED only: measured trips x 66 ms/trip
+  // (the ledger's own ruler; LOCAL ms never used; zero live requests made).
+  return {
+    name,
+    kind: i < PROBE_PAGES.length ? "probe" : "spread",
+    inPlanOrdinal: i + 1, // page ordinal within the cold pass; overall plan slot = 1 + i (after /_status)
+    off: {
+      firstPosition: { planPosition: offFirst.planPosition, status: offFirst.status, trips: offFirst.trips, statements: offFirst.statements, wallMs: offFirst.wallMs },
+      inPlan: { coldTrips: pages[i].offColdTrips, coldStatements: pages[i].offColdResidue + pages[i].offColdDataFetch + pages[i].offColdAttach, coldWallMs: pages[i].offColdWallMs, warmTrips: pages[i].offWarmTrips },
+    },
+    on: {
+      firstPosition: { planPosition: onFirst.planPosition, status: onFirst.status, trips: onFirst.trips, statements: onFirst.statements, wallMs: onFirst.wallMs },
+      inPlan: { coldTrips: pages[i].onColdTrips, coldStatements: pages[i].onColdResidue + pages[i].onColdDataFetch + pages[i].onColdAttach, coldWallMs: pages[i].onColdWallMs, warmTrips: pages[i].onWarmTrips },
+    },
+    firstPositionByteIdentical: normalizeSlotIds(offFirstBody) === normalizeSlotIds(onFirstBody),
+    visitorBarPredicted: {
+      // PREDICTED wire at the ledger's 66 ms/trip ruler ONLY.
+      offFirstPositionTrips: offFirst.trips,
+      offFirstPositionPredictedWireMs: offFirst.trips * 66,
+      onFirstPositionTrips: onFirst.trips,
+      onFirstPositionPredictedWireMs: onFirst.trips * 66,
+      onMeets22TripBarFirstPosition: onFirst.trips <= 22,
+    },
+  };
+});
+const firstPositionIdentityCount = stratified.filter((p) => p.firstPositionByteIdentical).length;
+const firstPositionAllStatusOk = stratified.every((p) => p.off.firstPosition.status === 200 && p.on.firstPosition.status === 200);
+
 const report = {
-  lane: "serve-canonical-joint",
+  lane: "position-stratified-trips (extends the serve-canonical-joint driver; same worker, same corpus, same boundary)",
   generatedAt: new Date().toISOString(),
-  servingSurface: "deploy/bunny-worker-src/bunny-edge-engine-handler.ts @ ebc98b32 (via committed benchmarks/one-trip-render/one-trip-serving-line-worker.ts bundle)",
-  localBoot: "node:http on 127.0.0.1; BunnyDbDriver Hrana seam stubbed over LocalSqliteDriver on the CANONICAL-SHAPE DB copy (canonical-production-order.sqlite3, verified by verify-canonical-db-copy.mjs: 12 user tables / 33 index objects, 21,670 cards + 48,525 refs, row digests match the build lane's cross-lane values); one posture per process; cache stack UNARMED (DECKO_EDGE_CACHE absent) and requests cookieless = cache BYPASSED",
+  servingSurface: "deploy/bunny-worker-src/bunny-edge-engine-handler.ts @ 921906fa (via committed benchmarks/one-trip-render/one-trip-serving-line-worker.ts bundle, position-instrumented)",
+  localBoot: "node:http on 127.0.0.1; BunnyDbDriver Hrana seam stubbed over LocalSqliteDriver on the CANONICAL-SHAPE DB copy (canonical-production-order.sqlite3, verified by verify-canonical-db-copy.mjs: 12 user tables / 33 index objects, 21,670 cards + 48,525 refs, row digests match the build lane's cross-lane values); one posture per PROCESS; FIRST-POSITION runs are additionally one PROCESS PER PAGE (fresh engine each); cache stack UNARMED (DECKO_EDGE_CACHE absent) and requests cookieless = cache BYPASSED",
   tripsBoundary: "one stub POST = one BunnyDbDriver query/batch call = ONE wire round trip (the serving-line lane's counting boundary)",
+  positionSemantics: {
+    firstPosition: "the page is the FIRST render of a FRESH engine process (engine boot + layout warm-up chase, MAX_WARMUP_ROUNDS=60, land inside the request) — a real visitor's first hit; the visitor-bar column",
+    inPlan: "the page at its ordinal in the 45-GET plan (/_status first — it boots the deck per handler.ts statusResponse getDeck; every page hit inherits the warm-up state of all earlier requests) — a plan-sequence RECORD, not a page-intrinsic constant",
+    why: "the joint-measurement auditor proved trip counts are plan-position-dependent (slate OFF: 24 trips as the 10th in-plan request vs 567 as a fresh engine's first render); per-page tables without position lie by omission",
+  },
   corpus: "21,670-card serving deck (backup dump-postscrub.sqlite3 sha 623f5fcb..., imported schema-first into the canonical shape by the canonical-shape build lane; rows verified by digest)",
   probePages: PROBE_PAGES,
   spreadPages: SPREAD_PAGES,
@@ -280,20 +382,24 @@ const report = {
     pageClosures: buildReport.report?.pages ?? null,
   },
   pages,
+  positionStratified: stratified,
   verdict: {
-    allStatusOk,
-    byteIdentity: `${identityCount}/${pages.length}`,
-    byteIdenticalPages: pages.filter((p) => !p.byteIdentical).map((p) => p.name),
+    allStatusOk: allStatusOk && firstPositionAllStatusOk,
+    inPlanByteIdentity: `${identityCount}/${pages.length}`,
+    inPlanByteIdenticalPages: pages.filter((p) => !p.byteIdentical).map((p) => p.name),
+    firstPositionByteIdentity: `${firstPositionIdentityCount}/${stratified.length}`,
+    firstPositionByteIdenticalPages: stratified.filter((p) => !p.firstPositionByteIdentical).map((p) => p.name),
     servingLineComparativeGate: comparativeGate,
     note: "LOCAL wall ms is a stub-seam local number, never comparable to the wire visitor bar. " +
-      "The serving-line gate this run records is COMPARATIVE (cold ON <= cold OFF, warm ON <= warm OFF, " +
-      "byte-identity count) plus the ON composition (attach + 1 data fetch + residue) per page.",
+      "The visitor-bar arithmetic in positionStratified[].visitorBarPredicted is PREDICTED at the ledger's " +
+      "66 ms/trip ruler only (trips x 66). Per-page IN-PLAN numbers are plan-sequence records, not " +
+      "page-intrinsic constants; the visitor-bar column is FIRST-POSITION.",
   },
 };
 writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report.verdict));
 console.log(`report: ${REPORT_PATH}`);
-if (!allStatusOk) {
+if (!allStatusOk || !firstPositionAllStatusOk) {
   process.exit(1);
 }
-console.log("RUN COMPLETE (all pages 200 in both postures; verdict booleans recorded above)");
+console.log("RUN COMPLETE (all pages 200 in both postures, in-plan AND first-position; verdict booleans recorded above)");

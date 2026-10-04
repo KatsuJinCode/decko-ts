@@ -20,6 +20,18 @@
 // {"paths":[...]}) then exits 0 — the harness spawns and reaps it without
 // ever killing a process. A watchdog exit(3) bounds a hung serve.
 //
+// PLAN-POSITION INSTRUMENTATION (position-stratified-trips lane, 2026-10-04):
+// the joint-measurement auditor proved trip counts are plan-position-
+// dependent, not page-intrinsic (the layout warm-up chase, MAX_WARMUP_ROUNDS,
+// prefetch.ts:75/:1448 — a fresh engine's first render fires the chase; an
+// in-plan ordinal does not). Every response therefore carries
+// x-decko-serve-plan-index (0-based position within THIS process's plan) and
+// x-decko-serve-plan-position: "first-render-of-fresh-engine" for index 0
+// (the first request a fresh engine serves — whatever path it is: a page in
+// a single-page plan, /_status in the joint 45-GET plan) and
+// "in-plan-ordinal-N" (1-based) for everything after. The same fields ride
+// the per-request requests.jsonl records.
+//
 // Bundle with esbuild (external: better-sqlite3) and run:
 //   node one-trip-serving-line-worker.mjs --port 3181 --posture off \
 //     --mirror <trial-deck-mirror-readonly-copy.sqlite3> \
@@ -175,6 +187,13 @@ const server = createServer((req, res) => {
   const startedAt = Date.now();
   const url = `http://127.0.0.1:${port}${req.url ?? "/"}`;
   const request = new Request(url, { method: req.method, headers: toHeadersInit(req.headers) });
+  // Position within this process's plan: `served` counts completed responses,
+  // so at handler entry it IS this request's 0-based plan index (requests are
+  // served strictly in plan order — the driver fetches sequentially).
+  const planIndex = served;
+  const planPosition = planIndex === 0
+    ? "first-render-of-fresh-engine"
+    : `in-plan-ordinal-${planIndex + 1}`;
   tripsThisRequest = 0;
   attachThisRequest = 0;
   dataFetchThisRequest = 0;
@@ -192,6 +211,8 @@ const server = createServer((req, res) => {
       });
       headers["x-decko-serve-trips"] = String(trips);
       headers["x-decko-serve-statements"] = String(attach + dataFetch + other);
+      headers["x-decko-serve-plan-index"] = String(planIndex);
+      headers["x-decko-serve-plan-position"] = planPosition;
       headers["content-length"] = String(body.byteLength);
       res.writeHead(response.status, headers);
       res.end(body);
@@ -200,6 +221,8 @@ const server = createServer((req, res) => {
         `${outDir}/requests.jsonl`,
         JSON.stringify({
           seq,
+          planIndex,
+          planPosition,
           method: req.method,
           path: req.url,
           status: response.status,
@@ -228,7 +251,7 @@ const server = createServer((req, res) => {
       seq += 1;
       appendFileSync(
         `${outDir}/requests.jsonl`,
-        JSON.stringify({ seq, method: req.method, path: req.url, status: 500, error: message, posture }) + "\n",
+        JSON.stringify({ seq, planIndex, planPosition, method: req.method, path: req.url, status: 500, error: message, posture }) + "\n",
       );
       served += 1;
       if (served >= paths.length) {
