@@ -198,15 +198,17 @@ describe("deployment constants-only arm: the serializer era stays FROZEN", () =>
 });
 
 describe("deployment constants-only arm: the split is type-level", () => {
-  it("the preset's type omits serializerEra, so the era is unreachable by spreading it", () => {
-    // A compile-time guarantee, exercised at runtime by the type annotation
-    // below: if `serializerEra` were reachable on this type, the annotated
-    // access would compile and the test would be asserting nothing. The
-    // @ts-expect-error comment documents the intent — the property is NOT
-    // on the preset's type.
+  it("the preset's type omits serializerEra, and the preset object carries no era key", () => {
+    // Two halves of the same guarantee. The TYPE half: the annotation below
+    // is `Omit<…, "serializerEra">`, so a deployment that spreads the preset
+    // cannot reach the era — the compiler rejects the access, which the
+    // directive on the next line pins. The RUNTIME half: the preset OBJECT
+    // itself has no `serializerEra` own-property, so the arm stays constants-
+    // only even if a caller casts its way past the type.
     const preset: Omit<DeploymentFollowLiveConfig, "serializerEra"> = LIVE_DEPLOYMENT_CONSTANTS;
     // @ts-expect-error -- serializerEra is deliberately absent from the preset type
     expect(preset.serializerEra).toBeUndefined();
+    expect(Object.hasOwn(preset, "serializerEra")).toBe(false);
     // The arm a deployment actually installs: constants only, no era key.
     setDeploymentFollowLiveConfig({ ...LIVE_DEPLOYMENT_CONSTANTS });
     expect(serializerFollowsLive()).toBe(false);
