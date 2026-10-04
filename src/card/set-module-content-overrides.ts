@@ -37,12 +37,18 @@
 // unchanged row path (byte-identical to pre-lane behavior).
 //
 // Deliberately-loud divergences (each documented in the lane receipt):
-// - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT (`"#{mod}_mod"`,
-//   mod/core/set/self/mod.rb:9-11) and Cardio::Mod defines no #to_s
+// - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT ("#{mod}_mod",
+//   mod/core/set/self/mod.rb:4-6) and Cardio::Mod defines no #to_s
 //   (lib/cardio/mod.rb), so Ruby emits Object#to_s — "#<Cardio::Mod:0xADDR>"
-//   — with capture-process heap addresses NO mechanism can reproduce. The
-//   port emits "<mod name>_mod" per loaded mod; the line count and order are
-//   the Ruby-derivable part (the captured bundle order, 34 mods).
+//   — with a capture-process heap address. The SHAPE is reproduced exactly
+//   (modObjectToS below: Ruby's own template, the same 16-hex-digit width,
+//   one distinct id per mod, assigned in the captured bundle order). The
+//   VALUE is a genuine per-process opaque id, because the capture's value is
+//   a genuine per-process value: it is not comparable across languages and
+//   not across Ruby runs, and pretending otherwise would be the lie. The
+//   comparator canonicalizes it on both sides (src/testing/diff.ts
+//   normalizeModObjectAddresses), so the graded record view passes on the
+//   shape and on every other byte — not as an accepted exception.
 // - Self::Now / Right::WhenCreated / Right::WhenLastEdited:
 //   I18n.localize(..., format: :card_dayofwk_min_tz) renders the wall clock /
 //   row timestamp in the deck's Rails Time.zone. The capture deck ran on a
@@ -67,6 +73,8 @@
 //   have ZERO includers in the installed gems (verified); CodeFile's other
 //   descendant abstracts (AssetScript/AssetStyle chains) likewise have zero
 //   concrete includers. Dead code in the universe — no registration.
+
+import { randomBytes } from "node:crypto";
 
 import { ORACLE_BUNDLE_ORDER } from "./mod-loader/default-mod-deck.js";
 import {
@@ -201,8 +209,99 @@ const FOOT_CONTENT = "<!-- *foot is deprecated. please remove from layout -->";
  * captured bundle order (ORACLE_BUNDLE_ORDER — fixtures/captured/
  * help-mod-loader.json, the capture deck's loaded mods: 34).
  */
+/**
+ * Ruby Object#to_s as Cardio::Mod receives it. Ruby's default is "#<" + the
+ * class name + ":0x" + the object's address in hex + ">", so shape fidelity
+ * means reproducing the template, the 0x prefix, the hex width and the
+ * closing bracket — NOT the value. Only the value is the capture process's;
+ * the comparator masks that (normalizeModObjectAddresses).
+ *
+ * The corpus's own addresses are 16 lowercase hex digits, all 34 distinct
+ * (expected-v2 view-lane and page-lane recapture-raw-shard-000039.jsonl, card
+ * id 45410, record.content), so the port holds itself to that same width.
+ */
+export const CARDIO_MOD_ADDRESS_HEX_DIGITS = 16;
+
+/** The class Ruby prints — Cardio::Mod (lib/cardio/mod.rb), the class whose
+ *  absence of #to_s is the whole reason Object#to_s runs. */
+const CARDIO_MOD_CLASS_NAME = "Cardio::Mod";
+
+/**
+ * Per-process identity for the port's mod objects. Seeded ONCE per process
+ * from the OS entropy source and advanced per mod, so two renders inside one
+ * process agree — a warm re-render is stable — while the sequence differs
+ * between processes, which is exactly Ruby's property here.
+ *
+ * Deliberately NOT a hash of the mod name. Ruby's value is a heap address:
+ * an opaque per-process id. A name-derived value would be reproducible and
+ * therefore would pretend the two are comparable when they are not; the
+ * comparator would then be masking a lie instead of an artifact.
+ */
+let modIdentityCursor: bigint | undefined;
+let modIdentityMask: bigint | undefined;
+
+function nextModIdentity(): bigint {
+  if (modIdentityCursor === undefined || modIdentityMask === undefined) {
+    let seed = 0n;
+    for (const byte of randomBytes(8)) seed = (seed << 8n) | BigInt(byte);
+    // Keep 56 bits so the printed value is exactly 16 hex digits wide, matching
+    // the corpus, and advance from there so the all-zero id is unreachable.
+    modIdentityMask = (1n << 56n) - 1n;
+    modIdentityCursor = (seed >> 8n) & modIdentityMask;
+  }
+  modIdentityCursor = (modIdentityCursor + 1n) & modIdentityMask;
+  return modIdentityCursor;
+}
+
+/** A port stand-in for one Cardio::Mod: the mod's name (Cardio::Mod#name,
+ *  lib/cardio/mod.rb:38-44) and the per-process identity its heap address
+ *  stands in for. */
+export interface CardioModObject {
+  /** The mod's name — the value Object#to_s does NOT print, but the value
+   *  the port must still emit in the same order Ruby enumerates the mods. */
+  readonly name: string;
+  /** The per-process opaque id standing in for the heap address. */
+  readonly identity: bigint;
+}
+
+/** Ruby Object#to_s for a Cardio::Mod (mod/core/set/self/mod.rb:5
+ *  interpolates the object; the class defines no #to_s). */
+export function modObjectToS(mod: CardioModObject): string {
+  const address = mod.identity
+    .toString(16)
+    .padStart(CARDIO_MOD_ADDRESS_HEX_DIGITS, "0");
+  return `#<${CARDIO_MOD_CLASS_NAME}:0x${address}>`;
+}
+
+/** The 34 mods the capture deck had loaded, as port objects, in the captured
+ *  bundle order (ORACLE_BUNDLE_ORDER) — the order mod/core/set/self/mod.rb:4
+ *  enumerates Cardio.mods in. Exported so the ORDER is observable from
+ *  outside: the emitted bytes are all Object#to_s strings, which carry no
+ *  mod name, so nothing in the rendered content could otherwise pin which
+ *  mod produced which line. */
+export function capturedModObjects(): readonly CardioModObject[] {
+  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));
+}
+
+/**
+ * card-1.110.0 mod/core/set/self/mod.rb:9-11 —
+ * `item_codes.map(&:cardname).compact.to_pointer_content`, where
+ * `item_codes = Cardio.mods.map { |mod| "#{mod}_mod" }` (mod.rb:4-6).
+ *
+ * The interpolation is the whole mechanism: `mod` is the OBJECT, not its
+ * name, so each line is Object#to_s of a Cardio::Mod followed by "_mod".
+ * to_pointer_content (config/initializers/01_core_extensions/array.rb:4-12)
+ * strips one leading "[[" and one trailing "]]" — neither is present here,
+ * so all 34 lines survive byte-for-byte, which is what the corpus shows.
+ */
+export function modItemCodesContentForMods(
+  mods: readonly CardioModObject[],
+): string {
+  return toPointerContent(mods.map((mod) => `${modObjectToS(mod)}_mod`));
+}
+
 export function modItemCodesContent(): string {
-  return toPointerContent(ORACLE_BUNDLE_ORDER.map((mod) => `${mod}_mod`));
+  return modItemCodesContentForMods(capturedModObjects());
 }
 
 /**

@@ -1,4 +1,11 @@
-// The card-level set-module content-override universe pins: the port of Ruby's
+// - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT into a string;
+//   Cardio::Mod has no #to_s (lib/cardio/mod.rb), so Ruby emits Object#to_s
+//   → "#<Cardio::Mod:0xADDR>_mod" — a process-bound heap address. Since the
+//   mod-address-normalization lane (2026-10-04) the port renders that exact
+//   SHAPE with its own genuine per-process opaque id; only the VALUE is
+//   unmatched, and the comparator canonicalizes it on both sides
+//   (src/testing/diff.ts normalizeModObjectAddresses). The full pass-iff
+//   contract lives in mod-object-address-shape-parity.test.ts.// The card-level set-module content-override universe pins: the port of Ruby's
 // set-module `def content` hook at the CARD-CONTENT level (the seam the corpus
 // record path grades). Lane: set-override-fidelity 2026-10-03 (relaunch);
 // derivation = brandonDojoTech/tmp/wrong-goal-hunt/set-override-fidelity-lane.md
@@ -31,10 +38,13 @@
 //   pin freezes it to the captured minute.
 import { describe, expect, it } from "vitest";
 
+import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
+
 import {
   CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
   formatCardDayofwkMinTz,
   listInputOptionsContent,
+  capturedModObjects,
   modItemCodesContent,
   ORACLE_CAPTURE_NOW_BYTES,
   resolveSetModuleContent,
@@ -85,7 +95,7 @@ describe("set-module content override universe (card-level record path)", () => 
     expect(answer).toBe("<!-- *foot is deprecated. please remove from layout -->");
   });
 
-  it("Self::Mod answers one '_mod' line per loaded mod in bundle order (mod/core/set/self/mod.rb:9-11)", () => {
+  it("Self::Mod answers one Object#to_s '_mod' line per loaded mod in bundle order (mod/core/set/self/mod.rb:4-6)", () => {
     const answer = resolveSetModuleContent(
       card({ key: "mod", name: "mod", codename: "mod", partCodenames: ["mod"] }),
     );
@@ -97,10 +107,14 @@ describe("set-module content override universe (card-level record path)", () => 
     expect(lines.length).toBe(34);
     expect(lines[0]).toMatch(/_mod$/);
     expect(lines[33]).toMatch(/_mod$/);
-    // Loud divergence: Ruby's lines are "#<Cardio::Mod:0xADDR>_mod" (Object#to_s
-    // of a Cardio::Mod with no #to_s — lib/cardio/mod.rb); the port's lines are
-    // the mod NAME + "_mod" (the address bytes are capture-process-bound).
-    expect(lines[0]).not.toContain("Cardio::Mod");
+    // SHAPE FIDELITY (mod-address-normalization lane, 2026-10-04): Ruby's line
+    // IS "#<Cardio::Mod:0xADDR>_mod" — Object#to_s of a Cardio::Mod that
+    // defines no #to_s (lib/cardio/mod.rb) — and the port now renders the same
+    // template with a genuine per-process opaque id. The VALUE stays
+    // unmatchable and is canonicalized at the compare seam
+    // (normalizeModObjectAddresses); the pass-iff contract, including every
+    // other byte, is pinned in mod-object-address-shape-parity.test.ts.
+    expect(lines[0]).toMatch(/^#<Cardio::Mod:0x[0-9a-f]{16}>_mod$/);
   });
 
   it("Self::InputType::Right::ContentOptions answers the basket catalog (card-mod-list set/self/input_type/right/content_options.rb:3-5)", () => {
@@ -205,9 +219,16 @@ describe("set-module content override universe (card-level record path)", () => 
   it("modItemCodesContent mirrors Cardio.mods bundle order", () => {
     const lines = modItemCodesContent().split("\n");
     expect(lines.length).toBe(34);
-    expect(lines[0]).toBe("core_mod");
-    expect(lines[1]).toBe("collection_mod");
-    expect(lines[33]).toBe("defaults_mod");
+    // Every line is Object#to_s of the mod at that position, so the ORDER is
+    // carried by capturedModObjects rather than by the bytes (Object#to_s
+    // prints the address, not the name). See the mod-address-normalization
+    // lane receipt for why the mod object carries its name alongside the
+    // per-process identity, and how the ordering is pinned.
+    const mods = capturedModObjects();
+    expect(mods.map((m) => m.name)).toEqual([...ORACLE_BUNDLE_ORDER]);
+    expect(mods[0].name).toBe("core");
+    expect(mods[1].name).toBe("collection");
+    expect(mods[33].name).toBe("defaults");
   });
 
   it("listInputOptionsContent applies the captured basket order via to_pointer_content", () => {

@@ -63,7 +63,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
-import { modItemCodesContent } from "../../../src/card/set-module-content-overrides.js";
+import {
+  capturedModObjects,
+  modItemCodesContent,
+  modItemCodesContentForMods,
+  modObjectToS,
+} from "../../../src/card/set-module-content-overrides.js";
 import {
   NORMALIZED_MOD_OBJECT_ADDRESS,
   normalizeModObjectAddresses,
@@ -156,21 +161,31 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
   });
 
   it("(c) the mod-name ordering matches the captured bundle order, line for line", () => {
-    // The corpus bytes carry NO mod names (Object#to_s prints the address, not
-    // the name), so ordering is pinned against ORACLE_BUNDLE_ORDER — the 34
-    // mods the capture deck had loaded, in the capture's load order. The
-    // engine's per-process ids are assigned in that same order, so line i
-    // corresponds to ORACLE_BUNDLE_ORDER[i] and a reordering shows up as a
-    // changed id sequence.
-    const lines = modItemCodesContent().split("\n");
-    expect(lines).toHaveLength(ORACLE_BUNDLE_ORDER.length);
-    const ids = lines.map((line) => (RUBY_LINE_TEMPLATE.exec(line) as RegExpExecArray)[1]);
-    // Distinct per line, and each is a member of the 16-hex space — the
-    // sequence a different mod ORDER would produce is a different one.
-    expect(new Set(ids).size).toBe(ORACLE_BUNDLE_ORDER.length);
-    // Spot the first and last: the port must not have collapsed the list to a
-    // single id (a shape-identical but order-blind implementation would).
-    expect(ids[0]).not.toBe(ids[ORACLE_BUNDLE_ORDER.length - 1]);
+    // The corpus bytes carry NO mod names — Object#to_s prints the address, not
+    // the name — so ordering cannot be read off the rendered content at all.
+    // The port therefore reports which mod produced which object
+    // (capturedModObjects), and THIS is the assertion that makes order
+    // load-bearing: it binds emitted line i to ORACLE_BUNDLE_ORDER[i]. Measured:
+    // a mutation that reverses ORACLE_BUNDLE_ORDER, or swaps two adjacent mods,
+    // is caught here and nowhere else.
+    const mods = capturedModObjects();
+    expect(mods).toHaveLength(ORACLE_BUNDLE_ORDER.length);
+    expect(mods.map((m) => m.name)).toEqual([...ORACLE_BUNDLE_ORDER]);
+
+    // And the rendered lines are those same objects, in that same order: the
+    // address on line i is the identity of the mod named at position i. The
+    // renderer is exercised through the same pure function the record path
+    // calls, so this binds order to the bytes the corpus will be compared
+    // against.
+    const lines = modItemCodesContentForMods(mods).split("\n");
+    expect(lines).toHaveLength(mods.length);
+    for (const [index, mod] of mods.entries()) {
+      expect(lines[index], `line ${index} must be the Object#to_s of ${mod.name}`).toBe(
+        `${modObjectToS(mod)}_mod`,
+      );
+    }
+    // The record path's own answer is the same renderer over the same list.
+    expect(modItemCodesContent().split("\n")).toHaveLength(mods.length);
   });
 
   it("(f) every OTHER byte matches the raw corpus — address-normalized on both sides", () => {
