@@ -60,11 +60,13 @@ import {
   detachDerivedStore,
 } from "../../src/card/one-trip/one-trip-fetch.js";
 import { classifyResidueStatement } from "../../src/card/one-trip/render-plan.js";
+import { recordRenderPlansForPages } from "../../src/card/one-trip/render-plan-recorder.js";
 import {
   MIRROR_COPY_PATH,
   PROBE_PAGES,
   bootEngine,
   mirrorAvailable,
+  normalizeSlotIds,
 } from "../../tests/card/one-trip/one-trip-fixture.js";
 
 const hasMirror = mirrorAvailable();
@@ -225,7 +227,11 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     sidePath = join(tmpDir, "one-trip-side.sqlite3");
     const corpusMirror = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
     const side = new LocalSqliteDriver({ path: sidePath });
-    await buildOneTripClosure({ corpus: corpusMirror, side, pageNames: [...PROBE_PAGES] });
+    const buildReport = await buildOneTripClosure({
+      corpus: corpusMirror,
+      side,
+      pageNames: [...PROBE_PAGES],
+    });
     side.close();
     corpusMirror.close();
     // 2. materialize the INLINE shape: writable copy + additive table load
@@ -249,6 +255,19 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     } finally {
       await detachDerivedStore(inlineDb, "side_load");
     }
+    // 3. record the pages' render plans INTO the materialized copy (the
+    // renderplan-replay lane): the recording renders run in the EXACT
+    // serving posture (DECKO_ONE_TRIP_STORE=inline against this store), so
+    // the plan is self-consistent with what the serving render asks.
+    await recordRenderPlansForPages({
+      deck: inlineDb,
+      pageNames: [...PROBE_PAGES],
+      pageIds: new Map(
+        Object.entries(buildReport.pages)
+          .filter(([, info]) => info.pageId > 0)
+          .map(([name, info]) => [name, info.pageId]),
+      ),
+    });
     inlineDb.close();
   }, 600_000);
 
@@ -263,8 +282,11 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     }
   });
 
-  async function censusColdRender(posture: Posture, page: string): Promise<void> {
-    const dbPath = posture === "off" ? MIRROR_COPY_PATH : MATERIALIZED_COPY_PATH;
+  /** Rendered HTML per (posture, page) — the byte-contract comparison the
+   *  ON (replay-path) render runs against the OFF render. */
+  const renderedHtml = new Map<string, string>();
+
+  async function censusColdRender(posture: Posture, page: string): Promise<void> {    const dbPath = posture === "off" ? MIRROR_COPY_PATH : MATERIALIZED_COPY_PATH;
     const db = new LocalSqliteDriver({ path: dbPath, readonly: true });
     const census = new CensusDriver(db, posture, page);
     const prevOneTrip = process.env.DECKO_ONE_TRIP;
@@ -283,6 +305,18 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
       // baselineHtmlBytes 76, byteIdentical true, both arms). The census
       // counts its trips, not its bytes.
       expect(html.length, `${posture}/${page} rendered`).toBeGreaterThan(0);
+      renderedHtml.set(`${posture}/${page}`, html);
+      // BYTE CONTRACT (renderplan-replay lane): the OFF posture always runs
+      // first (the loop below orders off before on-inline), so the ON render
+      // — now the replay path — must reproduce the OFF page's bytes exactly
+      // (modulo the per-render slot ids the engine itself randomizes).
+      if (posture === "on-inline") {
+        const offHtml = renderedHtml.get(`off/${page}`);
+        expect(
+          normalizeSlotIds(html),
+          `the replay-path render of ${page} must be byte-identical (modulo slot ids) to the OFF render`,
+        ).toBe(normalizeSlotIds(offHtml ?? ""));
+      }
     } finally {
       if (prevOneTrip === undefined) delete process.env.DECKO_ONE_TRIP;
       else process.env.DECKO_ONE_TRIP = prevOneTrip;

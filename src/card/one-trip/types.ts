@@ -143,10 +143,6 @@ export interface OneTripBuildReport {
   danglingEdges: number;
   searchNests: number;
   pages: Record<string, { pageId: number; closureSize: number }>;
-  /** Present when the build recorded render plans (recordRenderPlans):
-   *  per recorded page, the plan entry count (the audit the census's
-   *  classification table compares against). */
-  renderPlans?: Record<string, { pageId: number; entries: number }>;
   edgeAgreement: {
     /** card_references rows of ref_type 'I' (the stored edge table). */
     storedInclusionRows: number;

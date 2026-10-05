@@ -1,25 +1,24 @@
 // THE RENDER-PLAN RECORDER (renderplan-replay lane, 2026-10-05): the
 // store-build-time half of the record-and-replay render. For each page the
-// closure builder just materialized, this module renders the page ONCE
-// through the real engine (the one-trip gate ON against the freshly built
-// side store — the ATTACHED serving shape) with a capturing driver, keeps
-// every statement the render asked that belongs in a plan
-// (isPipelineAbleRenderStatement — the census's pipeline-able families:
-// point reads, pair probes, lexicon priming, template links, prefetch
-// IN-lists and pair joins, the rule-lattice CTEs, the fixed boot folds),
-// dedupes it through recordRenderPlan, and writes it to
-// one_trip_render_plans in the derived store.
+// store materializes, this module renders the page ONCE through the real
+// engine — the one-trip gate ON in the EXACT SERVING POSTURE
+// (DECKO_ONE_TRIP_STORE=inline against the materialized deck) — with a
+// capturing driver, keeps every statement the render asked that belongs in
+// a plan (isPipelineAbleRenderStatement — the census's pipeline-able
+// families), dedupes it through recordRenderPlan, and writes it to
+// one_trip_render_plans IN the materialized deck (the serving store's own
+// table; the plans ride the seat's head statement from there).
 //
-// WHY AT BUILD TIME: the plan is a function of (deck content, engine code,
-// signed-out "open" posture) — all fixed at build time. At serve time the
-// gate replays the plan as ONE batch (the census's theoretical floor: 1
-// boot batch + 2 seat + 1 replay batch + 1 order-dependent search-count)
-// and arms the driver seam; the render consumes the plan's result set
-// instead of re-issuing solo reads. Statement text and binds are recorded
-// verbatim, so a serve-time render whose asks match the recording answers
-// from the plan with zero behavior change; a mismatch (different viewer,
-// drifted deck) misses the plan and goes live — the live path stays
-// authoritative.
+// WHY AGAINST THE MATERIALIZED DECK (measured, first build): a plan
+// recorded through the ATTACHED seat posture (corpus + side file) missed
+// 1-9 follow-on batches per page at serve time — junction-pair and
+// COLLATE NOCASE IN-list statements whose params depend on the render's
+// mid-flight cache evolution, which differs between the recording and
+// serving postures (measured: the Aikido plan's junction read carried the
+// extra pair (5,146) the inline-posture render never asked). Recording in
+// the exact serving posture makes the plan self-consistent with what the
+// serving render asks — the trip-profile pin proves it (zero covered
+// reads beyond the plan).
 //
 // ORDER-DEPENDENT CLASSES (search-count, search-cql) are excluded by the
 // filter — they must still execute in sequence (the census's verdict).
@@ -59,17 +58,15 @@ class StatementCaptureDriver implements SQLDatabaseDriver {
 }
 
 export interface RenderPlanRecorderOptions {
-  /** The deck — READ-ONLY by contract (the recording render reads it). */
-  corpus: SQLDatabaseDriver;
-  /** The derived store — the plans are written here (write scope: builder
-   *  only, the same A2 rule as every one_trip_* table). */
-  side: SQLDatabaseDriver;
-  /** The side store's file path — DECKO_ONE_TRIP_STORE during the
-   *  recording renders (the gate attaches it to the corpus connection). */
-  sidePath: string;
-  /** Pages to record (the builder's materialized pages). */
+  /** The MATERIALIZED deck — the serving store with the one_trip_* tables
+   *  inline. The recording renders read it (through the capture) and the
+   *  plans are written INTO it (one_trip_render_plans). Writable: this is
+   *  the store-build window (the same write scope as the materialize
+   *  load; serving never writes). */
+  deck: SQLDatabaseDriver;
+  /** Pages to record (the store's materialized pages). */
   pageNames: readonly string[];
-  /** page name -> resolved page card id (the builder's own resolution). */
+  /** page name -> resolved page card id (the builder report's pages). */
   pageIds: ReadonlyMap<string, number>;
 }
 
@@ -113,20 +110,20 @@ async function storeRenderPlan(
   }
 }
 
-/** Record render plans for the given pages into the derived store. A page
- *  whose recording render fails is reported (recorded: false + error) and
- *  left plan-less: the serve path runs its live residue for it — the plan
- *  is an optimization, never a correctness dependency. */
+/** Record render plans for the given pages INTO the materialized deck. A
+ *  page whose recording render fails is reported (recorded: false + error)
+ *  and left plan-less: the serve path runs its live residue for it — the
+ *  plan is an optimization, never a correctness dependency. */
 export async function recordRenderPlansForPages(
   options: RenderPlanRecorderOptions,
 ): Promise<RenderPlanRecorderReport> {
-  const { corpus, side, sidePath, pageNames, pageIds } = options;
+  const { deck, pageNames, pageIds } = options;
   const report: RenderPlanRecorderReport = { pages: {} };
 
   const savedGate = process.env.DECKO_ONE_TRIP;
   const savedStore = process.env.DECKO_ONE_TRIP_STORE;
   process.env.DECKO_ONE_TRIP = "1";
-  process.env.DECKO_ONE_TRIP_STORE = sidePath;
+  process.env.DECKO_ONE_TRIP_STORE = "inline";
   try {
     for (const pageName of pageNames) {
       const pageId = pageIds.get(pageName);
@@ -139,11 +136,11 @@ export async function recordRenderPlansForPages(
       };
       report.pages[pageName] = page;
       if (pageId === undefined || pageId <= 0) continue;
-      const capture = new StatementCaptureDriver(corpus);
+      const capture = new StatementCaptureDriver(deck);
       try {
         // A FRESH ENGINE per page (the cold-render posture the census
         // measured): every statement the page's cold render asks is
-        // captured, in call order.
+        // captured, in call order, in the EXACT serving posture.
         const fetcher = new FetchEngine(capture);
         await fetcher.codenames.ensureLoaded();
         fetcher.installNameEnvironment();
@@ -168,7 +165,7 @@ export async function recordRenderPlansForPages(
           }
           safeEntries.push(entry);
         }
-        await storeRenderPlan(side, pageId, safeEntries);
+        await storeRenderPlan(deck, pageId, safeEntries);
         page.recorded = true;
         page.entries = safeEntries.length;
         for (const entry of safeEntries) {
