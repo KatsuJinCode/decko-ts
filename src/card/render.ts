@@ -223,6 +223,15 @@ export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
 
+/** The codename of a bootswatch skin's `+parent` POINTER subcard -
+ *  card-mod-bootstrap's set/type/bootswatch_skin.rb:37 declares
+ *  `card_accessor :parent` (a trait), and bootswatch_skin.rb:57-59's
+ *  `parent_skin_card` reads that TRAIT, i.e. the subcard whose right side
+ *  is this codename's card. It is a codename, never a name: the deck's
+ *  parent-pointer junction has right_id 45364, the card NAMED `parent 1`
+ *  (corpus). See warmSkinParentPointer. */
+const SKIN_PARENT_TRAIT_CODENAME = "parent";
+
 /** The views whose body reaches Auth.createable_types (edit_type.rb:44-48
  *  type_field via :type_formgroup/:board_type_formgroup, wrapped by
  *  :edit_type/:edit_type_form; new.rb:128-152 new_view_type's
@@ -1054,6 +1063,22 @@ export class RenderEngine implements RenderEngineLike {
       // the seam; warmCustomizedName runs the whole walk here, where
       // queries are legal, and the synchronous customize_button view
       // reads the answer out of memory.
+      await this.warmCustomizedName(name);
+      // Row 6 (adjudicate-10-rows-lane.md): the `+parent` warm above asks for
+      // the pointer BY NAME, and the pointer is not nameable. `parent` is a
+      // card_accessor TRAIT (bootswatch_skin.rb:37), so Ruby's `card.parent`
+      // is `parent_skin_card` (bootswatch_skin.rb:57-59) - a CODENAME-keyed
+      // subcard lookup. The deck's pointer is a Pointer junction whose right
+      // side is the card NAMED `parent 1` carrying codename `parent` (corpus
+      // 45365: left 34179 `journal skin customized` + right 45364, content
+      // "journal skin"), so `<skin>+parent` as a NAME resolves to the
+      // junction (34179, 38357) - a different card - or to nothing, and every
+      // skin page took the parent-less branch where the capture carries
+      // `Inherit from:` + a link to the parent theme (+232 B on the page).
+      // warmSkinParentPointer resolves the pointer the way Ruby does and
+      // seats it under BOTH names; run it BEFORE warmCustomizedName so the
+      // customized-name walk sees the same parent? verdict the views do.
+      await this.warmSkinParentPointer(name);
       await this.warmCustomizedName(name);
     }
     // p20-help-content warm (the setting-page core's synchronous reads):
@@ -3597,6 +3622,68 @@ export class RenderEngine implements RenderEngineLike {
     return (await this.fetcher.fetchByName(parsed)) !== undefined;
   }
 
+  /** Row 6 (adjudicate-10-rows-lane.md) - the bootswatch skin's `+parent`
+   *  POINTER, resolved the way Ruby resolves it.
+   *
+   *  `card.parent?` is bootswatch_skin.rb:57-59's
+   *  `parent_skin_card&.real?`, and `parent` is a card_accessor TRAIT
+   *  (bootswatch_skin.rb:37) - so the subcard is found through the CODENAME
+   *  registry, by the (left_id, codename-id) side pair. It is NOT a name.
+   *  The deck proves the difference: the pointer is corpus card 45365, a
+   *  Pointer junction with left_id 34179 (`journal skin customized`) and
+   *  right_id 45364 - the card NAMED `parent 1` whose codename is `parent` -
+   *  content "journal skin", with card_references row referer 45365 ->
+   *  referee_key journal_skin. So the junction's composed name is
+   *  `journal skin customized+parent 1`, and the `<skin>+parent` name every
+   *  view builds resolves to the junction (34179, 38357) instead: corpus
+   *  38357 is a DIFFERENT card literally named `parent`.
+   *
+   *  MEASURED (tmp/parityfixes-work/probe-skin-parent-pointer.mjs, the
+   *  47,235-card raw corpus):
+   *    fetchByName("journal skin customized+parent")    -> undefined
+   *    fetchByName("journal skin customized+parent 1")  -> id 45365, Pointer,
+   *                                                       content "journal skin"
+   *  which is why every skin page took the parent-less branch and the capture
+   *  carries `Inherit from:` + a known-card link to the parent theme instead
+   *  (+232 B on `journal skin customized`).
+   *
+   *  WHY AN ALIAS SEAT. The pointer is seated under its OWN canonical name
+   *  (the db's, `<skin>+parent 1`) and then aliased under the requested
+   *  `<skin>+parent` key, so the four synchronous readers -
+   *  bootswatchCoreView and skinCoreView's parent? arms, inputView's, and
+   *  customizeButtonView's `return "" if card.parent?` - resolve through the
+   *  one lookup they already use, with no per-view change. The alias is the
+   *  same card under the name Ruby addresses it by (`Card[:<skin>, :parent]`),
+   *  not a different card, and it is confined to this one key family.
+   *
+   *  Cost: one point query per SKIN whose parent? is asked for the first time
+   *  (memoized on the alias key), plus the codename/lexicon reads, all in the
+   *  async prepare phase where queries are legal. A skin with no pointer
+   *  spends the one query and seats nothing. */
+  private async warmSkinParentPointer(skinName: DeckoName): Promise<void> {
+    const aliasName = `${skinName.s}+parent`;
+    const aliasKey = DeckoName.parse(aliasName).key;
+    if (this.renderCards.has(aliasKey)) return;
+    const rightId = await this.fetcher.codenames.id(SKIN_PARENT_TRAIT_CODENAME);
+    if (rightId === undefined) return;
+    const leftId = await this.fetcher.lexicon.id(skinName);
+    if (leftId === undefined) return;
+    const row = await this.fetcher.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [leftId, rightId],
+    );
+    const junction = row.rows[0];
+    if (junction === undefined) return;
+    const rightName = await this.fetcher.lexicon.name(rightId);
+    if (rightName === undefined) return;
+    const composed = `${skinName.s}+${rightName.s}`;
+    if (composed === aliasName) return; // nameable already; nothing to alias
+    const seated =
+      this.fetchRenderCard(composed) ?? (await this.prepareItemForRender(composed));
+    if (seated === undefined) return;
+    this.renderCards.set(aliasKey, seated);
+  }
+
   /** M9 - the prepare-phase warm for html_views.rb:4-11 new_customized_
    *  name. Mirrors the Ruby walk verbatim:
    *
@@ -3623,7 +3710,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.customizedNameBySkinKey.has(skinName.key)) return;
     // html_views.rb:38-48 `return "" if card.parent?` short-circuits
     // before new_customized_name; nothing below is reachable for a
-    // parented skin.
+    // parented skin. warmSkinParentPointer runs BEFORE this method in the
+    // prepare phase, so the alias it seats makes this short-circuit read the
+    // same parent? verdict the customize_button view does.
     if (this.fetchRenderCard(`${skinName.s}+parent`) !== undefined) return;
     const base = `${skinName.s} customized`;
     const asked: string[] = [];

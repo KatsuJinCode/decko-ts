@@ -488,7 +488,22 @@ export const MOD_SPECS: Record<string, ModSpec> = {
   edit: {
     gem: "card-mod-edit",
     version: "0.20.0",
-    summary: "decko card editing and card type management",
+    // "Edit handling" is the CAPTURE-attested string, not a transcription of
+    // a gemspec line: two independent Ruby captures of the live deck render
+    // exactly this text in the `mod: edit` description paragraph
+    // (`<p>Edit handling</p>`) -- the 2026-09-29 yardstick vintage
+    // (decko-ts-pass20-int/tmp/raw-ground-truth) and the 2026-10-05
+    // recapture (tmp/raw-ground-truth/expected-v2/page-lane), byte-for-byte
+    // identical on this page after the committed close-71 asset-host mapping
+    // (adjudicate-10-rows-lane.md evidence chain point 2). The previous value
+    // ("decko card editing and card type management") appears in NO capture
+    // and cost the page +30 B.
+    //
+    // PROVENANCE NOT RE-DERIVED: card-mod-edit is NOT installed in this
+    // worktree, so which *.gemspec supplies this string was NOT determined
+    // here -- no gemspec was read and no bundle was inspected. What is
+    // pinned is the RENDERED string. Recovering the source file is open work.
+    summary: "Edit handling",
     description: "",
     // Live order: the oracle's mod: edit page renders mod: list then
     // mod: rules (mm-cstructural's 2026-09-30 measurement, kept as the pin).

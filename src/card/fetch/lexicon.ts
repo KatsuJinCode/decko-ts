@@ -60,6 +60,55 @@ export class DbLexicon {
   private durableIdNames = new Map<number, string>();
   private static readonly DURABLE_ID_NAMES_CAP = 200_000;
 
+  /**
+   * The durable lex->id record - the MIRROR of durableIdNames above, for the
+   * same reason and with the same contract, one direction over.
+   *
+   * Ruby resolves a name's codename synchronously against the db
+   * (PatternInstance#anchor_codenames, pattern/base.rb:40-44, reads
+   * Card::Lexicon + Card::Codename), so `base.rb:41 || break` only fires
+   * for an anchor card the DECK does not have. The port's sync mirror reads
+   * the TEMPORARY cache, which within_key_counts throws away wholesale every
+   * 10,000 writes (temporary.rb), so the mirror went nil on an anchor the
+   * deck DOES have and the codename-keyed consumers of DeckoName#cardId /
+   * #codename silently lost their answer.
+   *
+   * The measured casualty (row 8, `welcome email`): the set-type-assignment
+   * walk keys each virtual field card's module key on its anchor parts'
+   * codenames, so a wiped `L-*to` prime emptied the walk
+   * (moduleKeys ["TypePlusRight::Basic::To","Right::To"] -> []) and
+   * newCardDefaultType's type_id_from_code arm missed where Ruby answers
+   * List - the page rendered RichText (21,702 B) instead of List
+   * (21,686 B) depending on how many pages the boot had rendered first.
+   *
+   * READ SCOPE: peekDurableId is consulted by the NAME-ENVIRONMENT adapter
+   * only (fetch.ts #peekLexiconId, the sync `lexicon.id(key)` that
+   * DeckoName#cardId uses). DbLexicon#peekId below is deliberately NOT
+   * widened - it stays the pure cache-only mirror its two committed pins
+   * require (tests/card/fetch/lexicon-id-fallback-survives-sync-peek-after-
+   * temp-reset.test.ts, tests/card/render/lexicon-peek-id-false-negative-
+   * crash.test.ts). It also never records a NEGATIVE: entries are written
+   * only where the row (or the batched prime's row) was actually read, so a
+   * durable miss stays an UNKNOWN name and can never become a wrong id.
+   */
+  private durableLexIds = new Map<string, number>();
+  private static readonly DURABLE_LEX_IDS_CAP = 200_000;
+
+  /** The sync name-environment boundary's read of the durable map. */
+  peekDurableId(lex: Lex): number | undefined {
+    return this.durableLexIds.get(cacheKey(lex));
+  }
+
+  private recordDurableId(lex: Lex, id: number | undefined): void {
+    if (id === undefined) return; // never materialize a negative
+    const key = cacheKey(lex);
+    if (this.durableLexIds.has(key)) return;
+    if (this.durableLexIds.size >= DbLexicon.DURABLE_LEX_IDS_CAP) {
+      this.durableLexIds.clear();
+    }
+    this.durableLexIds.set(key, id);
+  }
+
   constructor(driver: SQLDatabaseDriver, cache: CardCache) {
     this.driver = driver;
     this.cache = cache;
@@ -194,13 +243,19 @@ export class DbLexicon {
   /** lexicon.rb#write_to_temp_cache - the after_write_to_temp_cache hook body. */
   writeTemp(id: number | undefined, name: DeckoName | undefined, lex: Lex | undefined): void {
     if (id !== undefined) this.cache.temp.write(String(id), name);
-    if (lex !== undefined) this.cache.temp.write(cacheKey(lex), id);
+    if (lex !== undefined) {
+      this.cache.temp.write(cacheKey(lex), id);
+      // The write path's own answer is db truth; keep the durable mirror in
+      // step with a rename so the sync boundary never serves the old id.
+      this.recordDurableId(lex, id);
+    }
   }
 
   /** lexicon.rb#write */
   write(id: number, name: DeckoName, lex: Lex): void {
     this.cache.write(String(id), name);
     this.cache.write(cacheKey(lex), id);
+    this.recordDurableId(lex, id);
   }
 
   /** Prime lex_to_id entries from a batched key lookup (the cold render's
@@ -214,6 +269,10 @@ export class DbLexicon {
   primeIdsByKey(entries: ReadonlyArray<{ key: string; id: number | undefined }>): void {
     for (const entry of entries) {
       this.cache.write(cacheKey(entry.key), entry.id);
+      // The row was just read by the batched prime, so the pair is db truth -
+      // the durable mirror of what the temporary write above holds, past the
+      // next within_key_counts reset.
+      this.recordDurableId(entry.key, entry.id);
     }
   }
 
@@ -227,12 +286,19 @@ export class DbLexicon {
    *  KNOWS the pair was asked and absent (never speculatively). */
   primeIdByLex(lex: Lex, id: number | undefined): void {
     this.cache.write(cacheKey(lex), id);
+    this.recordDurableId(lex, id);
   }
 
   /** lexicon.rb#delete - used by the write path (act integration). */
   deleteFor(id: number | undefined, lexBeforeAct: Lex | undefined): void {
     if (id !== undefined) this.cache.delete(String(id));
-    if (lexBeforeAct !== undefined) this.cache.delete(cacheKey(lexBeforeAct));
+    if (lexBeforeAct !== undefined) {
+      this.cache.delete(cacheKey(lexBeforeAct));
+      // A trash/rename drops the row the durable record claims is there, so
+      // the record has to drop with it - otherwise the sync mirror would
+      // answer an id for a card that no longer exists.
+      this.durableLexIds.delete(cacheKey(lexBeforeAct));
+    }
   }
 
   /** lexicon.rb#id_to_lex. NOTE: no trash filter here - the row is read by
@@ -251,6 +317,10 @@ export class DbLexicon {
           : [row.left_id ?? undefined, row.right_id ?? undefined];
       // tap { cache.write cache_key(lex), id }
       await this.cacheWrite(cacheKey(resolved), id);
+      // The same db-truth pair, recorded durably: this read is what proves
+      // the id, so the sync name-environment mirror can answer it after the
+      // next Temporary reset (see the durableLexIds field comment).
+      this.recordDurableId(resolved, id);
       return resolved;
     })) as Lex | undefined;
     return lex;
@@ -327,6 +397,9 @@ export class DbLexicon {
       if (id !== undefined && Array.isArray(lex)) {
         await this.cacheWrite(String(id), lex);
       }
+      // The point query ran, so a positive id is db truth - record it
+      // durably for the same reason idToLex's tap records its pair.
+      this.recordDurableId(lex, id);
       return id;
     })) as number | undefined;
     return found;
