@@ -181,30 +181,41 @@ describe("relnames: the view-lane bar context seat is scoped to pointer-list ite
   });
 
   it("BLAST RADIUS: the pointer-list item bar still seats and still relativizes", async () => {
-    // The census M1 shape this seat exists for (Guns:open): a List host whose
-    // item names contain the root part. renderPointerListItem's bar arm.
+    // The census M1 shape this seat exists for (Guns:open): the ROOT card is
+    // itself the List host whose item names extend the root part.
+    // renderPointerListItem's bar arm.
+    //
+    // SEATFIX CORRECTION (2026-10-04, lane-seatfix-2026-10-04): this test
+    // previously rendered "Weapons+articles" (the +articles child) as the
+    // view root — a junction HOST card whose items share only the host's
+    // first part. The graded corpus pins that shape ctx-LESS (the tags/+Pages
+    // class — the 71 grade-10 name_context regressions the seatfix gate
+    // fixes); the corpus seats item bars under single-part roots the item
+    // extends (Guns/Wikirate/Work Week) or on rule-part divergence
+    // (democracy+*referred_to_by), measured over all 2,547 bar-view
+    // pointer-item slots in the 48 view shards. Updated to the graded
+    // root-as-host shape; the seat's fitted behavior on that shape is
+    // unchanged.
     const s = await (async () => {
       const { createRenderTestStorage, seedCard } = await import("./render-test-storage.js");
       const store = await createRenderTestStorage();
       await seedCard(store, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
       await seedCard(store, { id: 3, name: "List", codename: "list", typeId: 2 });
       await seedCard(store, { id: 4, name: "RichText", codename: "rich_text", typeId: 2 });
-      await seedCard(store, { id: 20, name: "Weapons", typeId: 2 });
-      await seedCard(store, { id: 21, name: "Articles", typeId: 2 });
-      await seedCard(store, { id: 22, name: "Rifles", typeId: 2 });
-      await seedCard(store, { id: 24, name: "Standards", typeId: 2 });
       await seedCard(store, {
-        id: 30,
-        leftId: 20,
-        rightId: 21,
+        id: 20,
+        name: "Weapons",
         typeId: 3,
         dbContent: "Weapons+rifles\nStandards\n",
       });
+      await seedCard(store, { id: 21, name: "Articles", typeId: 2 });
+      await seedCard(store, { id: 22, name: "Rifles", typeId: 2 });
+      await seedCard(store, { id: 24, name: "Standards", typeId: 2 });
       await seedCard(store, { id: 31, leftId: 20, rightId: 22, typeId: 4 });
       return store;
     })();
     try {
-      const html = await s.engine.render("Weapons+articles", "open");
+      const html = await s.engine.render("Weapons", "open");
       expect(html).toContain("&quot;home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;weapon&quot;}");
       expect(html).toContain('title="+Rifles"');
       // The part filter still keeps a bar whose name lacks the root part

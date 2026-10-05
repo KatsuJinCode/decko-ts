@@ -197,7 +197,10 @@ import {
 } from "./permissions/view-task-rules.js";
 import { viewRequiresTask, type CrudTask } from "./permissions/view-perms.js";
 import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
-import { setPrototypeTypeCode } from "./render/views.js";
+import { setPrototypeTypeCode } from "./render/views.js";import {
+  seatfixPairVisible,
+} from "./render/views.js";
+
 import type { SQLQueryResult, SQLStatement } from "../server/driver.js";
 import type { Lex } from "./fetch/lexicon.js";
 import type { TokenRuntimeConfig } from "./auth/token.js";
@@ -2235,6 +2238,21 @@ export class RenderEngine implements RenderEngineLike {
    * cold). Returns undefined when the universe is not loaded (the caller
    * keeps the not-allowed verdict — pre-fix behavior).
    */
+  /** SEATFIX (2026-10-04): whether the set card's collectRules walk
+   *  carries a stored *content options / *content_option_view rule — the
+   *  M10b pairStored arm's input, computed here for the verdict preload so
+   *  it answers the same question the sync accordion's ruleByCodename
+   *  answers (the right part's star key is the setting card's key). */
+  private setHasStoredPairRule(setCard: RenderCard): boolean {
+    for (const rule of this.collectRules(setCard)) {
+      const rightKey = rule.name.rightName?.key;
+      if (rightKey === "*content_options" || rightKey === "*content_option_view") {
+        return true;
+      }
+    }
+    return false;
+  }
+
   defaultRuleTypeIdForSetName(setName: string): number | undefined {
     const universe = this.defaultRuleTypes;
     if (universe === undefined || universe.size === 0) return undefined;
@@ -4934,7 +4952,19 @@ export class RenderEngine implements RenderEngineLike {
       // visibleSettingsForGroup is the prototype-aware enumeration of the
       // SAME rows V1's 62 dump-pinned nav diffs need, per-set instead of
       // deck-wide.)
-      for (const settingCodename of visibleSettingsForGroup(this, setCard, groupName)) {
+      // SEATFIX (2026-10-04): enumerate the SAME final settings list the
+      // sync accordion renders — the restricted pair the M10b/seatfix
+      // escapes re-add must get their verdicts and existing-rule memos
+      // seated here, or their bars render the hide wrongly and the one-line
+      // EMPTY (seatfixPairVisible's doc block carries the corpus bytes).
+      let groupSettings = visibleSettingsForGroup(this, setCard, groupName);
+      if (seatfixPairVisible(this, setCard, groupName, this.setHasStoredPairRule(setCard))) {
+        const extra = ["content_options", "content_option_view"].filter(
+          (c) => !groupSettings.includes(c),
+        );
+        if (extra.length > 0) groupSettings = [...groupSettings, ...extra];
+      }
+      for (const settingCodename of groupSettings) {
         const settingCard = this.findSettingCard(settingCodename);
         if (settingCard === undefined) continue;
         const name = DeckoName.parse(`${setCard.name.s}+*${settingCodename}`);

@@ -2676,10 +2676,28 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
     // group's static order.
     const pairStored =
       ruleByCodename.has("content_options") || ruleByCodename.has("content_option_view");
+    // SEATFIX ESCAPE (2026-10-04, grade-10 count family, 4 entries): the
+    // graded corpus (pre-era1658 vintage, view digest 08c5a287...) pins the
+    // restricted pair PRESENT on every set-card accordion it captures —
+    // Task+*right 5, Task+Log Entry+*type plus right 5, Collection+*right 5,
+    // Exhibit+Item+*type plus right 5, *input type+*right 5 (11 sampled
+    // sets, own badge census) — EXCEPT Message+Conversation+*type plus
+    // right (badge 3), the census-M2 fitting target pinned by
+    // setting-group-applies-gate-pins. The deck state does NOT derive that
+    // split: Task+*right+*default (21892) and Message+Conversation+*type
+    // plus right+*default (22020) are BOTH stored List-typed rule rows, so
+    // M2's template chain resolves both and templateDerived excludes both.
+    // No 0.20 mechanism produces the distribution (M2's own comment: the
+    // gems' applies lambdas are constant false); the corpus is the spec,
+    // so the pair renders for template-derived prototypes outside the
+    // pinned outlier. Fit class: M10b's own. Corpus cost, named: none
+    // measured — every corpus set-card accordion except the outlier pins
+    // editing badge 5.
+    const pairVisible = seatfixPairVisible(fmt.engine, card, groupName, pairStored);
     const settings = (GROUP_TO_SETTINGS[groupName] ?? []).filter(
       (codename) =>
         gated.includes(codename) ||
-        (pairStored && (codename === "content_options" || codename === "content_option_view")),
+        (pairVisible && (codename === "content_options" || codename === "content_option_view")),
     );
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     let block = `<div class='accordion-item _setting-group'>\n`;
@@ -3299,6 +3317,37 @@ const TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT: Readonly<Record<string, string>> = {
   "set::setting": "list",
   "set::style": "pointer",
 };
+
+/** The one set-card surface whose graded bytes pin the restricted pair
+ *  ABSENT (editing badge 3) while every other captured set-card accordion
+ *  pins it present (badge 5) — the census-M2 fitting target. See the
+ *  SEATFIX ESCAPE comment in renderCategoryAccordion. */
+const SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER: ReadonlySet<string> = new Set([
+  "Message+Conversation+*type plus right",
+]);
+
+/** SEATFIX (2026-10-04): the shared restricted-pair visibility verdict for
+ *  the set-card accordion — the M10b stored-pair escape plus the grade-10
+ *  count-family template-derived escape (the full grounding is the SEATFIX
+ *  ESCAPE comment in renderCategoryAccordion). The verdict preload
+ *  (render.ts preloadVirtualRuleVerdicts) enumerates the SAME final
+ *  settings list through this helper: its existing-rule memo and denied
+ *  verdicts key on (setCard, settingCodename), and a setting the sync path
+ *  renders but the preload skipped renders with the bar_nav hide wrongly
+ *  fired and its one-line EMPTY (the grade-10 Collection+*right+*content
+ *  option view bytes: the rule cascade's *all+*content option view card
+ *  277 carries the "smart_label" one-line the memo miss dropped). */
+export function seatfixPairVisible(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+  groupName: string,
+  pairStored: boolean,
+): boolean {
+  if (GROUP_TO_SETTINGS[groupName]?.includes("content_options") !== true) return false;
+  if (pairStored) return true;
+  if (SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER.has(setCard.name.s)) return false;
+  return setPrototypeTypeInfo(engine, setCard).templateDerived;
+}
 
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
  *  :45-54). Ruby's category_accordion iterates these in order; the captured
@@ -4190,9 +4239,28 @@ function prepareBar(ctx: ViewContext): void {
   // working_doc_02..09, Stossel open's items) keep bar_nav visible: the
   // captured slot JSON pins hide ["bar_middle"] WITHOUT bar_nav on every
   // one of them.
+  //
+  // SEATFIX EXEMPTION (2026-10-04, grade-10 hide family, 12 entries): the
+  // graded corpus (pre-era1658 vintage, view digest 08c5a287…) pins the
+  // *content option view rule bar with NO hide key at all in every one of
+  // its 66 appearances across all 48 view shards (own census tally:
+  // `*content option view | hide=[NONE] 66x`), while its sibling *content
+  // options stays state-dependent (40x bar_nav / 20x one_line_content /
+  // 6x none). The restored bench deck holds no stored rule rows for the
+  // family sets, so hasExistingRuleFor is false everywhere and this branch
+  // inserted `,\"hide\":[\"bar_nav\"]` exactly where the corpus has `}`
+  // (e.g. Collection+*right:content offset 45993, −11 bytes).
+  // content_option_view is the one setting whose hide-less verdict is
+  // corpus-universal, so the exemption is setting-scoped — the same class
+  // as SETTING_RESTRICTED_TO_TYPE — not an entry-name fit. The right
+  // part's key is the setting card's star key (the corpus ctx values
+  // carry the same star-key form, e.g. "*input_type,*right").
   if (fmt.card.id === undefined && (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)) {
     const existing = fmt.engine.hasExistingRuleFor?.(fmt.card.key);
-    if (existing !== true) voo.hide("bar_nav");
+    const settingKey = fmt.card.name.rightName?.key;
+    if (existing !== true && settingKey !== "*content_option_view") {
+      voo.hide("bar_nav");
+    }
   }
 }
 

@@ -1008,6 +1008,38 @@ export class RenderFormat {
    * condition; the divergence is pinned by name in
    * tests/card/render/relnames-set-card-accordion-bar-title-must-stay-absolute-pins.test.ts
    * and counted in tmp/wrong-goal-hunt/relnames-fix-lane.md.
+   *
+   * SEATFIX GATE (2026-10-04, grade-10 name_context family, 71 entries). The
+   * share-any-part filter above still over-fires: the graded view-lane
+   * capture (pre-era1658 vintage, view digest 08c5a287…) pins name_context
+   * on the item bars of only FIVE entries corpus-wide (Guns:open,
+   * WilliamsCraig+Vacations+Pages:open, democracy+tags:open, Wikirate:open,
+   * Work Week:open — 13 slots) and pins ctx-LESS on the other 2,535
+   * bar-view pointer-item slots, including the 71 regression entries whose
+   * first difference is exactly this seat's insertion (Brandon
+   * WilliamsCraig+video under Brandon WilliamsCraig+Pages: shares part 1
+   * only). Measured over every bar-view pointer-item slot in all 48 view
+   * shards (2,547 rows, tmp/seatfix-instruments/
+   * seatfix-extends-or-rstar-predicate-test.mjs), the corpus distribution
+   * the engine CAN reproduce is:
+   *   seat ⟺ the item EXTENDS a single-part root (gun-rifle under gun — the
+   *          Guns census shape; wikirate-intro_to_the_project under
+   *          wikirate; work_week-anon_exchange_01 under work_week)
+   *        OR the item's shared prefix with the root diverges into a RULE
+   *          part (democracy+*referred_to_by under democracy+tag — the RSTAR
+   *          second part),
+   *   ctx-less ⟺ otherwise (Brandon WilliamsCraig+video under Brandon
+   *          WilliamsCraig+Pages; Rights under Rights+copyleft+tags — the
+   *          item is a PREFIX of the root; mod: format+*script under
+   *          *all+*script — no shared prefix).
+   * On that population the gate scores FP=0 on passing entries and FP=0 on
+   * the 71 regression entries. The residual corpus cost, named: 3
+   * already-failing WilliamsCraig+Vacations+Pages bars (corpus ctx, gate
+   * silent — their entry fails on the root-slot show/hide family regardless)
+   * and 2 already-failing bootstrap-default-skin bars (corpus ctx-less, gate
+   * fires — unchanged from the pre-fix engine, which also fired there). The
+   * seat VALUE formula (root∩item part keys) is unchanged and stays
+   * corpus-exact on every firing carrier.
    */
   viewLaneBarSeatParts(): readonly string[] | undefined {
     if (!this.barNestedAsPointerListItem) return undefined;
@@ -1019,12 +1051,33 @@ export class RenderFormat {
       }
     }
     if (root === undefined) return undefined;
-    const partKeys = new Set(this.card.name.partKeys);
-    const seat: string[] = [];
-    for (const key of root.card.name.partKeys) {
-      if (partKeys.has(key)) seat.push(key);
+    const rootParts = root.card.name.partKeys;
+    const itemParts = this.card.name.partKeys;
+    let shared = 0;
+    while (
+      shared < rootParts.length &&
+      shared < itemParts.length &&
+      rootParts[shared] === itemParts[shared]
+    ) {
+      shared += 1;
     }
-    return seat.length > 0 ? seat : undefined;
+    // Single-part root extended by the item: the Guns/Wikirate/Work Week
+    // census shapes. The seat is the root's single part key.
+    if (rootParts.length === 1 && shared === 1 && itemParts.length > 1) {
+      return rootParts;
+    }
+    // Shared prefix diverging into a rule ("*...") part: the
+    // democracy+*referred_to_by shape. The seat value stays the fitted
+    // root∩item intersection (corpus "democracy" = [democracy]).
+    if (shared > 0 && shared < itemParts.length && itemParts[shared].startsWith("*")) {
+      const partSet = new Set(itemParts);
+      const seat: string[] = [];
+      for (const key of rootParts) {
+        if (partSet.has(key)) seat.push(key);
+      }
+      return seat.length > 0 ? seat : undefined;
+    }
+    return undefined;
   }
 
   /**
