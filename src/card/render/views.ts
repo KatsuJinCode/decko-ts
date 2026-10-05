@@ -1045,7 +1045,21 @@ const coreViewBase: ViewFn = (ctx) => {
     // bootstrap-default-skin page resolves "+bootswatch theme" to the REAL
     // "bootstrap default skin+bootswatch theme" row (RichText bar); a bare
     // phantom named "+bootswatch_theme" is the un-contextualized miss.
-    const items = rawItemStrings(fmt.card.dbContent)
+    // THE ITEM SOURCE IS THE OVERRIDDEN CONTENT, not the raw row: Ruby's
+    // set-module `def content` rides the card's singleton class, so it
+    // shadows db_content for EVERY caller — listing_list's item walk
+    // included (card-mod-list set/abstract/01_list/html_views.rb:6-13
+    // reaches card.content, not card.db_content). The registry consult is
+    // that shadow: card `*input type+*right+*content options` renders its
+    // 11-item basket catalog (set/self/input_type/right/content_options.rb)
+    // where the stored row says "overridden" (grade10 shard-000007, the
+    // content/open expectedBytes). Cards without any registered override
+    // fall through to dbContent unchanged — the corpus suites pin those.
+    // BOUNDARY: the bar-right ONE-LINE walk (rule-bar-right.ts) stays on
+    // dbContent — the fama-remainder lane's corpus-pinned count dispatch
+    // (content-options-one-line-count-capture-state-pins.test.ts) owns
+    // that surface and routes its two drifted rows to corpus arbitration.
+    const items = rawItemStrings(resolveContentOverride(fmt) ?? fmt.card.dbContent)
       .filter((s) => s.length > 0)
       .map((s) => resolvePointerItemName(s, fmt.card.name));
     // Item-view flow-through (mod-b-view-fixes): item_view_options[:view]

@@ -81,6 +81,14 @@ import {
   bootstrapCoreContent,
   bootstrapFunctionsContent,
 } from "./render/bootstrap-code-files.js";
+// The pointer-content helper + the input-type catalog live in the render
+// override seam (render/content-overrides.ts) — owning them HERE closed an
+// import cycle (this module -> mod-loader/default-mod-deck -> mods ->
+// render) that broke five suites at module-evaluation time. Re-exported so
+// the record-path consumers are unchanged.
+import { listInputOptionsContent, toPointerContent } from "./render/content-overrides.js";
+
+export { listInputOptionsContent, toPointerContent };
 
 // ---------------------------------------------------------------------------
 // the capture deck environment (documented constants, deck_origin precedent)
@@ -130,21 +138,9 @@ function cardWallClockNow(): Date {
 // Ruby helpers the override bodies call
 // ---------------------------------------------------------------------------
 
-/**
- * card-1.110.0 config/initializers/01_core_extensions/array.rb:4-12
- * (`to_pointer_content`): map { to_s.strip; strip one leading "[[" and one
- * trailing "]]" }, join "\n".
- */
-export function toPointerContent(items: readonly string[]): string {
-  return items
-    .map((item) => {
-      let s = item.toString().trim();
-      if (s.startsWith("[[")) s = s.slice(2);
-      if (s.endsWith("]]")) s = s.slice(0, -2);
-      return s;
-    })
-    .join("\n");
-}
+// toPointerContent + listInputOptionsContent moved to
+// render/content-overrides.ts (import-cycle break, see the import block
+// above); re-exported there and imported above for the bodies below.
 
 /**
  * I18n.localize(..., format: :card_dayofwk_min_tz) — the en.yml:29 format
@@ -304,38 +300,8 @@ export function modItemCodesContent(): string {
   return modItemCodesContentForMods(capturedModObjects());
 }
 
-/**
- * card-mod-list-0.20.0 set/self/input_type/right/content_options.rb:3-5 —
- * `basket[:list_input_options].to_pointer_content`. The basket:
- * card-mod-list set/all/supports_content_options.rb:1 seeds
- * `%w[radio checkbox select multiselect list autocomplete]`, then the mod set
- * files append at load time: card-mod-edit set/all/editor.rb:1-2 ("text area",
- * "text field"), card-mod-ace_editor set/all/ace_editor.rb:1 ("ace editor"),
- * card-mod-date set/all/calendar.rb:1 ("calendar"), card-mod-tinymce_editor
- * set/all/tinymce_editor.rb:2 ("tinymce editor"). The order below is the
- * captured order (the 107-byte record expectation in view-lane shard-000007).
- */
-export function listInputOptionsContent(): string {
-  return toPointerContent([
-    // supports_content_options.rb:1 (the seed)
-    "radio",
-    "checkbox",
-    "select",
-    "multiselect",
-    "list",
-    "autocomplete",
-    // set/all/editor.rb:1
-    "text area",
-    // set/all/editor.rb:2
-    "text field",
-    // set/all/ace_editor.rb:1
-    "ace editor",
-    // set/all/calendar.rb:1
-    "calendar",
-    // set/all/tinymce_editor.rb:2
-    "tinymce editor",
-  ]);
-}
+// listInputOptionsContent lives in render/content-overrides.ts (import-cycle
+// break); re-exported above.
 
 /** card-mod-session-0.20.0 set/type/session.rb:33-35 —
  *  `db_content || session_content`. The bare engine has no session store
