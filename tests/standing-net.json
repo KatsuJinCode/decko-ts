@@ -44,7 +44,7 @@
       "tests/card/rules/nest-miss-unknown-view-selection-corpus-replay.test.ts",
       "tests/card/render/highlighter-seams-h1-h2-oracle-pins.test.ts"
     ],
-    "manifestFileCount": 124,
+    "manifestFileCount": 125,
     "relnames-source": "relnames bar-title shape gate (2026-10-04): the census-M1 view-lane bar-context seat writes the format working context list, which is what RenderFormat#standardTitle relativizes the bar title against, so a seat firing on a bar the corpus shows ctx-less renders a relative title where the fixture and the graded capture carry the absolute compound name (11 set-card-views surfaces, 2.6-2.8KB each). The gate scopes the seat to the pointer/list ITEM bar shape it was fitted to (Guns:open); the set card Rules bars are the excluded accordion chain (bar.rb:40 never runs add_name_context). relnames-set-card-accordion-bar-title-must-stay-absolute-pins.test.ts is the RED-first pin (absolute title and no name_context on the *input type+*right accordion bar, plus the blast-radius control that the pointer-list item bar still seats and still relativizes). relnames-lane-bar-title-slot-census-dump.test.ts is the env-gated (RELNAMES_DUMP=1) engine-vs-fixture first-diff probe measuring the same surfaces; it self-skips without its pin.",
     "slotctx-source": "Bar-slot name_context context suites, added 2026-10-04 (lane-slotctx-2026-10-04, from the r6 audit that found them OUTSIDE the net). rule-bar-title-name-context.test.ts guards the rule-row bar title against the slot name_context; title-in-context-relative-name.test.ts guards contextual.rb #name_from relativization; view-lane-bar-slot-root-context-seat-pins.test.ts guards the census-M1 view-lane bar-context seat itself (the Guns item-bar shape that seats and relativizes, and the Standards ctx-less control). The relnames lane could not list the third because the net did not run it, so it duplicated the Standards control inside its own pin file instead. manifestFileCount recounted 96 -> 99 in the same commit as the addition.",
     "censusport-source": "Serializer-line census pins, added 2026-10-04 (censusport lane, base d39da609): the six RED arms of the M2/M2-refit/M3/M4/M5/M6/M10 engine ports, transplanted verbatim from lane-serializer-followup2-2026-10-03 and each RED-then-GREEN re-measured on the fold base before its port. setting-group-applies-gate-pins (M2 + the M2 refit, 43d55e80's final state) pins the editing-group badge at 3 for a TEMPLATE-derived prototype and at 5 for a stored-pointer/assigned-list one, which is the shape the retired blanket SETTING_NEVER_VISIBLE fold could not produce. referred-to-by-search-result-set-corpus-replay-pins (M3, 42dba231) is the corpus-graph replay of the Family +*referred_to_by listing and SELF-SKIPS without REFERRED_TO_BY_RESULT_SET_REPLAY=1. mod-depends-on-declaration-order-pins (M4, a639ee62), mod-shades-script-groups-pins (M5, 0377f4d3), main-card-image-size-pins (M6, 32fe3163) and mod-tinymce-style-script-group-pins (M10, 735e6a45) are the four mod-loader/image-seam mechanisms, all of which render from transcribed graded bytes.",
@@ -121,6 +121,7 @@
     "tests/card/render/layout-code-crlf-page-parity.test.ts",
     "tests/card/render/layout-whitespace-single-newline-corpus-parity.test.ts",
     "tests/card/render/left-type-plus-right-new-card-default-anchor-pins.test.ts",
+    "tests/card/render/prefetch-empty-side-compound-fold.test.ts",
     "tests/card/render/mod-asset-section-and-permission-inherit-core-pins.test.ts",
     "tests/card/render/nest-miss-unknown-view-selection-corpus-replay.test.ts",
     "tests/card/render/permission-corpus-replay.test.ts",
@@ -177,7 +178,7 @@
     "tests/card/render/referred-to-by-search-result-set-corpus-replay-pins.test.ts",
     "tests/card/render/setting-group-applies-gate-pins.test.ts"
   ],
-  "manifestFileCount": 124,
+  "manifestFileCount": 125,
   "envGuard": {
     "what": "Standing-net env pin (auditor F16). The queue runner is long-lived and spawns the net from ITS OWN environment, so oracle env exported in a submitting shell dies at the queue boundary; a no-env run silently becomes a skip-heavy invalid net that still exits 0. requiredEnv must be present in run-standing-net's own environment, or forwarded with --env (the queue's persisted env channel, which reaches the job and is counted in the dedupe key).",
     "requiredEnv": [
