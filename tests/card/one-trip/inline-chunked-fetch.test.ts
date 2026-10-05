@@ -148,36 +148,113 @@ describe.skipIf(!hasMirror)("inline chunked fetch: byte-equal to the single-row 
       const bundle = await fetchPageBundleInline(inlineCapture, pageName);
 
       const issued = inlineCapture.statements;
-      // the head statement + one chunk per CARDS_PER_CHUNK slice of the closure
+      // the head statement + one keyset slice per CARDS_PER_CHUNK window of the
+      // MATERIALIZED member id list
       const expectedStatements = 1 + Math.ceil(bundle.cardIds.length / ONE_TRIP_INLINE_CARDS_PER_CHUNK);
       expect(
         issued.length,
-        "the inline fetch must issue exactly 1 head statement + one card chunk per " +
-          `${ONE_TRIP_INLINE_CARDS_PER_CHUNK}-card slice (${bundle.cardIds.length} closure members)`,
+        "the inline fetch must issue exactly 1 head statement + one keyset slice per " +
+          `${ONE_TRIP_INLINE_CARDS_PER_CHUNK}-card window (${bundle.cardIds.length} closure members)`,
       ).toBe(expectedStatements);
 
-      // every statement respects the walls: no ATTACH (wall 1), unqualified
-      // one_trip_* tables (the seam note's prefix drop), and the chunked
-      // shape (LIMIT/OFFSET card pages, never one giant aggregate)
+      // every statement respects the walls: no ATTACH (wall 1) and no ATTACH
+      // qualifier on the one_trip_* tables (the seam note's prefix drop)
       for (const stmt of issued) {
         expect(stmt.sql, "no ATTACH anywhere in the inline fetch").not.toMatch(/\bATTACH\b/i);
         expect(stmt.sql, "no ATTACH qualifier on the one_trip_* tables").not.toMatch(
           /\bone_trip\s*\./,
         );
-        expect(stmt.sql, "inline statements read the materialized one_trip_* tables").toMatch(
+      }
+      // ONLY the head statement reads the materialized one_trip_* graph tables
+      // (discovery lives there); the slices are flat cards reads
+      expect(issued[0]!.sql, "the head statement reads the materialized one_trip_* tables").toMatch(
+        /\bone_trip_(edges|page_closure)\b/,
+      );
+      for (const stmt of issued.slice(1)) {
+        expect(stmt.sql, "keyset slices never touch the graph tables").not.toMatch(
           /\bone_trip_(edges|page_closure)\b/,
         );
       }
-      expect(issued[0]!.sql, "the head statement keeps the recursive closure walk").toMatch(
-        /WITH RECURSIVE/,
-      );
-      // the card chunks never aggregate the whole closure into one value:
-      // each chunk carries at most CARDS_PER_CHUNK card rows
+      // the card slices never aggregate the whole closure into one value:
+      // each slice carries at most CARDS_PER_CHUNK card rows
       for (const stmt of issued.slice(1)) {
-        expect(stmt.rowCount, "a card chunk never exceeds the chunk bound").toBeLessThanOrEqual(
+        expect(stmt.rowCount, "a card slice never exceeds the chunk bound").toBeLessThanOrEqual(
           ONE_TRIP_INLINE_CARDS_PER_CHUNK,
         );
       }
+    });
+
+    // THE V2 PIN (inline-fetch-v2 lane, 2026-10-05): discovery ONCE per seat.
+    //
+    // The mechanism this pin kills (cold-latency-rig-lane.md WIRE-DIAGNOSIS §4,
+    // probed verbatim on the live serving DB): the v1 chunked fetch re-ran the
+    // ENTIRE discovery phase (recursive walk CTE + members CTE + DISTINCT join
+    // + ORDER BY id) inside EVERY chunk statement before its LIMIT/OFFSET
+    // slice — 37 full closure computations per Aikido seat, 228-1,112 ms each
+    // (~18 s of seat cost). The v2 shape: the head statement materializes the
+    // member id list ONCE (one small sorted JSON value), and every card slice
+    // is a FLAT keyset read over one window of that list (json_each expansion,
+    // no walk CTE anywhere after statement 1).
+    //
+    // RED at c5f7fc79: every v1 statement (head AND chunks) carries WITH
+    // RECURSIVE and the head materializes nothing — walkStatements is 1+N, not
+    // 1, and no slice binds a json_each window.
+    it(`runs discovery EXACTLY ONCE — one walk-CTE statement, then flat keyset slices`, async () => {
+      const inlineCapture = new TripCapturingDriver(inlineDb);
+      await fetchPageBundleInline(inlineCapture, pageName);
+      const issued = inlineCapture.statements;
+
+      // PIN 1 — exactly ONE discovery statement per seat, and it is the head.
+      const walkStatements = issued.filter((s) => /\bWITH RECURSIVE\b/.test(s.sql));
+      expect(
+        walkStatements.length,
+        "the recursive discovery phase must run in EXACTLY ONE statement per seat " +
+          "(the head); at base every chunk re-runs it (WIRE-DIAGNOSIS §4: 37 " +
+          "closure walks per Aikido seat, ~18 s)",
+      ).toBe(1);
+      expect(issued[0]!.sql, "the single discovery statement is the head").toMatch(
+        /\bWITH RECURSIVE\b/,
+      );
+
+      // PIN 2 — the head MATERIALIZES the member id list (one small sorted
+      // JSON value) and binds the page key exactly four times (walk seed,
+      // members page join, page_key field, rule-candidate page join); the
+      // slices bind NO page key at all (they carry no discovery).
+      expect(issued[0]!.sql, "the head materializes the member ids").toMatch(/member_ids_json/);
+      for (const stmt of issued.slice(1)) {
+        expect(stmt.sql, "a keyset slice never re-runs the walk").not.toMatch(/\bWITH RECURSIVE\b/);
+        expect(stmt.sql, "a keyset slice reads its member window via json_each").toMatch(
+          /\bjson_each\s*\(/,
+        );
+        const windowIds = JSON.parse(stmt.params[0] as string) as number[];
+        expect(
+          windowIds.length,
+          "a keyset slice's member window never exceeds the chunk bound",
+        ).toBeLessThanOrEqual(ONE_TRIP_INLINE_CARDS_PER_CHUNK);
+        for (const id of windowIds) expect(id, "window members are card ids").toBeTypeOf("number");
+      }
+
+      // PIN 3 — the windows tile the materialized member list exactly: the
+      // slice count is ceil(memberCount / CHUNK) against the discovery CTE's
+      // own count, read here directly (the fetch's member list must equal it).
+      const key = DeckoName.parse(pageName).key;
+      const membersCount = await inlineDb.query<{ n: number }>(
+        `WITH RECURSIVE walk(id) AS (
+  SELECT id FROM cards WHERE "key" = ? AND trash = 0
+  UNION
+  SELECT e.referee_id FROM walk JOIN one_trip_edges e ON e.referer_id = walk.id WHERE e.referee_id IS NOT NULL
+),
+members(id) AS (
+  SELECT id FROM walk
+  UNION
+  SELECT pc.card_id FROM one_trip_page_closure pc WHERE pc.page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
+)
+SELECT COUNT(*) AS n FROM members`,
+        [key, key],
+      );
+      expect(issued.length).toBe(
+        1 + Math.ceil(membersCount.rows[0]!.n / ONE_TRIP_INLINE_CARDS_PER_CHUNK),
+      );
     });
   }
 });

@@ -158,7 +158,8 @@ interface BundleDocument {
 }
 
 // ---------------------------------------------------------------------------
-// THE INLINE FETCH (the materialized shape): chunked, byte-equal.
+// THE INLINE FETCH (the materialized shape): discovery ONCE, keyset slices,
+// byte-equal.
 //
 // WALL 1 (MATERIALIZED-STORE §6.1): the serving DB rejects ATTACH at the
 // parser for any value, so the inline posture issues NO ATTACH and reads the
@@ -170,14 +171,28 @@ interface BundleDocument {
 // server-side with `SQLite error: string or blob too big`, while small rows
 // are proven fine (the materialized load pushed 528 multi-row statements).
 // The inline fetch therefore returns the bundle in CHUNKS — one head
-// statement (page key + rule candidates + search results, each a small
-// value) plus one statement per bounded slice of card rows, each row the
-// SAME per-card json_object text the single-row aggregation embeds — and
-// assembles them client-side into a document that is BYTE-EQUAL to the
-// single-row statement's (pinned on the corpus, inline-chunked-fetch.test.ts:
-// order is the single-row DISTINCT order — id ascending, the first DISTINCT
-// column and a unique key — and every data byte is SQLite-emitted, the
-// client only joins rows with "," inside the same brackets).
+// statement (page key + rule candidates + search results + the MATERIALIZED
+// member id list, each a small value) plus one statement per bounded slice
+// of card rows, each row the SAME per-card json_object text the single-row
+// aggregation embeds — and assembles them client-side into a document that
+// is BYTE-EQUAL to the single-row statement's (pinned on the corpus,
+// inline-chunked-fetch.test.ts: order is the single-row DISTINCT order — id
+// ascending, the first DISTINCT column and a unique key — and every data
+// byte is SQLite-emitted, the client only joins rows with "," inside the
+// same brackets).
+//
+// V2 (2026-10-05, the WIRE-DIAGNOSIS §4 fix): discovery runs ONCE per seat.
+// The v1 chunk statements each re-ran the ENTIRE discovery phase (recursive
+// walk CTE + members CTE + DISTINCT join + ORDER BY id) before their
+// LIMIT/OFFSET slice — 37 full closure computations per Aikido seat,
+// 228-1,112 ms each, ~18 s of seat cost (probed verbatim on the live serving
+// DB). V2's head statement materializes the member id list ONCE (one small
+// sorted JSON value — Aikido's 3,530 ids are ~25 KB), and every card slice
+// is a FLAT keyset read over one window of that list (the window's ids bound
+// as one small JSON array, expanded by json_each — a plain indexed join
+// against cards, no walk CTE anywhere after statement 1). The windows tile
+// the id-ascending member list, each slice orders by c.id, so the client
+// concatenation is byte-equal to the v1 whole-set slice.
 // ---------------------------------------------------------------------------
 
 /** Card rows per inline chunk. The bound keeps every response rows-small:
@@ -190,7 +205,8 @@ export const ONE_TRIP_INLINE_CARDS_PER_CHUNK = 100;
 
 /** The recursive walk + members CTEs, verbatim the single-row statement's
  *  discovery phase, with the store qualifier DROPPED (inline = the tables
- *  are in this database). */
+ *  are in this database). V2: this phase executes in EXACTLY ONE statement
+ *  per seat — the head's; nothing else in the fetch may carry it. */
 function inlineStoreCteSql(): string {
   return `WITH RECURSIVE walk(id) AS (
   SELECT id FROM cards WHERE "key" = ? AND trash = 0
@@ -209,8 +225,11 @@ members(id) AS (
 }
 
 /** The head statement: page key (as SQLite-emitted JSON text), the page's
- *  rule candidates and search results (small aggregates). Separate columns,
- *  never one giant row — each value rides its own small TEXT cell. */
+ *  rule candidates and search results (small aggregates), and — the V2
+ *  materialization — the page's WHOLE member id list as one small sorted
+ *  JSON array (id ascending, so the client's windows are contiguous keyset
+ *  ranges). Separate columns, never one giant row — each value rides its own
+ *  small TEXT cell. */
 function inlineHeadSql(): string {
   return `${inlineStoreCteSql()}
 SELECT json_quote(?) AS page_key_json,
@@ -230,16 +249,22 @@ SELECT json_quote(?) AS page_key_json,
       SELECT m.id FROM members m
       JOIN one_trip_search_nests n ON n.search_card_id = m.id
     )
-  ) AS search_results_json`;
+  ) AS search_results_json,
+  (
+    SELECT json_group_array(m2.id)
+      FROM (SELECT m.id FROM members m ORDER BY m.id) m2
+  ) AS member_ids_json`;
 }
 
-/** One chunk of card rows: the single-row statement's own DISTINCT join,
- *  sliced LIMIT/OFFSET in the DISTINCT order (id ascending — the first
- *  DISTINCT column, unique). Each result row is the SAME per-card
- *  json_object text the single-row aggregation embeds. */
+/** One keyset slice of card rows: the single-row statement's own DISTINCT
+ *  join, windowed over ONE slice of the MATERIALIZED member id list (bound
+ *  as one small JSON array; json_each expands it — a plain join against
+ *  cards, no discovery). ORDER BY c.id keeps the single-row DISTINCT order
+ *  (id ascending) inside each ascending window, so the client-side
+ *  concatenation is byte-equal to the whole-set slice. Each result row is
+ *  the SAME per-card json_object text the single-row aggregation embeds. */
 function inlineCardsChunkSql(): string {
-  return `${inlineStoreCteSql()}
-SELECT json_object(
+  return `SELECT json_object(
   'id', c.id, 'name', c.name, 'key', c."key", 'codename', c.codename,
   'left_id', c.left_id, 'right_id', c.right_id,
   'current_revision_id', c.current_revision_id,
@@ -248,21 +273,23 @@ SELECT json_object(
   'read_rule_class', c.read_rule_class, 'read_rule_id', c.read_rule_id,
   'references_expired', c.references_expired, 'trash', c.trash,
   'type_id', c.type_id, 'db_content', c.db_content) AS card_json
-  FROM (SELECT DISTINCT co.* FROM cards co JOIN members m ON m.id = co.id) c
- ORDER BY c.id
- LIMIT ? OFFSET ?`;
+  FROM (SELECT DISTINCT co.* FROM cards co
+          JOIN (SELECT value AS id FROM json_each(?)) m ON m.id = co.id) c
+ ORDER BY c.id`;
 }
 
 interface InlineHeadRow {
   page_key_json: string;
   rule_candidates_json: string | null;
   search_results_json: string | null;
+  member_ids_json: string | null;
 }
 
 /** Fetch the page's whole working set INLINE (the materialized shape: the
  *  one_trip_* tables in this database, no ATTACH) and return the assembled
  *  bundle DOCUMENT TEXT — byte-equal to the single-row statement's document
- *  (pinned on the corpus). */
+ *  (pinned on the corpus). V2: discovery ONCE (the head materializes the
+ *  member id list), then flat keyset slices over that list. */
 export async function fetchPageBundleInlineRaw(
   driver: SQLDatabaseDriver,
   pageName: string,
@@ -280,18 +307,17 @@ export async function fetchPageBundleInlineRaw(
   if (headRow === undefined) {
     throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
+  // THE V2 KEYSET: the member id list is materialized exactly once (by the
+  // head's own discovery CTE), sorted id-ascending server-side; each slice
+  // binds one window of it — a flat indexed read, never a fresh closure walk.
+  const memberIds: number[] = JSON.parse(headRow.member_ids_json ?? "[]") as number[];
   const cardJsons: string[] = [];
-  let offset = 0;
-  for (;;) {
+  for (let i = 0; i < memberIds.length; i += ONE_TRIP_INLINE_CARDS_PER_CHUNK) {
+    const windowIds = memberIds.slice(i, i + ONE_TRIP_INLINE_CARDS_PER_CHUNK);
     const chunk = await driver.query<{ card_json: string }>(inlineCardsChunkSql(), [
-      pageKey,
-      pageKey,
-      ONE_TRIP_INLINE_CARDS_PER_CHUNK,
-      offset,
+      JSON.stringify(windowIds),
     ]);
     for (const row of chunk.rows) cardJsons.push(row.card_json);
-    if (chunk.rows.length < ONE_TRIP_INLINE_CARDS_PER_CHUNK) break;
-    offset += chunk.rows.length;
   }
   // Byte surgery, not JSON re-serialization: every data byte below was
   // emitted by SQLite's own JSON functions (the head columns and the
