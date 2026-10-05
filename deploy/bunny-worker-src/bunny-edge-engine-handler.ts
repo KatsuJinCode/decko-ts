@@ -71,6 +71,10 @@ import {
   serveWithEdgeCache,
 } from "./bunny-edge-content-cache.js";
 import {
+  getGlobalRenderCache,
+  withGlobalRenderCache,
+} from "./bunny-edge-global-render-cache.js";
+import {
   handleEngineRequest,
   json,
   resolveEdgePipelineTimeoutMs,
@@ -411,8 +415,13 @@ export async function handleBunnyEngineRequest(
     return serveWithEdgeCache(
       request,
       env,
-      async () =>
-        handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
+      withGlobalRenderCache(
+        request,
+        env,
+        getGlobalRenderCache(env, resolved),
+        async () =>
+          handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
+      ),
       resolveEdgeContentCache(env),
     );
   }
@@ -431,7 +440,12 @@ export async function handleBunnyEngineRequest(
     return serveWithEdgeCache(
       request,
       env,
-      async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
+      withGlobalRenderCache(
+        request,
+        env,
+        getGlobalRenderCache(env, resolved),
+        async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
+      ),
       resolveEdgeContentCache(env),
     );
   }
