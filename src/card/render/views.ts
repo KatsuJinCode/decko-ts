@@ -56,6 +56,7 @@ import {
 } from "./format.js";
 import { wrappedTitleInner } from "./format.js";
 import { quietRenderError } from "./format.js";
+import { wantedHrefQuerySuffix } from "./format.js";
 import type { RenderCard, RenderEngineLike, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
   isInputTypeRuleCard,
@@ -4217,7 +4218,15 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
         // joints only; it never html-escapes.
         `<span class="card-title" title="${h(label)}">${wrappedTitleInner(label)}</span>`
       : fmt.renderView("title");
-  return `<a class="${cls}" href="/${h(fmt.urlKey())}">${inner}</a>`;
+  // Card::Path#handle_unknown (card-mod-format lib/card/path.rb:89-96) fires
+  // for UNKNOWN cards only: a wanted name that is not name_standardish?
+  // (path.rb:107-109) carries ?card[name]=<name> (the create form's prefill;
+  // Hash#to_param query form). Corpus target: the message-000004:page
+  // +conversation wanted anchor — graded entry
+  // dual-lane-page:message-000004:page (expected 19129 / actual 18913;
+  // -216 = anchor + query, pinned byte-exact by the lane pin suite).
+  const href = `/${h(fmt.urlKey())}${known ? "" : wantedHrefQuerySuffix(fmt.card.name.s)}`;
+  return `<a class="${cls}" href="${href}">${inner}</a>`;
 }
 const linkView: ViewFn = (ctx) => linkAnchorBody(ctx, "");
 const navLinkView: ViewFn = (ctx) => linkAnchorBody(ctx, "nav-link ");

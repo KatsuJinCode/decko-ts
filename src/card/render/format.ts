@@ -1825,7 +1825,7 @@ export class RenderFormat {
     // nest's own `| view:X ` opt is the input to that substitution, not a
     // bypass of it, which is why {{_main|titled}} under :template mode
     // still renders :template_nest.
-    const requestedView = normalizeView(nest.options.view ?? this.defaultNestView());
+    const requestedView = normalizeView(nest.options.view ?? this.implicitNestView());
     // The compact arm's known? check (mode.rb:73) reads the SUBFORMAT's
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
@@ -2459,6 +2459,29 @@ export class RenderFormat {
    *  unaffected — only the implicit resolution changes. */
   defaultNestView(): string {
     return this.engine.defaultHtmlViewConfig?.() ?? "titled";
+  }
+
+  /** nesting.rb:46-48 `implicit_nest_view = voo_items_view ||
+   *  default_nest_view` — the format/nest.rb:35 prepare_view resolution for
+   *  a nest with NO explicit view opt. voo_items_view (card-mod-collection
+   *  set/all/item.rb:139-143) is `voo&.items&.[](:view)`: the nest's folded
+   *  `|opt` lists (chunk/nest.rb:31-49) ride the voo of the format RENDERING
+   *  the content, and an implicit nest inside that content renders the
+   *  ITEMS view, not the format default. Corpus target: message-000004's
+   *  `{{+conversation|labeled|link}}` — the labeled view of the missing
+   *  +conversation card renders its structure content
+   *  `<p>{{_left+conversation search}}</p>` (bench row 25861) whose implicit
+   *  nest resolves to :link (base.rb:35, perms :none -> the wanted-card
+   *  anchor even on an unknown card), not :content (whose :unknown
+   *  createable gate renders "" — the graded -216 defect,
+   *  dual-lane-page:message-000004:page). */
+  private implicitNestView(): string {
+    const items = this.voo?.opts["items"];
+    if (items !== null && typeof items === "object") {
+      const view = (items as Record<string, unknown>)["view"];
+      if (typeof view === "string" && view !== "") return view;
+    }
+    return this.defaultNestView();
   }
 
   /**
@@ -4523,7 +4546,7 @@ function linkTitleInContext(
  *  [[People Green]] pin stays bare (People_Green IS standardish).
  *  Returns "" when the mark carries no query bytes (unparseable marks keep
  *  the plain-underscore fallback href, the corpus's only wanted shape). */
-function wantedHrefQuerySuffix(hrefSource: string): string {
+export function wantedHrefQuerySuffix(hrefSource: string): string {
   // path.rb:107-109 name_standardish?: `name.url_key == name.tr(" ", "_")`
   // ("no name info will be lost by using url_key"). The name under test is
   // the MARK-RESOLVED one: links.rb:36 passes `mark: Card::Name[cardish]`
