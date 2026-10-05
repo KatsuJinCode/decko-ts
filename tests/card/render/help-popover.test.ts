@@ -241,9 +241,13 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // the prepare rode ONE batch (rule sides + setting counts) beyond the
       // codename load it primes on the very first call
       expect(afterPrepare.roundTrips - beforePrepare.roundTrips).toBeLessThanOrEqual(2);
-      // warm re-renders cost nothing the resolver adds
-      expect(afterWarmRenders.roundTrips).toBe(afterFirstRender.roundTrips);
-      expect(afterWarmRenders.statements).toBe(afterFirstRender.statements);
+      // warm re-renders cost nothing the resolver adds. Freshness lane
+      // 2026-10-05: each warm render pays exactly the deck_data_version
+      // stamp read (one statement, one round trip — delivery contract:79),
+      // so the two warm renders below add exactly +2/+2 beyond the first
+      // render's own snapshot, all of it the stamp, none of it the resolver.
+      expect(afterWarmRenders.roundTrips - afterFirstRender.roundTrips).toBe(2);
+      expect(afterWarmRenders.statements - afterFirstRender.statements).toBe(2);
     } finally {
       storage.close();
     }

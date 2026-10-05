@@ -205,9 +205,11 @@ describe("corpus replay: *structure rule templates render byte-identically", () 
           failures.slice(0, 10).map((f) => `${f.id}: ${f.first}`).join("\n"),
       ).toEqual([]);
 
-      // Warm re-render of the first entry: zero queries (the structured
-      // pass is pure memory once resolved; absent template targets are
-      // recorded misses that never re-query).
+      // Warm re-render of the first entry: only the freshness stamp (the
+      // structured pass is pure memory once resolved; absent template
+      // targets are recorded misses that never re-query). Freshness lane
+      // 2026-10-05: the warm render's floor is the deck_data_version read
+      // (one statement, one round trip — delivery contract:79).
       const first = entries[0] as ProofEntry;
       const firstView = Object.keys(first.views)[0] as string;
       await storage.engine.render(first.name, firstView);
@@ -216,8 +218,8 @@ describe("corpus replay: *structure rule templates render byte-identically", () 
       const snapshot = storage.counting.snapshot();
       expect(
         { statements: snapshot.statements, roundTrips: snapshot.roundTrips },
-        `warm render of ${first.name}/${firstView} must be zero-query`,
-      ).toEqual({ statements: 0, roundTrips: 0 });
+        `warm render of ${first.name}/${firstView} must pay only the freshness stamp`,
+      ).toEqual({ statements: 1, roundTrips: 1 });
 
       console.log(
         `structure-template corpus replay (${FULL_SWEEP ? "FULL" : "sample"}): ` +

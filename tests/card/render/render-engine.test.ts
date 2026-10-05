@@ -276,8 +276,11 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // pass 9 prep: default_nest_view is process config (html.rb:17-19),
     // never a deck rule, so render.ts's fold composition no longer
     // appends the *default html view universe statement - one fewer
-    // prelude statement at every depth (9/10/12/16 here).
-    expect(statementsByDepth).toEqual({ 1: 9, 2: 10, 4: 12, 8: 16 });
+    // prelude statement at every depth (9/10/12/16 here). Freshness lane
+    // 2026-10-05: the deck_data_version stamp read folds into the cold
+    // batch (+1 statement, +0 round trips at every depth) — the
+    // delivery-contract:79 freshness arm (10/11/13/17 here).
+    expect(statementsByDepth).toEqual({ 1: 10, 2: 11, 4: 13, 8: 17 });
     // depth 8 costs one batch per level (9 round trips) while reading
     // O(page) rows instead of the whole deck per render - the trade this
     // round's read-cost decision asked for - and lands BELOW Ruby's 11
@@ -288,7 +291,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8]);
   });
 
-  it("renders a warm closure with ZERO queries", async () => {
+  it("renders a warm closure with exactly ONE statement (the freshness stamp)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedChain(storage, 8);
@@ -296,7 +299,11 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       storage.counting.reset();
       const html = await storage.engine.render("chain_l1", "content");
       expect(html).toContain("level 8 end");
-      expect(storage.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+      // Freshness lane 2026-10-05: the warm render pays exactly the
+      // deck_data_version stamp read (delivery contract:79 — the committed
+      // state must be observable on the next request, so the warm render's
+      // floor is one statement, not zero).
+      expect(storage.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       storage.close();
     }

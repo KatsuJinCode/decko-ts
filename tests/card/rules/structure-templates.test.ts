@@ -240,7 +240,7 @@ describe("RenderEngine structured content", () => {
     expect(html).toContain("SPEC");
   });
 
-  it("the universe statement folds into the cold batch: one round trip, warm re-render zero queries", async () => {
+  it("the universe statement folds into the cold batch: one round trip, warm re-render pays only the freshness stamp", async () => {
     const s = storage!;
     const fresh = await createRenderTestStorage();
     try {
@@ -270,12 +270,16 @@ describe("RenderEngine structured content", () => {
       // cold-query lane: the prelude batch folds the type row and the
       // rule-walk anchor priming, so the enrich and rule-lookup point round
       // trips became cache hits).
-      expect(cold.statements).toBe(13);
+      // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+      // stamp read folded into the cold batch), +0 round trips.
+      expect(cold.statements).toBe(14);
       expect(cold.roundTrips).toBe(6);
-      // Warm re-render: the structured pass is pure memory.
+      // Warm re-render: the structured pass is pure memory; the render pays
+      // exactly the freshness stamp (one statement, one round trip — the
+      // delivery-contract:79 warm-render floor).
       fresh.counting.reset();
       await fresh.engine.render("Doc1", "title");
-      expect(fresh.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+      expect(fresh.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       fresh.close();
     }

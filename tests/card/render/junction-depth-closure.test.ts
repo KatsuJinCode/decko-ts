@@ -104,8 +104,10 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // trips: root + 2 enrich primes + round 0 + round 1 + 3 rule-lookup
       // candidates.)
       const snapshot = storage.counting.snapshot();
+      // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+      // stamp read folded into the cold batch), +0 round trips.
       expect(snapshot.roundTrips).toBe(4);
-      expect(snapshot.statements).toBe(12);
+      expect(snapshot.statements).toBe(13);
     } finally {
       storage.close();
     }
@@ -190,8 +192,10 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // own tree measured (13 -> 12). (The 2026-09-23..09-26 shape was
       // 7 round trips / 15 statements: root + 2 enrich primes + round 0 +
       // 3 rule-lookup candidates.)
+      // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+      // stamp read folded into the cold batch), +0 round trips.
       expect(snapshot.roundTrips).toBe(3);
-      expect(snapshot.statements).toBe(11);
+      expect(snapshot.statements).toBe(12);
     } finally {
       storage.close();
     }

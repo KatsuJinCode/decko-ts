@@ -15,17 +15,24 @@
 // runtime lifecycles the sentence names: an EXISTING (reused, warm) runtime
 // and a NEW (cold) runtime over the same committed database file.
 //
-// WHAT IS UNDER TEST. The engine's render path is deliberately cache-backed:
-// a warm render issues ZERO queries (src/card/render.ts:1-13 documents "a warm
-// render issues zero queries"; tests/card/render/rule-integration.test.ts:57-68
-// pins roundTrips === 0 on the second render, and
-// tests/card/permissions/read-permission.test.ts:202-208 pins it for denied
-// cards). Freshness therefore cannot come from "the query ran" -- it comes from
-// whether a committed write is OBSERVED by the next render. Every scenario
-// below writes the mutation DIRECTLY as a SQL row change on the authoritative
-// store (the same write shape the other suites use: "seeded cards are written
-// DIRECTLY as rows because the write path is another stream",
-// tests/card/render/render-test-storage.ts:11), then renders again.
+// WHAT IS UNDER TEST. The engine's render path is cache-backed by design.
+// The b-freshness lane (2026-10-05, engine commit 2f81e0c0) measured the
+// gap: nothing on the request path invalidated the caches, so a warm runtime
+// served pre-mutation bytes -- including a post-revocation permission
+// verdict. THE REPAIR UNDER TEST HERE is the committed-write version stamp:
+// db/schema.sqlite.sql's [ENGINE-FRESHNESS] block adds deck_data_version
+// (one row) with AFTER-INSERT/UPDATE/DELETE triggers on cards and
+// card_references, so every committed write bumps it at the storage layer --
+// the one place all writes cross, regardless of stream, process, or
+// connection. The render entry (src/card/render.ts, the freshness gate at
+// the top of render()) reads the stamp ONCE per request and fires
+// resetCaches() when it moved. Every scenario below still writes the
+// mutation DIRECTLY as a SQL row change on the authoritative store (the same
+// write shape the other suites use: "seeded cards are written DIRECTLY as
+// rows because the write path is another stream",
+// tests/card/render/render-test-storage.ts:11) -- which is exactly why the
+// bump must live in a trigger and not in an application write API: the
+// scenarios never touch one.
 //
 // HOW A SCENARIO IS SCORED. A scenario is GREEN when the post-mutation render
 // reflects the committed state. It is a GAP (RED) when the render serves
@@ -52,10 +59,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import type { SQLQueryResult } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
-import { RenderEngine } from "../../../src/card/render.js";
+import { RenderEngine, DECK_DATA_VERSION_STATEMENT } from "../../../src/card/render.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { quietDenial } from "../../../src/card/permissions/index.js";
-import { splitSqlStatements } from "../../card/render/render-test-storage.js";
+import {
+  splitSqlStatements,
+  CountingRenderDriver,
+} from "../../card/render/render-test-storage.js";
 
 // ids follow tests/card/permissions/read-permission.test.ts:5-27 so the
 // permission math reads the same way here:
@@ -261,8 +271,11 @@ describe("B freshness 1: a committed content edit is reflected by the next rende
   });
 
   afterAll(() => {
-    if (warm) discardRuntime(warm);
+    // The cold runtime BORROWS the warm runtime's database file: its handle
+    // must close before the warm dir is removed, or the rm fails EPERM on
+    // Windows (open-file lock).
     if (cold) discardRuntime(cold);
+    if (warm) discardRuntime(warm);
   });
 
   it("EXISTING runtime: the next render reads the committed edit, not the cached one", async () => {
@@ -394,10 +407,17 @@ describe("B freshness 4: revoking anonymous access denies the next anonymous req
     });
     // Anonymous can read it now.
     expect(await warm.engine.render("Protected Card", "content")).toContain(SECRET);
-    // Commit the revocation: *all+*read no longer grants the anonymous path.
-    // The rule id is unchanged -- only its committed party list differs, which
-    // is the shape a real permission change takes.
+    // Commit the revocation the way the write path commits a rule save: the
+    // rule's content AND its party reference row. The committed party list
+    // the read-permission state reads is the card_references graph, not the
+    // content bytes (src/card/permissions/read-rules.ts statement 2, the
+    // read_rule_cache.rb port; a save that changed only content would not
+    // revoke). The rule id is unchanged. Both mutations ride the
+    // version-stamp triggers (cards + card_references).
     await warm.query("UPDATE cards SET db_content = ? WHERE id = 8", ["[[Role A]]"]);
+    await warm.query(
+      "UPDATE card_references SET referee_id = 7, referee_key = 'role_a' WHERE referer_id = 8",
+    );
   });
 
   afterAll(() => {
@@ -408,22 +428,24 @@ describe("B freshness 4: revoking anonymous access denies the next anonymous req
     const html = await warm!.engine.render("Protected Card", "content");
     expect(
       html,
-      "the post-revocation anonymous request was SERVED: the engine answered " +
-        "from its cached pre-revocation permission verdict instead of re-reading " +
-        "the committed rule change",
+      "the post-revocation anonymous request was SERVED: the freshness gate did " +
+        "not invalidate the cached pre-revocation permission verdict, or the " +
+        "re-derived state still reads a party graph that grants the anonymous path",
     ).toBe(quietDenial());
     expect(html).not.toContain(SECRET);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Mechanism control -- is the engine unable to see the committed state AT ALL,
-// or does it have a working invalidation seam that the request path never
-// invokes? The four scenarios above are only meaningful findings if this is
-// answered, because the two cases call for different repairs.
+// Mechanism control -- the engine's invalidation seam still works when it is
+// invoked by hand: resetCaches() drops every derived cache and the next
+// render reads the committed row. The freshness gate above drives THIS seam
+// automatically (the stamp moved -> resetCaches()); the control proves the
+// seam itself is sound, so a gate failure would indict the stamp read, not
+// the reset.
 // ---------------------------------------------------------------------------
 
-describe("B freshness mechanism control: resetCaches is the seam the request path never calls", () => {
+describe("B freshness mechanism control: manual resetCaches still reveals the committed row", () => {
   let warm: FileRuntime | undefined;
 
   beforeAll(async () => {
@@ -443,12 +465,78 @@ describe("B freshness mechanism control: resetCaches is the seam the request pat
 
   it("after an explicit resetCaches the same render DOES see the committed row", async () => {
     // Control, not a contract requirement: resetCaches() is a real public seam
-    // (src/card/render.ts:896-925, FetchEngine#resetCaches at
-    // src/card/fetch.ts:630-634). If this passes, the engine's storage reads
-    // are correct and the four scenario failures are specifically the absence
-    // of an invalidation call on the request path -- not broken reads.
+    // (src/card/render.ts, RenderEngine#resetCaches; FetchEngine#resetCaches
+    // at src/card/fetch.ts). If this passes, the engine's storage reads
+    // are correct and a scenario failure would specifically indict the
+    // freshness gate's stamp read -- not the reads, not the reset.
     warm!.engine.resetCaches();
     const html = await warm!.engine.render("Control Card", "content");
     expect(html).toContain("CONTROL AFTER");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Scenario 5 -- the cost of the freshness gate itself: a warm render must
+// issue EXACTLY ONE statement, the deck_data_version stamp read. This is the
+// honest contract-compliant number (delivery contract:79 requires the next
+// request to reflect the committed state, which rules out a zero-statement
+// warm render) -- one PK point SELECT, not a re-read of the deck.
+// ---------------------------------------------------------------------------
+
+/** A counting runtime: the file-backed driver wrapped by the render streams'
+ *  CountingRenderDriver, so the engine's statement cost is measurable while
+ *  seeding stays on the raw driver (seeds must not count). */
+function openCountingRuntime(): FileRuntime & { counting: CountingRenderDriver } {
+  const base = openRuntime();
+  const counting = new CountingRenderDriver(base.driver);
+  const engine = new RenderEngine(new FetchEngine(counting));
+  return { ...base, engine, counting };
+}
+
+describe("B freshness 5: the freshness gate costs exactly one statement on a warm render", () => {
+  let warm: FileRuntime & { counting: CountingRenderDriver } | undefined;
+
+  beforeAll(async () => {
+    warm = openCountingRuntime();
+    await applySchema(warm);
+    await seedRuleSkeleton(warm, { everyoneRule: "[[Anyone]]", memberRule: "[[Role A]]" });
+    await insertCard(warm, {
+      id: 70, name: "Cost Card", typeId: BASIC_TYPE_ID, dbContent: "COST BODY",
+      readRuleId: 8, readRuleClass: "*all",
+    });
+    // First (cold) render: the stamp baseline folds into the closure batch.
+    // Seeding went through the raw driver, so the counter starts clean here.
+    expect(await warm.engine.render("Cost Card", "content")).toContain("COST BODY");
+    warm.counting.reset();
+  });
+
+  afterAll(() => {
+    if (warm) discardRuntime(warm);
+  });
+
+  it("a warm render issues exactly one statement: the deck_data_version stamp read", async () => {
+    const html = await warm!.engine.render("Cost Card", "content");
+    expect(html).toContain("COST BODY");
+    const snapshot = warm!.counting.snapshot();
+    expect(
+      snapshot,
+      "the warm render's total statement cost must be the single freshness-stamp " +
+        "SELECT -- more means the gate re-reads deck state; zero means the gate " +
+        "is not on the request path",
+    ).toEqual({ statements: 1, roundTrips: 1 });
+    // And the one statement is THE stamp read, byte for byte.
+    expect(warm!.counting.statements).toEqual([DECK_DATA_VERSION_STATEMENT]);
+  });
+
+  it("a committed write moves the stamp, so the next render resets and re-reads", async () => {
+    warm!.counting.reset();
+    await warm!.query("UPDATE cards SET db_content = ? WHERE id = 70", ["COST EDITED"]);
+    const html = await warm!.engine.render("Cost Card", "content");
+    expect(html).toContain("COST EDITED");
+    // The gate's own cost stays one statement; the reset makes the RENDER
+    // cold again (the closure re-read), which is the invalidation working --
+    // more than one statement HERE is expected and correct, so only the
+    // stamp statement itself is pinned, not a total.
+    expect(warm!.counting.statements[0]).toBe(DECK_DATA_VERSION_STATEMENT);
   });
 });

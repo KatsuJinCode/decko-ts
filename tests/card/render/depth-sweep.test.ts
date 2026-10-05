@@ -119,15 +119,19 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // composition no longer appends the *default html view universe
     // statement - the prelude carries one fewer statement than the
     // cold-query lane's own tree measured (10 -> 9 base). Round trips -
-    // the billed axis - are unchanged.
+    // the billed axis - are unchanged. Freshness lane 2026-10-05: the
+    // deck_data_version stamp read folds into the cold batch (+1 statement,
+    // +0 round trips, 10 base) — the delivery-contract:79 freshness arm.
     const expectedRts = (depth: number): number => 2 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 9 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 10 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
     }
-    // Warm cache: zero queries on the second render (the rule cache is hit).
-    expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
+    // Warm cache: the second render pays exactly the freshness-stamp
+    // statement (one statement, one round trip — the contract-compliant
+    // warm-render cost) and nothing else.
+    expect(rows.every((r) => r.warmRoundTrips === 1 && r.warmStatements === 1)).toBe(true);
 
     mkdirSync("benchmarks/results", { recursive: true });
     writeFileSync(

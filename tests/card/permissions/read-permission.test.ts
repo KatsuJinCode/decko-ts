@@ -192,19 +192,26 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // 10: the deck's bare-nest default view folded on the same batch.
       // R17: one fewer - the *default html view universe left the fold
       // (A-36 correction: default_nest_view is process config,
-      // html.rb:17-19, never a deck rule).
-      expect(stats?.additionalResults?.length).toBe(6);
+      // html.rb:17-19, never a deck rule). Freshness lane 2026-10-05: +1 —
+      // the deck_data_version stamp read folds LAST on the engine's first
+      // render (baseline for the per-request freshness gate,
+      // delivery contract:79).
+      expect(stats?.additionalResults?.length).toBe(7);
     } finally {
       cold.close();
     }
   });
 
-  it("warm re-render of a denied card issues zero queries", async () => {
+  it("warm re-render of a denied card issues only the freshness stamp", async () => {
     const s = storage!;
     await s.engine.render("Secret Thing", "open");
     s.counting.reset();
     expect(await s.engine.render("Secret Thing", "open")).toBe(quietDenial());
-    expect(s.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+    // Freshness lane 2026-10-05: the warm render's floor is the
+    // deck_data_version stamp read (one statement, one round trip — the
+    // delivery-contract:79 gate that keeps a cached denial verdict from
+    // outliving a committed rule change).
+    expect(s.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
   });
 
   it("resetCaches clears the permission state (re-resolution works)", async () => {

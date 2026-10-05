@@ -146,6 +146,17 @@ export interface TransformMigrationsRow {
   version: string | null;
 }
 
+/** The committed-write freshness stamp: ONE row (id = 1), bumped by the
+ *  AFTER INSERT/UPDATE/DELETE triggers on cards + card_references
+ *  (db/schema.sqlite.sql, the [ENGINE-FRESHNESS] block) and read ONCE per
+ *  render request by the render path's freshness gate
+ *  (src/card/render.ts DECK_DATA_VERSION_STATEMENT). [ENGINE-FRESHNESS] —
+ *  engine-owned table, not production MySQL truth. */
+export interface DeckDataVersionRow {
+  id: number;
+  version: number;
+}
+
 // ---------------------------------------------------------------------------
 // TABLES — the table + column inventory the schema layer and wave-2 fetch
 // layer build SQL from. Field names are identical to column names today;
@@ -293,6 +304,10 @@ export const TABLES = {
     name: "transform_migrations",
     columns: { version: "version" },
   },
+  deck_data_version: {
+    name: "deck_data_version",
+    columns: { id: "id", version: "version" },
+  },
 } as const satisfies Record<string, TableDef>;
 
 /** Table keys in DDL order (the order db/schema.sqlite.sql declares them). */
@@ -309,6 +324,7 @@ export const TABLE_ORDER = [
   "schema_migrations",
   "ar_internal_metadata",
   "transform_migrations",
+  "deck_data_version",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -337,7 +353,9 @@ const _assertions: [
   Expect<Equal<keyof SchemaMigrationsRow, keyof typeof TABLES.schema_migrations.columns>>,
   Expect<Equal<keyof ArInternalMetadataRow, keyof typeof TABLES.ar_internal_metadata.columns>>,
   Expect<Equal<keyof TransformMigrationsRow, keyof typeof TABLES.transform_migrations.columns>>,
+  Expect<Equal<keyof DeckDataVersionRow, keyof typeof TABLES.deck_data_version.columns>>,
 ] = [
+  true,
   true,
   true,
   true,

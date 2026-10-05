@@ -53,7 +53,7 @@ describe("RenderEngine + rule engine integration", () => {
     expect(html).not.toMatch(/\blede\b/);
   });
 
-  it("rule cache hit on second render: override applied, zero extra queries", async () => {
+  it("rule cache hit on second render: override applied, only the freshness stamp queried", async () => {
     const s = storage!;
     await s.engine.render("Hello", "open");
     // Reset the counters so we measure ONLY the second render.
@@ -62,10 +62,13 @@ describe("RenderEngine + rule engine integration", () => {
     // The override is still applied (rule cache hit), even if the slot-id
     // (randomized per render) differs between calls.
     expect(html2).toMatch(/\blede\b/);
-    // The rule cache should have served the override without re-walking.
+    // The rule cache served the override without re-walking; the render's
+    // only statement is the deck_data_version stamp read (freshness lane
+    // 2026-10-05, delivery contract:79 — the warm-render floor is one
+    // statement so a committed change is observable on the next request).
     const counts = (s.counting as unknown as { snapshot: () => { statements: number; roundTrips: number } }).snapshot();
-    expect(counts.roundTrips).toBe(0);
-    expect(counts.statements).toBe(0);
+    expect(counts.roundTrips).toBe(1);
+    expect(counts.statements).toBe(1);
   });
 
   it("works for compound card names too (junction-resolved)", async () => {

@@ -116,6 +116,18 @@ export {
 } from "./render/errors.js";
 export type { RenderCard, PrefetchStats };
 export { HTML_VIEWS };
+/** The freshness-stamp read — the exact statement (one PK point SELECT) the
+ *  render path pays per request. deck_data_version is bumped by AFTER
+ *  triggers on cards + card_references (db/schema.sqlite.sql, the
+ *  [ENGINE-FRESHNESS] block), so EVERY committed write moves it — same
+ *  connection, another connection, another process, raw SQL or the write
+ *  path — because the storage layer is the one place all committed writes
+ *  cross. The render entry reads it ONCE per request and calls
+ *  resetCaches() when it moved: no staleness window, no post-revocation
+ *  leak (delivery contract:79). Warm-render cost: exactly ONE statement.
+ *  Exported for the freshness suite's statement-identity pin. */
+export const DECK_DATA_VERSION_STATEMENT =
+  'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
 export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
@@ -367,6 +379,16 @@ export class RenderEngine implements RenderEngineLike {
   helpRules?: HelpRulesApi;
   private helpResolver: ReturnType<typeof installHelpRules> | undefined;
   private lastPrefetch: PrefetchStats | undefined;
+  /** The last observed deck_data_version (the committed-write stamp, bumped
+   *  by storage-layer triggers on cards + card_references). Baseline is set
+   *  on the engine's FIRST render — folded into the cold closure batch, +0
+   *  round trips — and compared on every later render at the render entry
+   *  (exactly ONE standalone statement); a move fires resetCaches() so a
+   *  warm runtime serves the committed state with no staleness window and a
+   *  revoked read is never served from a cached verdict (delivery
+   *  contract:79). Deliberately NOT cleared by resetCaches(): it is the
+   *  comparison baseline, not a derived cache. */
+  private deckDataVersion: number | undefined;
 
   constructor(fetcher: FetchEngine) {
     this.fetcher = fetcher;
@@ -388,6 +410,25 @@ export class RenderEngine implements RenderEngineLike {
    * for views outside the ported registry (the captured sentinel contract).
    */
   async render(cardName: string, view: string): Promise<string> {
+    // Freshness gate (delivery contract:79): any render that could serve
+    // warm bytes reads the deck's committed-write stamp FIRST — ONE
+    // statement — and clears every derived cache when a committed write
+    // moved it. The engine's first render has no warm state to protect; its
+    // baseline read folds into the cold closure batch below (stampCold), so
+    // the cold ROUND-TRIP count is unchanged and a warm render's total cost
+    // is exactly this one statement. After a version-triggered reset the
+    // render below proceeds over empty caches and reads storage end to end,
+    // which is what makes the four committed-mutation kinds (content edit,
+    // nested dependency, rule, access revocation) visible on the very next
+    // request — including the revocation case, where the invalidated object
+    // is a cached permission verdict.
+    if (this.deckDataVersion !== undefined) {
+      const observed = await this.readDeckDataVersion();
+      if (observed !== this.deckDataVersion) {
+        this.resetCaches();
+        this.deckDataVersion = observed;
+      }
+    }
     const record = await this.fetcher.fetchByName(cardName);
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
@@ -402,6 +443,11 @@ export class RenderEngine implements RenderEngineLike {
     const permissionCold = this.readPermission === undefined;
     const ruleTypesCold = this.ruleTypeIds === undefined;
     const structureCold = this.structureContents === undefined;
+    // The freshness-stamp baseline: on the engine's FIRST render (no warm
+    // state exists, nothing to protect) the stamp read folds into the cold
+    // batch below — +1 statement, +0 round trips. Every later render reads
+    // it standalone at the render entry (see the gate at render() top).
+    const stampCold = this.deckDataVersion === undefined;
     const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
@@ -420,6 +466,13 @@ export class RenderEngine implements RenderEngineLike {
         // lane flag instead.)
         ...(structureCold
           ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
+          : []),
+        // The freshness-stamp baseline rides LAST: the fixed-index parsers
+        // above (permission by 0..n, structure by slice) read only the
+        // prefix, so appending is fold-safe (same shape as the R17 removal
+        // note). Parsed by parseDeckDataVersion right after the batch.
+        ...(stampCold
+          ? [{ sql: DECK_DATA_VERSION_STATEMENT, params: [] as unknown[] }]
           : []),
       ];
       const stats = await prefetchInclusionClosure(record, {
@@ -448,8 +501,25 @@ export class RenderEngine implements RenderEngineLike {
         foldedResults,
         permissionStatements.length + (ruleTypesCold ? 1 : 0),
       );
+      if (stampCold) {
+        this.parseDeckDataVersion(
+          foldedResults,
+          permissionStatements.length +
+            (ruleTypesCold ? 1 : 0) +
+            (structureCold ? 2 : 0),
+        );
+      }
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
+    }
+    // Defensive fallback for the one shape the fold cannot cover: a first
+    // render that took the WARM-closure branch (a prior closureWarmup
+    // populated the caches before any render). The baseline must be armed
+    // before any warm-serving render, so read it standalone here — this
+    // branch costs one statement only on engines warmed before their first
+    // render.
+    if (stampCold && this.deckDataVersion === undefined) {
+      this.deckDataVersion = await this.readDeckDataVersion();
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
@@ -891,6 +961,50 @@ export class RenderEngine implements RenderEngineLike {
     return this.views[view];
   }
 
+  /** ONE statement: the deck's committed-write stamp read (the render
+   *  path's entire per-request freshness cost). Throws LOUDLY when the
+   *  stamp is missing — an unmigrated database must not render, because a
+   *  silently skipped check is a silent staleness window (delivery
+   *  contract:79's no-leak clause). */
+  private async readDeckDataVersion(): Promise<number> {
+    const result = await this.fetcher.driver.query<{ version: number }>(
+      DECK_DATA_VERSION_STATEMENT,
+      [],
+    );
+    const version = result.rows[0]?.version;
+    if (typeof version !== "number") {
+      throw new Error(
+        "deck_data_version unreadable: the freshness stamp table/row is missing — " +
+          "apply the stamp schema (db/schema.sqlite.sql [ENGINE-FRESHNESS] block, or " +
+          "deploy/migrations/0003-deck-data-version-stamp.sql for provisioned databases) " +
+          "before rendering",
+      );
+    }
+    return version;
+  }
+
+  /** The folded first-render baseline: deck_data_version's single row rides
+   *  the cold batch's LAST slot (see the stampCold fold in render()). Same
+   *  loud failure as readDeckDataVersion. */
+  private parseDeckDataVersion(
+    folded: SQLQueryResult[] | undefined,
+    index: number,
+  ): void {
+    const result = folded?.[index];
+    const version = (
+      result?.rows[0] as { version?: unknown } | undefined
+    )?.version;
+    if (typeof version !== "number") {
+      throw new Error(
+        "deck_data_version unreadable: the freshness stamp table/row is missing — " +
+          "apply the stamp schema (db/schema.sqlite.sql [ENGINE-FRESHNESS] block, or " +
+          "deploy/migrations/0003-deck-data-version-stamp.sql for provisioned databases) " +
+          "before rendering",
+      );
+    }
+    this.deckDataVersion = version;
+  }
+
   /** Drop every derived cache (the fetch engine's caches + the render-side
    *  maps). Mirrors FetchEngine#resetCaches for whole-engine resets. */
   resetCaches(): void {
@@ -921,6 +1035,13 @@ export class RenderEngine implements RenderEngineLike {
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
+    // The verdict-pass memo is derived state like the rest: a reset that
+    // leaves it set lets the next render SKIP re-judgment whenever the
+    // re-populated closure has the same map size — deniedVerdicts then
+    // stays empty and every card renders as allowed (the exact
+    // post-revocation leak the freshness gate exists to close; found by
+    // this file's scenario 4, 2026-10-05).
+    this.verdictsJudgedAtMapSize = -1;
   }
 
   // -------------------------------------------------------------------------
