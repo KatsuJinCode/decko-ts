@@ -5,10 +5,10 @@
     "R2",
     "R4"
   ],
-  "measured_at": "2026-10-05T09:21:25.034Z",
+  "measured_at": "2026-10-05T11:07:15.542Z",
   "engine": "decko-ts",
-  "engine_commit": "f1d7baff",
-  "engine_branch": "lane-inlinetrip-v2",
+  "engine_commit": "b28e82fe",
+  "engine_branch": "lane-renderplan-replay",
   "environment": {
     "host": "Jace2",
     "os": "win32",
@@ -46,8 +46,8 @@
       "cold": {
         "roundTrips": 4,
         "statements": 18,
-        "wallMs": 10.799,
-        "cpuMs": 0,
+        "wallMs": 9.589,
+        "cpuMs": 16,
         "htmlBytes": 3011,
         "renderError": null,
         "quietErrorSpan": null
@@ -55,7 +55,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.88,
+        "wallMs": 0.521,
         "cpuMs": 0,
         "htmlBytes": 3011,
         "renderError": null,
@@ -71,7 +71,7 @@
       "cold": {
         "roundTrips": 5,
         "statements": 19,
-        "wallMs": 4.469,
+        "wallMs": 4.141,
         "cpuMs": 0,
         "htmlBytes": 5993,
         "renderError": null,
@@ -80,7 +80,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.843,
+        "wallMs": 0.77,
         "cpuMs": 0,
         "htmlBytes": 5993,
         "renderError": null,
@@ -96,7 +96,7 @@
       "cold": {
         "roundTrips": 7,
         "statements": 21,
-        "wallMs": 3.522,
+        "wallMs": 3.215,
         "cpuMs": 0,
         "htmlBytes": 11957,
         "renderError": null,
@@ -105,7 +105,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.98,
+        "wallMs": 0.898,
         "cpuMs": 0,
         "htmlBytes": 11957,
         "renderError": null,
@@ -121,8 +121,8 @@
       "cold": {
         "roundTrips": 11,
         "statements": 25,
-        "wallMs": 4.306,
-        "cpuMs": 0,
+        "wallMs": 3.779,
+        "cpuMs": 16,
         "htmlBytes": 23885,
         "renderError": null,
         "quietErrorSpan": null
@@ -130,7 +130,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.536,
+        "wallMs": 1.318,
         "cpuMs": 0,
         "htmlBytes": 23885,
         "renderError": null,
@@ -146,7 +146,7 @@
       "cold": {
         "roundTrips": 19,
         "statements": 33,
-        "wallMs": 6.757,
+        "wallMs": 5.759,
         "cpuMs": 0,
         "htmlBytes": 47747,
         "renderError": null,
@@ -155,8 +155,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 5.946,
-        "cpuMs": 15,
+        "wallMs": 2.316,
+        "cpuMs": 0,
         "htmlBytes": 47747,
         "renderError": null,
         "quietErrorSpan": null
@@ -171,7 +171,7 @@
       "cold": {
         "roundTrips": 13,
         "statements": 27,
-        "wallMs": 4.238,
+        "wallMs": 7.829,
         "cpuMs": 0,
         "htmlBytes": 29849,
         "renderError": null,
@@ -180,7 +180,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.097,
+        "wallMs": 1.102,
         "cpuMs": 0,
         "htmlBytes": 29849,
         "renderError": null,
@@ -196,7 +196,7 @@
       "cold": {
         "roundTrips": 23,
         "statements": 37,
-        "wallMs": 5.625,
+        "wallMs": 4.573,
         "cpuMs": 16,
         "htmlBytes": 59679,
         "renderError": null,
@@ -205,7 +205,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 2.252,
+        "wallMs": 1.857,
         "cpuMs": 0,
         "htmlBytes": 59679,
         "renderError": null,
@@ -221,8 +221,8 @@
       "cold": {
         "roundTrips": 45,
         "statements": 59,
-        "wallMs": 7.671,
-        "cpuMs": 47,
+        "wallMs": 6.218,
+        "cpuMs": 0,
         "htmlBytes": 62560,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d50_n21 (core view)</span>"
@@ -230,7 +230,7 @@
       "warm": {
         "roundTrips": 34,
         "statements": 37,
-        "wallMs": 3.37,
+        "wallMs": 2.977,
         "cpuMs": 0,
         "htmlBytes": 62560,
         "renderError": null,
@@ -246,8 +246,8 @@
       "cold": {
         "roundTrips": 45,
         "statements": 59,
-        "wallMs": 7.508,
-        "cpuMs": 46,
+        "wallMs": 5.73,
+        "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d100_n21 (core view)</span>"
@@ -255,7 +255,7 @@
       "warm": {
         "roundTrips": 42,
         "statements": 45,
-        "wallMs": 3.527,
+        "wallMs": 2.956,
         "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
@@ -271,8 +271,8 @@
       "cold": {
         "roundTrips": 45,
         "statements": 59,
-        "wallMs": 6.766,
-        "cpuMs": 16,
+        "wallMs": 5.297,
+        "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
         "quietErrorSpan": "<span class=\"render-error alert alert-danger\">Error rendering: BenchDN_chain_open_d200_n21 (core view)</span>"
@@ -280,7 +280,7 @@
       "warm": {
         "roundTrips": 42,
         "statements": 45,
-        "wallMs": 2.798,
+        "wallMs": 3.319,
         "cpuMs": 0,
         "htmlBytes": 62958,
         "renderError": null,
@@ -296,7 +296,7 @@
       "cold": {
         "roundTrips": 5,
         "statements": 19,
-        "wallMs": 1.361,
+        "wallMs": 1.343,
         "cpuMs": 0,
         "htmlBytes": 5746,
         "renderError": null,
@@ -305,7 +305,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.312,
+        "wallMs": 0.235,
         "cpuMs": 0,
         "htmlBytes": 5746,
         "renderError": null,
@@ -321,8 +321,8 @@
       "cold": {
         "roundTrips": 5,
         "statements": 19,
-        "wallMs": 2.06,
-        "cpuMs": 0,
+        "wallMs": 1.777,
+        "cpuMs": 31,
         "htmlBytes": 14890,
         "renderError": null,
         "quietErrorSpan": null
@@ -330,7 +330,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 0.555,
+        "wallMs": 0.53,
         "cpuMs": 0,
         "htmlBytes": 14890,
         "renderError": null,
@@ -346,8 +346,8 @@
       "cold": {
         "roundTrips": 5,
         "statements": 19,
-        "wallMs": 3.475,
-        "cpuMs": 47,
+        "wallMs": 3.004,
+        "cpuMs": 0,
         "htmlBytes": 51466,
         "renderError": null,
         "quietErrorSpan": null
@@ -355,7 +355,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 1.281,
+        "wallMs": 1.157,
         "cpuMs": 0,
         "htmlBytes": 51466,
         "renderError": null,
@@ -371,8 +371,8 @@
       "cold": {
         "roundTrips": 5,
         "statements": 20,
-        "wallMs": 9.757,
-        "cpuMs": 0,
+        "wallMs": 8.361,
+        "cpuMs": 16,
         "htmlBytes": 155098,
         "renderError": null,
         "quietErrorSpan": null
@@ -380,8 +380,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 6.477,
-        "cpuMs": 16,
+        "wallMs": 5.3,
+        "cpuMs": 0,
         "htmlBytes": 155098,
         "renderError": null,
         "quietErrorSpan": null
@@ -396,7 +396,7 @@
       "cold": {
         "roundTrips": 5,
         "statements": 21,
-        "wallMs": 18.746,
+        "wallMs": 17.328,
         "cpuMs": 15,
         "htmlBytes": 309415,
         "renderError": null,
@@ -405,7 +405,7 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 12.256,
+        "wallMs": 11.987,
         "cpuMs": 47,
         "htmlBytes": 309415,
         "renderError": null,
@@ -421,8 +421,8 @@
       "cold": {
         "roundTrips": 5,
         "statements": 23,
-        "wallMs": 43.056,
-        "cpuMs": 47,
+        "wallMs": 41.8,
+        "cpuMs": 78,
         "htmlBytes": 618015,
         "renderError": null,
         "quietErrorSpan": null
@@ -430,8 +430,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 35.645,
-        "cpuMs": 47,
+        "wallMs": 29.488,
+        "cpuMs": 48,
         "htmlBytes": 618015,
         "renderError": null,
         "quietErrorSpan": null
@@ -446,8 +446,8 @@
       "cold": {
         "roundTrips": 8,
         "statements": 29,
-        "wallMs": 43.981,
-        "cpuMs": 48,
+        "wallMs": 38.338,
+        "cpuMs": 46,
         "htmlBytes": 1092781,
         "renderError": null,
         "quietErrorSpan": null
@@ -455,8 +455,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 22.387,
-        "cpuMs": 46,
+        "wallMs": 18.894,
+        "cpuMs": 16,
         "htmlBytes": 1092781,
         "renderError": null,
         "quietErrorSpan": null
@@ -471,8 +471,8 @@
       "cold": {
         "roundTrips": 7,
         "statements": 45,
-        "wallMs": 138.954,
-        "cpuMs": 155,
+        "wallMs": 119.387,
+        "cpuMs": 109,
         "htmlBytes": 3595955,
         "renderError": null,
         "quietErrorSpan": null
@@ -480,8 +480,8 @@
       "warm": {
         "roundTrips": 0,
         "statements": 0,
-        "wallMs": 84.118,
-        "cpuMs": 126,
+        "wallMs": 73,
+        "cpuMs": 94,
         "htmlBytes": 3595955,
         "renderError": null,
         "quietErrorSpan": null

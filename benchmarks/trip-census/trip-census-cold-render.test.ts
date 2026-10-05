@@ -77,7 +77,51 @@ const MATERIALIZED_COPY_PATH = fileURLToPath(
   new URL("trip-census-materialized-copy.sqlite3", import.meta.url),
 );
 
-type Posture = "off" | "on-inline";
+type Posture = "off" | "on-inline" | "on-noplan";
+
+/** The plans-free copy (side tables, NO one_trip_render_plans rows): the
+ *  census's ON posture as it existed at the plans-free tip — the v3 wire
+ *  shape (the ~21 s TTFB class). Built once by the same recipe, never
+ *  plan-recorded, gitignored, persisted for re-runs. */
+const NOPLAN_COPY_PATH = fileURLToPath(
+  new URL("trip-census-noplan-copy.sqlite3", import.meta.url),
+);
+
+/** Gate-2 trace controls: optional page subset (comma list) and the lineage
+ *  stamp written into every totals line. Unset = the full 5-page census
+ *  exactly as before. */
+const PAGE_FILTER = (process.env.DECKO_TRIP_CENSUS_PAGES ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const LINEAGE_STAMP = process.env.DECKO_TRIP_CENSUS_TIP ?? "unstamped";
+const PAGES_TO_RUN: readonly string[] = PAGE_FILTER.length
+  ? PROBE_PAGES.filter((p) => PAGE_FILTER.includes(p))
+  : PROBE_PAGES;
+
+/** The per-request totals line (gate-2 extension): counts, timings, and
+ *  bytes from the SAME cold request that produced this (posture, page)'s
+ *  per-statement lines. DB time is accumulated per TRIP (a batch's wall
+ *  counts once, not once per member). */
+interface TraceTotals {
+  kind: "totals";
+  lineage: string;
+  posture: Posture;
+  page: string;
+  trips: number;
+  stmts: number;
+  bootWallMs: number;
+  bootTrips: number;
+  bootStmts: number;
+  bootDbMs: number;
+  renderWallMs: number;
+  renderTrips: number;
+  renderStmts: number;
+  renderDbMs: number;
+  renderJsMs: number;
+  htmlBytes: number;
+  slotNormalizedEqualsOff: boolean | null;
+}
 
 interface CensusLine {
   seq: number;
@@ -150,6 +194,15 @@ class CensusDriver implements SQLDatabaseDriver {
   tripNo = 0;
   stmtNo = 0;
   phase: "boot" | "render" = "boot";
+  /** cumulative DB wall across all trips — batch wall counted ONCE per
+   *  trip, at trip granularity (per-member intra-batch attribution is not
+   *  observable at the driver seam; locally the batch executes inside one
+   *  synchronous transaction whose wall is the members' sum). */
+  private dbMsTotal = 0;
+  /** cumulative snapshot for the totals line (subtraction gives phases) */
+  snapshot(): { trips: number; stmts: number; dbMs: number } {
+    return { trips: this.tripNo, stmts: this.stmtNo, dbMs: this.dbMsTotal };
+  }
   constructor(
     private readonly inner: SQLDatabaseDriver,
     private readonly posture: Posture,
@@ -188,7 +241,9 @@ class CensusDriver implements SQLDatabaseDriver {
     const caller = callerSample();
     const t0 = performance.now();
     const result = await this.inner.query<T>(sql, params);
-    this.record("query", sql, params, result.rows.length, performance.now() - t0, 1, caller);
+    const elapsed = performance.now() - t0;
+    this.dbMsTotal += elapsed;
+    this.record("query", sql, params, result.rows.length, elapsed, 1, caller);
     return result;
   }
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
@@ -197,6 +252,7 @@ class CensusDriver implements SQLDatabaseDriver {
     const t0 = performance.now();
     const results = await this.inner.batch(statements);
     const localMs = performance.now() - t0;
+    this.dbMsTotal += localMs;
     results.forEach((result, i) => {
       this.stmtNo += 1;
       const stmt = statements[i] as { sql?: string; params?: unknown[] } | undefined;
@@ -214,17 +270,19 @@ class CensusDriver implements SQLDatabaseDriver {
   }
 }
 
-describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSONL", () => {
-  let tmpDir = "";
-  let sidePath = "";
-
-  beforeAll(async () => {
-    mkdirSync(join(outPath, ".."), { recursive: true });
-    writeFileSync(outPath, ""); // one run = one census; never append across runs
-    if (existsSync(MATERIALIZED_COPY_PATH)) return; // built once, reused
-    tmpDir = mkdtempSync(join(tmpdir(), "trip-census-build-"));
+/** The materialized-copy builder: mirror copy + the engine's own
+ *  ONE_TRIP_SIDE_DDL + additive side-table load (the inline-chunked-fetch
+ *  recipe verbatim), optionally followed by the render-plan recording (the
+ *  renderplan-replay lane's serving posture). `recordPlans=false` yields
+ *  the v3 wire shape (plans absent → the replay router stays unarmed). */
+async function buildMaterializedCopy(
+  recordPlans: boolean,
+  targetPath = MATERIALIZED_COPY_PATH,
+): Promise<void> {
+  const tmpDir = mkdtempSync(join(tmpdir(), "trip-census-build-"));
+  try {
     // 1. build the derived tables into a side file (the corpus tests' build)
-    sidePath = join(tmpDir, "one-trip-side.sqlite3");
+    const sidePath = join(tmpDir, "one-trip-side.sqlite3");
     const corpusMirror = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
     const side = new LocalSqliteDriver({ path: sidePath });
     const buildReport = await buildOneTripClosure({
@@ -235,8 +293,8 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     side.close();
     corpusMirror.close();
     // 2. materialize the INLINE shape: writable copy + additive table load
-    copyFileSync(MIRROR_COPY_PATH, MATERIALIZED_COPY_PATH);
-    const inlineDb = new LocalSqliteDriver({ path: MATERIALIZED_COPY_PATH });
+    copyFileSync(MIRROR_COPY_PATH, targetPath);
+    const inlineDb = new LocalSqliteDriver({ path: targetPath });
     for (const statement of ONE_TRIP_SIDE_DDL) {
       await inlineDb.query(statement, []);
     }
@@ -255,51 +313,75 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     } finally {
       await detachDerivedStore(inlineDb, "side_load");
     }
-    // 3. record the pages' render plans INTO the materialized copy (the
+    // 3. optionally record the pages' render plans INTO the copy (the
     // renderplan-replay lane): the recording renders run in the EXACT
     // serving posture (DECKO_ONE_TRIP_STORE=inline against this store), so
     // the plan is self-consistent with what the serving render asks.
-    await recordRenderPlansForPages({
-      deck: inlineDb,
-      pageNames: [...PROBE_PAGES],
-      pageIds: new Map(
-        Object.entries(buildReport.pages)
-          .filter(([, info]) => info.pageId > 0)
-          .map(([name, info]) => [name, info.pageId]),
-      ),
-    });
-    inlineDb.close();
-  }, 600_000);
-
-  afterAll(() => {
-    // temp side file only; the materialized copy PERSISTS for re-runs
-    if (tmpDir !== "") {
-      try {
-        rmSync(tmpDir, { force: true, recursive: true });
-      } catch {
-        /* Windows file lock: OS temp cleans up */
-      }
+    if (recordPlans) {
+      await recordRenderPlansForPages({
+        deck: inlineDb,
+        pageNames: [...PROBE_PAGES],
+        pageIds: new Map(
+          Object.entries(buildReport.pages)
+            .filter(([, info]) => info.pageId > 0)
+            .map(([name, info]) => [name, info.pageId]),
+        ),
+      });
     }
-  });
+    inlineDb.close();
+  } finally {
+    try {
+      rmSync(tmpDir, { force: true, recursive: true });
+    } catch {
+      /* Windows file lock: OS temp cleans up */
+    }
+  }
+}
+
+describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSONL", () => {
+  beforeAll(async () => {
+    mkdirSync(join(outPath, ".."), { recursive: true });
+    writeFileSync(outPath, ""); // one run = one census; never append across runs
+    if (!existsSync(MATERIALIZED_COPY_PATH)) {
+      await buildMaterializedCopy(true); // the DEPLOYED shape (plans + side tables)
+    }
+    if (!existsSync(NOPLAN_COPY_PATH)) {
+      await buildMaterializedCopy(false, NOPLAN_COPY_PATH); // the v3 wire shape
+    }
+  }, 600_000);
 
   /** Rendered HTML per (posture, page) — the byte-contract comparison the
    *  ON (replay-path) render runs against the OFF render. */
   const renderedHtml = new Map<string, string>();
 
-  async function censusColdRender(posture: Posture, page: string): Promise<void> {    const dbPath = posture === "off" ? MIRROR_COPY_PATH : MATERIALIZED_COPY_PATH;
+  async function censusColdRender(posture: Posture, page: string): Promise<void> {
+    const dbPath =
+      posture === "off"
+        ? MIRROR_COPY_PATH
+        : posture === "on-noplan"
+          ? NOPLAN_COPY_PATH
+          : MATERIALIZED_COPY_PATH;
     const db = new LocalSqliteDriver({ path: dbPath, readonly: true });
     const census = new CensusDriver(db, posture, page);
     const prevOneTrip = process.env.DECKO_ONE_TRIP;
     const prevStore = process.env.DECKO_ONE_TRIP_STORE;
     try {
-      // COLD BOOT: fresh engine per page per posture (the harness pattern)
+      // COLD BOOT, timed as its own phase: fresh engine per page per
+      // posture (the harness pattern) — boot wall and boot DB wall are the
+      // boot/init phase of the gate-2 ledger.
+      const bootT0 = performance.now();
       const { fetcher, render } = await bootEngine(census);
+      const bootWallMs = performance.now() - bootT0;
+      const boot = census.snapshot();
       census.phase = "render";
-      if (posture === "on-inline") {
+      if (posture !== "off") {
         process.env.DECKO_ONE_TRIP = "1";
         process.env.DECKO_ONE_TRIP_STORE = "inline";
       }
+      const renderT0 = performance.now();
       const html = await render.render(page, "open", {});
+      const renderWallMs = performance.now() - renderT0;
+      const total = census.snapshot();
       // NOTE: Taking_Stock's local body is 76 bytes ON THIS MIRROR — the
       // established local render (one-trip-harness-report.json:
       // baselineHtmlBytes 76, byteIdentical true, both arms). The census
@@ -307,16 +389,42 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
       expect(html.length, `${posture}/${page} rendered`).toBeGreaterThan(0);
       renderedHtml.set(`${posture}/${page}`, html);
       // BYTE CONTRACT (renderplan-replay lane): the OFF posture always runs
-      // first (the loop below orders off before on-inline), so the ON render
-      // — now the replay path — must reproduce the OFF page's bytes exactly
-      // (modulo the per-render slot ids the engine itself randomizes).
+      // first (the loop below orders off before both on postures), so each
+      // ON render's bytes are compared against the OFF render's — ASSERTED
+      // for the deployed on+plans posture, RECORDED for the v3-shape
+      // on-noplan posture (its contract predates the replay lane).
+      let slotNormalizedEqualsOff: boolean | null = null;
+      const offHtml = renderedHtml.get(`off/${page}`);
+      if (offHtml !== undefined) {
+        slotNormalizedEqualsOff = normalizeSlotIds(html) === normalizeSlotIds(offHtml);
+      }
       if (posture === "on-inline") {
-        const offHtml = renderedHtml.get(`off/${page}`);
         expect(
           normalizeSlotIds(html),
           `the replay-path render of ${page} must be byte-identical (modulo slot ids) to the OFF render`,
         ).toBe(normalizeSlotIds(offHtml ?? ""));
       }
+      // THE TOTALS LINE: counts, timings, and bytes from this same request.
+      const totals: TraceTotals = {
+        kind: "totals",
+        lineage: LINEAGE_STAMP,
+        posture,
+        page,
+        trips: total.trips,
+        stmts: total.stmts,
+        bootWallMs,
+        bootTrips: boot.trips,
+        bootStmts: boot.stmts,
+        bootDbMs: boot.dbMs,
+        renderWallMs,
+        renderTrips: total.trips - boot.trips,
+        renderStmts: total.stmts - boot.stmts,
+        renderDbMs: total.dbMs - boot.dbMs,
+        renderJsMs: renderWallMs - (total.dbMs - boot.dbMs),
+        htmlBytes: Buffer.byteLength(html),
+        slotNormalizedEqualsOff,
+      };
+      appendFileSync(outPath, `${JSON.stringify(totals)}\n`);
     } finally {
       if (prevOneTrip === undefined) delete process.env.DECKO_ONE_TRIP;
       else process.env.DECKO_ONE_TRIP = prevOneTrip;
@@ -326,8 +434,8 @@ describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSO
     }
   }
 
-  for (const posture of ["off", "on-inline"] as const) {
-    for (const page of PROBE_PAGES) {
+  for (const posture of ["off", "on-inline", "on-noplan"] as const) {
+    for (const page of PAGES_TO_RUN) {
       it(
         `census ${posture} ${page}`,
         () => censusColdRender(posture, page),
