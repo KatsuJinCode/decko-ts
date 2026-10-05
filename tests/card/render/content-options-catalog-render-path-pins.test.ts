@@ -134,17 +134,19 @@ describe.runIf(existsSync(`${GEMS}/card-mod-list-0.20.0`))(
 /** A minimal render-format stub for the registry walk: cardBelongsToSet's
  *  self arm reads card.name.key; the right/type arms read isCompound /
  *  rightName.key / typeName. The catalog card is Pointer-typed, compound,
- *  right *content options. */
+ *  right *content options. The KEY is the decko singularized form the
+ *  corpus record carries ("content options" -> "content_option" -- the
+ *  same inflection the bootstrap_self keys document). */
 function catalogCardFormat(): RenderFormat {
   return {
     card: {
-      key: "*input_type+*right+*content_options",
+      key: "*input_type+*right+*content_option",
       name: {
-        key: "*input_type+*right+*content_options",
+        key: "*input_type+*right+*content_option",
         isCompound: true,
         isStar: false,
         isRStar: false,
-        rightName: { key: "*content_options" },
+        rightName: { key: "*content_option" },
       },
       typeName: "Pointer",
       typeCode: "pointer",

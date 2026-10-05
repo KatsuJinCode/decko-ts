@@ -164,20 +164,24 @@ BUILT_IN_DEFAULT_REGISTRY.register({
   // over the stored row ("overridden" — the card-mod-edit data/real.yml
   // seed the bench corpus row carries; the capture deck photographs the
   // catalog, grade10 shard-000007 expectedBytes content 10699 / open
-  // 13851). setPath is the card's KEY form (the self arm compares
-  // card.name.key; the gem-tree path shape drops the asterisks, so the
-  // registration anchor must not). supersedesType stays default TRUE:
-  // the Ruby body declares ONLY `def content` but the card is
-  // Pointer-typed, so the core view's pointer-list arm IS the dispatch
-  // that reads the overridden content — there is no cardtype core branch
-  // to fall through to (the bootstrap entries' false is the SCSS/JS
-  // CodeRay case, a different shape).
+  // 13851). supersedesType is FALSE (the bootstrap shape): the set module
+  // declares ONLY `def content` — no assign_type — so the card KEEPS its
+  // Pointer type and the core view's pointer-list arm IS the dispatch,
+  // wrapping the overridden raw (the probe measured the true-form render
+  // collapsing to the final-bytes text when this defaulted true).
   // Engine-layer registration (NOT the manifest) per the bootstrap
   // precedent above: the grading verifier runs the bare engine, where a
   // manifest entry would never register.
-  setPath: "self/*input_type+*right+*content_options",
+  // setPath is the card's KEY form — the self arm compares card.name.key,
+  // and decko keys singularize the last word ("content options" ->
+  // key "*input_type+*right+*content_option", the exact key the corpus
+  // record carries and the record entry passes on; the gem-tree path
+  // shape "self/input_type/right/content_options" drops the asterisks
+  // AND keeps the plural, so it matches neither).
+  setPath: "self/*input_type+*right+*content_option",
   modName: "list",
   fn: () => listInputOptionsContent(),
+  supersedesType: false,
 });
 
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
