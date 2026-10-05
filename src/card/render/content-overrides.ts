@@ -44,7 +44,67 @@
 
 import type { RenderFormat, RenderCard } from "./format.js";
 import { bootstrapCoreContent, bootstrapFunctionsContent } from "./bootstrap-code-files.js";
-import { listInputOptionsContent } from "../set-module-content-overrides.js";
+
+// ---------------------------------------------------------------------------
+// Ruby helpers + the input-type catalog the built-in registrations below
+// serve. HOME NOTE: these live here (the render-path override seam), NOT in
+// set-module-content-overrides.ts — that module imports the mod-loader's
+// default-mod-deck (ORACLE_BUNDLE_ORDER), and a content-overrides ->
+// set-module-content-overrides edge closed an import cycle that broke five
+// suites at module-evaluation time (card-mod-markdown's top-level
+// HTML_VIEWS["core"] read before registration). set-module-content-
+// overrides re-exports both names, so its record-path consumers are
+// unchanged.
+// ---------------------------------------------------------------------------
+
+/**
+ * card-1.110.0 config/initializers/01_core_extensions/array.rb:4-12
+ * (`to_pointer_content`): map { to_s.strip; strip one leading "[[" and one
+ * trailing "]]" }, join "\n".
+ */
+export function toPointerContent(items: readonly string[]): string {
+  return items
+    .map((item) => {
+      let s = item.toString().trim();
+      if (s.startsWith("[[")) s = s.slice(2);
+      if (s.endsWith("]]")) s = s.slice(0, -2);
+      return s;
+    })
+    .join("\n");
+}
+
+/**
+ * card-mod-list-0.20.0 set/self/input_type/right/content_options.rb:3-5 —
+ * `basket[:list_input_options].to_pointer_content`. The basket:
+ * card-mod-list set/all/supports_content_options.rb:1 seeds
+ * `%w[radio checkbox select multiselect list autocomplete]`, then the mod set
+ * files append at load time: card-mod-edit set/all/editor.rb:1-2 ("text area",
+ * "text field"), card-mod-ace_editor set/all/ace_editor.rb:1 ("ace editor"),
+ * card-mod-date set/all/calendar.rb:1 ("calendar"), card-mod-tinymce_editor
+ * set/all/tinymce_editor.rb:2 ("tinymce editor"). The order below is the
+ * captured order (the record expectation in view-lane shard-000007).
+ */
+export function listInputOptionsContent(): string {
+  return toPointerContent([
+    // supports_content_options.rb:1 (the seed)
+    "radio",
+    "checkbox",
+    "select",
+    "multiselect",
+    "list",
+    "autocomplete",
+    // set/all/editor.rb:1
+    "text area",
+    // set/all/editor.rb:2
+    "text field",
+    // set/all/ace_editor.rb:1
+    "ace editor",
+    // set/all/calendar.rb:1
+    "calendar",
+    // set/all/tinymce_editor.rb:2
+    "tinymce editor",
+  ]);
+}
 
 /** A content override: returns the bytes that stand in for dbContent for a
  *  card matched by `setPath`. Mirrors Ruby's `def content; ...; end` body:
