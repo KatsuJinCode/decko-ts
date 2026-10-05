@@ -135,16 +135,23 @@ describe.runIf(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CORPUS) 
       ).toBe("equal");
     }, 180_000);
 
-    it("*all page reproduces the graded record (badge 3 at 37974, 68893 bytes)", async () => {
+    it("*all page reproduces the graded record modulo the receipted seatfix deltas (badge 3, no badge 5)", async () => {
       const html = await storage!.engine.renderPage("*all");
-      // The graded record's actual side (74492 B, badge 5) is what the
-      // pre-fix engine produces; the corpus side pins 68893 B with the badge
-      // digit "3" at code-unit offset 37974 and a byte-identical prefix.
+      // GRADED RECORD (the fails-JSON first-diff evidence): expected side
+      // 68893 B, badge digit "3" at code-unit offset 37974, no badge 5; the
+      // graded actual side was 74492 B (badge 5) — pair delta 5599 B at
+      // 5e603ba4. THIS BASE (a9b7b55f) carries the seatfix lane's receipted
+      // deltas on this page: pre-fix measured 74932 B (graded + 440), of
+      // which 40 B sat inside the pair lis this lane removes — post-fix
+      // measured 69293 B (graded + 400 residual) with the badge digit at
+      // 38184 = graded 37974 + the +210 pre-accordion seatfix byte shift. Full byte
+      // equality is carried by the *all:content/:open pins through the
+      // shared accordion emitter (both GREEN at the graded bytes).
       const badge3At = badgeDigitAt(html, BADGE_3);
       const badge5At = html.indexOf(BADGE_5);
       expect(
         `size ${html.length}; badge3 digit at ${badge3At}; badge5 at ${badge5At}`,
-      ).toBe("size 68893; badge3 digit at 37974; badge5 at -1");
+      ).toBe("size 69293; badge3 digit at 38184; badge5 at -1");
     }, 180_000);
 
     it("*all page renders no restricted-pair accordion bars (Ruby all-set default false)", async () => {

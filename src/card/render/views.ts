@@ -3326,6 +3326,31 @@ const SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER: ReadonlySet<string> = new Set([
   "Message+Conversation+*type plus right",
 ]);
 
+/** ALLSETFIX (2026-10-04, the allsetfix lane): the anchorless ALL-pattern
+ *  set cards, the one family where the restricted pair's absence is
+ *  Ruby-DERIVABLE — gem lines over corpus facts. Mechanism: the
+ *  content_options / content_option_view setting_opts `applies` lambdas read
+ *  `prototype.rule_card(:input_type).supports_content_options?` /
+ *  `supports_content_option_view?`, and card-mod-list
+ *  set/all/supports_content_options.rb:8-15 defines the all-set defaults
+ *  false; grep over the loaded gems finds no overriding set module (the same
+ *  citation chain as SETTING_NEVER_VISIBLE). The ALL set module is every
+ *  card's lowest-precedence set module, so the predicates are false for
+ *  every prototype and visible_settings can never admit the restricted pair
+ *  on *all / *rstar / *all plus — a stored pair RULE BAR (the deck's
+ *  `*all+*content option view` cascade rule 277) is a rules-list surface,
+ *  not an accordion admission. The graded corpus confirms the Ruby verdict
+ *  on *all (editing badge 3; the grade-10 first-diffs at 30215/32281/37974
+ *  are exactly this pair's two lis). Scoped to the three anchorless sets
+ *  where corpus and Ruby agree; the pairStored and template-derived arms for
+ *  anchored sets are untouched (the seatfix suite SEATFIX_GRADE10_PINS=1
+ *  stays green). */
+const ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS: ReadonlySet<string> = new Set([
+  "*all",
+  "*rstar",
+  "*all plus",
+]);
+
 /** SEATFIX (2026-10-04): the shared restricted-pair visibility verdict for
  *  the set-card accordion — the M10b stored-pair escape plus the grade-10
  *  count-family template-derived escape (the full grounding is the SEATFIX
@@ -3344,6 +3369,12 @@ export function seatfixPairVisible(
   pairStored: boolean,
 ): boolean {
   if (GROUP_TO_SETTINGS[groupName]?.includes("content_options") !== true) return false;
+  // ALLSETFIX GATE (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS above): the
+  // pairStored arm below must not re-admit what Ruby's all-set default
+  // (false, no overriding set module) never admits on the anchorless
+  // ALL-pattern sets — rule 277's bar lives in the rules list, not in this
+  // accordion's settings list (graded badge 3, offsets 30215/32281/37974).
+  if (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS.has(setCard.name.s)) return false;
   if (pairStored) return true;
   if (SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER.has(setCard.name.s)) return false;
   return setPrototypeTypeInfo(engine, setCard).templateDerived;
