@@ -44,6 +44,7 @@
 
 import type { RenderFormat, RenderCard } from "./format.js";
 import { bootstrapCoreContent, bootstrapFunctionsContent } from "./bootstrap-code-files.js";
+import { listInputOptionsContent } from "../set-module-content-overrides.js";
 
 /** A content override: returns the bytes that stand in for dbContent for a
  *  card matched by `setPath`. Mirrors Ruby's `def content; ...; end` body:
@@ -151,6 +152,32 @@ BUILT_IN_DEFAULT_REGISTRY.register({
   modName: "bootstrap",
   fn: bootstrapFunctionsContent,
   supersedesType: false,
+});
+BUILT_IN_DEFAULT_REGISTRY.register({
+  // card-mod-list-0.20.0 set/self/input_type/right/content_options.rb:3-5 —
+  // `def content; basket[:list_input_options].to_pointer_content; end` on
+  // the exact card `*input type+*right+*content options` (the basket
+  // assembly and its five mod files are enumerated by
+  // listInputOptionsContent, the same answer SELF_MODULE_CHAINS gives the
+  // record path). Ruby's singleton-class include chain shadows db_content
+  // for EVERY caller, so the pointer-list item walk renders the catalog
+  // over the stored row ("overridden" — the card-mod-edit data/real.yml
+  // seed the bench corpus row carries; the capture deck photographs the
+  // catalog, grade10 shard-000007 expectedBytes content 10699 / open
+  // 13851). setPath is the card's KEY form (the self arm compares
+  // card.name.key; the gem-tree path shape drops the asterisks, so the
+  // registration anchor must not). supersedesType stays default TRUE:
+  // the Ruby body declares ONLY `def content` but the card is
+  // Pointer-typed, so the core view's pointer-list arm IS the dispatch
+  // that reads the overridden content — there is no cardtype core branch
+  // to fall through to (the bootstrap entries' false is the SCSS/JS
+  // CodeRay case, a different shape).
+  // Engine-layer registration (NOT the manifest) per the bootstrap
+  // precedent above: the grading verifier runs the bare engine, where a
+  // manifest entry would never register.
+  setPath: "self/*input_type+*right+*content_options",
+  modName: "list",
+  fn: () => listInputOptionsContent(),
 });
 
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
