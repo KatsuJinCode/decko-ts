@@ -53,6 +53,7 @@ import {
 } from "./fetch/retrieve.js";
 import type { VirtualCardResolution } from "./fetch/virtual-cards.js";
 import type { SQLDatabaseDriver } from "../server/driver.js";
+import { ReplayPlanRouter } from "./one-trip/replay-plan-router.js";
 import { DeckoName, type Nameish } from "./name.js";
 import { getNameEnvironment, setNameEnvironment, type NameEnvironment } from "./name/environment.js";
 
@@ -108,7 +109,14 @@ export interface NewCardOptions {
 const DEFAULT_DATABASE_NAME = "decko";
 
 export class FetchEngine {
+  /** Every engine read flows through the REPLAY ROUTER (one-trip/
+   *  replay-plan-router.ts): pure delegation until the one-trip gate arms
+   *  it with a recorded render plan's results — byte- and trip-identical
+   *  when unarmed. The same instance is handed to the lexicon and the
+   *  codename registry below, so every statement the render path can issue
+   *  is plan-servable through one seam. */
   readonly driver: SQLDatabaseDriver;
+  readonly replayRouter: ReplayPlanRouter;
   /** Card::Cache[Card] */
   readonly cardCache: CardCache;
   /** Card::Cache[Lexicon] - a separate cache instance per Ruby class
@@ -127,7 +135,8 @@ export class FetchEngine {
       maxTemporaryCacheKeys?: number;
     } = {},
   ) {
-    this.driver = driver;
+    this.replayRouter = new ReplayPlanRouter(driver);
+    this.driver = this.replayRouter;
     this.cardCache = new CardCache({
       className: "Card",
       sharedStore: opts.sharedStore,
@@ -140,8 +149,8 @@ export class FetchEngine {
       database: opts.database ?? DEFAULT_DATABASE_NAME,
       maxTemporaryKeys: opts.maxTemporaryCacheKeys,
     });
-    this.lexicon = new DbLexicon(driver, this.lexiconCache);
-    this.codenames = new DbCodenameRegistry(driver, this.cardCache, this.lexicon);
+    this.lexicon = new DbLexicon(this.replayRouter, this.lexiconCache);
+    this.codenames = new DbCodenameRegistry(this.replayRouter, this.cardCache, this.lexicon);
     // Cache::CardClass#after_write_to_temp_cache (cache/card_class.rb:9-11):
     // every temp-cache write of a CARD also writes the lexicon
     // (Cache::All#write_lexicon, cache/all.rb:5-15).

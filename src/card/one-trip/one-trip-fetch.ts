@@ -23,6 +23,8 @@ import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { DeckoName } from "../name.js";
 import type { PageBundle, OneTripRuleCandidate } from "./types.js";
+import type { RenderPlan, RenderPlanEntry } from "./render-plan.js";
+import { isPipelineAbleRenderStatement } from "./render-plan.js";
 
 /** The ATTACH name the derived store rides under. Seam note: the fetch
  *  statement references the store through `${DERIVED_STORE_ATTACH}.` — an
@@ -224,12 +226,21 @@ members(id) AS (
 )`;
 }
 
+/** The page's recorded render plan rides the head as one small JSON value
+ *  (renderplan-replay lane): the plan rows live in one_trip_render_plans
+ *  (written at store-build time by the recorder), read here in seq order.
+ *  A typical page's plan is ~110-300 small entries — tens of KB — two
+ *  orders of magnitude under the ~5 MB single-value wall (§6.3). */
+export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
+
 /** The head statement: page key (as SQLite-emitted JSON text), the page's
- *  rule candidates and search results (small aggregates), and — the V2
- *  materialization — the page's WHOLE member id list as one small sorted
- *  JSON array (id ascending, so the client's windows are contiguous keyset
- *  ranges). Separate columns, never one giant row — each value rides its own
- *  small TEXT cell. */
+ *  rule candidates and search results (small aggregates), the page's
+ *  recorded render plan (small JSON array, empty when the store carries
+ *  none — stores built before the recorder are replay-inert, gracefully),
+ *  and — the V2 materialization — the page's WHOLE member id list as one
+ *  small sorted JSON array (id ascending, so the client's windows are
+ *  contiguous keyset ranges). Separate columns, never one giant row — each
+ *  value rides its own small TEXT cell. */
 function inlineHeadSql(): string {
   return `${inlineStoreCteSql()}
 SELECT json_quote(?) AS page_key_json,
@@ -250,6 +261,12 @@ SELECT json_quote(?) AS page_key_json,
       JOIN one_trip_search_nests n ON n.search_card_id = m.id
     )
   ) AS search_results_json,
+  (
+    SELECT json_group_array(json_object('sql', t.sql, 'params', t.params_json))
+      FROM (SELECT sql, params_json FROM one_trip_render_plans
+             WHERE page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
+             ORDER BY seq) t
+  ) AS plan_json,
   (
     SELECT json_group_array(m2.id)
       FROM (SELECT m.id FROM members m ORDER BY m.id) m2
@@ -282,30 +299,74 @@ interface InlineHeadRow {
   page_key_json: string;
   rule_candidates_json: string | null;
   search_results_json: string | null;
+  plan_json: string | null;
   member_ids_json: string | null;
+}
+
+/** The page's recorded render plan, parsed from the head's plan_json cell
+ *  (one json_object per recorded statement: sql + params as JSON text).
+ *  Entries whose params are not JSON-round-trippable are dropped (the
+ *  plan never guesses a bind it cannot reproduce exactly); a missing or
+ *  oversized cell means NO plan (the render runs its live residue). */
+export function renderPlanFromHeadCell(
+  planJson: string | null,
+  pageKey: string,
+): RenderPlan | undefined {
+  if (planJson === null || planJson === "") return undefined;
+  if (planJson.length > ONE_TRIP_RENDER_PLAN_MAX_BYTES) return undefined;
+  let raw: { sql: string; params: string }[];
+  try {
+    raw = JSON.parse(planJson) as { sql: string; params: string }[];
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(raw)) return undefined;
+  const entries: RenderPlanEntry[] = [];
+  for (const item of raw) {
+    if (typeof item?.sql !== "string" || typeof item?.params !== "string") continue;
+    if (!isPipelineAbleRenderStatement(item.sql)) continue;
+    let params: unknown[];
+    try {
+      const parsed = JSON.parse(item.params) as unknown;
+      if (!Array.isArray(parsed)) continue;
+      params = parsed;
+    } catch {
+      continue;
+    }
+    entries.push({ sql: item.sql, params });
+  }
+  // An EMPTY plan is NO plan (json_group_array returns '[]' over zero rows):
+  // stores built before the recorder carry no entries, and the serve path
+  // must treat them exactly like plan-less stores (renderPlan undefined —
+  // the bundle-shape pins compare attached vs inline bundles directly).
+  if (entries.length === 0) return undefined;
+  return { pageKey, recordedAt: "", entries };
 }
 
 /** Fetch the page's whole working set INLINE (the materialized shape: the
  *  one_trip_* tables in this database, no ATTACH) and return the assembled
- *  bundle DOCUMENT TEXT — byte-equal to the single-row statement's document
- *  (pinned on the corpus). V2: discovery ONCE (the head materializes the
- *  member id list), then flat keyset slices over that list. V3: the whole
- *  seat rides the MINIMUM wire round trips on the hrana pipeline transport —
- *  1 head query + ONE batch POST carrying every slice (the v2 seat measured
- *  37 SEQUENTIAL round trips at ~333 ms each ≈ 13.8 s on the ~300 ms-RTT
+ *  bundle DOCUMENT TEXT plus the page's recorded render plan (read from the
+ *  same head statement — one round trip carries both; renderplan-replay
+ *  lane). Byte-equal to the single-row statement's document (pinned on the
+ *  corpus). V2: discovery ONCE (the head materializes the member id list),
+ *  then flat keyset slices over that list. V3: the whole seat rides the
+ *  MINIMUM wire round trips on the hrana pipeline transport — 1 head query
+ *  + ONE batch POST carrying every slice (the v2 seat measured 37
+ *  SEQUENTIAL round trips at ~333 ms each ≈ 13.8 s on the ~300 ms-RTT
  *  serving class — wire RTT, not compute; the driver's batch() is ONE
  *  pipeline POST, BunnyDbDriver.batch → attemptPipeline). The batch is a
  *  transport change only: same slice SQL, same binds, results consumed in
  *  statement order, so the assembled document is byte-identical to the v2
  *  sequential fetch's (pinned). */
-export async function fetchPageBundleInlineRaw(
+export async function fetchPageBundleInlineParts(
   driver: SQLDatabaseDriver,
   pageName: string,
-): Promise<string> {
+): Promise<{ raw: string; plan: RenderPlan | undefined }> {
   const pageKey = DeckoName.parse(pageName).key;
-  // four page-key placeholders: the walk seed, the members' page join, the
-  // page_key field, the rule-candidate page join
+  // five page-key placeholders: the walk seed, the members' page join, the
+  // page_key field, the rule-candidate page join, the plan's page join
   const head = await driver.query<InlineHeadRow>(inlineHeadSql(), [
+    pageKey,
     pageKey,
     pageKey,
     pageKey,
@@ -315,6 +376,7 @@ export async function fetchPageBundleInlineRaw(
   if (headRow === undefined) {
     throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
+  const plan = renderPlanFromHeadCell(headRow.plan_json, pageKey);
   // THE V2 KEYSET: the member id list is materialized exactly once (by the
   // head's own discovery CTE), sorted id-ascending server-side; each slice
   // binds one window of it — a flat indexed read, never a fresh closure walk.
@@ -343,17 +405,34 @@ export async function fetchPageBundleInlineRaw(
   // emitted by SQLite's own JSON functions (the head columns and the
   // per-card rows); the client contributes only the fixed punctuation and
   // field names, in the single-row document's field order.
-  return `{"page_key":${headRow.page_key_json},"cards":[${cardJsons.join(",")}],"rule_candidates":${headRow.rule_candidates_json ?? "null"},"search_results":${headRow.search_results_json ?? "null"}}`;
+  const raw = `{"page_key":${headRow.page_key_json},"cards":[${cardJsons.join(",")}],"rule_candidates":${headRow.rule_candidates_json ?? "null"},"search_results":${headRow.search_results_json ?? "null"}}`;
+  return { raw, plan };
+}
+
+/** The assembled bundle DOCUMENT TEXT alone — the byte-equality pin's
+ *  established signature (inline-chunked-fetch.test.ts). */
+export async function fetchPageBundleInlineRaw(
+  driver: SQLDatabaseDriver,
+  pageName: string,
+): Promise<string> {
+  return (await fetchPageBundleInlineParts(driver, pageName)).raw;
 }
 
 /** Fetch the page's whole working set INLINE. Chunked on the wire (WALL 2),
  *  ATTACH-free (WALL 1); consumes the SAME document shape as the attached
- *  single-row fetch. */
+ *  single-row fetch, plus the page's recorded render plan (renderplan-replay
+ *  lane — the gate replays it as ONE batch and arms the driver seam). */
 export async function fetchPageBundleInline(
   driver: SQLDatabaseDriver,
   pageName: string,
 ): Promise<PageBundle> {
-  return pageBundleFromDocument(await fetchPageBundleInlineRaw(driver, pageName), pageName);
+  const { raw, plan } = await fetchPageBundleInlineParts(driver, pageName);
+  const bundle = pageBundleFromDocument(raw, pageName);
+  if (plan !== undefined) {
+    plan.pageKey = bundle.pageKey;
+    bundle.renderPlan = plan;
+  }
+  return bundle;
 }
 
 /** The document → PageBundle mapping both fetch postures consume (the seat's

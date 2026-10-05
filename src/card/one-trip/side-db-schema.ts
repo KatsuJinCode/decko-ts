@@ -54,4 +54,12 @@ export const ONE_TRIP_SIDE_DDL: readonly string[] = [
      candidate_id INTEGER,
      PRIMARY KEY (page_id, card_id, setting_code, candidate_key)
    )`,
+  `CREATE TABLE IF NOT EXISTS one_trip_render_plans (
+     page_id INTEGER NOT NULL,
+     seq INTEGER NOT NULL,
+     family TEXT NOT NULL,
+     sql TEXT NOT NULL,
+     params_json TEXT NOT NULL,
+     PRIMARY KEY (page_id, seq)
+   )`,
 ];

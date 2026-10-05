@@ -211,13 +211,28 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
           `family must be answered from the plan result set, never live`,
       ).toBe(FLOOR_TRIPS);
 
-      // THE NO-SOLO-READS PIN: no covered-family statement reached the driver.
-      const liveCovered = replay.statements.filter((s) => isPipelineAbleRenderStatement(s.sql));
+      // THE NO-SOLO-READS PIN: the capture's covered-family statements are
+      // exactly the plan's entries — the ONE replay batch delivering the
+      // plan — and nothing beyond it. Any covered read the plan did not
+      // answer would be a SOLO live trip, which the 5-trip floor above
+      // already forbids; this pins the statement side of the same contract.
+      const captureCovered = replay.statements.filter((s) =>
+        isPipelineAbleRenderStatement(s.sql),
+      );
+      const planKeys = new Set(
+        planEntries.map((e) => `${e.sql}::${JSON.stringify(e.params)}`),
+      );
+      const excess = captureCovered.filter(
+        (s) => !planKeys.has(`${s.sql}::${JSON.stringify(s.params)}`),
+      );
       expect(
-        liveCovered.length,
-        `covered-family statements reached the driver live (${liveCovered.length}): ` +
-          `${liveCovered.slice(0, 3).map((s) => s.sql.slice(0, 90)).join(" | ")} — the plan ` +
-          `result set must answer every pipeline-able read`,
+        excess.length,
+        `covered-family statements beyond the plan: ${excess.length} ` +
+          `(capture covered ${captureCovered.length}, plan ${planEntries.length}). ` +
+          `Excess samples: ${excess
+            .slice(0, 4)
+            .map((s) => `[${s.sql.slice(0, 100)}] params=${JSON.stringify(s.params).slice(0, 60)}`)
+            .join(" | ")}`,
       ).toBe(0);
 
       // THE ORDER-DEPENDENT PIN: the search-count still travels live (the

@@ -45,6 +45,7 @@
 //      hop-batch-sibling-fix-lane.md:389-414.)
 
 import type { CardsRow } from "../../server/schema.js";
+import type { RenderPlan } from "./render-plan.js";
 
 /** One edge of the dependency graph (SPEC data model): referer -> referee.
  *  `kind` names WHY the edge exists — the closure walks all kinds, the
@@ -142,6 +143,10 @@ export interface OneTripBuildReport {
   danglingEdges: number;
   searchNests: number;
   pages: Record<string, { pageId: number; closureSize: number }>;
+  /** Present when the build recorded render plans (recordRenderPlans):
+   *  per recorded page, the plan entry count (the audit the census's
+   *  classification table compares against). */
+  renderPlans?: Record<string, { pageId: number; entries: number }>;
   edgeAgreement: {
     /** card_references rows of ref_type 'I' (the stored edge table). */
     storedInclusionRows: number;
@@ -159,7 +164,15 @@ export interface OneTripBuildReport {
 /** The bundle the one-trip fetch returns (SPEC: ONE document carrying
  *  every row the render touches). `rows` are full cards rows — the same
  *  field fidelity the render's own reads produce — plus the per-page rule
- *  candidates and the materialized search results. */
+ *  candidates and the materialized search results.
+ *
+ *  `renderPlan` (the inline fetch only, renderplan-replay lane): the page's
+ *  PRE-COMPUTED RENDER PLAN read from one_trip_render_plans inside the
+ *  seat's head statement — the exact pipeline-able statements + params the
+ *  recorded build-time render asked, in call order. The gate replays it as
+ *  ONE batch and arms the replay router with the results (the census's
+ *  5-trip floor). `undefined` = the store carries no plan for this page;
+ *  the render then runs its ordinary live residue (graceful). */
 export interface PageBundle {
   pageKey: string;
   pageId: number;
@@ -168,4 +181,5 @@ export interface PageBundle {
   cardIds: number[];
   ruleCandidates: OneTripRuleCandidate[];
   searchResults: { searchCardId: number; position: number; cardId: number }[];
+  renderPlan?: RenderPlan;
 }

@@ -45,6 +45,7 @@ import {
   executeSearchNestNow,
   type SearchNestPosture,
 } from "./search-nest-store.js";
+import { recordRenderPlansForPages } from "./render-plan-recorder.js";
 import type {
   OneTripBuildReport,
   OneTripEdge,
@@ -112,6 +113,18 @@ export interface OneTripBuildOptions {
    *  = "write-time"; "live" skips execution, leaving the store empty until
    *  the serving lane's live path fills it). */
   searchNestPosture?: SearchNestPosture;
+  /** Record each page's RENDER PLAN into one_trip_render_plans after the
+   *  closure materializes (renderplan-replay lane). The recording renders
+   *  every page once through the real engine (gate ON against this side
+   *  store) and stores the exact pipeline-able statements + params the
+   *  cold render asked — the serve side replays them as ONE batch (the
+   *  census's 5-trip floor). Requires `sidePath` (the gate's
+   *  DECKO_ONE_TRIP_STORE during recording). Default off: builds without
+   *  it stay byte-identical to the pre-replay-line builds. */
+  recordRenderPlans?: boolean;
+  /** The side store's file path — required when recordRenderPlans is set
+   *  (the side driver alone cannot give the gate its ATTACH path). */
+  sidePath?: string;
 }
 
 interface DeckCardRow {
@@ -566,6 +579,32 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     );
   }
 
+  // --- render-plan recording (the store-build-time half of the replay) ----
+  let renderPlans: Record<string, { pageId: number; entries: number }> | undefined;
+  if (options.recordRenderPlans === true) {
+    if (options.sidePath === undefined || options.sidePath === "") {
+      throw new Error(
+        "buildOneTripClosure: recordRenderPlans requires sidePath " +
+          "(the one-trip gate's DECKO_ONE_TRIP_STORE during the recording renders)",
+      );
+    }
+    const recording = await recordRenderPlansForPages({
+      corpus,
+      side,
+      sidePath: options.sidePath,
+      pageNames,
+      pageIds: new Map(
+        Object.entries(pages)
+          .filter(([, info]) => info.pageId > 0)
+          .map(([name, info]) => [name, info.pageId]),
+      ),
+    });
+    renderPlans = {};
+    for (const [name, page] of Object.entries(recording.pages)) {
+      renderPlans[name] = { pageId: page.pageId, entries: page.entries };
+    }
+  }
+
   const report: OneTripBuildReport = {
     liveCards: liveRows.length,
     composedNames: composedCount,
@@ -579,6 +618,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
       parsedNotStored,
       storedNotParsed,
     },
+    ...(renderPlans !== undefined ? { renderPlans } : {}),
   };
   return report;
 }

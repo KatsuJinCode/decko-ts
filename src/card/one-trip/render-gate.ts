@@ -35,6 +35,7 @@ import {
   fetchPageBundleInline,
   isInlineStoreSpec,
 } from "./one-trip-fetch.js";
+import { replayRenderPlan } from "./render-plan.js";
 import { seatPageBundle } from "./page-bundle-adapter.js";
 
 /** The config gate. Default OFF: no env var, no payload, zero new trips,
@@ -102,23 +103,43 @@ export async function seatOneTripPayloadForRender(
   if (seated.has(pageName)) return;
   seated.add(pageName); // memoize before trying: a failed seat stays failed for this engine
 
-  const driver: SQLDatabaseDriver = fetcher.driver;
-  const inlineStore = isInlineStoreSpec(storePath);
-  try {
-    if (!inlineStore && !attachedDrivers.has(driver)) {
-      await attachDerivedStore(driver, storePath, DERIVED_STORE_ATTACH);
-      attachedDrivers.set(driver, true);
+    // The SEAT's driver is the router's BASE (the real connection): the
+    // attach memo keys on it, and the plan replay — the arming source —
+    // must execute live, never consult the map it is building. The RENDER
+    // path, by contrast, flows through fetcher.driver (the router) and is
+    // where the armed plan answers reads.
+    const driver: SQLDatabaseDriver = fetcher.replayRouter.base;
+    const inlineStore = isInlineStoreSpec(storePath);
+    try {
+      if (!inlineStore && !attachedDrivers.has(driver)) {
+        await attachDerivedStore(driver, storePath, DERIVED_STORE_ATTACH);
+        attachedDrivers.set(driver, true);
+      }
+      const bundle = inlineStore
+        ? await fetchPageBundleInline(driver, pageName)
+        : await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
+      // seatPageBundle's render parameter is unused (fetch-cache seating
+      // only — see page-bundle-adapter.ts); the fetcher satisfies the
+      // structural RenderEngineLike.
+      await seatPageBundle(fetcher, fetcher, bundle);
+      // THE RENDERPLAN REPLAY (renderplan-replay lane): the inline fetch
+      // carried the page's pre-computed render plan (one_trip_render_plans,
+      // read inside the seat's head — no extra trip). Replay it as ONE
+      // batch and arm the engine's driver seam: every subsequent render
+      // statement whose (sql, params) matches a plan entry is answered
+      // from the plan's result set with zero round trips; misses (the
+      // order-dependent search-count, differently-bound reads) go live.
+      // The engine's own record/replay contract (render-plan.ts); a failed
+      // replay leaves the router unarmed — the live path stays
+      // authoritative.
+      const plan = bundle.renderPlan;
+      if (plan !== undefined && plan.entries.length > 0) {
+        const results = await replayRenderPlan(driver, plan);
+        fetcher.replayRouter.armRenderPlan(plan.entries, results);
+      }
+    } catch {
+      // Graceful degradation (SPEC §3.3): an absent store, an unbuildable
+      // attach, or an undescribable page leaves the render on its unchanged
+      // path. The memo above keeps the fallback free on re-renders.
     }
-    const bundle = inlineStore
-      ? await fetchPageBundleInline(driver, pageName)
-      : await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
-    // seatPageBundle's render parameter is unused (fetch-cache seating
-    // only — see page-bundle-adapter.ts); the fetcher satisfies the
-    // structural RenderEngineLike.
-    await seatPageBundle(fetcher, fetcher, bundle);
-  } catch {
-    // Graceful degradation (SPEC §3.3): an absent store, an unbuildable
-    // attach, or an undescribable page leaves the render on its unchanged
-    // path. The memo above keeps the fallback free on re-renders.
-  }
 }

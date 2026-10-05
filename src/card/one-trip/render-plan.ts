@@ -139,6 +139,37 @@ export function classifyResidueStatement(sql: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// The pipeline-able family filter (the plan's membership rule)
+// ---------------------------------------------------------------------------
+
+/** The residue classes a replay plan must NOT carry: their rows depend on
+ *  where the render's OWN execution has gotten to (the search window's
+ *  fill state), not on the deck alone — replaying them ahead of time could
+ *  answer a trip the live sequence would have asked differently. Every
+ *  other named class is pure key-value over the deck (the census's
+ *  batchability verdict) and pipelines with no semantic change. */
+const ORDER_DEPENDENT_CLASSES: ReadonlySet<string> = new Set(["search-count", "search-cql"]);
+
+/** Whether one statement belongs in a recorded render plan: a read-only
+ *  corpus statement (SELECT/WITH — never a write or ATTACH/DETACH) in a
+ *  NAMED residue class that is not order-dependent, excluding the seat's
+ *  own one_trip_* reads. The census's one registry gap (the simple-name
+ *  point read, point-row-by-name — 0 observed on the probe set) is named
+ *  here so a deck that does exercise it still pipelines. An UNKNOWN
+ *  statement shape stays OUT of the plan (it keeps its ordinary live
+ *  trip) — the plan never silently absorbs an unclassified cost. */
+export function isPipelineAbleRenderStatement(sql: string): boolean {
+  const t = sql.trim();
+  if (!/^SELECT\b/i.test(t) && !/^WITH\b/i.test(t)) return false;
+  if (/one_trip_/i.test(t)) return false;
+  const family = classifyResidueStatement(sql);
+  if (family === undefined) {
+    return /^SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1$/i.test(t);
+  }
+  return !ORDER_DEPENDENT_CLASSES.has(family);
+}
+
+// ---------------------------------------------------------------------------
 // The record-and-replay plan (SPEC: the AutoFetch/Calvin shape)
 // ---------------------------------------------------------------------------
 
