@@ -19,7 +19,7 @@
 // bytes — a missing row would cost a residue trip, not wrong bytes,
 // because the render's own execution stays authoritative).
 
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { DeckoName } from "../name.js";
 import type { PageBundle, OneTripRuleCandidate } from "./types.js";
@@ -289,7 +289,15 @@ interface InlineHeadRow {
  *  one_trip_* tables in this database, no ATTACH) and return the assembled
  *  bundle DOCUMENT TEXT — byte-equal to the single-row statement's document
  *  (pinned on the corpus). V2: discovery ONCE (the head materializes the
- *  member id list), then flat keyset slices over that list. */
+ *  member id list), then flat keyset slices over that list. V3: the whole
+ *  seat rides the MINIMUM wire round trips on the hrana pipeline transport —
+ *  1 head query + ONE batch POST carrying every slice (the v2 seat measured
+ *  37 SEQUENTIAL round trips at ~333 ms each ≈ 13.8 s on the ~300 ms-RTT
+ *  serving class — wire RTT, not compute; the driver's batch() is ONE
+ *  pipeline POST, BunnyDbDriver.batch → attemptPipeline). The batch is a
+ *  transport change only: same slice SQL, same binds, results consumed in
+ *  statement order, so the assembled document is byte-identical to the v2
+ *  sequential fetch's (pinned). */
 export async function fetchPageBundleInlineRaw(
   driver: SQLDatabaseDriver,
   pageName: string,
@@ -310,14 +318,26 @@ export async function fetchPageBundleInlineRaw(
   // THE V2 KEYSET: the member id list is materialized exactly once (by the
   // head's own discovery CTE), sorted id-ascending server-side; each slice
   // binds one window of it — a flat indexed read, never a fresh closure walk.
+  // THE V3 TRANSPORT: every window's statement rides ONE driver.batch() call
+  // — one pipeline POST, one wire round trip for all slices. (The head cannot
+  // join the same batch: the slice windows are derived from ITS result, and
+  // batch binds are fixed before any result exists — hence the 2-trip floor.)
   const memberIds: number[] = JSON.parse(headRow.member_ids_json ?? "[]") as number[];
-  const cardJsons: string[] = [];
+  const sliceStatements: SQLStatement[] = [];
   for (let i = 0; i < memberIds.length; i += ONE_TRIP_INLINE_CARDS_PER_CHUNK) {
     const windowIds = memberIds.slice(i, i + ONE_TRIP_INLINE_CARDS_PER_CHUNK);
-    const chunk = await driver.query<{ card_json: string }>(inlineCardsChunkSql(), [
-      JSON.stringify(windowIds),
-    ]);
-    for (const row of chunk.rows) cardJsons.push(row.card_json);
+    sliceStatements.push({ sql: inlineCardsChunkSql(), params: [JSON.stringify(windowIds)] });
+  }
+  const cardJsons: string[] = [];
+  if (sliceStatements.length > 0) {
+    const slices = await driver.batch(sliceStatements);
+    // Results align 1:1 with the statements in order — the same row order
+    // the v2 sequential loop produced.
+    for (const chunk of slices) {
+      for (const row of chunk.rows as { card_json: string }[]) {
+        cardJsons.push(row.card_json);
+      }
+    }
   }
   // Byte surgery, not JSON re-serialization: every data byte below was
   // emitted by SQLite's own JSON functions (the head columns and the

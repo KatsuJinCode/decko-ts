@@ -256,5 +256,54 @@ SELECT COUNT(*) AS n FROM members`,
         1 + Math.ceil(membersCount.rows[0]!.n / ONE_TRIP_INLINE_CARDS_PER_CHUNK),
       );
     });
+
+    // THE V3 PIN (inline-fetch-v3 lane, 2026-10-05): the seat's TRANSPORT
+    // profile — minimum wire round trips.
+    //
+    // The mechanism this pin kills (cold-latency-rig-lane.md INLINE-FETCH-V2
+    // §5, the seventh wire's statement trace): v2 removed the duplicated
+    // discovery COMPUTE but still sent 1 head + 36 keyset slices as 37
+    // SEQUENTIAL wire round trips at ~333 ms each on the ~300 ms-RTT database
+    // class ≈ 13.8 s — wire RTT, not compute (even `SELECT COUNT(*) FROM
+    // json_each('[1,2,3]')` cost 247-281 ms live; locally the same slices are
+    // flat-fast). On that class no sequential-statement posture can reach the
+    // 1,300 ms cold bar; the head + all slices must ride the driver's own
+    // hrana pipeline capability — batch() is ONE pipeline POST carrying every
+    // statement (BunnyDbDriver.batch → attemptPipeline, the wire shape proven
+    // in materialized-store-work/hrana-client.mjs).
+    //
+    // THE PROFILE: exactly TWO round trips per seat — 1 head query (its
+    // result builds the slice windows client-side; a single batch cannot
+    // carry binds derived from its own first result) + ONE batch carrying ALL
+    // N keyset slices. RED at f1d7baff: the slices ride N solo query() calls
+    // — Aikido measures 37 trips (1 + 36), the mechanism number verbatim.
+    it(`travels in the MINIMUM wire round trips — 1 head query + ONE pipeline batch for all slices`, async () => {
+      const inlineCapture = new TripCapturingDriver(inlineDb);
+      await fetchPageBundleInline(inlineCapture, pageName);
+      const issued = inlineCapture.statements;
+      const sliceCount = issued.length - 1;
+
+      // PIN 1 — the whole seat is TWO wire trips regardless of slice count:
+      // the head query + one batch. At base the slices ride solo query()
+      // calls: 1 + N trips (Aikido: 37 = 1 + 36 sequential executes at
+      // ~333 ms each ≈ 13.8 s of pure wire RTT — INLINE-FETCH-V2 §5).
+      expect(
+        inlineCapture.trips,
+        `the seat must ride exactly 2 wire round trips (1 head query + 1 batch ` +
+          `carrying all ${sliceCount} slices); at base the slices are sequential ` +
+          `query() calls (Aikido: 37 trips ≈ 13 s at ~333 ms/trip on the ` +
+          `~300 ms-RTT serving class)`,
+      ).toBe(2);
+
+      // PIN 2 — every slice statement rode the batch, in order, after the
+      // head: the capturing driver records batch statements in request
+      // order, so statements 1..N are exactly the slices, unchanged SQL and
+      // binds — the batch is a transport change only, never a shape change.
+      for (const stmt of issued.slice(1)) {
+        expect(stmt.sql, "a slice keeps the flat keyset shape through the batch").toMatch(
+          /\bjson_each\s*\(/,
+        );
+      }
+    });
   }
 });
