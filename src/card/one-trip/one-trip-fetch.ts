@@ -31,6 +31,22 @@ import type { PageBundle, OneTripRuleCandidate } from "./types.js";
  *  nothing else changes. */
 export const DERIVED_STORE_ATTACH = "one_trip";
 
+/** The DECKO_ONE_TRIP_STORE sentinel for the MATERIALIZED shape: the
+ *  one_trip_* tables live IN the serving database (no side file exists to
+ *  attach). This is the shape the serving DB requires — observed verbatim
+ *  2026-10-05 (cold-latency-rig-lane.md MATERIALIZED-STORE §6.1): the
+ *  serving DB's SQL parser rejects ATTACH for ANY value (SQL_PARSE_ERROR),
+ *  so an attached side file cannot exist there; the 98,915 derived rows sit
+ *  IN the serving DB, dormant until the code reads them inline. */
+export const ONE_TRIP_STORE_INLINE = "inline";
+
+/** Whether a DECKO_ONE_TRIP_STORE value names the materialized (inline)
+ *  shape — the tables in the serving DB itself — rather than a side-file
+ *  path. */
+export function isInlineStoreSpec(storeSpec: string): boolean {
+  return storeSpec === ONE_TRIP_STORE_INLINE;
+}
+
 /** Escape a filesystem path for SQL single-quoting (ATTACH's filename is a
  *  string literal here; bound parameters in ATTACH are not portable across
  *  the drivers this engine supports). */
@@ -141,26 +157,165 @@ interface BundleDocument {
   search_results: { search_card_id: number; position: number; card_id: number }[];
 }
 
-/** Fetch the page's whole working set in EXACTLY ONE round trip. */
-export async function fetchPageBundle(
+// ---------------------------------------------------------------------------
+// THE INLINE FETCH (the materialized shape): chunked, byte-equal.
+//
+// WALL 1 (MATERIALIZED-STORE §6.1): the serving DB rejects ATTACH at the
+// parser for any value, so the inline posture issues NO ATTACH and reads the
+// one_trip_* tables UNQUALIFIED on the same connection — the seam note's own
+// "drops the prefix and the ATTACH call; nothing else changes".
+//
+// WALL 2 (MATERIALIZED-STORE §6.3, the named remainder): even unattached, a
+// template-scale page's single-JSON-row bundle (~3,530 cards, ~5 MB) fails
+// server-side with `SQLite error: string or blob too big`, while small rows
+// are proven fine (the materialized load pushed 528 multi-row statements).
+// The inline fetch therefore returns the bundle in CHUNKS — one head
+// statement (page key + rule candidates + search results, each a small
+// value) plus one statement per bounded slice of card rows, each row the
+// SAME per-card json_object text the single-row aggregation embeds — and
+// assembles them client-side into a document that is BYTE-EQUAL to the
+// single-row statement's (pinned on the corpus, inline-chunked-fetch.test.ts:
+// order is the single-row DISTINCT order — id ascending, the first DISTINCT
+// column and a unique key — and every data byte is SQLite-emitted, the
+// client only joins rows with "," inside the same brackets).
+// ---------------------------------------------------------------------------
+
+/** Card rows per inline chunk. The bound keeps every response rows-small:
+ *  ~1.4 KB per typical card row (~262 KB worst observed body), so a chunk
+ *  stays orders of magnitude under the ~5 MB single value the serving DB
+ *  rejected, while matching the proven multi-row statement shape (180-450
+ *  rows per INSERT statement loaded fine). Tunable: shrink if the serving
+ *  DB's true value limit proves tighter, grow if per-trip overhead dominates. */
+export const ONE_TRIP_INLINE_CARDS_PER_CHUNK = 100;
+
+/** The recursive walk + members CTEs, verbatim the single-row statement's
+ *  discovery phase, with the store qualifier DROPPED (inline = the tables
+ *  are in this database). */
+function inlineStoreCteSql(): string {
+  return `WITH RECURSIVE walk(id) AS (
+  SELECT id FROM cards WHERE "key" = ? AND trash = 0
+  UNION
+  SELECT e.referee_id
+    FROM walk
+    JOIN one_trip_edges e ON e.referer_id = walk.id
+   WHERE e.referee_id IS NOT NULL
+),
+members(id) AS (
+  SELECT id FROM walk
+  UNION
+  SELECT pc.card_id FROM one_trip_page_closure pc
+   WHERE pc.page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
+)`;
+}
+
+/** The head statement: page key (as SQLite-emitted JSON text), the page's
+ *  rule candidates and search results (small aggregates). Separate columns,
+ *  never one giant row — each value rides its own small TEXT cell. */
+function inlineHeadSql(): string {
+  return `${inlineStoreCteSql()}
+SELECT json_quote(?) AS page_key_json,
+  (
+    SELECT json_group_array(json_object(
+      'card_id', r.card_id, 'setting_code', r.setting_code,
+      'candidate_key', r.candidate_key, 'candidate_id', r.candidate_id))
+    FROM one_trip_page_rules r
+    WHERE r.page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
+      AND r.card_id = r.page_id
+  ) AS rule_candidates_json,
+  (
+    SELECT json_group_array(json_object(
+      'search_card_id', s.search_card_id, 'position', s.position, 'card_id', s.card_id))
+    FROM one_trip_search_results s
+    WHERE s.search_card_id IN (
+      SELECT m.id FROM members m
+      JOIN one_trip_search_nests n ON n.search_card_id = m.id
+    )
+  ) AS search_results_json`;
+}
+
+/** One chunk of card rows: the single-row statement's own DISTINCT join,
+ *  sliced LIMIT/OFFSET in the DISTINCT order (id ascending — the first
+ *  DISTINCT column, unique). Each result row is the SAME per-card
+ *  json_object text the single-row aggregation embeds. */
+function inlineCardsChunkSql(): string {
+  return `${inlineStoreCteSql()}
+SELECT json_object(
+  'id', c.id, 'name', c.name, 'key', c."key", 'codename', c.codename,
+  'left_id', c.left_id, 'right_id', c.right_id,
+  'current_revision_id', c.current_revision_id,
+  'created_at', c.created_at, 'updated_at', c.updated_at,
+  'creator_id', c.creator_id, 'updater_id', c.updater_id,
+  'read_rule_class', c.read_rule_class, 'read_rule_id', c.read_rule_id,
+  'references_expired', c.references_expired, 'trash', c.trash,
+  'type_id', c.type_id, 'db_content', c.db_content) AS card_json
+  FROM (SELECT DISTINCT co.* FROM cards co JOIN members m ON m.id = co.id) c
+ ORDER BY c.id
+ LIMIT ? OFFSET ?`;
+}
+
+interface InlineHeadRow {
+  page_key_json: string;
+  rule_candidates_json: string | null;
+  search_results_json: string | null;
+}
+
+/** Fetch the page's whole working set INLINE (the materialized shape: the
+ *  one_trip_* tables in this database, no ATTACH) and return the assembled
+ *  bundle DOCUMENT TEXT — byte-equal to the single-row statement's document
+ *  (pinned on the corpus). */
+export async function fetchPageBundleInlineRaw(
   driver: SQLDatabaseDriver,
   pageName: string,
-  attachName: string = DERIVED_STORE_ATTACH,
-): Promise<PageBundle> {
+): Promise<string> {
   const pageKey = DeckoName.parse(pageName).key;
   // four page-key placeholders: the walk seed, the members' page join, the
   // page_key field, the rule-candidate page join
-  const result = await driver.query<{ bundle: string }>(oneTripFetchSql(attachName), [
+  const head = await driver.query<InlineHeadRow>(inlineHeadSql(), [
     pageKey,
     pageKey,
     pageKey,
     pageKey,
   ]);
-  const raw = result.rows[0]?.bundle;
-  if (raw === undefined || raw === null) {
-    throw new Error(`one-trip fetch: no bundle for page ${pageName} (unknown key?)`);
+  const headRow = head.rows[0];
+  if (headRow === undefined) {
+    throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
+  const cardJsons: string[] = [];
+  let offset = 0;
+  for (;;) {
+    const chunk = await driver.query<{ card_json: string }>(inlineCardsChunkSql(), [
+      pageKey,
+      pageKey,
+      ONE_TRIP_INLINE_CARDS_PER_CHUNK,
+      offset,
+    ]);
+    for (const row of chunk.rows) cardJsons.push(row.card_json);
+    if (chunk.rows.length < ONE_TRIP_INLINE_CARDS_PER_CHUNK) break;
+    offset += chunk.rows.length;
+  }
+  // Byte surgery, not JSON re-serialization: every data byte below was
+  // emitted by SQLite's own JSON functions (the head columns and the
+  // per-card rows); the client contributes only the fixed punctuation and
+  // field names, in the single-row document's field order.
+  return `{"page_key":${headRow.page_key_json},"cards":[${cardJsons.join(",")}],"rule_candidates":${headRow.rule_candidates_json ?? "null"},"search_results":${headRow.search_results_json ?? "null"}}`;
+}
+
+/** Fetch the page's whole working set INLINE. Chunked on the wire (WALL 2),
+ *  ATTACH-free (WALL 1); consumes the SAME document shape as the attached
+ *  single-row fetch. */
+export async function fetchPageBundleInline(
+  driver: SQLDatabaseDriver,
+  pageName: string,
+): Promise<PageBundle> {
+  return pageBundleFromDocument(await fetchPageBundleInlineRaw(driver, pageName), pageName);
+}
+
+/** The document → PageBundle mapping both fetch postures consume (the seat's
+ *  input contract; the chunked inline path assembles the same document and
+ *  shares this tail). */
+function pageBundleFromDocument(raw: string, pageName: string): PageBundle {
   const doc = JSON.parse(raw) as BundleDocument;
+  const pageKey = DeckoName.parse(pageName).key;
   const rows = (doc.cards ?? []).map((card) => card as CardsRow);
   const cardIds = rows.map((r) => r.id);
   const ruleCandidates: OneTripRuleCandidate[] = (doc.rule_candidates ?? []).map((r) => ({
@@ -181,4 +336,26 @@ export async function fetchPageBundle(
       cardId: s.card_id,
     })),
   };
+}
+
+/** Fetch the page's whole working set in EXACTLY ONE round trip. */
+export async function fetchPageBundle(
+  driver: SQLDatabaseDriver,
+  pageName: string,
+  attachName: string = DERIVED_STORE_ATTACH,
+): Promise<PageBundle> {
+  const pageKey = DeckoName.parse(pageName).key;
+  // four page-key placeholders: the walk seed, the members' page join, the
+  // page_key field, the rule-candidate page join
+  const result = await driver.query<{ bundle: string }>(oneTripFetchSql(attachName), [
+    pageKey,
+    pageKey,
+    pageKey,
+    pageKey,
+  ]);
+  const raw = result.rows[0]?.bundle;
+  if (raw === undefined || raw === null) {
+    throw new Error(`one-trip fetch: no bundle for page ${pageName} (unknown key?)`);
+  }
+  return pageBundleFromDocument(raw, pageName);
 }

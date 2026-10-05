@@ -28,7 +28,13 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
-import { attachDerivedStore, DERIVED_STORE_ATTACH, fetchPageBundle } from "./one-trip-fetch.js";
+import {
+  attachDerivedStore,
+  DERIVED_STORE_ATTACH,
+  fetchPageBundle,
+  fetchPageBundleInline,
+  isInlineStoreSpec,
+} from "./one-trip-fetch.js";
 import { seatPageBundle } from "./page-bundle-adapter.js";
 
 /** The config gate. Default OFF: no env var, no payload, zero new trips,
@@ -39,7 +45,16 @@ export function oneTripWantsPayload(): boolean {
 
 /** Where the derived store lives. Required when the gate is ON; the store
  *  is a precompute artifact (closure-builder.ts), never built lazily here
- *  (a 30s-class build must never hide behind a page render). */
+ *  (a 30s-class build must never hide behind a page render). The value is a
+ *  side-store PATH, or the `inline` sentinel (ONE_TRIP_STORE_INLINE): the
+ *  materialized shape — the one_trip_* tables IN the serving database. The
+ *  sentinel is load-bearing on the serving DB: its SQL parser rejects ATTACH
+ *  for ANY value (observed verbatim 2026-10-05, SQL_PARSE_ERROR —
+ *  cold-latency-rig-lane.md MATERIALIZED-STORE §6.1), and its per-value size
+ *  limit rejects the single-row bundle for template-scale pages (§6.3), so
+ *  the inline posture skips the ATTACH entirely and fetches the one_trip_*
+ *  tables UNQUALIFIED on the same connection, in bounded chunks assembled
+ *  byte-equal to the single-row document (one-trip-fetch.ts). */
 function oneTripStorePath(): string | undefined {
   return process.env.DECKO_ONE_TRIP_STORE;
 }
@@ -88,12 +103,15 @@ export async function seatOneTripPayloadForRender(
   seated.add(pageName); // memoize before trying: a failed seat stays failed for this engine
 
   const driver: SQLDatabaseDriver = fetcher.driver;
+  const inlineStore = isInlineStoreSpec(storePath);
   try {
-    if (!attachedDrivers.has(driver)) {
+    if (!inlineStore && !attachedDrivers.has(driver)) {
       await attachDerivedStore(driver, storePath, DERIVED_STORE_ATTACH);
       attachedDrivers.set(driver, true);
     }
-    const bundle = await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
+    const bundle = inlineStore
+      ? await fetchPageBundleInline(driver, pageName)
+      : await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
     // seatPageBundle's render parameter is unused (fetch-cache seating
     // only — see page-bundle-adapter.ts); the fetcher satisfies the
     // structural RenderEngineLike.
