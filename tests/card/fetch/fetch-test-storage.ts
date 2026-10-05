@@ -20,7 +20,17 @@ import { DeckoName } from "../../../src/card/name.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 
 /** Split a DDL file into executable statements: strip `--` comments
- *  (quote-aware - the DDL carries no "--" inside literals) and split on ";". */
+ *  (quote-aware - the DDL carries no "--" inside literals) and split on ";".
+ *
+ *  TRIGGER-AWARE (plan-invalidation lane, 2026-10-05). A CREATE TRIGGER body
+ *  carries its own ";" before END ("... SET version = version + 1 WHERE id = 1;
+ *  END"), so a naive split tears the trigger in half and SQLite rejects the
+ *  fragment with "incomplete input". Inside a trigger body the terminator is
+ *  the `END` that closes `BEGIN`, not the first ";" — so once `BEGIN` opens we
+ *  scan for the matching END and resume splitting after it. This is what lets
+ *  a test load the freshness lane's REAL trigger text
+ *  (deck_data_version, d19ec179) alongside this lane's, instead of a
+ *  re-typed copy that could drift from it. */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
@@ -41,6 +51,20 @@ export function splitSqlStatements(ddl: string): string[] {
       while (i < ddl.length && ddl[i] !== "\n") i++;
       current += " ";
       continue;
+    }
+    // A trigger body: BEGIN ... ; END — consume through the matching END so
+    // the body's internal ";" never splits the statement. `END` is matched
+    // case-insensitively as a whole word; the body's own nested CASE/SELECT
+    // constructs in this schema do not nest another BEGIN...END pair.
+    if (/create\s+trigger/i.test(current) && /\bbegin\b/i.test(current.slice(current.search(/begin/i)))) {
+      const end = ddl.slice(i).search(/\bEND\b/i);
+      if (end !== -1) {
+        current += ddl.slice(i, i + end + 3);
+        i += end + 2;
+        statements.push(current.trim());
+        current = "";
+        continue;
+      }
     }
     if (ch === ";") {
       statements.push(current.trim());

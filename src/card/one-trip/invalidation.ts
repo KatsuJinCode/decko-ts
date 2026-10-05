@@ -100,6 +100,49 @@ export async function affectedPagesForCardWrite(inputs: {
   return result.rows.map((r) => ({ pageId: r.page_id }));
 }
 
+/** Step 2b (plan-invalidation lane, 2026-10-05): drop the recorded render
+ *  plans for the named pages.
+ *
+ *  THE GAP THIS CLOSES. A recorded plan (one_trip_render_plans) is a
+ *  transcript of the statements one page's cold render issued; the serve path
+ *  replays it and answers matching reads from the RECORDED RESULT SET
+ *  (one-trip-fetch.ts:264-269, render-gate.ts:135-139). Before this, a
+ *  recompute re-derived the closure tables and left the plan rows describing
+ *  the PRE-WRITE world — so the L2 lane's 38 recorded demo pages (4,240 rows)
+ *  had no path to losing their truth after an edit. This deletes it.
+ *
+ *  DELETE, NOT RE-RECORD. Re-recording each page inline costs the whole cold
+ *  render in the exact serving posture — the L2 lane measured 896,269 ms for
+ *  38 pages (~23.6 s/page) against the serving database, so a write reaching
+ *  N pages would block for N x 23.6 s. Deleting returns the page to the
+ *  ladder, which is the pre-plan posture: byte-identical output, more round
+ *  trips. The cost of this mechanism is trips, never bytes.
+ *
+ *  THE TRIGGER SIBLING. ONE_TRIP_PLAN_INVALIDATION_TRIGGER_DDL
+ *  (side-db-schema.ts) fires the same DELETE from the storage layer, so it
+ *  covers raw SQL and any future write path. The two are not duplicates: this
+ *  function takes an ALREADY-DERIVED page set (the caller's own fan-out, e.g.
+ *  affectedPagesForCardWrite), while the trigger must DERIVE the page set
+ *  itself at the storage boundary — where the writer's intent is unknown — and
+ *  is therefore deliberately more conservative (it also drops plan-bearing
+ *  pages with no closure row, which no reverse-closure lookup can name).
+ *
+ *  A page with no plan rows is a no-op: it is already on the ladder. */
+export async function invalidateRenderPlansForPages(inputs: {
+  side: SQLDatabaseDriver;
+  pageIds: readonly number[];
+}): Promise<number> {
+  let dropped = 0;
+  for (const pageId of inputs.pageIds) {
+    const result = await inputs.side.query(
+      "DELETE FROM one_trip_render_plans WHERE page_id = ?",
+      [pageId],
+    );
+    dropped += result.rowsAffected ?? 0;
+  }
+  return dropped;
+}
+
 /** Step 3: recompute the named pages' closures FROM THE CORPUS ONLY.
  *
  *  Implementation: the builder re-run with its side writes restricted to
