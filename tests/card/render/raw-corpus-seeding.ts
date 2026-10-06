@@ -64,19 +64,26 @@ const REPO_ROOT = path.resolve(
   fileURLToPath(new URL("../../..", import.meta.url)),
 );
 // The private raw ground-truth leg's paths are owned by the one path-contract
-// module (src/testing/test-corpus-paths.ts) and re-exported here, because this
+// module (src/testing/test-corpus-paths.ts) and sourced from here, because this
 // module is what the corpus-replay tests have always imported them from.
 // Defining them locally a second time is what let the d3 and d8 probes each
 // hardcode their own absolute copy of the view-lane shard directory under a
 // per-lane worktree that no longer exists.
+//
+// RAW_CORPUS_DB stays an `export const` DECLARED HERE on purpose: the graded
+// runner loads this module and its load contract is pinned by source shape in
+// tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts
+// (`/export\s+const\s+RAW_CORPUS_DB/`). Rewriting it as a bare re-export list
+// keeps the same runtime export and breaks that pin -- which is what a first
+// attempt at this change did, and what the gate caught.
 import {
   RAW_CORPUS_DIR,
   RAW_CORPUS_DB_PATH,
   RAW_CORPUS_VIEW_LANE_DIR,
 } from "../../../src/testing/test-corpus-paths.js";
 
-const RAW_CORPUS_DB = RAW_CORPUS_DB_PATH;
-export { RAW_CORPUS_DIR, RAW_CORPUS_DB, RAW_CORPUS_VIEW_LANE_DIR };
+export const RAW_CORPUS_DB = RAW_CORPUS_DB_PATH;
+export { RAW_CORPUS_DIR, RAW_CORPUS_VIEW_LANE_DIR };
 
 /** Codename cards the permission state resolution reads. */
 const PERMISSION_CODENAMES = ["anyone", "anyone_signed_in", "anonymous", "read", "set"];
