@@ -102,6 +102,10 @@ export interface PrefetchStats {
    *  ONE round trip for the engine-level state (decko-commons/decko#1282
    *  shape). */
   additionalResults?: SQLQueryResult[];
+  /** fetch-composer batch lane (V1-prefetch): type ids this prefetch's
+   *  compose prime already asked (one statement per prefetch, not per
+   *  composeAndCache call). */
+  typePrimeMemo: Set<number>;
 }
 
 /** The row shape the prefetch needs before composition. codename MUST ride
@@ -173,6 +177,13 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
+  /** fetch-composer batch lane (V1-prefetch, 2026-10-06): cache-only record
+   *  write (the base flow's updateCache -> storeCard — never the render
+   *  map). The type-card prime below needs it so enrichAndStore's typeId
+   *  reads hit the fetch cache exactly as the base flow's own fetchById
+   *  would have left them. Optional: without it the prime still fills the
+   *  lexicon entries. */
+  writeToCache?: (record: CardRecord) => void;
   /** Independent statements carried in the PRELUDE batch (the one round trip
    *  before any composition; their results come back on
    *  stats.additionalResults). Must not depend on the closure's output —
@@ -218,7 +229,13 @@ export async function prefetchInclusionClosure(
   root: CardRecord,
   ctx: PrefetchContext,
 ): Promise<PrefetchStats> {
-  const stats: PrefetchStats = { batches: 0, statements: 0, fallbackRounds: 0, cards: 0 };
+  const stats: PrefetchStats = {
+    batches: 0,
+    statements: 0,
+    fallbackRounds: 0,
+    cards: 0,
+    typePrimeMemo: new Set<number>(),
+  };
   if (root.name === undefined || root.key === undefined) return stats;
 
   const rootRow = recordToRawRow(root);
@@ -475,6 +492,58 @@ function recordToRawRow(record: CardRecord): RawRow {
 }
 
 /**
+ * fetch-composer batch lane (V1-prefetch, 2026-10-06): prime the compose
+ * pipeline's TYPE-card reads from one chunked statement. The composer's
+ * rows name their type cards by id; the per-record enrichAndStore
+ * (ctx.cacheRecord) resolves each NEW typeId through retrieveFromCacheById
+ * -> Lexicon.name -> idToLex and then a row read by id — up to two point
+ * queries per distinct type, all for rows one statement answers. MEASURED
+ * (attribution run9, post-reset render): 12 solos (5 idToLex + 6
+ * row-by-id + 1) in the prefetch's own compose loops.
+ *
+ * TRASH SEMANTICS: this is the FETCH path's read, so the statement filters
+ * `trash = 0` exactly like the base flow's fetchById — and an ABSENT id is
+ * deliberately left UNPRIMED (no noteIdToLexMiss here): the base flow's
+ * first idToLex read has no trash filter and would find a trashed row's
+ * lex where a primed miss would answer unknown — different answers.
+ * Priming only what the statement actually returned keeps every answer
+ * byte-identical (the prime discipline).
+ */
+async function primeComposeTypeInputs(
+  ctx: PrefetchContext,
+  typeIds: Iterable<number | null | undefined>,
+  memo: Set<number>,
+): Promise<void> {
+  const need = new Set<number>();
+  for (const t of typeIds) {
+    if (typeof t !== "number" || t <= 0) continue;
+    if (memo.has(t)) continue;
+    memo.add(t);
+    need.add(t);
+  }
+  if (need.size === 0) return;
+  const CHUNK = 500;
+  const ids = [...need];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    const placeholders = chunk.map(() => "?").join(", ");
+    const result = await ctx.driver.query<CardsRow>(
+      `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
+      chunk,
+    );
+    const rows = result.rows as CardsRow[];
+    for (const row of rows) ctx.lexicon.noteIdToLexRow(row);
+    if (ctx.writeToCache !== undefined) {
+      for (const row of rows) {
+        const record = await composeCardRecord(row, ctx.lexicon);
+        if (record.name === undefined || record.id === undefined) continue;
+        ctx.writeToCache(record);
+      }
+    }
+  }
+}
+
+/**
  * Compose rows into CardRecords, sides before junctions (multi-pass over the
  * row map so every compound name resolves within the batch), prime the
  * lexicon (Lexicon#write - lib/card/lexicon.rb#write) and write every record
@@ -489,6 +558,11 @@ async function composeAndCache(
 ): Promise<CardRecord[]> {
   const byId = new Map<number, RawRow>();
   for (const row of rows) byId.set(row.id, row);
+  await primeComposeTypeInputs(
+    ctx,
+    rows.map((row) => row.typeId),
+    stats.typePrimeMemo,
+  );
 
   // Bottom-up name composition over the row map (sides before junctions),
   // so each Lexicon#write carries the composed name like Ruby's would.
@@ -617,6 +691,14 @@ export async function composeAndCacheSqlRows(
 ): Promise<CardRecord[]> {
   const byId = new Map<number, CardsRow>();
   for (const row of rows) byId.set(row.id, row);
+  // fetch-composer batch lane (V1-prefetch): same type prime as
+  // composeAndCache (a per-call memo — these single-shot callers have no
+  // shared stats object; the lexicon entries make repeat calls free).
+  await primeComposeTypeInputs(
+    ctx,
+    rows.map((row) => row.type_id),
+    new Set<number>(),
+  );
 
   const names = new Map<number, DeckoName>();
   let pending = [...byId.values()];
@@ -1231,7 +1313,13 @@ export async function prefetchWarmupClosure(
   scan: (card: WarmupCard) => WarmupScan,
 ): Promise<WarmupStats> {
   const stats: WarmupStats = { batches: 0, statements: 0, rounds: 0, cards: 0, fallbacks: 0 };
-  const foldStats: PrefetchStats = { batches: 0, statements: 0, fallbackRounds: 0, cards: 0 };
+  const foldStats: PrefetchStats = {
+    batches: 0,
+    statements: 0,
+    fallbackRounds: 0,
+    cards: 0,
+    typePrimeMemo: new Set<number>(),
+  };
 
   /** Keys sent to SQL or through the cap fallback at least once. */
   const checked = new Set<string>();

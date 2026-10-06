@@ -1003,6 +1003,7 @@ export class RenderEngine implements RenderEngineLike {
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
+        writeToCache: (cached) => this.fetcher.writeToCache(cached),
         cacheRecord: (cached) =>
           // Virtual-card root: the prefetch's recordToRawRow placeholders an
           // id-less record as id -1; storing that record would poison the
@@ -3403,14 +3404,13 @@ export class RenderEngine implements RenderEngineLike {
     // (1) the lexicon entries, exactly idToLex's write shape, from held
     // rows. FREE (no queries) — always runs.
     for (const row of inHand.values()) this.fetcher.lexicon.noteIdToLexRow(row);
-    // Residue gate (measured): a per-host wave (1 item) holds too little to
-    // amortize the residue read — firing it per wave call cost +46 trips
-    // net (the probe's measured regression). The in-hand prime above is
-    // free and always runs; the residue read fires only when the
-    // accumulated need is big enough to answer more questions than its one
-    // round trip costs. The closure-level wave merge (V3) is what makes
-    // the pointer cohort's waves big; small waves keep the base flow's
-    // point reads. When the gate holds, the absent-id write-back is NOT
+    // Residue gate (measured, three shapes): firing the residue read per
+    // wave call cost +46 trips net when the calls were ~100 per-host waves;
+    // at >= 2 it fires per wave ROUND (primeRowsForComposition runs once
+    // per round) and cost +16 net (85 -> 101 measured). At >= 6 the read
+    // fires only for the big merged waves, where it kills more compose
+    // solos than its round trip costs (measured 91 -> 85 together with the
+    // prefetch type prime). Below the gate the absent-id write-back is NOT
     // materialized either — those ids were never asked by a statement, so
     // the base flow's own point read stays the asker.
     if (missing.size < 6) return;
@@ -4476,6 +4476,7 @@ export class RenderEngine implements RenderEngineLike {
       {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
+        writeToCache: (cached) => this.fetcher.writeToCache(cached),
         cacheRecord: (cached) => this.cacheFetchedRecord(cached).then(() => undefined),
         getCard: (key) => this.renderCards.get(key),
         scannedKeys: this.warmupScannedKeys,
@@ -7894,6 +7895,7 @@ export class RenderEngine implements RenderEngineLike {
     const ctx: PrefetchContext = {
       driver: this.fetcher.driver,
       lexicon: this.fetcher.lexicon,
+      writeToCache: (record) => this.fetcher.writeToCache(record),
       cacheRecord: (record) => this.cacheFetchedRecord(record),
     };
     const composed = await composeAndCacheSqlRows(fetched, ctx);
