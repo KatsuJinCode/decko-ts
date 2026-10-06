@@ -173,6 +173,11 @@ export function isPipelineAbleRenderStatement(sql: string): boolean {
   if (family === undefined) {
     return /^SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1$/i.test(t);
   }
+  // The freshness gate's stamp read is per-request gate state issued at the
+  // render ENTRY, before any plan is consulted — it keeps its ordinary live
+  // trip and a plan must not absorb it (its result is gate state, not page
+  // data; replaying it would seat nothing).
+  if (family === "freshness-stamp-read") return false;
   return !ORDER_DEPENDENT_CLASSES.has(family);
 }
 

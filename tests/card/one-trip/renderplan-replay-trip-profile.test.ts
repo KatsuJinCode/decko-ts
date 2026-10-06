@@ -69,6 +69,11 @@ function isPipelineAbleRenderStatement(sql: string): boolean {
     // the census's one registry gap: the simple-name point read
     return /^SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1$/i.test(t);
   }
+  // The freshness gate's stamp read is render-entry gate state, not page
+  // data — a plan records neither it nor any per-request gate statement
+  // (lineage-reconciliation lane, 2026-10-06; mirrors render-plan.ts's
+  // production filter).
+  if (family === "freshness-stamp-read") return false;
   return family !== "search-count" && family !== "search-cql";
 }
 
