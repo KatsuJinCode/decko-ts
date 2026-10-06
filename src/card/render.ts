@@ -2085,6 +2085,44 @@ export class RenderEngine implements RenderEngineLike {
     // post-revocation leak the freshness gate exists to close; found by
     // this file's scenario 4, 2026-10-05).
     this.verdictsJudgedAtMapSize = -1;
+    // The set-once WARM MARKERS complete the same rule (per-viewer-seat
+    // lane, 2026-10-06 — landed at 7fa6a045 and absent from this trunk's
+    // assembly; the warmflood-fix lane ports the block). Each marker
+    // records "this fold already ran this engine lifetime" on the
+    // deck-is-static assumption a stamp move breaks; its fold's outputs
+    // live in the caches this reset just emptied. Left set, the next
+    // render SKIPS the fold over empty caches (headReadsWarmed skips the
+    // head-read-set fold while pageHeadBytes is empty; the *Done sets skip
+    // the pointer/account/nest/template warm passes) and the render
+    // re-derives their reads one solo statement at a time — measured on
+    // this trunk: the post-stamp-move render ran 572 trips / 590
+    // statements / 320 pair-exists probes against the fresh-engine shape's
+    // 7 / 88 / 0.
+    this.headReadsWarmed = false;
+    this.pointerListHostsDone.clear();
+    this.accountFieldWarmDone.clear();
+    this.nestTypeOptTargetsDone.clear();
+    this.templateLinkJunctionTargetsDone.clear();
+    // The waves' ENGINE-LIFETIME ASK MEMORY completes the rule (the
+    // recomposition trip-flood's fix d1; design doc
+    // tripflood-recomposition-fix-design.md F2). The ask maps record "this
+    // question was already answered" while the ANSWERS live in the lexicon
+    // cache and the render-card map — exactly what this reset just wiped.
+    // Left set, the wave skips every question it ever asked ("already
+    // asked") with nowhere to answer from, and the name walk falls to the
+    // solo point path: one `SELECT id FROM cards WHERE left_id = ? AND
+    // right_id = ?` round trip per junction name (the measured 295-320
+    // live-probe flood). Cleared WITH the knowledge they index, the wave
+    // re-asks its questions in BATCHED rounds (MAX_WAVE_ROUNDS, one
+    // driver.batch per round) and re-primes the wiped caches — the same
+    // questions, the same answers, a bounded number of round trips.
+    // primeIdByLex/primeIdsByKey derive negatives from THIS call's
+    // ask/answer sets (see seatNamesByWave), which post-reset read the
+    // CURRENT deck — correct by construction.
+    this.waveAskedSimpleKeys = undefined;
+    this.waveAskedPairs = undefined;
+    this.waveAskedSideKeyPairs.clear();
+    this.typeCardsPrimed.clear();
   }
 
   // -------------------------------------------------------------------------
