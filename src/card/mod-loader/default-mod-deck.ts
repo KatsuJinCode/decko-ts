@@ -37,14 +37,19 @@
 // suites' beforeAll hooks) survive unrelated loads.
 
 import type { DeckoModManifest } from "./mod-manifest.js";
+import type { ModEngineHost } from "./mod-manifest.js";
+import type {
+  ModEventPredicateTable,
+  ModEventRuntime,
+} from "./mod-event-dispatch.js";
 import { ModLoader, type ModSource } from "../mod-loader.js";
-import { setDefaultModLoader } from "../mod-loader.js";
+import { setDefaultModLoader, getDefaultModLoader } from "../mod-loader.js";
 import {
   setDefaultContentOverrideRegistry,
 } from "../render/content-overrides.js";
 import { setDefaultModEventRegistry } from "./mod-event-registry.js";
 
-import coreMod from "./mods/core-mod.js";
+import coreMod, { coreModEventPredicates } from "./mods/core-mod.js";
 import cardModCollection from "./mods/card-mod-collection.js";
 import cardModContent from "./mods/card-mod-content.js";
 import cardModFormat from "./mods/card-mod-format.js";
@@ -67,13 +72,13 @@ import cardModAceEditor from "./mods/card-mod-ace_editor.js";
 import cardModApiKey from "./mods/card-mod-api_key.js";
 import cardModStyle from "./mods/card-mod-style.js";
 import cardModBootstrap from "./mods/card-mod-bootstrap.js";
-import cardModComment from "./mods/card-mod-comment.js";
+import cardModComment, { commentModEventPredicates } from "./mods/card-mod-comment.js";
 import cardModDate from "./mods/card-mod-date.js";
 import cardModFollow from "./mods/card-mod-follow.js";
 import cardModSession from "./mods/card-mod-session.js";
 import cardModTabs from "./mods/card-mod-tabs.js";
 import cardModLayout from "./mods/card-mod-layout.js";
-import cardModRecaptcha from "./mods/card-mod-recaptcha.js";
+import cardModRecaptcha, { recaptchaModEventPredicates } from "./mods/card-mod-recaptcha.js";
 import cardModTinymceEditor from "./mods/card-mod-tinymce_editor.js";
 
 /** Captured names with no manifest entry in the composed deck (see the
@@ -188,4 +193,50 @@ export function defaultDeckLoader(): ModLoader {
   setDefaultContentOverrideRegistry(loader.contentOverrideRegistry());
   setDefaultModEventRegistry(loader.eventRegistry());
   return loader;
+}
+
+// -------------------------------------------------------------------------
+// the deck-boot MOD EVENT RUNTIME seam (E-16 compose residual)
+// -------------------------------------------------------------------------
+
+// Ruby composes the event space ONCE at boot - Cardio::Mod::Dirs#initialize
+// adds core + every gem mod (card-1.110.0 lib/cardio/mod/dirs.rb:54-62),
+// Loader.load_mods registers every set file over the whole dirs
+// (lib/cardio/mod/loader.rb:16-21), and the `event` DSL lands each
+// declaration in that one space as its file loads (lib/card/set/event.rb:
+// 71-74). Every save - the serving write path included - walks the SAME
+// space; there is no per-path composition and no save without it. The
+// builders below are the port's seam for that shape: the save-path runtime
+// over the BOOTED deck (never a private per-caller subset).
+
+/** The deck's named `when:` predicate table: the three predicate-exporting
+ *  mods' tables merged in bundle order (core's skip_update_referers?,
+ *  comment's comment, recaptcha's validate_recaptcha - no name collisions;
+ *  the other 28 ported mods export none). Merging here - at the deck-boot
+ *  seam - is what makes the deck runtime resolve every predicate the deck
+ *  registered, instead of the single-mod subsets per-caller compositions
+ *  used before E-16. */
+export function defaultDeckEventPredicates(): ModEventPredicateTable {
+  return {
+    ...coreModEventPredicates,
+    ...commentModEventPredicates,
+    ...recaptchaModEventPredicates,
+  };
+}
+
+/** The save-path ModEventRuntime over the deck-boot composition: the
+ *  BOOTED loader's event registry (getDefaultModLoader; booting the deck
+ *  when no host did - the same once-per-process boot Ruby performs) with
+ *  the deck's merged predicate table. `host` is the caller's ModEngineHost
+ *  (the render path passes modEngineHost(engine, fetcher); save-time event
+ *  bodies reach the host only for the integrate observers'
+ *  fetchRenderCard - a composition without one fails loudly per the
+ *  dispatcher's HOST_REQUIRED contract). */
+export function defaultDeckEventRuntime(host?: ModEngineHost): ModEventRuntime {
+  const loader = getDefaultModLoader() ?? defaultDeckLoader();
+  return {
+    registry: loader.eventRegistry(),
+    predicates: defaultDeckEventPredicates(),
+    ...(host !== undefined ? { host } : {}),
+  };
 }

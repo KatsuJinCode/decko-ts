@@ -58,6 +58,7 @@ import {
 } from "../../src/card/mod-loader/default-mod-deck.js";
 import {
   createActionsTestStorage,
+  seedStandardDeck,
   JOE,
   fakeClock,
 } from "../card/actions/actions-test-storage.js";
@@ -201,6 +202,7 @@ describe("E-16: the serving write surface composes the deck's mod-event runtime"
 
   it("an engine save with the deck runtime fires refresh_references_out through the registered body", async () => {
     const actions = await createActionsTestStorage();
+    await seedStandardDeck(actions);
     const reports: ModEventStageReport[] = [];
     const runtime = defaultDeckEventRuntime();
     const observed = { ...runtime, onReport: (r: ModEventStageReport) => reports.push(r) };

@@ -68,6 +68,13 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   // 1. Bundle worker.ts exactly as wrangler does. The root wrangler.toml sets
   //    compatibility_flags = ["nodejs_compat"], so NO node: alias is declared
   //    and none is needed here; a node: import would have to work natively.
+  //    inlineDynamicImports is part of "the way wrangler bundles it":
+  //    wrangler's esbuild bundle has no code splitting, so a dynamic import
+  //    in the worker graph (write-routes' seat import of the deck-boot seam,
+  //    E-16) is INLINED into the single file - while Rollup's default splits
+  //    it into a second chunk, which both broke the single-chunk pick below
+  //    and booted workerd on a chunk with no default export
+  //    ("Incorrect type for map entry ..." at startup).
   const viteResult = await build({
     configFile: false,
     logLevel: "warn",
@@ -79,7 +86,11 @@ async function bootWorker(vars: Record<string, string>): Promise<{
       ssr: true,
       rollupOptions: {
         input: WORKER_ENTRY,
-        output: { format: "esm", entryFileNames: "worker.mjs" },
+        output: {
+          format: "esm",
+          entryFileNames: "worker.mjs",
+          inlineDynamicImports: true,
+        },
       },
     },
   });
