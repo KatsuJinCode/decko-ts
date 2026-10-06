@@ -3,18 +3,17 @@
 // Ruby oracle exactly.
 //
 // Proof shape (A/B):
-//   WITHOUT the mod: render "Oracle Help Probe" :help raises the
-//     unsupported-view error (render.rb#view_method) - the view does not
-//     exist. Baseline views (:content) already match the oracle.
+//   WITHOUT the mod: render "Oracle Help Probe" :help / :lead / :help_text
+//     ALREADY matches the oracle — all three are set/all base-format
+//     registrations in Ruby (set/all/help.rb:6/:14-16/:27-30,
+//     registrar.rb:79-84), so the compiled-in HTML_VIEWS record serves
+//     them deck-or-no-deck (the boardview lane's flat seam; the
+//     :help_text name in this lane). Baseline views (:content) match too.
 //   WITH the mod: :help / :help_text / :lead render byte-identically to
 //     fixtures/captured/help-mod-loader.json "rendered" (captured from the
 //     live decko 0.20.0 oracle app via
 //     tests/card/mod-loader/oracle-capture-help-mod.rb; data-slot-id
 //     normalized to RANDOMIZED - it is SecureRandom by design).
-//
-// Seed deck = the capture's probe deck: the two probe cards (ids must match
-// the oracle's - the bytes carry data-card-id) plus the *help rule card and
-// its set/setting/codename cards.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -24,7 +23,6 @@ import {
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
-import { UnsupportedViewError } from "../../../src/card/render/format.js";
 import {
   ModLoader,
   cardModHelp,
@@ -89,7 +87,7 @@ afterAll(() => {
 });
 
 describe("card-mod-help through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: :help and :lead dispatch compiled-in (oracle bytes); :help_text is unsupported", async () => {
+  it("WITHOUT the mod: :help, :lead and :help_text dispatch compiled-in (oracle bytes)", async () => {
     const s = storage!;
     // BOARDVIEW-FLAT-SEAM ADJUDICATION (the 422 lane): :help joined the
     // compiled-in HTML_VIEWS record (render/views.ts imports card-mod-help's
@@ -101,12 +99,19 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     // registration adds nothing for help).
     const helpHtml = normalize(await s.engine.render("Oracle Help Probe", "help"));
     expect(helpHtml).toBe(FIXTURE.rendered["Oracle Help Probe#help"]);
-    // :help_text (help.rb:14-16) is NOT on the compiled record (outside the
-    // boardview lane's registered closure), so loader-less dispatch still
-    // raises - the mod remains its only registration.
-    await expect(s.engine.render("Oracle Help Probe", "help_text")).rejects.toThrow(
-      UnsupportedViewError,
+    // HELP-TEXT-422 ADJUDICATION (the boardview lane's named follow-up,
+    // same 422 class): :help_text is help.rb:14-16 — the SAME set/all base
+    // file as :help and :lead — and the boardview lane's flat registration
+    // closed :help/:guide but not this name, so loader-less dispatch still
+    // raised UnsupportedViewError (format.ts:1333) where Ruby answers from
+    // the base format class. It is now the compiled-in HTML_VIEWS row
+    // (render/views.ts imports card-mod-help's helpTextView), so this arm
+    // pins the SAME oracle bytes the WITH arm pins: the d-none edit-link
+    // span + the processed rule text, bare (no wrap config).
+    const helpTextHtml = normalize(
+      await s.engine.render("Oracle Help Probe", "help_text"),
     );
+    expect(helpTextHtml).toBe(FIXTURE.rendered["Oracle Help Probe#help_text"]);
     // MERGE-PASS-18 RE-PIN (raise-leadview merge): :lead is the compiled-in
     // HTML_VIEWS entry (render/views.ts imports card-mod-help's leadView as
     // the single source), so the loader-less engine dispatches it — the

@@ -81,20 +81,26 @@ beforeAll(async () => {
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
 
-  // The *all+*help rule card: for a SIMPLE card the *help walk
-  // (help.rb:1-4 rule_card(:help) over lib/card/rule/all.rb:9-15's
-  // rule_names_for_card joined to "*help") resolves the all-anchored rule.
-  // Its dbContent is the raw help text the help.rb:32-48 chain processes
-  // (process_content, chunk_list: :references — no [[...]] chunks here).
+  // The set card "Oracle Help Probe+*self" (junction: probe + *self) and
+  // the rule card "Oracle Help Probe+*self+*help" (junction: set card +
+  // *help), seeded at the PROBE's own anchor exactly as
+  // tests/card/mod-loader/card-mod-help.test.ts seeds them: help.rb:1-4
+  // help_rule_card walks the card's set names joined to "*help"
+  // (lib/card/rule/all.rb:9-15), so a probe-anchored rule card resolves
+  // for the ruled probe ONLY - which is what keeps "Oracle Bare Probe"
+  // rule-less for the empty-string arm. The rule card's dbContent is the
+  // raw help text the help.rb:32-48 chain processes (process_content,
+  // chunk_list: :references - no [[...]] chunks here).
+  await seedCard(s, { id: 20, leftId: 1169, rightId: 11, typeId: 13 });
   await seedCard(s, {
     id: 21,
-    leftId: 10,
+    leftId: 20,
     rightId: 12,
     typeId: 14,
     dbContent: "Moderator-approved help text for the probe card.",
   });
 
-  // The probe cards: ruled (walks the *help rule) and bare (no rule card,
+  // the probe cards: ruled (walks the *help rule) and bare (no rule card,
   // so help_text is "" per help.rb:41 `return "" unless raw_help_text`).
   await seedCard(s, { id: 1169, name: "Oracle Help Probe", typeId: 2, dbContent: "probe card body" });
   await seedCard(s, { id: 1170, name: "Oracle Bare Probe", typeId: 2, dbContent: "bare probe body" });
@@ -154,7 +160,7 @@ beforeAll(async () => {
       e as unknown as {
         prepareItemForRender: (n: string) => Promise<unknown>;
       }
-    ).prepareItemForRender("*all+*help");
+    ).prepareItemForRender("Oracle Help Probe+*self+*help");
   await warm(headless);
   await warm(chain);
 }, 60_000);

@@ -117,7 +117,7 @@ import {
   relatedTabView,
   rulesTabView,
 } from "../mod-loader/mods/card-mod-edit.js";
-import { guideView, helpView } from "../mod-loader/mods/card-mod-help.js";
+import { guideView, helpTextView, helpView } from "../mod-loader/mods/card-mod-help.js";
 import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 // Merge resolution (read-both-sides, union): the core-mod.js import is a
 // NAMED-import widening, not a contradiction. One merge parent carried
@@ -6401,6 +6401,19 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // the frame_help/help renders inside BOTH the board and edit bodies.
   help: helpView,
   guide: guideView,
+  // card-mod-help-0.20.0 set/all/help.rb:14-16 `view :help_text, unknown:
+  // true, cache: :never` — `wrap_help_text help_text`, NO wrap config, so
+  // the flat record serves BARE bytes (the d-none edit-link span the
+  // readable *help rule card earns, then the processed rule text; "" with
+  // no rule card — help.rb:18-25/40-48). The same base file as :help and
+  // :lead (help.rb:14-16 sits between :help at :6-12 and :lead at :27-30):
+  // leaving this one name mod-only is the 422-class defect the
+  // headless-help-text-flat-dispatch.test.ts pin records. NOT a copy — the
+  // mod registration and this row are the same fn, so the loader-bound
+  // chain walk and the loader-less harness cannot drift. The set-scoped
+  // RULE override (card-mod-rules set/rule/board_rules_editor.rb:17-19)
+  // stays chain-only (registered nonbase) and is not masked by this row.
+  help_text: helpTextView,
   // The page-lane navbar family (card-mod-layout navbar_links/nav_item/
   // nav_link_in_dropdown + card-mod-search search_box) — set-scoped inside
   // each fn; see src/card/render/navbar-views.ts.

@@ -3901,6 +3901,14 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // dispatch these on unknown-card nests.
   { view: "content_formgroup", config: true },
   { view: "input", config: true },
+  // card-mod-help set/all/help.rb:14-16 `view :help_text, unknown: true,
+  // cache: :never` — an ALL-SET declaration, so the loader-less lane needs
+  // the same `setting :unknown` answer the manifest's config gives the
+  // chain walk: a nest targeting an UNKNOWN card still dispatches
+  // :help_text (alter_unknown answers nil; the view has no perms
+  // directive). Companion to the help/guide rows above (help.rb:6 and
+  // guide.rb:6) — the same base file, the same all-set status.
+  { view: "help_text", config: true },
 ];
 
 /**

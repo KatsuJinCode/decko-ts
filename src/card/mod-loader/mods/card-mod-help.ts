@@ -143,8 +143,29 @@ export const helpView: ViewFn = (ctx) => {
 
 /** help.rb:14-16 view :help_text, unknown: true, cache: :never:
  *  `wrap_help_text help_text`. No wrap config -> bare bytes (oracle: ""
- *  without a rule; the d-none span + text with one). */
-const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
+ *  without a rule; the d-none span + text with one).
+ *
+ *  EXPORTED: the view is also the compiled-in HTML_VIEWS["help_text"]
+ *  registration (render/views.ts imports this fn). Same seam and same
+ *  reason as helpView/guideView/leadView above: set/all/* declarations
+ *  are base-format registrations in Ruby (registrar.rb:79-84), visible to
+ *  every card with or without a loaded deck, while the production worker
+ *  binds no deck (defaultDeckLoader has no production caller) and falls
+ *  through computeResolvedView to the flat record. Leaving :help_text
+ *  mod-only left it raising the worker's 422 loader-less — the
+ *  headless-help-text-flat-dispatch.test.ts pin. Single source: the mod
+ *  registration and the compiled-in entry are the SAME function, so a
+ *  loader-bound engine (chain[0] = All::Help wins the chain walk) and the
+ *  mod-less harness cannot drift.
+ *
+ *  NOT the set-scoped sibling: card-mod-rules-0.20.0
+ *  set/rule/board_rules_editor.rb:17-19 overrides :help_text for RULE-set
+ *  cards (`wrap_help_text [rule_based_help, setting_link].join(" ")`);
+ *  card-mod-rules.ts registers that body NONBASE (ruleHelpTextView) so
+ *  only a bound deck's chain walk reaches it, and the flat all-set row
+ *  does not mask it (mod-loader.ts:452 expands the RULE token to every
+ *  Rule::* module and takes the most-specific-set-first). */
+export const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
 
 /** help.rb:27-30 view :lead: `class_up "card-slot", "lead";
  *  _view_content`. _view_content calls the content view's method DIRECTLY
