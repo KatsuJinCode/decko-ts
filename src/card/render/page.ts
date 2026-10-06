@@ -161,7 +161,9 @@ export async function renderPageBytes(
   // The page is one request: no Temporary-cache reset may drop an entry this
   // request seated before its synchronous readers use it
   // (TemporaryCache#hold; the reset is deferred to the request's end).
-  const releaseCaches = engine.fetcher.holdTemporaryCaches();
+  // (Stub decks in the edge request tests carry a partial fetcher.)
+  const releaseCaches =
+    typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
   try {
     return await engine.runWithPageConfig(() =>
       renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),

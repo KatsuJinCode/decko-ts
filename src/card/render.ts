@@ -847,7 +847,8 @@ export class RenderEngine implements RenderEngineLike {
     // within_key_counts reset drops an entry this render seated before its
     // synchronous readers use it (TemporaryCache#hold). Nested inside a
     // page render the page's own hold is already open; holds nest.
-    const releaseCaches = this.fetcher.holdTemporaryCaches();
+    const releaseCaches =
+      typeof this.fetcher?.holdTemporaryCaches === "function" ? this.fetcher.holdTemporaryCaches() : () => {};
     try {
       return await this.renderHeld(cardName, view, params);
     } finally {
