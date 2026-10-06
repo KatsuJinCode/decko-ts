@@ -3150,13 +3150,29 @@ const server = http.createServer(async (req, res) => {
       // the forgot-password form posts to Ruby's own route
       // (set/self/signin.rb card_form :update -> /update/*signin); the
       // trigger check happens in the handler after the body is read.
-      pathname === FORGOT_PASSWORD_SUBMIT_PATH)
+      pathname === FORGOT_PASSWORD_SUBMIT_PATH ||
+      // the first-run setup post must reach the first-run surface BELOW,
+      // not the write branch. Ruby's setup journey rides the ordinary
+      // write through mark interpretation only under the needs_setup?
+      // condition (decko-0.20.0 lib/card_controller/mark.rb:28-33
+      // implicit_mark -> initial_setup? -> prepare_setup_card!), so the
+      // port's equivalent is THIS yield: armed only when the env gate is
+      // on. Without it the write branch answers first and a fresh-deploy
+      // owner-create dies as a card-mark write ("may not create card
+      // setup", 403). The security boundary stays in the module — its
+      // runtime census (setupWindowState, card-1.110.0
+      // lib/card/auth/setup.rb:33-52) 404s every method once the deck has
+      // an account, so an existing deck never becomes setuptable; and
+      // with the gate off this clause is false and the write branch sees
+      // /setup exactly as before.
+      (firstRunEnabled() && pathname === SETUP_PATH))
   ) {
-    // Slice-1 sign-in/sign-out + lane-reset-flows POSTs: fall through to
-    // the shared dispatch chain below (handleSignin/handleSignout/
-    // handleResetRequest/handleAccountPassword/handleForgotPasswordSubmit).
-    // They take precedence over the write-path marks — staging-slice
-    // endpoints are not card marks.
+    // Slice-1 sign-in/sign-out + lane-reset-flows + first-run setup POSTs:
+    // fall through to the shared dispatch chain below (handleSignin/
+    // handleSignout/handleResetRequest/handleAccountPassword/
+    // handleForgotPasswordSubmit/handleFirstRunRequest). They take
+    // precedence over the write-path marks — staging-slice endpoints are
+    // not card marks.
   } else if (parseAccountFlowLink(pathname, url.searchParams) !== null) {
     // The emailed reset/verify link arriving with a verb-explicit POST/
     // PUT/PATCH (the link itself is a GET; see handleAccountFlowLink).
