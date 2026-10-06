@@ -114,10 +114,12 @@ describe("render-format view-permission gate", () => {
       card(1, "Secret Thing", "body"),
       stubEngine({ readDenied: false, taskAllowedByTask: { update: false } }),
     );
-    // :edit is unregistered (the ported registry carries no edit view yet),
-    // but the check runs BEFORE dispatch (permission.rb:19-23 ->
+    // The check runs BEFORE dispatch (permission.rb:19-23 ->
     // view.rb:85-88 ok_view before render.rb:59-63 view_method), so the
-    // denial replaces the view instead of raising.
+    // denial replaces the view without ever consulting the registry —
+    // this holds whether or not :edit is registered on the flat record
+    // (it is, since the board/edit flat seam; the denial short-circuits
+    // first either way).
     expect(fmt.renderView("edit")).toBe(
       '<span class="denied"><!-- Sorry, you don\'t have permission (update) --></span>',
     );
@@ -143,13 +145,24 @@ describe("render-format view-permission gate", () => {
   it("falls through to dispatch when no task hook is installed", () => {
     // Engines without isTaskDenied (the current RenderEngine until the
     // coordinator patch lands) leave non-read tasks unverified-allowed:
-    // an unregistered view then raises the unsupported-view error, which
-    // is the honest signal (Ruby would render the real edit view).
+    // the check falls through to DISPATCH, which renders the REAL edit
+    // view — Ruby's shape all along (the gate's ok_view runs before
+    // render.rb's view_method, and a passed check hands the view to the
+    // format). Before the board/edit flat seam this arm could only observe
+    // the fall-through through :edit's unsupported-view raise (the view
+    // was then unregistered loader-less); the seam registered set/all/edit
+    // in the compiled record, so the fall-through now lands in the real
+    // body — the pin follows the behavior, not the old stand-in raise.
     const fmt = new RenderFormat(
       card(1, "Secret Thing", "body"),
       stubEngine({ readDenied: false, withTaskHook: false }),
     );
-    expect(() => fmt.renderView("edit")).toThrowError(/not supported/);
+    const html = fmt.renderView("edit");
+    // the real :edit bytes: the edit-form modal wrapper and its form —
+    // and no permission denial anywhere (the gate passed, so the fall-
+    // through must not have been diverted into the quiet span).
+    expect(html).toContain("card-form slotter autosave");
+    expect(html).not.toContain('<span class="denied">');
   });
 
   it("never checks unknown cards (alter_unknown owns them)", () => {

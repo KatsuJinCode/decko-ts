@@ -3871,6 +3871,44 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // the loader-less page lane reads this compiled row where the mod
   // registry would answer (the flat readFormgroupBody in views.ts).
   { view: "read_formgroup", config: true },
+  // The board/edit flat seam's unknown:true rows (the 422 lane) — the
+  // flat view fns live in HTML_VIEWS, so the loader-less lane needs the
+  // same `setting :unknown` answers the manifest's per-module configs
+  // give the chain walk:
+  // - editing.rb:3 `view :board, perms: :update, unknown: true` and
+  //   edit_content.rb:28 `view :edit, ... unknown: true` — a nest
+  //   targeting an UNKNOWN card still dispatches the requested view
+  //   (alter_unknown answers nil; the update denial check still runs).
+  // - editing.rb:13 `view :cardboard, :board` (the manifest models the
+  //   alias with unknown: true, cache: never).
+  // - help.rb:6 `view :help, unknown: true` and guide.rb's `view :guide,
+  //   unknown: true` — the frame_help renders inside the board/edit
+  //   bodies on unknown-card nests too.
+  // - tab_views.rb:47-49 `view :guide_tab, unknown: true`, tab_views.rb:
+  //   22-31 `view :rules_tab, unknown: true`, form.rb's content_formgroups
+  //   (manifest config unknown: true, cache: never).
+  { view: "board", config: true },
+  { view: "cardboard", config: true },
+  { view: "edit", config: true },
+  { view: "help", config: true },
+  { view: "guide", config: true },
+  { view: "guide_tab", config: true },
+  { view: "rules_tab", config: true },
+  { view: "content_formgroups", config: true },
+  // form.rb:17-19 `view :content_formgroup, cache: :never, unknown: true`
+  // and editor.rb's `view :input, unknown: true, cache: :never` (the
+  // manifest's set/all/editor registration) — the edit-form field slots
+  // dispatch these on unknown-card nests.
+  { view: "content_formgroup", config: true },
+  { view: "input", config: true },
+  // card-mod-help set/all/help.rb:14-16 `view :help_text, unknown: true,
+  // cache: :never` — an ALL-SET declaration, so the loader-less lane needs
+  // the same `setting :unknown` answer the manifest's config gives the
+  // chain walk: a nest targeting an UNKNOWN card still dispatches
+  // :help_text (alter_unknown answers nil; the view has no perms
+  // directive). Companion to the help/guide rows above (help.rb:6 and
+  // guide.rb:6) — the same base file, the same all-set status.
+  { view: "help_text", config: true },
 ];
 
 /**

@@ -211,14 +211,33 @@ afterAll(() => {
 });
 
 describe("card-mod-help through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: every ported view raises UnsupportedViewError", async () => {
+  it("WITHOUT the mod: :help, :guide and :help_text dispatch compiled-in; the rest raise UnsupportedViewError", async () => {
     const s = storage!;
-    await expect(s.engine.render("Oracle Help Probe", "help")).rejects.toThrow(
-      UnsupportedViewError,
-    );
-    await expect(s.engine.render("Oracle Help Probe", "help_text")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // BOARDVIEW-FLAT-SEAM ADJUDICATION (the 422 lane): :help and :guide
+    // joined the compiled-in HTML_VIEWS record (views.ts imports
+    // card-mod-help's helpView/guideView — set/all/help.rb:6 and
+    // set/all/guide.rb are BASE-format registrations in Ruby,
+    // registrar.rb:79-84, visible deck-or-no-deck), so the pre-seam premise
+    // "help/guide are mod-only" no longer holds — the same move the
+    // MERGE-PASS-18 :lead re-pin below records. The bare probe seeds no
+    // *help/*guide rule, so :help renders the rule-less empty-slot shape
+    // the oracle pins (helpView: "" body inside the slot wrap) and :guide
+    // renders the guide-text wrap around its empty body.
+    const helpHtml = await s.engine.render("Oracle Help Probe", "help");
+    expect(helpHtml).toContain("help-view");
+    // HELP-TEXT-422 ADJUDICATION (the boardview lane's named follow-up,
+    // same 422 class): :help_text is help.rb:14-16, the same set/all base
+    // file, and it is now the compiled-in HTML_VIEWS row too (views.ts
+    // imports card-mod-help's helpTextView — the SAME fn the manifest
+    // registers). This probe is the ruled one (a readable *help rule card,
+    // id 21), so the loader-less arm renders help.rb:18-25's d-none
+    // edit-link prefix + the rule text, bare (no wrap config) — the same
+    // bytes the WITH-mod arm below pins against the oracle.
+    const helpText = await s.engine.render("Oracle Help Probe", "help_text");
+    expect(helpText).toContain("Moderator-approved help text for the probe card.");
+    expect(helpText).toContain("class='d-none'");
+    expect(helpText).toContain("rule_edit");
+    expect(helpText).not.toContain("help_text-view");
     // MERGE-PASS-18 RE-PIN (raise-leadview merge, caught at the tip gate's
     // test-name-level diff): :lead is the compiled-in HTML_VIEWS entry
     // (render/views.ts imports card-mod-help's leadView as the single
@@ -229,13 +248,14 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     const leadHtml = await s.engine.render("Oracle Bare Probe", "lead");
     expect(leadHtml).toContain("lead-view");
     expect(leadHtml).toContain("bare probe body");
-    await expect(s.engine.render("Oracle Help Probe", "guide")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    const guideHtml = await s.engine.render("Oracle Help Probe", "guide");
+    expect(guideHtml).toContain("guide-view");
     // set/right/help.rb:4-6 view :popover - the popover_link helper from
     // card-mod-bootstrap's set/all/bootstrap/helper.rb:41-44. Without the
     // mod the view is not on the live registry, so dispatch raises
-    // UnsupportedViewError - same proof shape as the other ported views.
+    // UnsupportedViewError - same proof shape as the other ported views
+    // (a RIGHT-set view: outside the base-format closure the 422 lane
+    // registered).
     await expect(s.engine.render("Oracle Help Probe", "popover")).rejects.toThrow(
       UnsupportedViewError,
     );
