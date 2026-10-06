@@ -326,6 +326,38 @@ export class DbLexicon {
     this.recordDurableId(lex, id);
   }
 
+  /** fetch-composer batch lane (V1, 2026-10-06): record the entries
+   *  idToLex's cacheFetch would have written, from a cards ROW the caller
+   *  HOLDS (a batched wave read, not an async name(id) read). The write
+   *  shape is idToLex's own (lexicon.rb#id_to_lex): String(id) -> lex (the
+   *  cacheFetch write-back), cacheKey(lex) -> id (the tap), the durable
+   *  pair. The rows come from statements the wave already ran, so every
+   *  entry is db truth asked-and-answered - the same invariant
+   *  noteDurableName documents - and the later per-row
+   *  composeCardRecord/enrichAndStore name reads stay byte-identical
+   *  while dropping their one-point-read-per-row cost. */
+  noteIdToLexRow(row: Pick<CardsRow, "id" | "name" | "left_id" | "right_id">): void {
+    if (row.id === undefined || row.id === null) return;
+    const resolved: Lex =
+      row.name !== null && row.name !== undefined
+        ? row.name
+        : [row.left_id ?? undefined, row.right_id ?? undefined];
+    this.cache.write(String(row.id), resolved);
+    this.cache.write(cacheKey(resolved), row.id);
+    this.recordDurableId(resolved, row.id);
+  }
+
+  /** fetch-composer batch lane (V1): mirror idToLex's empty-result
+   *  write-back for a side id the batched read proved ABSENT - cacheFetch
+   *  caches `undefined` under String(id) on a miss (cache.rb#fetch: "a
+   *  stored nil is a hit"), so the later name(id) answers unknown with
+   *  zero queries exactly as the point read would have. The durable maps
+   *  never materialize the negative (their records say only what the db
+   *  proved present). */
+  noteIdToLexMiss(id: number): void {
+    this.cache.write(String(id), undefined);
+  }
+
   /** lexicon.rb#delete - used by the write path (act integration). */
   deleteFor(id: number | undefined, lexBeforeAct: Lex | undefined): void {
     if (id !== undefined) this.cache.delete(String(id));

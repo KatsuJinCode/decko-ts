@@ -402,6 +402,47 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
 
+  /** THE SWEEP SURFACE (the sweep-cascade cut, warmflood-sweep-cut-lane
+   *  2026-10-06): the keys seated during the CURRENT render call. Every
+   *  prepare sweep that walks the whole render-card map is bounded to this
+   *  set, and this set is cleared at the start of each render call (and by
+   *  resetCaches()).
+   *
+   *  MEASURED MECHANISM IT CUTS: the sweeps' done-sets (structureProcessed,
+   *  pointerListHostsDone, linkScanDoneKeys, ...) are engine-lifetime, but
+   *  every sweep seats new cards AFTER the other sweeps' last pass of the
+   *  render, so each render's chase seats (pointer items, link targets,
+   *  wave seats, type-opt/template-junction targets) are the NEXT render's
+   *  unprocessed surface. Their content refs then resolve one shell deeper
+   *  into the corpus's connected lattice — measured (attribution probe,
+   *  warmflood-attribution-run4/5.log): +875 / +1,325 / +1,284 fresh map
+   *  cards per warm render at 370 / 551 / 500 trips, 100% of them outside
+   *  the page's byte closure (bytes are slot-stable across map sizes 477 →
+   *  3,961, so no view ever reads them). Bounding the sweeps to the
+   *  render's own seats keeps every byte-critical behavior (render 1 and
+   *  the post-reset render seat the whole closure, surface == map there)
+   *  while the warm render's sweeps find nothing new to chase. */
+  private renderSeats = new Set<string>();
+
+  /** The page lane's prepare marker: renderPageBytes seats the layout
+   *  closure AROUND its inner render() call, and those seats belong to the
+   *  PAGE render's surface — not to whatever render() runs next. While set,
+   *  render() does not clear renderSeats (renderPageBytes cleared it once,
+   *  at its own start). */
+  private pagePrepareDepth = 0;
+
+  /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
+   *  of the sweep surface for the whole page render, its layout warm-ups
+   *  included. Pair with endPagePrepare in a finally block. */
+  beginPagePrepare(): void {
+    this.pagePrepareDepth += 1;
+    this.renderSeats.clear();
+  }
+
+  endPagePrepare(): void {
+    this.pagePrepareDepth = Math.max(0, this.pagePrepareDepth - 1);
+  }
+
   /** M9 - bootswatch_skin new_customized_name's resolved answer, keyed by
    *  the skin card's canonical key. `name` is the answer itself (the card
    *  name the Customize button proposes); `asked` is every candidate the
@@ -795,6 +836,11 @@ export class RenderEngine implements RenderEngineLike {
    * for views outside the ported registry (the captured sentinel contract).
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
+    // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
+    // render seats (the sweep-cascade cut — renderSeats' doc). The page
+    // lane clears once for the whole page render (beginPagePrepare), so
+    // its inner render() leaves the layout warm-ups' seats in scope.
+    if (this.pagePrepareDepth === 0) this.renderSeats.clear();
     // Freshness gate (delivery contract:79): any render that could serve
     // warm bytes reads the deck's committed-write stamp FIRST — ONE
     // statement — and clears every derived cache when a committed write
@@ -957,6 +1003,7 @@ export class RenderEngine implements RenderEngineLike {
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
+        writeToCache: (cached) => this.fetcher.writeToCache(cached),
         cacheRecord: (cached) =>
           // Virtual-card root: the prefetch's recordToRawRow placeholders an
           // id-less record as id -1; storing that record would poison the
@@ -1089,6 +1136,17 @@ export class RenderEngine implements RenderEngineLike {
       this.deckDataVersion = await this.readDeckDataVersion();
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
+    // THE CLOSURE HALF OF THE SWEEP SURFACE (renderSeats' doc): the render's
+    // sweeps must also process the cards THIS render's root closure reaches
+    // that EARLIER renders seated — a nest target chased as another page's
+    // late seat sits in the map already (enrichAndStore's existing-key guard
+    // skipped it, so it never entered renderSeats), but when THIS page nests
+    // it, its structure substitution and its first processing ARE this
+    // render's byte obligation (the structure-corpus-replay drift case).
+    // The walk is closureWarm's own BFS (nest-reference reachability over
+    // the map, memory-only); chase residue of OTHER pages enters the surface
+    // only when THIS render's closure reaches it, so the cascade stays cut.
+    for (const key of this.closureSurface(record)) this.renderSeats.add(key);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
     // accessor; templating.rb#structure). On every first-render path this
@@ -1106,6 +1164,23 @@ export class RenderEngine implements RenderEngineLike {
     // walk (the ref walk skips empty keys)  their deck-constant verdict
     // seats under the "" key (see the method doc).
     await this.seatBlankKeyReadVerdict();
+    // THE RECOMPOSITION REFILL RESIDUAL (measured, sweep-cut lane
+    // 2026-10-06): on the first render after a committed-write reset the
+    // refill runs raw (the plan is legitimately disarmed by the reset per
+    // the stamp-read-vs-plan pin) and its solo tail lives in the SEAT
+    // PIPELINE, not in missing priming: composeCardRecord resolves each
+    // wave-fetched junction row's name through the lexicon one solo pair
+    // read at a time (measured post-bump: 53 `left_id = ? AND right_id = ?`
+    // probes issued from _DbLexicon.cacheFetch, 59 fetch-ladder legs, ~55
+    // wave-round trips, 16 cold-batch statements, 14 search re-runs — 182
+    // trips / 52 live pair probes). A reset-gated candidate prime here was
+    // measured and WITHDRAWN: gating a bigger/earlier candidate wave on the
+    // reset moved pin 2 by +2 trips (184) — the verdict ladders ride
+    // driver-level CTEs (resolveRuleRowsByRuleKeys / resolveRuleIdsByRule
+    // Keys) that never needed the seats, and the wave's own composer IS the
+    // solo-tail issuer. Closing pin 2 needs the fetch layer's seat pipeline
+    // to resolve row names in batched vehicles — a fetch/lexicon-lane
+    // refactor, recorded OPEN-BLOCKED in warmflood-sweep-cut-lane.md.
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -2039,6 +2114,7 @@ export class RenderEngine implements RenderEngineLike {
   resetCaches(): void {
     this.fetcher.resetCaches();
     this.renderCards.clear();
+    this.renderSeats.clear();
     this.idsByKey.clear();
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
@@ -2085,6 +2161,44 @@ export class RenderEngine implements RenderEngineLike {
     // post-revocation leak the freshness gate exists to close; found by
     // this file's scenario 4, 2026-10-05).
     this.verdictsJudgedAtMapSize = -1;
+    // The set-once WARM MARKERS complete the same rule (per-viewer-seat
+    // lane, 2026-10-06 — landed at 7fa6a045 and absent from this trunk's
+    // assembly; the warmflood-fix lane ports the block). Each marker
+    // records "this fold already ran this engine lifetime" on the
+    // deck-is-static assumption a stamp move breaks; its fold's outputs
+    // live in the caches this reset just emptied. Left set, the next
+    // render SKIPS the fold over empty caches (headReadsWarmed skips the
+    // head-read-set fold while pageHeadBytes is empty; the *Done sets skip
+    // the pointer/account/nest/template warm passes) and the render
+    // re-derives their reads one solo statement at a time — measured on
+    // this trunk: the post-stamp-move render ran 572 trips / 590
+    // statements / 320 pair-exists probes against the fresh-engine shape's
+    // 7 / 88 / 0.
+    this.headReadsWarmed = false;
+    this.pointerListHostsDone.clear();
+    this.accountFieldWarmDone.clear();
+    this.nestTypeOptTargetsDone.clear();
+    this.templateLinkJunctionTargetsDone.clear();
+    // The waves' ENGINE-LIFETIME ASK MEMORY completes the rule (the
+    // recomposition trip-flood's fix d1; design doc
+    // tripflood-recomposition-fix-design.md F2). The ask maps record "this
+    // question was already answered" while the ANSWERS live in the lexicon
+    // cache and the render-card map — exactly what this reset just wiped.
+    // Left set, the wave skips every question it ever asked ("already
+    // asked") with nowhere to answer from, and the name walk falls to the
+    // solo point path: one `SELECT id FROM cards WHERE left_id = ? AND
+    // right_id = ?` round trip per junction name (the measured 295-320
+    // live-probe flood). Cleared WITH the knowledge they index, the wave
+    // re-asks its questions in BATCHED rounds (MAX_WAVE_ROUNDS, one
+    // driver.batch per round) and re-primes the wiped caches — the same
+    // questions, the same answers, a bounded number of round trips.
+    // primeIdByLex/primeIdsByKey derive negatives from THIS call's
+    // ask/answer sets (see seatNamesByWave), which post-reset read the
+    // CURRENT deck — correct by construction.
+    this.waveAskedSimpleKeys = undefined;
+    this.waveAskedPairs = undefined;
+    this.waveAskedSideKeyPairs.clear();
+    this.typeCardsPrimed.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -2632,7 +2746,13 @@ export class RenderEngine implements RenderEngineLike {
     if (universe === undefined) return;
     for (let round = 0; round < 8; round++) {
       const toFetch = new Map<string, string>(); // ref name -> key
+      // SWEEP-SURFACE (renderSeats): process only cards THIS render seated.
+      // The done-sets below are engine-lifetime, so a card seated by an
+      // earlier render is either processed already or is that render's
+      // chase residue — chasing it is the sweep cascade (renderSeats' doc);
+      // no view ever reads it (bytes stable across map sizes 477 → 3,961).
       for (const [key, card] of this.renderCards) {
+        if (!this.renderSeats.has(key)) continue;
         if (this.structureProcessed.has(key)) continue;
         this.structureProcessed.add(key);
         const resolved = resolveStructuredContent(
@@ -2771,7 +2891,10 @@ export class RenderEngine implements RenderEngineLike {
    */
   private async primePreparedCardDerivedState(rootKey: string | undefined): Promise<void> {
     const typeIds = new Set<number>();
+    // SWEEP-SURFACE (renderSeats): new type ids arrive only with this
+    // render's seats; earlier renders' cards were primed already.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       const t = card.record.typeId;
       if (
         typeof t === "number" &&
@@ -2816,7 +2939,12 @@ export class RenderEngine implements RenderEngineLike {
       }
       const names = new Set<string>();
       if (seatCandidates) {
+        // SWEEP-SURFACE (renderSeats): candidate collection over this
+        // render's seats — the set is deterministic per root on the render
+        // that seats the closure (render 1 / post-reset), and warm renders
+        // seat nothing new.
         for (const card of this.renderCards.values()) {
+          if (!this.renderSeats.has(card.key)) continue;
           if (card.record.isNew) continue;
           for (const setting of candidateSettings) {
             let candidates: string[];
@@ -2838,6 +2966,11 @@ export class RenderEngine implements RenderEngineLike {
         const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
           (result) => (result.rows as CardsRow[]) ?? [],
         );
+        // fetch-composer batch lane (V1): the type rows' own compose needs
+        // (their sides, their type cards) prime from the held rows the same
+        // way the wave's rows do — this standalone arm measured 5
+        // idToLex + 6 row-by-id solos post-reset before the prime.
+        await this.primeRowsForComposition(rows);
         for (const row of rows as CardsRow[]) {
           const record = await composeCardRecord(row, this.fetcher.lexicon);
           if (record.name === undefined || record.id === undefined) continue;
@@ -2954,14 +3087,33 @@ export class RenderEngine implements RenderEngineLike {
         const right = name.rightName;
         if (!name.isCompound || left === undefined || right === undefined) {
           const key = name.key;
+          // fetch-composer batch lane (2026-10-06): the OLD gate skipped the
+          // ask whenever the LEXICON held any entry for the key — but a lex
+          // entry is not a seated record: lexToId's side resolutions write
+          // `L-<key> -> id` without ever fetching the row, and the wave's
+          // job (the seat) was then left to the caller's solo point query
+          // (measured: the item loop's `WHERE key = ?` ladders over exactly
+          // such keys). The gate now asks what the wave actually needs: the
+          // record not held at all -> ask it; the record held in the FETCH
+          // cache -> seat it from cache (zero queries, the seat still
+          // happens); a held NEGATIVE (a database answer) keeps the skip —
+          // the ask happened once (askedSimpleKeys) and the row does not
+          // exist. askedSimpleKeys keeps the never-re-ask discipline, so a
+          // warm render still asks nothing new.
           if (
             !this.renderCards.has(key) &&
             !askedSimpleKeys.has(key) &&
-            !this.fetcher.lexicon.lexEntryKnown(name.s)
+            !this.fetcher.lexicon.heldKeyNegative(key)
           ) {
-            askedSimpleKeys.set(key, raw);
-            callAskedSimple.add(key);
-            simpleKeys.push(key);
+            const held = this.fetcher.retrieveFromCacheByKey(key);
+            if (held !== undefined) {
+              await this.cacheFetchedRecord(held);
+              seatedAny = true;
+            } else {
+              askedSimpleKeys.set(key, raw);
+              callAskedSimple.add(key);
+              simpleKeys.push(key);
+            }
           }
           continue;
         }
@@ -2996,6 +3148,21 @@ export class RenderEngine implements RenderEngineLike {
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
+          // fetch-composer batch lane (2026-10-06): re-pend the name itself.
+          // MEASURED CONVERGENCE GAP (this lane's attribution): the old push
+          // resolved the sides but never re-asked the PARENT, so the
+          // parent's own pair existence was left to the caller's first
+          // id() walk — one solo pair probe per 3-level name (the residual
+          // X+*right+*content options / X+*type+by name probes). With the
+          // name re-pended, a later round sees both sides seated and asks
+          // the parent pair in the batched OR-tuple (once — askedPairs),
+          // seating or negatively priming exactly what the caller's fetch
+          // would have asked. Termination: the name only re-pends while a
+          // side is compound-and-unseated; each round the unresolved side
+          // decomposes toward simple names (which seat or prime negative),
+          // and MAX_WAVE_ROUNDS bounds the whole loop — an unresolvable
+          // virtual side costs memory-only deferral rounds, never queries.
+          nextRound.push(raw);
         }
       }
       if (simpleKeys.length === 0 && sideKeyPairs.length === 0 && sideIdPairs.length === 0) {
@@ -3058,6 +3225,16 @@ export class RenderEngine implements RenderEngineLike {
       const rows = (await this.fetcher.driver.batch(statements)).flatMap(
         (result) => (result.rows as CardsRow[]) ?? [],
       );
+      // fetch-composer batch lane (V1): the rows in hand carry everything
+      // the per-row compose pipeline is about to ask one row at a time
+      // (sides' idToLex reads, type-card reads, left-side row reads).
+      // Prime from the held rows + one id IN read for the residue BEFORE
+      // the compose loop, so composeCardRecord/enrichAndStore answer from
+      // cache — same rows, same answers, batched asks (the wave's own
+      // priming pattern applied to the rows the wave already holds).
+      // Prime only, never serve: the compose loop below still runs its
+      // own pipeline and lands every row through cacheFetchedRecord.
+      await this.primeRowsForComposition(rows);
       const fetchedPairs = new Set<string>();
       for (const row of rows) {
         if (row.left_id !== null && row.left_id !== undefined && row.right_id !== null && row.right_id !== undefined) {
@@ -3142,6 +3319,9 @@ export class RenderEngine implements RenderEngineLike {
       const rows = (await this.fetcher.driver.batch(preamble)).flatMap(
         (result) => (result.rows as CardsRow[]) ?? [],
       );
+      // fetch-composer batch lane (V1): same in-hand prime as the round
+      // loop's batch (see primeRowsForComposition).
+      await this.primeRowsForComposition(rows);
       for (const row of rows as CardsRow[]) {
         const record = await composeCardRecord(row, this.fetcher.lexicon);
         if (record.name === undefined || record.id === undefined) continue;
@@ -3153,6 +3333,153 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     return seatedAny;
+  }
+
+  /**
+   * fetch-composer batch lane (V1, 2026-10-06): prime the compose
+   * pipeline's inputs from rows the wave ALREADY HOLDS, before the
+   * per-row compose loop runs.
+   *
+   * MEASURED MECHANISM (warmflood sweep-cut + this lane's attribution
+   * probes): a wave-fetched junction row's composeCardRecord walks
+   * composeName -> name(sideId) -> idToLex point reads (one round trip
+   * per side, recursively for nested junctions), and the seat pipeline's
+   * cacheFetchedRecord -> enrichAndStore adds retrieveFromCacheById
+   * (typeId -> idToLex + row read) and fetchByName(leftKey) (a row read
+   * by key) — measured post-reset: 12 idToLex + ~18 row-by-id + several
+   * row-by-key solos per render, all for data the wave's own statements
+   * already returned (every junction row carries its sides' ids; the
+   * side rows usually ride the same IN-lists).
+   *
+   * THE VEHICLE: (1) entries derivable from the held rows are written at
+   * zero queries — exactly idToLex's write shape (lexicon.noteIdToLexRow);
+   * (2) the residue (side ids and type ids no held row answers) asks ONE
+   * chunked `WHERE id IN` statement, trash UNFILTERED — idToLex reads
+   * without a trash filter (lexicon.rb#id_to_lex), so a trashed side's
+   * name composes exactly as the point read would compose it; iterated to
+   * a fixpoint over newly read junction rows' own sides (bounded — the
+   * lex recursion's depth shape); (3) clean (trash = 0) rows land in the
+   * FETCH cache only (writeToCache — the same write the base flow's
+   * updateCache performs when ITS point query returns the row), never the
+   * render map, so enrichAndStore's type/left fetches hit the cache in
+   * the same order the base flow produces and the map's insertion order
+   * is untouched.
+   *
+   * PRIME DISCIPLINE: every entry derives from a row actually read by a
+   * statement this wave ran (asked-and-answered); an id the batched read
+   * proved absent mirrors idToLex's own empty-result write-back
+   * (lexicon.noteIdToLexMiss) and nothing else. The compose loop after
+   * this call still runs its own pipeline — this method only decides who
+   * asks first.
+   */
+  private async primeRowsForComposition(rows: CardsRow[]): Promise<void> {
+    if (rows.length === 0) return;
+    const inHand = new Map<number, CardsRow>();
+    const missing = new Set<number>();
+    const fullRows: CardsRow[] = [];
+    for (const row of rows) {
+      if (typeof row.id === "number") {
+        inHand.set(row.id, row);
+        fullRows.push(row);
+      }
+    }
+    const PRIME_ID_CHUNK = 500;
+    const collectNeeds = (source: Iterable<CardsRow>): number => {
+      let added = 0;
+      for (const row of source) {
+        for (const side of [row.left_id, row.right_id]) {
+          if (typeof side === "number" && !inHand.has(side) && !missing.has(side)) {
+            missing.add(side);
+            added += 1;
+          }
+        }
+        if (
+          typeof row.type_id === "number" &&
+          !inHand.has(row.type_id) &&
+          !missing.has(row.type_id)
+        ) {
+          missing.add(row.type_id);
+          added += 1;
+        }
+      }
+      return added;
+    };
+    collectNeeds(inHand.values());
+    // (1) the lexicon entries, exactly idToLex's write shape, from held
+    // rows. FREE (no queries) — always runs.
+    for (const row of inHand.values()) this.fetcher.lexicon.noteIdToLexRow(row);
+    // Residue gate (measured, three shapes): firing the residue read per
+    // wave call cost +46 trips net when the calls were ~100 per-host waves;
+    // at >= 2 it fires per wave ROUND (primeRowsForComposition runs once
+    // per round) and cost +16 net (85 -> 101 measured). At >= 6 the read
+    // fires only for the big merged waves, where it kills more compose
+    // solos than its round trip costs (measured 91 -> 85 together with the
+    // prefetch type prime). Below the gate the absent-id write-back is NOT
+    // materialized either — those ids were never asked by a statement, so
+    // the base flow's own point read stays the asker.
+    if (missing.size < 6) return;
+    // (2) ask the residue (no trash filter — idToLex semantics), then
+    // chase the newly read junction rows' own sides to a fixpoint. The
+    // members ride ONE batch as PER-ID statements in the exact recorded
+    // idToLex shape (`SELECT name, left_id, right_id FROM cards WHERE
+    // id = ? LIMIT 1` — the lexicon-id-to-name plan family): a serving
+    // render's plan holds those reads, so the replay router serves every
+    // member and the prime costs zero live trips exactly where the base
+    // flow's own idToLex point reads were served too. An absent id is
+    // final after its one read (a point read by id is definitive) and gets
+    // the mirrored write-back after the loop. The residue rows are SLIM
+    // (no content columns) — they prime the lexicon ONLY; the fetch-cache
+    // writes in (3) draw from the wave's own FULL rows, never the slim
+    // ones (a content-less record would poison the cache exactly like the
+    // prefetch's codename-less record did).
+    const absent = new Set<number>();
+    let guard = 0;
+    while (missing.size > 0 && guard < 8) {
+      guard += 1;
+      const ids = [...missing];
+      missing.clear();
+      for (let i = 0; i < ids.length; i += PRIME_ID_CHUNK) {
+        const chunk = ids.slice(i, i + PRIME_ID_CHUNK);
+        const results = await this.fetcher.driver.batch(
+          chunk.map((id) => ({
+            sql: "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+            params: [id],
+          })),
+        );
+        const freshById = new Map<number, CardsRow>();
+        results.forEach((result, k) => {
+          const askedId = chunk[k]!;
+          const row = (result.rows as Partial<CardsRow>[])[0];
+          if (row === undefined) {
+            absent.add(askedId); // definitive: a point read by id found nothing
+            return;
+          }
+          const slim = {
+            id: askedId,
+            name: row.name ?? null,
+            left_id: row.left_id ?? null,
+            right_id: row.right_id ?? null,
+          } as CardsRow;
+          if (!inHand.has(askedId)) {
+            inHand.set(askedId, slim);
+            freshById.set(askedId, slim);
+          }
+          this.fetcher.lexicon.noteIdToLexRow(slim);
+        });
+        collectNeeds(freshById.values());
+      }
+    }
+    for (const id of absent) this.fetcher.lexicon.noteIdToLexMiss(id);
+    // (3) clean FULL rows into the FETCH cache only (never the render
+    // map) — the same storeCard write the base flow's updateCache performs
+    // when its point query returns the row. The compose below is now a
+    // cache hit (the entries above answer it), so this costs zero queries.
+    for (const row of fullRows) {
+      if (row.trash !== 0) continue;
+      const record = await composeCardRecord(row, this.fetcher.lexicon);
+      if (record.name === undefined || record.id === undefined) continue;
+      this.fetcher.writeToCache(record);
+    }
   }
 
   /** Seat the read verdicts of UNKNOWN nest-target refs. Ruby fetches such
@@ -3561,7 +3888,16 @@ export class RenderEngine implements RenderEngineLike {
     const state = this.readPermission;
     if (state === undefined) return;
     if (this.verdictsJudgedAtMapSize === this.renderCards.size) return;
+    // SWEEP-SURFACE (renderSeats): judge this render's seats. Already-judged
+    // cards hit the has-checks and continue; earlier renders' cards were
+    // judged by their own render (every seat was surface-fresh then), so
+    // re-walking the whole map judges only the cascade's chase seats —
+    // rule-ladder queries for cards no view renders (the flood's verdict
+    // family). An earlier render's seat that stayed unjudged because its
+    // render died mid-prepare is re-surfaced by the page lane's recovery
+    // seam (ensurePermissionVerdicts) over the render that re-seats it.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined) {
         // The virtual cards (states.rb#virtual?): no row, no id — the read
         // rule resolves through the live name walk exactly like Ruby's
@@ -4048,7 +4384,11 @@ export class RenderEngine implements RenderEngineLike {
   private async enrichLinkTargetsForKnownClass(rootCard: RenderCard): Promise<void> {
     const targets: string[] = [];
     if (this.linkScanDoneKeys === undefined) this.linkScanDoneKeys = new Set();
+    // SWEEP-SURFACE (renderSeats): harvest link targets from this render's
+    // seats only. The rendered cards' targets seat on the render that seats
+    // the closure; earlier renders' residue holds no rendered anchor.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.linkScanDoneKeys.has(card.key)) continue;
       this.linkScanDoneKeys.add(card.key);
       const content = card.dbContent;
@@ -4164,6 +4504,7 @@ export class RenderEngine implements RenderEngineLike {
       {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
+        writeToCache: (cached) => this.fetcher.writeToCache(cached),
         cacheRecord: (cached) => this.cacheFetchedRecord(cached).then(() => undefined),
         getCard: (key) => this.renderCards.get(key),
         scannedKeys: this.warmupScannedKeys,
@@ -4340,7 +4681,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.renderCards.size === this.nestTypeOptLastSize) return;
     this.nestTypeOptLastSize = this.renderCards.size;
     const need = new Set<string>();
+    // SWEEP-SURFACE (renderSeats): scan this render's seats only.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.nestTypeOptScanned.has(card.key)) continue;
       this.nestTypeOptScanned.add(card.key);
       const content = card.dbContent;
@@ -4459,7 +4802,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.renderCards.size === this.templateLinkJunctionLastSize) return;
     this.templateLinkJunctionLastSize = this.renderCards.size;
     const need = new Set<string>();
+    // SWEEP-SURFACE (renderSeats): scan this render's seats only.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.templateLinkJunctionScanned.has(card.key)) continue;
       const content = card.dbContent;
       if (content === undefined || content === "" || !content.includes("{{")) continue;
@@ -4536,7 +4881,11 @@ export class RenderEngine implements RenderEngineLike {
    *  scan plus zero queries on an already-warm deck. */
   private async warmNestedSkinImages(): Promise<void> {
     const skinImageNames: string[] = [];
+    // SWEEP-SURFACE (renderSeats): skin cards this render seated — a warm
+    // render re-walking the whole map fetches the cascade's skin seats'
+    // +Image children solo (the flood's skin family).
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
         skinImageNames.push(`${card.name.s}+Image`);
       }
@@ -4574,6 +4923,50 @@ export class RenderEngine implements RenderEngineLike {
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let grew = false;
+      // fetch-composer batch lane (V2+V3, 2026-10-06): the round's hosts'
+      // asks ride ONE merged wave before any per-host work runs. MEASURED
+      // MECHANISM (this lane's attribution, post-reset): the per-host
+      // waves cost one round trip each (~25 arms on the Home page), and
+      // the hosts' own ladders (resolveHostItemTypeName's findRule walk
+      // over ruleNamesForCard("*content options") candidates) resolved
+      // one pair probe per candidate solo — 44 of the post-bump render's
+      // 52 pair probes. The merged wave (items ∪ the hosts' option-rule
+      // candidates) seats the whole cohort's answers in 1-2 statements,
+      // and the per-host passes then answer from the seated map / primed
+      // negatives. The per-host waves below stay — they no-op without a
+      // batch when everything is seated or asked-and-primed (the ask
+      // memory), so a host the pre-pass could not see keeps its own
+      // correct behavior. WARM RENDERES ASK NOTHING: the pre-pass runs
+      // only over this render's not-done hosts (the sweep surface), and a
+      // warm render has none — the d2v1 hops-gate failure mode (a wave
+      // proactively asking on warm renders) is structurally absent. The
+      // candidate seat is the W2b precedent's exact shape
+      // (primePreparedCardDerivedState seats the same ruleNamesForCard
+      // families for the cards seated before it — byte-proven at every
+      // cost level; this extends the same coverage to the closure's
+      // late-seated hosts).
+      const pendingHosts: RenderCard[] = [];
+      for (const card of this.renderCards.values()) {
+        if (!this.renderSeats.has(card.key)) continue;
+        if (!this.isPointerLikeHost(card)) continue;
+        if (this.pointerListHostsDone.has(card.key)) continue;
+        pendingHosts.push(card);
+      }
+      if (pendingHosts.length > 0) {
+        const merged = new Set<string>();
+        for (const host of pendingHosts) {
+          for (const item of this.pointerItemNamesOf(host)) merged.add(item);
+          for (const candidate of this.optionsRuleCandidatesOf(host)) merged.add(candidate);
+        }
+        // The hosts' resolved options cards' cql :type names (the options
+        // cards seat with the candidates): collectable MEMORY-ONLY now,
+        // so the cql type fetches ride this same wave instead of one
+        // point read per host.
+        const cqlTypeNames = new Set<string>();
+        this.collectCqlItemTypeNames(pendingHosts, new Set<string>(), cqlTypeNames);
+        for (const t of cqlTypeNames) merged.add(t);
+        if (merged.size > 0) await this.seatNamesByWave([...merged]);
+      }
       // Search-type cards join the walk as hosts: their :card_list items
       // nest through the same nest_item -> item_view_options ->
       // determine_item_view_options_type chain (card-mod-search
@@ -4586,7 +4979,12 @@ export class RenderEngine implements RenderEngineLike {
       // read verdicts precomputed exactly like list hosts').
       // Iterate the map directly (no intermediate array): the prewarmed
       // map holds the whole deck, and this filter runs every render.
+      // SWEEP-SURFACE (renderSeats): hosts this render seated — the
+      // engine-lifetime done-sets below mean an earlier render's hosts are
+      // either done already or are that render's chase residue, and
+      // re-walking them is the sweep cascade (renderSeats' doc).
       for (const card of this.renderCards.values()) {
+        if (!this.renderSeats.has(card.key)) continue;
         // The +*account cards' field records: card-mod-account
         // set/right/account/views.rb view :core nests +*email and +*password
         // (accountFieldNest, views.ts) — fields the CONTENT-based closure
@@ -4874,6 +5272,84 @@ export class RenderEngine implements RenderEngineLike {
     return undefined;
   }
 
+  /** fetch-composer batch lane (V2): the option-rule candidate names the
+   *  host's item-type walk resolves through findRule — the same pure,
+   *  sync list ruleNamesForCard emits, so the merged pre-pass wave can
+   *  seat (or negatively prime) the whole family before the per-host
+   *  ladders run. Candidates whose parse raises ride the same tolerance
+   *  primePreparedCardDerivedState applies (Codename/NameNotFound skip). */
+  private optionsRuleCandidatesOf(host: RenderCard): string[] {
+    const out: string[] = [];
+    try {
+      for (const candidate of ruleNamesForCard(
+        this.structurePatternInputForSync(host),
+        "*content options",
+      )) {
+        out.push(candidate);
+      }
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return out;
+      }
+      throw err;
+    }
+    return out;
+  }
+
+  /** fetch-composer batch lane (V2): the cql :type names the hosts' item-
+   *  type walks resolve (itemTypeIdOf's Search/Set arm -> cqlItemTypeId's
+   *  fetchByName), collected MEMORY-ONLY from options cards the merged
+   *  wave just seated — so the type-card fetches ride the same wave
+   *  instead of one point read per host. Mirrors itemTypeIdOf's traversal
+   *  shape (pointer/list recurse into their options card; search/set
+   *  terminals parse their JSON) without asking anything: an options card
+   *  the merged wave did not seat simply contributes nothing here, and
+   *  the per-host pass resolves it the base way. A non-JSON content is
+   *  the BadQuery-raise class — the view seam owns the raise; the
+   *  collector silently skips (the same content the boundary test pins). */
+  private collectCqlItemTypeNames(
+    hosts: readonly RenderCard[],
+    visiting: Set<string>,
+    out: Set<string>,
+  ): void {
+    for (const host of hosts) {
+      this.collectCqlItemTypeNamesOf(host, visiting, out);
+    }
+  }
+
+  private collectCqlItemTypeNamesOf(
+    card: RenderCard,
+    visiting: Set<string>,
+    out: Set<string>,
+  ): void {
+    if (visiting.has(card.key)) return;
+    visiting.add(card.key);
+    if (
+      card.typeCode === SEARCH_TYPE_CODE ||
+      card.typeCode === SET_TYPE_CODE ||
+      card.typeName === "Search"
+    ) {
+      const content = card.dbContent?.toString();
+      if (content === undefined || content.trim() === "") return;
+      let query: unknown;
+      try {
+        query = JSON.parse(content);
+      } catch {
+        return; // the raise is cqlItemTypeId's (view-conditional) business
+      }
+      if (query === null || typeof query !== "object" || Array.isArray(query)) return;
+      const type = (query as Record<string, unknown>)["type"];
+      if (typeof type === "string" && type !== "" && type !== "_left") out.add(type);
+      return;
+    }
+    if (card.typeCode === "pointer" || card.typeCode === "list") {
+      if (this.optionsCardCache.has(card.key)) {
+        const opt = this.optionsCardCache.get(card.key);
+        if (opt !== undefined) this.collectCqlItemTypeNamesOf(opt, visiting, out);
+      }
+    }
+  }
+
   /** cql_search.rb:14-19 item_type_id + :76-78 plausible_type?:
    *  `type = cql_hash[:type]; type = type&.card_id if plausible_type? type;
    *  type if type.is_a? Integer`. cql_content parses the db_content JSON
@@ -4929,8 +5405,12 @@ export class RenderEngine implements RenderEngineLike {
    *  the line resolves to the REAL card and the item renders that
    *  card's stored display name — the phantom fallback fires only for
    *  true fetch misses. */
-  private async enrichPointerListItems(card: RenderCard): Promise<void> {
-    const items = card.dbContent
+  /** The pointer/list host's item names (the exact transform
+   *  enrichPointerListItems renders from). Extracted verbatim for the
+   *  closure's merged-wave pre-pass (fetch-composer batch lane V3), which
+   *  must collect the SAME names the per-host pass would ask. */
+  private pointerItemNamesOf(card: RenderCard): string[] {
+    return card.dbContent
       .toString()
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
@@ -4948,6 +5428,22 @@ export class RenderEngine implements RenderEngineLike {
       // the session-relative "_user" items (Card::Name.session) the sync
       // path resolves — signup alert email+*from's "_user" item.
       .map((s) => resolvePointerItemName(s, card.name));
+  }
+
+  /** The pointer/list host filter the closure's host loop applies (its
+   *  iteration surface; shared by the merged-wave pre-pass). */
+  private isPointerLikeHost(card: RenderCard): boolean {
+    return (
+      card.typeCode === "pointer" ||
+      card.typeCode === "list" ||
+      card.typeCode === "search_type" ||
+      card.typeCode === "skin" ||
+      card.typeName === "Search"
+    );
+  }
+
+  private async enrichPointerListItems(card: RenderCard): Promise<void> {
+    const items = this.pointerItemNamesOf(card);
     const missNames: string[] = [];
     // db-roundtrip-elimination lane (W3a): the card's item names seat in
     // ONE batched wave before the per-item ladder loop (the census's
@@ -5565,7 +6061,11 @@ export class RenderEngine implements RenderEngineLike {
     // render-engine / depth-sweep query-count gates pin the round-trip
     // shape, and the loop below would skip every card anyway.
     let hasDiscussionCard = false;
+    // SWEEP-SURFACE (renderSeats): this render's seats carry the closure's
+    // discussion cards (the page's own nests); a warm render's map walk
+    // over residue only finds cascade seats to run rule ladders against.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id !== undefined && card.name.rightName?.key === "discussion") {
         hasDiscussionCard = true;
         break;
@@ -5577,6 +6077,7 @@ export class RenderEngine implements RenderEngineLike {
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
       if (card.name.rightName?.key !== "discussion") continue;
       this.taskVerdicts.set(
@@ -5600,7 +6101,11 @@ export class RenderEngine implements RenderEngineLike {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
+    // SWEEP-SURFACE (renderSeats): task verdicts for this render's seats —
+    // earlier renders' cards carry their verdicts already (the has-check
+    // below would skip them; the cascade's seats would not).
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
       const verdicts = await allTaskVerdictsForCard(
         this.fetcher,
@@ -6749,6 +7254,32 @@ export class RenderEngine implements RenderEngineLike {
    * renders those nests as unknown-card views, and so does the port's nest
    * path.
    */
+  /** THE SWEEP SURFACE's closure half (renderSeats' doc): the keys this
+   *  render's root closure reaches — closureWarm's BFS shape (nest-reference
+   *  reachability over the render-card map), collecting instead of
+   *  checking. Missing refs simply stop the walk down that branch (the cold
+   *  path seats them and enrichAndStore puts them in renderSeats); the
+   *  search-card gate is a warmth question, not reachability, and does not
+   *  belong here. Memory-only, bounded by the closure the map holds. */
+  private closureSurface(record: CardRecord): Set<string> {
+    const surface = new Set<string>();
+    if (record.key === undefined || record.key === "") return surface;
+    if (!this.renderCards.has(record.key)) return surface;
+    const queue: string[] = [record.key];
+    while (queue.length > 0) {
+      const key = queue.pop() as string;
+      if (surface.has(key)) continue;
+      const card = this.renderCards.get(key);
+      if (card === undefined) continue;
+      surface.add(key);
+      for (const ref of this.cardReferenceKeys(card)) {
+        if (this.structureRefMisses.has(ref)) continue;
+        if (!surface.has(ref) && this.renderCards.has(ref)) queue.push(ref);
+      }
+    }
+    return surface;
+  }
+
   private closureWarm(record: CardRecord): boolean {
     if (record.key === undefined || record.key === "") return false;
     if (!this.renderCards.has(record.key)) return false;
@@ -6923,6 +7454,7 @@ export class RenderEngine implements RenderEngineLike {
     };
     this.renderCards.set(key, card);
     if (record.id !== undefined) this.idsByKey.set(key, record.id);
+    this.renderSeats.add(key);
     this.renderCardsGrewSinceClosure = true;
     return card;
   }
@@ -7391,6 +7923,7 @@ export class RenderEngine implements RenderEngineLike {
     const ctx: PrefetchContext = {
       driver: this.fetcher.driver,
       lexicon: this.fetcher.lexicon,
+      writeToCache: (record) => this.fetcher.writeToCache(record),
       cacheRecord: (record) => this.cacheFetchedRecord(record),
     };
     const composed = await composeAndCacheSqlRows(fetched, ctx);
