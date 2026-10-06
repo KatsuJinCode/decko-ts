@@ -47,7 +47,11 @@ import { decodeName } from "../../src/server/worker-shared-surface.js";
 function parsePath(
   pathname: string,
   searchParams?: URLSearchParams,
-): { name: string; view: string; params?: Record<string, string> } | { kind: "api" } | { kind: "notFound" } {
+):
+  | { name: string; view: string; params?: Record<string, string> }
+  | { kind: "new"; typeName: string }
+  | { kind: "api" }
+  | { kind: "notFound" } {
   // strip trailing slash, drop leading slash
   const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
   if (path === "") return { name: "Home", view: "open" };
@@ -75,6 +79,22 @@ function parsePath(
     // path re-derives bareness for the requestedView (the "open" here is
     // parsePath's pinned default, not a requested view).
     return { name, view: "open" };
+  }
+  if (segments.length === 2 && segments[0] === "new") {
+    // THE /new/:type ARM (route-gaps lane, 2026-10-05): decko's
+    // engine_routes.rb:22 `get "new/:type" => "card#read", view: "new"` —
+    // the card-creation route the deck's own chrome links as /new/Sign_up
+    // (the *account_links navbar arm and the signin form's "...or sign up!"
+    // link; live-signin-ref.html). ROUTE PRECEDENCE: Rails matches this arm
+    // before the generic :mark/:view route (engine_routes.rb:51), so
+    // /new/<anything> never renders the card "new" — the same precedence
+    // here, ahead of the 2-segment arm below. The route carries NO mark:
+    // card_class.rb:104-133 sets opts[:type] from the segment while
+    // implicit_mark resolves to "" (the unknown:true :new view needs no
+    // name) — the rendered card is a NEW card of the requested type.
+    const typeName = decodeName(segments[1]!);
+    if (typeName === undefined || typeName === "") return { kind: "notFound" };
+    return { kind: "new", typeName };
   }
   if (segments.length === 2) {
     const name = decodeName(segments[0]!);

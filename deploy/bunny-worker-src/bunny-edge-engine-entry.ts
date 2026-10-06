@@ -45,6 +45,9 @@
 //   GET /                  -> render "Home" :open in the full layout shell
 //   GET /<name>            -> render <name> :open
 //   GET /<name>/<view>     -> render <name> <view> (the shared read grammar)
+//   GET /new/<type>        -> the create form for a new card of <type>
+//                             (200 may-create / 403 denied / 404 unknown type
+//                             — bunny-edge-new-card-form.ts)
 //   GET /_status           -> JSON health (db_ok, card_count, env var NAMES)
 //   GET /api/status        -> JSON health (worker.ts shape)
 //   GET /api/card/<name>   -> JSON metadata (worker.ts shape)

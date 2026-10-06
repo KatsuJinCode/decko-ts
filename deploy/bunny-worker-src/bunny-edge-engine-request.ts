@@ -59,6 +59,7 @@ import {
   renderDeckoServerErrorPage,
   renderFullChromeErrorPage,
 } from "./bunny-edge-error-page.js";
+import { newCardRouteResponse } from "./bunny-edge-new-card-form.js";
 
 /** The deck the engine request renders through; booted once per isolate by
  *  the entry (getDeck) and passed in, so this module never touches env or
@@ -339,6 +340,16 @@ async function dispatchEngineRequest(
   const parsed = parsePath(url.pathname, url.searchParams);
 
   if ("kind" in parsed) {
+    if (parsed.kind === "new") {
+      // THE /new/:type ARM (route-gaps lane, 2026-10-05): decko's
+      // engine_routes.rb:22 card-creation route — the signup journey's
+      // route the deck's own chrome links as /new/Sign_up. The create
+      // form/denial/not-found decision (the anonymous viewer's
+      // ok?(:create) on the virtual card) lives in
+      // bunny-edge-new-card-form.ts; the measured 404 this replaces is
+      // capture-log-demo-nav.jsonl seq 97.
+      return await newCardRouteResponse(deck, parsed.typeName);
+    }
     if (parsed.kind === "notFound") {
       // THE NO-ROUTE CLASS (p2-error-shell lane, 2026-10-03): paths that
       // never parse to a card route answer the staging ROUTER's own minimal
