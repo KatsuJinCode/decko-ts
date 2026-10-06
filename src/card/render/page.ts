@@ -329,6 +329,14 @@ async function renderPageBytesWithPageConfigInner(
     await engine.ensureCoreAdminRuntime();
   }
 
+  // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof) — main-body boundary:
+  // the prepare render's tail warms and the page lane's own seat paths after
+  // it (warmupLayoutReferences, prepareNestClosureSearches) seat cards the
+  // prepare render's two structure passes never saw. Process every seat of
+  // this page BEFORE the main body dispatch reads their content. See
+  // RenderEngine.applyLateSeatStructureContent's doc.
+  await engine.applyLateSeatStructureContent();
+
   // The root format: main! context (h1 header, focal gates) + production
   // quiet-error semantics for nested views. The default nest view needs no
   // override — RenderFormat.defaultNestView reads the page-active engine
@@ -419,6 +427,12 @@ async function renderPageBytesWithPageConfigInner(
       await engine.refreshVerdicts();
     }
   }
+  // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof) — layout boundary: the
+  // layout warm-up above (warmUpLayoutNests) and its search pass seat cards
+  // between the main-body render and the layout content render; process
+  // them before the layout dispatch reads their content. See
+  // RenderEngine.applyLateSeatStructureContent's doc.
+  await engine.applyLateSeatStructureContent();
   const interior =
     layout.kind === "card"
       ? rootFormat.processLayoutContent(layout.layoutCardContent ?? "")
