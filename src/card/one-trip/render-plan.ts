@@ -19,7 +19,12 @@
 //     the NEXT lane after fold-10). A recorded plan is the page's access
 //     set in call order; a replay executes it as ONE driver.batch.
 
-import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import {
+  decomposeMergedRows,
+  foldRenderPlanEntries,
+  replayFoldWantsMerge,
+} from "./replay-fold.js";
 
 /** The NAMED residue classes. Every class names WHO issues the statement
  *  and WHY the payload cannot cover it. This registry is the honest cost
@@ -207,11 +212,52 @@ export function recordRenderPlan(
 /** Replay a recorded plan as ONE batched round trip (the AutoFetch
  *  injection shape: the plan's statements ride one driver.batch; chunking
  *  to a driver's per-statement parameter ceiling is the driver's batch
- *  concern, not the plan's). Returns the driver's results in plan order. */
+ *  concern, not the plan's). Returns the driver's results in plan order.
+ *
+ *  THE FOLD (fold-plan-replay lane): when the plan's read classes can merge
+ *  — the per-class json_each statements replay-fold.ts builds — the batch
+ *  carries those instead of one statement per entry. The cost unit on the
+ *  wire is the EXECUTE ENTRY, not the POST (hrana has no server-side
+ *  set-based execution; the measured edge term is ~55 ms per statement,
+ *  gate2-request-trace-lane.md), so collapsing 108 entries to ~30 is the
+ *  whole win. The fold is a cache-warming transformation only: the merged
+ *  results are decomposed back into per-entry result sets so this function
+ *  still returns one result per plan entry, in plan order, exactly as the
+ *  unfolded path did — armRenderPlan's 1:1 contract is unchanged.
+ *
+ *  If the folded batch throws, the ladder runs instead: the fold is an
+ *  optimization and a plan is never a correctness dependency (the same
+ *  graceful-degradation contract render-gate.ts carries). */
 export async function replayRenderPlan(
   driver: SQLDatabaseDriver,
   plan: RenderPlan,
 ): Promise<unknown[]> {
+  if (replayFoldWantsMerge()) {
+    const folded = foldRenderPlanEntries(plan.entries);
+    try {
+      const results = await driver.batch(folded.statements);
+      const perEntry: unknown[] = new Array(plan.entries.length);
+      for (const slice of folded.merged) {
+        const result = results[slice.statementIndex] as SQLQueryResult | undefined;
+        const perEntryRows = decomposeMergedRows(slice, result);
+        for (const [entryIndex, rows] of perEntryRows) {
+          perEntry[entryIndex] = { rows, rowsAffected: 0 };
+        }
+      }
+      for (const u of folded.unfolded) {
+        perEntry[u.entryIndex] = results[u.statementIndex];
+      }
+      // A decomposed entry with no rows still needs a result object: an
+      // entry whose source statement returned no rows must arm as an EMPTY
+      // result, never as undefined (undefined would read as a miss).
+      for (let i = 0; i < plan.entries.length; i++) {
+        if (perEntry[i] === undefined) perEntry[i] = { rows: [], rowsAffected: 0 };
+      }
+      return perEntry;
+    } catch {
+      // fall through to the ladder
+    }
+  }
   const statements: SQLStatement[] = plan.entries.map((entry) => ({
     sql: entry.sql,
     params: entry.params,

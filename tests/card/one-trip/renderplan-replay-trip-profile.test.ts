@@ -42,6 +42,7 @@ import {
   classifyResidueStatement,
   recordRenderPlan,
 } from "../../../src/card/one-trip/render-plan.js";
+import { foldRenderPlanEntries } from "../../../src/card/one-trip/replay-fold.js";
 import {
   MIRROR_COPY_PATH,
   TripCapturingDriver,
@@ -212,28 +213,64 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
       ).toBe(FLOOR_TRIPS);
 
       // THE NO-SOLO-READS PIN: the capture's covered-family statements are
-      // exactly the plan's entries — the ONE replay batch delivering the
-      // plan — and nothing beyond it. Any covered read the plan did not
-      // answer would be a SOLO live trip, which the 5-trip floor above
-      // already forbids; this pins the statement side of the same contract.
-      const captureCovered = replay.statements.filter((s) =>
-        isPipelineAbleRenderStatement(s.sql),
+      // exactly the plan's own batch — the ONE replay batch delivering the
+      // plan, in either posture — and nothing beyond it. Any covered read
+      // the plan did not answer would be a SOLO live trip, which the 5-trip
+      // floor above already forbids; this pins the statement side of the
+      // same contract.
+      //
+      // "The plan's own batch" is the ladder's entry list when the fold is
+      // off (DECKO_REPLAY_FOLD=0) and the FOLDED statement list when it is
+      // on (replay-fold.ts merges the plan's read classes into per-class
+      // json_each statements). Deriving the allowed set from the plan rather
+      // than hard-coding either shape keeps the pin's intent — nothing
+      // covered travels live beyond the replay batch — while letting the
+      // batch's statement SHAPE change, which is what the fold is.
+      const folded = foldRenderPlanEntries(planEntries);
+      const keyOf = (s: { sql: string; params: unknown[] }): string =>
+        `${s.sql}::${JSON.stringify(s.params)}`;
+      // Allowed = the plan's own entries (the seat's card slices are plan
+      // entries too — that is what the pin has always allowed) PLUS the
+      // folded batch's statements, which carry no entry text of their own.
+      const planKeys = new Set(planEntries.map(keyOf));
+      const foldedKeys = new Set(folded.statements.map(keyOf));
+      for (const key of foldedKeys) planKeys.add(key);
+      const captureCovered = replay.statements.filter(
+        (s) => isPipelineAbleRenderStatement(s.sql) || planKeys.has(keyOf(s)),
       );
-      const planKeys = new Set(
-        planEntries.map((e) => `${e.sql}::${JSON.stringify(e.params)}`),
-      );
-      const excess = captureCovered.filter(
-        (s) => !planKeys.has(`${s.sql}::${JSON.stringify(s.params)}`),
-      );
+      const excess = captureCovered.filter((s) => !planKeys.has(keyOf(s)));
       expect(
         excess.length,
         `covered-family statements beyond the plan: ${excess.length} ` +
-          `(capture covered ${captureCovered.length}, plan ${planEntries.length}). ` +
+          `(capture covered ${captureCovered.length}, plan batch ${folded.statements.length} ` +
+          `from ${planEntries.length} entries). ` +
           `Excess samples: ${excess
             .slice(0, 4)
             .map((s) => `[${s.sql.slice(0, 100)}] params=${JSON.stringify(s.params).slice(0, 60)}`)
             .join(" | ")}`,
       ).toBe(0);
+
+      // THE FOLD-SHAPE PIN (fold-plan-replay lane): with the fold ON the
+      // replay batch must be STRICTLY SMALLER than the plan's entry count —
+      // the statement-count collapse is the measurement this lane exists
+      // for, and a pin that only counted trips would not see it.
+      if (process.env.DECKO_REPLAY_FOLD !== "0") {
+        expect(
+          folded.statements.length,
+          `the folded batch must carry fewer statements than the plan has entries ` +
+            `(folded ${folded.statements.length} vs plan ${planEntries.length})`,
+        ).toBeLessThan(planEntries.length);
+        // Distinct folded keys delivered: a folded statement's (sql, params) can
+        // coincide with a seat card-slice's, so the raw capture can count the
+        // same statement twice — the distinct count is the batch's size.
+        const delivered = new Set(
+          replay.statements.filter((s) => foldedKeys.has(keyOf(s))).map(keyOf),
+        );
+        expect(
+          delivered.size,
+          "the replay batch must deliver every folded statement",
+        ).toBe(folded.statements.length);
+      }
 
       // THE ORDER-DEPENDENT PIN: the search-count still travels live (the
       // one genuinely sequential trip the floor keeps).
