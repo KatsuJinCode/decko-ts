@@ -38,6 +38,7 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { DECK_DATA_VERSION_STATEMENT } from "../../../src/card/render.js";
 import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
 import { renderPageBytes } from "../../../src/card/render/page.js";
 import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
@@ -155,14 +156,26 @@ describe("the async-view seam: the head read-set is warm after prepare", () => {
     expect(s.engine.fetchRenderCard("*all+*style+*asset output")?.dbContent).toBe(STYLE_SRC);
   });
 
-  it("is idempotent: a warm re-render adds no round trips", async () => {
+  it("is idempotent: a warm re-render adds no round trips beyond the freshness gate", async () => {
     const s = storage!;
     await s.engine.render("Async Head Probe", "core");
     const before = s.counting.snapshot();
     await s.engine.render("Async Head Probe", "core");
     const after = s.counting.snapshot();
-    expect(after.statements).toBe(before.statements);
-    expect(after.roundTrips).toBe(before.roundTrips);
+    // 2026-10-06 a1-mods-validation lane: this pin previously expected a
+    // zero-statement warm re-render. d19ec179 (2026-10-05, B-arm freshness
+    // repair) landed the deck_data_version freshness gate AFTER that pin
+    // was written: the render entry reads the stamp ONCE per request
+    // (render.ts DECK_DATA_VERSION_STATEMENT, in-source comment
+    // "Warm-render cost: exactly ONE statement", delivery contract:79) and
+    // resets derived caches only when it moved. The gate is the documented
+    // design, so the invariant is now: exactly ONE added statement, and it
+    // IS the freshness stamp — anything beyond that would be a real cache
+    // regression, which is what this test exists to catch.
+    expect(after.statements).toBe(before.statements + 1);
+    expect(after.roundTrips).toBe(before.roundTrips + 1);
+    const fresh = s.counting.statements.slice(-1);
+    expect(fresh).toEqual([DECK_DATA_VERSION_STATEMENT]);
   });
 });
 
