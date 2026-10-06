@@ -1343,6 +1343,15 @@ function buildRegistry() {
 // CLI
 // ---------------------------------------------------------------------------
 
+// The miners and surfaceMod are EXPORTED so the view enumerator can be
+// asserted DIRECTLY against the Ruby-truth oracle
+// (tests/tools/mod-porting-harness/format-census-view-set.test.ts) rather
+// than only through its committed surface.json artifact — a stale artifact
+// would otherwise be able to satisfy the assertion without the enumerator
+// having been run. Importing this module must not run the CLI: the guard at
+// the bottom of the file runs main() only when this file is the entry point.
+export { mineViews, mineEvents, mineBaskets, surfaceMod };
+
 function main() {
   const [cmd, modArg] = process.argv.slice(2);
   if (cmd === "surface") {
@@ -1375,4 +1384,9 @@ function main() {
   }
 }
 
-main();
+// Entry-point guard: `node mod-harness.mjs <cmd>` runs the CLI; an
+// `import { mineViews } from ".../mod-harness.mjs"` (the census-view-set
+// test) only loads the miners.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
