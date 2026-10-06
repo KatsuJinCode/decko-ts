@@ -32,11 +32,15 @@ import { dumpRows } from "./parse-dump.mjs";
 
 /** Split a DDL file into executable statements: strip `--` comments
  *  (quote-aware; the schema file carries no "--" inside literals) and
- *  split on ";". Same technique proven in tests (fetch-test-storage). */
+ *  split on ";". Same technique proven in tests (fetch-test-storage) —
+ *  TRIGGER-AWARE: the [ENGINE-FRESHNESS] block's trigger bodies carry ";"
+ *  before their closing "END;", so the scanner tracks CREATE TRIGGER
+ *  BEGIN/END and keeps body semicolons verbatim. */
 export function splitSqlStatements(ddl) {
   const statements = [];
   let current = "";
   let quote = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -56,7 +60,24 @@ export function splitSqlStatements(ddl) {
       current += " \n";
       continue; // i sits on the "\n"; the loop's i++ moves past it
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;
@@ -79,6 +100,8 @@ export function parseTargetSchema(ddlPath) {
   const statements = splitSqlStatements(ddl);
   const createTables = [];
   const createIndexes = [];
+  const createTriggers = [];
+  const postLoadStatements = [];
   const pragmas = [];
   const tableColumns = {};
   for (const statement of statements) {
@@ -98,14 +121,27 @@ export function parseTargetSchema(ddlPath) {
       createIndexes.push(statement);
       continue;
     }
+    // [ENGINE-FRESHNESS]: the stamp triggers ride AFTER the bulk load (a
+    // trigger present during the row load would fire per row — millions of
+    // pointless stamp UPDATEs and a meaningless final version); the stamp
+    // row's INSERT is applied with them, after the load, so a fresh import
+    // ends at version 0 and the render gate reads a readable row.
+    if (/^CREATE TRIGGER /i.test(statement)) {
+      createTriggers.push(statement);
+      continue;
+    }
+    if (/^INSERT INTO "deck_data_version" /.test(statement)) {
+      postLoadStatements.push(statement);
+      continue;
+    }
     if (/^PRAGMA /i.test(statement)) {
       pragmas.push(statement);
       continue;
     }
     // Anything else in the DDL is skipped. When the schema file grows a
-    // new statement kind, extend the three patterns above so it is applied.
+    // new statement kind, extend the patterns above so it is applied.
   }
-  return { createTables, createIndexes, pragmas, tableColumns };
+  return { createTables, createIndexes, createTriggers, postLoadStatements, pragmas, tableColumns };
 }
 
 /**
@@ -405,6 +441,11 @@ export async function importDump(opts) {
 
   // Indexes after the bulk load (see module doc).
   for (const statement of schema.createIndexes) await driver.query(statement, []);
+  // [ENGINE-FRESHNESS] stamp triggers + row LAST — after the bulk load, so
+  // the per-row trigger fire never happens during import (see
+  // parseTargetSchema's note).
+  for (const statement of schema.createTriggers) await driver.query(statement, []);
+  for (const statement of schema.postLoadStatements) await driver.query(statement, []);
   // Leave the database in a sane durability state.
   await driver.query("PRAGMA synchronous = NORMAL", []);
   await driver.query("PRAGMA wal_checkpoint(TRUNCATE)", []);

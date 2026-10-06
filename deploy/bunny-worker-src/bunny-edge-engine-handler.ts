@@ -88,12 +88,21 @@ import { installDeckNameEnvironment } from "../../src/server/worker-shared-surfa
  *  object. Same convention as the reader's WorkerEnv. */
 export type EdgeEnv = Record<string, string | undefined>;
 
-/** Credential name pairs accepted, documented pair first — same order and
- *  same rationale as the reader (bunny-worker.ts DB_CREDENTIAL_VAR_NAMES):
- *  BUNNY_DATABASE_URL / BUNNY_DATABASE_AUTH_TOKEN are the names bunny.net
- *  writes via "Add Secrets to Edge Script"; BUNNY_DB_URL / BUNNY_DB_TOKEN
- *  are this repo's historical names. */
-const DB_CREDENTIAL_VAR_NAMES = [
+/** Credential name pairs accepted, PLAIN pair first (db-repoint lane,
+ *  2026-10-05): DECKO_DB_URL / DECKO_DB_TOKEN are PLAIN edge-script
+ *  variables — settable through the management API by name, no secrets
+ *  round-trip — so the serving database can be repointed by a variables
+ *  write alone. Empty/absent falls through to the secret pairs in their
+ *  documented order, so an edge configured only with secrets resolves
+ *  exactly as before this change. The lightweight reader
+ *  (bunny-worker.ts DB_CREDENTIAL_VAR_NAMES) keeps its own order; this
+ *  list is the full-engine handler's. BUNNY_DATABASE_URL /
+ *  BUNNY_DATABASE_AUTH_TOKEN are the names bunny.net writes via "Add
+ *  Secrets to Edge Script"; BUNNY_DB_URL / BUNNY_DB_TOKEN are this repo's
+ *  historical names. Exported for the resolution-order tests, same as the
+ *  reader's twin (bunny-edge-worker.test.ts imports that one). */
+export const DB_CREDENTIAL_VAR_NAMES = [
+  { url: "DECKO_DB_URL", token: "DECKO_DB_TOKEN" },
   { url: "BUNNY_DATABASE_URL", token: "BUNNY_DATABASE_AUTH_TOKEN" },
   { url: "BUNNY_DB_URL", token: "BUNNY_DB_TOKEN" },
 ] as const;
@@ -250,9 +259,13 @@ async function statusResponse(
         ok: true,
         driver: "BunnyDbDriver (hrana v2 over fetch)",
         card_count: n,
-        // Names only, never values.
+        // Names only, never values. credential_source says WHICH KIND of
+        // variable pair supplied the endpoint (the db-repoint lane's
+        // plain-vs-secret distinction) — derivable from the names, reported
+        // explicitly so post-publish verification can assert it.
         url_var: config.urlVar,
         token_var: config.tokenVar,
+        credential_source: config.urlVar === "DECKO_DB_URL" ? "plain-variable" : "secret",
       },
       version: "2.0.0",
     });

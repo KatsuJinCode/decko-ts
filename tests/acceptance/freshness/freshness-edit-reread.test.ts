@@ -1,6 +1,15 @@
 // The delivery contract's B "No-cache and freshness rules" arm, as isolated
 // engine tests: the commit-edit reread semantics.
 //
+// PORTED to the deployed edge lineage (lane-edge-security-2026-10-05, base
+// fe65cf60) from branch lane-b-freshness-2026-10-05 commit d19ec179
+// (decko-ts-restored), where the suite passed 8/8 against the same engine
+// design. The edge live site's leak is the SAME defect family on THIS
+// lineage: the deck engine boots once per isolate
+// (deploy/bunny-worker-src/bunny-edge-engine-handler.ts getDeck's
+// deckPromise memo), so every derived cache — including cached permission
+// verdicts — lives across requests and nothing invalidated them.
+//
 // Contract text under test (deliverables/DELIVERY-CONTRACT-AND-RECOVERY-PLAN-
 // 2026-10-05.md:79):
 //   "On isolated fixtures, commit an edit, change a nested dependency, change
@@ -113,17 +122,19 @@ function openRuntime(): FileRuntime {
 }
 
 /** Apply the schema. Mirrors createRenderTestStorage's DDL loop
- *  (tests/card/render/render-test-storage.ts:110-113). */
+ *  (tests/card/render/render-test-storage.ts). */
 async function applySchema(rt: FileRuntime): Promise<void> {
   for (const statement of splitSqlStatements(DDL)) {
     await rt.query(statement, []);
   }
 }
 
-/** Insert one card row. Mirrors seedCard's column list (tests/card/render/
- *  render-test-storage.ts:194-226) minus the fields these scenarios do not
- *  exercise; the columns the render and permission paths actually read
- *  (name/key/type_id/db_content/read_rule_id/read_rule_class) are all here. */
+/** Insert one card row. Mirrors seedCard's column list
+ *  (tests/card/render/render-test-storage.ts) minus the fields these
+ *  scenarios do not exercise; the columns the render and permission paths
+ *  actually read (name/key/type_id/db_content/read_rule_id/read_rule_class)
+ *  are all here. current_revision_id stays NULL (nullable; no history view
+ *  runs in these scenarios). */
 async function insertCard(
   rt: FileRuntime,
   opts: {
@@ -153,7 +164,7 @@ async function insertCard(
       // The key column is the DeckoName canonical key, NOT the raw name: the
       // fetch layer looks a card up by DeckoName.parse(name).key, which
       // snake_cases multiword names ("Editable Card" -> "editable_card").
-      // seedCard derives it the same way (render-test-storage.ts:191-193).
+      // seedCard derives it the same way.
       hasName ? DeckoName.parse(opts.name as string).key : null,
       opts.codename ?? null,
       opts.leftId ?? null,
@@ -173,7 +184,7 @@ async function insertCard(
 }
 
 /** Insert one card_references row -- the reference graph the read-rule cache
- *  reads (mirrors seedReference, tests/card/render/render-test-storage.ts:232). */
+ *  reads (mirrors seedReference, tests/card/render/render-test-storage.ts). */
 async function insertReference(
   rt: FileRuntime,
   refererId: number,
@@ -410,7 +421,7 @@ describe("B freshness 4: revoking anonymous access denies the next anonymous req
     // Commit the revocation the way the write path commits a rule save: the
     // rule's content AND its party reference row. The committed party list
     // the read-permission state reads is the card_references graph, not the
-    // content bytes (src/card/permissions/read-rules.ts statement 2, the
+    // content bytes (src/card/permissions/read-rules.ts, the
     // read_rule_cache.rb port; a save that changed only content would not
     // revoke). The rule id is unchanged. Both mutations ride the
     // version-stamp triggers (cards + card_references).

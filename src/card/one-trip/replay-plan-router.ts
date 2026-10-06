@@ -34,8 +34,7 @@ import type {
   SQLQueryResult,
   SQLStatement,
 } from "../../server/driver.js";
-import { classifyResidueStatement } from "./render-plan.js";
-import type { RenderPlanEntry } from "./render-plan.js";
+import { isFreshnessStampRead, type RenderPlanEntry } from "./render-plan.js";
 import {
   buildDriftArmIndex,
   mergeDriftArmIndex,
@@ -65,9 +64,15 @@ export function isReadOnlyStatement(sql: string): boolean {
  *  class OUT of plans (render-plan.ts isPipelineAbleRenderStatement); this
  *  is the same exclusion enforced where the plan is SERVED, so a seeded or
  *  drifted plan that does carry the entry still cannot intercept it
- *  (integration assembly r3, 2026-10-06 — the stamp-read-vs-plan pin). */
+ *  (integration assembly r3, 2026-10-06 — the stamp-read-vs-plan pin).
+ *  ONE SHAPE, ONE PREDICATE (r5 seat-merge adjudication, 2026-10-06): the
+ *  shape test is the shared isFreshnessStampRead — the exact predicate the
+ *  recorder filter and the classifier's "freshness-stamp" class test — so
+ *  recorder, classifier, and this serve-side guard cannot disagree about
+ *  what a stamp read is (the trunk form keyed the wider classify regex,
+ *  whose extra breadth covered statement shapes the engine never issues). */
 function isGateStateStatement(sql: string): boolean {
-  return classifyResidueStatement(sql) === "freshness-stamp-read";
+  return isFreshnessStampRead(sql);
 }
 
 export class ReplayPlanRouter implements SQLDatabaseDriver {
@@ -123,6 +128,12 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     // Gate state is answered live even when a plan entry matches exactly
     // (see isGateStateStatement) — the map is consulted only for page data.
+    // The check is UNCONDITIONAL (not gated on planResults): when unarmed
+    // the map consult is a no-op anyway, and the unconditional form keeps
+    // the never-serve property readable in one place. The drift index is
+    // likewise unreachable for gate state: the stamp read carries no binds
+    // (WHERE "id" = 1) and the drift serve composes only drifted IN-list
+    // asks of fold classes, so the stamp read always falls through to live.
     const served =
       isGateStateStatement(sql) ? undefined : this.planResults?.get(renderPlanResultKey(sql, params));
     if (served !== undefined) return served as SQLQueryResult<T>;
@@ -143,11 +154,17 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     // Consult per member; only the misses ride a real batch trip. Results
     // reassemble in statement order, so the caller sees exactly the shape
     // an all-live batch would have produced (a hit's rows ARE the rows the
-    // database returned for that statement against this deck).
+    // database returned for that statement against this deck). A stamp
+    // member is always a miss (the same never-serve property as query()
+    // above) — it rides the live batch and never disarms (it is a read).
     const served: (SQLQueryResult | undefined)[] = new Array(statements.length);
     const misses: number[] = [];
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i] as { sql: string; params?: unknown[] } | undefined;
+      // Gate-state member (the stamp read) is always a miss — the same
+      // never-serve property as query() above — and the drift serve below
+      // cannot intercept it (no binds, no IN-list, not a fold class), so
+      // it rides the live batch and never disarms (it is a read).
       let hit =
         stmt === undefined || isGateStateStatement(stmt.sql)
           ? undefined

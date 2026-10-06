@@ -61,8 +61,8 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
     "The dangling-side canonical map (engine-lifetime memoized deck statement; search-result collision class bookkeeping).",
   ],
   [
-    "freshness-stamp-read",
-    "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, delivery contract:79) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it.",
+    "freshness-stamp",
+    "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, delivery contract:79) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it. (Registered as \"freshness-stamp-read\" on the pre-merge trunk; renamed to the seat lane's class name in the r5 adjudication — one registry entry, one shape predicate: isFreshnessStampRead.)",
   ],
   [
     "closure-prefetch-batch",
@@ -106,15 +106,37 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
   ],
 ]);
 
+/** THE FRESHNESS-STAMP READ SHAPE (per-viewer-seat lane, 2026-10-06): the
+ *  render entry's per-request invalidation probe (src/card/render.ts
+ *  DECK_DATA_VERSION_STATEMENT). One shape, one predicate — the recorder
+ *  filter (isPipelineAbleRenderStatement), the residue classifier below,
+ *  and the replay router's never-serve guard (replay-plan-router.ts) all
+ *  test THIS predicate, so the property "plans never absorb the freshness
+ *  stamp read" (acfb1977's exclusion, ported here) holds in every posture
+ *  a plan can reach the router from: recorded, store-built, seeded, legacy. */
+export function isFreshnessStampRead(sql: string): boolean {
+  return /SELECT "version" FROM "deck_data_version" WHERE "id" = 1/i.test(sql);
+}
+
 /** Classify one statement's SQL text into a residue class, or undefined
  *  when the registry does not know it (a registry bug — tests fail). */
 export function classifyResidueStatement(sql: string): string | undefined {
+  // [ENGINE-FRESHNESS] the render entry's per-request stamp read — the
+  // one-statement freshness gate (src/card/render.ts
+  // DECK_DATA_VERSION_STATEMENT). A named, bounded class: exactly ONE per
+  // render, before any deck work.
+  if (isFreshnessStampRead(sql)) {
+    return "freshness-stamp";
+  }
   if (/codename IS NOT NULL/i.test(sql) || /codename IN \('anyone'/i.test(sql)) {
     return "engine-boot-codenames";
   }
-  if (/FROM\s+"?deck_data_version"?\s+WHERE\s+"?id"?\s*=\s*(\?|1)\s*$/i.test(sql)) {
-    return "freshness-stamp-read";
-  }
+  // (The pre-merge trunk's wider regex branch —
+  //  /FROM\s+"?deck_data_version"?\s+WHERE\s+"?id"?\s*=\s*(\?|1)\s*$/ — was
+  //  collapsed into the isFreshnessStampRead guard above in the r5 seat-merge
+  //  adjudication: the engine only ever issues DECK_DATA_VERSION_STATEMENT's
+  //  exact "= 1" literal shape, and one shape, one predicate beats two
+  //  guards of different breadth.)
   if (/rules\.id AS ruleId/i.test(sql)) return "reached-rules-cte";
   if (/left_id IS NOT NULL AND \(NOT EXISTS/i.test(sql)) return "engine-boot-dangling-canonical";
   if (/WITH RECURSIVE (reached|anc|name_walk)/i.test(sql)) return "reached-rules-cte";
@@ -181,11 +203,21 @@ export function isPipelineAbleRenderStatement(sql: string): boolean {
   if (family === undefined) {
     return /^SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1$/i.test(t);
   }
-  // The freshness gate's stamp read is per-request gate state issued at the
-  // render ENTRY, before any plan is consulted — it keeps its ordinary live
-  // trip and a plan must not absorb it (its result is gate state, not page
-  // data; replaying it would seat nothing).
-  if (family === "freshness-stamp-read") return false;
+  // THE FRESHNESS-STAMP EXCLUSION (per-viewer-seat lane, 2026-10-06): the
+  // stamp read IS the render's invalidation probe — its result must be
+  // current-at-read, never replayed. A plan that carries it arms the
+  // replay router with the recording-time version, and the freshness gate
+  // (render.ts's stamp read, which flows through the armed router) then
+  // answers from that stale row on EVERY subsequent render: no move is
+  // ever detected, the caches are never reset, and the armed map serves
+  // pre-edit rows indefinitely (measured: bump the storage stamp under an
+  // armed engine and the gate reads the recorded version back — zero live
+  // stamp reads, no reset, no re-seat, 397 live trips on the next render).
+  // Excluded here, the stamp read stays a live statement — the freshness
+  // gate's designed one-statement cost — and a moved stamp actually fires.
+  // One shape, one predicate: the router's never-serve guard tests the
+  // same isFreshnessStampRead this exclusion names.
+  if (isFreshnessStampRead(sql)) return false;
   return !ORDER_DEPENDENT_CLASSES.has(family);
 }
 
