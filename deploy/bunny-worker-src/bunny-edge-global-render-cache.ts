@@ -56,6 +56,7 @@ import {
   edgeCacheTtlSeconds,
   edgeRouteCacheClass,
 } from "./bunny-edge-cache-headers.js";
+import { edgeDbTimingFetch } from "./bunny-edge-server-timing.js";
 
 /** Environment bag; on the edge this is process.env, in tests a plain
  *  object. Same convention as the sibling modules. */
@@ -227,10 +228,18 @@ export function getGlobalRenderCache(
   if (!globalRenderCacheArmed(env)) return undefined;
   if ("error" in config) return undefined;
   if (globalRenderCacheInstance === undefined) {
-    globalRenderCacheInstance = new GlobalRenderCache({
-      url: config.url,
-      authToken: config.authToken,
-    });
+    // THE EDGE PROFILER (2026-10-05): the tier's drivers share the timing
+    // fetchImpl, so the L3 lookup/store hops land in the db ledger the
+    // Server-Timing header reports — one honest number for every Bunny DB
+    // POST the isolate makes. Retry/timeout semantics are the tier's own
+    // (unchanged); the wrapper only measures.
+    globalRenderCacheInstance = new GlobalRenderCache(
+      {
+        url: config.url,
+        authToken: config.authToken,
+      },
+      { fetchImpl: edgeDbTimingFetch() },
+    );
   }
   return globalRenderCacheInstance;
 }

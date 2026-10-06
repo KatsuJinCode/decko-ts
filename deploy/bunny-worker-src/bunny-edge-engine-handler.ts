@@ -69,10 +69,12 @@ import {
 import {
   resolveEdgeContentCache,
   serveWithEdgeCache,
+  type EdgeCacheLike,
 } from "./bunny-edge-content-cache.js";
 import {
   getGlobalRenderCache,
   withGlobalRenderCache,
+  type GlobalRenderCache,
 } from "./bunny-edge-global-render-cache.js";
 import {
   handleEngineRequest,
@@ -83,6 +85,13 @@ import {
 } from "./bunny-edge-engine-request.js";
 import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
 import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
+import {
+  applyEdgeServerTimingHeader,
+  edgeDbTimingFetch,
+  edgeDriverQueryCounter,
+  startEdgeRequestProfile,
+  type EdgeRequestProfile,
+} from "./bunny-edge-server-timing.js";
 
 /** Environment bag; on the edge this is process.env, in tests a plain
  *  object. Same convention as the reader's WorkerEnv. */
@@ -181,10 +190,21 @@ let actorEngines: ActorRenderEngines | undefined;
  *    content images resolve exactly as live).
  */
 async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
+  // THE EDGE PROFILER (2026-10-05): the driver's two EXISTING instrumentation
+  // seams are plugged at boot — `fetchImpl` times every pipeline POST into
+  // the per-isolate db ledger (the driver's only network call is the
+  // pipeline POST), `queryCounter` replaces the default NO-OP counter so
+  // statements-that-hit-the-wire are countable per request (ledger deltas).
+  // The timing wrapper resolves globalThis.fetch at CALL time, so in
+  // production this is the platform fetch (behavior identical) and in the
+  // vitest parity harness a stub installed before the first request still
+  // runs. No query, no retry, no timeout semantics change.
   const driver = new BunnyDbDriver({
     url: config.url,
     authToken: config.authToken,
     timeoutMs: resolveEdgePipelineTimeoutMs(env),
+    fetchImpl: edgeDbTimingFetch(),
+    queryCounter: edgeDriverQueryCounter(),
   });
   // THE ONE-TRIP DEPLOYMENT BOOT: when the config gate is armed the engine
   // boots with the raised Temporary-cache cap (ONE_TRIP_BOOT_MAX_TEMPORARY_
@@ -308,10 +328,39 @@ async function statusResponse(
  *
  *  The request core underneath (handleEngineRequest) owns the /api/status +
  *  /api/card branches, the /files route, the page path, and every error
- *  surface — unchanged by this carry. */
+ *  surface — unchanged by this carry.
+ *
+ *  (This comment documents the DISPATCH ORDER of routeBunnyEngineRequest —
+ *  the body the exported PROFILER WRAPPER below wraps and labels.) */
+
+/** THE PROFILER WRAPPER (edge-profiler lane, 2026-10-05): the route body
+ *  runs unchanged behind this one wrapper — a profile starts at entry, and
+ *  the finished response gains ONE header, `Server-Timing: auth;dur=X,
+ *  seat;dur=Y, db;dur=Z;stmt=N, render;dur=W, total;dur=T` (the standard
+ *  header; profilers read it natively). The phase semantics and the honest
+ *  per-isolate attribution contract live in bunny-edge-server-timing.ts's
+ *  header comment. A route throw (a failed first boot) propagates exactly
+ *  as before — no Response exists to label. Only the read path's phases
+ *  carry dedicated timers; every response class (/_status, the 403, the
+ *  write surface) still gets total + the db aggregate from this wrapper. */
 export async function handleBunnyEngineRequest(
   request: Request,
   env: EdgeEnv,
+): Promise<Response> {
+  const profile = startEdgeRequestProfile();
+  const response = await routeBunnyEngineRequest(request, env, profile);
+  return applyEdgeServerTimingHeader(profile, response);
+}
+
+/** The serve route body — the dispatch order documented above, unchanged
+ *  byte-for-byte; only PROFILER timers are added. auth times the session
+ *  resolution below; seat times the cache layer outside the render closure
+ *  at the three serve sites; render times the render closures; db rides
+ *  the driver's ledger seams (bootDeck + the L3 tier). */
+async function routeBunnyEngineRequest(
+  request: Request,
+  env: EdgeEnv,
+  profile: EdgeRequestProfile,
 ): Promise<Response> {
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
@@ -423,19 +472,23 @@ export async function handleBunnyEngineRequest(
   // the number and DECKO_EDGE_RENDER_BUDGET_MS for the no-republish retune.
   const renderBudgetMs = resolveEdgeRenderBudgetMs(env);
 
+  // AUTH PHASE (profiler, 2026-10-05): the session-resolution wall.
+  // Cookieless that is the Cookie scan alone (sub-ms); a cookie resolves
+  // through the SessionStore lookup SQL, timed at its own call below (the
+  // one-time deck boot between them is isolate setup — it lands in total,
+  // not in a phase).
+  const auth0 = Date.now();
   const sessionToken = sessionTokenFromRequest(request);
   if (sessionToken === null) {
-    return serveWithEdgeCache(
+    profile.authMs += Math.max(0, Date.now() - auth0);
+    return await serveProfiled(
+      profile,
       request,
       env,
-      withGlobalRenderCache(
-        request,
-        env,
-        getGlobalRenderCache(env, resolved),
-        async () =>
-          handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
-      ),
+      async () =>
+        handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
       resolveEdgeContentCache(env),
+      { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
 
@@ -445,24 +498,24 @@ export async function handleBunnyEngineRequest(
   // as ANONYMOUS_VIEWER, and that case takes the anonymous engine through
   // the identical cache call above.
   const deck = await getDeck(resolved, env);
+  const viewerAuth0 = Date.now();
   const viewer = await resolveViewerFromToken(
     sessionToken,
     new SessionStore({ driver: deck.fetcher.driver }),
   );
+  profile.authMs += Math.max(0, Date.now() - viewerAuth0);
   if (viewer.signedIn !== true) {
-    return serveWithEdgeCache(
+    return await serveProfiled(
+      profile,
       request,
       env,
-      withGlobalRenderCache(
-        request,
-        env,
-        getGlobalRenderCache(env, resolved),
-        async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
-      ),
+      async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
       resolveEdgeContentCache(env),
+      { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
-  return serveWithEdgeCache(
+  return await serveProfiled(
+    profile,
     request,
     env,
     async () =>
@@ -472,4 +525,49 @@ export async function handleBunnyEngineRequest(
     resolveEdgeContentCache(env),
     { perViewer: true },
   );
+}
+
+/** ONE PROFILER SERVE SITE (edge-profiler lane, 2026-10-05): the prepared-
+ *  page cache layer — the L2 Cache API match, the L3 global render-cache
+ *  lookup, their write-through stores — is what the SEAT phase times: the
+ *  serve-layer wall MINUS the render closure's wall. The subtraction is
+ *  sound in a single-threaded isolate (the render's wall is strictly
+ *  nested inside the serve layer's). The arguments reach
+ *  serveWithEdgeCache / withGlobalRenderCache in the EXACT shapes the
+ *  lineage call sites used (the two anonymous sites always constructed the
+ *  withGlobalRenderCache closure — armed or not, its unarmed path is a
+ *  byte-identical passthrough — and the signed-in site never did; each
+ *  site's argument list here is the lineage's), so only timers are added.
+ *  On a per-viewer request the caches are bypassed in both directions and
+ *  seat collapses to the wrapper overhead — the honest reading of "the
+ *  signed-in path skips the prepared-page stores". */
+async function serveProfiled(
+  profile: EdgeRequestProfile,
+  request: Request,
+  env: EdgeEnv,
+  render: () => Promise<Response>,
+  cache: EdgeCacheLike | undefined,
+  opts: { wrapGlobal?: boolean; globalCache?: GlobalRenderCache; perViewer?: boolean } = {},
+): Promise<Response> {
+  let renderMs = 0;
+  const renderTimed = async (): Promise<Response> => {
+    const r0 = Date.now();
+    try {
+      return await render();
+    } finally {
+      renderMs = Math.max(0, Date.now() - r0);
+      profile.renderMs += renderMs;
+    }
+  };
+  const wrapped =
+    opts.wrapGlobal === true
+      ? withGlobalRenderCache(request, env, opts.globalCache, renderTimed)
+      : renderTimed;
+  const seat0 = Date.now();
+  const response =
+    opts.perViewer === true
+      ? await serveWithEdgeCache(request, env, wrapped, cache, { perViewer: true })
+      : await serveWithEdgeCache(request, env, wrapped, cache);
+  profile.seatMs += Math.max(0, Date.now() - seat0 - renderMs);
+  return response;
 }
