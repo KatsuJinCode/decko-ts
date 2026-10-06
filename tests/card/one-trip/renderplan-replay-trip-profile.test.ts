@@ -73,8 +73,9 @@ function isPipelineAbleRenderStatement(sql: string): boolean {
   // The freshness gate's stamp read is render-entry gate state, not page
   // data — a plan records neither it nor any per-request gate statement
   // (lineage-reconciliation lane, 2026-10-06; mirrors render-plan.ts's
-  // production filter).
-  if (family === "freshness-stamp-read") return false;
+  // production filter; class renamed "freshness-stamp-read" -> "freshness-stamp"
+  // in the r5 seat-merge adjudication — one registry entry, one shape predicate).
+  if (family === "freshness-stamp") return false;
   return family !== "search-count" && family !== "search-cql";
 }
 

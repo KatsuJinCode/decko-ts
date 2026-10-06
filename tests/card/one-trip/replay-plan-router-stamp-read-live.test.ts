@@ -9,9 +9,10 @@
 // layers must each hold for the composition to be safe:
 //
 //   1. THE RECORDER (already pinned): isPipelineAbleRenderStatement excludes
-//      the freshness-stamp-read class (render-plan.ts; lineage-reconciliation
-//      commit "plans never absorb the freshness stamp read"), so a recorded
-//      plan never CONTAINS the stamp read.
+//      the freshness-stamp class — the shared isFreshnessStampRead shape
+//      (render-plan.ts; lineage-reconciliation commit "plans never absorb the
+//      freshness stamp read"; class was "freshness-stamp-read" pre-r5-merge),
+//      so a recorded plan never CONTAINS the stamp read.
 //   2. THE FOLD (pinned here, test 1): replay-fold.ts's nine registered
 //      classes match only cards/closure shapes, so even a SEEDED plan that
 //      did carry the stamp entry is never merged — it rides the ladder. This
