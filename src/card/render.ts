@@ -1851,6 +1851,12 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+    // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof): every seat path of
+    // this render has run by here (the pointer/list closure, the asset/
+    // skin/setting warms, the link-target sweep, the follow/rule warms) —
+    // process this render's late seats BEFORE the sync dispatch reads their
+    // content. See applyLateSeatStructureContent's doc.
+    await this.applyLateSeatStructureContent();
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
@@ -2764,6 +2770,41 @@ export class RenderEngine implements RenderEngineLike {
    * compound card × ~37k compound cards = ~150k microtask hops; measured
    * 26-33 s on a 47k-card deck for nothing in the result).
    */
+  /** THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof, 2026-10-06): one final
+   *  applyStructureContent pass immediately before a sync render dispatch.
+   *
+   *  Mechanism the sweep cut left open: applyStructureContent's two inline
+   *  passes (the prepare flow's only structure processors) run BEFORE the
+   *  render tail's late seat paths — enrichPointerListItemsClosure, the
+   *  asset/skin/setting warms, enrichLinkTargetsForKnownClass, the follow/
+   *  rule warms (bare lane), warmupLayoutReferences and
+   *  prepareNestClosureSearches (page lane). A card seated by any of them
+   *  joins renderSeats but no structure pass of its seat render ever sees
+   *  it: enrichAndStore seats only on map INSERT (the existing-key guard),
+   *  so no later render re-seats it, and closureSurface's BFS walks only
+   *  absolute nest references — pointer-item lines, search results, and
+   *  relative references are not BFS edges — so no later render re-reaches
+   *  it either. Its *structure substitution never lands and every later
+   *  render reads the raw db_content (permanently; only resetCaches re-does
+   *  it). The pre-cut tree's whole-map pass was those cards' only processor.
+   *
+   *  This call closes the class structurally instead of by edge enumeration:
+   *  every seat path above runs before the dispatch, so the pass sees every
+   *  seat of the render (renderSeats is render-scoped), substitutes each
+   *  exactly once (structureProcessed is engine-lifetime), and costs one
+   *  query-free map scan when nothing seated late (warm renders seat no late
+   *  cards — the sweep cut froze the map at the byte closure — so the
+   *  one-trip warm posture is untouched).
+   *
+   *  Call sites = every prepare lane's last point before a sync dispatch:
+   *  render() (the bare view lane, after the follow/rule warms), and the
+   *  page lane's two dispatch boundaries (before the main body render and
+   *  before the layout content render — the layout warm-ups seat between
+   *  the two). */
+  async applyLateSeatStructureContent(): Promise<void> {
+    await this.applyStructureContent();
+  }
+
   private async applyStructureContent(): Promise<void> {
     const universe = this.structureContents;
     if (universe === undefined) return;
