@@ -258,8 +258,12 @@ function stubVerify(body: unknown): {
 
 /** The ROUTE-SEAT engine shape: recaptcha config WITHOUT captchaRuleContent
  *  (the seat never sets it — the deck's own rule walk arms the guard) plus
- *  the mod runtime composed exactly like write-routes.ts
- *  recaptchaEventRuntime (ModLoader over the recaptcha gem manifest). */
+ *  a runtime whose registry carries the :recaptcha event. The serving seat
+ *  itself composes the whole deck through the deck-boot seam
+ *  (write-routes.ts servingModEventRuntime -> defaultDeckEventRuntime,
+ *  E-16); this helper is the minimal engine-boundary equivalent - the guard
+ *  needs the event registered and the predicates resolvable, which the
+ *  recaptcha-only loader supplies. */
 function routeSeatEngine(
   s: ActionsTestStorage,
   verify: (url: string, query: { secret: string; response: string }) => Promise<string>,

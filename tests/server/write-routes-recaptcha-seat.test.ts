@@ -7,13 +7,14 @@
 // What changed in production for this: the route context grew the
 // `recaptcha?: CardActionRecaptchaConfig` seat, passed through UNCHANGED to
 // createCardActionEngineForSession alongside {ipAddress, now,
-// attachmentStore, fileStorage}; arming it also composes the recaptcha
-// mod's event runtime ONCE (recaptchaEventRuntime — the same registration
-// ModLoader performs when the mod loads,
-// card-mod-recaptcha-validate-event.test.ts:58-63), because the guard IS
-// the :recaptcha validate event and a config without the registered event
-// never fires (card-action-engine.ts:1876-1882). Unarmed contexts pass the
-// exact pre-seat option shape — byte-identical.
+// attachmentStore, fileStorage}. Since E-16 the serving surface composes
+// the whole deck's event runtime through the deck-boot seam on EVERY save
+// (servingModEventRuntime -> defaultDeckEventRuntime), so the :recaptcha
+// event is always registered; the seat supplies the CONFIG the guard reads
+// at validate time (the engine's prepareRecaptchaSaveInput requires it —
+// recaptcha_keys?, recaptcha.rb:46-48), because a config-less walk never
+// fires the guard (card-action-engine.ts:1876-1882). Unarmed contexts pass
+// the same runtime with no recaptcha config — the guard stays off.
 //
 // NO vi.mock in this file: every engine here is the real
 // createCardActionEngineForSession, so these pins prove the production

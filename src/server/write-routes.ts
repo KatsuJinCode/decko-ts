@@ -101,6 +101,7 @@ import { createCardActionEngineForSession } from "../card/actions/engine-for-ses
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
+import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
@@ -168,13 +169,14 @@ export interface WriteRouteContext {
    *  recaptcha.rb:1-10), passed through UNCHANGED to every write engine
    *  this module builds. ABSENT = the guard off (recaptcha.rb:46-48
    *  recaptcha_keys? false) — the pre-seat behavior, byte-identical.
-   *  Arming the seat also composes the recaptcha mod's event runtime (see
-   *  recaptchaEventRuntime below): the guard IS the :recaptcha validate
-   *  event, so a config without the registered event would never fire
-   *  (the engine's prepareRecaptchaSaveInput requires both,
-   *  card-action-engine.ts:1876-1882). When the host supplies no
-   *  captchaRuleContent, the engine defaults to the deck's own rule walk
-   *  (ruleContentForCard — recaptcha.rb:22's
+   *  The deck's event runtime itself rides EVERY save through the deck-boot
+   *  seam (servingModEventRuntime below — the boot composition walks every
+   *  save, dirs.rb:54-62 + loader.rb:16-21 + set/event.rb:71-74); the
+   *  :recaptcha event's guard reads THIS config at validate time
+   *  (the engine's prepareRecaptchaSaveInput requires the config —
+   *  recaptcha_keys? — before the walk), so an unarmed host never fires it.
+   *  When the host supplies no captchaRuleContent, the engine defaults to
+   *  the deck's own rule walk (ruleContentForCard — recaptcha.rb:22's
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
@@ -685,28 +687,82 @@ async function handleSigninUpdate(
 // the handler
 // -----------------------------------------------------------------------
 
-/** The armed seat's event runtime: the recaptcha mod's registry + the
- *  named-when predicates, composed ONCE per process — the same
- *  registration the SetLoader phase performs when the mod is loaded
- *  (ModLoader resolveOrder + load; the harness composition,
- *  card-mod-recaptcha-validate-event.test.ts:58-63). Dynamic imports keep
- *  an unarmed module graph exactly as before this seat existed, and the
- *  cache means a deck arms the guard at most one load per process. */
-let recaptchaSeatRuntime: Promise<ModEventRuntime> | undefined;
-function recaptchaEventRuntime(): Promise<ModEventRuntime> {
-  recaptchaSeatRuntime ??= (async () => {
-    const [{ default: cardModRecaptcha }, { recaptchaModEventPredicates }, { ModLoader }] =
-      await Promise.all([
-        import("../card/mod-loader/mods/card-mod-recaptcha.js"),
-        import("../card/mod-loader/mods/card-mod-recaptcha.js"),
-        import("../card/mod-loader.js"),
-      ]);
-    const loader = new ModLoader([{ manifest: cardModRecaptcha }]);
-    loader.resolveOrder({ gemMods: ["recaptcha"] });
-    loader.load();
-    return { registry: loader.eventRegistry(), predicates: recaptchaModEventPredicates };
+/** The serving write surface's mod-event runtime: the DECK's composition
+ *  (the deck-boot seam, defaultDeckEventRuntime) + the write-path host,
+ *  composed ONCE per process - the port of Ruby's single boot composition
+ *  (Cardio::Mod::Dirs#initialize adds core + every gem mod, card-1.110.0
+ *  lib/cardio/mod/dirs.rb:54-62; Loader.load_mods registers every set file,
+ *  lib/cardio/mod/loader.rb:16-21; the `event` DSL lands each declaration
+ *  in the one event space, lib/card/set/event.rb:71-74) that every save -
+ *  the serving write path included - walks. The pre-E-16 seat composed a
+ *  private recaptcha-only loader and rode it only on armed saves, which left
+ *  deck/core event bodies on the engine's built-in equivalents
+ *  (EVENT_TAKEOVER_BUILTINS never stood down) and custom mod bodies
+ *  (comment's add_comment) undispatched server-side.
+ *
+ *  The WRITE-PATH HOST: the only host member save-time event bodies reach
+ *  is the integrate observers' fetchRenderCard (card-mod-integrate.ts
+ *  observerLookupFromHost - the *on_<action> rule-card walk). The write
+ *  seat has no sync render-card surface, so the host answers undefined -
+ *  observer.rb:20-21's nil rule arm, `|| []`: zero event cards resolve,
+ *  exactly a Ruby deck whose observer rule cards resolve nothing (the
+ *  oracle deck's *on_create/*on_update/*on_delete rules carry no items).
+ *  Every OTHER member throws member-named loud: no save-time body uses
+ *  them (they are the prepareEngine/install surfaces, served by the render
+ *  path's modEngineHost), and a body reaching for one must fail loudly,
+ *  never silently no-op. The dynamic import keeps an unarmed module graph
+ *  exactly as before this seat existed, and the cache means a deck composes
+ *  the runtime at most one load per process. */
+const WRITE_PATH_HOST: ModEngineHost = {
+  fetchRenderCard: () => undefined,
+  isDenied: () => {
+    throw new Error(
+      "the serving write path composes no read-permission surface (ModEngineHost.isDenied)",
+    );
+  },
+  batch: async () => {
+    throw new Error(
+      "the serving write path composes no batch surface (ModEngineHost.batch)",
+    );
+  },
+  codenames: {
+    ensureLoaded: async () => {
+      throw new Error(
+        "the serving write path composes no codename surface (ModEngineHost.codenames.ensureLoaded)",
+      );
+    },
+    peekId: () => {
+      throw new Error(
+        "the serving write path composes no codename surface (ModEngineHost.codenames.peekId)",
+      );
+    },
+  },
+  fetchById: async () => {
+    throw new Error(
+      "the serving write path composes no fetch surface (ModEngineHost.fetchById)",
+    );
+  },
+  cacheFetchedRecord: async () => {
+    throw new Error(
+      "the serving write path composes no cache-write surface (ModEngineHost.cacheFetchedRecord)",
+    );
+  },
+  composeAndCacheRows: async () => {
+    throw new Error(
+      "the serving write path composes no warm-compose surface (ModEngineHost.composeAndCacheRows)",
+    );
+  },
+};
+
+let servingModEventRuntimeSeat: Promise<ModEventRuntime> | undefined;
+function servingModEventRuntime(): Promise<ModEventRuntime> {
+  servingModEventRuntimeSeat ??= (async () => {
+    const [{ defaultDeckEventRuntime }] = await Promise.all([
+      import("../card/mod-loader/default-mod-deck.js"),
+    ]);
+    return defaultDeckEventRuntime(WRITE_PATH_HOST);
   })();
-  return recaptchaSeatRuntime;
+  return servingModEventRuntimeSeat;
 }
 
 /**
@@ -774,15 +830,18 @@ export async function handleWriteRequest(
     now: ctx.now,
     attachmentStore: ctx.attachmentStore,
     fileStorage: ctx.fileStorage,
-    // the recaptcha seat (WriteRouteContext.recaptcha): the config passes
-    // through UNCHANGED — the engine's own defaults are the rule walk and
-    // the real siteverify GET. The event runtime rides along only when
-    // armed: without the registered :recaptcha event the config would
-    // never fire (card-action-engine.ts:1876-1882). Unarmed = the exact
-    // pre-seat option shape, byte-identical.
-    ...(ctx.recaptcha === undefined
-      ? {}
-      : { recaptcha: ctx.recaptcha, modEvents: await recaptchaEventRuntime() }),
+    // the deck's event runtime rides EVERY save (the deck-boot seam,
+    // servingModEventRuntime above - Ruby's boot composes all mods once and
+    // every save walks the one event space, dirs.rb:54-62 + loader.rb:16-21
+    // + set/event.rb:71-74). The recaptcha seat (WriteRouteContext.recaptcha)
+    // is the separate opt-in it always was: the config passes through
+    // UNCHANGED - the engine's own defaults are the rule walk and the real
+    // siteverify GET, and the :recaptcha event's when-predicate reads the
+    // config the engine composes at validate time (card-action-engine.ts
+    // prepareRecaptchaSaveInput), so an unarmed host registers the event and
+    // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
+    modEvents: await servingModEventRuntime(),
+    ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the
