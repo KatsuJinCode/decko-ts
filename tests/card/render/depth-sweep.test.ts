@@ -152,6 +152,9 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // 18 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
     // batch per unfetched inclusion level, Ruby's nesting truth is depth+3,
     // so the TS curve is 3 BELOW Ruby at depth 1 and 4 below at depth 5+).
+    // [ENGINE-FRESHNESS] port (lane-edge-security-2026-10-05): the stamp
+    // baseline folds LAST into the cold batch — +1 statement at every
+    // depth (18 -> 19 base), round trips untouched.
     // The two wave round trips above the old base are the db-roundtrip
     // lane's enumerated justification classes, measured on the depth-1
     // fixture (RT1 root key row, RT2 prelude batch, RT3 wave round 1 [the
@@ -173,13 +176,15 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // 2026-09-27 cold-query lane (the waves took depth 1 to 5/17; the fold
     // brought 5 -> 4).
     const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 18 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 19 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
     }
-    // Warm cache: zero queries on the second render (the rule cache is hit).
-    expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
+    // Warm cache: the rule cache is hit; the render entry pays the ONE
+    // deck_data_version stamp SELECT per warm render (was zero before the
+    // freshness gate).
+    expect(rows.every((r) => r.warmRoundTrips === 1 && r.warmStatements === 1)).toBe(true);
 
     if (ARTIFACT_WRITE_REQUESTED) {
       mkdirSync("benchmarks/results", { recursive: true });

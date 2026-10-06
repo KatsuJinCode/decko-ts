@@ -198,18 +198,26 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // no reference closure can reach, so the prefetch rides THIS batch
       // as a 7th folded statement. `batches` above stays 1 — the round
       // trip, the billed axis, is unchanged.
-      expect(stats?.additionalResults?.length).toBe(7);
+      // PORT NOTE (lane-edge-security-2026-10-05): this pin was ALREADY
+      // stale on the deployed lineage's base (fe65cf60): the template
+      // type-name statement's join moved the real fold to 8 while the pin
+      // still said 7 (the base run fails 8-vs-7). The [ENGINE-FRESHNESS]
+      // stamp baseline rides the batch's LAST slot — the mechanical +1 —
+      // so the honest fold shape on this lineage is 9.
+      expect(stats?.additionalResults?.length).toBe(9);
     } finally {
       cold.close();
     }
   });
 
-  it("warm re-render of a denied card issues zero queries", async () => {
+  it("warm re-render of a denied card issues exactly ONE statement (the freshness stamp)", async () => {
     const s = storage!;
     await s.engine.render("Secret Thing", "open");
     s.counting.reset();
     expect(await s.engine.render("Secret Thing", "open")).toBe(quietDenial());
-    expect(s.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+    // [ENGINE-FRESHNESS] port: the warm render's cost is the one
+    // deck_data_version stamp SELECT (was zero before the gate).
+    expect(s.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
   });
 
   it("resetCaches clears the permission state (re-resolution works)", async () => {

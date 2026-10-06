@@ -327,14 +327,17 @@ describe("RenderEngine structured content", () => {
       //      candidates, so the findRule ladder answers from cache.
       //  Net statements 16 + 8 = 24 (8 additions - 1 removal + the port's
       //  +1 counted above); net round trips 6 - 1 (removed pair point) + 4
-      //  (wave rounds 1+2 and their two composition type fetches) = 10; the
-      //  warm re-render stays 0 (ask memory + ruleCandidatesPrimedFor).
-      expect(cold.statements).toBe(24);
+      //  (wave rounds 1+2 and their two composition type fetches) = 10.
+      //  [ENGINE-FRESHNESS] port: the stamp baseline folds LAST into the
+      //  cold batch — 24 -> 25 statements, round trips unchanged. The warm
+      //  re-render's cost is the ONE stamp SELECT (was zero).
+      expect(cold.statements).toBe(25);
       expect(cold.roundTrips).toBe(10);
-      // Warm re-render: the structured pass is pure memory.
+      // Warm re-render: the structured pass is pure memory; the render
+      // entry pays the one deck_data_version stamp SELECT.
       fresh.counting.reset();
       await fresh.engine.render("Doc1", "title");
-      expect(fresh.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+      expect(fresh.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       fresh.close();
     }

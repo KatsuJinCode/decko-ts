@@ -248,9 +248,12 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // the prepare rode ONE batch (rule sides + setting counts) beyond the
       // codename load it primes on the very first call
       expect(afterPrepare.roundTrips - beforePrepare.roundTrips).toBeLessThanOrEqual(2);
-      // warm re-renders cost nothing the resolver adds
-      expect(afterWarmRenders.roundTrips).toBe(afterFirstRender.roundTrips);
-      expect(afterWarmRenders.statements).toBe(afterFirstRender.statements);
+      // warm re-renders cost nothing the resolver adds — except the
+      // [ENGINE-FRESHNESS] stamp SELECT each render entry pays (two warm
+      // renders after the first: +2 statements / +2 round trips on the
+      // cumulative counter).
+      expect(afterWarmRenders.roundTrips).toBe(afterFirstRender.roundTrips + 2);
+      expect(afterWarmRenders.statements).toBe(afterFirstRender.statements + 2);
     } finally {
       storage.close();
     }

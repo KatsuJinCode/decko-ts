@@ -63,9 +63,11 @@ describe("RenderEngine + rule engine integration", () => {
     // (randomized per render) differs between calls.
     expect(html2).toMatch(/\blede\b/);
     // The rule cache should have served the override without re-walking.
+    // [ENGINE-FRESHNESS] port: the warm render's cost is the one
+    // deck_data_version stamp SELECT (was zero before the gate).
     const counts = (s.counting as unknown as { snapshot: () => { statements: number; roundTrips: number } }).snapshot();
-    expect(counts.roundTrips).toBe(0);
-    expect(counts.statements).toBe(0);
+    expect(counts.roundTrips).toBe(1);
+    expect(counts.statements).toBe(1);
   });
 
   it("works for compound card names too (junction-resolved)", async () => {

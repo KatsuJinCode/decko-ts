@@ -97,6 +97,13 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
 /** Classify one statement's SQL text into a residue class, or undefined
  *  when the registry does not know it (a registry bug — tests fail). */
 export function classifyResidueStatement(sql: string): string | undefined {
+  // [ENGINE-FRESHNESS] the render entry's per-request stamp read — the
+  // one-statement freshness gate (src/card/render.ts
+  // DECK_DATA_VERSION_STATEMENT). A named, bounded class: exactly ONE per
+  // render, before any deck work.
+  if (/SELECT "version" FROM "deck_data_version" WHERE "id" = 1/i.test(sql)) {
+    return "freshness-stamp";
+  }
   if (/codename IS NOT NULL/i.test(sql) || /codename IN \('anyone'/i.test(sql)) {
     return "engine-boot-codenames";
   }

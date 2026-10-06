@@ -9,7 +9,10 @@
 // LocalSqliteDriver owns its connection and exposes no exec(), and
 // better-sqlite3's prepare() rejects multi-statement strings. The schema
 // file is machine-generated DDL (no ";" inside literals - verified by scan),
-// so a quote-aware comment-stripping splitter is sufficient.
+// so a quote-aware comment-stripping splitter is sufficient — now
+// TRIGGER-AWARE: the [ENGINE-FRESHNESS] block's trigger bodies carry ";"
+// before their closing "END;", so the splitter tracks CREATE TRIGGER
+// BEGIN/END and keeps body semicolons verbatim.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -20,11 +23,13 @@ import { DeckoName } from "../../../src/card/name.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 
 /** Split a DDL file into executable statements: strip `--` comments
- *  (quote-aware - the DDL carries no "--" inside literals) and split on ";". */
+ *  (quote-aware - the DDL carries no "--" inside literals) and split on ";",
+ *  TRIGGER-AWARE (trigger bodies carry ";" before END — kept verbatim). */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -42,7 +47,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;

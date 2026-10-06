@@ -121,7 +121,12 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     storageOff.counting.reset();
     await storageOff.engine.render("law fixture page", "open");
     const offWarm = storageOff.counting.snapshot();
-    expect(offWarm.roundTrips).toBeLessThanOrEqual(1);
+    // [ENGINE-FRESHNESS] port: the warm render's law cost is the ONE
+    // deck_data_version stamp SELECT (was zero before the gate) — so the
+    // warm law moves from "<= 1 (the cache-friendly render)" to "<= 2 (the
+    // stamp + the cache-friendly render)". The data hop count the law
+    // actually governs is unchanged.
+    expect(offWarm.roundTrips).toBeLessThanOrEqual(2);
 
     // ---- the derived store, built from this same fixture deck ----
     sideDir = mkdtempSync(join(tmpdir(), "one-trip-hops-"));
@@ -157,9 +162,10 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     expect(normalizeSlotIds(onHtml)).toBe(normalizeSlotIds(offHtml));
 
     // Warm ON: the seating memo makes the payload free; the law's warm rule.
+    // [ENGINE-FRESHNESS] port: +1 for the stamp SELECT (see the OFF note).
     storageOn.counting.reset();
     await storageOn.engine.render("law fixture page", "open");
     const onWarm = storageOn.counting.snapshot();
-    expect(onWarm.roundTrips).toBeLessThanOrEqual(1);
+    expect(onWarm.roundTrips).toBeLessThanOrEqual(2);
   });
 });

@@ -7,6 +7,10 @@ export function splitSqlStatements(ddl: string): string[];
 export interface TargetSchema {
   createTables: string[];
   createIndexes: string[];
+  /** [ENGINE-FRESHNESS] stamp triggers — applied AFTER the bulk load. */
+  createTriggers: string[];
+  /** [ENGINE-FRESHNESS] stamp row INSERT — applied with the triggers. */
+  postLoadStatements: string[];
   pragmas: string[];
   /** table -> column names in DDL order (positional import mapping). */
   tableColumns: Record<string, string[]>;

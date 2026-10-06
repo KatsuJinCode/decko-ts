@@ -22,13 +22,18 @@ import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js"
 import { expireRuleResolutionCache } from "../../../src/card/permissions/read-rules.js";
 import type { Lex } from "../../../src/card/fetch/lexicon.js";
 
-/** Quote-aware `--` comment stripping + ";" split (the DDL carries no
- *  ";" inside literals - same splitter contract as the fetch stream's
- *  storage; see tests/card/fetch/fetch-test-storage.ts for the rationale). */
+/** Quote-aware `--` comment stripping + ";" split, TRIGGER-AWARE (the
+ *  [ENGINE-FRESHNESS] DDL's trigger bodies carry ";" before their closing
+ *  "END;" — a naive split emits trigger-body fragments as statements). The
+ *  word scanner tracks CREATE TRIGGER ... BEGIN ... END bodies;
+ *  semicolons inside a body are kept verbatim. Same splitter contract as the
+ *  fetch stream's storage; see tests/card/fetch/fetch-test-storage.ts for
+ *  the rationale. */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -46,7 +51,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;

@@ -304,7 +304,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8]);
   });
 
-  it("renders a warm closure with ZERO queries", async () => {
+  it("renders a warm closure with exactly ONE statement (the freshness stamp)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedChain(storage, 8);
@@ -312,7 +312,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       storage.counting.reset();
       const html = await storage.engine.render("chain_l1", "content");
       expect(html).toContain("level 8 end");
-      expect(storage.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+      // [ENGINE-FRESHNESS] port (lane-edge-security-2026-10-05): the warm
+      // render's contract-compliant cost is the ONE deck_data_version stamp
+      // SELECT the render entry pays per request — was zero before the
+      // freshness gate; zero is unobservable for "the next request reflects
+      // the committed state".
+      expect(storage.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       storage.close();
     }
