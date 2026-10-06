@@ -1,0 +1,415 @@
+// The boot-seed capability (R-3b, OPERATOR-SCOPE-RULINGS-2026-10-05.md §R-3,
+// ruled IN by OPERATOR-DESK-RESOLUTIONS-2026-10-06.md): create the
+// account-system cards a fresh deck needs, so a newly provisioned deck is
+// bootstrapped in actor.ts:50's sense — Anonymous/DeckoBot resolvable — and
+// the permission system's role/account cards exist. Before this module the
+// engine's own source stated the gap: first-run-setup.ts's deploy-profile
+// note ("the engine has no mod-seeding capability to create them") and the
+// account_system_absent gate reason.
+//
+// ---------------------------------------------------------------------------
+// WHAT IS RUBY HERE (read before changing anything)
+// ---------------------------------------------------------------------------
+//
+// ORDER: seed runs AFTER schema init, at install time — not per request.
+//
+//   mod/core/lib/tasks/card.rake:4-6
+//     desc "Creates the database, loads the schema, initializes seed data, ..."
+//     task setup: %w[db:setup card:mod:symlink]
+//   db:setup is Rails' create + schema:load + seed, and the seed step is
+//   db/seeds.rb:3 `Cardio::Seed.load` (card-1.110.0/db/seeds.rb).
+//
+// LOADER 1 — the core fixture (Cardio::Seed):
+//   lib/cardio/seed.rb:12-18  `path` -> db_path :real -> seed.rb:61-63
+//     Mod.fetch(seed_mods).subpath("data", "fixtures", env) — the fixture
+//     directory mod/core/data/fixtures/real/.
+//   lib/cardio/seed.rb:20-22  `Cardio::Seed.load` =
+//     ActiveRecord::FixtureSet.create_fixtures(path, load_tables) — DIRECT
+//     ROW INSERTS, not card saves. No acts/actions are built for these rows;
+//     current_revision_id stays NULL (the fixture carries no revision).
+//   The fixture this ports verbatim is mod/core/data/fixtures/real/cards.yml
+//   (11 cards, ids 1..11, every row creator_id 1 / updater_id 1 /
+//   read_rule_class "*all" / read_rule_id 10 / trash false). The stamps are
+//   Cardio::Seed's own: seed.rb:99-104 clean_time_and_user_stamps sets
+//   creator_id/updater_id to the bot (author_id, seed.rb:106-108 =
+//   Card::DeckoBotID — card 1 is the bot, cards.yml cards_001).
+//
+// LOADER 2 — mod-yaml ingestion (Cardio::Mod::Eat):
+//   mod/core/lib/tasks/card.rake:22  task eat: "Ingests card data from mod
+//     yaml" (default user: "Decko Bot"), run under card:update (:14) after
+//     the schema migrations.
+//   lib/cardio/mod/eat/edibles.rb:66-71  reads <mod>/data/<podtype>.yml
+//     (pod_types :real outside test env, edibles.rb:111-119) — for the
+//     account system that is card-mod-account-0.20.0/data/real.yml.
+//   lib/cardio/mod/eat.rb:22-33  for each entry, `Card.ensure! edible` —
+//     CREATE-OR-UPDATE by name (director/card_class.rb:58-61), the property
+//     this port preserves so a boot re-run repairs rather than duplicates.
+//   lib/cardio/mod/eat.rb:38-45  the whole ingestion runs `Auth.as_bot`;
+//   lib/cardio/mod/eat.rb:62-64  authorship defaults to Card::DeckoBotID.
+//
+// THE TWO LOADERS ARE DIFFERENT MACHINES and the port keeps them different:
+// layer A (the core fixture) inserts rows directly, because that is what
+// FixtureSet does; layer B (the account mod's cards) goes through the
+// engine's own CardActionEngine, because that is what Card.ensure! does —
+// which also means layer B rows get acts/actions/references the way Ruby's
+// eaten cards do, and the deck proves its write path works on itself.
+//
+// ---------------------------------------------------------------------------
+// THE DATA (names, codenames, types, content — verbatim sources per row)
+// ---------------------------------------------------------------------------
+//
+// Layer B rows and their sources:
+//   card-mod-account-0.20.0/data/real.yml — all 27 codename-bearing cards in
+//     file order (Role :3-13, *members :15-16, Anyone :19-27, Anyone Signed
+//     In :28-34, Administrator :35-45, Eagle :46-51, Shark :52-60, Help Desk
+//     :61-69, Anonymous :70-74, *account :82-121, *email :124-135, *password
+//     :136-146, *salt :147-152, *status :153-161, *account settings
+//     :164-172, Sign up :175-196, the Decko Bot account :203-206, welcome
+//     email :208-210, verification email :211-231, password reset email
+//     :232-245, signup alert email :246-260, *signin :262-268, *roles
+//     :269-279, *enabled roles :281-283, *account links :285-286, Cards with
+//     accounts :288-290, *thanks :292-293, Signup Success :298-303)
+//   card-1.110.0 mod/core/data/real.yml:39-47 — User (the file's own comment:
+//     "user needed early because of references to UserID in preference
+//     cache"; first-run-setup.ts:733 resolves default_accounted_type_id from
+//     this codename).
+//   card-mod-email-0.20.0/data/real.yml:3-8 — Email template (the cardtype
+//     the account mod's four email-template cards are typed by).
+//
+// NAMED REMAINDERS (real.yml entries this module deliberately does NOT
+// create, each because its side cards live in OTHER mods' real.yml files —
+// outside R-3b's account scope; the row list is data, so a later lane adds
+// them without touching the mechanism):
+//   - the three array-name rule rows (real.yml :76-80 Role+*members+*type
+//     plus right+*update -> Help Desk; :199-201 User+*account+*type plus
+//     right+*create -> _left; :295-297 Sign up+*type+*thanks) — need the set
+//     cards *type plus right / *type (core mod real.yml) and Phrase (format
+//     mod real.yml);
+//   - every nested :fields subcard — the role cards' :description texts
+//     (side card *description is core mod real.yml:3-4), the permission
+//     rules under *account/*email/*password/*salt/*status (sides *right,
+//     *create, *update, *delete — core mod and card-mod-permissions
+//     real.yml), the email templates' :from/:subject/:html_message/
+//     :text_message children (sides in card-mod-email real.yml), and
+//     *roles' :content_options (side *content_option likewise).
+//
+// ONE DISCLOSED TYPE DEVIATION: "Cards with accounts" is :type: :search_type
+// in real.yml, but the Search cardtype card ships in card-mod-search's
+// real.yml — outside this layer set. The card is created Basic-typed; its
+// name and codename (what the engine resolves) are exact, and the type is
+// named here rather than silently invented.
+//
+// Node-only (reads nothing from disk, but the capability seeds a LOCAL
+// engine's database; edge deployments seed through the deploy stream's own
+// tooling, exactly as runAuthMigrations vs wrangler d1 migrations).
+
+import type { SQLDatabaseDriver } from "../../server/driver.js";
+import { sqlDateTime } from "./session-store.js";
+import { CardActionEngine } from "../actions/card-action-engine.js";
+import { FetchEngine } from "../fetch.js";
+import { actorBot, type Actor } from "./actor.js";
+
+// ---------------------------------------------------------------------------
+// layer A — the core fixture (Cardio::Seed.load port)
+// ---------------------------------------------------------------------------
+
+/** One mod/core/data/fixtures/real/cards.yml row, verbatim. */
+export interface CoreFixtureSeedCard {
+  readonly id: number;
+  readonly name: string | null;
+  readonly key: string | null;
+  readonly codename: string | null;
+  readonly leftId: number | null;
+  readonly rightId: number | null;
+  readonly typeId: number;
+  readonly dbContent: string | null;
+}
+
+/** mod/core/data/fixtures/real/cards.yml — the 11 cards of the real-pod
+ *  fixture, in fixture order. Junction rows (10, 11) store sides only: the
+ *  fixture carries no name/key for them (the 2020 convention — the corpus
+ *  seeding note in tests/card/render/render-test-storage.ts cites the same
+ *  migration). Card 1 IS Decko Bot (seed.rb:106-108's author). */
+export const CORE_FIXTURE_SEED_CARDS: readonly CoreFixtureSeedCard[] = [
+  { id: 1, name: "Decko Bot", key: "decko_bot", codename: "decko_bot", leftId: null, rightId: null, typeId: 2, dbContent: "" },
+  { id: 2, name: "RichText", key: "rich_text", codename: "basic", leftId: null, rightId: null, typeId: 3, dbContent: "" },
+  { id: 3, name: "Cardtype", key: "cardtype", codename: "cardtype", leftId: null, rightId: null, typeId: 3, dbContent: "" },
+  { id: 4, name: "List", key: "list", codename: "list", leftId: null, rightId: null, typeId: 3, dbContent: "" },
+  { id: 5, name: "Set", key: "set", codename: "set", leftId: null, rightId: null, typeId: 2, dbContent: "" },
+  { id: 6, name: "Setting", key: "setting", codename: "setting", leftId: null, rightId: null, typeId: 3, dbContent: "" },
+  { id: 7, name: "*all", key: "*all", codename: "all", leftId: null, rightId: null, typeId: 5, dbContent: "{}" },
+  { id: 8, name: "*default", key: "*default", codename: "default", leftId: null, rightId: null, typeId: 6, dbContent: "" },
+  { id: 9, name: "*read", key: "*read", codename: "read", leftId: null, rightId: null, typeId: 6, dbContent: "" },
+  // *all+*read — the default read rule, granting Decko Bot (fixture
+  // cards_010: left 7, right 9, type 4 List).
+  { id: 10, name: null, key: null, codename: null, leftId: 7, rightId: 9, typeId: 4, dbContent: "Decko Bot" },
+  // *all+*default — the default type rule (fixture cards_011: left 7,
+  // right 8, type 2 Basic; the fixture's db_content is the empty string).
+  { id: 11, name: null, key: null, codename: null, leftId: 7, rightId: 8, typeId: 2, dbContent: "" },
+];
+
+// ---------------------------------------------------------------------------
+// layer B — the account system (Cardio::Mod::Eat port over real.yml)
+// ---------------------------------------------------------------------------
+
+/** One card-mod-account-0.20.0/data/real.yml entry (plus the two dependency
+ *  rows cited above), post-flatten: real.yml's `:name:` symbols are codename
+ *  marks and its `:type:` symbols name type cards by codename; the port
+ *  resolves both at run time against the deck's own rows, the way
+ *  Card.ensure!'s type resolution reads Card::Codename. */
+export interface AccountModSeedCard {
+  readonly name: string;
+  readonly codename?: string;
+  /** Codename of the type card (real.yml `:type:`), or undefined for the
+   *  Basic default a type-less Card.ensure! save gets. */
+  readonly typeCodename?: string;
+  readonly content?: string;
+}
+
+/** *account's own content — real.yml :82-121 verbatim (the account docs HTML
+ *  the *account card carries on every real deck). Declared before the row
+ *  table that quotes it. */
+const ACCOUNT_RIGHT_CORE_CONTENT = [
+  "<div>When someone signs up, they create a [[Sign up]] card...</div>",
+  "<blockquote>",
+  "<div>{{Sign up|closed;title: Sign ups}}</div>",
+  "</blockquote>",
+  "<div>...that can be changed into a [[User]] card:</div>",
+  "<blockquote>",
+  "<div>{{User|title: Users; closed}}</div>",
+  "</blockquote>",
+  "<div>Some important [[http://decko.org/permissions|permissions]]:</div>",
+  "<div>",
+  "<ul>",
+  "<li>When [[Anyone]] can [[*create|create]] a [[Sign up]] card, links to sign up will appear.</li>",
+  "<li>When [[Anyone]] can [[*create|create]] a [[User]] card, each [[Sign up]] can be auto-approved with a verification email.</li>",
+  "<li>If permission to [[*create|create]] a [[User]] is restricted, someone with that permission must approve each [[Sign up]] by hand.</li>",
+  "</ul>",
+  "</div>",
+  "<h5>Related links</h5>",
+  "<ul>",
+  "<li><em>[[http://decko.org/account | Accounts docs]]</em></li>",
+  "<li><em>[[Cards with accounts]]</em></li>",
+  "<li><em>[[:account+:right+:by_name|Account cards]]</em></li>",
+  "</ul>",
+].join("\n");
+
+export const ACCOUNT_MOD_SEED_CARDS: readonly AccountModSeedCard[] = [
+  // dependency cardtypes first (they type the rows below)
+  { name: "Role", codename: "role", typeCodename: "cardtype" }, // account real.yml :3-13
+  { name: "User", codename: "user", typeCodename: "cardtype" }, // core real.yml:39-47
+  { name: "Email template", codename: "email_template", typeCodename: "cardtype" }, // email real.yml:3-8
+  // card-mod-account-0.20.0/data/real.yml, file order
+  { name: "*members", codename: "members" }, // :15-16
+  { name: "Anyone", codename: "anyone", typeCodename: "role" }, // :19-27
+  { name: "Anyone Signed In", codename: "anyone_signed_in", typeCodename: "role" }, // :28-34
+  { name: "Administrator", codename: "administrator", typeCodename: "role" }, // :35-45
+  { name: "Eagle", codename: "eagle", typeCodename: "role" }, // :46-51
+  { name: "Shark", codename: "shark", typeCodename: "role" }, // :52-60
+  { name: "Help Desk", codename: "help_desk", typeCodename: "role" }, // :61-69
+  {
+    name: "Anonymous",
+    codename: "anonymous",
+    content:
+      "<p>Edits made by people who are not signed in are credited to Anonymous. " +
+      "[[http://decko.org/account|Learn more about accounts]].</p>",
+  }, // :70-74
+  { name: "*account", codename: "account", content: ACCOUNT_RIGHT_CORE_CONTENT }, // :82-121
+  { name: "*email", codename: "email" }, // :124-135
+  { name: "*password", codename: "password" }, // :136-146
+  { name: "*salt", codename: "salt" }, // :147-152
+  { name: "*status", codename: "status" }, // :153-161
+  { name: "*account settings", codename: "account_settings" }, // :164-172
+  { name: "Sign up", codename: "signup", typeCodename: "cardtype" }, // :175-196
+  { name: "*signin", codename: "signin" }, // :262-268
+  { name: "*roles", codename: "roles" }, // :269-279
+  { name: "*enabled roles", codename: "enabled_roles" }, // :281-283
+  { name: "*account links", codename: "account_links" }, // :285-286
+  { name: "Cards with accounts", codename: "cards_with_account", content: '{"right_plus": ":account"}' }, // :288-290 — type deviation disclosed in the module header
+  { name: "*thanks", codename: "thanks", typeCodename: "setting" }, // :292-293
+  {
+    name: "Signup Success",
+    codename: "signup_success",
+    content:
+      "<div>\n  Thank you for signing up with {{:title|core}}. \n" +
+      "  You should receive a response in your email.\n</div>",
+  }, // :298-303
+  { name: "welcome email", codename: "welcome_email", typeCodename: "email_template" }, // :208-210
+  { name: "verification email", codename: "verification_email", typeCodename: "email_template" }, // :211-231
+  { name: "password reset email", codename: "password_reset_email", typeCodename: "email_template" }, // :232-245
+  { name: "signup alert email", codename: "signup_alert_email", typeCodename: "email_template" }, // :246-260
+];
+
+/** The shipped bot account: real.yml :203-206 — Decko Bot+*account with its
+ *  +*email child. The census (first-run-setup.ts countUserAccounts) excludes
+ *  this holder by the bot's id, exactly as Ruby's creator_id arm does. */
+const DECKOBOT_ACCOUNT: { junctionName: string; emailChildName: string; email: string } = {
+  junctionName: "Decko Bot+*account",
+  emailChildName: "Decko Bot+*account+*email",
+  email: "no-reply@decko.org",
+};
+
+// ---------------------------------------------------------------------------
+// the capability
+// ---------------------------------------------------------------------------
+
+export interface BootSeedDeps {
+  readonly driver: SQLDatabaseDriver;
+  /** Clock for the layer-A row stamps (Ruby's fixture load stamps load
+   *  time). Defaults to the wall clock; injectable for determinism. */
+  readonly now?: () => Date;
+}
+
+export interface BootSeedResult {
+  /** Success tag — a failed seed THROWS (a half-seeded deck must not be
+   *  reported as either state), so today the only arm is ok: true. */
+  readonly ok: true;
+  /** Layer-A fixture rows actually inserted (0 on a re-run — the INSERT OR
+   *  IGNORE is what makes a second boot a no-op, Ruby's replant being the
+   *  operator-driven destroy-and-reload this deliberately is not). */
+  readonly coreRowsInserted: number;
+  /** Layer-B card names CREATED (first boot). */
+  readonly modCardsCreated: readonly string[];
+  /** Layer-B card names UPDATED (re-run repair — the Card.ensure! arm,
+   *  director/card_class.rb:58-61). */
+  readonly modCardsUpdated: readonly string[];
+}
+
+/**
+ * Seed a fresh deck: schema-first is the CALLER's contract (Ruby: db:setup's
+ * schema:load precedes db:seed — card.rake:4-6, db/seeds.rb:3; here the
+ * deploy stream's / the storage builder's schema application), then
+ *
+ *   layer A — CORE_FIXTURE_SEED_CARDS as direct INSERTs (Cardio::Seed.load's
+ *             FixtureSet semantics), one batch, INSERT OR IGNORE;
+ *   layer B — ACCOUNT_MOD_SEED_CARDS plus the shipped bot account, through
+ *             the engine's CardActionEngine as the DeckoBot actor
+ *             (Card.ensure! under Auth.as_bot — eat.rb:28, :38-45), each
+ *             create carrying its real.yml codename.
+ *
+ * After a successful run the deck is bootstrapped in actor.ts:50's sense:
+ * actorBot/actorAnonymous resolve, resolveAccountCodenameIds (signin.ts)
+ * returns the account field ids, and the first-run setup window can compute
+ * its census. Nothing here opens that window: the census still counts REAL
+ * holder accounts only — the seeded rows are the shipped accounts
+ * (setup.rb:44's "every deck starts with two accounts"), excluded by holder
+ * id exactly as Ruby's creator_id arm excludes them.
+ */
+export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedResult> {
+  const now = deps.now ?? (() => new Date());
+  const stamp = sqlDateTime(now());
+
+  // ---- layer A: the core fixture, direct INSERT (FixtureSet.create_fixtures)
+  const coreRowsInserted = await seedCoreFixture(deps.driver, stamp);
+
+  // ---- layer B needs the bot to act as (eat.rb:38-45 Auth.as_bot; the bot
+  // row is layer A card 1, seed.rb:106-108's author).
+  const bot = await actorBot(deps.driver);
+
+  const fetcher = new FetchEngine(deps.driver);
+  const engine = new CardActionEngine(fetcher, { actor: bot });
+  const modCardsCreated: string[] = [];
+  const modCardsUpdated: string[] = [];
+
+  for (const seed of ACCOUNT_MOD_SEED_CARDS) {
+    await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
+  }
+
+  // the shipped bot account (real.yml :203-206)
+  await ensureNamed(engine, DECKOBOT_ACCOUNT.junctionName, undefined, undefined, modCardsCreated, modCardsUpdated);
+  await ensureNamed(engine, DECKOBOT_ACCOUNT.emailChildName, DECKOBOT_ACCOUNT.email, undefined, modCardsCreated, modCardsUpdated);
+
+  return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
+}
+
+// ---------------------------------------------------------------------------
+// layer A mechanics
+// ---------------------------------------------------------------------------
+
+async function seedCoreFixture(driver: SQLDatabaseDriver, stamp: string): Promise<number> {
+  // Every fixture row carries read_rule_class "*all" + read_rule_id 10 and
+  // creator/updater 1 — verbatim cards.yml. The fixed id 10 in read_rule_id
+  // is the fixture's OWN *all+*read row (cards_010), not a magic constant.
+  const statements = CORE_FIXTURE_SEED_CARDS.map((card) => ({
+    sql:
+      `INSERT OR IGNORE INTO cards
+         (id, name, key, codename, left_id, right_id, current_revision_id,
+          created_at, updated_at, creator_id, updater_id,
+          read_rule_class, read_rule_id, references_expired, trash,
+          type_id, db_content)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, 1, '*all', 10, NULL, 0, ?, ?)`,
+    params: [
+      card.id,
+      card.name,
+      card.key,
+      card.codename,
+      card.leftId,
+      card.rightId,
+      stamp,
+      stamp,
+      card.typeId,
+      card.dbContent,
+    ] as unknown[],
+  }));
+  const results = await driver.batch(statements);
+  return results.reduce((sum, result) => sum + result.rowsAffected, 0);
+}
+
+// ---------------------------------------------------------------------------
+// layer B mechanics — Card.ensure! (create-or-update by name) as the bot
+// ---------------------------------------------------------------------------
+
+async function ensureSeedCard(
+  engine: CardActionEngine,
+  seed: AccountModSeedCard,
+  driver: SQLDatabaseDriver,
+  bot: Actor,
+  created: string[],
+  updated: string[],
+): Promise<void> {
+  const typeId = seed.typeCodename === undefined
+    ? undefined
+    : await codenameCardId(driver, seed.typeCodename);
+  await ensureNamed(engine, seed.name, seed.content, typeId, created, updated, seed.codename);
+  void bot;
+}
+
+async function ensureNamed(
+  engine: CardActionEngine,
+  name: string,
+  content: string | undefined,
+  typeId: number | undefined,
+  created: string[],
+  updated: string[],
+  codename?: string,
+): Promise<void> {
+  const existing = await engine.fetch.fetchByName(name);
+  if (existing !== undefined && existing.id !== undefined) {
+    // the ensure arm: update when the stored content differs, so a re-run
+    // repairs drift without churning acts (Card.ensure!'s save_if_needed,
+    // director/card_class.rb:58-61)
+    if (existing.dbContent !== (content ?? "") && content !== undefined) {
+      await engine.updateCard({ cardId: existing.id, content });
+      updated.push(name);
+    }
+    return;
+  }
+  await engine.createCard({
+    name,
+    content: content ?? null,
+    typeId,
+    codename: codename ?? null,
+  });
+  created.push(name);
+}
+
+/** The id of the card carrying a codename — the codename.rb:108 mechanism
+ *  the whole auth layer resolves through (actor.ts:74-87), which is also how
+ *  Card.ensure! resolves real.yml's `:type:` symbols. */
+async function codenameCardId(driver: SQLDatabaseDriver, codename: string): Promise<number | undefined> {
+  const result = await driver.query<{ id: number }>(
+    "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+    [codename],
+  );
+  return result.rows[0]?.id;
+}
