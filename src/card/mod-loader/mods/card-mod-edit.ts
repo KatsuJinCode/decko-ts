@@ -435,7 +435,7 @@ function buttonFormGroup(ctx: ViewContext, inner: string): string {
  *  [standard_save_button, standard_save_and_close_button]; the array
  *  rides output() (newline-joined, nils compacted - the hidden Save
  *  button drops WITHOUT a blank line in the captured :edit bytes). */
-const editButtonsView: ViewFn = ({ fmt, voo }) =>
+export const editButtonsView: ViewFn = ({ fmt, voo }) =>
   buttonFormGroup(
     { fmt, voo },
     output([
@@ -469,7 +469,7 @@ const editButtonsView: ViewFn = ({ fmt, voo }) =>
  *  (edit_inline.rb:48-52): link_to_view with menu_icon (icon_tag :edit),
  *  class "ms-2 edit-link", "data-cy" "edit-link" - href "/<card url_key>/
  *  board_type_formgroup", rel nofollow, data-remote. */
-const editTypeRowView: ViewFn = ({ fmt, voo }) => {
+export const editTypeRowView: ViewFn = ({ fmt, voo }) => {
   if (!voo.viz.has("type_form")) voo.hide("type_form"); // visible? writes once
   if (voo.explicitShow("type_form")) {
     // honest remainder: board_type_formgroup (type select2 formgroup) -
@@ -505,7 +505,7 @@ const editTypeRowView: ViewFn = ({ fmt, voo }) => {
  *  fields carry autocomplete="off" (form_tag_helper.rb:309
  *  hidden_field_tag = text_field_tag(..., type: :hidden,
  *  autocomplete: "off")); the attribute order is the captured one. */
-const conflictTrackerView: ViewFn = ({ fmt }) => {
+export const conflictTrackerView: ViewFn = ({ fmt }) => {
   if (fmt.card.id === undefined) return ""; // `return unless card&.real?`
   const value = fmt.card.record.currentRevisionId;
   return `<input class="current_revision_id form-control" autocomplete="off" type="hidden" value="${value ?? ""}" name="card[last_action_id_before_edit]" id="card_last_action_id_before_edit" />`;
@@ -669,7 +669,7 @@ function inputDefinedByCard(
  *  Rails' text_area emits the body after a newline (TagHelper
  *  PRE_CONTENT_STRINGS[:textarea] = "\n", tag_helper.rb:44) and
  *  content_tag-escapes it (the captured Home textarea shows &lt;div&gt;). */
-const inputView: ViewFn = (ctx) => {
+export const inputView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const content = h(fmt.card.dbContent ?? "");
   const vooInputType = voo.opts["input_type"];
@@ -764,7 +764,7 @@ function contentField(ctx: ViewContext): string {
  *  visible by default), formgroup_help(false) (nil - help: false)]
  *  -> form.label(:content, "Content") = `<label for="card_content">`.
  *  editor_wrap (:208-212 form.rb): `<div class="editor content-editor">`. */
-const contentFormgroupView: ViewFn = ({ fmt, voo }) => {
+export const contentFormgroupView: ViewFn = ({ fmt, voo }) => {
   const card = fmt.card;
   const attrs = emitAttrs({
     class: "form-group card-editor",
@@ -881,7 +881,7 @@ function normalizedEditFieldMark(
  *  :edit_inline fieldset). No existing surface sets voo.structure/
  *  edit_structure (the account family's callers do), so the single-card
  *  bytes are unchanged. */
-const contentFormgroupsView: ViewFn = (ctx) => {
+export const contentFormgroupsView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   return `<fieldset class="card-editor editor">${editSlot(ctx)}</fieldset>`;
 };
@@ -922,7 +922,7 @@ const contentFormgroupsView: ViewFn = (ctx) => {
  *  _render_content_formgroups, _render(voo.buttons_view || :edit_buttons)])
  *  - newline-joined, the nil dropped. home_view rides the edit_type_row
  *  voo (the captured edit_type_row slot JSON carries it). */
-const editFormView: ViewFn = ({ fmt, voo }) => {
+export const editFormView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("edit_type_row"); // the view body's voo.show :edit_type_row
   voo.hide("edit_type_row"); // edit_form's own hide - first-write no-op
   const form =
@@ -1012,7 +1012,7 @@ function editModalMenu(fmt: ViewContext["fmt"]): string {
  *  the four closers, one \n per line. The modal wrap config hash cannot
  *  ride ModViewConfig.wrap (a string list); the wrapper bytes are emitted
  *  here, exactly the layout port's modalView shape. */
-const editView: ViewFn = ({ fmt, voo }) => {
+export const editView: ViewFn = ({ fmt, voo }) => {
   fmt.addNameContext();
   voo.showViz("help");
   voo.hide("save_button");
@@ -1243,7 +1243,7 @@ const nameFormgroupView: ViewFn = ({ fmt }) => {
  *  PLAIN h-escaped name (no link), the edit link targets :name_form
  *  (edit_inline_link :48-52); no home_view rides the standalone render
  *  (the captured data-slot carries none). */
-const editNameRowView: ViewFn = ({ fmt, voo }) => {
+export const editNameRowView: ViewFn = ({ fmt, voo }) => {
   const editLink =
     `<a rel="nofollow" class="ms-2 edit-link slotter" data-cy="edit-link"` +
     ` href="/${fmt.urlKey()}/name_form" data-remote="true">${icon("edit")}</a>`;
@@ -2107,7 +2107,7 @@ const editStructureView: ViewFn = () => "";
  *  `render_guide` - the render dispatch to the :guide view (card-mod-help
  *  set/all/guide.rb:6-16, wrap: :slot - the captured arm is the guide
  *  view's slot wrap with show:[guide_tab, guide]). */
-const guideTabView: ViewFn = ({ fmt }) => fmt.renderView("guide");
+export const guideTabView: ViewFn = ({ fmt }) => fmt.renderView("guide");
 
 // --- all/overlay_guide.rb ----------------------------------------------------
 
@@ -2295,7 +2295,7 @@ function boardModal(ctx: ViewContext, interior: string, sidebar: string): string
   return out;
 }
 
-const boardView: ViewFn = (ctx) => {
+export const boardView: ViewFn = (ctx) => {
   const { voo } = ctx;
   const interior = boardBody(ctx, "board");
   // the wrapper :board's class_up + hide! (board.rb:13-14) - by the
@@ -2310,7 +2310,7 @@ const boardView: ViewFn = (ctx) => {
  *  the wrapper (the captured arm carries the breadcrumb-data slot and the
  *  board_parts bytes, no modal; and the anonymous arm RENDERS - the alias
  *  carries no perms directive of its own). */
-const cardboardView: ViewFn = (ctx) => boardBody(ctx, "cardboard");
+export const cardboardView: ViewFn = (ctx) => boardBody(ctx, "cardboard");
 
 // --- the sidebar: board_tabs (board.rb:24-32) + the tab_panel haml ----------
 
@@ -2422,7 +2422,7 @@ function boardTabsView(ctx: ViewContext): string {
  *  class_up "card-slot" "flex-column"; wrap { set_select(:related) } -
  *  card_select's form_tag (path view: :filtered_accordion_rule_list,
  *  mark: "") around set_select_tag's select2 + the _fixed-slot div. */
-const rulesTabView: ViewFn = ({ fmt, voo }) => {
+export const rulesTabView: ViewFn = ({ fmt, voo }) => {
   voo.classUp("card-slot", "flex-column");
   // related_sets(true): the self set, plus the right set for known simple
   // cards (both targets are simple + known)
@@ -2508,7 +2508,7 @@ function boardPillItem(text: string, markUrlKey: string): string {
   );
 }
 
-const relatedTabView: ViewFn = ({ fmt }) => {
+export const relatedTabView: ViewFn = ({ fmt }) => {
   const sections: Array<[string, string[]]> = [];
   // related_by_name_items (related_section.rb:19-24): the name ancestors
   // for compound cards (unpinned - both targets are simple) + by name
@@ -2571,7 +2571,7 @@ const relatedTabView: ViewFn = ({ fmt }) => {
  *  counts DOWN from acts.size (act_listing.rb:60-68 current_act_seq).
  *  The acts/actor/acted_at data ride the history seam
  *  (render.ts HISTORY_SEAM_VIEWS carries this view). */
-const historyTabView: ViewFn = ({ fmt, voo }) => {
+export const historyTabView: ViewFn = ({ fmt, voo }) => {
   voo.classUp("d0-card-body", "history-slot");
   voo.hide("act_legend");
   const reader = fmt.engine.historyRenderReader?.();
@@ -2739,7 +2739,7 @@ function followOverviewButton(actorName: string, known: boolean): string {
  *  !card.new_card? && followable? (follow.rb:2-3, the true override). The
  *  follow/follower state rides the follow seam (the render-time bundle:
  *  session actor, followed?, followerCount). */
-const followSectionView: ViewFn = ({ fmt, voo }) => {
+export const followSectionView: ViewFn = ({ fmt, voo }) => {
   const signedIn = fmt.engine.viewer?.signedIn === true;
   let body = "";
   if (signedIn && fmt.card.id !== undefined) {
@@ -2780,7 +2780,7 @@ const followSectionView: ViewFn = ({ fmt, voo }) => {
  *  card; the *default rule types it RichText) through the standard nest
  *  machinery (the captured slot carries
  *  show:[comment_box, titled]/hide:[menu]/home_view/title). */
-const engageTabView: ViewFn = (ctx) => {
+export const engageTabView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const follow = fmt.renderView("follow_section");
   const discussion = showDiscussionTab(ctx)

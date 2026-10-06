@@ -89,6 +89,35 @@ import { resolveContentOverride, resolveContentOverrideEntry } from "./content-o
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
 import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
+// The board/edit flat seam (the 422 lane): the loader-bound board bytes the
+// oracle pins (fixtures/captured/board-views.json) and the edit bytes
+// (fixtures/captured/edit-forms.json) rode chain dispatch — a set/all/*
+// module's views are Ruby's BASE format class (set/format.rb:133-144
+// all_set? branch + registrar.rb:79-84 process_base_format_modules), so the
+// mod-less production engine (no ModLoader is ever bound in the worker) must
+// see them in THIS compiled record or every signed-in /:name/board and
+// /:name/edit GET raises the unsupported-view 422. Same single-source seam
+// as template_nest/lead below: the flat entry IS the mod's view fn.
+import {
+  boardView,
+  cardboardView,
+  conflictTrackerView,
+  contentFormgroupView,
+  contentFormgroupsView,
+  editButtonsView,
+  editFormView,
+  editNameRowView,
+  editTypeRowView,
+  editView,
+  engageTabView,
+  followSectionView,
+  guideTabView,
+  historyTabView,
+  inputView,
+  relatedTabView,
+  rulesTabView,
+} from "../mod-loader/mods/card-mod-edit.js";
+import { guideView, helpView } from "../mod-loader/mods/card-mod-help.js";
 import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 // Merge resolution (read-both-sides, union): the core-mod.js import is a
 // NAMED-import widening, not a contradiction. One merge parent carried
@@ -6320,6 +6349,58 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // manifest (card-mod-rules.ts, setPath type/set/html_views/template)
   // registers the SAME body for the chain-aware deck.
   template_link: templateLinkView,
+  // --- the board/edit flat seam (the 422 lane) -----------------------------
+  // card-mod-edit-0.20.0 set/all/editing.rb:3 `view :board, perms: :update,
+  // unknown: true, cache: :never, wrap: :board` and set/all/board.rb's
+  // wrapper/grid/tab-sidebar bytes (boardView emits the wrapper itself; the
+  // perms directive rides the name-keyed registry in
+  // permissions/view-perms.ts, which already carries board -> update). The
+  // loader-bound arm of these bytes is oracle-pinned
+  // (fixtures/captured/board-views.json); the headless arm renders the SAME
+  // fn (tests/card/render/headless-board-edit-flat-dispatch.test.ts pins
+  // the two arms byte-equal).
+  board: boardView,
+  // editing.rb:13 `view :cardboard, :board` — the alias (board's body
+  // without the wrapper; no perms directive of its own).
+  cardboard: cardboardView,
+  // card-mod-edit-0.20.0 set/all/edit_content.rb:28 `view :edit, perms:
+  // :update, unknown: true, cache: :never, wrap: { modal: {...} }` (the
+  // modal wrap bytes are emitted in the view fn; perms rides view-perms.ts
+  // edit -> update).
+  edit: editView,
+  // edit_content.rb:3 `view :edit_form, wrap: :slot` (no perms directive —
+  // the captured oracle arms render it anonymously) + the rest of the
+  // bodies' dispatch closure, all set/all/* files of the same mod:
+  // edit_inline.rb (:edit_name_row), edit_type.rb (:edit_type_row),
+  // form.rb (:content_formgroups), editing.rb:37 (:edit_buttons), and the
+  // board tab sidebar's dispatch set (tab_views.rb :guide_tab/:engage_tab/
+  // :rules_tab/:related_tab/:history_tab/:follow_section + help.rb's
+  // :guide — the ACTIVE tab's view is dispatched by name from boardTabs).
+  edit_form: editFormView,
+  edit_name_row: editNameRowView,
+  edit_type_row: editTypeRowView,
+  content_formgroups: contentFormgroupsView,
+  // form.rb:17-19 `view :content_formgroup, cache: :never, unknown: true`
+  // — editSlot's wrap_content_formgroup branch (edit_inline.rb:37-44's
+  // voo.show arms fire SHOWN for unset optionals) and editor.rb's
+  // content_field dispatch (:conflict_tracker + :input, form.rb:27-31 and
+  // editor.rb's input — all/editor's editor-input view, the manifest's
+  // set/all/editor registration).
+  content_formgroup: contentFormgroupView,
+  input: inputView,
+  conflict_tracker: conflictTrackerView,
+  edit_buttons: editButtonsView,
+  guide_tab: guideTabView,
+  engage_tab: engageTabView,
+  follow_section: followSectionView,
+  rules_tab: rulesTabView,
+  related_tab: relatedTabView,
+  history_tab: historyTabView,
+  // card-mod-help-0.20.0 set/all/help.rb:6 `view :help, unknown: true,
+  // cache: :never, wrap: :slot` and set/all/guide.rb:6-16 `view :guide` —
+  // the frame_help/help renders inside BOTH the board and edit bodies.
+  help: helpView,
+  guide: guideView,
   // The page-lane navbar family (card-mod-layout navbar_links/nav_item/
   // nav_link_in_dropdown + card-mod-search search_box) — set-scoped inside
   // each fn; see src/card/render/navbar-views.ts.

@@ -133,7 +133,7 @@ function wrapHelpText(ctx: ViewContext, text: string): string {
  *  body returns blank (format/render.rb:96-97 runs with_wrapper around
  *  final_render unconditionally) - the oracle pins the empty-slot-div bytes
  *  for a rule-less card. */
-const helpView: ViewFn = (ctx) => {
+export const helpView: ViewFn = (ctx) => {
   const help = helpText(ctx);
   const body = /^\s*$/.test(help)
     ? ""
@@ -293,7 +293,7 @@ function guideInnerHtml(ctx: ViewContext): string {
   return `<div class="guide-text">${prependGuideEditLink(ctx, text)}</div>`;
 }
 
-const guideView: ViewFn = (ctx) => modSlotWrap(ctx, "guide", guideInnerHtml(ctx));
+export const guideView: ViewFn = (ctx) => modSlotWrap(ctx, "guide", guideInnerHtml(ctx));
 
 // ---------------------------------------------------------------------------
 // prepareEngine - the boot-time *help rule warm (the Rule::Cache analog).
