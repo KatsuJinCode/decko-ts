@@ -2447,8 +2447,42 @@ async function renderCardPage(cardName, renderEngine = render, requestedView) {
   }
 }
 
-async function cardRecordJson(cardName, renderEngine = render) {
-  const record = await fetcher.fetchByName(cardName);
+// ---------------------------------------------------------------------------
+// The BARE VIEW lane (view-lane shadow support, 2026-10-03): GET /<name>?view=<view>
+// renders RenderEngine.render(name, view) — the exact (card, view) path the
+// corpus replay grades (src/testing/replay.ts render-engine handler) and the
+// dual-lane capture recorded. Deliberately NOT renderCardPage: no layout
+// chrome, no html_page head, and none of applyServedEnvironmentDeltas (those
+// are PAGE-lane deployment config; the bare view lane's byte contract is the
+// capture environment — development default nest view :titled, raw
+// (bucket)/... attachment bytes).
+//
+// A render raise emits the corpus CAPTURE_ERROR sentinel BYTES at status 200
+// (the replay convention compares sentinel strings as bytes, no status
+// semantics) — with the ENGINE's own error class naming, not Ruby's taxonomy.
+// Base-vs-candidate comparison stays exact (both sides use the same mapping);
+// a corpus-recaptured REFERENCE for a raising view records the Ruby class
+// name and will not byte-match the engine sentinel — the named fidelity
+// limit documented in the shadow report's limitations.
+// ---------------------------------------------------------------------------
+async function renderCardView(cardName, view, renderEngine = render) {
+  const headers = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Connection": "close",
+    "Keep-Alive": "timeout=0",
+  };
+  try {
+    const html = await renderEngine.render(cardName, view);
+    return { status: 200, headers, body: html };
+  } catch (error) {
+    const cls = error instanceof Error ? error.name : "Error";
+    const message = error instanceof Error ? error.message : String(error);
+    return { status: 200, headers, body: `CAPTURE_ERROR: ${cls}: ${message}` };
+  }
+}
+
+async function cardRecordJson(cardName, renderEngine = render) {  const record = await fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
   }
@@ -3230,8 +3264,31 @@ const server = http.createServer(async (req, res) => {
       response = await renderSigninPage();
     } else if (!pathname.slice(1).includes("/")) {
       const name = decodeName(pathname.slice(1));
+      // View-lane dispatch: a non-empty ?view= query renders the BARE view
+      // (renderCardView above); its absence or emptiness keeps the proven
+      // page path byte-identical. The query is the dispatch key (the corpus
+      // URL convention "/<name>?view=<view>"), not the request headers.
+      //
+      // FOLD-12 UNION ADJUDICATION (lane-fold12-2026-10-03): the bare view
+      // lane answers a RAISING render with the CAPTURE_ERROR sentinel at
+      // status 200 — the shadow parity stage's byte-comparison semantics —
+      // but the graded/session surface pins Ruby's unsupported-view shape
+      // (422, format/render.rb:60-64 via error.rb:21; live-verified 422
+      // view-not-supported by the w5-live-alignment lane) in the
+      // standing-net member tests/server/edit-session-replay.test.ts
+      // ("unported view names 422 and deep paths 404"). Both contracts hold
+      // by scoping the sentinel lane to the process that asks for it: the
+      // shadow tool sets DECKO_SHADOW_VIEW_LANE=1 on the servers it spawns
+      // (bin/migration-parity-shadow.mjs); every other boot — the graded
+      // pins, the session-replay surface, default staging — keeps the
+      // pre-view-lane fall-through to renderCardPage, whose unsupported-view
+      // answer is the pinned 422.
+      const requestedView = url.searchParams.get("view");
+      const shadowViewLane = process.env.DECKO_SHADOW_VIEW_LANE === "1";
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
+      } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
+        response = await renderCardView(name, requestedView, requestEngine);
       } else {
         response = await renderCardPage(name, requestEngine, requestedView);
       }

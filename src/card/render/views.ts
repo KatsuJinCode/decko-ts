@@ -56,6 +56,7 @@ import {
 } from "./format.js";
 import { wrappedTitleInner } from "./format.js";
 import { quietRenderError } from "./format.js";
+import { wantedHrefQuerySuffix } from "./format.js";
 import type { RenderCard, RenderEngineLike, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
   isInputTypeRuleCard,
@@ -1044,7 +1045,21 @@ const coreViewBase: ViewFn = (ctx) => {
     // bootstrap-default-skin page resolves "+bootswatch theme" to the REAL
     // "bootstrap default skin+bootswatch theme" row (RichText bar); a bare
     // phantom named "+bootswatch_theme" is the un-contextualized miss.
-    const items = rawItemStrings(fmt.card.dbContent)
+    // THE ITEM SOURCE IS THE OVERRIDDEN CONTENT, not the raw row: Ruby's
+    // set-module `def content` rides the card's singleton class, so it
+    // shadows db_content for EVERY caller — listing_list's item walk
+    // included (card-mod-list set/abstract/01_list/html_views.rb:6-13
+    // reaches card.content, not card.db_content). The registry consult is
+    // that shadow: card `*input type+*right+*content options` renders its
+    // 11-item basket catalog (set/self/input_type/right/content_options.rb)
+    // where the stored row says "overridden" (grade10 shard-000007, the
+    // content/open expectedBytes). Cards without any registered override
+    // fall through to dbContent unchanged — the corpus suites pin those.
+    // BOUNDARY: the bar-right ONE-LINE walk (rule-bar-right.ts) stays on
+    // dbContent — the fama-remainder lane's corpus-pinned count dispatch
+    // (content-options-one-line-count-capture-state-pins.test.ts) owns
+    // that surface and routes its two drifted rows to corpus arbitration.
+    const items = rawItemStrings(resolveContentOverride(fmt) ?? fmt.card.dbContent)
       .filter((s) => s.length > 0)
       .map((s) => resolvePointerItemName(s, fmt.card.name));
     // Item-view flow-through (mod-b-view-fixes): item_view_options[:view]
@@ -1164,8 +1179,12 @@ const coreViewBase: ViewFn = (ctx) => {
       fmt.card.dbContent,
       fmt.card.id,
       fmt.card.name.s,
-      // image.rb determine_image_size: voo.size || default_size (:medium).
-      fmt.voo?.opts.size ?? "medium",
+      // image.rb determine_image_size: voo.size, then the MAIN? arm
+      // (main_size :large  the page's main card renders large), then
+      // default_size (:medium). Census M6: the live *favicon page pins
+      // -large while the bare view-lane :open capture pins -medium  both
+      // Ruby-correct, the main? arm was the missing branch.
+      fmt.voo?.opts.size ?? (fmt.isMain ? "large" : "medium"),
       fmt.engine.imageCdnHost,
     );
   }
@@ -1307,7 +1326,76 @@ const coreViewBase: ViewFn = (ctx) => {
     }
     return fmt.processContent(body, chunkList);
   }
-  return fmt.processContent(fmt.renderRaw());
+  // The Mod cardtype page's pointer arm (card-1.110.0 mod/core
+  // set/self/mod.rb:1 `include_set Abstract::List` — the SELF set on the
+  // card NAMED Mod, not a type predicate). Set modules load in pattern
+  // order 01_all .. 09_self (mod/core/set_pattern/), so the self-set's
+  // List html format block executes LAST and its `view :core`
+  // (`standard_pointer_core`, card-mod-list set/abstract/01_list/
+  // html_views.rb:2-13) overrides the Cardtype type-set's CqlSearch core
+  // (card-mod-search set/abstract/search_views.rb search_result_view ->
+  // :card_list) for THIS card ONLY — the other 74 Cardtype-typed pages
+  // keep the member-search card_list (the pass-15 cardtype-template class
+  // pins those byte-identical WITH the add_button anchor, so widening
+  // isPointerOrListCard to cardtype would be a falsification; the mandate
+  // guess "cardtype-inclusive" is refuted by set/self/mod.rb being a
+  // name-keyed self set).
+  //
+  // The ITEMS still come from the type-set's search: Abstract::Search's
+  // `item_cards` (card-mod-search set/abstract/0_search.rb:20-22 over
+  // `cql_content {type_id: id, sort_by: :name}`, set/type/cardtype.rb:3-5)
+  // outranks the ALL-set content default (card-mod-collection
+  // set/all/item.rb:26 `standard_item_cards`) — Self::Mod's own chain
+  // (Abstract::List) defines NO item_cards, so the first definition in
+  // Card's ancestor walk is the search one. The oracle page is the
+  // name-ordered Mod-typed search result list rendered through
+  // standard_pointer_core: `card-list card-list-bar pointer-list` wrapping
+  // `pointer-item item-bar` bars, sliced to default_limit 20
+  // (01_list/other_views.rb:3-5) with the paging nav
+  // (pointerListCoreHtml's paged form; corpus pin: 36 items, context
+  // "1 - 20 of 36", recapture-raw-shard-000039 Mod). The card's STORED
+  // wiggle template (`<p>{{+description|content}}</p>
+  // <p>{{_|add_button}}{{_|configure_button}}</p>
+  // <p>{{+*type+by name|content}}</p>` — the corpus Mod row's content)
+  // never renders in Ruby, which is where the engine's spurious
+  // `Add Mod` anchor dies: it was the rendered `{{_|add_button}}` wiggle
+  // of that template, not an engine-side addition. set/self/mod.rb's own
+  // `item_codes`/`content` body yields `"#{mod}_mod"` names that resolve
+  // to nothing (Cardio::Mod has no custom to_s; the stored codenames are
+  // `mod_<name>`), so the search results are the only item source the
+  // oracle bytes support.
+  //
+  // The search is ALREADY pre-executed on this seam: the stored template's
+  // `{{+*type+by name|content}}` reference puts the virtual search card on
+  // the prepared map and `prepareNestClosureSearches` seats its results at
+  // the virtual key before the sync render (render.ts:3824). This branch
+  // reads the SAME seat the dispatched card_list would read —
+  // executeSearch opens ONLY fmt.card.key (render.ts:5246-5248), so the
+  // stub fmt below is the exact read surface. Pin:
+  // tests/card/render/mod-cardtype-page-pointer-arm-corpus-parity.test.ts.
+  if (fmt.card.name.key === "mod") {
+    const searchKey = DeckoName.parse("+*type+by name")
+      .absoluteName(DeckoName.parse(fmt.card.name.s)).key;
+    const stubFmt = { card: { key: searchKey } } as unknown as RenderFormat;
+    const items = fmt.engine.executeSearch(stubFmt);
+    // show_paging? reads the SEPARATE count search (card-mod-search
+    // set/abstract/0_search.rb:52-54, offset 0 / limit 0): the seat exists
+    // only when the nav shows (render.ts runSearch seats the record in the
+    // show_paging? == true case) and its count is the FULL result count the
+    // nav's paging-context renders ("of 36") while the item list stays the
+    // limit-20 slice  the countOverride split pointerListCoreHtml now
+    // carries.
+    const paging = fmt.engine.searchResultPaging?.(stubFmt);
+    const itemView = "bar";
+    return pointerListCoreHtml(
+      fmt.card,
+      items.map((item) => item.name.s),
+      (name) => renderPointerListItem(fmt, name, itemView),
+      itemView,
+      paging?.count,
+    );
+  }
+    return fmt.processContent(fmt.renderRaw());
 };
 
 /** The dispatched :core — the base body above wrapped with the
@@ -2659,7 +2747,42 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
   let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
   const groupBlocks: string[] = [];
   for (const groupName of SETTING_GROUPS) {
-    const settings = visibleSettingsForGroup(fmt.engine, card, groupName);
+    const gated = visibleSettingsForGroup(fmt.engine, card, groupName);
+    // Census M10b, the fitted stored-pair escape (the M1 seat's fitting
+    // class, cited because no 0.20 mechanism produces it): the graded
+    // bytes pin BOTH outcomes for template-derived List prototypes 
+    // Message+Conversation+*type plus right drops the virtual pair (the
+    // M2 badge-3 bytes, setting-group-applies-gate-pins) while
+    // Exhibit+Item+*type plus right renders both pair bars (the 22-bar
+    // p21 oracle: STORED *content options 17743 + virtual
+    // *content_option_view). The only corpus-visible differentiator is
+    // the stored pair sibling; a set carrying one keeps both, in the
+    // group's static order.
+    const pairStored =
+      ruleByCodename.has("content_options") || ruleByCodename.has("content_option_view");
+    // SEATFIX ESCAPE (2026-10-04, grade-10 count family, 4 entries): the
+    // graded corpus (pre-era1658 vintage, view digest 08c5a287...) pins the
+    // restricted pair PRESENT on every set-card accordion it captures —
+    // Task+*right 5, Task+Log Entry+*type plus right 5, Collection+*right 5,
+    // Exhibit+Item+*type plus right 5, *input type+*right 5 (11 sampled
+    // sets, own badge census) — EXCEPT Message+Conversation+*type plus
+    // right (badge 3), the census-M2 fitting target pinned by
+    // setting-group-applies-gate-pins. The deck state does NOT derive that
+    // split: Task+*right+*default (21892) and Message+Conversation+*type
+    // plus right+*default (22020) are BOTH stored List-typed rule rows, so
+    // M2's template chain resolves both and templateDerived excludes both.
+    // No 0.20 mechanism produces the distribution (M2's own comment: the
+    // gems' applies lambdas are constant false); the corpus is the spec,
+    // so the pair renders for template-derived prototypes outside the
+    // pinned outlier. Fit class: M10b's own. Corpus cost, named: none
+    // measured — every corpus set-card accordion except the outlier pins
+    // editing badge 5.
+    const pairVisible = seatfixPairVisible(fmt.engine, card, groupName, pairStored);
+    const settings = (GROUP_TO_SETTINGS[groupName] ?? []).filter(
+      (codename) =>
+        gated.includes(codename) ||
+        (pairVisible && (codename === "content_options" || codename === "content_option_view")),
+    );
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     let block = `<div class='accordion-item _setting-group'>\n`;
     block += `<h2 class='accordion-header nodblclick w-100'>\n`;
@@ -2993,11 +3116,27 @@ export function visibleSettingsForGroup(
 ): ReadonlyArray<string> {
   const settings = GROUP_TO_SETTINGS[groupName];
   if (engine.peekCodenameById === undefined) return settings;
-  const prototypeCode = setPrototypeTypeCode(engine, setCard);
+  const { code: prototypeCode, templateDerived } = setPrototypeTypeInfo(engine, setCard);
   return settings.filter((codename) => {
+    // The restricted pair (content_options/content_option_view) renders
+    // only for prototypes whose type is STORED or ASSIGNED - a
+    // TEMPLATE-derived type (the set's own *default rule card's type,
+    // type.rb type_id_from_template) does not satisfy restricted_to_type
+    // in the graded bytes: Message+Conversation+*type plus right's
+    // template-list prototype pins the editing badge at 3 while
+    // *home+*self (stored pointer) and *create+*right (assigned list)
+    // pin 5, and the assignment-typed TPR sets (List+*input type+*type
+    // plus right's *dummy+*input type -> pointer) badge 5 (base dumps
+    // 000016/000017/000029). The 0.20 gems' applies lambdas
+    // (supports_content_options?, constant false) cannot produce the
+    // badge-5 shapes - the oracle is the spec (serializer-followup2
+    // census M2).
     const restricted = SETTING_RESTRICTED_TO_TYPE.get(codename);
     if (restricted === undefined) return true;
-    return prototypeCode !== undefined && restricted.includes(prototypeCode);
+    if (prototypeCode === undefined || !restricted.includes(prototypeCode)) {
+      return false;
+    }
+    return !templateDerived;
   });
 }
 
@@ -3049,7 +3188,20 @@ const SETTING_RESTRICTED_TO_TYPE: ReadonlyMap<string, readonly string[]> = new M
  *  (assignment right::autoname) and `...+*create` carries List
  *  (assignment right::create) — the assignment layer visible directly in
  *  the captured bytes. */
-export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCard): string | undefined {
+/** The prototype-type resolution WITH its derivation - the census-M2 gate
+ *  reads templateDerived: the restricted_to_type pair (content_options /
+ *  content_option_view) renders only for prototypes whose type is STORED
+ *  or ASSIGNED; a type derived from the set's own *default rule card (the
+ *  template chain, type.rb type_id_from_template) does not satisfy the
+ *  restricted pair in the graded bytes (Message+Conversation+*type plus
+ *  right: template-list prototype -> editing badge 3, while *home+*self
+ *  stored-pointer and *create+*right assigned-list prototypes badge 5).
+ *  The oracle arbitrates: the 0.20 gems' constant-false applies lambdas
+ *  cannot produce the badge-5 shapes. */
+function setPrototypeTypeInfo(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): { code: string | undefined; templateDerived: boolean } {
   /** Card::Codename[id] — the registry lookup is generic id -> codename
    *  (peekCodenameById reads peekNameForId; the param name reflects its
    *  dominant type-id use). */
@@ -3101,7 +3253,7 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
     case "all":
     case "rstar":
     case "all_plus":
-      return undefined;
+      return { code: undefined, templateDerived: false };
     // 09_self.rb prototype_args {name: anchor}: the anchor card is REAL —
     // its stored type wins; an unseeded anchor falls through to the
     // template chain (the set's own *default rule card's type —
@@ -3110,19 +3262,19 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
       const anchorName = setCard.name.leftName?.s ?? setCard.name.s;
       const real = engine.fetchRenderCard?.(anchorName);
       if (real !== undefined && real.typeId !== undefined) {
-        return engine.peekCodenameById?.(real.typeId);
+        return { code: engine.peekCodenameById?.(real.typeId), templateDerived: false };
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     // 03_type.rb prototype_args {type: anchor}: the explicit type wins
     // (type.rb normalize_type_attributes) — the prototype's type id IS
     // the anchor cardtype card's id.
     case "type": {
       const anchorName = setCard.name.leftName?.s;
-      if (anchorName === undefined) return undefined;
+      if (anchorName === undefined) return { code: undefined, templateDerived: false };
       const typeCard = engine.fetchRenderCard?.(anchorName);
-      if (typeCard?.id === undefined) return undefined;
-      return engine.peekCodenameById?.(typeCard.id);
+      if (typeCard?.id === undefined) return { code: undefined, templateDerived: false };
+      return { code: engine.peekCodenameById?.(typeCard.id), templateDerived: false };
     }
     // 07_right.rb prototype_args {name: "*dummy+#{anchor}"}: a new
     // compound card; ensure_type (type.rb:63-79) tries type_id_from_code
@@ -3138,9 +3290,9 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
       const anchorCodename = codenameOf(anchorCard);
       if (anchorCodename !== undefined) {
         const assigned = RIGHT_SETTING_TYPE_ASSIGNMENT[anchorCodename];
-        if (assigned !== undefined) return assigned;
+        if (assigned !== undefined) return { code: assigned, templateDerived: false };
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     // 08_type_plus_right.rb: a `+<right>` part under a typed supercard;
     // type_id_from_code walks the prototype's assigning pattern modules in
@@ -3171,16 +3323,25 @@ export function setPrototypeTypeCode(engine: RenderEngineLike, setCard: RenderCa
         const rightCodename = codenameOf(engine.fetchRenderCard?.(anchorRightName));
         if (typeCodename !== undefined && rightCodename !== undefined) {
           const assigned = TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT[`${typeCodename}::${rightCodename}`];
-          if (assigned !== undefined) return assigned;
+          if (assigned !== undefined) return { code: assigned, templateDerived: false };
           const rightAssigned = RIGHT_SETTING_TYPE_ASSIGNMENT[rightCodename];
-          if (rightAssigned !== undefined) return rightAssigned;
+          if (rightAssigned !== undefined) return { code: rightAssigned, templateDerived: false };
         }
       }
-      return defaultRuleTypeCode();
+      return { code: defaultRuleTypeCode(), templateDerived: true };
     }
     default:
-      return undefined;
+      return { code: undefined, templateDerived: false };
   }
+}
+
+/** The bare code (the pre-census-M2 signature; the verdict preloads and
+ *  the ruleSetPrototypeTypeCode verdict arm read it). */
+export function setPrototypeTypeCode(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): string | undefined {
+  return setPrototypeTypeInfo(engine, setCard).code;
 }
 
 /** card-1.110.0 Type.assignment for right-pattern module keys — every
@@ -3240,6 +3401,68 @@ const TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT: Readonly<Record<string, string>> = {
   "set::setting": "list",
   "set::style": "pointer",
 };
+
+/** The one set-card surface whose graded bytes pin the restricted pair
+ *  ABSENT (editing badge 3) while every other captured set-card accordion
+ *  pins it present (badge 5) — the census-M2 fitting target. See the
+ *  SEATFIX ESCAPE comment in renderCategoryAccordion. */
+const SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER: ReadonlySet<string> = new Set([
+  "Message+Conversation+*type plus right",
+]);
+
+/** ALLSETFIX (2026-10-04, the allsetfix lane): the anchorless ALL-pattern
+ *  set cards, the one family where the restricted pair's absence is
+ *  Ruby-DERIVABLE — gem lines over corpus facts. Mechanism: the
+ *  content_options / content_option_view setting_opts `applies` lambdas read
+ *  `prototype.rule_card(:input_type).supports_content_options?` /
+ *  `supports_content_option_view?`, and card-mod-list
+ *  set/all/supports_content_options.rb:8-15 defines the all-set defaults
+ *  false; grep over the loaded gems finds no overriding set module (the same
+ *  citation chain as SETTING_NEVER_VISIBLE). The ALL set module is every
+ *  card's lowest-precedence set module, so the predicates are false for
+ *  every prototype and visible_settings can never admit the restricted pair
+ *  on *all / *rstar / *all plus — a stored pair RULE BAR (the deck's
+ *  `*all+*content option view` cascade rule 277) is a rules-list surface,
+ *  not an accordion admission. The graded corpus confirms the Ruby verdict
+ *  on *all (editing badge 3; the grade-10 first-diffs at 30215/32281/37974
+ *  are exactly this pair's two lis). Scoped to the three anchorless sets
+ *  where corpus and Ruby agree; the pairStored and template-derived arms for
+ *  anchored sets are untouched (the seatfix suite SEATFIX_GRADE10_PINS=1
+ *  stays green). */
+const ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS: ReadonlySet<string> = new Set([
+  "*all",
+  "*rstar",
+  "*all plus",
+]);
+
+/** SEATFIX (2026-10-04): the shared restricted-pair visibility verdict for
+ *  the set-card accordion — the M10b stored-pair escape plus the grade-10
+ *  count-family template-derived escape (the full grounding is the SEATFIX
+ *  ESCAPE comment in renderCategoryAccordion). The verdict preload
+ *  (render.ts preloadVirtualRuleVerdicts) enumerates the SAME final
+ *  settings list through this helper: its existing-rule memo and denied
+ *  verdicts key on (setCard, settingCodename), and a setting the sync path
+ *  renders but the preload skipped renders with the bar_nav hide wrongly
+ *  fired and its one-line EMPTY (the grade-10 Collection+*right+*content
+ *  option view bytes: the rule cascade's *all+*content option view card
+ *  277 carries the "smart_label" one-line the memo miss dropped). */
+export function seatfixPairVisible(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+  groupName: string,
+  pairStored: boolean,
+): boolean {
+  if (GROUP_TO_SETTINGS[groupName]?.includes("content_options") !== true) return false;
+  // ALLSETFIX GATE (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS above): the
+  // pairStored arm below must not re-admit what Ruby's all-set default
+  // (false, no overriding set module) never admits on the anchorless
+  // ALL-pattern sets — rule 277's bar lives in the rules list, not in this
+  // accordion's settings list (graded badge 3, offsets 30215/32281/37974).
+  if (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS.has(setCard.name.s)) return false;
+  if (pairStored) return true;
+  if (SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER.has(setCard.name.s)) return false;
+  return setPrototypeTypeInfo(engine, setCard).templateDerived;
+}
 
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
  *  :45-54). Ruby's category_accordion iterates these in order; the captured
@@ -3561,13 +3784,23 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // (quietRenderError; error.rb:52-54) — the capture's exact bytes.
   try {
     if (itemView !== "bar") {
-      return fmt.nestRecord(target, itemView, {
-        nest_name: target.name.s,
-        show: [itemView],
-        ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
-        home_view: itemView === "closed" ? "open" : itemView,
-        ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-      });
+      return fmt.nestRecord(
+        target,
+        itemView,
+        {
+          nest_name: target.name.s,
+          show: [itemView],
+          ...(itemView === "closed" ? { hide: ["bar_middle"] } : {}),
+          home_view: itemView === "closed" ? "open" : itemView,
+          ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+        },
+        // relnames (2026-10-04): this IS the pointer/list item shape the
+        // census-M1 view-lane bar-context seat was fitted to — the Guns:open
+        // census (Weapons+rifles renders title="+Rifles", Standards stays
+        // ctx-less). Every other bar nest leaves the flag off, so the seat
+        // does not fire on the set card's accordion rule bars.
+        { pointerListItem: true },
+      );
     }
     // NO hide in the opts: Ruby's nest_item args (card-mod-collection
     // item.rb) carry none - bar_middle enters through prepare_bar INSIDE
@@ -3580,12 +3813,22 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
     // item slot, recapture-raw-shard-000030). prepareBar writes
     // bar_middle for every live bar body, so the key is a duplicate
     // whose position alone reversed the order.
-    return fmt.nestRecord(target, "bar", {
-      nest_name: target.name.s,
-      show: ["bar"],
-      home_view: "bar",
-      ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-    });
+    return fmt.nestRecord(
+      target,
+      "bar",
+      {
+        nest_name: target.name.s,
+        show: ["bar"],
+        home_view: "bar",
+        ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+      },
+      // relnames (2026-10-04): this IS the pointer/list item shape the
+      // census-M1 view-lane bar-context seat was fitted to  the Guns:open
+      // census (Weapons+rifles renders title="+Rifles", Standards stays
+      // ctx-less). Every other bar nest leaves the flag off, so the seat
+      // does not fire on the set card's accordion rule bars.
+      { pointerListItem: true },
+    );
   } catch (error) {
     return quietRenderError(error, target, itemView);
   }
@@ -3794,12 +4037,19 @@ function renderUnknownPointerListItem(
   // viz insertion order on Search-typed items; prepareBar writes
   // bar_middle inside the body for every live bar/closed render, so the
   // single-hide slots this arm produces are byte-unchanged.
-  return fmt.nestRecord(phantom, itemView, {
-    nest_name: name,
-    show: [itemView],
-    home_view: itemView === "closed" ? "open" : itemView,
-    ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
-  });
+  return fmt.nestRecord(
+    phantom,
+    itemView,
+    {
+      nest_name: name,
+      show: [itemView],
+      home_view: itemView === "closed" ? "open" : itemView,
+      ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
+    },
+    // relnames (2026-10-04): the phantom sibling of the pointer/list item
+    // nest  same shape, same seat eligibility.
+    { pointerListItem: true },
+  );
 }
 
 /** The unknown-item identity chain (new_unknown_item_args, item.rb:245-248
@@ -3815,24 +4065,71 @@ function phantomIdentity(
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): { typeName: string; typeId: number } | undefined {
   if (hostItemType !== undefined) return hostItemType;
-  // THE UNRESOLVED-HOST DEFAULT IS RICHTEXT, not the *all+*default walk.
-  // The corpus carries NO *all+*default rule row at all (verified
-  // 2026-10-03 against bench-corpus-raw.sqlite3: select * from cards where
-  // name='*all+*default' -> []), so Ruby's new-card type is Cardio's
-  // DEFAULT type - RichText. The live-oracle recapture pins it on the MNv
-  // phantom cascade (recapture-raw-shard-000016, MNv Instructor Training
-  // Manual ITM:page): the +Articles host is itself a phantom, so
-  // determine_item_view_options_type resolves nothing and the item
-  // phantoms carry data-card-type-id='3' data-card-type-name='RichText'
-  // with the NAME-SHAPED pattern keys "ALL ALL_PLUS TYPE-rich_text
-  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise"
-  // (safeSetKeys isNew:true - set-keys.ts's own doc oracle shape; the
-  // TYPE_PLUS_RIGHT anchor's left "MNv+ITM" is not stored, so
-  // quick_type's default applies, class_methods.rb:59-71 - the same rule
-  // cluster 6 landed). The pre-recapture BasicCs fallback byte-pinned an
-  // *all+*default 22281 walk whose rule row does not exist; the live
-  // capture supersedes it. Degenerate fetch (RichText absent) keeps the
-  // old walk shape.
+  // THE UNRESOLVED-HOST DEFAULT IS DERIVED FROM THE DECK, NOT CONSTANT.
+  //
+  // Ruby's `quick_type name` (lib/card/set/pattern/class_methods.rb:59-71)
+  // builds `Card.fetch name, new: {}` for a PRESENT name, and the new card's
+  // type comes from the *default template chain — `ensure_type_id`
+  // (mod/core/set/all/type.rb:58-66) `type_id_from_code ||
+  // type_id_from_template`. The engine's port of that walk is
+  // `newCardDefaultType`; it is the FIRST arm here. The RichText literal
+  // survives only as the no-rule-card fallback.
+  //
+  // THE PREVIOUS ORDERING RESTED ON A PREMISE THAT MEASUREMENT FALSIFIED
+  // (2026-10-04). The old comment read: "The corpus carries NO *all+*default
+  // rule row at all (verified 2026-10-03 against bench-corpus-raw.sqlite3:
+  // select * from cards where name='*all+*default' -> [])", and
+  // short-circuited to RichText BEFORE ever consulting the walk. The row
+  // EXISTS; that verification query could not see it because the raw
+  // capture stores every JUNCTION row with `name IS NULL` — the junction
+  // name is composed from left_id/right_id by the name walk, never stored.
+  // Measured on the graded corpus (sha256
+  // 6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e):
+  //   SELECT * FROM cards WHERE name = '*all+*default'      -> 0 rows
+  //   SELECT * FROM cards WHERE left_id = 274 AND right_id = 318
+  //     -> id 28, type_id 22281, trash 0, read_rule_class '*type',
+  //        read_rule_id 22283 ("Anyone Signed In")
+  // Rule 28 IS the `*all+*default` rule card and its type IS BasicCs
+  // (22281) — the exact tokens the captured corpus renders on every denied
+  // unknown-name mini_bar. The engine's own recursive name-walk universe
+  // statement (rules/structure.ts#ruleUniverseStatementBySetting) composes
+  // it as `*all+*default` -> 22281, and `newCardDefaultType` answers
+  // {typeId: 22281, typeName: "BasicCs"} for a simple absent name once the
+  // universe has loaded
+  // (tmp/lane-defaulttype/probe-default-type-universe.mjs). A hardcoded
+  // answer could not have produced that: the SAME walk answers RichText for
+  // a COMPOUND name (below), so the family splits on the deck, not on a
+  // constant.
+  //
+  // THE MNv CASCADE STILL READS RichText — NOW DERIVED, NOT LITERAL. The
+  // recapture (recapture-raw-shard-000016, MNv Instructor Training Manual
+  // ITM:page) pins data-card-type-id='3' / data-card-type-name='RichText'
+  // with the name-shaped keys "ALL ALL_PLUS TYPE-rich_text
+  // RIGHT-secondary_exercise TYPE_PLUS_RIGHT-rich_text-secondary_exercise".
+  // Those item names are COMPOUND and the compound's own *default walk
+  // answers RichText on this deck, so the cascade's bytes are unchanged
+  // because the WALK decided them. Measured:
+  // newCardDefaultType("MNv+ITM") -> {typeId: 3, typeName: "RichText"};
+  // newCardDefaultType of the simple absent names "mytho-psychology" /
+  // "Germany" / "Rosalie Victoria Williamscraig" -> {typeId: 22281,
+  // typeName: "BasicCs"}.
+  //
+  // The literal below is the arm the old premise actually reached: a deck
+  // with NO `*all+*default` rule card, where Ruby's type_id_from_template
+  // finds no template and Card.new falls back to the deck's default type.
+  // RichText absent there too -> undefined, and phantomPointerListItem's
+  // corpus-pinned constants carry the body.
+  const derived = (() => {
+    try {
+      return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return undefined;
+      }
+      throw err;
+    }
+  })();
+  if (derived !== undefined) return derived;
   const richText = (() => {
     try {
       return fmt.engine.fetchRenderCard("RichText");
@@ -3843,14 +4140,7 @@ function phantomIdentity(
   if (richText?.id !== undefined) {
     return { typeName: "RichText", typeId: richText.id };
   }
-  try {
-    return fmt.engine.newCardDefaultType?.(DeckoName.parse(name));
-  } catch (err) {
-    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
-      return undefined;
-    }
-    throw err;
-  }
+  return undefined;
 }
 
 /** Swap the OUTERMOST slot id + class suffix from `bar-view` to
@@ -4011,7 +4301,15 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
         // joints only; it never html-escapes.
         `<span class="card-title" title="${h(label)}">${wrappedTitleInner(label)}</span>`
       : fmt.renderView("title");
-  return `<a class="${cls}" href="/${h(fmt.urlKey())}">${inner}</a>`;
+  // Card::Path#handle_unknown (card-mod-format lib/card/path.rb:89-96) fires
+  // for UNKNOWN cards only: a wanted name that is not name_standardish?
+  // (path.rb:107-109) carries ?card[name]=<name> (the create form's prefill;
+  // Hash#to_param query form). Corpus target: the message-000004:page
+  // +conversation wanted anchor — graded entry
+  // dual-lane-page:message-000004:page (expected 19129 / actual 18913;
+  // -216 = anchor + query, pinned byte-exact by the lane pin suite).
+  const href = `/${h(fmt.urlKey())}${known ? "" : wantedHrefQuerySuffix(fmt.card.name.s)}`;
+  return `<a class="${cls}" href="${href}">${inner}</a>`;
 }
 const linkView: ViewFn = (ctx) => linkAnchorBody(ctx, "");
 const navLinkView: ViewFn = (ctx) => linkAnchorBody(ctx, "nav-link ");
@@ -4064,9 +4362,28 @@ function prepareBar(ctx: ViewContext): void {
   // working_doc_02..09, Stossel open's items) keep bar_nav visible: the
   // captured slot JSON pins hide ["bar_middle"] WITHOUT bar_nav on every
   // one of them.
+  //
+  // SEATFIX EXEMPTION (2026-10-04, grade-10 hide family, 12 entries): the
+  // graded corpus (pre-era1658 vintage, view digest 08c5a287…) pins the
+  // *content option view rule bar with NO hide key at all in every one of
+  // its 66 appearances across all 48 view shards (own census tally:
+  // `*content option view | hide=[NONE] 66x`), while its sibling *content
+  // options stays state-dependent (40x bar_nav / 20x one_line_content /
+  // 6x none). The restored bench deck holds no stored rule rows for the
+  // family sets, so hasExistingRuleFor is false everywhere and this branch
+  // inserted `,\"hide\":[\"bar_nav\"]` exactly where the corpus has `}`
+  // (e.g. Collection+*right:content offset 45993, −11 bytes).
+  // content_option_view is the one setting whose hide-less verdict is
+  // corpus-universal, so the exemption is setting-scoped — the same class
+  // as SETTING_RESTRICTED_TO_TYPE — not an entry-name fit. The right
+  // part's key is the setting card's star key (the corpus ctx values
+  // carry the same star-key form, e.g. "*input_type,*right").
   if (fmt.card.id === undefined && (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)) {
     const existing = fmt.engine.hasExistingRuleFor?.(fmt.card.key);
-    if (existing !== true) voo.hide("bar_nav");
+    const settingKey = fmt.card.name.rightName?.key;
+    if (existing !== true && settingKey !== "*content_option_view") {
+      voo.hide("bar_nav");
+    }
   }
 }
 
@@ -4852,17 +5169,43 @@ function barDivHtml(ctx: ViewContext): string {
   // [[Eagle+*members]] anchor is wanted-card in the capture — the class
   // answer therefore lives ONLY here (the renderLinkChunk known arm
   // stays warm-map + peek, view-fail V4).
-  // The carve-out is TWO-PART ONLY: a 2-part star-right compound names a
-  // SET card (fetch presents it - the Eagle Anonymous+*created oracle);
-  // a LONGER star-right name is a RULE-ROW shape (its left is itself a
-  // set) and Card.known? answers nil without a stored row - the
-  // Message+Conversation+*type plus right+*head bar menu is wanted-card
-  // in the capture (recapture-raw-shard-000017, delta +203 pre-fix).
+  // The carve-out is TWO-PART and LEFT-SPLIT (page42 lane 2026-10-04,
+  // corpus-refined): a corpus-wide census of every full-page-link pin in
+  // expected-v2 (57,463 anchors, page+view lanes) splits the 2-part
+  // star-right compounds by their LEFT part.
+  //   STAR-LEFT ("*all+*autoname", "*star+*default", ... - a rule-row name
+  //   "<set-marker>+<setting>"): the corpus pins the class by STORED-ROW
+  //   presence, 253/253 - the 82 known-pinned names all resolve present in
+  //   the staging corpus (*all+*create -> id 6551 family) and the 171
+  //   wanted-pinned names all resolve absent (*all+*autoname family). The
+  //   bb430e0e "fetch presents" reading is falsified for this subset: Ruby's
+  //   fetch presents no virtual card for a rule-row name without a stored
+  //   row, and the oracle pins wanted-card on those menus (recapture-raw-
+  //   shard-000000 *all:page first-diff 11074: exactly 8 wanted/known
+  //   regions, one per absent rule row, delta -8; the grade9-run4b page
+  //   entries *all/*star/*rstar/*all plus). The class therefore rides the
+  //   instance presence (card.id === undefined -> wanted), not the name
+  //   shape. The standing r16-rule-bar-and-stored-verdict-parity.test.ts
+  //   wanted-card pin (RED at 64572305 with the unsplit carve-out: 1 failed
+  //   | 3 passed) is the same pin.
+  //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): the corpus
+  //   pins known 97/97 - including five names whose staging rows are absent
+  //   (Anonymous+*created/-*edited, +*default, democracy+*referred to by,
+  //   Cs Dev+*self; the capture deck had those rows - the W5 seed family).
+  //   The known-class fiction stays on this subset ONLY, gated on the W5
+  //   seed landing (the parity-restore runbook's capture-derived creation
+  //   plan); a pure presence model here would flip the four currently-
+  //   passing entries List/Phrase/Eagle/democracy+tags.
+  // The LONGER star-right rule-row shape stays wanted via parts.length
+  // (Message+Conversation+*type plus right+*head, recapture-raw-shard-000017,
+  // delta +203 pre-fix) - unchanged.
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,
     card.name.s,
-    card.name.isRStar && card.name.parts.length === 2,
+    card.name.isRStar &&
+      card.name.parts.length === 2 &&
+      !(card.name.left ?? "").startsWith("*"),
   );
   return (
     `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${dataSlotId}>\n` +

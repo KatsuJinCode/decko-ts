@@ -76,6 +76,22 @@ import {
   structureUniverseFromResults,
   structuredCardContent,
 } from "../../src/card/rules/structure.js";
+import {
+  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  resolveSetModuleContent,
+  setCaptureWallClock,
+} from "../../src/card/set-module-content-overrides.js";
+
+// The capture-deck wall clock (set-override-fidelity lane 2026-10-03): the
+// corpus's graded card.content answers include wall-clock surfaces
+// (Self::Now — set/self/now.rb:1-3) whose captured bytes are a frozen sample
+// of a time-varying answer. The capture ran live on 2026-09-28 ~15:12
+// America/Los_Angeles (the *now record bytes carry the rendered instant);
+// grading against those bytes requires the SAME instant, so the runner pins
+// the card wall clock to the capture minute — the capture-environment model
+// (deck_origin precedent). Affects ONLY the card-content override path
+// (set-module-content-overrides.ts's clock seam), never Date.now() timing.
+setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
 
 const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
 /** Bucket for a result whose entry had no recorded shard. The entry arrays
@@ -737,15 +753,50 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
             ? undefined
             : ((await engine.codenames.nameForId(card.typeId)) ?? "");
         const typeName = typeCard?.name;
+        let leftCard: Awaited<ReturnType<typeof engine.fetchById>> | undefined;
         let leftTypeName: string | undefined;
         if (card.leftId !== undefined) {
-          const leftCard = await engine.fetchById(card.leftId);
+          leftCard = await engine.fetchById(card.leftId);
           if (leftCard?.typeId !== undefined) {
             const leftTypeCard = await engine.fetchById(leftCard.typeId);
             leftTypeName = leftTypeCard?.name;
           }
         }
         const isSimple = card.name === undefined || card.name.isSimple;
+        // The set-module content override (set-override-fidelity lane): Ruby's
+        // applicable set modules ride the card's singleton class
+        // (mod/core/set/all/initialize.rb:61-74) and shadow card.content for
+        // every caller — the record's content field photographs that answer.
+        // Qualification needs the anchor parts' codenames (anchor_codenames,
+        // set/pattern/base.rb:46-49): walk the right-spine (each name part IS
+        // a card row). Loop guard mirrors composedName's cycle protection.
+        const partCodenames: Array<string | null> = [];
+        {
+          let cur = card;
+          const spineGuard = new Set<number>();
+          while (cur.leftId !== undefined) {
+            if (spineGuard.has(cur.id)) break;
+            spineGuard.add(cur.id);
+            const right = cur.rightId === undefined ? undefined : await engine.fetchById(cur.rightId);
+            partCodenames.unshift(right?.codename ?? null);
+            const next = await engine.fetchById(cur.leftId);
+            if (next === undefined) break;
+            cur = next;
+          }
+          if (!spineGuard.has(cur.id)) partCodenames.unshift(cur.codename ?? null);
+        }
+        const setModuleOverride = resolveSetModuleContent({
+          key: card.key ?? "",
+          name: card.name?.s ?? "",
+          codename: card.codename ?? null,
+          typeCode: typeCode ?? null,
+          dbContent: card.dbContent,
+          partCodenames,
+          leftIsReal:
+            leftCard !== undefined && !leftCard.isNew && !leftCard.trash,
+          leftCreatedAt: leftCard?.createdAt,
+          leftUpdatedAt: leftCard?.updatedAt,
+        });
         const content = structuredCardContent(
           {
             name: card.name ?? "",
@@ -757,6 +808,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
           },
           card.dbContent,
           structureUniverse,
+          setModuleOverride,
         );
         const record: Omit<CapturedCardRecord, "id"> = {
           name: card.name?.s ?? "",

@@ -1,0 +1,179 @@
+{
+  "captured_by": "tools/oracle/search_oracle_capture.rb",
+  "corpus": [
+    {
+      "content": "alpha body text",
+      "name": "Search Oracle Alpha",
+      "type": "Search Oracle Kind"
+    },
+    {
+      "content": "beta body",
+      "name": "Search Oracle Beta",
+      "type": "Search Oracle Kind"
+    },
+    {
+      "content": "alpha body gamma",
+      "name": "Search Oracle Gamma",
+      "type": "Search Oracle Kind"
+    },
+    {
+      "content": "",
+      "name": "Search Oracle Junction",
+      "type": "Basic"
+    },
+    {
+      "content": "first child",
+      "name": "Search Oracle Junction+child_one",
+      "type": "Search Oracle Kind"
+    },
+    {
+      "content": "second child",
+      "name": "Search Oracle Junction+child_two",
+      "type": "Search Oracle Kind"
+    },
+    {
+      "content": "",
+      "name": "Search Oracle Author",
+      "type": "User"
+    },
+    {
+      "content": "made body",
+      "created_by": "Search Oracle Author",
+      "name": "Search Oracle Made",
+      "type": "Basic"
+    }
+  ],
+  "normalization": "every query sorts by name; the TS pin sorts both arrays (name-SET parity, the cql-basic replay's contract); match is excluded (SQLite raises — the sentinel lives in cql-basic.json + the cql-mysql-match rung)",
+  "oracle": {
+    "app": "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+    "card": "1.110.0",
+    "decko": "0.20.0",
+    "engine": "Card.search(**query, return: \"name\") — the real CQL interpreter",
+    "ruby": "3.3.12"
+  },
+  "queries": {
+    "and_combo": {
+      "query": {
+        "right": "child_one",
+        "sort": "name",
+        "type": "Search Oracle Kind"
+      },
+      "result": [
+        "Search Oracle Junction+child_one"
+      ]
+    },
+    "content_exact": {
+      "query": {
+        "content": "alpha body text",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Alpha"
+      ]
+    },
+    "created_by": {
+      "query": {
+        "created_by": "Search Oracle Author",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Made"
+      ]
+    },
+    "empty_result": {
+      "query": {
+        "name": "Search Oracle No Such Card",
+        "sort": "name"
+      },
+      "result": []
+    },
+    "exact_name": {
+      "query": {
+        "name": "Search Oracle Alpha",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Alpha"
+      ]
+    },
+    "left_children": {
+      "query": {
+        "left": "Search Oracle Junction",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Junction+child_one",
+        "Search Oracle Junction+child_two"
+      ]
+    },
+    "not_name": {
+      "query": {
+        "not": {
+          "name": "Search Oracle Alpha"
+        },
+        "sort": "name",
+        "type": "Search Oracle Kind"
+      },
+      "result": [
+        "Search Oracle Junction+child_one",
+        "Search Oracle Junction+child_two",
+        "Search Oracle Beta",
+        "Search Oracle Gamma"
+      ]
+    },
+    "plus_condition": {
+      "query": {
+        "plus": "child_one",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Junction"
+      ]
+    },
+    "right_child": {
+      "query": {
+        "right": "child_one",
+        "sort": "name"
+      },
+      "result": [
+        "Search Oracle Junction+child_one"
+      ]
+    },
+    "sort_desc_limit": {
+      "query": {
+        "dir": "desc",
+        "limit": 2,
+        "sort": "name",
+        "type": "Search Oracle Kind"
+      },
+      "result": [
+        "Search Oracle Gamma",
+        "Search Oracle Beta"
+      ]
+    },
+    "type_filter": {
+      "query": {
+        "sort": "name",
+        "type": "Search Oracle Kind"
+      },
+      "result": [
+        "Search Oracle Junction+child_one",
+        "Search Oracle Junction+child_two",
+        "Search Oracle Alpha",
+        "Search Oracle Beta",
+        "Search Oracle Gamma"
+      ]
+    }
+  },
+  "seed_log": {
+    "Search Oracle Alpha": "present",
+    "Search Oracle Author": "present",
+    "Search Oracle Beta": "present",
+    "Search Oracle Gamma": "present",
+    "Search Oracle Junction": "present",
+    "Search Oracle Junction+child_one": "present",
+    "Search Oracle Junction+child_two": "present",
+    "Search Oracle Kind": "present",
+    "Search Oracle Made": "present"
+  }
+}

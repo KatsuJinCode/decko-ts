@@ -1,0 +1,17 @@
+{
+  "lane": "engcand-2026-10-04",
+  "page": "Pointer (cardtype card id 34843, type Cardtype)",
+  "mechanism": "the member search Pointer+*type+by name (virtual-search-cards.ts:76: {found_by:_left, sort_by:name} -> ORDER BY c0.key asc, c0.id asc LIMIT 20 over the permission-filtered 20-row pool)",
+  "liveItemOrder": [242, 45649, 45429, 45367, 45366, 45365, 44345, 41586, 40192, 40110, 37179, 35816, 35517, 11745, 77, 38283, 37623, 19343, 38729, 34936],
+  "engineItemOrder": [242, 11745, 35517, 35816, 37179, 40110, 40192, 41586, 44345, 45365, 45366, 45367, 45429, 45649, 77, 38283, 37623, 19343, 38729, 34936],
+  "setEqual": true,
+  "junctionTier": {
+    "rendered": 14,
+    "shared": "both sides render the same 14 junction (NULL-key) cards, all read_rule_id 6568; the permission filter removes 7 more junctions + 13 simples in SQL on both sides (pool = exactly 20 rows, so LIMIT 20 never truncates)",
+    "liveOrder": "242-head, then id-DESC (== created-DESC for these rows)",
+    "engineOrder": "id-ASC — the port-added tie-breaker (src/cql/sql.ts orderDirectivesOf: directives.push({ field: `${alias}.id`, dir: 'asc' }) on non-joined statements)",
+    "attribution": "Ruby's ORDER BY declares no tie-break (sql_statement/order.rb builds 'ORDER BY <field> <dir>' only), so the NULL-key tier's order is the live DB's filesort plan emission — stable across three years (2023-capture == 2026-live byte-equal) but not derivable from the Ruby sources. The port's id-asc tie-breaker is measured-correct on the somatic JOIN shape (sql.ts:421-453 records it as the somatic first-diff fix), so changing it globally is falsified-in-general; a Pointer-shaped special case would encode a MySQL plan artifact as a spec.",
+    "verdict": "ATTRIBUTED, NOT FIXED — no honest engine change moves this page; the simple-name tier and the set already match live."
+  },
+  "simpleTier": "both sides key-ASC over lowercased keys (77 *home, 38283 *Opportunities, 37623 Aikido 2.0, 19343 Brandon Williamscraig, 38729 EricZ, 34936 martialnonviolence) — already matching; the engine's first-20 SQL rows are 20 junctions because the raw executeQuery ran WITHOUT the permission options the render's runSearch adds"
+}

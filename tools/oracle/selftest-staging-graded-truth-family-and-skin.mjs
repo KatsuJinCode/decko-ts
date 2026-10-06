@@ -22,14 +22,18 @@
 //   2. EVERY row of the capture-restored override table
 //      (tests/card/render/raw-corpus-override-capture-restored-rows.json --
 //      the 20 M8 class skins + journal skin customized + the two bootstrap
-//      SCSS source siblings + litera skin): the staged card's
-//      dbContent is byte-equal to the override row, and the record envelope
-//      rebuilt through the graded runner's own card-engine record handler
-//      (dual-lane-direct-runner-core.ts:708-757) is FIELD-EQUAL to that
-//      card's oracle capture record (expected-v2 view-lane shard; for 34179
-//      additionally the p21 capture file, the original proven comparison;
-//      for litera skin 33872 the LIVE raw-view capture, re-calibrated here
-//      against the cerulean/journal oracle contents before comparison).
+//      SCSS source siblings + litera skin + litera skin customized): the
+//      staged card's dbContent is byte-equal to the override row, and the
+//      record envelope rebuilt through the graded runner's own card-engine
+//      record handler (dual-lane-direct-runner-core.ts:708-757) is
+//      FIELD-EQUAL to that card's oracle capture record (expected-v2
+//      view-lane shard; for 34179 additionally the p21 capture file, the
+//      original proven comparison; for the LIVE-captured rows -- litera skin
+//      33872 and litera skin customized 34530 -- the LIVE raw-view captures,
+//      re-calibrated here against the oracle contents each row's provenance
+//      names before comparison: the cerulean/journal shard envelopes for the
+//      rule, and for 34530 additionally the 34179 p21 envelope, the
+//      customized-class live-stored==oracle-stored pin).
 //   3. journal skin customized+parent 1 (45365): the +parent subcard the
 //      Customize-button gate reads is present in staging with its corpus
 //      content ("journal skin").
@@ -238,15 +242,20 @@ const LIVE_CALIBRATION = [
 ];
 function liveCaptureRecordFor(prov) {
   if (!prov?.liveCapture) return undefined;
+  const dir = prov.liveCapture.captureDir ?? LIVE_RAW_VIEW_DIR;
   let calibrated = true;
-  for (const cal of LIVE_CALIBRATION) {
-    const oracle = captureRecords.get(cal.name);
-    const live = extractLiveRawContent(readFileSync(path.join(LIVE_RAW_VIEW_DIR, cal.file), "utf8"));
+  for (const cal of prov.liveCapture.calibration ?? LIVE_CALIBRATION) {
+    // the hardcoded default entries carry .name; the table's provenance
+    // entries carry .skin (the extractor's field name)
+    const calName = cal.name ?? cal.skin;
+    const oracle =
+      cal.oracle === "p21-journal-skin-customized" ? p21Journal : captureRecords.get(calName);
+    const live = extractLiveRawContent(readFileSync(path.join(cal.dir ?? dir, cal.file), "utf8"));
     if (oracle === undefined || live === undefined || live !== oracle.content) calibrated = false;
   }
   if (!calibrated) return undefined;
   const firstFetch = prov.liveCapture.fetches[0];
-  const content = extractLiveRawContent(readFileSync(path.join(LIVE_RAW_VIEW_DIR, firstFetch.file), "utf8"));
+  const content = extractLiveRawContent(readFileSync(path.join(dir, firstFetch.file), "utf8"));
   if (content === undefined) return undefined;
   return {
     name: prov.envelopeFields.name,

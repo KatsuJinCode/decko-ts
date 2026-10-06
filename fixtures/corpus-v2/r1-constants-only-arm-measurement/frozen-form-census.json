@@ -1,0 +1,121 @@
+{
+  "summary": {
+    "shards": 48,
+    "viewLaneRenderEntries": 3686,
+    "entriesCarryingDataSlotShow": 3660,
+    "frozenForm": 3649,
+    "liveForm": 11,
+    "omit": 26,
+    "entriesWithNoParseableDataSlot": 5,
+    "view187PriorClaim": {
+      "renderEntries": 3686,
+      "carryShow": 3635,
+      "frozen": 3624,
+      "live": 11,
+      "omit": 51
+    }
+  },
+  "sampleSize": 20,
+  "sample": [
+    {
+      "shard": "recapture-raw-shard-000000.jsonl",
+      "name": "*all",
+      "view": "content"
+    },
+    {
+      "shard": "recapture-raw-shard-000001.jsonl",
+      "name": "Romain Barnard+Core Project",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "name": "BDWC_academic_resume+*self",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "name": "Plans+*self",
+      "view": "content"
+    },
+    {
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "name": "Americanism+*self",
+      "view": "content"
+    },
+    {
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "name": "Jeffrey Hohenstein+*self",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000004.jsonl",
+      "name": "Please pre-register+*self",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "name": "Aikido video+*self",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000005.jsonl",
+      "name": "Library - BW+*self",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000006.jsonl",
+      "name": "How Can I Keep From Singing - Lyrics+discussion",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000009.jsonl",
+      "name": "Antero Alli - Astrology as Archetypal Language+tags",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000010.jsonl",
+      "name": "politics+Documents",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000013.jsonl",
+      "name": "Item+*type",
+      "view": "content"
+    },
+    {
+      "shard": "recapture-raw-shard-000015.jsonl",
+      "name": "Plans+*right",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000017.jsonl",
+      "name": "darkly skin",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000021.jsonl",
+      "name": "Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000024.jsonl",
+      "name": "Wishlist+tags",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000028.jsonl",
+      "name": "signup alert email+*test context",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000030.jsonl",
+      "name": "TSYR+mythology+articles",
+      "view": "open"
+    },
+    {
+      "shard": "recapture-raw-shard-000036.jsonl",
+      "name": "Pork Roast Clay Baked+discussion",
+      "view": "open"
+    }
+  ]
+}

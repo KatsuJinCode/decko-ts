@@ -82,6 +82,11 @@ const TASK_SETTING_NAME: Record<CrudTask, string> = {
   delete: "*delete",
 };
 
+/** permissions.rb:56's rule-value test — `rule(action)
+ *  .match?(/^\[?\[?_left\]?\]?$/)`: the bare, [_left], or [[_left]] spellings
+ *  of the inherit-from-left rule value, nothing else. */
+const LEFT_RULE_VALUE = /^\[?\[?_left\]?\]?$/;
+
 /**
  * The who_can universe for the write tasks (permissions.rb:47-49) — every
  * live *update/*create/*delete rule card joined to its item references,
@@ -96,6 +101,7 @@ export function viewTaskPermissionStatements(): SQLStatement[] {
     {
       sql:
         `SELECT rules.id AS ruleId, setting_cards.codename AS task, ` +
+        `rules.db_content AS content, ` +
         `refs.referee_id AS partyId ` +
         `FROM cards rules ` +
         `JOIN cards setting_cards ON rules.right_id = setting_cards.id ` +
@@ -114,6 +120,7 @@ export function viewTaskPermissionStatements(): SQLStatement[] {
 interface TaskRuleRow {
   ruleId: number;
   task: string;
+  content: string | null;
   partyId: number | null;
 }
 
@@ -138,6 +145,11 @@ export interface ViewTaskState {
   /** rule card id -> the party ids its content references (who_can's
    *  item ids; an empty set = an empty rule, which denies). */
   readonly ruleParties: Record<WriteTask, Map<number, Set<number>>>;
+  /** rule card id -> the rule's stored content, trimmed (the _left
+   *  inheritance detector reads it; permissions.rb:56 rule(action)
+   *  .match?). Absent/empty for rules whose row the batch somehow missed
+   *  -- those never inherit. */
+  readonly ruleContent: Record<WriteTask, Map<number, string>>;
 }
 
 /** Parse the batch results (statements in viewTaskPermissionStatements
@@ -152,6 +164,11 @@ export function viewTaskStateFromResults(
     create: new Map(),
     delete: new Map(),
   };
+  const ruleContent: Record<WriteTask, Map<number, string>> = {
+    update: new Map(),
+    create: new Map(),
+    delete: new Map(),
+  };
   const hasTaskRules: Record<WriteTask, boolean> = {
     update: false,
     create: false,
@@ -161,6 +178,9 @@ export function viewTaskStateFromResults(
     if (!isWriteTask(row.task)) continue;
     const task = row.task;
     hasTaskRules[task] = true;
+    if (!ruleContent[task].has(row.ruleId)) {
+      ruleContent[task].set(row.ruleId, (row.content ?? "").trim());
+    }
     let parties = ruleParties[task].get(row.ruleId);
     if (parties === undefined) {
       parties = new Set<number>();
@@ -173,6 +193,7 @@ export function viewTaskStateFromResults(
     viewerParties: readState?.parties ?? [],
     hasTaskRules,
     ruleParties,
+    ruleContent,
   };
 }
 
@@ -228,28 +249,15 @@ export async function allTaskVerdictsForCard(
   }
   const needed = WRITE_TASK_CODENAMES.filter((task) => state.hasTaskRules[task]);
   if (needed.length === 0) return out;
-  const candidateKeys: string[] = [];
-  const perTask = new Map<WriteTask, string[]>(); // task -> candidate keys (subset view)
   for (const task of needed) {
-    const names = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
-      (name) => DeckoName.parse(name).key,
-    );
-    perTask.set(task, names);
-    candidateKeys.push(...names);
-  }
-  const resolved = await resolveRuleIdsByRuleKeys(fetcher.driver, candidateKeys);
-  for (const task of needed) {
-    const names = perTask.get(task) ?? [];
-    const firstResolved = names
-      .map((key) => resolved.get(key))
-      .find((ruleId) => ruleId !== undefined);
-    if (firstResolved === undefined) continue; // no applicable rule card -> deny (already false)
+    const ruleId = await applicableRuleId(fetcher, card, task, state, depth);
+    if (ruleId === undefined) continue; // no applicable rule card -> deny (already false)
     // permissions.rb:148-153 update == permit(:update) at render time.
     if (task !== "create") {
-      out[task] = amongParties(state, task, firstResolved);
+      out[task] = amongParties(state, task, ruleId);
       continue;
     }
-    if (!amongParties(state, task, firstResolved)) {
+    if (!amongParties(state, task, ruleId)) {
       out.create = false; // ok_to_create? :121 permit(:create) failed
       continue;
     }
@@ -338,7 +346,7 @@ function amongParties(state: ViewTaskState, task: WriteTask, ruleId: number): bo
 }
 
 /** permit(action) for one task: resolve the card's applicable rule card
- *  (permission_rule_id :55-61 — first candidate that exists) and run the
+ *  (permission_rule_id :55-71, the _left-aware walk below) and run the
  *  party check. NO undefined-allow: a deck with no rule cards for the
  *  task, or a card none of whose candidates resolve, DENIES — Ruby's
  *  who_can -> [] -> among? -> false (permissions.rb:47-49, :100-118), and
@@ -350,17 +358,87 @@ async function permitVerdict(
   task: WriteTask,
   state: ViewTaskState,
 ): Promise<boolean | undefined> {
-  if (!state.hasTaskRules[task]) return false; // no rule data for the task at all -> deny
+  const ruleId = await applicableRuleId(fetcher, card, task, state);
+  if (ruleId === undefined) return false;
+  return amongParties(state, task, ruleId);
+}
+
+/** Card::Query-free port of permissions.rb:55-71 permission_rule_id: the
+ *  first set-pattern candidate that resolves to a stored rule, UNLESS that
+ *  rule's value is the relative "_left" ([_left]/[[_left]] included) AND
+ *  the card is COMPOUND — then the verdict recurses to the LEFT card's own
+ *  permission rule (left_permission_rule_id :67-71: `lcard =
+ *  left_or_new(skip_virtual: true, skip_modules: true)`; a real left's
+ *  :create remaps to :update at :69 because the existing trunk is not the
+ *  act's creation target). The recursion terminates because each step
+ *  strictly shrinks the name (a simple left hits the compound? guard and
+ *  answers its own first candidate — which may be the same _left rule,
+ *  whose "_left" content parses no party items and denies, Ruby's exact
+ *  shape for the no-inheritable-rule deck).
+ *
+ *  Corpus receipts (2026-10-03): Kayla_Feder_20230902+discussion (45298)
+ *  inherits through *all plus+*update (6571, "_left") to Kayla Feder
+ *  20230902's *self rule 45186 ("Anyone") — the comment box renders;
+ *  Klickstein continues+discussion answers from its own *self rule 9841
+ *  before any _left; Perennial/Work Week/MNv discussions recurse to lefts
+ *  with no *update rule, land back on 6571 from a simple card, and deny
+ *  (their graded blanks). */
+async function applicableRuleId(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  task: WriteTask,
+  state: ViewTaskState,
+  depth = 0,
+): Promise<number | undefined> {
+  if (!state.hasTaskRules[task]) return undefined;
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
   );
   const resolved = await resolveRuleIdsByRuleKeys(fetcher.driver, candidates);
+  let firstResolved: number | undefined;
   for (const key of candidates) {
     const ruleId = resolved.get(key);
-    if (ruleId === undefined) continue;
-    return amongParties(state, task, ruleId);
+    if (ruleId !== undefined) {
+      firstResolved = ruleId;
+      break;
+    }
   }
-  return false; // no applicable rule card -> deny (who_can -> [] semantics)
+  if (firstResolved === undefined) return undefined;
+  // permissions.rb:56 — the _left inheritance fires only for compound
+  // cards; the rule VALUE test is the anchored /_left/ bracket-tolerant
+  // match over the stored content.
+  const name = DeckoName.parse(card.name);
+  const value = state.ruleContent[task].get(firstResolved) ?? "";
+  if (depth >= 16 || !LEFT_RULE_VALUE.test(value) || !name.isCompound) {
+    return firstResolved;
+  }
+  const leftName = name.leftName;
+  if (leftName === undefined || leftName.key === "") return firstResolved;
+  const left = await fetcher.fetchByName(leftName.key, { skipVirtual: true });
+  // The real left's type anchor (the *type candidate) — CardRecord carries
+  // the id, the anchor NAME comes from the type card (the same shape
+  // virtualSidePart builds for new parts).
+  let leftTypeName: string | undefined;
+  if (left?.typeId !== undefined && left.typeId !== null) {
+    leftTypeName = (await fetcher.fetchById(left.typeId, { skipModules: true }))?.name?.s;
+  }
+  // permissions.rb:69 — a REAL left's :create verdict is judged as :update
+  // (the existing trunk is nobody's creation target); a missing left keeps
+  // the original task on its new-card walk (left_or_new).
+  const inheritedTask: WriteTask =
+    task === "create" && left?.id !== undefined ? "update" : task;
+  return applicableRuleId(
+    fetcher,
+    {
+      name: left?.name?.s ?? leftName.s,
+      id: left?.id,
+      typeId: left?.typeId,
+      typeName: leftTypeName,
+    },
+    inheritedTask,
+    state,
+    depth + 1,
+  );
 }
 
 /** ok_to_create? :123-125 + ok_to_create_side :127-137 — junction sides:

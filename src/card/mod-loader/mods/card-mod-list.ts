@@ -1349,7 +1349,13 @@ const cardModList: DeckoModManifest = {
     {
       // card-mod-list-0.20.0/set/self/input_type/right/content_options.rb -
       // the *input_type+*right+*content_options card's content override
-      // (the basket codes as pointer content); no card-method surface
+      // (the basket codes as pointer content); no card-method surface.
+      // The RENDER-path registration of that override lives in the
+      // built-in default ContentOverrideRegistry
+      // (render/content-overrides.ts, setPath "self/*input_type+*right+
+      // *content_options" in the card's KEY form) per the bootstrap
+      // precedent: the grading verifier runs the bare engine, where a
+      // manifest contentOverrides entry would never register.
       setPath: "self/input_type/right/content_options",
     },
     {

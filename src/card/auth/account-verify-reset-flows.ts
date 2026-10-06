@@ -157,6 +157,7 @@ import {
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import type { FetchEngine } from "../fetch.js";
 import type { MailMessage, NotifyTransport } from "../notify/types.js";
+import { resolveFromAddress } from "../notify/mail.js";
 import { DeckoName } from "../name.js";
 
 // ---------------------------------------------------------------------------
@@ -191,6 +192,14 @@ export interface AccountFlowContext {
    *  db_content (verified: corpus *title row content is the deck title
    *  string). */
   readonly siteTitle: string;
+  /** The DeckoBot account's email (Card[DeckoBotID].account.email). When
+   *  present, the From: is resolved via Ruby's safe_from_and_reply_to!
+   *  rule (card-mod-email set/type/email_template/email_config.rb:52-79):
+   *  the template's "Decko Bot" from FIELD reaches the envelope as the
+   *  BARE bot address — the six-mail oracle pins this for all six mails.
+   *  Optional: without it the raw field content is kept (the prior
+   *  behavior the flow tests pin). */
+  readonly deckoBotEmail?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -655,11 +664,24 @@ export async function sendAccountVerificationToken(
   return { ok: true, sentTo: account.email, token, verifyUrl: url };
 }
 
+/** The email_document wrapper (card-mod-email set/all/email_html.rb:2-14
+ *  wrapper :email_document) — the html_message part renders THROUGH the
+ *  EmailHtmlFormat#show wrapper (format :email_html def show ->
+ *  wrap_with_email_document), never as a bare div. The `<style>` block is
+ *  the email_stylesheet card's :compiled render, empty for an empty
+ *  stylesheet (the six-mail oracle app's state; a processor landing
+ *  behind this constant changes nothing else). Byte-exact against the
+ *  oracle envelopes. */
+const EMAIL_DOCUMENT_HEAD =
+  '<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>\n    <style></style>\n  </head>\n  <body class="d0-email-body">\n    ';
+const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
+
 /** Deliver one account template — send_account_email's render+deliver
  *  (right/account.rb:37-44): context = the +account card, to = its +email
- *  content. The From: is the template's own field ("Decko Bot" in both
- *  seeded arms; the welcome seed carries none and delivers with the empty
- *  default, module header). */
+ *  content. The From: resolves through safe_from_and_reply_to! when the
+ *  host supplies deckoBotEmail (the "Decko Bot" field becomes the bare
+ *  bot address — the six-mail oracle); the html part wears the
+ *  email_document wrapper (the six-mail oracle). */
 function renderAccountEmail(
   ctx: AccountFlowContext,
   template: typeof RESET_EMAIL_TEMPLATE | typeof VERIFY_EMAIL_TEMPLATE | typeof WELCOME_EMAIL_TEMPLATE,
@@ -671,10 +693,15 @@ function renderAccountEmail(
     { siteTitle: ctx.siteTitle, url: vars.url ?? "", days },
   );
   return {
-    from: template.from,
+    from:
+      ctx.deckoBotEmail !== undefined
+        ? resolveFromAddress(template.from, { deckoBotEmail: ctx.deckoBotEmail })
+        : template.from,
     subject: rendered.subject,
     textBody: rendered.text,
-    ...(rendered.html !== undefined && rendered.html.length > 0 ? { htmlBody: rendered.html } : {}),
+    ...(rendered.html !== undefined && rendered.html.length > 0
+      ? { htmlBody: EMAIL_DOCUMENT_HEAD + rendered.html + EMAIL_DOCUMENT_TAIL }
+      : {}),
     tags: { trigger: "account_email", template: template.codename },
   };
 }

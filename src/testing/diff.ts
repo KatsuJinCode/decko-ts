@@ -1,5 +1,6 @@
-// Byte-diff comparator for oracle replay, plus the two normalization rules the
-// Ruby recording layer applies.
+// Byte-diff comparator for oracle replay, plus the three normalization rules
+// the Ruby recording layer applies (two of them recorded at capture time, the
+// third a capture-process value the recorder could not have known to mask).
 //
 // 1. data-slot-id (tools/oracle/capture.rb:49-52). The capture replaces every
 //    rendered slot's random DOM id with the literal placeholder
@@ -11,8 +12,12 @@
 //    tests/card/mod-loader/oracle-capture-admin-card-views.rb:39). Ruby 3.3
 //    seeds String#hash per process, so the collapse id carries a value no
 //    deterministic engine can reproduce. See ACCORDION_GROUP_HASH_PATTERN.
+// 3. the Cardio::Mod object address (card-1.110.0 mod/core/set/self/mod.rb:4-6
+//    interpolates a mod object that defines no #to_s, so Ruby prints its heap
+//    address). Same class of value as 1 and 2 — a capture-process artifact.
+//    See MOD_OBJECT_ADDRESS_PATTERN.
 //
-// Diff semantics: exact bytes, except those two values.
+// Diff semantics: exact bytes, except those three values.
 
 /**
  * The recording-layer placeholder. Every normalized slot carries exactly
@@ -128,6 +133,52 @@ export function normalizeCloudflareChallengeBlocks(html: string): string {
 }
 
 /**
+ * The Cardio::Mod object-address rule: the third replay-legitimate
+ * per-process value, alongside the slot id and the accordion group hash.
+ *
+ *   #<Cardio::Mod:0xADDR>  ->  #<Cardio::Mod:ADDRESS>
+ *
+ * WHY. card-1.110.0 mod/core/set/self/mod.rb:4-6 interpolates the mod OBJECT
+ * into a string ("#{mod}_mod") and Cardio::Mod defines no #to_s
+ * (lib/cardio/mod.rb; the only "def to_s" under lib/cardio/ is
+ * module_template.rb:23, a different class), so Ruby falls through to
+ * Object#to_s and prints the object's heap address. The address is a property
+ * of the CAPTURE PROCESS, not of the card: it is not comparable across
+ * languages and not across Ruby runs. The corpus holds 34 of them (card id
+ * 45410, view-lane and page-lane recapture-raw-shard-000039.jsonl), all 16
+ * hex digits, all distinct. So the port renders the same TEMPLATE with its
+ * own genuine per-process opaque id and the VALUE is canonicalized here, on
+ * BOTH sides, exactly as the slot id and the group hash are.
+ *
+ * SCOPE - the anchoring is the whole safety argument. Measured over the
+ * whole expected-v2 tree (96 .jsonl files): the literal "#<Cardio::Mod:0x"
+ * occurs 68 times in exactly 2 files, one entry each; "#<[A-Za-z_:]+"
+ * corpus-wide returns "#<Cardio::Mod:" and nothing else; and
+ * "0x[0-9a-f]{4,}" returns those same 68 addresses. There is no second
+ * class-shaped construct and no bare hex literal anywhere else for this rule
+ * to touch, so it cannot mask a diff in any other entry. The pattern also
+ * requires a well-formed hex id (same deliberate strictness as
+ * SLOT_ID_PATTERN above): a malformed address must SURFACE as a diff, not
+ * hide behind the mask.
+ */
+const MOD_OBJECT_ADDRESS_PATTERN = /#<Cardio::Mod:0x[0-9a-f]{16}>/g;
+
+/** The placeholder the address carries once canonicalized. Not hex, so the
+ *  normalized text is never re-matched - the rule is idempotent. */
+export const NORMALIZED_MOD_OBJECT_ADDRESS = "ADDRESS";
+
+/** Canonicalize Cardio::Mod object addresses. Rewrites ONLY the hex span
+ *  inside the template; the class name, the 0x prefix, the closing ">" and
+ *  every other byte survive, so a port that dropped the address or malformed
+ *  it still fails the diff. */
+export function normalizeModObjectAddresses(html: string): string {
+  return html.replace(
+    MOD_OBJECT_ADDRESS_PATTERN,
+    `#<Cardio::Mod:${NORMALIZED_MOD_OBJECT_ADDRESS}>`,
+  );
+}
+
+/**
  * Every normalization the replay comparison applies, in the order the capture
  * scripts apply them. This is the seam src/testing/replay.ts judges every
  * canvas entry through, so it is the one place a replay-legitimate mask has to
@@ -136,7 +187,7 @@ export function normalizeCloudflareChallengeBlocks(html: string): string {
  */
 export function normalizeForReplay(html: string): string {
   return normalizeCloudflareChallengeBlocks(
-    normalizeAccordionGroupIds(normalizeSlotIds(html)),
+    normalizeModObjectAddresses(normalizeAccordionGroupIds(normalizeSlotIds(html))),
   );
 }
 
@@ -220,7 +271,8 @@ export function byteDiff(
 
 /**
  * The replay-side comparison: apply every replay-legitimate normalization to
- * BOTH sides (data-slot-id placeholders and accordion group hashes), then diff
+ * BOTH sides (data-slot-id placeholders, accordion group hashes, and
+ * Cardio::Mod object addresses), then diff
  * exact bytes. src/testing/replay.ts judges every canvas entry through this
  * function, so this is where a normalization that mirrors the recording layer
  * has to land for the canvas to see it.

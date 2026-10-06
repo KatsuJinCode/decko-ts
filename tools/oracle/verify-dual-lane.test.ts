@@ -99,6 +99,17 @@ import {
   structureUniverseFromResults,
   structuredCardContent,
 } from "../../../src/card/rules/structure.js";
+import {
+  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  resolveSetModuleContent,
+  setCaptureWallClock,
+} from "../../../src/card/set-module-content-overrides.js";
+
+// The capture-deck wall clock — the same pin the graded runner applies
+// (dual-lane-direct-runner-core.ts module scope; set-override-fidelity lane
+// 2026-10-03). Both record paths must answer Self::Now with the captured
+// instant for byte parity against the corpus expectations.
+setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
 import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -513,15 +524,48 @@ describe("dual-lane ground-truth verification", () => {
                 ? undefined
                 : ((await engine.codenames.nameForId(card.typeId)) ?? "");
             const typeName = typeCard?.name;
+            let leftCard: Awaited<ReturnType<typeof engine.fetchById>> | undefined;
             let leftTypeName: string | undefined;
             if (card.leftId !== undefined) {
-              const leftCard = await engine.fetchById(card.leftId);
+              leftCard = await engine.fetchById(card.leftId);
               if (leftCard?.typeId !== undefined) {
                 const leftTypeCard = await engine.fetchById(leftCard.typeId);
                 leftTypeName = leftTypeCard?.name;
               }
             }
             const isSimple = card.name === undefined || card.name.isSimple;
+            // The set-module content override — the same resolution the graded
+            // runner performs (dual-lane-direct-runner-core.ts card-engine
+            // handler; set-override-fidelity lane 2026-10-03). Both record
+            // paths must resolve card.content identically.
+            const partCodenames: Array<string | null> = [];
+            {
+              let cur = card;
+              const spineGuard = new Set<number>();
+              while (cur.leftId !== undefined) {
+                if (spineGuard.has(cur.id)) break;
+                spineGuard.add(cur.id);
+                const right =
+                  cur.rightId === undefined ? undefined : await engine.fetchById(cur.rightId);
+                partCodenames.unshift(right?.codename ?? null);
+                const next = await engine.fetchById(cur.leftId);
+                if (next === undefined) break;
+                cur = next;
+              }
+              if (!spineGuard.has(cur.id)) partCodenames.unshift(cur.codename ?? null);
+            }
+            const setModuleOverride = resolveSetModuleContent({
+              key: card.key ?? "",
+              name: card.name?.s ?? "",
+              codename: card.codename ?? null,
+              typeCode: typeCode ?? null,
+              dbContent: card.dbContent,
+              partCodenames,
+              leftIsReal:
+                leftCard !== undefined && !leftCard.isNew && !leftCard.trash,
+              leftCreatedAt: leftCard?.createdAt,
+              leftUpdatedAt: leftCard?.updatedAt,
+            });
             const content = structuredCardContent(
               {
                 name: card.name ?? "",
@@ -533,6 +577,7 @@ describe("dual-lane ground-truth verification", () => {
               },
               card.dbContent,
               structureUniverse,
+              setModuleOverride,
             );
             const record: Omit<CapturedCardRecord, "id"> = {
               name: card.name?.s ?? "",

@@ -86,7 +86,7 @@ export interface FollowNoticeAct {
  *    subject tmpl  `{{follower}} changed {{followed_set}} on {{follow_option}}`
  *    real Ruby     `follower changed followed_set on follow_option`
  *                   (no braces; the placeholder NAME is rendered, the
- *                    `{{` and `}}` are dropped)
+ *                   `{{` and `}}` are dropped)
  *    doc reference card-mod-content set/all/contextual_content.rb:13-19
  *                   + card-mod-email set/abstract/email_field.rb:22-26
  *                   (compact_missing view → default render of card-name)
@@ -113,6 +113,79 @@ export function interpolateTemplate(
   });
 }
 
+/** The stock follower_notification_email template (card-mod-follow
+ *  data/real.yml:65-99) carries more placeholders than the act trio:
+ *  `{{_|link}}`, `{{_|url}}`, `{{_|list_of_changes}}`, `{{_|subedits}}`,
+ *  `{{_|followed}}`, `{{_|unfollow_url}}` — the base_views.rb view
+ *  bodies (set/all/notify/base_views.rb). Their VALUES are resolved from
+ *  the act/act-stream (the render stream owns the view bytes: card
+ *  links, history anchors, list rows); the mail renderer takes them
+ *  per FORMAT (the same placeholder name resolves to different bytes in
+ *  the text and html bodies — measured by the six-mail oracle:
+ *  {{_|last_action_verb}} is the plain verb in text and the history
+ *  anchor in html; the six-mail capture pins both).
+ *
+ *  `botAccountEmail` switches the From: to Ruby's
+ *  safe_from_and_reply_to! rule (email_config.rb:52-79): the template's
+ *  from FIELD is rendered through the email_text address machinery
+ *  FIRST, so a NAME like "Decko Bot" resolves to the named card's
+ *  account email before the name-parity check — the delivered From: is
+ *  the BARE address (the six-mail oracle pins exactly this for all six
+ *  mails; a "Name <email>" field keeps the quoted-name form). */
+export interface StockMailExtras {
+  readonly text?: Readonly<Record<string, string>>;
+  readonly html?: Readonly<Record<string, string>>;
+  readonly botAccountEmail?: string;
+  /** Wrap the html part in the email_document envelope (card-mod-email
+   *  set/all/email_html.rb:2-14) — the stock template's html_message
+   *  renders THROUGH the EmailHtmlFormat#show wrapper, never as a bare
+   *  div (the six-mail oracle pins every html body wearing it). */
+  readonly wrapHtmlDocument?: boolean;
+}
+
+/** The email_document wrapper bytes (set/all/email_html.rb:2-14). The
+ *  `<style>` block is the email stylesheet card's :compiled render —
+ *  empty for an empty stylesheet (the capture app's state; a processor
+ *  landing behind this constant changes nothing else). */
+const EMAIL_DOCUMENT_HEAD =
+  '<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>\n    <style></style>\n  </head>\n  <body class="d0-email-body">\n    ';
+const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
+
+/** safe_from_and_reply_to! (email_config.rb:52-79), over the ALREADY
+ *  address-resolved field content: `configured_from_name_and_email`
+ *  splits "Name <email>"; `actual_email` = Mailer.default[:from]
+ *  (defaultFrom, when the host configures one) || the resolved field
+ *  email; the final fallback is the DeckoBot account email. The
+ *  caller supplies the name->email resolution for the named-field case
+ *  ("Decko Bot" -> the DeckoBot account's email) — the account ladder is
+ *  the host's surface. */
+export function resolveFromAddress(
+  templateFrom: string | undefined,
+  opts: { deckoBotEmail: string; defaultFrom?: string },
+): string {
+  const raw = templateFrom?.trim() ?? "";
+  let confName: string | undefined;
+  let confEmail: string | undefined;
+  const bracket = /^([^<]*)<([^>]*)>$/.exec(raw);
+  if (bracket !== null) {
+    confName = bracket[1].trim() === "" ? undefined : bracket[1].trim();
+    confEmail = bracket[2].trim();
+  } else if (raw !== "" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    confEmail = raw;
+  } else if (raw !== "") {
+    // a NAME field: the email_text renderer resolves it through the
+    // named card's account email (email_field.rb:20-30); the caller
+    // hands us that resolution for the Decko Bot card.
+    confEmail = opts.deckoBotEmail;
+  }
+  const actual = opts.defaultFrom !== undefined && opts.defaultFrom !== "" ? opts.defaultFrom : (confEmail ?? opts.deckoBotEmail);
+  const confText = confName ?? confEmail;
+  if (confText !== undefined && confText !== actual) {
+    return `"${confText}" <${actual}>`;
+  }
+  return actual;
+}
+
 /** Render one MailMessage from an EmailTemplate + the active_notice
  *  substitution vars. The function is pure — no side effects, no
  *  transport call — so it can be tested against the hand-derived Ruby
@@ -129,8 +202,9 @@ export function renderMail(
   template: EmailTemplate,
   notice: FollowNotice,
   act?: FollowNoticeAct,
+  extras?: StockMailExtras,
 ): MailMessage {
-  const vars: Record<string, string> = {
+  const baseVars: Record<string, string> = {
     follower: notice.follower,
     followed_set: notice.followedSet,
     follow_option: notice.followOption,
@@ -138,22 +212,37 @@ export function renderMail(
   if (act !== undefined) {
     // The stock template's act-relative placeholders (mod/follow
     // data/real.yml subject; citations on interpolateTemplate).
-    vars["_|name"] = act.cardName;
-    vars["_|last_action_verb"] = act.verb;
-    vars["_user|name"] = act.userName;
+    baseVars["_|name"] = act.cardName;
+    baseVars["_|last_action_verb"] = act.verb;
+    baseVars["_user|name"] = act.userName;
   }
-  const subject = interpolateTemplate(template.subject, vars);
-  const textBody = interpolateTemplate(template.textBody ?? "", vars);
-  const htmlBody = template.htmlBody === undefined
-    ? undefined
-    : interpolateTemplate(template.htmlBody, vars);
+  const subject = interpolateTemplate(
+    template.subject,
+    { ...baseVars, ...(extras?.text ?? {}) },
+  );
+  const textBody = interpolateTemplate(
+    template.textBody ?? "",
+    { ...baseVars, ...(extras?.text ?? {}) },
+  );
+  const htmlBody =
+    template.htmlBody === undefined
+      ? undefined
+      : interpolateTemplate(template.htmlBody, { ...baseVars, ...(extras?.html ?? {}) });
+  const wrappedHtml =
+    htmlBody !== undefined && extras?.wrapHtmlDocument === true
+      ? EMAIL_DOCUMENT_HEAD + htmlBody + EMAIL_DOCUMENT_TAIL
+      : htmlBody;
+  const from =
+    extras?.botAccountEmail !== undefined
+      ? resolveFromAddress(template.from, { deckoBotEmail: extras.botAccountEmail })
+      : template.from;
 
   return {
     to: template.to,
-    from: template.from,
+    from,
     subject,
     textBody,
-    ...(htmlBody !== undefined && htmlBody.length > 0 ? { htmlBody } : {}),
+    ...(wrappedHtml !== undefined && wrappedHtml.length > 0 ? { htmlBody: wrappedHtml } : {}),
     tags: {
       trigger: "follow_notification",
       follower: notice.follower,

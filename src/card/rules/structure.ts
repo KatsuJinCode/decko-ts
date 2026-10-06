@@ -299,6 +299,16 @@ export function resolveStructuredContent(
  * branch applies to cards not in the database; the *default template path
  * is a documented remainder, see docs/structure-templates-parity-notes.md).
  *
+ * `setModuleOverride` is the set-module CODE content override (the port of
+ * Ruby's singleton-class `def content` hook — set-override-fidelity lane
+ * 2026-10-03; resolution = src/card/set-module-content-overrides.ts). In Ruby
+ * the singleton ancestors precede the Card class, so an applicable set
+ * module's `def content` shadows this ENTIRE method (structured_content
+ * included) for every card.content caller — the corpus record capture
+ * photographs card.content, so the override must answer here first. Undefined
+ * (no wired module matches) falls through unchanged, byte-identical to the
+ * pre-lane behavior.
+ *
  * `recordDbContent` is the card's own stored db_content (undefined/null
  * alike); the returned string is what RenderCard.dbContent carries for the
  * render.
@@ -307,7 +317,9 @@ export function structuredCardContent(
   card: PatternCardInput,
   recordDbContent: string | null | undefined,
   universe: Map<string, string | null>,
+  setModuleOverride?: string | undefined,
 ): string {
+  if (setModuleOverride !== undefined) return setModuleOverride;
   const structured = resolveStructuredContent(card, universe);
   if (structured !== undefined) return structured.templateContent;
   return recordDbContent ?? "";

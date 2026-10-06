@@ -207,7 +207,10 @@ export function slotOptionsJson(slotOptions: Record<string, unknown>): string {
  *  the rest (Latest_News items "X+pdf" don't contain the latest_news part;
  *  live pins zero name_context on that page). */
 export function slotOptionsWithNameContext(
-  fmt: { initialContextNames: readonly string[] },
+  fmt: {
+    initialContextNames: readonly string[];
+    slotNameContextKeys?: () => readonly string[];
+  },
   voo: { slotOptions: () => Record<string, unknown> },
 ): string {
   const slotOptions = voo.slotOptions();
@@ -225,7 +228,16 @@ export function slotOptionsWithNameContext(
   // live=3 eng=0) while the item-template shape (Latest News) stays
   // empty because the part filter empties the context, not because of
   // any unknown gate.
-  const initial = fmt.initialContextNames;
+  //
+  // Census M1 bar-seat: a RenderFormat mid-bar-dispatch under a view-lane
+  // root carries the seated bar context (slotNameContextKeys) — the graded
+  // Guns:open bytes pin ctx="gun" on the item bars while every non-bar
+  // slot of the same walk stays ctx-less. Formats without the method (the
+  // mod-package modSlotWrap's structural fmt) read the parent-derived
+  // initial list exactly as before.
+  const initial = fmt.slotNameContextKeys !== undefined
+    ? fmt.slotNameContextKeys()
+    : fmt.initialContextNames;
   if (initial.length > 0) slotOptions["name_context"] = initial.join(",");
   return slotOptionsJson(slotOptions);
 }

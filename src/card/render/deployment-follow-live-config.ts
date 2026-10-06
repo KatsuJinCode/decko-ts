@@ -68,6 +68,94 @@ export interface DeploymentFollowLiveConfig {
 
 let config: DeploymentFollowLiveConfig | undefined;
 
+/** The graded deployment's LIVE head/body constants, as a preset that CANNOT
+ *  arm the serializer era.
+ *
+ *  WHY A PRESET. The config object carries two independent axes — the live
+ *  serializer era (the conditional data-slot `show` key + the live
+ *  class-token order) and the head/body deployment constants — and the two
+ *  have opposite blast radii on the graded corpus. The constants are a
+ *  DEPLOYMENT property: the port serves culturesmith.com at Decko v0.19.1,
+ *  so the version constants must match it. The serializer era is a CORPUS
+ *  property: the ~3,624 frozen-form view-lane entries pin the capture-era
+ *  emission form, and arming the era flips them RED (view187-lane.md step 4's
+ *  two-era census). A deployment that wants the first must not reach the
+ *  second by accident, so the preset's TYPE omits `serializerEra`: spreading
+ *  it arms the constants and provably not the era.
+ *
+ *  The values are the live deployment's byte-verbatim constants (live-check-71
+ *  2026-10-03, vm-staging-server.mjs derived; live head 12/12 pages, the live
+ *  recaptcha key on the comment-box form).
+ *
+ *  USAGE — the whole arm, default OFF until a deployment installs it:
+ *      setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
+ *  A deployment that ALSO wants the live serializer era states that
+ *  explicitly and separately (`{...LIVE_DEPLOYMENT_CONSTANTS, serializerEra:
+ *  "live"}`), which is the corpus-sequencing decision, not a deployment one. */
+export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
+  scriptIntegrityBySrc: {
+    "https://code.jquery.com/jquery-3.5.1.min.js":
+      "sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=",
+    "https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js":
+      "sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==",
+    "https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js":
+      "sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw==",
+    "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js":
+      "sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==",
+  },
+  mainStylesheetRevisionDigits: "1790384218",
+  footerDeckoVersion: "0.19.1",
+  recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+  deckoRootUrl: "https://culturesmith.com/",
+  defaultHtmlViewNest: "content",
+};
+
+/** The GRADED arm — the five deployment constants the graded environment
+ *  installs, WITHOUT `defaultHtmlViewNest`.
+ *
+ *  DERIVED FROM `LIVE_DEPLOYMENT_CONSTANTS` BY REST-DESTRUCTURE, not copied.
+ *  The five values therefore cannot drift from the six they came from: a
+ *  future live-check that updates a value in the six is picked up here
+ *  automatically, and one that updates a value the six does not carry cannot
+ *  be picked up at all, which is the point.
+ *
+ *  WHY THE SIXTH IS EXCLUDED, measured (r1-constants-arm-lane.md step 3):
+ *    - `defaultHtmlViewNest` is the ONLY one of the six that moves view-lane
+ *      bytes. Per-field isolation put 100% of the 28-of-78 view83 movement on
+ *      it alone, and the other five moved zero view bytes, alone or together
+ *      (same sha as UNSET).
+ *    - It closed ZERO verdicts: all 28 moved entries were already FAIL. So the
+ *      corpus does not demand it.
+ *    - The five view-INERT constants are what deliver the graded page work:
+ *      16 of the 49 head/page entries FAIL->PASS with the serializer era
+ *      frozen (the ruling's "~26" is 16 constants + 11 serializer-era credits;
+ *      R1 freezes the era, so R1 as scoped delivers 16).
+ *
+ *  So this is the smallest-blast-radius form that still arms everything the
+ *  corpus is measured to demand, and it keeps the graded arm out of the view
+ *  lane entirely — the lane R2 is normalizing in the canonical corpus.
+ *  REVISIT ONLY IF GRADE EVIDENCE DEMANDS IT: the exclusion is a measured
+ *  judgement about the corpus as it stands, not a permanent claim that the
+ *  sixth field is wrong.
+ *
+ *  The TYPE omits BOTH `serializerEra` and `defaultHtmlViewNest`, so both
+ *  exclusions are compile-enforced rather than conventional.
+ *
+ *  USAGE — default OFF until a deployment installs it:
+ *      setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+ */
+const {
+  // The one field the graded arm excludes. Bound then discarded, so the rest
+  // destructures into exactly the five.
+  defaultHtmlViewNest: _excludedFromGradedArm,
+  ...gradedArmConstants
+} = LIVE_DEPLOYMENT_CONSTANTS;
+
+export const GRADED_ARM_DEPLOYMENT_CONSTANTS: Omit<
+  DeploymentFollowLiveConfig,
+  "serializerEra" | "defaultHtmlViewNest"
+> = gradedArmConstants;
+
 export function setDeploymentFollowLiveConfig(
   next: DeploymentFollowLiveConfig | undefined,
 ): void {

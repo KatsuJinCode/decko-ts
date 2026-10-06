@@ -384,7 +384,11 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     version: "0.20.0",
     summary: "Email-based account handling for decko cards",
     description: "",
-    deps: ["card", "card-mod-email", "card-mod-permissions", "card-mod-list", "card-mod-integrate", "card-mod-edit"],
+    // The LIVE-era gemspec's dependency list in declaration order (the
+    // census-M4 ground truth, mod: account's page bytes: mod: email,
+    // mod: permission, mod: list). The 0.20 gem carried integrate + edit;
+    // the live capture does not — the graded bytes win.
+    deps: ["card", "card-mod-email", "card-mod-permissions", "card-mod-list"],
   },
   ace_editor: {
     gem: "card-mod-ace_editor",
@@ -419,7 +423,9 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     version: "0.20.0",
     summary: "Bootstrap",
     description: "",
-    deps: ["card", "card-mod-edit", "card-mod-bar_and_box", "card-mod-style", "card-mod-script"],
+    // Live-era declaration order (census M4: mod: bootstrap's page bytes —
+    // no card-mod-script dep in the live gemspec).
+    deps: ["card", "card-mod-edit", "card-mod-bar_and_box", "card-mod-style"],
   },
   carrierwave: {
     gem: "card-mod-carrierwave",
@@ -482,9 +488,26 @@ export const MOD_SPECS: Record<string, ModSpec> = {
   edit: {
     gem: "card-mod-edit",
     version: "0.20.0",
+    // "Edit handling" is the CAPTURE-attested string, not a transcription of
+    // a gemspec line: two independent Ruby captures of the live deck render
+    // exactly this text in the `mod: edit` description paragraph
+    // (`<p>Edit handling</p>`) -- the 2026-09-29 yardstick vintage
+    // (decko-ts-pass20-int/tmp/raw-ground-truth) and the 2026-10-05
+    // recapture (tmp/raw-ground-truth/expected-v2/page-lane), byte-for-byte
+    // identical on this page after the committed close-71 asset-host mapping
+    // (adjudicate-10-rows-lane.md evidence chain point 2). The previous value
+    // ("decko card editing and card type management") appears in NO capture
+    // and cost the page +30 B.
+    //
+    // PROVENANCE NOT RE-DERIVED: card-mod-edit is NOT installed in this
+    // worktree, so which *.gemspec supplies this string was NOT determined
+    // here -- no gemspec was read and no bundle was inspected. What is
+    // pinned is the RENDERED string. Recovering the source file is open work.
     summary: "Edit handling",
     description: "",
-    deps: ["card", "card-mod-rules", "card-mod-list"],
+    // Live order: the oracle's mod: edit page renders mod: list then
+    // mod: rules (mm-cstructural's 2026-09-30 measurement, kept as the pin).
+    deps: ["card", "card-mod-list", "card-mod-rules"],
   },
   email: {
     gem: "card-mod-email",
@@ -861,10 +884,65 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
     styles: [["group: local", ["search.scss"]]],
     scripts: [["group: local", ["autocomplete.js.coffee", "search_box.js.coffee"]]],
   },
+  // NO `shades` entry, deliberately, and the absence is the pinned state.
+  // Census M5 (serializer-followup2, 0377f4d3) added one — a four-file local
+  // group (decko_logo.js, decko_org.js.coffee, snap.js, snap_svg.js) —
+  // transcribed from tmp/serializer-followup/probe-green5/
+  // expected--mod_shades__page.html, which it cited as the graded
+  // expected-v2 corpus. It is not. That file is a LIVE recapture of the
+  // production site (taken 2026-10-03) carrying the DigitalOcean cssPath
+  // files/45514/1790384218.css = 2026-09-26; the graded yardstick's
+  // page-lane/recapture-raw-shard-000043 carries the s3 cssPath
+  // files/45514/1786554352.css = 2026-08-12, 44.3 days earlier. The site
+  // changed in between; the yardstick did not.
+  //
+  // The graded bytes: 49308 "mod: shades" main-slot card body is
+  // `<p></p><br/><p><h3>Scripts</h3></p>` (section present, body EMPTY) and
+  // 49309 "mod: shades+*script" is the empty string. Ruby derives both with
+  // no shades gem among the 32 installed card-mod-* gems —
+  // mod_assets.rb:57-59 assets_path nil -> :24-30 folder_group_card nil ->
+  // :15-22 local_group_cards [] -> :171-181 haml :group_list, groups: []
+  // -> group_list.haml's all-body `each` renders ""; type/mod.rb:7-13/:22-24
+  // joins it after the empty description's `<p></p>` with "<br/>".
+  //
+  // So the section is emitted by the union predicate's OTHER half (the
+  // corpus child row, type/mod.rb:115-117 `scripts?` = `fetch(:script)
+  // .present?`) with an EMPTY body, and `modChildAssetGroups` falls through
+  // parent -> MOD_CHILD_ASSET_GROUPS_SRC to undefined -> "". The four
+  // filenames exist nowhere in the installed gem set nor in the decko
+  // distribution (archive/decko-fork-study/decko/mod: 32 mod dirs, none of
+  // them shades). Adjudicated 2026-10-04; evidence and the superseded
+  // assertion: tmp/wrong-goal-hunt/shades-adjudication-lane.md.
   style: {
     styles: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
   },
   tabs: { scripts: [["group: local", ["tab.js.coffee"]]] },
+  // Census M10 (serializer-followup2, the tinymce adjudication): the parent
+  // page's Styles/Scripts section bodies. The graded capture 500'd the page
+  // itself, but the SAME capture rendered the child cards' cores (expected-v2
+  // page-lane shard 000039 records 200/201), and the parent sections nest
+  // those same cores (type/mod.rb:53-65, nest(child, view: :core)) — the
+  // lists below are transcribed verbatim from those graded child bytes. The
+  // crash is a separate, documented, non-corpus-derived residual (see the
+  // mod-tinymce-style-script-group-pins.test.ts header).
+  tinymce_editor: {
+    styles: [["group: local", ["nest_editor.scss"]]],
+    scripts: [
+      [
+        "group: local",
+        [
+          "image_editor.js.coffee",
+          "link_editor.js.coffee",
+          "nest_editor.js.coffee",
+          "nest_editor_name.js.coffee",
+          "nest_editor_options.js.coffee",
+          "nest_editor_rules.js.coffee",
+          "script_tinymce.js",
+          "tinymce_config.js.coffee",
+        ],
+      ],
+    ],
+  },
 };
 
 /** The mod's asset groups for one subpath ("style" | "script"), or

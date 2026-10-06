@@ -1,0 +1,8908 @@
+{
+ "off": [
+  {
+   "sql": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+   "params": [],
+   "rowCount": 275,
+   "cardIds": [
+    1,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    12,
+    15,
+    17,
+    18,
+    19,
+    20,
+    22,
+    30,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    47,
+    50,
+    51,
+    52,
+    53,
+    55,
+    61,
+    64,
+    77,
+    79,
+    81,
+    82,
+    86,
+    89,
+    92,
+    96,
+    98,
+    100,
+    101,
+    103,
+    130,
+    137,
+    138,
+    146,
+    178,
+    184,
+    190,
+    241,
+    247,
+    252,
+    255,
+    256,
+    259,
+    260,
+    262,
+    264,
+    266,
+    274,
+    278,
+    316,
+    317,
+    318,
+    378,
+    381,
+    384,
+    387,
+    397,
+    2015,
+    3445,
+    3939,
+    3942,
+    3945,
+    4029,
+    4030,
+    4032,
+    4034,
+    4035,
+    4036,
+    4037,
+    4038,
+    6543,
+    6544,
+    6545,
+    6546,
+    6547,
+    6548,
+    6549,
+    11735,
+    11739,
+    11742,
+    11746,
+    14952,
+    17435,
+    17436,
+    17437,
+    17450,
+    19953,
+    19954,
+    19955,
+    19956,
+    19957,
+    19958,
+    20586,
+    20587,
+    20596,
+    20612,
+    21757,
+    21761,
+    21765,
+    21777,
+    21780,
+    21783,
+    21787,
+    21791,
+    21795,
+    21806,
+    22258,
+    22720,
+    22725,
+    22726,
+    22731,
+    22732,
+    22733,
+    22739,
+    22747,
+    22748,
+    22749,
+    22751,
+    22752,
+    22766,
+    22774,
+    22778,
+    22782,
+    22786,
+    22790,
+    22794,
+    22798,
+    22810,
+    22814,
+    22818,
+    22822,
+    22826,
+    22830,
+    22834,
+    23465,
+    23468,
+    23808,
+    23817,
+    24082,
+    24083,
+    24272,
+    24273,
+    24274,
+    24279,
+    24539,
+    24550,
+    24559,
+    33791,
+    33793,
+    33794,
+    33795,
+    33800,
+    33813,
+    33816,
+    33819,
+    33821,
+    33822,
+    33829,
+    33830,
+    33833,
+    33836,
+    33843,
+    33844,
+    33845,
+    33848,
+    33852,
+    33872,
+    33877,
+    33880,
+    33883,
+    33886,
+    33893,
+    33898,
+    33921,
+    33922,
+    33924,
+    33926,
+    33927,
+    33928,
+    33929,
+    33937,
+    33944,
+    33947,
+    33948,
+    34753,
+    34759,
+    34765,
+    34767,
+    34768,
+    34769,
+    34776,
+    34790,
+    34791,
+    34792,
+    34816,
+    34823,
+    34828,
+    34829,
+    34832,
+    34833,
+    34843,
+    34844,
+    34851,
+    38248,
+    38267,
+    38269,
+    45364,
+    45406,
+    45407,
+    45408,
+    45409,
+    45410,
+    45411,
+    45412,
+    45415,
+    45416,
+    45417,
+    45423,
+    45428,
+    45430,
+    45431,
+    45432,
+    45434,
+    45435,
+    45436,
+    45437,
+    45441,
+    45445,
+    45446,
+    45448,
+    45450,
+    45454,
+    45458,
+    45462,
+    45463,
+    45464,
+    45466,
+    45468,
+    45472,
+    45473,
+    45474,
+    45475,
+    45478,
+    45480,
+    45482,
+    45486,
+    45490,
+    45492,
+    45493,
+    45494,
+    45498,
+    45499,
+    45502,
+    45506,
+    45509,
+    45513,
+    49302,
+    49307,
+    49308,
+    50176,
+    50177,
+    50615,
+    50616
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "home"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    80
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+   "params": [
+    3
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+   "params": [
+    80,
+    3
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+   "params": [
+    3
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "*self",
+    "*type",
+    "*all"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    264,
+    266,
+    274
+   ]
+  },
+  {
+   "sql": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+   "params": [],
+   "rowCount": 5,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT ",
+   "params": [],
+   "rowCount": 926,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards",
+   "params": [],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+   "params": [],
+   "rowCount": 275,
+   "cardIds": [
+    1,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    12,
+    15,
+    17,
+    18,
+    19,
+    20,
+    22,
+    30,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    47,
+    50,
+    51,
+    52,
+    53,
+    55,
+    61,
+    64,
+    77,
+    79,
+    81,
+    82,
+    86,
+    89,
+    92,
+    96,
+    98,
+    100,
+    101,
+    103,
+    130,
+    137,
+    138,
+    146,
+    178,
+    184,
+    190,
+    241,
+    247,
+    252,
+    255,
+    256,
+    259,
+    260,
+    262,
+    264,
+    266,
+    274,
+    278,
+    316,
+    317,
+    318,
+    378,
+    381,
+    384,
+    387,
+    397,
+    2015,
+    3445,
+    3939,
+    3942,
+    3945,
+    4029,
+    4030,
+    4032,
+    4034,
+    4035,
+    4036,
+    4037,
+    4038,
+    6543,
+    6544,
+    6545,
+    6546,
+    6547,
+    6548,
+    6549,
+    11735,
+    11739,
+    11742,
+    11746,
+    14952,
+    17435,
+    17436,
+    17437,
+    17450,
+    19953,
+    19954,
+    19955,
+    19956,
+    19957,
+    19958,
+    20586,
+    20587,
+    20596,
+    20612,
+    21757,
+    21761,
+    21765,
+    21777,
+    21780,
+    21783,
+    21787,
+    21791,
+    21795,
+    21806,
+    22258,
+    22720,
+    22725,
+    22726,
+    22731,
+    22732,
+    22733,
+    22739,
+    22747,
+    22748,
+    22749,
+    22751,
+    22752,
+    22766,
+    22774,
+    22778,
+    22782,
+    22786,
+    22790,
+    22794,
+    22798,
+    22810,
+    22814,
+    22818,
+    22822,
+    22826,
+    22830,
+    22834,
+    23465,
+    23468,
+    23808,
+    23817,
+    24082,
+    24083,
+    24272,
+    24273,
+    24274,
+    24279,
+    24539,
+    24550,
+    24559,
+    33791,
+    33793,
+    33794,
+    33795,
+    33800,
+    33813,
+    33816,
+    33819,
+    33821,
+    33822,
+    33829,
+    33830,
+    33833,
+    33836,
+    33843,
+    33844,
+    33845,
+    33848,
+    33852,
+    33872,
+    33877,
+    33880,
+    33883,
+    33886,
+    33893,
+    33898,
+    33921,
+    33922,
+    33924,
+    33926,
+    33927,
+    33928,
+    33929,
+    33937,
+    33944,
+    33947,
+    33948,
+    34753,
+    34759,
+    34765,
+    34767,
+    34768,
+    34769,
+    34776,
+    34790,
+    34791,
+    34792,
+    34816,
+    34823,
+    34828,
+    34829,
+    34832,
+    34833,
+    34843,
+    34844,
+    34851,
+    38248,
+    38267,
+    38269,
+    45364,
+    45406,
+    45407,
+    45408,
+    45409,
+    45410,
+    45411,
+    45412,
+    45415,
+    45416,
+    45417,
+    45423,
+    45428,
+    45430,
+    45431,
+    45432,
+    45434,
+    45435,
+    45436,
+    45437,
+    45441,
+    45445,
+    45446,
+    45448,
+    45450,
+    45454,
+    45458,
+    45462,
+    45463,
+    45464,
+    45466,
+    45468,
+    45472,
+    45473,
+    45474,
+    45475,
+    45478,
+    45480,
+    45482,
+    45486,
+    45490,
+    45492,
+    45493,
+    45494,
+    45498,
+    45499,
+    45502,
+    45506,
+    45509,
+    45513,
+    49302,
+    49307,
+    49308,
+    50176,
+    50177,
+    50615,
+    50616
+   ]
+  },
+  {
+   "sql": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction case: compose left-walk + right-key. The walk does NOT -- filter on trash: a tras",
+   "params": [
+    "*structure",
+    "*structure"
+   ],
+   "rowCount": 138,
+   "cardIds": []
+  },
+  {
+   "sql": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction case: compose left-walk + right-key. The walk does NOT -- filter on trash: a tras",
+   "params": [
+    "*default",
+    "*default"
+   ],
+   "rowCount": 140,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+   "params": [],
+   "rowCount": 16,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+   "params": [
+    "*title",
+    "*favicon",
+    "*all+*style",
+    "*all+*style+*asset_output",
+    "*all+*script",
+    "*all+*script+*asset_output",
+    "*recent settings",
+    "*recent_settings",
+    "*recent_setting"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    55,
+    103,
+    23808
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    5
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    5
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "*admin_info",
+    "home_htm_lheader",
+    "new_connection_ask"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    2826,
+    9922,
+    24550
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    50
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    50
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    52
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    52
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "latest_news",
+    "cdwcd_wimage02"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    813,
+    27689
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    19
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    19
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "feed_icon",
+    "latest_news_item"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    817,
+    819
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    30
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    30
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    47
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    47
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "description"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    146
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "rich_text",
+    "description"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3928
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    22281
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    22281
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    22281
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "*type"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    266
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "rich_text",
+    "*type"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    273
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    259
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    259
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    273,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash = 0 AND st.\"key\" IN (?, ?, ?, ?) AND r.left_id IS NOT NULL UNION SELECT j.left_id FROM anc a JOIN cards j ON j.id = a.id WHERE j.left_id IS NOT NULL ), resolved(id, ckey) AS ( SELECT c.id, c.",
+   "params": [
+    "*read",
+    "*create",
+    "*update",
+    "*delete"
+   ],
+   "rowCount": 1489,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+   "params": [
+    6568,
+    6569
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    6568,
+    6569
+   ]
+  },
+  {
+   "sql": "SELECT id, db_content FROM cards WHERE id IN (?)",
+   "params": [
+    22283
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    22283
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    15
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    15
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "news_item"
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT c0.*, c0.created_at, c0.id FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND c0.read_rule_id IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ORDER BY c0.created_at desc, c0.id asc LIMIT 9",
+   "params": [
+    814,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 9,
+   "cardIds": [
+    51579,
+    50256,
+    49322,
+    48308,
+    47617,
+    46301,
+    45777,
+    45736,
+    45195
+   ]
+  },
+  {
+   "sql": "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.left_id IS NOT NULL AND (NOT EXISTS (SELECT 1 FROM cards l WHERE l.id = c.left_id) OR NOT EXISTS (SELECT 1 FROM cards r WHERE r.id = c.right_id))",
+   "params": [],
+   "rowCount": 3,
+   "cardIds": [
+    375,
+    377,
+    389
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    374
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    376
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    388
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    51579,
+    814,
+    50256,
+    49322,
+    48308,
+    47617,
+    46301,
+    45777,
+    45736,
+    45195,
+    23701,
+    3527
+   ],
+   "rowCount": 12,
+   "cardIds": [
+    814,
+    3527,
+    23701,
+    45195,
+    45736,
+    45777,
+    46301,
+    47617,
+    48308,
+    49322,
+    50256,
+    51579
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    814
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    814
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "kaori_suzuki"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    23701
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    4
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    4
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "recommendation"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3527
+   ]
+  },
+  {
+   "sql": "SELECT coalesce(count(distinct c0.id),0) as count FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND c0.read_rule_id IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+   "params": [
+    814,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "brian_roemmele_ai_defending_the_status_quo",
+    "bw_recommendation"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    958,
+    51573
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    1023
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1023
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    1023
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "image",
+    "bio",
+    "how_to_contact_me",
+    "company",
+    "skill",
+    "musing",
+    "page",
+    "document",
+    "project__organizing",
+    "project__participating",
+    "core_project",
+    "related_project",
+    "potential_project",
+    "related_person",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice"
+   ],
+   "rowCount": 17,
+   "cardIds": [
+    19,
+    437,
+    491,
+    512,
+    544,
+    548,
+    552,
+    556,
+    560,
+    564,
+    586,
+    668,
+    675,
+    2975,
+    13229,
+    23002,
+    23613
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "image",
+    "bio",
+    "how_to_contact_me",
+    "company",
+    "skill",
+    "musing",
+    "page",
+    "document",
+    "project__organizing",
+    "project__participating",
+    "core_project",
+    "related_project",
+    "potential_project",
+    "related_person",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    814,
+    146,
+    23701,
+    146
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    14193
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    18
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    18
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    814,
+    266,
+    23701,
+    19,
+    23701,
+    13229,
+    23701,
+    437,
+    23701,
+    23613,
+    23701,
+    23002,
+    23701,
+    2975,
+    23701,
+    668,
+    23701,
+    675,
+    23701,
+    586,
+    23701,
+    491,
+    23701,
+    512,
+    23701,
+    544,
+    23701,
+    548,
+    23701,
+    552,
+    23701,
+    556,
+    23701,
+    560,
+    23701,
+    564
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    815
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    815,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "project__organizing"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "project__participating"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_recommendation",
+    "odette_lockwood_stewart_recommendation",
+    "kayla_feder_recommendation",
+    "leslie_zeitler_recommendation"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    1157,
+    1159,
+    1161,
+    2915
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith",
+    "martha_hart_eddy",
+    "ed_correium",
+    "kayla_feder",
+    "robert_kent",
+    "morag_warrack",
+    "mair_alight",
+    "christine_pari",
+    "richard_page",
+    "cheryl_honey",
+    "don_mc_clure",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "scott_mattoon",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "david_william",
+    "iri_mc_ginni",
+    "foster_gamble",
+    "katie_johnson",
+    "dhyana_iri",
+    "david_becker",
+    "source_title",
+    "source_author",
+    "date",
+    "source_origin_url",
+    "associate",
+    "source_content",
+    "pdf",
+    "discussion",
+    "tag"
+   ],
+   "rowCount": 39,
+   "cardIds": [
+    17,
+    128,
+    130,
+    516,
+    583,
+    727,
+    740,
+    741,
+    1027,
+    1029,
+    1031,
+    1075,
+    1263,
+    1445,
+    1557,
+    2303,
+    3034,
+    3100,
+    3459,
+    3475,
+    12173,
+    16455,
+    16660,
+    37821,
+    37823,
+    37825,
+    37827,
+    37829,
+    37831,
+    37833,
+    37835,
+    37837,
+    37840,
+    37842,
+    37844,
+    37848,
+    37850,
+    37853,
+    37862
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ",
+   "params": [
+    "huston_smith",
+    "martha_hart_eddy",
+    "ed_correium",
+    "kayla_feder",
+    "robert_kent",
+    "morag_warrack",
+    "mair_alight",
+    "christine_pari",
+    "richard_page",
+    "cheryl_honey",
+    "don_mc_clure",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "scott_mattoon",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "david_william",
+    "iri_mc_ginni",
+    "foster_gamble",
+    "katie_johnson",
+    "dhyana_iri",
+    "david_becker",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "source_title",
+    "source_author",
+    "date",
+    "source_origin_url",
+    "associate",
+    "source_content",
+    "pdf",
+    "discussion",
+    "tag"
+   ],
+   "rowCount": 36,
+   "cardIds": [
+    37812,
+    37813,
+    37814,
+    37815,
+    37816,
+    37817,
+    37818,
+    37819,
+    37820,
+    37822,
+    37824,
+    37826,
+    37828,
+    37830,
+    37832,
+    37834,
+    37836,
+    37838,
+    37839,
+    37841,
+    37843,
+    37845,
+    37846,
+    37847,
+    37849,
+    37851,
+    37852,
+    37854,
+    37855,
+    37863,
+    51574,
+    51575,
+    51576,
+    51577,
+    51578,
+    51580
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    19,
+    146
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    214
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    19,
+    266,
+    51573,
+    516,
+    51573,
+    12173,
+    51573,
+    130
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3383
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3383,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "h_recommend_bw"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2914
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "public",
+    "private"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    14152,
+    14155
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "tag",
+    "tag",
+    "david_william",
+    "david_william",
+    "david_william",
+    "iri_mc_ginni",
+    "iri_mc_ginni",
+    "iri_mc_ginni",
+    "don_mc_clure",
+    "don_mc_clure",
+    "don_mc_clure",
+    "robert_kent",
+    "robert_kent",
+    "robert_kent",
+    "christine_pari",
+    "christine_pari",
+    "christine_pari",
+    "kayla_feder",
+    "kayla_feder",
+    "kayla_feder",
+    "dhyana_iri",
+    "dhyana_iri",
+    "dhyana_iri",
+    "ed_correium",
+    "ed_correium",
+    "ed_correium",
+    "scott_mattoon",
+    "scott_mattoon",
+    "scott_mattoon",
+    "martha_hart_eddy",
+    "martha_hart_eddy",
+    "martha_hart_eddy",
+    "huston_smith",
+    "huston_smith",
+    "huston_smith",
+    "richard_page",
+    "richard_page",
+    "richard_page",
+    "mair_alight",
+    "mair_alight",
+    "mair_alight",
+    "cheryl_honey",
+    "cheryl_honey",
+    "cheryl_honey",
+    "morag_warrack",
+    "public",
+    "private",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    40302,
+    41199
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?) WHERE j.trash = 0",
+   "params": [
+    "morag_warrack",
+    "morag_warrack",
+    "project__participating",
+    "related_person"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    17,
+    146,
+    583,
+    19,
+    583,
+    13229,
+    583,
+    437,
+    583,
+    146,
+    583,
+    23613,
+    583,
+    23002,
+    583,
+    2975,
+    583,
+    668,
+    583,
+    675,
+    583,
+    586,
+    583,
+    491,
+    583,
+    512,
+    583,
+    544,
+    583,
+    548,
+    583,
+    552,
+    583,
+    556,
+    583,
+    560,
+    583,
+    564,
+    727,
+    19,
+    727,
+    13229,
+    727,
+    437,
+    727,
+    146,
+    727,
+    23613,
+    727,
+    23002,
+    727,
+    2975,
+    727,
+    668,
+    727,
+    675,
+    727,
+    586,
+    727,
+    491,
+    727,
+    512,
+    727,
+    544,
+    727,
+    548,
+    727,
+    552,
+    727,
+    556,
+    727,
+    560,
+    727,
+    564,
+    740,
+    19,
+    740,
+    13229,
+    740,
+    437,
+    740,
+    146,
+    740,
+    23613,
+    740,
+    23002,
+    740,
+    2975,
+    740,
+    668,
+    740,
+    675,
+    740,
+    586,
+    740,
+    491,
+    740,
+    512,
+    740,
+    544,
+    740,
+    548,
+    740,
+    552,
+    740,
+    556,
+    740,
+    560,
+    740,
+    564,
+    741,
+    19,
+    741,
+    13229,
+    741,
+    437,
+    741,
+    146,
+    741,
+    23613,
+    741,
+    23002,
+    741,
+    2975,
+    741,
+    668,
+    741,
+    675,
+    741,
+    586,
+    741,
+    491,
+    741,
+    512,
+    741,
+    544,
+    741,
+    548,
+    741,
+    552,
+    741,
+    556,
+    741,
+    560,
+    741,
+    564,
+    1075,
+    19,
+    1075,
+    13229,
+    1075,
+    437,
+    1075,
+    146,
+    1075,
+    23613,
+    1075,
+    23002,
+    1075,
+    2975,
+    1075,
+    668,
+    1075,
+    675,
+    1075,
+    586,
+    1075,
+    491,
+    1075,
+    512,
+    1075,
+    544,
+    1075,
+    548,
+    1075,
+    552,
+    1075,
+    556,
+    1075,
+    560,
+    1075,
+    564,
+    1263,
+    19,
+    1263,
+    13229,
+    1263,
+    437,
+    1263,
+    146,
+    1263,
+    23613,
+    1263,
+    23002,
+    1263,
+    2975,
+    1263,
+    668,
+    1263,
+    675,
+    1263,
+    586,
+    1263,
+    491,
+    1263,
+    512,
+    1263,
+    544,
+    1263,
+    548,
+    1263,
+    552,
+    1263,
+    556,
+    1263,
+    560,
+    1263,
+    564,
+    1445,
+    19,
+    1445,
+    13229,
+    1445,
+    437,
+    1445,
+    146,
+    1445,
+    23613,
+    1445,
+    23002,
+    1445,
+    2975,
+    1445,
+    668,
+    1445,
+    675,
+    1445,
+    586,
+    1445,
+    491,
+    1445,
+    512,
+    1445,
+    544,
+    1445,
+    548,
+    1445,
+    552,
+    1445,
+    556,
+    1445,
+    560,
+    1445,
+    564,
+    2303,
+    19,
+    2303,
+    13229,
+    2303,
+    437,
+    2303,
+    146,
+    2303,
+    23613,
+    2303,
+    23002,
+    2303,
+    2975,
+    2303,
+    668,
+    2303,
+    675,
+    2303,
+    586,
+    2303,
+    491,
+    2303,
+    512,
+    2303,
+    544,
+    2303,
+    548,
+    2303,
+    552,
+    2303,
+    556,
+    2303,
+    560,
+    2303,
+    564,
+    3034,
+    19,
+    3034,
+    13229,
+    3034,
+    437,
+    3034,
+    146,
+    3034,
+    23613,
+    3034,
+    23002,
+    3034,
+    2975,
+    3034,
+    668,
+    3034,
+    675,
+    3034,
+    586,
+    3034,
+    491,
+    3034,
+    512,
+    3034,
+    544,
+    3034,
+    548,
+    3034,
+    552,
+    3034,
+    556,
+    3034,
+    560,
+    3034,
+    564,
+    3100,
+    19,
+    3100,
+    13229,
+    3100,
+    437,
+    3100,
+    146,
+    3100,
+    23613,
+    3100,
+    23002,
+    3100,
+    2975,
+    3100,
+    668,
+    3100,
+    675,
+    3100,
+    586,
+    3100,
+    491,
+    3100,
+    512,
+    3100,
+    544,
+    3100,
+    548,
+    3100,
+    552,
+    3100,
+    556,
+    3100,
+    560,
+    3100,
+    564,
+    3459,
+    19,
+    3459,
+    13229,
+    3459,
+    437,
+    3459,
+    146,
+    3459,
+    23613,
+    3459,
+    23002,
+    3459,
+    2975,
+    3459,
+    668,
+    3459,
+    675,
+    3459,
+    586,
+    3459,
+    491,
+    3459,
+    512,
+    3459,
+    544,
+    3459,
+    548,
+    3459,
+    552,
+    3459,
+    556,
+    3459,
+    560,
+    3459,
+    564,
+    3475,
+    19,
+    3475,
+    13229,
+    3475,
+    437,
+    3475,
+    146,
+    3475,
+    23613,
+    3475,
+    23002,
+    3475,
+    2975,
+    3475,
+    668,
+    3475,
+    675,
+    3475,
+    586,
+    3475,
+    491,
+    3475,
+    512,
+    3475,
+    544,
+    3475,
+    548,
+    3475,
+    552,
+    3475,
+    556,
+    3475,
+    560,
+    3475,
+    564,
+    16455,
+    19,
+    16455,
+    13229,
+    16455,
+    437,
+    16455,
+    146,
+    16455,
+    23613,
+    16455,
+    23002,
+    16455,
+    2975,
+    16455,
+    668,
+    16455,
+    675,
+    16455,
+    586,
+    16455,
+    491,
+    16455,
+    512,
+    16455,
+    544,
+    16455,
+    548,
+    16455,
+    552,
+    16455,
+    556,
+    16455,
+    560,
+    16455,
+    564,
+    16660,
+    19,
+    16660,
+    13229,
+    16660,
+    437,
+    16660,
+    146,
+    16660,
+    23613,
+    16660,
+    23002,
+    16660,
+    2975,
+    16660,
+    668,
+    16660,
+    675,
+    16660,
+    586,
+    16660,
+    491,
+    16660,
+    512,
+    16660,
+    544,
+    16660,
+    548,
+    16660,
+    552,
+    16660,
+    556,
+    16660,
+    560,
+    16660,
+    564,
+    37862,
+    19,
+    37862,
+    13229,
+    37862,
+    437,
+    37862,
+    146,
+    37862,
+    23613,
+    37862,
+    23002,
+    37862,
+    2975,
+    37862,
+    668,
+    37862,
+    675,
+    37862,
+    586,
+    37862,
+    491,
+    37862,
+    512,
+    37862,
+    544,
+    37862,
+    548,
+    37862,
+    552,
+    37862,
+    556,
+    37862,
+    560,
+    37862,
+    564
+   ],
+   "rowCount": 47,
+   "cardIds": [
+    825,
+    1446,
+    1490,
+    1735,
+    1856,
+    1859,
+    2215,
+    2317,
+    2638,
+    2876,
+    3101,
+    3102,
+    3104,
+    3127,
+    3128,
+    3130,
+    3456,
+    3457,
+    3458,
+    3460,
+    3463,
+    3465,
+    3472,
+    3474,
+    3476,
+    3477,
+    3479,
+    3480,
+    3485,
+    3929,
+    11066,
+    11399,
+    14067,
+    15939,
+    16456,
+    16457,
+    16458,
+    16661,
+    16662,
+    16663,
+    16664,
+    16665,
+    16667,
+    16678,
+    26797,
+    38808,
+    39466
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    423
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    423
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    423
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    17,
+    266
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "h_bw_rec"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2912
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place"
+   ],
+   "rowCount": 9,
+   "cardIds": [
+    520,
+    524,
+    528,
+    532,
+    536,
+    540,
+    1014,
+    1879,
+    25961
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place",
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    14152,
+    19,
+    14152,
+    146,
+    14152,
+    675,
+    14152,
+    130,
+    14152,
+    544,
+    14152,
+    548,
+    14152,
+    552,
+    14152,
+    556,
+    14152,
+    560,
+    14152,
+    564,
+    14152,
+    586,
+    14152,
+    491,
+    14152,
+    512,
+    14152,
+    128,
+    14155,
+    19,
+    14155,
+    146,
+    14155,
+    675,
+    14155,
+    130,
+    14155,
+    544,
+    14155,
+    548,
+    14155,
+    552,
+    14155,
+    556,
+    14155,
+    560,
+    14155,
+    564,
+    14155,
+    586,
+    14155,
+    491,
+    14155,
+    512,
+    14155,
+    128
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "bdwc",
+    "writing_sample",
+    "linked_in"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    1857,
+    16684,
+    19845
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "tag",
+    "bdwc"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    41198
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    14152,
+    1879,
+    14152,
+    1014,
+    14152,
+    25961,
+    14152,
+    532,
+    14152,
+    536,
+    14152,
+    540,
+    14152,
+    520,
+    14152,
+    524,
+    14152,
+    528,
+    14155,
+    1879,
+    14155,
+    1014,
+    14155,
+    25961,
+    14155,
+    532,
+    14155,
+    536,
+    14155,
+    540,
+    14155,
+    520,
+    14155,
+    524,
+    14155,
+    528
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    41198,
+    14155
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    40301
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    40301
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1856,
+    1857
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1858
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    1858
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16663,
+    16684
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16685
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    16685
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "williamscraig"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    18145
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    17754
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    17754
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    17754
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    40301,
+    18145
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    40445
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    40445
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "item"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2077
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "williamscraig",
+    "item"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    18145,
+    146
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    18146
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    22
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    22
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    18145,
+    2077
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    2077,
+    146
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    17814
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    2077,
+    266
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    17720
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    17720,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    5,
+    3,
+    50,
+    52,
+    19,
+    30,
+    47,
+    22281,
+    259,
+    814,
+    4,
+    1023,
+    18,
+    17,
+    423,
+    17754,
+    22
+   ],
+   "rowCount": 17,
+   "cardIds": [
+    3,
+    4,
+    5,
+    17,
+    18,
+    19,
+    22,
+    30,
+    47,
+    50,
+    52,
+    259,
+    423,
+    814,
+    1023,
+    17754,
+    22281
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "*all",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*star",
+    "*all_plu",
+    "*rstar"
+   ],
+   "rowCount": 8,
+   "cardIds": [
+    82,
+    86,
+    274,
+    317,
+    318,
+    6543,
+    6544,
+    6545
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "*all",
+    "*all",
+    "*all",
+    "*all",
+    "*star",
+    "*star",
+    "*star",
+    "*star",
+    "*all_plu",
+    "*all_plu",
+    "*all_plu",
+    "*all_plu",
+    "*rstar",
+    "*rstar",
+    "*rstar",
+    "*rstar",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    28,
+    17827
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    278
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    278
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "*self",
+    "*right"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    260,
+    264
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "rich_text",
+    "home",
+    "new_connection_ask",
+    "home_htm_lheader",
+    "*admin_info",
+    "latest_news",
+    "cdwcd_wimage02",
+    "latest_news_item",
+    "feed_icon",
+    "*title",
+    "*favicon",
+    "*recent_setting",
+    "description",
+    "description",
+    "*type",
+    "*type",
+    "ai_defending_the_status_quo_on_x_by_brian_roemmele",
+    "news_item",
+    "psychological_epistemology_of_consciousness",
+    "topias",
+    "open_letter_learning_pool_newsletter_23_august_2024",
+    "mental_health_awareness_month_2024_somatic",
+    "harpy_helladay",
+    "it_only_a_story_go_to_sleep",
+    "homeless",
+    "kaori_suzuki",
+    "recommendation",
+    "recommendation",
+    "bw_recommendation",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "image",
+    "how_to_contact_me",
+    "related_project",
+    "potential_project",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice",
+    "core_project",
+    "page",
+    "document",
+    "musing",
+    "bio",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*self",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self"
+   ],
+   "rowCount": 42,
+   "cardIds": [
+    327,
+    331,
+    492,
+    509,
+    513,
+    545,
+    549,
+    553,
+    557,
+    561,
+    565,
+    671,
+    676,
+    2664,
+    2976,
+    3539,
+    6655,
+    6678,
+    6711,
+    6726,
+    6728,
+    7093,
+    7111,
+    7157,
+    7165,
+    7206,
+    7208,
+    7210,
+    7212,
+    7250,
+    7252,
+    7270,
+    7378,
+    7492,
+    7500,
+    8437,
+    8534,
+    8571,
+    11374,
+    23809,
+    24551,
+    34779
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "skill",
+    "company",
+    "odette_lockwood_stewart_recommendation",
+    "kayla_feder_recommendation",
+    "leslie_zeitler_recommendation",
+    "huston_smith_recommendation",
+    "date",
+    "tag",
+    "discussion",
+    "associate",
+    "david_william",
+    "iri_mc_ginni",
+    "don_mc_clure",
+    "robert_kent",
+    "source_content",
+    "source_author",
+    "source_origin_url",
+    "christine_pari",
+    "kayla_feder",
+    "dhyana_iri",
+    "source_title",
+    "ed_correium",
+    "scott_mattoon",
+    "martha_hart_eddy",
+    "huston_smith",
+    "richard_page",
+    "pdf",
+    "mair_alight",
+    "cheryl_honey",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "foster_gamble",
+    "katie_johnson",
+    "david_becker",
+    "morag_warrack",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self"
+   ],
+   "rowCount": 15,
+   "cardIds": [
+    6798,
+    7147,
+    7173,
+    7266,
+    7272,
+    7410,
+    7413,
+    7484,
+    7488,
+    7543,
+    7846,
+    8036,
+    8583,
+    8650,
+    8741
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ",
+   "params": [
+    "source_title",
+    "source_author",
+    "source_origin_url",
+    "source_content",
+    "date",
+    "tag",
+    "h_recommend_bw",
+    "public",
+    "private",
+    "public",
+    "private",
+    "image",
+    "page",
+    "related_project",
+    "document",
+    "how_to_contact_me",
+    "musing",
+    "frequent_process",
+    "bio",
+    "h_bw_rec",
+    "central_place",
+    "remote_place",
+    "variable_place",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "applicable_research",
+    "writing",
+    "related",
+    "writing_sample",
+    "linked_in",
+    "bdwc",
+    "bdwc",
+    "writing_sample",
+    "linked_in",
+    "williamscraig",
+    "williamscraig",
+    "item",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*right",
+    "*right",
+    "*self",
+    "*right",
+    "*self"
+   ],
+   "rowCount": 42,
+   "cardIds": [
+    331,
+    355,
+    492,
+    521,
+    525,
+    529,
+    533,
+    537,
+    541,
+    545,
+    671,
+    676,
+    1015,
+    1134,
+    1554,
+    2976,
+    6711,
+    6726,
+    6836,
+    7111,
+    7147,
+    7157,
+    7167,
+    7169,
+    7175,
+    7183,
+    7197,
+    7204,
+    7206,
+    7252,
+    7272,
+    7484,
+    7488,
+    7543,
+    7913,
+    8030,
+    8036,
+    8437,
+    8507,
+    8579,
+    25963,
+    37258
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    5,
+    266,
+    50,
+    266,
+    52,
+    266,
+    30,
+    266,
+    47,
+    266,
+    22281,
+    266,
+    259,
+    266,
+    4,
+    266,
+    1023,
+    266,
+    18,
+    266,
+    423,
+    266,
+    17754,
+    266,
+    22,
+    266,
+    274,
+    86,
+    274,
+    82,
+    274,
+    317,
+    6544,
+    86,
+    6544,
+    82,
+    6544,
+    317,
+    6544,
+    318,
+    6543,
+    86,
+    6543,
+    82,
+    6543,
+    317,
+    6545,
+    86,
+    6545,
+    82,
+    6545,
+    317,
+    6545,
+    318
+   ],
+   "rowCount": 7,
+   "cardIds": [
+    294,
+    319,
+    320,
+    425,
+    1024,
+    17761,
+    22282
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    5,
+    146,
+    4,
+    3527,
+    22281,
+    3527,
+    1023,
+    1557,
+    1023,
+    1029,
+    1023,
+    1031,
+    1023,
+    1027,
+    1023,
+    17,
+    1023,
+    128,
+    22281,
+    14152,
+    22281,
+    14155,
+    4,
+    19,
+    4,
+    668,
+    4,
+    146,
+    4,
+    491,
+    4,
+    675,
+    4,
+    437,
+    4,
+    2975,
+    4,
+    544,
+    4,
+    13229,
+    22281,
+    19845,
+    3,
+    14155,
+    3,
+    1857,
+    3,
+    16684,
+    3,
+    18145,
+    17754,
+    146,
+    9922,
+    264,
+    27689,
+    264,
+    103,
+    264,
+    146,
+    260,
+    266,
+    264,
+    51579,
+    264,
+    50256,
+    264,
+    49322,
+    264,
+    48308,
+    264,
+    47617,
+    264,
+    46301,
+    264,
+    45777,
+    264,
+    45736,
+    264,
+    23701,
+    264,
+    51573,
+    264,
+    13229,
+    264,
+    23002,
+    264,
+    23613,
+    264,
+    583,
+    264,
+    727,
+    264,
+    740,
+    264,
+    1445,
+    264,
+    2303,
+    264,
+    3034,
+    264,
+    3100,
+    264,
+    3459,
+    264,
+    3475,
+    264,
+    12173,
+    264,
+    16455,
+    264,
+    16660,
+    264,
+    37821,
+    264,
+    37823,
+    264,
+    37825,
+    264,
+    37827,
+    264,
+    37829,
+    264,
+    37831,
+    264,
+    37833,
+    264,
+    37835,
+    264,
+    37837,
+    264,
+    37840,
+    264,
+    37842,
+    264,
+    37844,
+    264,
+    37848,
+    264,
+    37850,
+    264,
+    37853,
+    264,
+    37862,
+    264,
+    1557,
+    260,
+    1029,
+    260,
+    1031,
+    260,
+    14152,
+    264,
+    14155,
+    264,
+    14155,
+    260,
+    437,
+    260,
+    13229,
+    260,
+    25961,
+    264,
+    16684,
+    264,
+    19845,
+    264,
+    19845,
+    260,
+    1857,
+    260,
+    16684,
+    260,
+    18145,
+    264,
+    18145,
+    260,
+    2077,
+    264
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    180,
+    181,
+    34566
+   ]
+  },
+  {
+   "sql": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN cards settings ON rules.right_id = settings.id WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help' AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0",
+   "params": [
+    259,
+    278
+   ],
+   "rowCount": 99,
+   "cardIds": [
+    3,
+    5,
+    7,
+    17,
+    19,
+    22,
+    50,
+    82,
+    128,
+    146,
+    198,
+    259,
+    260,
+    262,
+    264,
+    266,
+    278,
+    355,
+    455,
+    639,
+    668,
+    756,
+    757,
+    814,
+    815,
+    954,
+    1023,
+    2077,
+    2079,
+    2080,
+    3125,
+    3383,
+    3384,
+    9694,
+    16585,
+    17435,
+    17692,
+    17693,
+    17694,
+    17766,
+    17767,
+    17768,
+    17771,
+    17772,
+    17773,
+    17774,
+    17775,
+    17776,
+    17777,
+    17778,
+    17779,
+    17780,
+    17781,
+    17782,
+    17783,
+    17784,
+    17785,
+    17786,
+    17787,
+    17788,
+    17789,
+    17790,
+    17791,
+    17792,
+    17793,
+    17794,
+    17795,
+    17796,
+    17797,
+    17798,
+    17799,
+    17800,
+    17801,
+    17802,
+    17803,
+    17804,
+    17805,
+    17806,
+    17807,
+    17808,
+    17809,
+    17810,
+    17811,
+    17812,
+    17813,
+    17814,
+    17815,
+    17816,
+    17817,
+    17818,
+    17819,
+    17820,
+    17821,
+    22281,
+    22720,
+    22721,
+    22724,
+    38253,
+    38254
+   ]
+  },
+  {
+   "sql": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN cards settings ON rules.right_id = settings.id WHERE sets.type_id = ? AND settings.type_id = ? AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0 AND (rules.read_rule_id IS NULL OR ru",
+   "params": [
+    259,
+    278,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 21,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_news_item_sort_create_dir_desc_limit_9"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_news_item_sort_create_dir_desc_limit_9"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN cards setting_cards ON rules.right_id = setting_cards.id AND setting_cards.codename IN ('update', 'create', 'delete') JOIN cards sets ON rules.left_id = sets.id LEFT JOIN card_references refs ",
+   "params": [],
+   "rowCount": 927,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23809,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23810
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    23810
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "*comment"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*read"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    6547
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*script"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    20596
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*input_type"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    241
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*layout"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    255
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*thank"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    61
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*update"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    6548
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*guide"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    34851
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*head"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    4034
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*style"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    17450
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*content_option_view"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    252
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*create"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    6546
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*follow_field"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    22726
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*delete"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    6549
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*captcha"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    256
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*table_of_content"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    89
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*comment"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    51580,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    355,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    452
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    452
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "ai",
+    "agi",
+    "reality_control",
+    "fiction",
+    "deception"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    25309,
+    44242
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "ai"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "fiction"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "deception"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1446,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    671,
+    86
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "ab_cglobal_board",
+    "low_impact_body_art_research",
+    "mr_to_im_name_change_project",
+    "iri_log_of_stuff_that_happen"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    2444,
+    2690,
+    3730,
+    11400
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2215,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "dm_craigslist_re"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2214
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2638,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    492,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    498
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    498
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "project"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    398
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "martial_nonviolence"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    577
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2876,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    676,
+    86
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "kayla_feder_bio"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2877
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3104,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "movement_education_org",
+    "embody_peace_website",
+    "martha_hart_eddy_article_bmc_laban_barten_smt_aiki_dance_somatic"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    3105,
+    3106,
+    22642
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3463,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_and_brandon_williamscraig",
+    "conversation_with_huston_smith",
+    "huston_smith_link_beyond_culturesmith",
+    "huston_smith_website"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    3462,
+    3464,
+    25598,
+    26787
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    650
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    650
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    650
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3465,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2976,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2978
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2978
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "consideration"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2979
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_on_fresh_air_with_terry_gross_19960219",
+    "huston_smith_remembered_by_terry_gross_fresh_air_20170104",
+    "bill_moyer_and_huston_smith"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    14068,
+    26780,
+    26783
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3479,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "abc_vaccination"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3487
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3485,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "page_de_richard"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3478
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    11066,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "aikido_of_berkeley_and_free_aiki"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    11059
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    15939,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "the_red_book_considered",
+    "david_and_julie_william_january_2011",
+    "meditation_101_w_david_william",
+    "father_day_2015"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    15940,
+    16563,
+    18132,
+    23583
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16664,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "cheryl_do_not_contribute_directly_to_culturesmith_at_thi_time"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "cheryl_do_not_contribute_directly_to_culturesmith_at_thi_time"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16665,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "regina_hackett_jefferson_award_cheryl_honey_a_weaver_of_neighborhood_network",
+    "ye_magazine_person_we_love_cheryl_honey",
+    "cheryl_honey_graduate_from_antioch_2004",
+    "cheryl_honey_f_nvideo"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    16653,
+    16670,
+    16679,
+    16686
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16667,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    545,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    547
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    547
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "process"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    443
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "community_weaving"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    16669
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16678,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "going_beyond_the_wall_cheryl_honey"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    16677
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_setting"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_setting"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "referred_to_by_right_tag"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "referred_to_by_right_tag"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_project"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_project"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_consideration"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_consideration"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_process"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_process"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "some_help_spreading_the_word_would_be_much_appreciated",
+    "what_do_we_need_to_know",
+    "blog",
+    "conflict_done_well",
+    "make_contact",
+    "subscribe_to_my_newsletter",
+    "online_class",
+    "brandon_william_craig",
+    "about",
+    "learning_pool",
+    "mythology",
+    "myth",
+    "aikido_of_berkeley",
+    "peace_practice",
+    "aikido_2",
+    "aikido_oak_cliff",
+    "cv",
+    "span_span_a_href_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_a",
+    "a_href_http_www_facebook_com_bob_hedger_http_www_facebook_com_bob_hedger_a",
+    "leon_regelson",
+    "ihss_tracking",
+    "huston_smith_nyt_obit",
+    "cg_jung_the_red_book"
+   ],
+   "rowCount": 21,
+   "cardIds": [
+    393,
+    728,
+    788,
+    1711,
+    2792,
+    3565,
+    4167,
+    9923,
+    9974,
+    11825,
+    12038,
+    14290,
+    15113,
+    16561,
+    26788,
+    26976,
+    27852,
+    35336,
+    38150,
+    39786,
+    41953
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?) WHERE j.trash = 0",
+   "params": [
+    "conflict_done_well",
+    "martha_hart_eddy",
+    "online_class",
+    "cv"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    22647,
+    35337
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    442
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    442
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    442
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "administrator"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    10
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "span_span_a_href_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_a"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "a_href_http_www_facebook_com_bob_hedger_http_www_facebook_com_bob_hedger_a"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*open"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  }
+ ],
+ "on": [
+  {
+   "sql": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+   "params": [],
+   "rowCount": 275,
+   "cardIds": [
+    1,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    12,
+    15,
+    17,
+    18,
+    19,
+    20,
+    22,
+    30,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    47,
+    50,
+    51,
+    52,
+    53,
+    55,
+    61,
+    64,
+    77,
+    79,
+    81,
+    82,
+    86,
+    89,
+    92,
+    96,
+    98,
+    100,
+    101,
+    103,
+    130,
+    137,
+    138,
+    146,
+    178,
+    184,
+    190,
+    241,
+    247,
+    252,
+    255,
+    256,
+    259,
+    260,
+    262,
+    264,
+    266,
+    274,
+    278,
+    316,
+    317,
+    318,
+    378,
+    381,
+    384,
+    387,
+    397,
+    2015,
+    3445,
+    3939,
+    3942,
+    3945,
+    4029,
+    4030,
+    4032,
+    4034,
+    4035,
+    4036,
+    4037,
+    4038,
+    6543,
+    6544,
+    6545,
+    6546,
+    6547,
+    6548,
+    6549,
+    11735,
+    11739,
+    11742,
+    11746,
+    14952,
+    17435,
+    17436,
+    17437,
+    17450,
+    19953,
+    19954,
+    19955,
+    19956,
+    19957,
+    19958,
+    20586,
+    20587,
+    20596,
+    20612,
+    21757,
+    21761,
+    21765,
+    21777,
+    21780,
+    21783,
+    21787,
+    21791,
+    21795,
+    21806,
+    22258,
+    22720,
+    22725,
+    22726,
+    22731,
+    22732,
+    22733,
+    22739,
+    22747,
+    22748,
+    22749,
+    22751,
+    22752,
+    22766,
+    22774,
+    22778,
+    22782,
+    22786,
+    22790,
+    22794,
+    22798,
+    22810,
+    22814,
+    22818,
+    22822,
+    22826,
+    22830,
+    22834,
+    23465,
+    23468,
+    23808,
+    23817,
+    24082,
+    24083,
+    24272,
+    24273,
+    24274,
+    24279,
+    24539,
+    24550,
+    24559,
+    33791,
+    33793,
+    33794,
+    33795,
+    33800,
+    33813,
+    33816,
+    33819,
+    33821,
+    33822,
+    33829,
+    33830,
+    33833,
+    33836,
+    33843,
+    33844,
+    33845,
+    33848,
+    33852,
+    33872,
+    33877,
+    33880,
+    33883,
+    33886,
+    33893,
+    33898,
+    33921,
+    33922,
+    33924,
+    33926,
+    33927,
+    33928,
+    33929,
+    33937,
+    33944,
+    33947,
+    33948,
+    34753,
+    34759,
+    34765,
+    34767,
+    34768,
+    34769,
+    34776,
+    34790,
+    34791,
+    34792,
+    34816,
+    34823,
+    34828,
+    34829,
+    34832,
+    34833,
+    34843,
+    34844,
+    34851,
+    38248,
+    38267,
+    38269,
+    45364,
+    45406,
+    45407,
+    45408,
+    45409,
+    45410,
+    45411,
+    45412,
+    45415,
+    45416,
+    45417,
+    45423,
+    45428,
+    45430,
+    45431,
+    45432,
+    45434,
+    45435,
+    45436,
+    45437,
+    45441,
+    45445,
+    45446,
+    45448,
+    45450,
+    45454,
+    45458,
+    45462,
+    45463,
+    45464,
+    45466,
+    45468,
+    45472,
+    45473,
+    45474,
+    45475,
+    45478,
+    45480,
+    45482,
+    45486,
+    45490,
+    45492,
+    45493,
+    45494,
+    45498,
+    45499,
+    45502,
+    45506,
+    45509,
+    45513,
+    49302,
+    49307,
+    49308,
+    50176,
+    50177,
+    50615,
+    50616
+   ]
+  },
+  {
+   "sql": "ATTACH DATABASE 'C:\\Users\\jpswi\\AppData\\Local\\Temp\\aikido-divergence-4LEMsR\\one-trip-closure-side.sqlite3' AS one_trip",
+   "params": [],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "WITH RECURSIVE walk(id) AS ( SELECT id FROM cards WHERE \"key\" = ? AND trash = 0 UNION SELECT e.referee_id FROM walk JOIN one_trip.one_trip_edges e ON e.referer_id = walk.id WHERE e.referee_id IS NOT NULL ), members(id) AS ( SELECT id FROM walk UNION SELECT pc.card_id FROM one_trip.one_trip_page_clos",
+   "params": [
+    "home",
+    "home",
+    "home",
+    "home"
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
+   "params": [
+    3
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+   "params": [
+    80,
+    3
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+   "params": [
+    3
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "*self",
+    "*type",
+    "*all"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    264,
+    266,
+    274
+   ]
+  },
+  {
+   "sql": "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+   "params": [],
+   "rowCount": 5,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT ",
+   "params": [],
+   "rowCount": 926,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards",
+   "params": [],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+   "params": [],
+   "rowCount": 275,
+   "cardIds": [
+    1,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    10,
+    12,
+    15,
+    17,
+    18,
+    19,
+    20,
+    22,
+    30,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    47,
+    50,
+    51,
+    52,
+    53,
+    55,
+    61,
+    64,
+    77,
+    79,
+    81,
+    82,
+    86,
+    89,
+    92,
+    96,
+    98,
+    100,
+    101,
+    103,
+    130,
+    137,
+    138,
+    146,
+    178,
+    184,
+    190,
+    241,
+    247,
+    252,
+    255,
+    256,
+    259,
+    260,
+    262,
+    264,
+    266,
+    274,
+    278,
+    316,
+    317,
+    318,
+    378,
+    381,
+    384,
+    387,
+    397,
+    2015,
+    3445,
+    3939,
+    3942,
+    3945,
+    4029,
+    4030,
+    4032,
+    4034,
+    4035,
+    4036,
+    4037,
+    4038,
+    6543,
+    6544,
+    6545,
+    6546,
+    6547,
+    6548,
+    6549,
+    11735,
+    11739,
+    11742,
+    11746,
+    14952,
+    17435,
+    17436,
+    17437,
+    17450,
+    19953,
+    19954,
+    19955,
+    19956,
+    19957,
+    19958,
+    20586,
+    20587,
+    20596,
+    20612,
+    21757,
+    21761,
+    21765,
+    21777,
+    21780,
+    21783,
+    21787,
+    21791,
+    21795,
+    21806,
+    22258,
+    22720,
+    22725,
+    22726,
+    22731,
+    22732,
+    22733,
+    22739,
+    22747,
+    22748,
+    22749,
+    22751,
+    22752,
+    22766,
+    22774,
+    22778,
+    22782,
+    22786,
+    22790,
+    22794,
+    22798,
+    22810,
+    22814,
+    22818,
+    22822,
+    22826,
+    22830,
+    22834,
+    23465,
+    23468,
+    23808,
+    23817,
+    24082,
+    24083,
+    24272,
+    24273,
+    24274,
+    24279,
+    24539,
+    24550,
+    24559,
+    33791,
+    33793,
+    33794,
+    33795,
+    33800,
+    33813,
+    33816,
+    33819,
+    33821,
+    33822,
+    33829,
+    33830,
+    33833,
+    33836,
+    33843,
+    33844,
+    33845,
+    33848,
+    33852,
+    33872,
+    33877,
+    33880,
+    33883,
+    33886,
+    33893,
+    33898,
+    33921,
+    33922,
+    33924,
+    33926,
+    33927,
+    33928,
+    33929,
+    33937,
+    33944,
+    33947,
+    33948,
+    34753,
+    34759,
+    34765,
+    34767,
+    34768,
+    34769,
+    34776,
+    34790,
+    34791,
+    34792,
+    34816,
+    34823,
+    34828,
+    34829,
+    34832,
+    34833,
+    34843,
+    34844,
+    34851,
+    38248,
+    38267,
+    38269,
+    45364,
+    45406,
+    45407,
+    45408,
+    45409,
+    45410,
+    45411,
+    45412,
+    45415,
+    45416,
+    45417,
+    45423,
+    45428,
+    45430,
+    45431,
+    45432,
+    45434,
+    45435,
+    45436,
+    45437,
+    45441,
+    45445,
+    45446,
+    45448,
+    45450,
+    45454,
+    45458,
+    45462,
+    45463,
+    45464,
+    45466,
+    45468,
+    45472,
+    45473,
+    45474,
+    45475,
+    45478,
+    45480,
+    45482,
+    45486,
+    45490,
+    45492,
+    45493,
+    45494,
+    45498,
+    45499,
+    45502,
+    45506,
+    45509,
+    45513,
+    49302,
+    49307,
+    49308,
+    50176,
+    50177,
+    50615,
+    50616
+   ]
+  },
+  {
+   "sql": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction case: compose left-walk + right-key. The walk does NOT -- filter on trash: a tras",
+   "params": [
+    "*structure",
+    "*structure"
+   ],
+   "rowCount": 138,
+   "cardIds": []
+  },
+  {
+   "sql": "WITH RECURSIVE name_walk(id, composed) AS ( -- Base case: simple cards (no left, no right) use their stored key SELECT id, COALESCE(\"key\", '') FROM cards WHERE left_id IS NULL AND right_id IS NULL UNION ALL -- Junction case: compose left-walk + right-key. The walk does NOT -- filter on trash: a tras",
+   "params": [
+    "*default",
+    "*default"
+   ],
+   "rowCount": 140,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+   "params": [],
+   "rowCount": 16,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+   "params": [
+    "*title",
+    "*favicon",
+    "*all+*style",
+    "*all+*style+*asset_output",
+    "*all+*script",
+    "*all+*script+*asset_output",
+    "*recent settings",
+    "*recent_settings",
+    "*recent_setting"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    55,
+    103,
+    23808
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "*admin_info",
+    "home_htm_lheader",
+    "new_connection_ask"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    2826,
+    9922,
+    24550
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "latest_news",
+    "cdwcd_wimage02"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    813,
+    27689
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "feed_icon",
+    "latest_news_item"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    817,
+    819
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "description"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    146
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "rich_text",
+    "description"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3928
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "*type"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    266
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "rich_text",
+    "*type"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    273
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    273,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "WITH RECURSIVE anc(id) AS ( SELECT r.left_id FROM cards r JOIN cards st ON st.id = r.right_id WHERE +r.trash = 0 AND st.\"key\" IN (?, ?, ?, ?) AND r.left_id IS NOT NULL UNION SELECT j.left_id FROM anc a JOIN cards j ON j.id = a.id WHERE j.left_id IS NOT NULL ), resolved(id, ckey) AS ( SELECT c.id, c.",
+   "params": [
+    "*read",
+    "*create",
+    "*update",
+    "*delete"
+   ],
+   "rowCount": 1489,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id, db_content FROM cards WHERE id IN (?, ?)",
+   "params": [
+    6568,
+    6569
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    6568,
+    6569
+   ]
+  },
+  {
+   "sql": "SELECT id, db_content FROM cards WHERE id IN (?)",
+   "params": [
+    22283
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    22283
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    15
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    15
+   ]
+  },
+  {
+   "sql": "SELECT c0.*, c0.created_at, c0.id FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND c0.read_rule_id IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ORDER BY c0.created_at desc, c0.id asc LIMIT 9",
+   "params": [
+    814,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 9,
+   "cardIds": [
+    51579,
+    50256,
+    49322,
+    48308,
+    47617,
+    46301,
+    45777,
+    45736,
+    45195
+   ]
+  },
+  {
+   "sql": "SELECT c.* FROM cards c WHERE c.trash = 0 AND c.left_id IS NOT NULL AND (NOT EXISTS (SELECT 1 FROM cards l WHERE l.id = c.left_id) OR NOT EXISTS (SELECT 1 FROM cards r WHERE r.id = c.right_id))",
+   "params": [],
+   "rowCount": 3,
+   "cardIds": [
+    375,
+    377,
+    389
+   ]
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    374
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    376
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+   "params": [
+    388
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    51579,
+    814,
+    50256,
+    49322,
+    48308,
+    47617,
+    46301,
+    45777,
+    45736,
+    45195,
+    23701,
+    3527
+   ],
+   "rowCount": 12,
+   "cardIds": [
+    814,
+    3527,
+    23701,
+    45195,
+    45736,
+    45777,
+    46301,
+    47617,
+    48308,
+    49322,
+    50256,
+    51579
+   ]
+  },
+  {
+   "sql": "SELECT coalesce(count(distinct c0.id),0) as count FROM cards c0 WHERE c0.type_id = ? AND c0.trash is false AND c0.read_rule_id IN (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+   "params": [
+    814,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "brian_roemmele_ai_defending_the_status_quo",
+    "bw_recommendation"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    958,
+    51573
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "image",
+    "bio",
+    "how_to_contact_me",
+    "company",
+    "skill",
+    "musing",
+    "page",
+    "document",
+    "project__organizing",
+    "project__participating",
+    "core_project",
+    "related_project",
+    "potential_project",
+    "related_person",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice"
+   ],
+   "rowCount": 17,
+   "cardIds": [
+    19,
+    437,
+    491,
+    512,
+    544,
+    548,
+    552,
+    556,
+    560,
+    564,
+    586,
+    668,
+    675,
+    2975,
+    13229,
+    23002,
+    23613
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "kaori_suzuki",
+    "image",
+    "bio",
+    "how_to_contact_me",
+    "company",
+    "skill",
+    "musing",
+    "page",
+    "document",
+    "project__organizing",
+    "project__participating",
+    "core_project",
+    "related_project",
+    "potential_project",
+    "related_person",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    23701,
+    146
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    814,
+    266,
+    23701,
+    19,
+    23701,
+    13229,
+    23701,
+    437,
+    23701,
+    23613,
+    23701,
+    23002,
+    23701,
+    2975,
+    23701,
+    668,
+    23701,
+    675,
+    23701,
+    586,
+    23701,
+    491,
+    23701,
+    512,
+    23701,
+    544,
+    23701,
+    548,
+    23701,
+    552,
+    23701,
+    556,
+    23701,
+    560,
+    23701,
+    564
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    815
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    815,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23701,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23701,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_recommendation",
+    "odette_lockwood_stewart_recommendation",
+    "kayla_feder_recommendation",
+    "leslie_zeitler_recommendation"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    1157,
+    1159,
+    1161,
+    2915
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith",
+    "martha_hart_eddy",
+    "ed_correium",
+    "kayla_feder",
+    "robert_kent",
+    "morag_warrack",
+    "mair_alight",
+    "christine_pari",
+    "richard_page",
+    "cheryl_honey",
+    "don_mc_clure",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "scott_mattoon",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "david_william",
+    "iri_mc_ginni",
+    "foster_gamble",
+    "katie_johnson",
+    "dhyana_iri",
+    "david_becker",
+    "source_title",
+    "source_author",
+    "date",
+    "source_origin_url",
+    "associate",
+    "source_content",
+    "pdf",
+    "discussion",
+    "tag"
+   ],
+   "rowCount": 39,
+   "cardIds": [
+    17,
+    128,
+    130,
+    516,
+    583,
+    727,
+    740,
+    741,
+    1027,
+    1029,
+    1031,
+    1075,
+    1263,
+    1445,
+    1557,
+    2303,
+    3034,
+    3100,
+    3459,
+    3475,
+    12173,
+    16455,
+    16660,
+    37821,
+    37823,
+    37825,
+    37827,
+    37829,
+    37831,
+    37833,
+    37835,
+    37837,
+    37840,
+    37842,
+    37844,
+    37848,
+    37850,
+    37853,
+    37862
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ",
+   "params": [
+    "huston_smith",
+    "martha_hart_eddy",
+    "ed_correium",
+    "kayla_feder",
+    "robert_kent",
+    "morag_warrack",
+    "mair_alight",
+    "christine_pari",
+    "richard_page",
+    "cheryl_honey",
+    "don_mc_clure",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "scott_mattoon",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "david_william",
+    "iri_mc_ginni",
+    "foster_gamble",
+    "katie_johnson",
+    "dhyana_iri",
+    "david_becker",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "recommendation",
+    "source_title",
+    "source_author",
+    "date",
+    "source_origin_url",
+    "associate",
+    "source_content",
+    "pdf",
+    "discussion",
+    "tag"
+   ],
+   "rowCount": 36,
+   "cardIds": [
+    37812,
+    37813,
+    37814,
+    37815,
+    37816,
+    37817,
+    37818,
+    37819,
+    37820,
+    37822,
+    37824,
+    37826,
+    37828,
+    37830,
+    37832,
+    37834,
+    37836,
+    37838,
+    37839,
+    37841,
+    37843,
+    37845,
+    37846,
+    37847,
+    37849,
+    37851,
+    37852,
+    37854,
+    37855,
+    37863,
+    51574,
+    51575,
+    51576,
+    51577,
+    51578,
+    51580
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    19,
+    266,
+    51573,
+    516,
+    51573,
+    12173,
+    51573,
+    130
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3383
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3383,
+    184
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "h_recommend_bw"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2914
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "public",
+    "private"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    14152,
+    14155
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "tag",
+    "tag",
+    "david_william",
+    "david_william",
+    "david_william",
+    "iri_mc_ginni",
+    "iri_mc_ginni",
+    "iri_mc_ginni",
+    "don_mc_clure",
+    "don_mc_clure",
+    "don_mc_clure",
+    "robert_kent",
+    "robert_kent",
+    "robert_kent",
+    "christine_pari",
+    "christine_pari",
+    "christine_pari",
+    "kayla_feder",
+    "kayla_feder",
+    "kayla_feder",
+    "dhyana_iri",
+    "dhyana_iri",
+    "dhyana_iri",
+    "ed_correium",
+    "ed_correium",
+    "ed_correium",
+    "scott_mattoon",
+    "scott_mattoon",
+    "scott_mattoon",
+    "martha_hart_eddy",
+    "martha_hart_eddy",
+    "martha_hart_eddy",
+    "huston_smith",
+    "huston_smith",
+    "huston_smith",
+    "richard_page",
+    "richard_page",
+    "richard_page",
+    "mair_alight",
+    "mair_alight",
+    "mair_alight",
+    "cheryl_honey",
+    "cheryl_honey",
+    "cheryl_honey",
+    "morag_warrack",
+    "public",
+    "private",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing",
+    "project__participating",
+    "related_person",
+    "project__organizing"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    40302,
+    41199
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?) WHERE j.trash = 0",
+   "params": [
+    "morag_warrack",
+    "morag_warrack",
+    "project__participating",
+    "related_person"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    583,
+    19,
+    583,
+    13229,
+    583,
+    437,
+    583,
+    146,
+    583,
+    23613,
+    583,
+    23002,
+    583,
+    2975,
+    583,
+    668,
+    583,
+    675,
+    583,
+    586,
+    583,
+    491,
+    583,
+    512,
+    583,
+    544,
+    583,
+    548,
+    583,
+    552,
+    583,
+    556,
+    583,
+    560,
+    583,
+    564,
+    727,
+    19,
+    727,
+    13229,
+    727,
+    437,
+    727,
+    146,
+    727,
+    23613,
+    727,
+    23002,
+    727,
+    2975,
+    727,
+    668,
+    727,
+    675,
+    727,
+    586,
+    727,
+    491,
+    727,
+    512,
+    727,
+    544,
+    727,
+    548,
+    727,
+    552,
+    727,
+    556,
+    727,
+    560,
+    727,
+    564,
+    740,
+    19,
+    740,
+    13229,
+    740,
+    437,
+    740,
+    146,
+    740,
+    23613,
+    740,
+    23002,
+    740,
+    2975,
+    740,
+    668,
+    740,
+    675,
+    740,
+    586,
+    740,
+    491,
+    740,
+    512,
+    740,
+    544,
+    740,
+    548,
+    740,
+    552,
+    740,
+    556,
+    740,
+    560,
+    740,
+    564,
+    741,
+    19,
+    741,
+    13229,
+    741,
+    437,
+    741,
+    146,
+    741,
+    23613,
+    741,
+    23002,
+    741,
+    2975,
+    741,
+    668,
+    741,
+    675,
+    741,
+    586,
+    741,
+    491,
+    741,
+    512,
+    741,
+    544,
+    741,
+    548,
+    741,
+    552,
+    741,
+    556,
+    741,
+    560,
+    741,
+    564,
+    1075,
+    19,
+    1075,
+    13229,
+    1075,
+    437,
+    1075,
+    146,
+    1075,
+    23613,
+    1075,
+    23002,
+    1075,
+    2975,
+    1075,
+    668,
+    1075,
+    675,
+    1075,
+    586,
+    1075,
+    491,
+    1075,
+    512,
+    1075,
+    544,
+    1075,
+    548,
+    1075,
+    552,
+    1075,
+    556,
+    1075,
+    560,
+    1075,
+    564,
+    1263,
+    19,
+    1263,
+    13229,
+    1263,
+    437,
+    1263,
+    146,
+    1263,
+    23613,
+    1263,
+    23002,
+    1263,
+    2975,
+    1263,
+    668,
+    1263,
+    675,
+    1263,
+    586,
+    1263,
+    491,
+    1263,
+    512,
+    1263,
+    544,
+    1263,
+    548,
+    1263,
+    552,
+    1263,
+    556,
+    1263,
+    560,
+    1263,
+    564,
+    1445,
+    19,
+    1445,
+    13229,
+    1445,
+    437,
+    1445,
+    146,
+    1445,
+    23613,
+    1445,
+    23002,
+    1445,
+    2975,
+    1445,
+    668,
+    1445,
+    675,
+    1445,
+    586,
+    1445,
+    491,
+    1445,
+    512,
+    1445,
+    544,
+    1445,
+    548,
+    1445,
+    552,
+    1445,
+    556,
+    1445,
+    560,
+    1445,
+    564,
+    2303,
+    19,
+    2303,
+    13229,
+    2303,
+    437,
+    2303,
+    146,
+    2303,
+    23613,
+    2303,
+    23002,
+    2303,
+    2975,
+    2303,
+    668,
+    2303,
+    675,
+    2303,
+    586,
+    2303,
+    491,
+    2303,
+    512,
+    2303,
+    544,
+    2303,
+    548,
+    2303,
+    552,
+    2303,
+    556,
+    2303,
+    560,
+    2303,
+    564,
+    3034,
+    19,
+    3034,
+    13229,
+    3034,
+    437,
+    3034,
+    146,
+    3034,
+    23613,
+    3034,
+    23002,
+    3034,
+    2975,
+    3034,
+    668,
+    3034,
+    675,
+    3034,
+    586,
+    3034,
+    491,
+    3034,
+    512,
+    3034,
+    544,
+    3034,
+    548,
+    3034,
+    552,
+    3034,
+    556,
+    3034,
+    560,
+    3034,
+    564,
+    3100,
+    19,
+    3100,
+    13229,
+    3100,
+    437,
+    3100,
+    146,
+    3100,
+    23613,
+    3100,
+    23002,
+    3100,
+    2975,
+    3100,
+    668,
+    3100,
+    675,
+    3100,
+    586,
+    3100,
+    491,
+    3100,
+    512,
+    3100,
+    544,
+    3100,
+    548,
+    3100,
+    552,
+    3100,
+    556,
+    3100,
+    560,
+    3100,
+    564,
+    3459,
+    19,
+    3459,
+    437,
+    3459,
+    146,
+    3459,
+    23613,
+    3459,
+    23002,
+    3459,
+    2975,
+    3459,
+    668,
+    3459,
+    675,
+    3459,
+    586,
+    3459,
+    491,
+    3459,
+    512,
+    3459,
+    544,
+    3459,
+    548,
+    3459,
+    552,
+    3459,
+    556,
+    3459,
+    560,
+    3459,
+    564,
+    3475,
+    19,
+    3475,
+    13229,
+    3475,
+    437,
+    3475,
+    146,
+    3475,
+    23613,
+    3475,
+    23002,
+    3475,
+    2975,
+    3475,
+    668,
+    3475,
+    675,
+    3475,
+    586,
+    3475,
+    491,
+    3475,
+    512,
+    3475,
+    544,
+    3475,
+    548,
+    3475,
+    552,
+    3475,
+    556,
+    3475,
+    560,
+    3475,
+    564,
+    16455,
+    13229,
+    16455,
+    23613,
+    16455,
+    23002,
+    16455,
+    2975,
+    16455,
+    668,
+    16455,
+    675,
+    16455,
+    586,
+    16455,
+    491,
+    16455,
+    512,
+    16455,
+    544,
+    16455,
+    548,
+    16455,
+    552,
+    16455,
+    556,
+    16455,
+    560,
+    16455,
+    564,
+    16660,
+    13229,
+    16660,
+    23613,
+    16660,
+    23002,
+    16660,
+    586,
+    16660,
+    491,
+    16660,
+    512,
+    16660,
+    548,
+    16660,
+    552,
+    16660,
+    556,
+    16660,
+    560,
+    16660,
+    564,
+    37862,
+    19,
+    37862,
+    13229,
+    37862,
+    437,
+    37862,
+    146,
+    37862,
+    23613,
+    37862,
+    23002,
+    37862,
+    2975,
+    37862,
+    668,
+    37862,
+    675,
+    37862,
+    586,
+    37862,
+    491,
+    37862,
+    512,
+    37862,
+    544,
+    37862,
+    548,
+    37862,
+    552,
+    37862,
+    556,
+    37862,
+    560,
+    37862,
+    564
+   ],
+   "rowCount": 35,
+   "cardIds": [
+    825,
+    1446,
+    1490,
+    1735,
+    1856,
+    1859,
+    2215,
+    2317,
+    2638,
+    2876,
+    3101,
+    3102,
+    3104,
+    3127,
+    3128,
+    3130,
+    3456,
+    3457,
+    3458,
+    3460,
+    3463,
+    3465,
+    3472,
+    3474,
+    3476,
+    3477,
+    3479,
+    3480,
+    3485,
+    11066,
+    11399,
+    14067,
+    15939,
+    38808,
+    39466
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?))",
+   "params": [
+    17,
+    266
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    583,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    583,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    727,
+    1638
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2637
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2637
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "project_organizing"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    727,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    740,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    740,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    741,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    741,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1075,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1075,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1263,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1263,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1445,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1445,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2303,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2303,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3034,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3034,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3100,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3100,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3459,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3459,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3475,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3475,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16455,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16455,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16660,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    37862,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    37862,
+    418
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "h_bw_rec"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2912
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place"
+   ],
+   "rowCount": 9,
+   "cardIds": [
+    520,
+    524,
+    528,
+    532,
+    536,
+    540,
+    1014,
+    1879,
+    25961
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "public",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "private",
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place",
+    "writing",
+    "applicable_research",
+    "related",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "central_place",
+    "remote_place",
+    "variable_place"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    14152,
+    19,
+    14152,
+    146,
+    14152,
+    675,
+    14152,
+    130,
+    14152,
+    544,
+    14152,
+    548,
+    14152,
+    552,
+    14152,
+    556,
+    14152,
+    560,
+    14152,
+    564,
+    14152,
+    586,
+    14152,
+    491,
+    14152,
+    512,
+    14152,
+    128,
+    14155,
+    19,
+    14155,
+    146,
+    14155,
+    675,
+    14155,
+    130,
+    14155,
+    544,
+    14155,
+    548,
+    14155,
+    552,
+    14155,
+    556,
+    14155,
+    560,
+    14155,
+    564,
+    14155,
+    586,
+    14155,
+    491,
+    14155,
+    512,
+    14155,
+    128
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "bdwc"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    19845
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "tag",
+    "bdwc"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    41198
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    14152,
+    1879,
+    14152,
+    1014,
+    14152,
+    25961,
+    14152,
+    532,
+    14152,
+    536,
+    14152,
+    540,
+    14152,
+    520,
+    14152,
+    524,
+    14152,
+    528,
+    14155,
+    1879,
+    14155,
+    1014,
+    14155,
+    25961,
+    14155,
+    532,
+    14155,
+    536,
+    14155,
+    540,
+    14155,
+    520,
+    14155,
+    524,
+    14155,
+    528
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1856,
+    1857
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1858
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    1858
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    5,
+    3,
+    50,
+    52,
+    19,
+    30,
+    47,
+    22281,
+    259,
+    814,
+    4,
+    1023,
+    18,
+    17,
+    423
+   ],
+   "rowCount": 15,
+   "cardIds": [
+    3,
+    4,
+    5,
+    17,
+    18,
+    19,
+    30,
+    47,
+    50,
+    52,
+    259,
+    423,
+    814,
+    1023,
+    22281
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "*all",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*star",
+    "*all_plu",
+    "*rstar"
+   ],
+   "rowCount": 8,
+   "cardIds": [
+    82,
+    86,
+    274,
+    317,
+    318,
+    6543,
+    6544,
+    6545
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+   "params": [
+    "*all",
+    "*all",
+    "*all",
+    "*all",
+    "*star",
+    "*star",
+    "*star",
+    "*star",
+    "*all_plu",
+    "*all_plu",
+    "*all_plu",
+    "*all_plu",
+    "*rstar",
+    "*rstar",
+    "*rstar",
+    "*rstar",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default",
+    "*content_option",
+    "*help",
+    "*structure",
+    "*default"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    28,
+    17827
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "*self",
+    "*right",
+    "writing_sample",
+    "linked_in",
+    "williamscraig"
+   ],
+   "rowCount": 5,
+   "cardIds": [
+    260,
+    264,
+    1857,
+    16684,
+    18145
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "rich_text",
+    "home",
+    "new_connection_ask",
+    "home_htm_lheader",
+    "*admin_info",
+    "latest_news",
+    "cdwcd_wimage02",
+    "latest_news_item",
+    "feed_icon",
+    "*title",
+    "*favicon",
+    "*recent_setting",
+    "description",
+    "description",
+    "*type",
+    "*type",
+    "ai_defending_the_status_quo_on_x_by_brian_roemmele",
+    "news_item",
+    "psychological_epistemology_of_consciousness",
+    "topias",
+    "open_letter_learning_pool_newsletter_23_august_2024",
+    "mental_health_awareness_month_2024_somatic",
+    "harpy_helladay",
+    "it_only_a_story_go_to_sleep",
+    "homeless",
+    "kaori_suzuki",
+    "recommendation",
+    "recommendation",
+    "bw_recommendation",
+    "brian_roemmele_ai_defending_the_status_quo",
+    "image",
+    "how_to_contact_me",
+    "related_project",
+    "potential_project",
+    "frequent_process",
+    "regular_process",
+    "occasional_process",
+    "vocational_practice",
+    "avocational_practice",
+    "general_practice",
+    "core_project",
+    "page",
+    "document",
+    "musing",
+    "bio",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*self",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self"
+   ],
+   "rowCount": 42,
+   "cardIds": [
+    327,
+    331,
+    492,
+    509,
+    513,
+    545,
+    549,
+    553,
+    557,
+    561,
+    565,
+    671,
+    676,
+    2664,
+    2976,
+    3539,
+    6655,
+    6678,
+    6711,
+    6726,
+    6728,
+    7093,
+    7111,
+    7157,
+    7165,
+    7206,
+    7208,
+    7210,
+    7212,
+    7250,
+    7252,
+    7270,
+    7378,
+    7492,
+    7500,
+    8437,
+    8534,
+    8571,
+    11374,
+    23809,
+    24551,
+    34779
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ",
+   "params": [
+    "skill",
+    "company",
+    "odette_lockwood_stewart_recommendation",
+    "kayla_feder_recommendation",
+    "leslie_zeitler_recommendation",
+    "huston_smith_recommendation",
+    "date",
+    "tag",
+    "discussion",
+    "associate",
+    "david_william",
+    "iri_mc_ginni",
+    "don_mc_clure",
+    "robert_kent",
+    "source_content",
+    "source_author",
+    "source_origin_url",
+    "christine_pari",
+    "kayla_feder",
+    "dhyana_iri",
+    "source_title",
+    "ed_correium",
+    "scott_mattoon",
+    "martha_hart_eddy",
+    "huston_smith",
+    "richard_page",
+    "pdf",
+    "mair_alight",
+    "cheryl_honey",
+    "paul_rest",
+    "david_lukoff",
+    "glen_slater",
+    "levi_mason",
+    "som_pourfarzaneh",
+    "shannon_kelley",
+    "paul_lord",
+    "gabrielle_thorpe",
+    "rhette_marsh",
+    "saill_white",
+    "jose_bueno",
+    "ross_robertson",
+    "foster_gamble",
+    "katie_johnson",
+    "david_becker",
+    "morag_warrack",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self"
+   ],
+   "rowCount": 15,
+   "cardIds": [
+    6798,
+    7147,
+    7173,
+    7266,
+    7272,
+    7410,
+    7413,
+    7484,
+    7488,
+    7543,
+    7846,
+    8036,
+    8583,
+    8650,
+    8741
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ",
+   "params": [
+    "source_title",
+    "source_author",
+    "source_origin_url",
+    "source_content",
+    "date",
+    "tag",
+    "h_recommend_bw",
+    "public",
+    "private",
+    "public",
+    "private",
+    "image",
+    "page",
+    "related_project",
+    "document",
+    "how_to_contact_me",
+    "musing",
+    "bio",
+    "project__organizing",
+    "frequent_process",
+    "h_bw_rec",
+    "central_place",
+    "remote_place",
+    "variable_place",
+    "core_pattern",
+    "related_pattern",
+    "suggested_pattern",
+    "applicable_research",
+    "writing",
+    "related",
+    "bdwc",
+    "bdwc",
+    "writing_sample",
+    "linked_in",
+    "williamscraig",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*right",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*self",
+    "*right",
+    "*right",
+    "*right",
+    "*right"
+   ],
+   "rowCount": 42,
+   "cardIds": [
+    331,
+    355,
+    492,
+    521,
+    525,
+    529,
+    533,
+    537,
+    541,
+    545,
+    671,
+    676,
+    1015,
+    1134,
+    1554,
+    2976,
+    6711,
+    6726,
+    6836,
+    7111,
+    7147,
+    7157,
+    7167,
+    7169,
+    7175,
+    7183,
+    7197,
+    7204,
+    7206,
+    7252,
+    7272,
+    7484,
+    7488,
+    7543,
+    7913,
+    8030,
+    8036,
+    8437,
+    8507,
+    8579,
+    25963,
+    37258
+   ]
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    5,
+    266,
+    50,
+    266,
+    52,
+    266,
+    30,
+    266,
+    47,
+    266,
+    22281,
+    266,
+    259,
+    266,
+    4,
+    266,
+    1023,
+    266,
+    18,
+    266,
+    423,
+    266,
+    274,
+    86,
+    274,
+    82,
+    274,
+    317,
+    6544,
+    86,
+    6544,
+    82,
+    6544,
+    317,
+    6544,
+    318,
+    6543,
+    86,
+    6543,
+    82,
+    6543,
+    317,
+    6545,
+    86,
+    6545,
+    82,
+    6545,
+    317,
+    6545,
+    318
+   ],
+   "rowCount": 6,
+   "cardIds": [
+    294,
+    319,
+    320,
+    425,
+    1024,
+    22282
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?) WHERE j.trash = 0",
+   "params": [
+    "person",
+    "project__organizing"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT j.* FROM cards j WHERE j.trash = 0 AND ((j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.right_id = ?) OR (j.left_id = ? AND j.righ",
+   "params": [
+    4,
+    3527,
+    22281,
+    3527,
+    1023,
+    1557,
+    1023,
+    1029,
+    1023,
+    1031,
+    1023,
+    1027,
+    1023,
+    17,
+    1023,
+    128,
+    22281,
+    14152,
+    22281,
+    14155,
+    4,
+    19,
+    4,
+    668,
+    4,
+    491,
+    4,
+    675,
+    4,
+    437,
+    4,
+    2975,
+    4,
+    13229,
+    4,
+    544,
+    22281,
+    19845,
+    3,
+    14155,
+    3,
+    1857,
+    3,
+    16684,
+    3,
+    18145,
+    9922,
+    264,
+    27689,
+    264,
+    103,
+    264,
+    146,
+    260,
+    266,
+    264,
+    51579,
+    264,
+    50256,
+    264,
+    49322,
+    264,
+    48308,
+    264,
+    47617,
+    264,
+    46301,
+    264,
+    45777,
+    264,
+    45736,
+    264,
+    23701,
+    264,
+    51573,
+    264,
+    13229,
+    264,
+    23002,
+    264,
+    23613,
+    264,
+    583,
+    264,
+    727,
+    264,
+    740,
+    264,
+    1445,
+    264,
+    2303,
+    264,
+    3034,
+    264,
+    3100,
+    264,
+    3459,
+    264,
+    3475,
+    264,
+    12173,
+    264,
+    16455,
+    264,
+    16660,
+    264,
+    37821,
+    264,
+    37823,
+    264,
+    37825,
+    264,
+    37827,
+    264,
+    37829,
+    264,
+    37831,
+    264,
+    37833,
+    264,
+    37835,
+    264,
+    37837,
+    264,
+    37840,
+    264,
+    37842,
+    264,
+    37844,
+    264,
+    37848,
+    264,
+    37850,
+    264,
+    37853,
+    264,
+    37862,
+    264,
+    1557,
+    260,
+    1029,
+    260,
+    1031,
+    260,
+    14152,
+    264,
+    14155,
+    264,
+    14155,
+    260,
+    437,
+    260,
+    13229,
+    260,
+    25961,
+    264,
+    19845,
+    264,
+    19845,
+    260,
+    1857,
+    260,
+    16684,
+    260,
+    18145,
+    260
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    34566
+   ]
+  },
+  {
+   "sql": "WITH RECURSIVE reached(id) AS ( SELECT rules.id FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN cards settings ON rules.right_id = settings.id WHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help' AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0",
+   "params": [
+    259,
+    278
+   ],
+   "rowCount": 99,
+   "cardIds": [
+    3,
+    5,
+    7,
+    17,
+    19,
+    22,
+    50,
+    82,
+    128,
+    146,
+    198,
+    259,
+    260,
+    262,
+    264,
+    266,
+    278,
+    355,
+    455,
+    639,
+    668,
+    756,
+    757,
+    814,
+    815,
+    954,
+    1023,
+    2077,
+    2079,
+    2080,
+    3125,
+    3383,
+    3384,
+    9694,
+    16585,
+    17435,
+    17692,
+    17693,
+    17694,
+    17766,
+    17767,
+    17768,
+    17771,
+    17772,
+    17773,
+    17774,
+    17775,
+    17776,
+    17777,
+    17778,
+    17779,
+    17780,
+    17781,
+    17782,
+    17783,
+    17784,
+    17785,
+    17786,
+    17787,
+    17788,
+    17789,
+    17790,
+    17791,
+    17792,
+    17793,
+    17794,
+    17795,
+    17796,
+    17797,
+    17798,
+    17799,
+    17800,
+    17801,
+    17802,
+    17803,
+    17804,
+    17805,
+    17806,
+    17807,
+    17808,
+    17809,
+    17810,
+    17811,
+    17812,
+    17813,
+    17814,
+    17815,
+    17816,
+    17817,
+    17818,
+    17819,
+    17820,
+    17821,
+    22281,
+    22720,
+    22721,
+    22724,
+    38253,
+    38254
+   ]
+  },
+  {
+   "sql": "SELECT settings.id AS sid, COUNT(*) AS c FROM cards rules JOIN cards sets ON rules.left_id = sets.id JOIN cards settings ON rules.right_id = settings.id WHERE sets.type_id = ? AND settings.type_id = ? AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0 AND (rules.read_rule_id IS NULL OR ru",
+   "params": [
+    259,
+    278,
+    6568,
+    6640,
+    8556,
+    8927,
+    9056,
+    9475,
+    9558,
+    9586,
+    9695,
+    9697,
+    9699,
+    9814,
+    10482,
+    10689,
+    11288,
+    11376,
+    13204,
+    13344,
+    13582,
+    13654,
+    13657,
+    13660,
+    13663,
+    13689,
+    13743,
+    13777,
+    14131,
+    14431,
+    14513,
+    15167,
+    15492,
+    15496,
+    15962,
+    16310,
+    16370,
+    18695,
+    21825,
+    22637,
+    22755,
+    23884,
+    25057,
+    25059,
+    25896,
+    29152,
+    30967,
+    31805,
+    33556,
+    33786,
+    34281,
+    34782,
+    34784,
+    34786,
+    34788,
+    34884,
+    35226,
+    36430,
+    36990,
+    37259,
+    37797,
+    45187,
+    48670,
+    49304
+   ],
+   "rowCount": 21,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_news_item_sort_create_dir_desc_limit_9"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_news_item_sort_create_dir_desc_limit_9"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT rules.id AS ruleId, setting_cards.codename AS task, refs.referee_id AS partyId FROM cards rules JOIN cards setting_cards ON rules.right_id = setting_cards.id AND setting_cards.codename IN ('update', 'create', 'delete') JOIN cards sets ON rules.left_id = sets.id LEFT JOIN card_references refs ",
+   "params": [],
+   "rowCount": 927,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23809,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    23810
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    23810
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "*comment"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*comment"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    51580,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    355,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    452
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    452
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "ai",
+    "fiction",
+    "deception"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "ai"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "fiction"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "deception"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1446,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    671,
+    86
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "ab_cglobal_board",
+    "low_impact_body_art_research",
+    "mr_to_im_name_change_project",
+    "iri_log_of_stuff_that_happen"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    2444,
+    2690,
+    3730,
+    11400
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2215,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "dm_craigslist_re"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2214
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2638,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    492,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    498
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    498
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2876,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    676,
+    86
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "kayla_feder_bio"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2877
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3104,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "movement_education_org",
+    "embody_peace_website"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    3105,
+    3106
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3463,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_link_beyond_culturesmith",
+    "huston_smith_website"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    3462,
+    26787
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3465,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2976,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2978
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    2978
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+   "params": [
+    "huston_smith_on_fresh_air_with_terry_gross_19960219",
+    "huston_smith_remembered_by_terry_gross_fresh_air_20170104",
+    "bill_moyer_and_huston_smith"
+   ],
+   "rowCount": 3,
+   "cardIds": [
+    14068,
+    26780,
+    26783
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3479,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "abc_vaccination"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3487
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    3485,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "page_de_richard"
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    3478
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    11066,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    15939,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "the_red_book_considered",
+    "david_and_julie_william_january_2011",
+    "meditation_101_w_david_william",
+    "father_day_2015"
+   ],
+   "rowCount": 4,
+   "cardIds": [
+    15940,
+    16563,
+    18132,
+    23583
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    2637,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    4,
+    1638
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1638,
+    260
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1737,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    1739
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    1739
+   ]
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16664,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "cheryl_do_not_contribute_directly_to_culturesmith_at_thi_time"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "cheryl_do_not_contribute_directly_to_culturesmith_at_thi_time"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16665,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16678,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16666,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    16667,
+    264
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    545,
+    86
+   ],
+   "rowCount": 1,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+   "params": [
+    547
+   ],
+   "rowCount": 1,
+   "cardIds": [
+    547
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_setting"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_setting"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "referred_to_by_right_tag"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "referred_to_by_right_tag"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_project"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_project"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_consideration"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_consideration"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
+   "params": [
+    "type_process"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "type_process"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
+   "params": [
+    "conflict_done_well",
+    "online_class",
+    "cv",
+    "span_span_a_href_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_a",
+    "a_href_http_www_facebook_com_bob_hedger_http_www_facebook_com_bob_hedger_a",
+    "leon_regelson",
+    "ihss_tracking",
+    "huston_smith_nyt_obit",
+    "cg_jung_the_red_book"
+   ],
+   "rowCount": 7,
+   "cardIds": [
+    728,
+    4167,
+    11825,
+    15113,
+    16561,
+    26788,
+    35336
+   ]
+  },
+  {
+   "sql": "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?) WHERE j.trash = 0",
+   "params": [
+    "conflict_done_well",
+    "martha_hart_eddy",
+    "online_class",
+    "cv"
+   ],
+   "rowCount": 2,
+   "cardIds": [
+    22647,
+    35337
+   ]
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "span_span_a_href_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_http_www_columbian_com_news_2013_apr_26_medical_examiner_couple_died_murder_suicide_a"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "a_href_http_www_facebook_com_bob_hedger_http_www_facebook_com_bob_hedger_a"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  },
+  {
+   "sql": "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+   "params": [
+    "*open"
+   ],
+   "rowCount": 0,
+   "cardIds": []
+  }
+ ]
+}

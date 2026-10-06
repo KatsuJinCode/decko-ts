@@ -198,6 +198,9 @@ import {
 import { viewRequiresTask, type CrudTask } from "./permissions/view-perms.js";
 import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import { setPrototypeTypeCode } from "./render/views.js";
+import {
+  seatfixPairVisible,
+} from "./render/views.js";
 import type { SQLQueryResult, SQLStatement } from "../server/driver.js";
 import type { Lex } from "./fetch/lexicon.js";
 import type { TokenRuntimeConfig } from "./auth/token.js";
@@ -231,6 +234,15 @@ export const DECK_DATA_VERSION_STATEMENT =
 export type { SettingClassWithRules } from "./render/format.js";
 
 const SEARCH_TYPE_CODE = "search_type";
+
+/** The codename of a bootswatch skin's `+parent` POINTER subcard -
+ *  card-mod-bootstrap's set/type/bootswatch_skin.rb:37 declares
+ *  `card_accessor :parent` (a trait), and bootswatch_skin.rb:57-59's
+ *  `parent_skin_card` reads that TRAIT, i.e. the subcard whose right side
+ *  is this codename's card. It is a codename, never a name: the deck's
+ *  parent-pointer junction has right_id 45364, the card NAMED `parent 1`
+ *  (corpus). See warmSkinParentPointer. */
+const SKIN_PARENT_TRAIT_CODENAME = "parent";
 
 /** The views whose body reaches Auth.createable_types (edit_type.rb:44-48
  *  type_field via :type_formgroup/:board_type_formgroup, wrapped by
@@ -1034,6 +1046,14 @@ export class RenderEngine implements RenderEngineLike {
     // prefetch walk's shape).
     this.populateTypeCodes();
     await this.ensureTaskVerdicts(view);
+    // The comment_box gate's update verdicts (views.ts commentBoxBaseView):
+    // +discussion cores inside :open/:content bodies render the form only
+    // on a POSITIVE update verdict, and the generic task warm above is
+    // view-gated (viewRequiresTask) - warm the discussion cards here (the
+    // page lane runs the same warm at page.ts; census M8: the graded
+    // Kayla_Feder_20230902+discussion:open pair renders the
+    // inherited-grant form on THIS lane).
+    await this.ensureDiscussionUpdateVerdicts();
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
@@ -1125,6 +1145,22 @@ export class RenderEngine implements RenderEngineLike {
       // the seam; warmCustomizedName runs the whole walk here, where
       // queries are legal, and the synchronous customize_button view
       // reads the answer out of memory.
+      await this.warmCustomizedName(name);
+      // Row 6 (adjudicate-10-rows-lane.md): the `+parent` warm above asks for
+      // the pointer BY NAME, and the pointer is not nameable. `parent` is a
+      // card_accessor TRAIT (bootswatch_skin.rb:37), so Ruby's `card.parent`
+      // is `parent_skin_card` (bootswatch_skin.rb:57-59) - a CODENAME-keyed
+      // subcard lookup. The deck's pointer is a Pointer junction whose right
+      // side is the card NAMED `parent 1` carrying codename `parent` (corpus
+      // 45365: left 34179 `journal skin customized` + right 45364, content
+      // "journal skin"), so `<skin>+parent` as a NAME resolves to the
+      // junction (34179, 38357) - a different card - or to nothing, and every
+      // skin page took the parent-less branch where the capture carries
+      // `Inherit from:` + a link to the parent theme (+232 B on the page).
+      // warmSkinParentPointer resolves the pointer the way Ruby does and
+      // seats it under BOTH names; run it BEFORE warmCustomizedName so the
+      // customized-name walk sees the same parent? verdict the views do.
+      await this.warmSkinParentPointer(name);
       await this.warmCustomizedName(name);
     }
     // p20-help-content warm (the setting-page core's synchronous reads):
@@ -1507,7 +1543,13 @@ export class RenderEngine implements RenderEngineLike {
     // depth guard is always reachable on fully-prefetched chains and the
     // battery's depth-44 envelope {200,500} collapses to a deterministic
     // guard hit instead of depending on fallback-round ordering.
-    const format = new RenderFormat(rootCard, this, { maxDepth: RUBY_MAX_DEPTH });
+    const format = new RenderFormat(rootCard, this, {
+      maxDepth: RUBY_MAX_DEPTH,
+      // THE bare view-lane root (render.ts renders nothing else at this
+      // entry; page.ts builds its own rootFormat without the marker). The
+      // census-M1 bar-seat climbs the parent chain for this flag.
+      isViewLaneRoot: true,
+    });
     // card-mod-layout set/self/head.rb:9-17 view :core reads the head bytes
     // for the RENDER ROOT (`nest root.card, view: :head`, escape_in_main at
     // :27-29). The page path has always seated them before the main render
@@ -2354,6 +2396,21 @@ export class RenderEngine implements RenderEngineLike {
    * cold). Returns undefined when the universe is not loaded (the caller
    * keeps the not-allowed verdict — pre-fix behavior).
    */
+  /** SEATFIX (2026-10-04): whether the set card's collectRules walk
+   *  carries a stored *content options / *content_option_view rule — the
+   *  M10b pairStored arm's input, computed here for the verdict preload so
+   *  it answers the same question the sync accordion's ruleByCodename
+   *  answers (the right part's star key is the setting card's key). */
+  private setHasStoredPairRule(setCard: RenderCard): boolean {
+    for (const rule of this.collectRules(setCard)) {
+      const rightKey = rule.name.rightName?.key;
+      if (rightKey === "*content_options" || rightKey === "*content_option_view") {
+        return true;
+      }
+    }
+    return false;
+  }
+
   defaultRuleTypeIdForSetName(setName: string): number | undefined {
     const universe = this.defaultRuleTypes;
     if (universe === undefined || universe.size === 0) return undefined;
@@ -3591,10 +3648,55 @@ export class RenderEngine implements RenderEngineLike {
   // -------------------------------------------------------------------------
 
   /** Cache-first card resolution for the render path. Returns undefined for
-   *  anything the prefetch did not prepare (the nest machinery reports). */
+   *  anything the prefetch did not prepare (the nest machinery reports).
+   *
+   *  THE MARK NAMES THE CARD THIS FETCH RETURNS (results.rb:30-32
+   *  `assign_name mark`, reached from `new_result_card` on every fetch
+   *  that lands on a `new_card?` record). Ruby keeps two things apart that
+   *  this port's single key-keyed map had merged:
+   *
+   *    store.rb:21-28  `new_for_cache` instantiates `Card.new name: mark`
+   *                     - the placeholder is built FROM THE MARK;
+   *    store.rb:9      `Card.write_to_cache card` keys it by `card.key`,
+   *                     so the shared cache holds it under the FOLDED name;
+   *    results.rb:8    a KNOWN card skips `new_result_card` and goes to
+   *                     `finalize_result_card` - a stored row's name is the
+   *                     row's, never a mark's.
+   *
+   *  So the cache entry is keyed (shared, unchanged) while the object a
+   *  fetch HANDS BACK carries the mark that named it. That is the whole
+   *  semantic, and it belongs at the fetch - not at the name layer. A prior
+   *  lane ported it at format.ts#nest instead (dddb01cd, reverted forward-
+   *  only by fbb6eda3); the nest is the one consumer that must not carry it,
+   *  because a `{{`_}}` / `{{_self}}` nest resolves its target from the
+   *  CONTEXT card and never reaches this function at all (format.ts:1601,
+   *  `contextTarget ?? this.engine.fetchRenderCard(targetName)`).
+   *
+   *  THE MEASURED DEFECT (parity-restore-runbook.md:184, mechanism #4,
+   *  Aiki:page): the corpus row `Aiki+references` (27199) stores its
+   *  reference in KEY case, so the structure walk's compound-ref warm
+   *  (render.ts#applyStructureContent -> fetcher.fetchByName) fetched
+   *  "aiki+*referred_to_by", MISSED (corpus: left_id 2705 + right_id 3945
+   *  -> no row) and seated a placeholder named FROM THAT MARK - the key
+   *  form. The page's own `{{_self+*referred_to_by}}` then resolved the
+   *  RIGHT name ("Aiki+*referred_to_by") and read the KEY, hitting the
+   *  key-named placeholder.
+   *
+   *  ONLY a fabricated, id-less placeholder is re-bound, and only onto the
+   *  mark that reached it. A STORED card keeps its row's name: re-binding
+   *  one would let an authored `{{aiki}}` rename the "Aiki" card's slots
+   *  (Ruby's known? path never calls assign_name for a stored card). The map
+   *  entry is never mutated - a copy is returned, which is what Ruby's
+   *  per-fetch `Card.new` gives for free and a shared map does not. */
   fetchRenderCard(name: string): RenderCard | undefined {
-    const key = DeckoName.parse(name).key;
-    return this.renderCards.get(key);
+    const requested = DeckoName.parse(name);
+    const card = this.renderCards.get(requested.key);
+    if (card === undefined) return undefined;
+    if (card.id !== undefined || card.record.isNew !== true) return card; // stored: results.rb:8
+    if (card.name.s === requested.s) return card; // the mark already named it
+    // Same key by construction - the lookup above is keyed on it - so the
+    // two spellings differ by case alone and the re-bind is a pure case fix.
+    return { ...card, name: requested, key: requested.key };
   }
 
   /** M9 - `Card.exist?` as an ASYNC EXACT-stored-name query (the
@@ -3653,6 +3755,68 @@ export class RenderEngine implements RenderEngineLike {
     return (await this.fetcher.fetchByName(parsed)) !== undefined;
   }
 
+  /** Row 6 (adjudicate-10-rows-lane.md) - the bootswatch skin's `+parent`
+   *  POINTER, resolved the way Ruby resolves it.
+   *
+   *  `card.parent?` is bootswatch_skin.rb:57-59's
+   *  `parent_skin_card&.real?`, and `parent` is a card_accessor TRAIT
+   *  (bootswatch_skin.rb:37) - so the subcard is found through the CODENAME
+   *  registry, by the (left_id, codename-id) side pair. It is NOT a name.
+   *  The deck proves the difference: the pointer is corpus card 45365, a
+   *  Pointer junction with left_id 34179 (`journal skin customized`) and
+   *  right_id 45364 - the card NAMED `parent 1` whose codename is `parent` -
+   *  content "journal skin", with card_references row referer 45365 ->
+   *  referee_key journal_skin. So the junction's composed name is
+   *  `journal skin customized+parent 1`, and the `<skin>+parent` name every
+   *  view builds resolves to the junction (34179, 38357) instead: corpus
+   *  38357 is a DIFFERENT card literally named `parent`.
+   *
+   *  MEASURED (tmp/parityfixes-work/probe-skin-parent-pointer.mjs, the
+   *  47,235-card raw corpus):
+   *    fetchByName("journal skin customized+parent")    -> undefined
+   *    fetchByName("journal skin customized+parent 1")  -> id 45365, Pointer,
+   *                                                       content "journal skin"
+   *  which is why every skin page took the parent-less branch and the capture
+   *  carries `Inherit from:` + a known-card link to the parent theme instead
+   *  (+232 B on `journal skin customized`).
+   *
+   *  WHY AN ALIAS SEAT. The pointer is seated under its OWN canonical name
+   *  (the db's, `<skin>+parent 1`) and then aliased under the requested
+   *  `<skin>+parent` key, so the four synchronous readers -
+   *  bootswatchCoreView and skinCoreView's parent? arms, inputView's, and
+   *  customizeButtonView's `return "" if card.parent?` - resolve through the
+   *  one lookup they already use, with no per-view change. The alias is the
+   *  same card under the name Ruby addresses it by (`Card[:<skin>, :parent]`),
+   *  not a different card, and it is confined to this one key family.
+   *
+   *  Cost: one point query per SKIN whose parent? is asked for the first time
+   *  (memoized on the alias key), plus the codename/lexicon reads, all in the
+   *  async prepare phase where queries are legal. A skin with no pointer
+   *  spends the one query and seats nothing. */
+  private async warmSkinParentPointer(skinName: DeckoName): Promise<void> {
+    const aliasName = `${skinName.s}+parent`;
+    const aliasKey = DeckoName.parse(aliasName).key;
+    if (this.renderCards.has(aliasKey)) return;
+    const rightId = await this.fetcher.codenames.id(SKIN_PARENT_TRAIT_CODENAME);
+    if (rightId === undefined) return;
+    const leftId = await this.fetcher.lexicon.id(skinName);
+    if (leftId === undefined) return;
+    const row = await this.fetcher.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [leftId, rightId],
+    );
+    const junction = row.rows[0];
+    if (junction === undefined) return;
+    const rightName = await this.fetcher.lexicon.name(rightId);
+    if (rightName === undefined) return;
+    const composed = `${skinName.s}+${rightName.s}`;
+    if (composed === aliasName) return; // nameable already; nothing to alias
+    const seated =
+      this.fetchRenderCard(composed) ?? (await this.prepareItemForRender(composed));
+    if (seated === undefined) return;
+    this.renderCards.set(aliasKey, seated);
+  }
+
   /** M9 - the prepare-phase warm for html_views.rb:4-11 new_customized_
    *  name. Mirrors the Ruby walk verbatim:
    *
@@ -3679,7 +3843,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.customizedNameBySkinKey.has(skinName.key)) return;
     // html_views.rb:38-48 `return "" if card.parent?` short-circuits
     // before new_customized_name; nothing below is reachable for a
-    // parented skin.
+    // parented skin. warmSkinParentPointer runs BEFORE this method in the
+    // prepare phase, so the alias it seats makes this short-circuit read the
+    // same parent? verdict the customize_button view does.
     if (this.fetchRenderCard(`${skinName.s}+parent`) !== undefined) return;
     const base = `${skinName.s} customized`;
     const asked: string[] = [];
@@ -5008,7 +5174,19 @@ export class RenderEngine implements RenderEngineLike {
       // visibleSettingsForGroup is the prototype-aware enumeration of the
       // SAME rows V1's 62 dump-pinned nav diffs need, per-set instead of
       // deck-wide.)
-      for (const settingCodename of visibleSettingsForGroup(this, setCard, groupName)) {
+      // SEATFIX (2026-10-04): enumerate the SAME final settings list the
+      // sync accordion renders — the restricted pair the M10b/seatfix
+      // escapes re-add must get their verdicts and existing-rule memos
+      // seated here, or their bars render the hide wrongly and the one-line
+      // EMPTY (seatfixPairVisible's doc block carries the corpus bytes).
+      let groupSettings = visibleSettingsForGroup(this, setCard, groupName);
+      if (seatfixPairVisible(this, setCard, groupName, this.setHasStoredPairRule(setCard))) {
+        const extra = ["content_options", "content_option_view"].filter(
+          (c) => !groupSettings.includes(c),
+        );
+        if (extra.length > 0) groupSettings = [...groupSettings, ...extra];
+      }
+      for (const settingCodename of groupSettings) {
         const settingCard = this.findSettingCard(settingCodename);
         if (settingCard === undefined) continue;
         const name = DeckoName.parse(`${setCard.name.s}+*${settingCodename}`);
@@ -5251,6 +5429,18 @@ export class RenderEngine implements RenderEngineLike {
    *  allTaskVerdictsForCard already walks. */
   async ensureDiscussionUpdateVerdicts(): Promise<void> {
     if (this.readPermission === undefined) return;
+    // Closure gate: a render whose closure carries no +discussion card
+    // must not pay the who_can batch - the junction-depth-closure /
+    // render-engine / depth-sweep query-count gates pin the round-trip
+    // shape, and the loop below would skip every card anyway.
+    let hasDiscussionCard = false;
+    for (const card of this.renderCards.values()) {
+      if (card.id !== undefined && card.name.rightName?.key === "discussion") {
+        hasDiscussionCard = true;
+        break;
+      }
+    }
+    if (!hasDiscussionCard) return;
     if (this.taskState === undefined) {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
@@ -6752,6 +6942,17 @@ export class RenderEngine implements RenderEngineLike {
     if (statement === null || typeof statement !== "object" || Array.isArray(statement)) {
       return [];
     }
+    // Run#alter_results? (run.rb:116-118) reads the statement's OWN
+    // prepend/append keys after the SQL has run — caller-facing keys the
+    // parser preserves in statementExtras (ast.ts:129 "accepted but not
+    // affecting SQL, for callers") and nothing ever consumed. Read here at
+    // the result-shaping layer, exactly where Ruby's Run module applies them.
+    const stmtHash = statement as Record<string, unknown>;
+    const prependRaw = stmtHash["prepend"];
+    const appendRaw = stmtHash["append"];
+    const prepend = typeof prependRaw === "string" ? prependRaw : undefined;
+    const append = typeof appendRaw === "string" ? appendRaw : undefined;
+    const alterResults = prepend !== undefined || append !== undefined;
     // The html search view's paging limit (card-mod-search
     // set/abstract/0_search/search_params.rb:38-40 format :html
     // default_limit = Cardio.config.paging_limit || 20; cql_search.rb:85-87
@@ -6896,6 +7097,35 @@ export class RenderEngine implements RenderEngineLike {
       // view-renders a nameless card (fetch returns nil); skipping mirrors
       // that instead of crashing the listing.
       if (record.name === undefined) continue;
+      if (alterResults) {
+        // Run#process_name/alter_result (run.rb:96-109): the result name is
+        // Card::Name[[prepend, name, append].compact] and the RESULT CARD is
+        // `Card.fetch altered_name, new: {}` (run.rb:100) — the real row when
+        // one exists, the placeholder new card otherwise. The port rides the
+        // FetchEngine's own fetch-new idiom (FetchOptions.new, results.rb
+        // quick_renew), then resolves the NEW card's type through the same
+        // *default template chain the nest path uses (type.rb:58-66
+        // ensure_type_id -> type_id_from_template; newCardDefaultType) and
+        // its content through the template's db_content (content/all.rb
+        // 17-19 standard_content new_card branch; newCardDefaultContent).
+        const parts = [prepend, record.name.s, append].filter(
+          (p): p is string => p !== undefined,
+        );
+        const altered = DeckoName.parse(parts.join("+"));
+        const fetched = await this.fetcher.fetchByName(altered, { new: {} });
+        if (fetched !== undefined) {
+          if (fetched.typeId === undefined) {
+            const defaulted = this.newCardDefaultType(altered);
+            if (defaulted !== undefined) fetched.typeId = defaulted.typeId;
+          }
+          if (fetched.dbContent === undefined || fetched.dbContent === "") {
+            const content = this.newCardDefaultContent(altered);
+            if (content !== undefined && content !== "") fetched.dbContent = content;
+          }
+          items.push(await this.enrichAndStore(fetched));
+          continue;
+        }
+      }
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
     }

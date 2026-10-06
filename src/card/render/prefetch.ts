@@ -730,6 +730,22 @@ async function driveClosure(
 ): Promise<void> {
   /** Composed keys with a cached record - "this name resolves". */
   const known = new Set<string>();
+  /** Names retired for good, keyed by the same string `pending` holds.
+   *  A name lands here when one of its side keys is EMPTY: `cards` carries
+   *  no row with key = '' (measured on the trial-deck mirror and the
+   *  restore-decko snapshot — `SELECT COUNT(*) FROM cards WHERE key = ''`
+   *  = 0; the `key IS NULL` rows are side-less junctions that a
+   *  `COLLATE NOCASE IN (...)` list never matches anyway), so the name can
+   *  NEVER resolve through the row path. Before the fold such a name stayed
+   *  in `pending` forever — seedKeys admits no empty key, and the round's
+   *  drain removes a name only once its key reached `known` — so the loop
+   *  re-issued byte-identical statements until MAX_CLOSURE_ROUNDS ran out
+   *  (measured on /Aikido_in_Education: 17 identical rounds x 3 statements,
+   *  each returning the same already-composed junction rows). Retiring the
+   *  name changes no rendered byte: the render already answered unknown for
+   *  it (the unknown-card substitution), which is what the empty-padded
+   *  IN-lists produced too. */
+  const dead = new Set<string>();
   /** Composed key -> row id (junction side-id joins need the ids). */
   const knownIds = new Map<string, number>();
   const seedKeys = (records: CardRecord[]): void => {
@@ -767,7 +783,7 @@ async function driveClosure(
           }
           throw err;
         }
-        if (name.s === "" || known.has(name.key)) continue;
+        if (name.s === "" || known.has(name.key) || dead.has(name.key)) continue;
         pending.add(name.s);
       }
     }
@@ -802,7 +818,7 @@ async function driveClosure(
           }
           throw err;
         }
-        if (name.s === "" || known.has(name.key)) continue;
+        if (name.s === "" || known.has(name.key) || dead.has(name.key)) continue;
         pending.add(name.s);
       }
     }
@@ -827,11 +843,18 @@ async function driveClosure(
       return;
     }
     const simpleKeys: string[] = [];
-    const sideKeyPairs: { left: string; right: string }[] = [];
-    const sideIdPairs: { leftId: number; rightId: number }[] = [];
+    const sideKeyPairs: { left: string; right: string; entryKey: string }[] = [];
+    const sideIdPairs: { leftId: number; rightId: number; entryKey: string }[] = [];
     for (const nameStr of pending) {
       const name = DeckoName.parse(nameStr);
       if (known.has(name.key)) continue; // an earlier round resolved it
+      // Retired by an earlier round's negative marking (or by the
+      // empty-side / dead-side rules below): it provably cannot resolve, so
+      // it leaves the queue now instead of being re-issued every round.
+      if (dead.has(name.key)) {
+        pending.delete(nameStr);
+        continue;
+      }
       if (!name.isCompound) {
         simpleKeys.push(name.key);
         continue;
@@ -839,12 +862,34 @@ async function driveClosure(
       const left = name.leftName;
       const right = name.rightName;
       if (left === undefined || right === undefined) continue;
+      // THE FOLD, queue half. A name that provably cannot resolve leaves
+      // the queue here instead of being re-issued for MAX_CLOSURE_ROUNDS.
+      // Four provable negatives, all keyed on facts the round itself
+      // established (see the `dead` doc above and the post-round marking
+      // below):
+      //   (a) an empty side key — no card carries key = '';
+      //   (b) a side that already went negative — the junction row needs
+      //       that side's row to exist at all;
+      //   (c) a pair whose junction row missed once BOTH sides resolved;
+      //   (d) a simple key whose statement returned no row.
+      // None of them can resolve later within this call: the loop's only
+      // resolution path is a card row, and `dead` is per-call state.
+      if (left.key === "" || right.key === "") {
+        dead.add(name.key);
+        pending.delete(nameStr);
+        continue;
+      }
+      if (dead.has(left.key) || dead.has(right.key)) {
+        dead.add(name.key);
+        pending.delete(nameStr);
+        continue;
+      }
       const leftKnown = known.has(left.key);
       const rightKnown = known.has(right.key);
       if (!left.isCompound && !right.isCompound) {
         // depth-2 pair: direct side-key join, and fetch the sides themselves
         // in the same round so the junction composes (composed-key resolution).
-        sideKeyPairs.push({ left: left.key, right: right.key });
+        sideKeyPairs.push({ left: left.key, right: right.key, entryKey: name.key });
         if (!leftKnown) simpleKeys.push(left.key);
         if (!rightKnown) simpleKeys.push(right.key);
       } else if (leftKnown && rightKnown) {
@@ -853,44 +898,64 @@ async function driveClosure(
         const leftId = knownIds.get(left.key);
         const rightId = knownIds.get(right.key);
         if (leftId !== undefined && rightId !== undefined) {
-          sideIdPairs.push({ leftId, rightId });
+          sideIdPairs.push({ leftId, rightId, entryKey: name.key });
         }
       } else {
         // a compound side is not yet resolved: resolve the sides first
         // (they join this round as their own pending targets).
-        if (!leftKnown) pending.add(left.s);
-        if (!rightKnown) pending.add(right.s);
+        if (!leftKnown && !dead.has(left.key)) pending.add(left.s);
+        if (!rightKnown && !dead.has(right.key)) pending.add(right.s);
+        if (dead.has(left.key) || dead.has(right.key)) {
+          dead.add(name.key);
+          pending.delete(nameStr);
+        }
       }
     }
 
     // The round's statements (only the non-empty shapes ride the batch).
     const statements: SQLStatement[] = [];
     const collectors: ((rows: CardsRow[]) => RawRow[])[] = [];
-    if (simpleKeys.length > 0) {
-      const placeholders = simpleKeys.map(() => "?").join(", ");
+    // THE FOLD, statement half: no key IN-list this loop builds may carry
+    // an empty member. Provably row-set identical — an empty key matches no
+    // card, so every statement below returns exactly the rows it returned
+    // with the empty members present — and it keeps the placeholder count
+    // honest for statements the round budget does spend.
+    const fetchableKeys = simpleKeys.filter((key) => key !== "");
+    if (fetchableKeys.length > 0) {
+      const placeholders = fetchableKeys.map(() => "?").join(", ");
       // COLLATE NOCASE matches the collation of cards_key_index (the
       // column itself is BINARY); lossless for decko's lowercase keys -
       // the seek is the O(page) lookup the rounds exist for.
       statements.push({
         sql: `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (${placeholders}) AND trash = 0`,
-        params: simpleKeys,
+        params: fetchableKeys,
       });
       collectors.push((rows) => rows.map(toRawRow));
     }
     if (sideKeyPairs.length > 0) {
-      const leftKeys = sideKeyPairs.map((pair) => pair.left);
-      const rightKeys = sideKeyPairs.map((pair) => pair.right);
-      const placeholdersL = leftKeys.map(() => "?").join(", ");
-      const placeholdersR = rightKeys.map(() => "?").join(", ");
-      statements.push({
-        sql:
-          `SELECT DISTINCT j.* FROM cards j\n` +
-          `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
-          `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
-          ` WHERE j.trash = 0`,
-        params: [...leftKeys, ...rightKeys],
-      });
-      collectors.push((rows) => rows.map(toRawRow));
+      // The two lists are an INDEPENDENT CROSS PRODUCT (`l.key IN (lefts)`
+      // AND `r.key IN (rights)` — the pairing is positional in neither
+      // list), so the realized (l, r) set is
+      // `(lefts INTERSECT real) X (rights INTERSECT real)`. Dropping an
+      // empty member from EITHER list therefore leaves that product
+      // unchanged; dropping a whole PAIR would not (it would take the
+      // pair's non-empty side with it). Empty members are filtered per
+      // list, not per pair.
+      const leftKeys = sideKeyPairs.map((pair) => pair.left).filter((key) => key !== "");
+      const rightKeys = sideKeyPairs.map((pair) => pair.right).filter((key) => key !== "");
+      if (leftKeys.length > 0 && rightKeys.length > 0) {
+        const placeholdersL = leftKeys.map(() => "?").join(", ");
+        const placeholdersR = rightKeys.map(() => "?").join(", ");
+        statements.push({
+          sql:
+            `SELECT DISTINCT j.* FROM cards j\n` +
+            `  JOIN cards l ON l.id = j.left_id AND l."key" COLLATE NOCASE IN (${placeholdersL})\n` +
+            `  JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (${placeholdersR})\n` +
+            ` WHERE j.trash = 0`,
+          params: [...leftKeys, ...rightKeys],
+        });
+        collectors.push((rows) => rows.map(toRawRow));
+      }
     }
     if (sideIdPairs.length > 0) {
       // SQLITE_MAX_EXPR_DEPTH (default 1000) counts every OR arm toward the
@@ -956,6 +1021,53 @@ async function driveClosure(
     }
     const newComposed = await composeAndCache([...sideRows, ...closureRows], ctx, stats);
     seedKeys(newComposed); // junction rows resolve through their composed keys
+    // THE FOLD, post-round negatives (the mirror of prefetchWarmupClosure's
+    // step 5a, which this loop never had — see its `sidePairKeys` / `simpleKeys`
+    // marking). Every name this round ATTEMPTED and did not get a row for is
+    // a permanent negative for this call: the loop's only resolution path is
+    // a card row, so re-asking cannot change the answer. Without this the
+    // loop re-issued byte-identical statements until MAX_CLOSURE_ROUNDS.
+    // `fetchedKeys` is the round's ACTUAL returned rows (not `known`, which
+    // also carries earlier rounds' compositions), so a row the round did
+    // receive — even via the pair join rather than the simple-key list — is
+    // never mistaken for a negative.
+    {
+      const fetchedKeys = new Set<string>();
+      for (const row of [...sideRows, ...closureRows]) {
+        if (row.key !== null && row.key !== "") fetchedKeys.add(row.key);
+      }
+      // (d) a simple key (or an unresolved side pushed for composition) that
+      //     came back with no row: nothing stored, exactly as the warm-up
+      //     ladder records it.
+      for (const key of fetchableKeys) {
+        if (!fetchedKeys.has(key)) dead.add(key);
+      }
+      // (c) a pair whose BOTH sides resolved and whose junction row did not come
+      //     back. Two probes carry the junction row, and both are exact:
+      //     the depth-2 side-KEY join (this loop's `sideKeyPairs` arm, which
+      //     runs BEFORE the side-ID arm and therefore handles every depth-2
+      //     pair) and the side-ID join on index_cards_on_left_id_and_right_id.
+      //     A miss from either is a permanent negative. Tested on the
+      //     returned rows' OWN side ids, never on the junction row's stored
+      //     key column — a junction row can carry a NULL key, and a key-based
+      //     test would read that as a negative. A pair whose side ids are
+      //     not yet known concludes nothing this round: its side goes dead
+      //     through (d) instead, and the dead-side rule retires it next.
+      const landedIds = new Set<string>();
+      for (const row of [...sideRows, ...closureRows]) {
+        if (row.leftId !== null && row.rightId !== null) landedIds.add(`${row.leftId}/${row.rightId}`);
+      }
+      const concludePair = (leftId: number | undefined, rightId: number | undefined, entryKey: string): void => {
+        if (leftId === undefined || rightId === undefined) return;
+        if (!landedIds.has(`${leftId}/${rightId}`)) dead.add(entryKey);
+      };
+      for (const pair of sideIdPairs) {
+        concludePair(pair.leftId, pair.rightId, pair.entryKey);
+      }
+      for (const pair of sideKeyPairs) {
+        concludePair(knownIds.get(pair.left), knownIds.get(pair.right), pair.entryKey);
+      }
+    }
     collect(closureRows); // their content references join the pending set
     // Round 9: the composed CLOSURE records join contextually too (side rows
     // stay unscanned — the reached-semantics note above; only walked rows fed
@@ -1269,6 +1381,16 @@ export async function prefetchWarmupClosure(
         markDead(key);
         continue;
       }
+      // THE FOLD, warm-up arm: an empty side key matches no card row, so
+      // the row ladder can never form this lex — the same negative the
+      // dead-side branch below records. Retiring it through markDead (not a
+      // bare drop) keeps the virtual? walk queued for the name: a *structure
+      // rule can still construct a record here, and that path is unchanged.
+      if (left.key === "" || right.key === "") {
+        checked.add(key);
+        markDead(key);
+        continue;
+      }
       const leftCard = ctx.getCard(left.key);
       const rightCard = ctx.getCard(right.key);
       if (
@@ -1357,7 +1479,10 @@ export async function prefetchWarmupClosure(
     const closureRows: RawRow[] = [];
     const sideRows: RawRow[] = [];
     const sidePairKeys: string[][] = [];
-    for (const group of chunkParams(simpleKeys, WARMUP_CHUNK)) {
+    // THE FOLD, statement half (same contract as driveClosure above): no key
+    // IN-list this loop builds carries an empty member. Provably row-set
+    // identical — an empty key matches no card.
+    for (const group of chunkParams(simpleKeys.filter((key) => key !== ""), WARMUP_CHUNK)) {
       const placeholders = group.map(() => "?").join(", ");
       statements.push({
         sql: 'SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (' + placeholders + ") AND trash = 0",
@@ -1368,8 +1493,14 @@ export async function prefetchWarmupClosure(
       });
     }
     for (const group of chunkParams(sideKeyPairs, WARMUP_CHUNK / 2)) {
-      const leftKeys = group.map((pair) => pair.left);
-      const rightKeys = group.map((pair) => pair.right);
+      // Per-list filtering, not per-pair: the two IN-lists are an
+      // independent CROSS PRODUCT, so `(lefts INTERSECT real) X (rights
+      // INTERSECT real)` is unchanged by dropping an empty member from
+      // either list. sidePairKeys rides only when the statement does — an
+      // entry whose statement was never issued earns no negative.
+      const leftKeys = group.map((pair) => pair.left).filter((key) => key !== "");
+      const rightKeys = group.map((pair) => pair.right).filter((key) => key !== "");
+      if (leftKeys.length === 0 || rightKeys.length === 0) continue;
       const placeholdersL = leftKeys.map(() => "?").join(", ");
       const placeholdersR = rightKeys.map(() => "?").join(", ");
       statements.push({

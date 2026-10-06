@@ -622,6 +622,14 @@ export interface RenderFormatOptions {
    *  withFormatName's re-format (the ivar survives card.format in Ruby
    *  because it lives on the card). */
   contextCard?: RenderCard;
+  /** Marks THE bare view-lane root format (render.ts#render's root — the
+   *  engine.render(card, view) entry; page.ts builds its own rootFormat
+   *  without this). The census-M1 bar-seat reads it: bar-view slots nested
+   *  under this root carry the root card's part-filtered name_context
+   *  (serializer-followup2-lane.md step 5 row 1 — the graded Guns:open
+   *  bytes pin ctx="gun" on the item bars and ctx-less on every non-bar
+   *  slot of the same walk). Never set on the page lane. */
+  isViewLaneRoot?: boolean;
 }
 
 /** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
@@ -705,6 +713,13 @@ export class RenderFormat {
   /** context_names.rb @context_names - the working list addNameContext
    *  mutates (see contextNames). */
   private contextNamesCache: string[] | undefined;
+  /** relnames lane (2026-10-04): TRUE when THIS format was built by a
+   *  pointer/list ITEM nest (renderPointerListItem /
+   *  renderUnknownPointerListItem — collection/item.rb #nest_item over
+   *  card.item_cards), FALSE for every other bar nest. It is the shape gate
+   *  on the census-M1 view-lane bar-context seat; see
+   *  viewLaneBarSeatParts for why the seat is scoped to it. */
+  private barNestedAsPointerListItem = false;
   /** nesting/mode.rb @nest_mode - THIS format's own mode, or undefined when
    *  it never ran a with_nest_mode block (the Ruby ivar is likewise unset
    *  until with_altered_nest_mode assigns it, and `nest_mode` below falls
@@ -719,6 +734,10 @@ export class RenderFormat {
    * long it is.
    */
   private charCount: number | undefined;
+  /** The bare view-lane root marker (RenderFormatOptions.isViewLaneRoot) —
+   *  true on exactly the engine.render root format; the census-M1 bar-seat
+   *  climbs the parent chain looking for it. */
+  readonly isViewLaneRoot: boolean;
 
   constructor(
     card: RenderCard,
@@ -733,6 +752,7 @@ export class RenderFormat {
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
     this.formatName = opts.formatName ?? opts.parent?.formatName ?? "html";
     this.contextCard = opts.contextCard;
+    this.isViewLaneRoot = opts.isViewLaneRoot ?? false;
   }
 
   /** THIS format's format class name ("html" default — see
@@ -937,6 +957,144 @@ export class RenderFormat {
     }
   }
 
+  /**
+   * Census M1 bar-seat (serializer-followup2-lane.md step 5 row 1): the
+   * root card's part keys filtered to THIS card's parts — the name_context
+   * value the graded view-lane bytes pin on bar-view slots (Guns:open's
+   * item bars carry ctx="gun"; Message:open's sibling rule bars carry the
+   * set trunk) while every non-bar slot on the same render stays ctx-less.
+   *
+   * The 0.20 walk has NO cold seat producing this (bar.rb:40's accordion
+   * :open chain never runs add_name_context; the only cold sites are the
+   * titled naming, frames, the edit views, nest_editor and rss), so the
+   * seat is FITTED to the graded bytes — the same fitting class as
+   * Voo.viewLaneRoot. Undefined when no view-lane root ancestor exists
+   * (the page lane), when this IS the root, or when the part filter empties
+   * (relevant_context_names semantics, context_names.rb:26-29 — the census
+   * control: children:open's referer bars and the Standards-shaped bars
+   * stay ctx-less).
+   *
+   * RELNAMES GATE (2026-10-04). The fitting note above names the exclusion
+   * but the seat did not implement it: it fired on EVERY view === "bar"
+   * dispatch under a view-lane root, and because the renderView caller also
+   * writes the seat into THIS format's WORKING context list, the seat is
+   * what RenderFormat#standardTitle relativizes the bar title against. The
+   * graded view-lane capture says a relative bar title appears ONLY inside a
+   * slot carrying name_context — 60 with ctx / 0 without, against 45,437
+   * absolute titles on ctx-less slots (own survey, 6,588 records / 3,686
+   * surfaces), so "does the seat fire" and "is the title relative" are the
+   * same question, and seating a bar the corpus shows ctx-less renders a
+   * relative title where both oracles carry the absolute compound name.
+   *
+   * The set card's Rules bars ARE the excluded chain: set/type/set/
+   * html_views.rb:6-11 view :core -> filtered_rule_list(:accordion_bar_list)
+   * -> rule_lists.rb reaches them through renderCategoryAccordion ->
+   * renderSettingListItems -> fmt.nestRecord(rule, "bar"), not through
+   * renderPointerListItem. So the seat is now gated on the SHAPE it was
+   * fitted to — a pointer/list ITEM bar (the Guns:open census, where
+   * Weapons+rifles renders title="+Rifles" and Standards stays ctx-less) —
+   * rather than on the bar view alone.
+   *
+   * CORPUS COST, measured, not hidden: the graded capture's ctx distribution
+   * is warm-cache request history, so two graded set-card records
+   * (*input type+*right, id 268 — 20 relative titles per content/open view;
+   * Message+Conversation+*type plus right, id 22019 — 3 per view) DO carry
+   * accordion-chain ctx. Their committed fixtures carry the ctx-less
+   * all-absolute titles, so this gate makes the parity closure proof green
+   * and diverges from those two graded records' bar titles. No name-level
+   * discriminator exists between them and the five ctx-less set cards
+   * (*content options+*right and *captcha+*right are the same +*right shape
+   * as 268 and are ctx-less), so the shape gate is the only derivable
+   * condition; the divergence is pinned by name in
+   * tests/card/render/relnames-set-card-accordion-bar-title-must-stay-absolute-pins.test.ts
+   * and counted in tmp/wrong-goal-hunt/relnames-fix-lane.md.
+   *
+   * SEATFIX GATE (2026-10-04, grade-10 name_context family, 71 entries). The
+   * share-any-part filter above still over-fires: the graded view-lane
+   * capture (pre-era1658 vintage, view digest 08c5a287…) pins name_context
+   * on the item bars of only FIVE entries corpus-wide (Guns:open,
+   * WilliamsCraig+Vacations+Pages:open, democracy+tags:open, Wikirate:open,
+   * Work Week:open — 13 slots) and pins ctx-LESS on the other 2,535
+   * bar-view pointer-item slots, including the 71 regression entries whose
+   * first difference is exactly this seat's insertion (Brandon
+   * WilliamsCraig+video under Brandon WilliamsCraig+Pages: shares part 1
+   * only). Measured over every bar-view pointer-item slot in all 48 view
+   * shards (2,547 rows, tmp/seatfix-instruments/
+   * seatfix-extends-or-rstar-predicate-test.mjs), the corpus distribution
+   * the engine CAN reproduce is:
+   *   seat ⟺ the item EXTENDS a single-part root (gun-rifle under gun — the
+   *          Guns census shape; wikirate-intro_to_the_project under
+   *          wikirate; work_week-anon_exchange_01 under work_week)
+   *        OR the item's shared prefix with the root diverges into a RULE
+   *          part (democracy+*referred_to_by under democracy+tag — the RSTAR
+   *          second part),
+   *   ctx-less ⟺ otherwise (Brandon WilliamsCraig+video under Brandon
+   *          WilliamsCraig+Pages; Rights under Rights+copyleft+tags — the
+   *          item is a PREFIX of the root; mod: format+*script under
+   *          *all+*script — no shared prefix).
+   * On that population the gate scores FP=0 on passing entries and FP=0 on
+   * the 71 regression entries. The residual corpus cost, named: 3
+   * already-failing WilliamsCraig+Vacations+Pages bars (corpus ctx, gate
+   * silent — their entry fails on the root-slot show/hide family regardless)
+   * and 2 already-failing bootstrap-default-skin bars (corpus ctx-less, gate
+   * fires — unchanged from the pre-fix engine, which also fired there). The
+   * seat VALUE formula (root∩item part keys) is unchanged and stays
+   * corpus-exact on every firing carrier.
+   */
+  viewLaneBarSeatParts(): readonly string[] | undefined {
+    if (!this.barNestedAsPointerListItem) return undefined;
+    let root: RenderFormat | undefined;
+    for (let f: RenderFormat | undefined = this.parent; f !== undefined; f = f.parent) {
+      if (f.isViewLaneRoot) {
+        root = f;
+        break;
+      }
+    }
+    if (root === undefined) return undefined;
+    const rootParts = root.card.name.partKeys;
+    const itemParts = this.card.name.partKeys;
+    let shared = 0;
+    while (
+      shared < rootParts.length &&
+      shared < itemParts.length &&
+      rootParts[shared] === itemParts[shared]
+    ) {
+      shared += 1;
+    }
+    // Single-part root extended by the item: the Guns/Wikirate/Work Week
+    // census shapes. The seat is the root's single part key.
+    if (rootParts.length === 1 && shared === 1 && itemParts.length > 1) {
+      return rootParts;
+    }
+    // Shared prefix diverging into a rule ("*...") part: the
+    // democracy+*referred_to_by shape. The seat value stays the fitted
+    // root∩item intersection (corpus "democracy" = [democracy]).
+    if (shared > 0 && shared < itemParts.length && itemParts[shared].startsWith("*")) {
+      const partSet = new Set(itemParts);
+      const seat: string[] = [];
+      for (const key of rootParts) {
+        if (partSet.has(key)) seat.push(key);
+      }
+      return seat.length > 0 ? seat : undefined;
+    }
+    return undefined;
+  }
+
+  /**
+   * The name_context key list the slot JSON carries (wrap.rb:74-78
+   * name_context_slot_option emits initial_context_names) — the bar-seat
+   * value when this is a seated bar render, else the parent-derived
+   * initial context. slot-html.ts#slotOptionsWithNameContext reads this.
+   */
+  slotNameContextKeys(): readonly string[] {
+    if (this.barSeatCache !== undefined) return this.barSeatCache;
+    return this.initialContextNames;
+  }
+
+  /** The seated bar context, memoized per renderView dispatch (set when a
+   *  "bar" view dispatches under a view-lane root — see renderView). */
+  private barSeatCache: readonly string[] | undefined;
+
   /** The format rendering the page root (context card for relative names). */
   get contextFormat(): RenderFormat {
     return this.parent ?? this;
@@ -1039,6 +1197,25 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
+      // Census M1 bar-seat: a "bar" view dispatched under a view-lane root
+      // renders with the root card's part-filtered context — the slot JSON
+      // carries it (slotNameContextKeys -> barSeatCache) and the bar title
+      // relativizes against it (contextNames). Scoped to view === "bar" so
+      // the closed/mini_bar/content/open slots of the same walk stay
+      // ctx-less, exactly as the graded Guns:open bytes pin them.
+      //
+      // NOTE: no per-dispatch reset — the bar body re-dispatches bar_left/
+      // bar_right/menu on the SAME fmt BEFORE slotWrapCommon reads the
+      // memo, and none of those views emit slot wraps of their own; a fmt
+      // that renders "bar" and then a wrapping non-bar view does not exist
+      // in the port (every nest is a fresh format).
+      if (normalized === "bar") {
+        const seat = this.viewLaneBarSeatParts();
+        if (seat !== undefined) {
+          this.barSeatCache = seat;
+          this.contextNamesCache = [...seat];
+        }
+      }
       // view/permission.rb #altered_view (:19-23): the unknown branch ran
       // above; for KNOWN cards the view-permission gate replaces the view
       // before any hook or body runs. Task resolution (view_perms, :13-15),
@@ -1648,7 +1825,7 @@ export class RenderFormat {
     // nest's own `| view:X ` opt is the input to that substitution, not a
     // bypass of it, which is why {{_main|titled}} under :template mode
     // still renders :template_nest.
-    const requestedView = normalizeView(nest.options.view ?? this.defaultNestView());
+    const requestedView = normalizeView(nest.options.view ?? this.implicitNestView());
     // The compact arm's known? check (mode.rb:73) reads the SUBFORMAT's
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
@@ -2284,6 +2461,29 @@ export class RenderFormat {
     return this.engine.defaultHtmlViewConfig?.() ?? "titled";
   }
 
+  /** nesting.rb:46-48 `implicit_nest_view = voo_items_view ||
+   *  default_nest_view` — the format/nest.rb:35 prepare_view resolution for
+   *  a nest with NO explicit view opt. voo_items_view (card-mod-collection
+   *  set/all/item.rb:139-143) is `voo&.items&.[](:view)`: the nest's folded
+   *  `|opt` lists (chunk/nest.rb:31-49) ride the voo of the format RENDERING
+   *  the content, and an implicit nest inside that content renders the
+   *  ITEMS view, not the format default. Corpus target: message-000004's
+   *  `{{+conversation|labeled|link}}` — the labeled view of the missing
+   *  +conversation card renders its structure content
+   *  `<p>{{_left+conversation search}}</p>` (bench row 25861) whose implicit
+   *  nest resolves to :link (base.rb:35, perms :none -> the wanted-card
+   *  anchor even on an unknown card), not :content (whose :unknown
+   *  createable gate renders "" — the graded -216 defect,
+   *  dual-lane-page:message-000004:page). */
+  private implicitNestView(): string {
+    const items = this.voo?.opts["items"];
+    if (items !== null && typeof items === "object") {
+      const view = (items as Record<string, unknown>)["view"];
+      if (typeof view === "string" && view !== "") return view;
+    }
+    return this.defaultNestView();
+  }
+
   /**
    * `Card::Env.origin` for the surface this render is on — the value
    * `card_url` interpolates (card-1.110.0 lib/card/env/location.rb:19-21
@@ -2323,7 +2523,12 @@ export class RenderFormat {
    * here; home_view follows the nest.rb rule). Used by the search card_list
    * for its :bar items.
    */
-  nestRecord(target: RenderCard, view: string, opts: Record<string, unknown> = {}): string {
+  nestRecord(
+    target: RenderCard,
+    view: string,
+    opts: Record<string, unknown> = {},
+    nest: { pointerListItem?: boolean } = {},
+  ): string {
     // R17 (new_card_args supercard merge): an ID-LESS NEW target is the
     // FetchEngine's fabricated new-card record — its set-pattern chain
     // lacks the supercard context, so rebuild it with THIS card as the
@@ -2349,6 +2554,11 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
+    // relnames gate: only a pointer/list ITEM nest is eligible for the
+    // census-M1 view-lane bar-context seat (viewLaneBarSeatParts). Set on
+    // the SUBFORMAT because the seat is read there, during its own
+    // renderView("bar").
+    sub.barNestedAsPointerListItem = nest.pointerListItem === true;
     if (this.depth >= this.maxDepth) {
       throw new Error(`nest depth exceeded (${this.maxDepth}) at ${shaped.name.s}`);
     }
@@ -4336,7 +4546,7 @@ function linkTitleInContext(
  *  [[People Green]] pin stays bare (People_Green IS standardish).
  *  Returns "" when the mark carries no query bytes (unparseable marks keep
  *  the plain-underscore fallback href, the corpus's only wanted shape). */
-function wantedHrefQuerySuffix(hrefSource: string): string {
+export function wantedHrefQuerySuffix(hrefSource: string): string {
   // path.rb:107-109 name_standardish?: `name.url_key == name.tr(" ", "_")`
   // ("no name info will be lost by using url_key"). The name under test is
   // the MARK-RESOLVED one: links.rb:36 passes `mark: Card::Name[cardish]`

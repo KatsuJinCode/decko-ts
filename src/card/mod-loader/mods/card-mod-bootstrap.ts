@@ -829,7 +829,24 @@ const skinCoreView: ViewFn = (ctx) => {
   }
   const hasParent = fmt.engine.fetchRenderCard(`${skin}+parent`) !== undefined;
   if (hasParent) {
-    parts.push(`Inherit from:\n${fmt.renderView("customize_button")}`);
+    // The arm's ANCHOR FORM (row 6, adjudicate-10-rows-lane.md). This used to
+    // push `Inherit from:\n${renderView("customize_button")}` - the Customize
+    // anchor - which contradicts this function's own doc comment above
+    // ("Inherit from:" + the parent link), contradicts the newer comment at
+    // :1174-1176, and is the wrong form against the correct sibling
+    // bootswatchCoreView:1214. The capture settles it: `journal skin
+    // customized` renders
+    //   Inherit from:\n<a class="known-card" href="/journal_skin">journal skin</a>
+    // The Customize anchor is the OTHER branch's output (html_views.rb:38-48
+    // returns "" for a parented skin, so it can never appear here).
+    const parentCard = fmt.engine.fetchRenderCard(`${skin}+parent`);
+    const firstItem =
+      parentCard === undefined
+        ? undefined
+        : rawItemStrings(parentCard.dbContent ?? "").filter((s) => s.length > 0)[0];
+    parts.push(
+      `Inherit from:\n${firstItem === undefined ? "" : linkToCardName(ctx, firstItem)}`,
+    );
   } else {
     parts.push(fmt.renderView("customize_button"));
     parts.push(

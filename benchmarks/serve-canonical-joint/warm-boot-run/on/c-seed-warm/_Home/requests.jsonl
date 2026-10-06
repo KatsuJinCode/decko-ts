@@ -1,0 +1,3 @@
+{"seq":1,"method":"GET","path":"/Home","status":200,"trips":399,"attach":1,"dataFetch":1,"other":564,"wallMs":2252,"responseBytes":22054,"posture":"on"}
+{"seq":2,"method":"GET","path":"/Home","status":200,"trips":2436,"attach":0,"dataFetch":0,"other":2498,"wallMs":5822,"responseBytes":22054,"posture":"on"}
+{"seq":3,"method":"GET","path":"/Home","status":200,"trips":1001,"attach":0,"dataFetch":0,"other":1024,"wallMs":2322,"responseBytes":22054,"posture":"on"}

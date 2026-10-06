@@ -221,8 +221,35 @@ export interface SeedOptions {
 }
 
 /** Direct INSERT (write path is another stream). Every row with a known
- *  name stores its CANONICAL key; junction rows store the key and keep
- *  name NULL (lead option (b), 2026-09-23, refined by the R4 lane proof):
+ *  name stores its CANONICAL key; SIDE-BACKED junction rows store the key
+ *  and keep name NULL (lead option (b), 2026-09-23, refined by the R4 lane
+ *  proof): the *structure rule universe statement
+ *  (src/card/rules/structure.ts:82-86) composes 2-junction set anchors from
+ *  the STORED key columns — with junction keys forced NULL the seeded
+ *  universe measured 115 vs the corpus truth 139 (24 *structure rule sets
+ *  unresolved, 17 of them type_plus_right). The KEY is stored and the NAME
+ *  deliberately is not: DbLexicon.idToLex (src/card/fetch/lexicon.ts:127-144)
+ *  branches on name presence — a named junction row yields a STRING lex
+ *  whose cache entry the synchronous peekLex id-pair path
+ *  ("L-<left>-<right>") never sees, breaking junction-chain resolution (the
+ *  R3 records lane restored name+key together and regressed exactly the
+ *  junction-heavy surfaces).
+ *
+ *  SIDE-LESS junction rows keep their stored NAME (census M3,
+ *  serializer-followup2 2026-10-03): the corpus carries 23 compound-named
+ *  rows with left_id/right_id NULL (all 23 named compound rows in the deck
+ *  — e.g. 3265 "BW 20101222+Associations", whose +tags child 3266 the
+ *  live Family+*referred_to_by search renders as a result bar). For these
+ *  rows the pair-lex path the R4 proof protects cannot even form (no sides
+ *  -> idToLex's pair arm would write the garbage [undefined, undefined]
+ *  lex it writes today), the search-item walk (render.ts runSearch ->
+ *  composeAndCacheSqlRows) can compose their names from NOTHING once the
+ *  name is dropped (tryComposeSqlRowName: name null -> sides null ->
+ *  unresolvable -> the row's record never composes -> the item silently
+ *  vanishes from every search listing), and the live capture NAMED every
+ *  card. The name is the row's only lawful source; keeping it restores
+ *  exactly the corpus bytes (key === name verbatim for these rows, so the
+ *  canonical key column is unchanged).
  *  the *structure rule universe statement (src/card/rules/structure.ts:82-86)
  *  composes 2-junction set anchors from the STORED key columns — with
  *  junction keys forced NULL the seeded universe measured 115 vs the corpus
@@ -247,7 +274,10 @@ export async function seedCard(
 ): Promise<void> {
   const hasName = typeof opts.name === "string" && opts.name.length > 0;
   const isCompound = hasName && opts.name!.includes("+");
-  const nameColumn = isCompound ? null : (opts.name ?? null);
+  const hasSides = opts.leftId !== undefined || opts.rightId !== undefined;
+  // The name-NULL convention covers SIDE-BACKED junctions only; a side-less
+  // compound row keeps its stored name (see the doc block above).
+  const nameColumn = isCompound && hasSides ? null : (opts.name ?? null);
   const keyColumn = hasName
     ? (opts.key ?? DeckoName.parse(opts.name as string).key)
     : null;

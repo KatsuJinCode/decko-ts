@@ -784,8 +784,21 @@ export class FetchEngine {
   }
 
   private peekLexiconId(key: string): number | undefined {
-    const value = this.readLexiconCache(lexiconCacheKey(DeckoName.parse(key).s));
-    return typeof value === "number" ? value : undefined;
+    const parsed = DeckoName.parse(key);
+    const value = this.readLexiconCache(lexiconCacheKey(parsed.s));
+    if (typeof value === "number") return value;
+    // The DURABLE mirror, this direction only. Live cache first (it carries
+    // the rename/trash state the write path maintains), then the record of
+    // every pair an async read or a batched prime has already PROVEN the db
+    // holds. Without this leg the sync `lexicon.id(key)` - the adapter
+    // DeckoName#cardId / #codename read, and through it every codename-
+    // keyed consumer (PatternInstance#anchor_codenames, the mark parsers) -
+    // went nil the moment TemporaryCache#within_key_counts reset the store,
+    // where Ruby's synchronous db fallback (lexicon.rb#lex_to_id) answers.
+    // The durable record never holds a negative, so a miss stays an UNKNOWN
+    // name. DbLexicon#peekId itself is deliberately untouched (still pure
+    // and cache-only, per its two committed pins); only this adapter widens.
+    return this.lexicon.peekDurableId(parsed.s);
   }
 
   /** The entry under id.to_s: the LEX string (the async read path's shape),

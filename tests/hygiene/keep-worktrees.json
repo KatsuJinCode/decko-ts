@@ -6,5 +6,9 @@
   {
     "path": "C:/localProjects/decko-ts-lane-hygiene-gate",
     "reason": "this gate's own lane worktree (branch lane-worktree-hygiene-gate-2026-10-03): the standing-net member runs from here, and a lane must not fail its own net run"
+  },
+  {
+    "path": "C:/localProjects/decko-ts-lane-grade9",
+    "reason": "standing-net corpus home: tmp/raw-ground-truth/bench-corpus-raw.sqlite3 (217,251,840 bytes) is the ORACLE_RAW_DECK value the pinned env guard forwards; removing the tree removes the corpus the net reads (a byte-identical copy also sits at C:/localProjects/tmp/raw-ground-truth/, so the corpus survives either way - this keep is for the staged lineage, not for the only copy)"
   }
 ]

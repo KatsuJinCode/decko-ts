@@ -1158,23 +1158,37 @@ const typeModDependsOnView: ViewFn = (ctx) => {
  *  gem's own off-by-one slice ("card-mod-email"[8..] = "-email" ->
  *  "mod_-email"), probe-1 verified.
  *
- *  ORDER (mm-cstructural, 2026-09-30 — a real bug this lane fixed): the
- *  order is NOT the gemspec's `add_runtime_dependency` declaration order.
- *  `card.spec` is whatever `Cardio::Mod.gem_specs` handed the mod
- *  (class_methods.rb:59-63: `Bundler.definition.specs`), and Bundler
- *  writes each gem's dependency list SORTED BY NAME in the lockfile. So
- *  the rendered order is alphabetical. Measured: the oracle deck's
- *  Gemfile.lock lists card-mod-edit as `card, card-mod-list,
- *  card-mod-rules` while the gemspec declares rules before list, and the
- *  `mod: edit` page's Depends-on bars render `mod: list` then `mod: rules`.
- *  All 33 card-mod entries in that lockfile are sorted (verified), so the
- *  sort is the rule, not a one-mod fix. MOD_SPECS keeps the gemspec's
- *  declaration order (it is the set that matters everywhere else); the
- *  sort happens HERE, at the one view whose bytes are order-sensitive. */
+ *  ORDER (engcand, 2026-10-04 — the mm-cstructural sort REVERSED): Ruby is
+ *  order-preserving over `mod&.spec&.dependencies`
+ *  (card_mods = `yield&.map(&:name).select { "card-mod" }.map { ... }` —
+ *  no sort anywhere in the Ruby chain), and `spec.dependencies` reads the
+ *  INSTALLED .gemspec files' `add_runtime_dependency` declaration order —
+ *  not the Gemfile.lock text, which is a separate Bundler-sorted artifact
+ *  the render never reads. The mm-cstructural rationale below the sort it
+ *  added in a2f957a9 ("Bundler writes each gem's dependency list SORTED BY
+ *  NAME in the lockfile. So the rendered order is alphabetical") conflated
+ *  the two, and its one discriminating page could not show it: for
+ *  card-mod-edit the lockfile order [list, rules] HAPPENS to equal the
+ *  sorted order, while the installed 0.20.0 gemspec declares
+ *  [card, card-mod-rules, card-mod-list] — rules first — and today's live
+ *  site renders DECLARATION order on all four pages where the two orders
+ *  differ (recap23 cold capture 2026-10-04, live==capture byte-equal on
+ *  account/bootstrap: email [search, list, permissions] vs sorted
+ *  [list, permissions, search]; list [format, collection] vs sorted
+ *  [collection, format]; account [email, permissions, list, integrate,
+ *  edit]; bootstrap [edit, bar and box, style, script]). So the sort is
+ *  removed and MOD_SPECS' declaration order renders verbatim.
+ *
+ *  ONE capture counterexample stays on record: the graded shard for
+ *  `mod: edit` carries [mod: list, mod: rules] — the order NO Ruby-consistent
+ *  rule produces (the same shard, same capture run, renders mod: account in
+ *  declaration order; the installed gemspec declares rules first). It is
+ *  the stale-capture class, recorded in the lane receipt's corpus-decision
+ *  package — not a render target. Pin:
+ *  tests/card/render/mod-depends-on-declaration-order-pins.test.ts. */
 function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
   if (spec === undefined) return undefined;
-  const names = [...spec.deps]
-    .sort()
+  const names = spec.deps
     .filter((name) => name.startsWith("card-mod"))
     .map((name) => `mod_${name.slice(8)}`);
   return names.length > 0 ? names : undefined;

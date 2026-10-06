@@ -5,14 +5,20 @@
 //   argv: node stub-render-instrument.mjs <ignored-db-path> <port>
 //   GET /_status  -> 200 {"ok":true,...}   (boot health)
 //   GET /<name>   -> 200 text/html with $SHADOW_STUB_BODY as the body
+//   GET /<name>?view=<view>
+//                 -> 200 text/html with the VIEW body (view-lane dispatch,
+//                    keyed off the ?view= query exactly like the real
+//                    instrument's renderCardView branch)
 //   SIGTERM       -> exits 0 (graceful teardown like the real instrument)
 //
 // The body comes from the environment so a test can point BASE and
 // CANDIDATE at identical or divergent bytes without any engine:
-//   SHADOW_STUB_BODY           body served by BOTH sides (clean run)
-//   SHADOW_STUB_CANDIDATE_BODY when set, served by the side whose mirror
-//                              copy is the candidate copy (path contains
-//                              "mirror-candidate) — the divergent run
+//   SHADOW_STUB_BODY                 page body served by BOTH sides (clean run)
+//   SHADOW_STUB_CANDIDATE_BODY       candidate-side page body (the divergent run)
+//   SHADOW_STUB_VIEW_BODY            view body served by BOTH sides (falls
+//                                    back to the page body when unset)
+//   SHADOW_STUB_VIEW_CANDIDATE_BODY  candidate-side view body (the view-lane
+//                                    divergent run)
 // Synthetic payloads only — no real card names, no network.
 
 import http from "node:http";
@@ -29,6 +35,10 @@ const body =
   isCandidateCopy && process.env.SHADOW_STUB_CANDIDATE_BODY !== undefined
     ? process.env.SHADOW_STUB_CANDIDATE_BODY
     : process.env.SHADOW_STUB_BODY ?? "<html>stub</html>";
+const viewBody =
+  isCandidateCopy && process.env.SHADOW_STUB_VIEW_CANDIDATE_BODY !== undefined
+    ? process.env.SHADOW_STUB_VIEW_CANDIDATE_BODY
+    : process.env.SHADOW_STUB_VIEW_BODY ?? null;
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -42,7 +52,10 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json" }).end(status);
     return;
   }
-  res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(body);
+  const requestedView = url.searchParams.get("view");
+  const served =
+    requestedView !== null && requestedView !== "" && viewBody !== null ? viewBody : body;
+  res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(served);
 });
 
 server.listen(port, "127.0.0.1", () => {
