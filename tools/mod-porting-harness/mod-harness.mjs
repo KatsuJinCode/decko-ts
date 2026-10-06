@@ -105,11 +105,21 @@ const NAMED_REMAINDERS = {
   "card-mod-history": {
     // export.rb:14-16 view :actions - a JSON-FORMAT view. The hash shapes
     // ARE ported + suite-pinned (actionHashList/actHash/actionHash/
-    // changesHash, export.rb:18-47); the engine has no non-html render
-    // route for manifest-registered json views (the same class
-    // card-mod-list's csv/js/data/json surfaces are named remainders for).
+    // changesHash, export.rb:18-47; tests/card/mod-loader/
+    // card-mod-history.test.ts:1124-1193 pins all four shapes).
+    //
+    // RE-MEASURED 2026-10-06 (r2-harness lane, base 7bc63c1c). The former
+    // reason read "the engine has no non-html render route for
+    // manifest-registered json views". THAT PREMISE IS FALSE at this
+    // lineage: deploy/worker.ts:709-717 routes GET /<card>.json into
+    // format-families' renderFormatShow. The route exists; what does not
+    // exist is any view dispatch ON it - renderFormatShow
+    // (src/card/render/format-families.ts:574) takes no view argument, so
+    // Ruby's /x.json?view=actions (json.rb show -> render! :actions) has
+    // no port counterpart: the json route always serves :molecule. So the
+    // row is a REACHABILITY remainder, not an absent-route one.
     "view:actions":
-      "json-format view; the export.rb hash shapes are ported + suite-pinned, the engine's non-html render route is the named remainder (same class as card-mod-list's csv/js/data/json)",
+      "json-format view; the export.rb hash shapes are ported + suite-pinned (card-mod-history.test.ts:1124-1193); RE-MEASURED 2026-10-06 - the non-html json ROUTE exists (deploy/worker.ts:709-717 -> format-families renderFormatShow) but carries NO view dispatch, so the manifest's :actions view is unreachable and the route always serves json show's :molecule",
     // data/test.yml seed cards - the gem's OWN test-suite fixtures
     // (`decko seed` TEST data consumed by the gem's specs), not deck data.
     "seed:First":
@@ -137,20 +147,54 @@ const NAMED_REMAINDERS = {
     // gem's page renderer that no installed gem carries.
     "view:debug_server_error":
       "the BetterErrors dev-tool error page (error.rb:4-8); the better_errors gem is NOT in the frozen gem set, so the view raises NameError in the installed-gems environment - its behavior belongs to an external dev dependency, not the deck's public surface",
+    // PHANTOM ROWS - KNOWN SURFACE-MINING DEFECT (r2-harness lane,
+    // 2026-10-06). `view:remote` and `view:method` are NOT Ruby views.
+    // Gem source, card-mod-format-0.20.0/set/all/links.rb:146-152:
+    //     def interpret_data_opts_to_link_to opts
+    //       %i[remote method].each do |key|
+    //         next unless (val = opts.delete key)
+    //         opts["data-#{key}"] = val
+    //       end
+    //     end
+    // That is a link_to OPTION walk, not a view declaration. mineViews'
+    // loopRe matches the `%i[...]` head and pushes every element
+    // unconditionally - the `view <blockvar>` look-ahead is computed but
+    // never gates the push (the ternary at the push site evaluates the
+    // same value on both arms), so both tokens become rows. Neither is
+    // reachable in Ruby either. Measured verdict for the two rows: FAIL,
+    // invalid row. NOT repaired in this lane: changing the census
+    // (168 -> 166 behaviors) mid-re-measure would invalidate the run the
+    // receipt records. Named here so the next census does not re-count
+    // them as ports owed.
+    //
     // CLASS remainders (matched by regex below): the non-html format
-    // blocks (data/json/csv/rss/text/yaml/js/jsonld - the manifest
-    // header's documented format-specific class; the engine renders the
-    // html format only), their validate events, the basket ops and the
-    // yml seed - every one the SAME engine-route class, none in the
-    // census's 23-view html gap.
-    // CLASS: the non-html format blocks (data/json/csv/rss - the manifest
-    // header's documented format-specific class; the engine renders the
-    // html format only) and their validate events, the two basket ops and
-    // the yml seed - one engine-route class, none in the census's 23-view
-    // html gap. Keys wrapped in <...> are regex classes matched against
-    // the behaviorId (namedRemainderFor below).
+    // blocks (data/json/csv/rss/text/yaml/js/jsonld/css/file), their
+    // validate events, the basket ops and the yml seed - none in the
+    // census's 23-view html gap. The "the engine renders the html format
+    // only" clause of the former reason is FALSIFIED at 7bc63c1c; see the
+    // re-measure note on the class entry below. Keys wrapped in <...> are
+    // regex classes matched against the behaviorId (namedRemainderFor
+    // below).
+    // RE-MEASURED 2026-10-06 (r2-harness lane, base 7bc63c1c; the per-row
+    // verdict table is brandonDojoTech/tmp/wrong-goal-hunt/
+    // r2-harness-rerun-lane.md). The former reason read "the engine renders
+    // the html format only". THAT PREMISE IS FALSE at this lineage:
+    // deploy/worker.ts:709-734 routes GET /<card>.json, .csv and .rss into
+    // format-families' renderFormatShow
+    // (src/card/render/format-families.ts:574), and
+    // tests/card/render/format-families-oracle.test.ts byte-compares that
+    // render against the fresh Ruby capture
+    // (fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl) - 10/10
+    // green under --no-file-parallelism at this base. What the class row
+    // actually is, per the re-measure: a non-html FORMAT view whose
+    // PER-VIEW REACHABILITY is the remainder. renderFormatShow takes NO
+    // view argument and the worker route passes none, so each format's
+    // show-default view is the only served shape; ?view= / the
+    // :mark/view/:view(.:format) forms are NOT honored on the non-html
+    // routes. Two class rows here are additionally PHANTOM (see the
+    // links.rb:147 note above).
     "<view:(import|body|row|pod|nucleus|atom|molecule|ancestors|cast|items|links|test|format_unsupported|style|source|status|page|remote|method|feed|feed_body|feed_title|feed_item|feed_item_description|feed_description)>":
-      "a NON-HTML format-block view (the data/json/csv/rss format classes the surface mines; the manifest header's documented format-specific class - the engine renders the html format only), not a census-gap view",
+      "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - RE-MEASURED 2026-10-06: the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
     "<event:(validate_json|validate_number)>":
       "a non-html format's validate event (the json/number write-path validation the engine's write route does not reach yet - the same non-html render/write route class)",
     "<basket:.*>":
@@ -185,8 +229,23 @@ const NAMED_REMAINDERS = {
       "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
     "<seed:.*>":
       "a data/real.yml seed card (the account system's setting surfaces, the role cards, the email templates), not deck data to port; no TS seed consumer exists or is needed for a running deck",
+    // RE-MEASURED 2026-10-06 (r2-harness lane): the "not ported, owned by the
+    // email lane" reason was FALSE at this lineage. The three templates ARE
+    // in the port - RESET/VERIFY/WELCOME_EMAIL_TEMPLATE constants read from
+    // the gem's data/real.yml at
+    // src/card/auth/account-verify-reset-flows.ts:253-306 - and their
+    // DELIVERED bytes are compared against real Ruby ActionMailer output
+    // captured by tools/oracle/mail_oracles_capture.rb:
+    // tests/card/notify/six-mail-oracles.test.ts byte-compares the envelope
+    // {to, from, subject, text_body, html_body} for
+    // signup_verification_email, password_reset_email and welcome_email
+    // against fixtures/captured/six-oracle-mails.json (6/6 green under
+    // --no-file-parallelism at base 7bc63c1c). The remainder is the
+    // registration shape, not the bytes: the loop-declared view has no
+    // manifest registration to find - the templates are compiled-in
+    // constants, not a view surface the registration check can see.
     "<view:(welcome_email|verification_email|password_reset_email)>":
-      "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32; the email-template surface the email lane owns), not a census-gap view",
+      "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32) - RE-MEASURED 2026-10-06: the three templates ARE ported (account-verify-reset-flows.ts:253-306, gem data/real.yml) and their delivered bytes ARE oracle-pinned (six-mail-oracles.test.ts vs six-oracle-mails.json, real Ruby ActionMailer bytes, green); the remainder is the REGISTRATION shape - a compiled-in constant, not a manifest-registered view",
     "<basket:.*>":
       "a basket registration (non_createable_types / roles_for_first_user) with no TS consumer seam yet - the runtime-basket seam is the named remainder (the same class the style/format tables carry)",
   },

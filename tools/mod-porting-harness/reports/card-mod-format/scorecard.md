@@ -125,7 +125,7 @@ Probe suite: 54 passed / 0 failed (tests/card/mod-loader/card-mod-format-harness
 | `view:feed_item` | view | named-remainder | no | - | no view "feed_item" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_item_description` | view | named-remainder | no | - | no view "feed_item_description" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_description` | view | named-remainder | no | - | no view "feed_description" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:comment_box` | view | registered-standing-net | yes | - | view "comment_box" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-comment.ts) - the surface mod's override dispatch |
+| `view:comment_box` | view | registered-standing-net | yes | - | view "comment_box" registered (engine HTML_VIEWS) |
 | `view:menu` | view | registered-standing-net | yes | - | view "menu" registered (engine HTML_VIEWS) |
 | `view:open` | view | registered-standing-net | yes | - | view "open" registered (engine HTML_VIEWS) |
 | `view:content` | view | registered-standing-net | yes | - | view "content" registered (engine HTML_VIEWS) |
@@ -168,7 +168,7 @@ Probe suite: 54 passed / 0 failed (tests/card/mod-loader/card-mod-format-harness
 | `seed:uri` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/core-admin-runtime.ts |
 | `seed:head` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-edit.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
-| `seed:title` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-bootstrap.ts |
+| `seed:title` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:credit` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/core-admin-runtime.ts |
 | `seed:noindex` | seed | named-remainder | no | - | no TS registration naming "noindex" |
 | `config:configurations` | config | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-ace_editor.ts |
