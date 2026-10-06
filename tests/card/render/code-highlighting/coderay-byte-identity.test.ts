@@ -8,6 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -22,9 +23,20 @@ import { scanCss } from "../../../../src/card/render/code-highlighting/scanners/
 import { scanHtml } from "../../../../src/card/render/code-highlighting/scanners/html.js";
 import { coderayEscape } from "../../../../src/card/render/code-highlighting/escape.js";
 import { ALPHA_STYLES } from "../../../../src/card/render/code-highlighting/alpha-style.js";
+import { PRIVATE_SHARD_DIR_PATH } from "../../../../src/testing/test-corpus-paths.js";
 
-const FIXTURES = "C:/localProjects/decko-ts/fixtures/corpus";
-const CAPTURED = "C:/localProjects/decko-ts/fixtures/captured/coderay";
+// Private shard pair, resolved through the 46a05a64 test-corpus-paths
+// contract (repo-relative, gitignored, machine-local). Provisioning command:
+// benchmarks/corpus-v2/reconstruct-coderay-byte-identity-shard-pair.mjs —
+// see README-coderay-byte-identity-shard-pair-provisioning.md next to it.
+// Missing shards fail LOUDLY below (ENOENT) — never a skip.
+const FIXTURES = PRIVATE_SHARD_DIR_PATH;
+const CAPTURED = resolve(
+  fileURLToPath(new URL("../../../..", import.meta.url)),
+  "fixtures",
+  "captured",
+  "coderay",
+);
 
 interface Case {
   readonly fixture: string;

@@ -22,6 +22,15 @@ const REPO_ROOT = path.resolve(HERE, "..", "..");
 const FIXTURE_CORPUS_DIR = path.join(REPO_ROOT, "fixtures", "test-corpus");
 const PRIVATE_SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 
+/**
+ * The machine-local private corpus shard directory (gitignored, never
+ * committed). Exported so private-leg consumers resolve it from this
+ * contract instead of hardcoding an absolute machine path — see
+ * benchmarks/corpus-v2/README-coderay-byte-identity-shard-pair-provisioning.md
+ * for the provisioning command that restores the coderay gate's shard pair.
+ */
+export const PRIVATE_SHARD_DIR_PATH = PRIVATE_SHARD_DIR;
+
 const richCorpus = process.env.DECKO_TS_CORPUS_V2;
 
 // The rich leg is an EXPLICIT opt-in: when it is requested, the machine's
