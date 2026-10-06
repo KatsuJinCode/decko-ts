@@ -520,12 +520,59 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
 // ---------------------------------------------------------------------------
 // PINS 1 + 3 over the REAL driver and the REAL sign-in surface
 // ---------------------------------------------------------------------------
+/** Split a .sql file into single statements: strip `--` line comments (the
+ *  core schema puts them INSIDE its DDL, so they must go before SQLite sees
+ *  the text), then split on `;` — except inside a CREATE TRIGGER body, where
+ *  the `;` belongs to the body's own statement and the body ends at the bare
+ *  word END. The deck_data_version freshness stamp installs six such triggers
+ *  (db/schema.sqlite.sql, [ENGINE-FRESHNESS]) and a naive split tears each one
+ *  in half; the real Bunny wire reports that as "incomplete input"
+ *  (SQLITE_ERROR), which is how this helper was found to be wrong.
+ *  Kept in lockstep with the render and fetch streams' splitters. */
 function sqlStatements(file: string): string[] {
-  return readFileSync(path.join(REPO_ROOT, file), "utf8")
-    .replace(/--[^\n]*/g, "")
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s !== "");
+  const ddl = readFileSync(path.join(REPO_ROOT, file), "utf8").replace(/--[^\n]*/g, "");
+  const statements: string[] = [];
+  let current = "";
+  let quote: string | null = null;
+  let inTriggerBody = false;
+  for (let i = 0; i < ddl.length; i++) {
+    const ch = ddl[i];
+    if (quote !== null) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
+    if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
+      statements.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim() !== "") statements.push(current.trim());
+  return statements.filter((s) => s !== "");
 }
 
 function insertCodenameCard(driver: BunnyDbDriver, id: number, codename: string, name: string) {

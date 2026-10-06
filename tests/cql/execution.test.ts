@@ -232,18 +232,66 @@ let driver: LocalSqliteDriver;
 
 /** Load db/schema.sqlite.sql through the same driver.query seam the engine
  *  uses: strip line comments, split on statement-terminating semicolons,
- *  run each DDL statement. The DDL is static repo truth with no semicolons
- *  inside comments or values, so the split is exact. */
+ *  run each DDL statement.
+ *
+ *  NOT exact any more: the deck_data_version freshness stamp
+ *  (db/schema.sqlite.sql, [ENGINE-FRESHNESS]) installs six CREATE TRIGGER
+ *  statements whose bodies carry a `;` before their closing `END;`. A split
+ *  that only knows semicolons tears each body in half and SQLite reports the
+ *  fragment as "incomplete input". Inside a trigger body the `;` belongs to
+ *  the body's own statement and the body ends at the bare word END — the same
+ *  contract every other stream's splitter implements (kept in lockstep with
+ *  tests/card/render/render-test-storage.ts and
+ *  tests/card/fetch/fetch-test-storage.ts). The DDL otherwise has no
+ *  semicolons inside comments or values. */
 async function loadCoreSchema(target: LocalSqliteDriver): Promise<void> {
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");
-  const statements = ddl
+  const statements: string[] = [];
+  let current = "";
+  let quote: string | null = null;
+  let inTriggerBody = false;
+  const text = ddl
     .split("\n")
     .map((line) => line.replace(/--.*$/, ""))
-    .join("\n")
-    .split(";")
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 0);
-  for (const statement of statements) {
+    .join("\n");
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote !== null) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < text.length && /[A-Za-z0-9_]/.test(text[j])) j++;
+      const word = text.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += text.slice(i, j);
+      i = j - 1;
+      continue;
+    }
+    if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
+      statements.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim() !== "") statements.push(current.trim());
+  for (const statement of statements.filter((chunk) => chunk.length > 0)) {
     await target.query(statement, []);
   }
 }

@@ -227,6 +227,7 @@ describe("importDump", () => {
       "card_revisions",
       "card_virtuals",
       "cards",
+      "deck_data_version",
       "delayed_jobs",
       "schema_migrations",
       "sessions",
