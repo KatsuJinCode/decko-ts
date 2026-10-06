@@ -306,9 +306,10 @@ export class DbLexicon {
     if (this.cache.temp.exist(cacheKeyValue)) {
       return typeof this.cache.temp.read(cacheKeyValue) !== "number";
     }
-    if (this.cache.shared !== undefined) {
-      return typeof this.cache.shared.read(cacheKeyValue) !== "number";
-    }
+    // The shared level cannot distinguish a written negative from an absent
+    // key (read() answers undefined for both - cacheFetch and lexEntryKnown
+    // share this convention), so an absent key must NOT read as held:
+    // the safe direction asks.
     return false;
   }
 
