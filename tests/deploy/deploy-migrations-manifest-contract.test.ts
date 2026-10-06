@@ -45,8 +45,8 @@ import {
   DECK_DATA_VERSION_STAMP_APPLIED_ALIASES,
   DECK_DATA_VERSION_STAMP_FILENAME,
   DEPLOY_MIGRATION_ORDER,
+  assertDeployMigrationsMatchManifest,
   canonicalAppliedFilenames,
-  deployMigrationsDir,
   unappliedDeployMigrations,
 } from "../../src/server/deploy-migrations.js";
 
@@ -67,7 +67,7 @@ describe("deploy/migrations collision shape (the defect, as found)", () => {
 describe("the canonical manifest (order the external runner already applies)", () => {
   it("names every file in deploy/migrations exactly once — no drift, no missing entry", () => {
     const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
-    expect([...DEPLOY_MIGRATION_ORDER].sort()).toEqual(files);
+    expect(DEPLOY_MIGRATION_ORDER.map((m) => m.filename).sort()).toEqual(files);
   });
 
   it("is a deterministic total order: numeric prefix ascending, filename tiebreak ascending", () => {
@@ -157,6 +157,6 @@ describe("applied-set compatibility alias (old name recorded = new name applied)
 
 describe("directory/manifest drift guard", () => {
   it("the real deploy/migrations directory matches the manifest (guard passes)", () => {
-    expect(() => deployMigrationsDir()).not.toThrow();
+    expect(() => assertDeployMigrationsMatchManifest()).not.toThrow();
   });
 });
