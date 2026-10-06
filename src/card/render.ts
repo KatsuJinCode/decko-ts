@@ -3376,8 +3376,12 @@ export class RenderEngine implements RenderEngineLike {
     if (rows.length === 0) return;
     const inHand = new Map<number, CardsRow>();
     const missing = new Set<number>();
+    const fullRows: CardsRow[] = [];
     for (const row of rows) {
-      if (typeof row.id === "number") inHand.set(row.id, row);
+      if (typeof row.id === "number") {
+        inHand.set(row.id, row);
+        fullRows.push(row);
+      }
     }
     const PRIME_ID_CHUNK = 500;
     const collectNeeds = (source: Iterable<CardsRow>): number => {
@@ -3415,38 +3419,62 @@ export class RenderEngine implements RenderEngineLike {
     // the base flow's own point read stays the asker.
     if (missing.size < 6) return;
     // (2) ask the residue (no trash filter — idToLex semantics), then
-    // chase the newly read junction rows' own sides to a fixpoint.
+    // chase the newly read junction rows' own sides to a fixpoint. The
+    // members ride ONE batch as PER-ID statements in the exact recorded
+    // idToLex shape (`SELECT name, left_id, right_id FROM cards WHERE
+    // id = ? LIMIT 1` — the lexicon-id-to-name plan family): a serving
+    // render's plan holds those reads, so the replay router serves every
+    // member and the prime costs zero live trips exactly where the base
+    // flow's own idToLex point reads were served too. An absent id is
+    // final after its one read (a point read by id is definitive) and gets
+    // the mirrored write-back after the loop. The residue rows are SLIM
+    // (no content columns) — they prime the lexicon ONLY; the fetch-cache
+    // writes in (3) draw from the wave's own FULL rows, never the slim
+    // ones (a content-less record would poison the cache exactly like the
+    // prefetch's codename-less record did).
+    const absent = new Set<number>();
     let guard = 0;
     while (missing.size > 0 && guard < 8) {
       guard += 1;
       const ids = [...missing];
       missing.clear();
-      const fresh: CardsRow[] = [];
       for (let i = 0; i < ids.length; i += PRIME_ID_CHUNK) {
         const chunk = ids.slice(i, i + PRIME_ID_CHUNK);
-        const placeholders = chunk.map(() => "?").join(", ");
-        const result = await this.fetcher.driver.query<CardsRow>(
-          `SELECT * FROM cards WHERE id IN (${placeholders})`,
-          chunk,
+        const results = await this.fetcher.driver.batch(
+          chunk.map((id) => ({
+            sql: "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+            params: [id],
+          })),
         );
-        fresh.push(...(result.rows as CardsRow[]));
+        const freshById = new Map<number, CardsRow>();
+        results.forEach((result, k) => {
+          const askedId = chunk[k]!;
+          const row = (result.rows as Partial<CardsRow>[])[0];
+          if (row === undefined) {
+            absent.add(askedId); // definitive: a point read by id found nothing
+            return;
+          }
+          const slim = {
+            id: askedId,
+            name: row.name ?? null,
+            left_id: row.left_id ?? null,
+            right_id: row.right_id ?? null,
+          } as CardsRow;
+          if (!inHand.has(askedId)) {
+            inHand.set(askedId, slim);
+            freshById.set(askedId, slim);
+          }
+          this.fetcher.lexicon.noteIdToLexRow(slim);
+        });
+        collectNeeds(freshById.values());
       }
-      const freshById = new Map<number, CardsRow>();
-      for (const row of fresh) {
-        if (typeof row.id === "number" && !inHand.has(row.id)) {
-          inHand.set(row.id, row);
-          freshById.set(row.id, row);
-        }
-      }
-      for (const row of freshById.values()) this.fetcher.lexicon.noteIdToLexRow(row);
-      collectNeeds(freshById.values());
     }
-    for (const id of missing) this.fetcher.lexicon.noteIdToLexMiss(id);
-    // (3) clean rows into the FETCH cache only (never the render map) —
-    // the same storeCard write the base flow's updateCache performs when
-    // its point query returns the row. The compose below is now a cache
-    // hit (the entries above answer it), so this costs zero queries.
-    for (const row of inHand.values()) {
+    for (const id of absent) this.fetcher.lexicon.noteIdToLexMiss(id);
+    // (3) clean FULL rows into the FETCH cache only (never the render
+    // map) — the same storeCard write the base flow's updateCache performs
+    // when its point query returns the row. The compose below is now a
+    // cache hit (the entries above answer it), so this costs zero queries.
+    for (const row of fullRows) {
       if (row.trash !== 0) continue;
       const record = await composeCardRecord(row, this.fetcher.lexicon);
       if (record.name === undefined || record.id === undefined) continue;

@@ -513,25 +513,43 @@ async function primeComposeTypeInputs(
   ctx: PrefetchContext,
   typeIds: Iterable<number | null | undefined>,
   memo: Set<number>,
+  heldIds?: ReadonlySet<number>,
 ): Promise<void> {
   const need = new Set<number>();
   for (const t of typeIds) {
     if (typeof t !== "number" || t <= 0) continue;
     if (memo.has(t)) continue;
     memo.add(t);
+    // A row the caller's own set holds is composed from that row — asking
+    // it here would spend a round trip re-reading a row in hand (the
+    // one-trip payload seat measures zero live queries; this filter is
+    // what keeps that contract).
+    if (heldIds?.has(t) === true) continue;
     need.add(t);
   }
   if (need.size === 0) return;
+  // The members ride ONE batch as PER-ID statements in the exact recorded
+  // fetch-ladder shape (`SELECT * FROM cards WHERE id = ? AND trash = 0
+  // LIMIT 1` — the point-row-by-id plan family): a serving render's plan
+  // holds those reads (the capture render's own enrichAndStore type reads
+  // are the same statements), so the replay router serves every member and
+  // the prime costs zero live trips exactly where the base flow's own
+  // fetchById reads were served too.
   const CHUNK = 500;
   const ids = [...need];
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const placeholders = chunk.map(() => "?").join(", ");
-    const result = await ctx.driver.query<CardsRow>(
-      `SELECT * FROM cards WHERE id IN (${placeholders}) AND trash = 0`,
-      chunk,
+    const results = await ctx.driver.batch(
+      chunk.map((id) => ({
+        sql: "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        params: [id],
+      })),
     );
-    const rows = result.rows as CardsRow[];
+    const rows: CardsRow[] = [];
+    results.forEach((result) => {
+      const row = (result.rows as CardsRow[])[0];
+      if (row !== undefined) rows.push(row);
+    });
     for (const row of rows) ctx.lexicon.noteIdToLexRow(row);
     if (ctx.writeToCache !== undefined) {
       for (const row of rows) {
@@ -562,6 +580,7 @@ async function composeAndCache(
     ctx,
     rows.map((row) => row.typeId),
     stats.typePrimeMemo,
+    new Set(byId.keys()),
   );
 
   // Bottom-up name composition over the row map (sides before junctions),
@@ -693,11 +712,14 @@ export async function composeAndCacheSqlRows(
   for (const row of rows) byId.set(row.id, row);
   // fetch-composer batch lane (V1-prefetch): same type prime as
   // composeAndCache (a per-call memo — these single-shot callers have no
-  // shared stats object; the lexicon entries make repeat calls free).
+  // shared stats object; the lexicon entries make repeat calls free). The
+  // caller's own row set is heldIds: the one-trip payload carries the type
+  // rows, and re-asking them here would break its zero-live-query seat.
   await primeComposeTypeInputs(
     ctx,
     rows.map((row) => row.type_id),
     new Set<number>(),
+    new Set(byId.keys()),
   );
 
   const names = new Map<number, DeckoName>();
