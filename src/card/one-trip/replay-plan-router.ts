@@ -36,6 +36,12 @@ import type {
 } from "../../server/driver.js";
 import { classifyResidueStatement } from "./render-plan.js";
 import type { RenderPlanEntry } from "./render-plan.js";
+import {
+  buildDriftArmIndex,
+  mergeDriftArmIndex,
+  serveFromDriftArmIndex,
+} from "./replay-fold.js";
+import type { DriftArmIndex } from "./replay-fold.js";
 
 /** The plan-map key — the SAME keying recordRenderPlan uses (sql text +
  *  JSON params), so a recorded entry and a later live statement match
@@ -71,6 +77,12 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
    *  connection, not on the per-engine router). */
   readonly base: SQLDatabaseDriver;
   private planResults: Map<string, SQLQueryResult> | undefined;
+  /** The drift classes' per-bind-value answer index (driftfix lane): the
+   *  same rows the exact-(sql,params) map holds, indexed by the BINDS a
+   *  recorded entry carried, so a drifted IN-list ask whose every bind is
+   *  covered composes its answer instead of riding live. Cleared wherever
+   *  the map is cleared — one lifecycle, one staleness contract. */
+  private driftIndex: DriftArmIndex | undefined;
 
   constructor(base: SQLDatabaseDriver) {
     this.base = base;
@@ -78,19 +90,29 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
 
   /** Arm (merge) the plan's results, keyed for exact (sql, params) lookup.
    *  Entries and results must align 1:1 in plan order (replayRenderPlan's
-   *  contract). */
-  armRenderPlan(entries: readonly RenderPlanEntry[], results: readonly unknown[]): void {
+   *  contract). `driftIndex` is the replay's per-bind-value index when the
+   *  caller built one (replayRenderPlanWithIndex); without it the router
+   *  derives the non-side-key classes from the entry results themselves. */
+  armRenderPlan(
+    entries: readonly RenderPlanEntry[],
+    results: readonly unknown[],
+    driftIndex?: DriftArmIndex,
+  ): void {
     if (entries.length !== results.length) return; // never arm a misaligned plan
     const map = this.planResults ?? new Map<string, SQLQueryResult>();
     entries.forEach((entry, i) => {
       map.set(renderPlanResultKey(entry.sql, entry.params), results[i] as SQLQueryResult);
     });
     this.planResults = map;
+    const incoming = driftIndex ?? buildDriftArmIndex(entries, results);
+    this.driftIndex =
+      this.driftIndex === undefined ? incoming : mergeDriftArmIndex(this.driftIndex, incoming);
   }
 
   /** Drop the armed plan (a write, or an explicit invalidation). */
   disarmRenderPlan(): void {
     this.planResults = undefined;
+    this.driftIndex = undefined;
   }
 
   /** Whether a plan is currently armed (test/pin observability). */
@@ -104,13 +126,20 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     const served =
       isGateStateStatement(sql) ? undefined : this.planResults?.get(renderPlanResultKey(sql, params));
     if (served !== undefined) return served as SQLQueryResult<T>;
+    // THE DRIFT SERVE: same rows, indexed by bind value instead of by the
+    // (sql, params) pair — the measured regression's cure. Only reads, only
+    // classes whose composition laws are measured, only provable coverage.
+    if (this.driftIndex !== undefined && isReadOnlyStatement(sql)) {
+      const composed = serveFromDriftArmIndex(this.driftIndex, sql, params);
+      if (composed !== undefined) return composed as SQLQueryResult<T>;
+    }
     if (!isReadOnlyStatement(sql)) this.planResults = undefined;
     return this.base.query<T>(sql, params);
   }
 
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     const map = this.planResults;
-    if (map === undefined) return this.base.batch(statements);
+    if (map === undefined && this.driftIndex === undefined) return this.base.batch(statements);
     // Consult per member; only the misses ride a real batch trip. Results
     // reassemble in statement order, so the caller sees exactly the shape
     // an all-live batch would have produced (a hit's rows ARE the rows the
@@ -119,10 +148,14 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     const misses: number[] = [];
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i] as { sql: string; params?: unknown[] } | undefined;
-      const hit =
+      let hit =
         stmt === undefined || isGateStateStatement(stmt.sql)
           ? undefined
-          : map.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
+          : map?.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
+      if (hit === undefined && stmt !== undefined && this.driftIndex !== undefined && isReadOnlyStatement(stmt.sql)) {
+        const composed = serveFromDriftArmIndex(this.driftIndex, stmt.sql, stmt.params ?? []);
+        if (composed !== undefined) hit = composed as SQLQueryResult;
+      }
       if (hit !== undefined) served[i] = hit;
       else misses.push(i);
     }
@@ -142,6 +175,9 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   }
 
   private guardWrites(statements: readonly SQLStatement[]): void {
-    if (statements.some((s) => !isReadOnlyStatement(s.sql))) this.planResults = undefined;
+    if (statements.some((s) => !isReadOnlyStatement(s.sql))) {
+      this.planResults = undefined;
+      this.driftIndex = undefined;
+    }
   }
 }

@@ -35,7 +35,7 @@ import {
   fetchPageBundleInline,
   isInlineStoreSpec,
 } from "./one-trip-fetch.js";
-import { replayRenderPlan } from "./render-plan.js";
+import { replayRenderPlanWithIndex } from "./render-plan.js";
 import { seatPageBundle } from "./page-bundle-adapter.js";
 
 /** The config gate. Default OFF: no env var, no payload, zero new trips,
@@ -134,8 +134,14 @@ export async function seatOneTripPayloadForRender(
       // authoritative.
       const plan = bundle.renderPlan;
       if (plan !== undefined && plan.entries.length > 0) {
-        const results = await replayRenderPlan(driver, plan);
-        fetcher.replayRouter.armRenderPlan(plan.entries, results);
+        // THE DRIFT ARM INDEX rides the same replay (driftfix lane): the
+        // per-bind-value answer index for the drift classes, built from the
+        // very results this replay arms. A drifted IN-list ask (mid-flight
+        // cache evolution regrouped the binds) composes its answer from the
+        // index instead of riding live; uncovered asks stay live — the live
+        // path stays authoritative exactly as the exact-map contract keeps.
+        const { results, index } = await replayRenderPlanWithIndex(driver, plan);
+        fetcher.replayRouter.armRenderPlan(plan.entries, results, index);
       }
     } catch {
       // Graceful degradation (SPEC §3.3): an absent store, an unbuildable
