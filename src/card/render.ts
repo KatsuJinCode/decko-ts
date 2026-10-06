@@ -1173,7 +1173,7 @@ export class RenderEngine implements RenderEngineLike {
     // a second call before view dispatch measured NET WORSE (+5 to +20
     // RT/page: its fresh asks cost more than the point queries they
     // displaced) and was reverted.
-    await this.primePreparedCardDerivedState(record.key);
+    await this.primePreparedCardDerivedState();
     // The cwwrite-seam warm (the asset-output views): the right/asset_output
     // :not_found gate reads the LEFT card's set keys and the outputter
     // :asset_output_url reads the `+*asset output` child's identifier —
@@ -2807,7 +2807,7 @@ export class RenderEngine implements RenderEngineLike {
    * Lexicon#write; negatives through the wave's priming), so the sync
    * render's answers are byte-identical - only the round trips change.
    */
-  private async primePreparedCardDerivedState(rootKey: string | undefined): Promise<void> {
+  private async primePreparedCardDerivedState(): Promise<void> {
     const typeIds = new Set<number>();
     for (const card of this.renderCards.values()) {
       const t = card.record.typeId;
@@ -2820,10 +2820,10 @@ export class RenderEngine implements RenderEngineLike {
         typeIds.add(t);
       }
     }
-    if (typeIds.size > 0) {
+    const ids = [...typeIds];
+    const typeStatements: SQLStatement[] = [];
+    if (ids.length > 0) {
       for (const id of typeIds) this.typeCardsPrimed.add(id);
-      const ids = [...typeIds];
-      const typeStatements: SQLStatement[] = [];
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         const placeholders = chunk.map(() => "?").join(", ");
@@ -2832,58 +2832,67 @@ export class RenderEngine implements RenderEngineLike {
           params: chunk,
         });
       }
-      // W4 batch fusion (net-reds-fixforward lane): the type prime no longer
-      // spends its own round trip before the candidate seat. When the seat
-      // will run, the statements ride seatNamesByWave's FIRST batch as its
-      // preamble - one round trip carries the priming rows AND the wave's
-      // own asks, and the preamble rows seat before the wave rows so the
-      // seated cards' enrichAndStore type reads hit the fresh cache. The
-      // priming population nuance: the type cards themselves seat with the
-      // wave now, so THIS render's candidate collection (memory over the
-      // prepared map) runs without them - their rule candidates prime on a
-      // later render's population instead. Answers are untouched (priming
-      // only fills the cache; the findRule ladder computes the same verdicts
-      // either way - the byte oracles are the proof).
-      const candidateSettings = ["*content options", "*help", "*structure", "*default"];
-      let seatCandidates = true;
-      if (rootKey !== undefined && rootKey !== "") {
-        // warm re-render of this page: nothing to seat; the type prime (the
-        // documented late-seat warm exception) runs standalone below.
-        if (this.ruleCandidatesPrimedFor.has(rootKey)) seatCandidates = false;
-        else this.ruleCandidatesPrimedFor.add(rootKey);
-      }
-      const names = new Set<string>();
-      if (seatCandidates) {
-        for (const card of this.renderCards.values()) {
-          if (card.record.isNew) continue;
-          for (const setting of candidateSettings) {
-            let candidates: string[];
-            try {
-              candidates = ruleNamesForCard(this.structurePatternInputForSync(card), setting);
-            } catch (err) {
-              if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
-                continue;
-              }
-              throw err;
-            }
-            for (const candidate of candidates) names.add(candidate);
+    }
+    // W4 batch fusion (net-reds-fixforward lane): the type prime no longer
+    // spends its own round trip before the candidate seat. When the seat
+    // will run, the statements ride seatNamesByWave's FIRST batch as its
+    // preamble - one round trip carries the priming rows AND the wave's
+    // own asks, and the preamble rows seat before the wave rows so the
+    // seated cards' enrichAndStore type reads hit the fresh cache. The
+    // priming population nuance: the type cards themselves seat with the
+    // wave now, so THIS render's candidate collection (memory over the
+    // prepared map) runs without them - their rule candidates prime on a
+    // later render's population instead. Answers are untouched (priming
+    // only fills the cache; the findRule ladder computes the same verdicts
+    // either way - the byte oracles are the proof).
+    //
+    // d2, warmflood-fix lane (2026-10-06): the candidate seat NO LONGER
+    // depends on unprimed type cards existing. The old gate (`typeIds.size
+    // > 0`, plus a per-root-key one-shot memo) disabled the seat on every
+    // warm render — but the prepared map keeps growing render over render
+    // (late enrichments land cards), so every warm render derived NEW rule
+    // candidates the wave had never asked, and the findRule ladders
+    // resolved them one solo point read at a time: measured 195 → 310 →
+    // 317 pair-exists probes per warm render, disjoint sets, escalating
+    // (the persistent trip-flood's F1). The collection now runs EVERY
+    // render; the wave's own filters (seated / lexEntryKnown / the
+    // engine-lifetime ask memory) are the dedup — a converged walk collects
+    // only already-answered names, the wave batches nothing, and the render
+    // costs zero wave trips. The ask memory is cleared by resetCaches()
+    // together with the knowledge it indexes, so the post-bump render
+    // re-asks its questions HERE, in batched rounds, instead of leaking to
+    // the solo point path. Byte contract unchanged: the wave writes exactly
+    // what the per-name point path would have written.
+    const candidateSettings = ["*content options", "*help", "*structure", "*default"];
+    const names = new Set<string>();
+    for (const card of this.renderCards.values()) {
+      if (card.record.isNew) continue;
+      for (const setting of candidateSettings) {
+        let candidates: string[];
+        try {
+          candidates = ruleNamesForCard(this.structurePatternInputForSync(card), setting);
+        } catch (err) {
+          if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+            continue;
           }
+          throw err;
         }
+        for (const candidate of candidates) names.add(candidate);
       }
-      if (seatCandidates && names.size > 0) {
-        await this.seatNamesByWave([...names], typeStatements);
-      } else {
-        const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
-          (result) => (result.rows as CardsRow[]) ?? [],
-        );
-        for (const row of rows as CardsRow[]) {
-          const record = await composeCardRecord(row, this.fetcher.lexicon);
-          if (record.name === undefined || record.id === undefined) continue;
-          if (row.name !== null && row.name !== undefined) {
-            this.fetcher.lexicon.write(record.id, record.name, row.name);
-          }
-          await this.cacheFetchedRecord(record);
+    }
+    if (names.size > 0) {
+      await this.seatNamesByWave([...names], typeStatements);
+    } else if (typeStatements.length > 0) {
+      const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
+        (result) => (result.rows as CardsRow[]) ?? [],
+      );
+      for (const row of rows as CardsRow[]) {
+        const record = await composeCardRecord(row, this.fetcher.lexicon);
+        if (record.name === undefined || record.id === undefined) continue;
+        if (row.name !== null && row.name !== undefined) {
+          this.fetcher.lexicon.write(record.id, record.name, row.name);
         }
+        await this.cacheFetchedRecord(record);
       }
     }
   }
@@ -4420,12 +4429,6 @@ export class RenderEngine implements RenderEngineLike {
   /** db-roundtrip-elimination lane: type-card ids the W3b priming already
    *  seated - the priming pass's IN-list runs once per id per engine. */
   private typeCardsPrimed = new Set<number>();
-  /** Root card keys whose rule-candidate set the W2b priming already
-   *  asked - the priming pass runs once per page per engine, which is what
-   *  makes a warm re-render of the same page zero-query by construction
-   *  (the candidates of a page's prepared set are deterministic in the
-   *  deck-static-per-engine contract). */
-  private ruleCandidatesPrimedFor = new Set<string>();
   /** Templated-nests rule cards whose content the junction warm already
    *  scanned. The gate that keeps this pass off the other ~47k deck cards
    *  is `isTemplatedNestsName` (the `*default` / `*structure` right tag),
