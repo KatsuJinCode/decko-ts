@@ -24,7 +24,9 @@
 //      armed map. This pin is the lane's RED.
 //
 // Fixture: a WRITABLE tmp copy of the trial-deck mirror with the freshness
-// migration (deploy/migrations/0007-deck-data-version-stamp.sql) applied —
+// migration (deploy/migrations/0003-deck-data-version-stamp.sql — the
+// assembly's canonical stamp migration; the seat lineage's copy was numbered
+// 0007 with a byte-identical body, unified to 0003 in the r5 merge) applied —
 // the circulating mirror copies predate the stamp and this lineage's render
 // path fails loudly without it. The store is materialized INLINE into that
 // copy (the chunked-fetch recipe) and the plan is recorded at the exact
@@ -64,7 +66,7 @@ import {
 
 const hasMirror = mirrorAvailable();
 const MIGRATION_PATH = fileURLToPath(
-  new URL("../../../deploy/migrations/0007-deck-data-version-stamp.sql", import.meta.url),
+  new URL("../../../deploy/migrations/0003-deck-data-version-stamp.sql", import.meta.url),
 );
 
 interface SeatMeasurement {
