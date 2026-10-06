@@ -26,13 +26,14 @@
 // through the one-trip fetch (read scope); it never writes it. The
 // write-time recompute path's A2 isolation lives in invalidation.ts.
 
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
 import {
   attachDerivedStore,
   DERIVED_STORE_ATTACH,
   fetchPageBundle,
-  fetchPageBundleInline,
+  fetchPageBundleInlineParts,
+  inlineBundleFromParts,
   isInlineStoreSpec,
 } from "./one-trip-fetch.js";
 import { replayRenderPlanWithIndex } from "./render-plan.js";
@@ -84,20 +85,59 @@ export function invalidateSeatedPagePayloads(fetcher: FetchEngine): void {
   seatedPages.delete(fetcher);
 }
 
+/** The freshness context the render entry hands the seat (stamp-as-column
+ *  lane, 2026-10-06, spec §c): the engine's last-seen committed-write
+ *  version and the stamp-move branch. The seat's HEAD statement reads
+ *  deck_data_version in the SAME statement as the payload — current-at-read,
+ *  one snapshot, consistent by construction — so the seat is the render
+ *  path's stamp reader on this posture, and the move branch runs HERE,
+ *  BEFORE anything from the payload is seated (a moved stamp recomposes;
+ *  it never seats pre-move rows and never discards a payload seated moments
+ *  earlier). */
+export interface OneTripSeatFreshness {
+  /** The engine's last-seen deck_data_version; undefined = first render
+   *  (nothing to compare, nothing to protect — the baseline arms from the
+   *  head's column). */
+  readonly lastSeenVersion: number | undefined;
+  /** The stamp-move branch: reset every derived cache, disarm the armed
+   *  plan, invalidate the seat memo, re-prime the boot state, adopt the new
+   *  baseline. Called at most once per seat. */
+  onStampMove(observed: number): Promise<void>;
+}
+
+/** What the seat reports to the render entry. `deckDataVersion` is the
+ *  head's live stamp column — present ONLY when this call fetched the head
+ *  (a memo hit fetches nothing and reports undefined, so the gate falls
+ *  back to its own live read; a memo hit's stored stamp is seat-time state,
+ *  never current-at-read). `permissionGateRows` is the head's gate-count
+ *  column, parsed into the batch-result shape (spec §a.4's zero-bind arm). */
+export interface OneTripSeatResult {
+  readonly seatedNow: boolean;
+  readonly deckDataVersion: number | undefined;
+  readonly permissionGateRows: SQLQueryResult | undefined;
+}
+
 let warnedMisconfiguration = false;
 
 /**
  * Seat the page's one-trip payload if (and only if) the gate is ON and the
- * store can serve it. Called at the top of RenderEngine.render — the
- * render's own first read (fetchByName) then answers from the seated
- * cache. NEVER throws into the render path: every failure mode falls back
- * to the unchanged normal path.
+ * store can serve it. Called at the top of RenderEngine.render — BEFORE the
+ * freshness gate since the stamp-as-column lane: the head IS the render's
+ * stamp read on this posture. The render's own first read (fetchByName)
+ * then answers from the seated cache. NEVER throws into the render path:
+ * every failure mode falls back to the unchanged normal path.
  */
 export async function seatOneTripPayloadForRender(
   pageName: string,
   fetcher: FetchEngine,
-): Promise<void> {
-  if (!oneTripWantsPayload()) return;
+  freshness?: OneTripSeatFreshness,
+): Promise<OneTripSeatResult> {
+  const none: OneTripSeatResult = {
+    seatedNow: false,
+    deckDataVersion: undefined,
+    permissionGateRows: undefined,
+  };
+  if (!oneTripWantsPayload()) return none;
   const storePath = oneTripStorePath();
   if (storePath === undefined || storePath === "") {
     if (!warnedMisconfiguration) {
@@ -107,7 +147,7 @@ export async function seatOneTripPayloadForRender(
           "(the normal render path runs).",
       );
     }
-    return;
+    return none;
   }
 
   let seated = seatedPages.get(fetcher);
@@ -115,52 +155,96 @@ export async function seatOneTripPayloadForRender(
     seated = new Set<string>();
     seatedPages.set(fetcher, seated);
   }
-  if (seated.has(pageName)) return;
+  if (seated.has(pageName)) return none;
   seated.add(pageName); // memoize before trying: a failed seat stays failed for this engine
 
-    // The SEAT's driver is the router's BASE (the real connection): the
-    // attach memo keys on it, and the plan replay — the arming source —
-    // must execute live, never consult the map it is building. The RENDER
-    // path, by contrast, flows through fetcher.driver (the router) and is
-    // where the armed plan answers reads.
-    const driver: SQLDatabaseDriver = fetcher.replayRouter.base;
-    const inlineStore = isInlineStoreSpec(storePath);
-    try {
-      if (!inlineStore && !attachedDrivers.has(driver)) {
-        await attachDerivedStore(driver, storePath, DERIVED_STORE_ATTACH);
-        attachedDrivers.set(driver, true);
-      }
-      const bundle = inlineStore
-        ? await fetchPageBundleInline(driver, pageName)
-        : await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
-      // seatPageBundle's render parameter is unused (fetch-cache seating
-      // only — see page-bundle-adapter.ts); the fetcher satisfies the
-      // structural RenderEngineLike.
-      await seatPageBundle(fetcher, fetcher, bundle);
-      // THE RENDERPLAN REPLAY (renderplan-replay lane): the inline fetch
-      // carried the page's pre-computed render plan (one_trip_render_plans,
-      // read inside the seat's head — no extra trip). Replay it as ONE
-      // batch and arm the engine's driver seam: every subsequent render
-      // statement whose (sql, params) matches a plan entry is answered
-      // from the plan's result set with zero round trips; misses (the
-      // order-dependent search-count, differently-bound reads) go live.
-      // The engine's own record/replay contract (render-plan.ts); a failed
-      // replay leaves the router unarmed — the live path stays
-      // authoritative.
-      const plan = bundle.renderPlan;
-      if (plan !== undefined && plan.entries.length > 0) {
-        // THE DRIFT ARM INDEX rides the same replay (driftfix lane): the
-        // per-bind-value answer index for the drift classes, built from the
-        // very results this replay arms. A drifted IN-list ask (mid-flight
-        // cache evolution regrouped the binds) composes its answer from the
-        // index instead of riding live; uncovered asks stay live — the live
-        // path stays authoritative exactly as the exact-map contract keeps.
-        const { results, index } = await replayRenderPlanWithIndex(driver, plan);
-        fetcher.replayRouter.armRenderPlan(plan.entries, results, index);
-      }
-    } catch {
-      // Graceful degradation (SPEC §3.3): an absent store, an unbuildable
-      // attach, or an undescribable page leaves the render on its unchanged
-      // path. The memo above keeps the fallback free on re-renders.
+  // The SEAT's driver is the router's BASE (the real connection): the
+  // attach memo keys on it, and the plan replay — the arming source —
+  // must execute live, never consult the map it is building. The RENDER
+  // path, by contrast, flows through fetcher.driver (the router) and is
+  // where the armed plan answers reads. The head's stamp column is read
+  // HERE for the same reason: current-at-read from the deck itself, never
+  // from the armed map (the stamp-read-vs-plan contract).
+  const driver: SQLDatabaseDriver = fetcher.replayRouter.base;
+  const inlineStore = isInlineStoreSpec(storePath);
+  try {
+    if (!inlineStore && !attachedDrivers.has(driver)) {
+      await attachDerivedStore(driver, storePath, DERIVED_STORE_ATTACH);
+      attachedDrivers.set(driver, true);
     }
+    // The INLINE posture fetches parts once: the assembled bundle AND
+    // the head's gate columns (stamp + gate count — the seat's zero-trip
+    // gate reads). The ATTACHED posture (the side-store shape, local
+    // lanes only) carries no gate columns — its head statement does not
+    // have them — so gateMeta stays undefined and the render entry falls
+    // back to its own live reads.
+    let bundle: import("./types.js").PageBundle;
+    let plan: import("./render-plan.js").RenderPlan | undefined;
+    let gateMeta: import("./one-trip-fetch.js").InlineHeadGateMeta | undefined;
+    if (inlineStore) {
+      const parts = await fetchPageBundleInlineParts(driver, pageName);
+      bundle = inlineBundleFromParts(parts.raw, pageName, parts.plan);
+      plan = parts.plan;
+      gateMeta = parts.gateMeta;
+    } else {
+      bundle = await fetchPageBundle(driver, pageName, DERIVED_STORE_ATTACH);
+      plan = bundle.renderPlan;
+    }
+    // THE STAMP-MOVE BRANCH (spec §c): the head's column vs the engine's
+    // last-seen version, compared BEFORE seating anything from the
+    // payload. On a move the render's reset runs (every derived cache,
+    // the armed plan, the seat memo, the boot state) and the new
+    // baseline is adopted; the seat then completes with the in-hand
+    // head — which was read at the CURRENT stamp (the write committed
+    // before this render's first read), so the recomposed payload is
+    // post-move state. The memo wipe inside the callback removed this
+    // seat's memo entry; it is re-established below with the same
+    // memoize-before-trying semantics.
+    if (
+      freshness !== undefined &&
+      freshness.lastSeenVersion !== undefined &&
+      gateMeta?.deckDataVersion !== undefined &&
+      gateMeta.deckDataVersion !== freshness.lastSeenVersion
+    ) {
+      await freshness.onStampMove(gateMeta.deckDataVersion);
+      seated = seatedPages.get(fetcher) ?? new Set<string>();
+      seatedPages.set(fetcher, seated);
+      seated.add(pageName);
+    }
+    // seatPageBundle's render parameter is unused (fetch-cache seating
+    // only — see page-bundle-adapter.ts); the fetcher satisfies the
+    // structural RenderEngineLike.
+    await seatPageBundle(fetcher, fetcher, bundle);
+    // THE RENDERPLAN REPLAY (renderplan-replay lane): the inline fetch
+    // carried the page's pre-computed render plan (one_trip_render_plans,
+    // read inside the seat's head — no extra trip). Replay it as ONE
+    // batch and arm the engine's driver seam: every subsequent render
+    // statement whose (sql, params) matches a plan entry is answered
+    // from the plan's result set with zero round trips; misses (the
+    // order-dependent search-count, differently-bound reads) go live.
+    // The engine's own record/replay contract (render-plan.ts); a failed
+    // replay leaves the router unarmed — the live path stays
+    // authoritative.
+    if (plan === undefined) plan = bundle.renderPlan;
+    if (plan !== undefined && plan.entries.length > 0) {
+      // THE DRIFT ARM INDEX rides the same replay (driftfix lane): the
+      // per-bind-value answer index for the drift classes, built from the
+      // very results this replay arms. A drifted IN-list ask (mid-flight
+      // cache evolution regrouped the binds) composes its answer from the
+      // index instead of riding live; uncovered asks stay live — the live
+      // path stays authoritative exactly as the exact-map contract keeps.
+      const { results, index } = await replayRenderPlanWithIndex(driver, plan);
+      fetcher.replayRouter.armRenderPlan(plan.entries, results, index);
+    }
+    return {
+      seatedNow: true,
+      deckDataVersion: gateMeta?.deckDataVersion,
+      permissionGateRows: gateMeta?.permissionGateRows,
+    };
+  } catch {
+    // Graceful degradation (SPEC §3.3): an absent store, an unbuildable
+    // attach, or an undescribable page leaves the render on its unchanged
+    // path. The memo above keeps the fallback free on re-renders.
+    return none;
+  }
 }

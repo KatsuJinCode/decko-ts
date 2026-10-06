@@ -31,6 +31,7 @@ import {
   invalidateSeatedPagePayloads,
   oneTripWantsPayload,
   seatOneTripPayloadForRender,
+  type OneTripSeatResult,
 } from "./one-trip/render-gate.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
@@ -190,6 +191,7 @@ import type { SettingClassWithRules } from "./render/format.js";
 import {
   readPermissionStatements,
   readPermissionStateFromViewerResults,
+  PERMISSION_GATE_COUNT_STATEMENT_INDEX,
   canReadByStoredRule,
   canReadByRuleLookup,
   ANONYMOUS_VIEWER,
@@ -845,58 +847,103 @@ export class RenderEngine implements RenderEngineLike {
     // lane clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
+    // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
+    // ABOVE the freshness gate because on this posture the seat's HEAD
+    // statement IS the render's stamp read — deck_data_version rides the
+    // head as a column of the same snapshot that carries the plan payload
+    // and the member list (consistent by construction; a write between
+    // renders moves the version the NEXT head read sees). The seat itself
+    // runs the stamp-move branch BEFORE seating anything from the payload
+    // (the callback below), so a moved stamp recomposes the caches and
+    // never discards a payload seated moments earlier — the same guarantee
+    // the gate-first order gave, now enforced inside the seat.
+    let seat: OneTripSeatResult | undefined;
+    const runSeat = async (): Promise<OneTripSeatResult | undefined> =>
+      oneTripWantsPayload()
+        ? await seatOneTripPayloadForRender(cardName, this.fetcher, {
+            lastSeenVersion: this.deckDataVersion,
+            onStampMove: async (observed) => {
+              this.resetCaches();
+              // The one-trip SEAT STATE is cache state too (per-viewer-seat lane,
+              // 2026-10-06): the armed plan's in-memory results and the seating
+              // memo predate the moved stamp. Left armed/memoized, this render
+              // answers matched reads from pre-move rows and the seat never
+              // re-fetches (measured at base: 397 live trips, 0 seat fetches,
+              // partial stale-arm answers). Dropped here, the seat completes its
+              // recomposition from the store as it now stands. (The explicit
+              // disarm is redundant with FetchEngine.resetCaches()'s own disarm
+              // — kept: it is what the seat posture pin observes, and it holds
+              // under any future reset path that loses the in-reset one.)
+              this.fetcher.replayRouter.disarmRenderPlan();
+              invalidateSeatedPagePayloads(this.fetcher);
+              // The BOOT-LIFETIME state is cache state too (same lane): the reset
+              // wiped the codename registry's bulk load, and without this re-prime
+              // the post-reset render degrades to per-lookup live name reads
+              // (measured: 340 trips vs the 7-trip seated floor — worse than the
+              // 177-trip fresh ladder, because a fresh boot re-primes and this
+              // path did not). One batched statement, once per version move.
+              await this.fetcher.reprimeBootState();
+              this.deckDataVersion = observed;
+            },
+          })
+        : undefined;
+    seat = await runSeat();
     // Freshness gate (delivery contract:79): any render that could serve
-    // warm bytes reads the deck's committed-write stamp FIRST — ONE
-    // statement — and clears every derived cache when a committed write
-    // moved it. The engine's first render has no warm state to protect; its
-    // baseline read folds into the cold closure batch below (stampCold), so
-    // the cold ROUND-TRIP count is unchanged and a warm render's total cost
-    // is exactly this one statement. After a version-triggered reset the
-    // render below proceeds over empty caches and reads storage end to end,
-    // which is what makes the four committed-mutation kinds (content edit,
-    // nested dependency, rule, access revocation) visible on the very next
-    // request — including the revocation case, where the invalidated object
-    // is a cached permission verdict. Runs BEFORE the one-trip seating so a
-    // version-triggered reset never discards a payload seated moments
-    // earlier (composition order chosen in the lineage-reconciliation lane).
+    // warm bytes reads the deck's committed-write stamp FIRST and clears
+    // every derived cache when a committed write moved it. On the one-trip
+    // path the seat's head column already carried that live stamp (and ran
+    // the move branch itself), so the comparison below consumes the column
+    // with zero extra round trips; every other path (gate OFF, seatless
+    // page, memo-hit warm re-render — a memo hit fetches no head, so its
+    // stored stamp is seat-time state, never current-at-read) reads the
+    // stamp live exactly as before, one statement. The engine's first render
+    // has no warm state to protect; its baseline arms from the seat's
+    // column, or — when no seat ran — from the cold closure batch below
+    // (stampCold), so the cold ROUND-TRIP count is unchanged and a warm
+    // render's total cost is exactly this one statement. After a
+    // version-triggered reset the render below proceeds over empty caches
+    // and reads storage end to end, which is what makes the four committed-
+    // mutation kinds (content edit, nested dependency, rule, access
+    // revocation) visible on the very next request — including the
+    // revocation case, where the invalidated object is a cached permission
+    // verdict.
     if (this.deckDataVersion !== undefined) {
-      const observed = await this.readDeckDataVersion();
+      const observed = seat?.deckDataVersion ?? (await this.readDeckDataVersion());
       if (observed !== this.deckDataVersion) {
         this.resetCaches();
-        // The one-trip SEAT STATE is cache state too (per-viewer-seat lane,
-        // 2026-10-06): the armed plan's in-memory results and the seating
-        // memo predate the moved stamp. Left armed/memoized, this render
-        // answers matched reads from pre-move rows and the seat never
-        // re-fetches (measured at base: 397 live trips, 0 seat fetches,
-        // partial stale-arm answers). Dropped here, the seat gate below
-        // re-seats and re-arms from the store as it now stands. (The
-        // explicit disarm is redundant with FetchEngine.resetCaches()'s own
-        // disarm — kept: it is what the seat posture pin observes, and it
-        // holds under any future reset path that loses the in-reset one.)
         this.fetcher.replayRouter.disarmRenderPlan();
         invalidateSeatedPagePayloads(this.fetcher);
-        // The BOOT-LIFETIME state is cache state too (same lane): the reset
-        // wiped the codename registry's bulk load, and without this re-prime
-        // the post-reset render degrades to per-lookup live name reads
-        // (measured: 340 trips vs the 7-trip seated floor — worse than the
-        // 177-trip fresh ladder, because a fresh boot re-primes and this
-        // path did not). One batched statement, once per version move.
+        // The BOOT-LIFETIME re-prime (see the seat callback above): same
+        // reset tail for the gate's own move detection (memo-hit warm
+        // renders read the stamp live; a move here discards the memoized
+        // payload).
         await this.fetcher.reprimeBootState();
         this.deckDataVersion = observed;
+        // THE SAME-RENDER RE-SEAT (the seat lane's recomposition contract,
+        // pinned by signed-in-seat-posture): the invalidated payload
+        // belonged to the pre-move state, so re-seat from the store as it
+        // now stands — the baseline adopted above is the fresh comparison
+        // value, and a second move mid-render fires the callback again
+        // (each move costs one reset, bounded by writes). The fresh seat
+        // result replaces this render's gate column and gate-count rows.
+        seat = await runSeat();
       }
+    } else if (typeof seat?.deckDataVersion === "number") {
+      // First render, seat-carried baseline: the stampCold fold below is
+      // skipped (the baseline is already armed from the head's column).
+      this.deckDataVersion = seat.deckDataVersion;
     }
-    // One-trip payload (config-gated, default OFF - one-trip/render-gate.ts):
-    // when DECKO_ONE_TRIP=1 the page's working set is fetched in ONE round
-    // trip from the derived store and seated into the fetch cache before
-    // this path runs; every failure mode falls back to the unchanged path.
-    if (oneTripWantsPayload()) {
-      await seatOneTripPayloadForRender(cardName, this.fetcher);
-    }
-    // THE BOOT-CACHE VERSION PROBE (render/boot-cache.ts). ONE statement, and
-    // only on this engine's FIRST render, and only once the process already
-    // holds a boot bundle to compare against: with nothing to compare, a probe
-    // cannot hit, so a process's first engine reads the boot read-set from
-    // storage exactly as it always has and pays nothing extra.
+    // THE BOOT-CACHE VERSION PROBE (render/boot-cache.ts). ONE statement —
+    // or ZERO on the one-trip path: the seat's head column already carried
+    // the committed-write stamp this render (the same row this probe reads),
+    // so a warm boot's probe consumes the column and the boot's only trips
+    // are the bundle's (the stamp-as-column lane folds the probe, one-trip
+    // build lane 2026-10-06). Only on this engine's FIRST render, and only
+    // once the process already holds a boot bundle to compare against: with
+    // nothing to compare, a probe cannot hit, so a process's first engine
+    // reads the boot read-set from storage exactly as it always has and pays
+    // nothing extra. A memo-hit seat fetches no head and reports no column,
+    // so the probe falls back to its own statement there.
     //
     // It rides the root fetch's round trip (Promise.all below): +1 statement,
     // +0 round trips. It is the check the cache's correctness rests on — a
@@ -905,7 +952,9 @@ export class RenderEngine implements RenderEngineLike {
     // database with no stamp throws here rather than rendering.
     const bootProbe =
       !this.bootProbeIssued && bootCacheIsWarm(this.fetcher.driver)
-        ? readBootContentVersion(this.fetcher.driver)
+        ? seat?.deckDataVersion !== undefined
+          ? Promise.resolve(seat.deckDataVersion)
+          : readBootContentVersion(this.fetcher.driver)
         : undefined;
     this.bootProbeIssued = true;
     const [record] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
@@ -927,6 +976,22 @@ export class RenderEngine implements RenderEngineLike {
     // once per engine, never per warm render. The codename codehash (the
     // rule? predicate's type-id source) folds into the same batch.
     const permissionCold = this.readPermission === undefined;
+    // THE GATE-COUNT ARM (stamp-as-column lane): when the seat's head
+    // carried the permission gate-count's row (statement index
+    // PERMISSION_GATE_COUNT_STATEMENT_INDEX — a zero-bind, viewer-
+    // independent statement, spec §a.4's "settings count" arm), that slot
+    // carries the carried result and the statement is never issued. The
+    // cold batch's live discharge — the replay router forwards only its
+    // unmatched members, and skips the wire at zero misses — loses its last
+    // member, and with the stamp consumed from the head column the
+    // count+stamp trip drops 1 -> 0 (the D3 floor's fifth trip).
+    const seatGateRows = permissionCold ? seat?.permissionGateRows : undefined;
+    const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
+    const permissionSlots: ColdBatchSlot[] = permissionStatements.map((stmt, i) =>
+      i === PERMISSION_GATE_COUNT_STATEMENT_INDEX && seatGateRows !== undefined
+        ? { cachedResult: seatGateRows }
+        : (stmt as ColdBatchSlot),
+    );
     const ruleTypesCold = this.ruleTypeIds === undefined;
     const structureCold = this.structureContents === undefined;
     // The head read-set rides THIS batch rather than a query of its own:
@@ -943,7 +1008,6 @@ export class RenderEngine implements RenderEngineLike {
     // batch below — +1 statement, +0 round trips. Every later render reads
     // it standalone at the render entry (see the gate at render() top).
     const stampCold = this.deckDataVersion === undefined;
-    const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       // THE BOOT READ-SET, OR THE CONTENT-VERSION CACHE'S COPY OF IT.
@@ -969,7 +1033,10 @@ export class RenderEngine implements RenderEngineLike {
           ? undefined
           : bootBundleForVersion(this.fetcher.driver, this.bootProbeVersion);
       const coldSlots: ColdBatchSlot[] = [
-        ...permissionStatements,
+        // The permission slots, with the gate-count slot carrying the seat
+        // head's column result when it rode the seat (never issued — the
+        // splice preserves the slot order the fixed-index parsers read).
+        ...permissionSlots,
         ...(ruleTypesCold
           ? bootHit !== undefined
             ? [{ cachedResult: bootHit.codehash }]
@@ -1158,7 +1225,7 @@ export class RenderEngine implements RenderEngineLike {
     if (stampCold && this.deckDataVersion === undefined) {
       this.deckDataVersion = await this.readDeckDataVersion();
     }
-    if (permissionCold) await this.ensureReadPermission(foldedResults);
+    if (permissionCold) await this.ensureReadPermission(foldedResults, seatGateRows);
     // THE CLOSURE HALF OF THE SWEEP SURFACE (renderSeats' doc): the render's
     // sweeps must also process the cards THIS render's root closure reaches
     // that EARLIER renders seated — a nest target chased as another page's
@@ -3784,11 +3851,37 @@ export class RenderEngine implements RenderEngineLike {
   // -------------------------------------------------------------------------
 
   /** Complete the permission state from folded batch results, or run the
-   *  standalone batch (warm-closure first render). Once per engine. */
-  private async ensureReadPermission(folded?: SQLQueryResult[]): Promise<ReadPermissionState> {
+   *  standalone batch (warm-closure first render). Once per engine.
+   *  `seatGateRows` is the seat head's gate-count column result (the
+   *  stamp-as-column lane): when present, that statement is spliced in at
+   *  its index and never issued — on the standalone-batch path the batch
+   *  then carries only the remaining statements, and on a plan-armed render
+   *  the router answers those, so the batch's live discharge is empty and
+   *  costs zero trips. */
+  private async ensureReadPermission(
+    folded?: SQLQueryResult[],
+    seatGateRows?: SQLQueryResult,
+  ): Promise<ReadPermissionState> {
     if (this.readPermission !== undefined) return this.readPermission;
-    const results =
-      folded ?? (await this.fetcher.driver.batch(readPermissionStatements(this.viewer)));
+    const statements = readPermissionStatements(this.viewer);
+    let results: SQLQueryResult[];
+    if (seatGateRows !== undefined) {
+      const rest = statements.filter(
+        (_, i) => i !== PERMISSION_GATE_COUNT_STATEMENT_INDEX,
+      );
+      const live = await this.fetcher.driver.batch(rest);
+      results = [];
+      let k = 0;
+      statements.forEach((_, i) => {
+        results.push(
+          i === PERMISSION_GATE_COUNT_STATEMENT_INDEX
+            ? seatGateRows
+            : (live as SQLQueryResult[])[k++],
+        );
+      });
+    } else {
+      results = folded ?? (await this.fetcher.driver.batch(statements));
+    }
     // Actor threading (R4 seam 2): the signed-out viewer's OWN card id is a
     // party — account_holder.rb:27-29 parties = all_enabled_roles + [self],
     // and fetch_read_rules (:115-123) unions the cache over [AnyoneID] +

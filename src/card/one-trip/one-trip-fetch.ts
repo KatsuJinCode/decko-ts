@@ -19,9 +19,10 @@
 // bytes — a missing row would cost a residue trip, not wrong bytes,
 // because the render's own execution stays authoritative).
 
-import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLStatement, SQLQueryResult } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { DeckoName } from "../name.js";
+import { permissionGateCountJsonArm } from "../permissions/read-rules.js";
 import type { PageBundle, OneTripRuleCandidate } from "./types.js";
 import type { RenderPlan, RenderPlanEntry } from "./render-plan.js";
 import { isPipelineAbleRenderStatement } from "./render-plan.js";
@@ -237,13 +238,39 @@ export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
  *  rule candidates and search results (small aggregates), the page's
  *  recorded render plan (small JSON array, empty when the store carries
  *  none — stores built before the recorder are replay-inert, gracefully),
- *  and — the V2 materialization — the page's WHOLE member id list as one
- *  small sorted JSON array (id ascending, so the client's windows are
- *  contiguous keyset ranges). Separate columns, never one giant row — each
- *  value rides its own small TEXT cell. */
+ *  the V2 materialization of the page's WHOLE member id list as one small
+ *  sorted JSON array (id ascending, so the client's windows are contiguous
+ *  keyset ranges), and — the STAMP-AS-COLUMN lane (2026-10-06, spec §c +
+ *  §a.4) — two zero-bind GATE columns the render would otherwise pay live
+ *  trips for:
+ *
+ *  `deck_data_version` — the deck's committed-write stamp, the freshness
+ *  gate's per-render read. Read HERE it is current-at-read in the SAME
+ *  statement as the payload (one snapshot: consistent by construction), so
+ *  the gate consumes a column of a trip the render pays anyway — the
+ *  stamp's round-trip cost drops 1 -> 0. The column is deliberately ALIASED
+ *  (`v.version ... v.id`), NOT the gate statement's text: the freshness
+ *  predicates (isFreshnessStampRead — recorder, classifier, router guard)
+ *  must keep matching exactly the gate's own statement and nothing else
+ *  ("one shape, one predicate", r5 adjudication). This fetch executes on the
+ *  router's BASE connection, never through the armed plan.
+ *
+ *  `permission_gate_json` — read-rules.ts statement 3 (the hasReadRules /
+ *  catchAll gate counters), a zero-bind one-off, executed as a CTE of the
+ *  EXACT statement text and json-aggregated into one small cell (spec
+ *  §a.4's "settings count" arm). The D3 floor's fifth trip — one batch
+ *  carrying this count + the stamp, the two statements plans never absorb —
+ *  drops 1 -> 0 with both columns consumed. Separate columns, never one
+ *  giant row — each value rides its own small TEXT cell. */
 function inlineHeadSql(): string {
   return `${inlineStoreCteSql()}
 SELECT json_quote(?) AS page_key_json,
+  (
+    SELECT v.version
+      FROM deck_data_version v
+     WHERE v.id = 1
+  ) AS deck_data_version,
+  ${permissionGateCountJsonArm()} AS permission_gate_json,
   (
     SELECT json_group_array(json_object(
       'card_id', r.card_id, 'setting_code', r.setting_code,
@@ -297,10 +324,30 @@ function inlineCardsChunkSql(): string {
 
 interface InlineHeadRow {
   page_key_json: string;
+  /** The freshness stamp (deck_data_version), read live in this statement —
+   *  null only when the row itself is absent (the render entry's gate then
+   *  throws loudly, the freshness convention). */
+  deck_data_version: number | null;
+  /** The permission gate-count row, json-aggregated by the arm: a
+   *  one-element array string like '[{"c":12,"catchAll":1}]'. */
+  permission_gate_json: string | null;
   rule_candidates_json: string | null;
   search_results_json: string | null;
   plan_json: string | null;
   member_ids_json: string | null;
+}
+
+/** The head statement's gate columns, parsed. The seat's freshness +
+ *  permission consumers read these INSTEAD of issuing the stamp read and
+ *  the gate-count statement as trips of their own (stamp-as-column lane). */
+export interface InlineHeadGateMeta {
+  /** deck_data_version as of this statement's snapshot; undefined only when
+   *  the stamp row is missing (the consumer falls back to the loud live
+   *  read). */
+  deckDataVersion: number | undefined;
+  /** The gate-count statement's rows, parsed back into the exact shape the
+   *  batch result would have carried ({ c, catchAll }). */
+  permissionGateRows: SQLQueryResult | undefined;
 }
 
 /** The page's recorded render plan, parsed from the head's plan_json cell
@@ -361,7 +408,7 @@ export function renderPlanFromHeadCell(
 export async function fetchPageBundleInlineParts(
   driver: SQLDatabaseDriver,
   pageName: string,
-): Promise<{ raw: string; plan: RenderPlan | undefined }> {
+): Promise<{ raw: string; plan: RenderPlan | undefined; gateMeta: InlineHeadGateMeta }> {
   const pageKey = DeckoName.parse(pageName).key;
   // five page-key placeholders: the walk seed, the members' page join, the
   // page_key field, the rule-candidate page join, the plan's page join
@@ -377,6 +424,14 @@ export async function fetchPageBundleInlineParts(
     throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
   const plan = renderPlanFromHeadCell(headRow.plan_json, pageKey);
+  // THE GATE COLUMNS (stamp-as-column lane): parsed here, beside the plan —
+  // one statement carried the payload, the stamp, and the gate count.
+  const rawVersion = headRow.deck_data_version;
+  const gateMeta: InlineHeadGateMeta = {
+    deckDataVersion:
+      typeof rawVersion === "number" && Number.isFinite(rawVersion) ? rawVersion : undefined,
+    permissionGateRows: parsePermissionGateRows(headRow.permission_gate_json),
+  };
   // THE V2 KEYSET: the member id list is materialized exactly once (by the
   // head's own discovery CTE), sorted id-ascending server-side; each slice
   // binds one window of it — a flat indexed read, never a fresh closure walk.
@@ -406,7 +461,31 @@ export async function fetchPageBundleInlineParts(
   // per-card rows); the client contributes only the fixed punctuation and
   // field names, in the single-row document's field order.
   const raw = `{"page_key":${headRow.page_key_json},"cards":[${cardJsons.join(",")}],"rule_candidates":${headRow.rule_candidates_json ?? "null"},"search_results":${headRow.search_results_json ?? "null"}}`;
-  return { raw, plan };
+  return { raw, plan, gateMeta };
+}
+
+/** Parse the gate-count arm's cell back into the exact result shape the
+ *  batch statement would have produced. A NULL cell (json_group_array over
+ *  an empty CTE cannot happen — COUNT(*) always yields one row — so this
+ *  names only a malformed/mismatched store) yields undefined: the consumer
+ *  falls back to issuing the statement, never to guessing a gate value. */
+function parsePermissionGateRows(cell: string | null): SQLQueryResult | undefined {
+  if (cell === null || cell === "") return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cell) as unknown;
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed)) return undefined;
+  const rows: Record<string, unknown>[] = [];
+  for (const item of parsed) {
+    if (typeof item !== "object" || item === null) continue;
+    const rec = item as Record<string, unknown>;
+    if (typeof rec["c"] !== "number" || typeof rec["catchAll"] !== "number") continue;
+    rows.push({ c: rec["c"], catchAll: rec["catchAll"] });
+  }
+  return { rows, rowsAffected: 0 };
 }
 
 /** The assembled bundle DOCUMENT TEXT alone — the byte-equality pin's
@@ -418,6 +497,23 @@ export async function fetchPageBundleInlineRaw(
   return (await fetchPageBundleInlineParts(driver, pageName)).raw;
 }
 
+/** The assembled bundle DOCUMENT from already-fetched parts (the seat's
+ *  entry point: it needs the gate meta alongside the bundle, so it calls
+ *  fetchPageBundleInlineParts once and assembles here — a second fetch
+ *  would be a second head trip). */
+export function inlineBundleFromParts(
+  raw: string,
+  pageName: string,
+  plan: RenderPlan | undefined,
+): PageBundle {
+  const bundle = pageBundleFromDocument(raw, pageName);
+  if (plan !== undefined) {
+    plan.pageKey = bundle.pageKey;
+    bundle.renderPlan = plan;
+  }
+  return bundle;
+}
+
 /** Fetch the page's whole working set INLINE. Chunked on the wire (WALL 2),
  *  ATTACH-free (WALL 1); consumes the SAME document shape as the attached
  *  single-row fetch, plus the page's recorded render plan (renderplan-replay
@@ -427,12 +523,7 @@ export async function fetchPageBundleInline(
   pageName: string,
 ): Promise<PageBundle> {
   const { raw, plan } = await fetchPageBundleInlineParts(driver, pageName);
-  const bundle = pageBundleFromDocument(raw, pageName);
-  if (plan !== undefined) {
-    plan.pageKey = bundle.pageKey;
-    bundle.renderPlan = plan;
-  }
-  return bundle;
+  return inlineBundleFromParts(raw, pageName, plan);
 }
 
 /** The document → PageBundle mapping both fetch postures consume (the seat's

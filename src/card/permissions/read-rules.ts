@@ -137,6 +137,32 @@ interface PartyRuleRow {
   readRuleId: number;
 }
 
+/** Statement 3 (the gate)'s position in readPermissionStatements' array —
+ *  every consumer that folds, splices, or replaces a single permission
+ *  statement by index reads THIS constant, so reordering the array cannot
+ *  silently desync a fold (one-trip build lane, 2026-10-06: the seat head's
+ *  gate-count column replaces this statement in the one-trip posture). */
+export const PERMISSION_GATE_COUNT_STATEMENT_INDEX = 2;
+
+/**
+ * The gate-count statement as a JSON arm for a LARGER statement's select
+ * list (the one-trip seat head — one-trip-per-page spec §a.4's zero-bind
+ * one-off arm). Derived from readPermissionStatements()[2].sql verbatim, so
+ * the two shapes cannot drift: the arm executes the exact statement text as
+ * a CTE and json-aggregates its single row into a small TEXT cell the
+ * client parses back into the same rows the batch result would have
+ * carried. Zero binds — the statement is viewer-independent (statements 1-3
+ * read the deck's anyone/anonymous/signed-in parties; only the optional
+ * statement 4 is viewer-bound).
+ */
+export function permissionGateCountJsonArm(): string {
+  const body = readPermissionStatements()[PERMISSION_GATE_COUNT_STATEMENT_INDEX].sql;
+  return (
+    `(WITH gate AS (${body}) ` +
+    `SELECT json_group_array(json_object('c', g.c, 'catchAll', g.catchAll)) FROM gate g)`
+  );
+}
+
 /**
  * The permission statements, ready for a driver.batch fold.
  *

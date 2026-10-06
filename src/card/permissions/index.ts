@@ -8,6 +8,8 @@ export {
   anonymousIdFromResults,
   canReadByRuleLookup,
   canReadByStoredRule,
+  PERMISSION_GATE_COUNT_STATEMENT_INDEX,
+  permissionGateCountJsonArm,
   readPermissionStateFromResults,
   readPermissionStateFromViewerResults,
   readPermissionStatements,

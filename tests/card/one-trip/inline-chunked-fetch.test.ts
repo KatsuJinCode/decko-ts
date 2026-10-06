@@ -48,6 +48,7 @@ import {
   TripCapturingDriver,
   mirrorAvailable,
 } from "./one-trip-fixture.js";
+import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 const hasMirror = mirrorAvailable();
 
@@ -79,6 +80,13 @@ describe.skipIf(!hasMirror)("inline chunked fetch: byte-equal to the single-row 
     inlineDbPath = join(dir, "deck-inline-materialized.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, inlineDbPath);
     inlineDb = new LocalSqliteDriver({ path: inlineDbPath });
+    // The freshness stamp (the seat head reads deck_data_version as a column
+    // since the stamp-as-column lane — the same row the render entry's gate
+    // reads; an unmigrated database fails loudly by the freshness lane's own
+    // convention). Applied to the working copy the way a provisioned
+    // database is; migration 0003 is additive and order-safe, and adds no
+    // render bytes, so the byte-equality pins below compare like with like.
+    await applyDeckDataVersionStampMigration(inlineDb);
     for (const statement of ONE_TRIP_SIDE_DDL) {
       await inlineDb.query(statement, []);
     }

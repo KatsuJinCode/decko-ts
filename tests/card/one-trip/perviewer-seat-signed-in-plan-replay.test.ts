@@ -41,6 +41,8 @@ import {
   recordRenderPlan,
   type RenderPlanEntry,
 } from "../../../src/card/one-trip/render-plan.js";
+import { foldRenderPlanEntries } from "../../../src/card/one-trip/replay-fold.js";
+import { DECK_DATA_VERSION_STATEMENT } from "../../../src/card/render.js";
 import {
   MIRROR_COPY_PATH,
   TripCapturingDriver,
@@ -49,22 +51,27 @@ import {
   normalizeSlotIds,
   type EngineBoot,
 } from "./one-trip-fixture.js";
+import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 const PAGE = "Home";
 /** The signed-in viewer the pin renders as: actor 583, the deck's no-role
  *  member (card-mod-edit-forms.test.ts:395's "no role membership") — the
  *  live battery's own account class. */
 const ACTOR_ID = 583;
-/** The census's anonymous floor is 5 (1 boot batch + 2 seat + 1 replay
- *  batch + 1 order-dependent search-count). The signed-in render adds the
- *  MEASURED per-viewer residue, every statement of it structurally
- *  per-viewer SQL: the role-party read (read-rules.ts:205-207, params
- *  [actorId]) + the party-bound prefetch batches (read_rule_id IN
- *  (<the viewer's readable-rule set>) — a different viewer binds a
- *  different list and MUST go live; a plan serving them cross-viewer would
- *  leak another viewer's readable rows) + the stamp member the freshness
- *  exemption keeps live. Measured on this lineage: 8 trips. */
-const SIGNED_IN_FLOOR_TRIPS = 8;
+/** The composed signed-in ceiling, MEASURED on this lineage (this pin never
+ *  completed pre-fixture-fix — the 8 it speculated was never observed). The
+ *  anonymous core is 4 since the stamp-as-column lane (boot + seat head +
+ *  chunk batch + replay batch; the count+stamp trip died into the head's
+ *  zero-bind columns); the signed-in render adds the MEASURED per-viewer
+ *  residue, every statement of it structurally per-viewer SQL: the
+ *  party-bound prefetch batches (read_rule_id IN (<the viewer's readable-
+ *  rule set>) — a different viewer binds a different list and MUST go live;
+ *  a plan serving them cross-viewer would leak another viewer's readable
+ *  rows) + the help resolver's per-setting count batch (the signed-in
+ *  popover surface). Measured ledger (2026-10-06, this file's log lines):
+ *  9 trips, plan hit ratio 0.988, unexplained 0, bytes identical to the
+ *  signed-in ladder. */
+const SIGNED_IN_FLOOR_TRIPS = 9;
 
 /** A statement whose parameter list is BY SHAPE the viewer's readable-rule
  *  set: the read_rule_id IN-list prefetch family. The bind set is derived
@@ -130,6 +137,12 @@ async function buildAndSeedInlineStore(
   mirror.close();
   copyFileSync(corpusPath, inlineDbPath);
   const loadDb = new LocalSqliteDriver({ path: inlineDbPath });
+  // The freshness stamp (this lineage's render entry fails loudly without
+  // it, and the stamp-move pin below UPDATEs the version row): applied to
+  // the working copy the way a provisioned database is — migration 0003,
+  // additive and order-safe (the seat posture fixture's own recipe;
+  // 5023337f unified the seat lineage's 0007 reference onto this file).
+  await applyDeckDataVersionStampMigration(loadDb);
   for (const statement of ONE_TRIP_SIDE_DDL) {
     await loadDb.query(statement, []);
   }
@@ -171,6 +184,18 @@ async function recordAndSeedPlan(inlineDbPath: string): Promise<RenderPlanEntry[
       .map((s) => ({ sql: s.sql, params: s.params })),
   ).entries;
   expect(planEntries.length, "the recorded plan must be non-trivial").toBeGreaterThan(20);
+  // THE DELIBERATE LEGACY MEMBER (the router-guard pin's posture): a store
+  // built by a recorder predating the acfb1977 exclusion carries the
+  // freshness-stamp read as a plan row. The current filter can no longer
+  // harvest it from a live capture (the gate's stamp statement rides zero
+  // live trips since the stamp-as-column lane — the head column replaced
+  // it), so the legacy member is seeded EXPLICITLY, as the exact (sql,
+  // params) a pre-fix store carried, and the pin proves the router never
+  // serves it.
+  const seededEntries: RenderPlanEntry[] = [
+    ...planEntries,
+    { sql: DECK_DATA_VERSION_STATEMENT, params: [] },
+  ];
 
   const seedDb = new LocalSqliteDriver({ path: inlineDbPath });
   await seedDb.query(RENDER_PLANS_DDL, []);
@@ -181,8 +206,8 @@ async function recordAndSeedPlan(inlineDbPath: string): Promise<RenderPlanEntry[
     )
   ).rows[0]?.id;
   expect(pageId, "the page card must resolve").toBeTypeOf("number");
-  for (let i = 0; i < planEntries.length; i += 100) {
-    const chunk = planEntries.slice(i, i + 100);
+  for (let i = 0; i < seededEntries.length; i += 100) {
+    const chunk = seededEntries.slice(i, i + 100);
     const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
     await seedDb.query(
       `INSERT OR REPLACE INTO one_trip_render_plans (page_id, seq, family, sql, params_json) VALUES ${placeholders}`,
@@ -190,22 +215,25 @@ async function recordAndSeedPlan(inlineDbPath: string): Promise<RenderPlanEntry[
     );
   }
   seedDb.close();
-  return planEntries;
+  return seededEntries;
 }
 
 /** A signed-in boot over one store file, the edge's own per-actor shape
  *  (bunny-edge-session-viewer.ts:183,193-195): fresh RenderEngine over the
- *  shared fetcher, viewer + pageSession set BEFORE the first render. */
+ *  shared fetcher, viewer + pageSession set BEFORE the first render.
+ *  Returns the capture driver EXPLICITLY — FetchEngine.driver is the replay
+ *  router (b28e82fe), so the trip ledger lives on the capture the engine
+ *  was booted over, not on fetcher.driver. */
 async function bootSignedInEngine(
   inlineDbPath: string,
-): Promise<EngineBoot> {
+): Promise<EngineBoot & { capture: TripCapturingDriver }> {
   const driver = new TripCapturingDriver(
     new LocalSqliteDriver({ path: inlineDbPath, readonly: true }),
   );
   const boot = await bootEngine(driver);
   boot.render.viewer = { signedIn: true, actorId: ACTOR_ID };
   boot.render.pageSession = { signedIn: true, actorId: ACTOR_ID };
-  return boot;
+  return { ...boot, capture: driver };
 }
 
 describe("per-viewer seat: a signed-in render of a planned page rides the plan", () => {
@@ -248,7 +276,7 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
       delete process.env.DECKO_ONE_TRIP;
       delete process.env.DECKO_ONE_TRIP_STORE;
       const ladderBoot = await bootSignedInEngine(inlineDbPath);
-      const ladder = ladderBoot.fetcher.driver as unknown as TripCapturingDriver;
+      const ladder = ladderBoot.capture;
       const ladderHtml = await ladderBoot.render.render(PAGE, "open", {});
 
       // Posture guard: the ladder render must actually be signed-in — the
@@ -266,7 +294,7 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
       process.env.DECKO_ONE_TRIP = "1";
       process.env.DECKO_ONE_TRIP_STORE = "inline";
       const seatedBoot = await bootSignedInEngine(inlineDbPath);
-      const seated = seatedBoot.fetcher.driver as unknown as TripCapturingDriver;
+      const seated = seatedBoot.capture;
       const seatedHtml = await seatedBoot.render.render(PAGE, "open", {});
 
       // THE BYTE PIN: the seated signed-in render is the ladder's bytes.
@@ -277,10 +305,22 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
 
       // THE PER-VIEWER RESIDUE MEASUREMENT (the hit ratio): every
       // covered-family live read beyond the plan, classified. Logged ALWAYS
-      // (the receipt's measurement), then pinned.
+      // (the receipt's measurement), then pinned. The plan fold's OWN merged
+      // statements (replay-fold's per-class json_each shapes) are allowed
+      // alongside the plan entries: they execute inside the replay batch and
+      // decompose back to per-entry rows — plan transport, not live residue
+      // (the same allowance the renderplan-replay trip-profile pin makes;
+      // this pin predates the fold and never ran on this lineage until the
+      // fixture fix, so the allowance lands with its first real run).
       const planKeys = new Set(
         planEntries.map((e) => `${e.sql}::${JSON.stringify(e.params)}`),
       );
+      const foldedKeys = new Set(
+        foldRenderPlanEntries(planEntries).statements.map(
+          (s) => `${s.sql}::${JSON.stringify(s.params)}`,
+        ),
+      );
+      for (const k of foldedKeys) planKeys.add(k);
       const coveredLive = seated.statements.filter(
         (s) => isPipelineAbleRenderStatement(s.sql) && !planKeys.has(`${s.sql}::${JSON.stringify(s.params)}`),
       );
@@ -341,9 +381,10 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
       expect(
         seated.trips,
         `the seated signed-in render spent ${seated.trips} round trips ` +
-          `(the signed-in ladder spent ${ladder.trips}); the plan-replay floor is ` +
-          `${SIGNED_IN_FLOOR_TRIPS} (anonymous 5 + role-party + party-bound batches + ` +
-          `the live stamp member) — a higher count means the plan does not cover the signed-in render`,
+          `(the signed-in ladder spent ${ladder.trips}); the measured composed ceiling is ` +
+          `${SIGNED_IN_FLOOR_TRIPS} (anonymous core 4 + the party-bound batches + the help ` +
+          `resolver's count batch — the file's ledger comment names every member) — a higher ` +
+          `count means the plan does not cover the signed-in render`,
       ).toBeLessThanOrEqual(SIGNED_IN_FLOOR_TRIPS);
     },
     600_000,
@@ -373,7 +414,7 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
     process.env.DECKO_ONE_TRIP = "1";
     process.env.DECKO_ONE_TRIP_STORE = "inline";
     const boot = await bootSignedInEngine(inlineDbPath);
-    const capture = boot.fetcher.driver as unknown as TripCapturingDriver;
+    const capture = boot.capture;
     const html1 = await boot.render.render(PAGE, "open", {});
     expect(boot.fetcher.replayRouter.armed).toBe(true);
 
