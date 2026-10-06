@@ -136,6 +136,20 @@ export async function recordRenderPlansForPages(
       };
       report.pages[pageName] = page;
       if (pageId === undefined || pageId <= 0) continue;
+      // RENDER PLAN-BLIND (r5 assembly lane, 2026-10-06 — re-recording
+      // defect): the capture render must ask the page's TRUE cold ask set,
+      // but this deck may already carry plan rows for the page (a
+      // re-record, or a partial earlier build). The seat reads the plan
+      // cell from one_trip_render_plans and ARMS it; an armed plan answers
+      // the render's matched reads inside the router and those answers
+      // never reach the capture driver — the captured set would be the OLD
+      // plan's live residue, and the "new" plan would bake that residue in
+      // (measured: a re-record over an existing plan captured 305
+      // residue-shaped statements for a page whose true cold ask set is
+      // 98 — every key the old plan served went missing from the new
+      // plan). Clearing the page's rows first makes re-recording cold, the
+      // same posture a first recording has always had.
+      await deck.query("DELETE FROM one_trip_render_plans WHERE page_id = ?", [pageId]);
       const capture = new StatementCaptureDriver(deck);
       try {
         // A FRESH ENGINE per page (the cold-render posture the census
