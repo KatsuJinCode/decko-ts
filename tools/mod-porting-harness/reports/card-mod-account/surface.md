@@ -2,16 +2,13 @@
 
 What this mod does (mined from the Ruby gem source, READ-ONLY):
 
-- 32 view(s), 30 event hook(s), 31 seed card(s), 3 config key(s), 3 basket registration(s).
+- 29 view(s), 30 event hook(s), 31 seed card(s), 3 config key(s), 3 basket registration(s).
 - 23 set module file(s); 2 asset file(s); 0 public/ asset file(s).
 
 ## Views
 
 - `closed_account` — , template: :haml — card-mod-account-0.20.0/set/abstract/account_holder.rb:126
 - `account_tab` — do — card-mod-account-0.20.0/set/abstract/account_holder.rb:132
-- `password_reset_email` — card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)
-- `verification_email` — card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)
-- `welcome_email` — card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)
 - `verify_url` — , cache: :never, denial: :blank, perms: :verify_url_ok? do — card-mod-account-0.20.0/set/right/account/views.rb:2
 - `reset_password_url` — , denial: :blank, perms: :reset_password_ok? do — card-mod-account-0.20.0/set/right/account/views.rb:6
 - `token_expiry` — , denial: :blank do — card-mod-account-0.20.0/set/right/account/views.rb:10

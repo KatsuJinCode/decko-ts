@@ -1,4 +1,4 @@
-# format-census-views.rb — the RUBY-TRUTH view census for card-mod-format,
+# view-census-views.rb — the RUBY-TRUTH view census for ANY card-mod gem,
 # built on Ruby's own parser (Ripper, stdlib) instead of the harness's regex
 # miner. This is the independent oracle the harness enumerator is asserted
 # against by
@@ -16,6 +16,12 @@
 # WHAT RUNS. Nothing but Ripper.sexp over the gem's own set/*.rb source. The
 # gem is READ. No Rails boot, no DB, no network, no live-site request.
 #
+# SCOPE. Written for card-mod-format (the class that carried the manufactured
+# rows) but NOT format-specific: the defect it pins is a property of the MINER,
+# not of any one mod, and the same question — is this loop a view loop? — is
+# asked of every set file the harness walks. Running it over
+# card-mod-account is how the account-side rows were adjudicated.
+#
 # THE ENUMERATION RULE (what Ruby actually means by "a view is declared here"):
 #   - `view :name` / `view(:name, opts)` / `view :a, :b` — a literal symbol
 #     first argument. Direct declaration.
@@ -32,13 +38,13 @@
 # and none shadows another), and a shadowed binding would be REPORTED by the
 # `shadowedLoopVars` field rather than silently resolved wrong.
 #
-# Usage: ruby format-census-views.rb <card-mod-format-gem-path>
+# Usage: ruby view-census-views.rb <card-mod-gem-path>
 
 require "json"
 require "ripper"
 
 gem_path = ARGV[0] or abort "usage: ruby #{File.basename(__FILE__)} <card-mod-format-gem-path>"
-abort "not a card-mod-format gem path: #{gem_path}" unless File.basename(gem_path).start_with?("card-mod-format")
+abort "not a card-mod gem path: #{gem_path}" unless File.basename(gem_path).start_with?("card-mod-")
 set_dir = File.join(gem_path, "set")
 abort "set dir not found: #{set_dir}" unless File.directory?(set_dir)
 

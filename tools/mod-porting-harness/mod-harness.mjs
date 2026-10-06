@@ -542,27 +542,46 @@ function mineViews(src, relFile) {
 
   // loop form: `%i[...]`.each / %w[...].each with a block that calls
   // `view <blockvar>` (optionally with a config hash on the same line).
+  //
+  // THE LOOK-AHEAD GATES THE PUSH. A `%i[...]` array is only a list of VIEW
+  // NAMES when the block actually declares views; the same array shape is
+  // used for events (`%i[welcome_email ...].each do |email| event
+  // :"send_#{email}"`), for option walks (`%i[remote method].each do |key|`
+  // in card-mod-format set/all/links.rb:147), and for dispatch loops
+  // (`atom[view] = render(view)`). Pushing the elements of ALL of them as
+  // `view:` rows invented coverage obligations the gem never made — the
+  // ledger was chasing views that do not exist.
+  //
+  // Both call forms are recognized: `view viewname, unknown: true`
+  // (card-mod-comment set/right/discussion.rb:2) and
+  // `view(viewname, unknown: true) { super() }`
+  // (card-mod-api_key set/right/api_key.rb:74, card-mod-list
+  // set/abstract/01_list/html_views.rb:57). Matching only the bare form would
+  // drop eight REAL views on the fix.
   const loopRe = /%[iwa]\[([^\]]+)\][ \t]*\.each[ \t]+do[ \t]*\|([A-Za-z0-9_]+)\|([^\n]*)/g;
   while ((m = loopRe.exec(src)) !== null) {
     const names = m[1].split(/\s+/).filter(Boolean);
     const blockVar = m[2];
     const tail = m[3] ?? "";
-    // look ahead 15 lines for `view <blockvar>`; carry any `unknown:`-style
-    // config text on that call line.
+    // look ahead 15 lines for `view <blockvar>` / `view(<blockvar>`; carry any
+    // `unknown:`-style config text on that call line.
+    const callRe = new RegExp(`^[ \\t]*view[ \\t]*\\(?[ \\t]*${blockVar}\\b`);
     const after = src.slice(m.index, m.index + 2000);
     const lines = after.split("\n").slice(0, 16);
-    const callLine = lines.find((l) =>
-      new RegExp(`^[ \\t]*view[ \\t]+${blockVar}\\b`).test(l),
-    );
+    const callLine = lines.find((l) => callRe.test(l));
+    // No `view` call in the block -> the block declares no views. Skip.
+    if (callLine === undefined) continue;
     let config = (tail.match(/([a-z_]+:\s*[^\s].*)/)?.[1] ?? "").trim() || null;
-    if (callLine) {
-      const cfg = callLine.replace(new RegExp(`^[ \\t]*view[ \\t]+${blockVar}`), "").trim();
-      if (cfg) config = cfg;
-    }
+    // Config stays RAW call-line tail text, exactly as it was before the gate
+    // (", unknown: true do"), so every already-committed row keeps its bytes;
+    // the only addition is dropping a paren form's trailing `)`. Normalizing
+    // this string is a separate change and would rewrite unrelated artifacts.
+    const cfg = callLine.replace(callRe, "").replace(/\)[ \t]*$/, "").trim();
+    if (cfg) config = cfg;
     const line = src.slice(0, m.index).split("\n").length;
     for (const raw of names) {
       const name = raw.replace(/^:/, "");
-      push(name, null, line, true, callLine ? config : config);
+      push(name, null, line, true, config);
     }
   }
   return views;

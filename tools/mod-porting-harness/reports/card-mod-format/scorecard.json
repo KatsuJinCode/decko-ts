@@ -1,12 +1,12 @@
 {
   "mod": "card-mod-format",
   "gem": "card-mod-format-0.20.0",
-  "generatedAt": "2026-10-06T17:46:08.333Z",
+  "generatedAt": "2026-10-06T18:17:23.148Z",
   "totals": {
-    "behaviors": 168,
+    "behaviors": 166,
     "validated": 1,
     "standingNet": 137,
-    "namedRemainder": 30,
+    "namedRemainder": 28,
     "red": 0,
     "uncaptured": 0
   },
@@ -1109,26 +1109,6 @@
       "state": "named-remainder",
       "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - RE-MEASURED 2026-10-06: the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
       "evidence": "no view \"items\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
-    },
-    {
-      "behaviorId": "view:remote",
-      "kind": "view",
-      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - RE-MEASURED 2026-10-06: the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
-      "evidence": "no view \"remote\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
-    },
-    {
-      "behaviorId": "view:method",
-      "kind": "view",
-      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - RE-MEASURED 2026-10-06: the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
-      "evidence": "no view \"method\" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table"
     },
     {
       "behaviorId": "view:feed",

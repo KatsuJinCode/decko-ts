@@ -60,8 +60,7 @@ const ORACLE = join(
   "tools",
   "mod-porting-harness",
   "ruby-oracles",
-  "card-mod-format",
-  "format-census-views.rb",
+  "view-census-views.rb",
 ).replaceAll("\\", "/");
 
 interface RubyViewRow {

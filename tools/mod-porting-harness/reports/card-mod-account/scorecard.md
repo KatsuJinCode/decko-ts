@@ -1,6 +1,6 @@
 # card-mod-account — harness scorecard
 
-Behaviors validated: **6 / 99** (standing-net: 40, named-remainder: 53, RED: 0, uncaptured: 0)
+Behaviors validated: **6 / 96** (standing-net: 40, named-remainder: 50, RED: 0, uncaptured: 0)
 
 State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.
 
@@ -13,9 +13,6 @@ Probe suite: 23 passed / 0 failed (tests/card/mod-loader/card-mod-account-harnes
 | `event:validate_account_holder_name_change` | event | named-remainder | no | - | no event "validate_account_holder_name_change" registration in card-mod-account.ts |
 | `event:generate_token` | event | named-remainder | no | - | no event "generate_token" registration in card-mod-account.ts |
 | `event:set_stamper` | event | named-remainder | no | - | no event "set_stamper" registration in card-mod-account.ts |
-| `view:password_reset_email` | view | named-remainder | no | - | no view "password_reset_email" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:verification_email` | view | named-remainder | no | - | no view "verification_email" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:welcome_email` | view | named-remainder | no | - | no view "welcome_email" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `event:set_default_salt` | event | named-remainder | no | - | no event "set_default_salt" registration in card-mod-account.ts |
 | `event:set_default_status` | event | named-remainder | no | - | no event "set_default_status" registration in card-mod-account.ts |
 | `event:reset_password` | event | named-remainder | no | - | no event "reset_password" registration in card-mod-account.ts |

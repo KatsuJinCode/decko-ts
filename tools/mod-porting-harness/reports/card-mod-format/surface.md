@@ -2,7 +2,7 @@
 
 What this mod does (mined from the Ruby gem source, READ-ONLY):
 
-- 145 view(s), 2 event hook(s), 13 seed card(s), 5 config key(s), 3 basket registration(s).
+- 143 view(s), 2 event hook(s), 13 seed card(s), 5 config key(s), 3 basket registration(s).
 - 40 set module file(s); 16 asset file(s); 0 public/ asset file(s).
 
 ## Views
@@ -113,8 +113,6 @@ What this mod does (mined from the Ruby gem source, READ-ONLY):
 - `status` — , unknown: true, perms: :none do — card-mod-format-0.20.0/set/all/json.rb:29
 - `page` — , cache: :never do — card-mod-format-0.20.0/set/all/json.rb:37
 - `items` — , cache: :never do — card-mod-format-0.20.0/set/all/jsonld.rb:5
-- `remote` — card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)
-- `method` — card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)
 - `feed` — , cache: :never do — card-mod-format-0.20.0/set/all/rss.rb:17
 - `feed_body` — , cache: :never do — card-mod-format-0.20.0/set/all/rss.rb:40
 - `feed_title` — do — card-mod-format-0.20.0/set/all/rss.rb:48
