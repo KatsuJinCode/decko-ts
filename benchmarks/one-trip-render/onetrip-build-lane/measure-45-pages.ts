@@ -4,6 +4,13 @@
 // same counting boundary (one driver.query or driver.batch = one trip), same
 // house comparator (normalizeSlotIds + sha256), OFF and ON postures, fresh
 // engine per page. BEFORE/AFTER numbers for the stamp-as-column slice.
+//
+// LIVE-POSTURE AXIS (the retarget, 2026-10-06): argv[3] selects the
+// store-plans posture — "live" (DECKO_ONE_TRIP_PLANS=0, the deliverable: no
+// plan-table reads anywhere) or "demo" (the stop-gap, default). argv[4] /
+// argv[5] slice the page range [from, to) so one run stays under the
+// two-minute door; each run writes its own OUT and the per-posture summary
+// carries the posture name.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
@@ -18,6 +25,9 @@ const L2_MIRROR = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/l2-plan-
 const MIGRATION_0003 = "C:/localProjects/decko-ts-lane-onetrip-build-2026-10-06/deploy/migrations/0003-deck-data-version-stamp.sql";
 const DECK = `${WORK}/decks/onetrip-build-lane-45p.sqlite3`;
 const OUT = process.argv[2] ?? `${WORK}/onetrip-build-lane-measure-report.json`;
+const PLANS_POSTURE = process.argv[3] === "live" ? "live" : "demo";
+const PAGE_FROM = Number(process.argv[4] ?? "0");
+const PAGE_TO = Number(process.argv[5] ?? String(Number.MAX_SAFE_INTEGER));
 
 const require = createRequire("C:/localProjects/decko-ts-lane-onetrip-build-2026-10-06/package.json");
 const Database = require("better-sqlite3");
@@ -94,12 +104,16 @@ type Posture = "OFF" | "ON";
 async function renderOnce(posture: Posture, page: string) {
   const prevOne = process.env.DECKO_ONE_TRIP;
   const prevStore = process.env.DECKO_ONE_TRIP_STORE;
+  const prevPlans = process.env.DECKO_ONE_TRIP_PLANS;
   if (posture === "OFF") {
     delete process.env.DECKO_ONE_TRIP;
     delete process.env.DECKO_ONE_TRIP_STORE;
+    delete process.env.DECKO_ONE_TRIP_PLANS;
   } else {
     process.env.DECKO_ONE_TRIP = "1";
     process.env.DECKO_ONE_TRIP_STORE = "inline";
+    if (PLANS_POSTURE === "live") process.env.DECKO_ONE_TRIP_PLANS = "0";
+    else delete process.env.DECKO_ONE_TRIP_PLANS;
   }
   const counter = new CountingDriver(new LocalSqliteDriver({ path: DECK, readonly: true }));
   const t0 = Date.now();
@@ -112,6 +126,7 @@ async function renderOnce(posture: Posture, page: string) {
       trips: counter.trips,
       statements: counter.statements,
       families: familyHistogram(counter.captured),
+      planTableReads: counter.captured.filter((s) => /one_trip_render_plans/.test(s.sql)).length,
       htmlBytes: Buffer.byteLength(html, "utf8"),
       htmlNormalizedSha256: createHash("sha256").update(normalizeSlotIds(html), "utf8").digest("hex"),
       localWallMs: Date.now() - t0,
@@ -124,6 +139,7 @@ async function renderOnce(posture: Posture, page: string) {
       trips: counter.trips,
       statements: counter.statements,
       families: familyHistogram(counter.captured),
+      planTableReads: counter.captured.filter((s) => /one_trip_render_plans/.test(s.sql)).length,
       htmlBytes: 0,
       htmlNormalizedSha256: "",
       localWallMs: Date.now() - t0,
@@ -134,28 +150,31 @@ async function renderOnce(posture: Posture, page: string) {
     else process.env.DECKO_ONE_TRIP = prevOne;
     if (prevStore === undefined) delete process.env.DECKO_ONE_TRIP_STORE;
     else process.env.DECKO_ONE_TRIP_STORE = prevStore;
+    if (prevPlans === undefined) delete process.env.DECKO_ONE_TRIP_PLANS;
+    else process.env.DECKO_ONE_TRIP_PLANS = prevPlans;
   }
 }
 
 // ---- run -------------------------------------------------------------------
+const runPages = pageNames.slice(PAGE_FROM, PAGE_TO);
 const rows: Awaited<ReturnType<typeof renderOnce>>[] = [];
-for (const page of pageNames) {
+for (const page of runPages) {
   for (const posture of ["OFF", "ON"] as Posture[]) {
     const r = await renderOnce(posture, page);
     rows.push(r);
     console.log(
-      `${page.padEnd(40)} ${posture.padEnd(4)} trips=${String(r.trips).padStart(4)} stmts=${String(r.statements).padStart(5)} bytes=${String(r.htmlBytes).padStart(7)} wall=${String(r.localWallMs).padStart(6)}ms ${r.error ?? ""}`,
+      `${page.padEnd(40)} ${posture.padEnd(4)} trips=${String(r.trips).padStart(4)} stmts=${String(r.statements).padStart(5)} planReads=${String(r.planTableReads).padStart(3)} bytes=${String(r.htmlBytes).padStart(7)} wall=${String(r.localWallMs).padStart(6)}ms ${r.error ?? ""}`,
     );
   }
 }
 
-const perPage = pageNames.map((page) => {
+const perPage = runPages.map((page) => {
   const off = rows.find((r) => r.page === page && r.posture === "OFF")!;
   const on = rows.find((r) => r.page === page && r.posture === "ON")!;
   return {
     page,
     off: { trips: off.trips, statements: off.statements, bytes: off.htmlBytes, sha: off.htmlNormalizedSha256, families: off.families, wallMs: off.localWallMs, error: off.error },
-    on: { trips: on.trips, statements: on.statements, bytes: on.htmlBytes, sha: on.htmlNormalizedSha256, families: on.families, wallMs: on.localWallMs, error: on.error },
+    on: { trips: on.trips, statements: on.statements, bytes: on.htmlBytes, sha: on.htmlNormalizedSha256, families: on.families, wallMs: on.localWallMs, planTableReads: on.planTableReads, error: on.error },
     byteIdenticalOffVsOn: off.htmlNormalizedSha256 !== "" && off.htmlNormalizedSha256 === on.htmlNormalizedSha256,
     oneTripReached: on.trips === 1 && on.error === null,
   };
@@ -166,9 +185,12 @@ const oneTrip = perPage.filter((p) => p.oneTripReached).length;
 const summary = {
   deck: DECK,
   lineage: "lane-onetrip-build-2026-10-06 (worktree decko-ts-lane-onetrip-build-2026-10-06)",
-  pages: pageNames.length,
+  plansPosture: PLANS_POSTURE,
+  pageRange: [PAGE_FROM, PAGE_TO],
+  pages: runPages.length,
   byteIdenticalPages: identical,
   oneTripPages: oneTrip,
+  planTableReadsOnTotal: perPage.reduce((a, p) => a + (p.on.planTableReads ?? 0), 0),
   tripsOnHistogram: perPage.reduce<Record<number, number>>((acc, p) => {
     acc[p.on.trips] = (acc[p.on.trips] ?? 0) + 1;
     return acc;

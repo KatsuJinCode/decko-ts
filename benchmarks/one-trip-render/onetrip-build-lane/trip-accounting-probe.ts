@@ -9,8 +9,8 @@ import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../s
 import { bootEngine } from "../../../tests/card/one-trip/one-trip-fixture.js";
 
 const DECK =
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/one-trip-per-page-work/decks/arch-demo-45p-freshness-stamped.sqlite3";
-const PAGES = process.argv.slice(2).length ? process.argv.slice(2) : ["aikido", "Aikido_in_Education", "Laundry"];
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/one-trip-per-page-work/decks/onetrip-build-lane-45p.sqlite3";
+const PAGES = process.argv.slice(2).length ? process.argv.slice(2) : ["Laundry", "Home"];
 
 const require = createRequire("C:/localProjects/decko-ts-lane-onetrip-build-2026-10-06/package.json");
 void require;
