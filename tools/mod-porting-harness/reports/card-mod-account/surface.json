@@ -35,7 +35,7 @@
     },
     {
       "file": "set/right/account/events.rb",
-      "views": 3,
+      "views": 0,
       "events": 8,
       "baskets": 0
     },
@@ -179,30 +179,6 @@
       "name": "set_stamper",
       "options": ", :prepare_to_validate do",
       "source": "card-mod-account-0.20.0/set/all/account.rb:20"
-    },
-    {
-      "id": "view:password_reset_email",
-      "kind": "view",
-      "name": "password_reset_email",
-      "alias": null,
-      "config": null,
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)"
-    },
-    {
-      "id": "view:verification_email",
-      "kind": "view",
-      "name": "verification_email",
-      "alias": null,
-      "config": null,
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)"
-    },
-    {
-      "id": "view:welcome_email",
-      "kind": "view",
-      "name": "welcome_email",
-      "alias": null,
-      "config": null,
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)"
     },
     {
       "id": "event:set_default_salt",

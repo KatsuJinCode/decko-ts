@@ -1,12 +1,12 @@
 {
   "mod": "card-mod-account",
   "gem": "card-mod-account-0.20.0",
-  "generatedAt": "2026-10-03T21:43:10.340Z",
+  "generatedAt": "2026-10-06T18:17:01.547Z",
   "totals": {
-    "behaviors": 99,
+    "behaviors": 96,
     "validated": 6,
     "standingNet": 40,
-    "namedRemainder": 53,
+    "namedRemainder": 50,
     "red": 0,
     "uncaptured": 0
   },
@@ -69,36 +69,6 @@
       "state": "named-remainder",
       "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
       "evidence": "no event \"set_stamper\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "view:password_reset_email",
-      "kind": "view",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32; the email-template surface the email lane owns), not a census-gap view",
-      "evidence": "no view \"password_reset_email\" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table"
-    },
-    {
-      "behaviorId": "view:verification_email",
-      "kind": "view",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32; the email-template surface the email lane owns), not a census-gap view",
-      "evidence": "no view \"verification_email\" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table"
-    },
-    {
-      "behaviorId": "view:welcome_email",
-      "kind": "view",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:32 (loop-declared)",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32; the email-template surface the email lane owns), not a census-gap view",
-      "evidence": "no view \"welcome_email\" registration in card-mod-account.ts, any other mod manifest, or the engine HTML_VIEWS table"
     },
     {
       "behaviorId": "event:set_default_salt",

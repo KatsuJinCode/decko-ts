@@ -137,7 +137,7 @@
     },
     {
       "file": "set/all/links.rb",
-      "views": 2,
+      "views": 0,
       "events": 0,
       "baskets": 0
     },
@@ -1110,22 +1110,6 @@
       "alias": null,
       "config": ", cache: :never do",
       "source": "card-mod-format-0.20.0/set/all/jsonld.rb:5"
-    },
-    {
-      "id": "view:remote",
-      "kind": "view",
-      "name": "remote",
-      "alias": null,
-      "config": null,
-      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)"
-    },
-    {
-      "id": "view:method",
-      "kind": "view",
-      "name": "method",
-      "alias": null,
-      "config": null,
-      "source": "card-mod-format-0.20.0/set/all/links.rb:147 (loop-declared)"
     },
     {
       "id": "view:feed",

@@ -1,6 +1,6 @@
 # card-mod-format — harness scorecard
 
-Behaviors validated: **1 / 168** (standing-net: 137, named-remainder: 30, RED: 0, uncaptured: 0)
+Behaviors validated: **1 / 166** (standing-net: 137, named-remainder: 28, RED: 0, uncaptured: 0)
 
 State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.
 
@@ -117,15 +117,13 @@ Probe suite: 54 passed / 0 failed (tests/card/mod-loader/card-mod-format-harness
 | `view:status` | view | registered-standing-net | yes | - | view "status" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-follow.ts) - the surface mod's override dispatches thr |
 | `view:page` | view | named-remainder | no | - | no view "page" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:items` | view | named-remainder | no | - | no view "items" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:remote` | view | named-remainder | no | - | no view "remote" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:method` | view | named-remainder | no | - | no view "method" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed` | view | named-remainder | no | - | no view "feed" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_body` | view | named-remainder | no | - | no view "feed_body" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_title` | view | named-remainder | no | - | no view "feed_title" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_item` | view | named-remainder | no | - | no view "feed_item" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_item_description` | view | named-remainder | no | - | no view "feed_item_description" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
 | `view:feed_description` | view | named-remainder | no | - | no view "feed_description" registration in card-mod-format.ts, any other mod manifest, or the engine HTML_VIEWS table |
-| `view:comment_box` | view | registered-standing-net | yes | - | view "comment_box" registered in ANOTHER mod's manifest (src/card/mod-loader/mods/card-mod-comment.ts) - the surface mod's override dispatch |
+| `view:comment_box` | view | registered-standing-net | yes | - | view "comment_box" registered (engine HTML_VIEWS) |
 | `view:menu` | view | registered-standing-net | yes | - | view "menu" registered (engine HTML_VIEWS) |
 | `view:open` | view | registered-standing-net | yes | - | view "open" registered (engine HTML_VIEWS) |
 | `view:content` | view | registered-standing-net | yes | - | view "content" registered (engine HTML_VIEWS) |
@@ -168,7 +166,7 @@ Probe suite: 54 passed / 0 failed (tests/card/mod-loader/card-mod-format-harness
 | `seed:uri` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/core-admin-runtime.ts |
 | `seed:head` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-edit.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
-| `seed:title` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-bootstrap.ts |
+| `seed:title` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:credit` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/core-admin-runtime.ts |
 | `seed:noindex` | seed | named-remainder | no | - | no TS registration naming "noindex" |
 | `config:configurations` | config | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-ace_editor.ts |
