@@ -20,11 +20,17 @@ import type { Actor } from "../../../src/card/actions/types.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the same splitter as the
  *  fetch and render storage streams — the DDL carries no ";" inside
- *  literals). */
+ *  literals). Trigger-aware since the deck_data_version freshness stamp
+ *  (db/schema.sqlite.sql, [ENGINE-FRESHNESS]): a CREATE TRIGGER body carries
+ *  ";" before its closing "END;" — while inside a body, ";" does not
+ *  terminate the statement and the body ends at the bare word END. Kept in
+ *  lockstep with the render and fetch streams' copies. */
+
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -42,7 +48,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;

@@ -276,6 +276,42 @@ export class DbLexicon {
     }
   }
 
+  /**
+   * THE REQUEST-LOCAL DEAD SET, simple-key arm. Whether the cache HOLDS an
+   * entry for this key whose value is not an id - i.e. a negative the
+   * database already gave.
+   *
+   * WHY THIS IS A QUESTION AND NOT A CACHE READ. The temp/shared pair is
+   * asked directly, in the order `cacheFetch` uses and WITHOUT its
+   * write-back: `lexEntryKnown` (the wave's own skip gate) does the same,
+   * and the hazard its doc names (lexicon.ts above) is exactly a miss that
+   * gets MATERIALIZED into the entry this method reads. A held entry is an
+   * answer somebody asked for; an eviction or a cold key is NOT held, and
+   * this returns false for it - the caller then asks the database, which is
+   * the correct thing to do for a key nobody has answered.
+   *
+   * WHO WRITES THE NEGATIVES. `primeIdsByKey` (seatNamesByWave's asked-and-
+   * missed derivation, render.ts:2861-2867) writes `undefined` for every
+   * simple key no row of any round answered; `lexToId`'s own cacheFetch
+   * writes the same for a key its point query missed. Both are database
+   * answers, and both are scoped to the engine lifetime, which is the
+   * lifetime the render's other caches already assume (seatNamesByWave's
+   * own ask-memory doc: "the deck is static per engine lifetime").
+   *
+   * A `L-` cache key holds an id or `undefined` and nothing else, so
+   * "not a number" IS "negative".
+   */
+  heldKeyNegative(key: string): boolean {
+    const cacheKeyValue = cacheKey(key);
+    if (this.cache.temp.exist(cacheKeyValue)) {
+      return typeof this.cache.temp.read(cacheKeyValue) !== "number";
+    }
+    if (this.cache.shared !== undefined) {
+      return typeof this.cache.shared.read(cacheKeyValue) !== "number";
+    }
+    return false;
+  }
+
   /** db-roundtrip-elimination lane (W2): prime one lex_to_id entry by LEX -
    *  the pair form (or the key form via primeIdsByKey). Writes exactly what
    *  lexToId's cacheFetch would write for the same lex - the id, or the

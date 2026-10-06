@@ -70,6 +70,13 @@ import {
 } from "./render/views.js";
 import { RULE_TYPE_IDS_FOR_PRELOAD } from "./render/virtual-rule-card.js";
 import { headViewReadStatement } from "./render/head-views.js";
+import {
+  bootBundleForVersion,
+  bootCacheIsWarm,
+  readBootContentVersion,
+  storeBootBundle,
+  type BootBundle,
+} from "./render/boot-cache.js";
 import type { SearchResultPaging } from "./render/search-paging.js";
 import {
   ModLoader,
@@ -232,6 +239,17 @@ export { HTML_VIEWS };
 export const DECK_DATA_VERSION_STATEMENT =
   'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
 export type { SettingClassWithRules } from "./render/format.js";
+
+/** One entry of the engine's cold closure batch: either a statement to hand
+ *  the storage layer, or the RESULT SET the content-version boot cache is
+ *  serving in its place (render/boot-cache.ts). Both occupy a slot, and a
+ *  slot's position is what the fixed-index parsers in render() read — which
+ *  is why a hit and a miss produce the same foldedResults array. */
+type ColdBatchSlot = SQLStatement | { readonly cachedResult: SQLQueryResult };
+
+function isCachedColdSlot(slot: ColdBatchSlot): slot is { readonly cachedResult: SQLQueryResult } {
+  return "cachedResult" in slot;
+}
 
 const SEARCH_TYPE_CODE = "search_type";
 
@@ -805,7 +823,24 @@ export class RenderEngine implements RenderEngineLike {
     if (oneTripWantsPayload()) {
       await seatOneTripPayloadForRender(cardName, this.fetcher);
     }
-    const record = await this.fetcher.fetchByName(cardName);
+    // THE BOOT-CACHE VERSION PROBE (render/boot-cache.ts). ONE statement, and
+    // only on this engine's FIRST render, and only once the process already
+    // holds a boot bundle to compare against: with nothing to compare, a probe
+    // cannot hit, so a process's first engine reads the boot read-set from
+    // storage exactly as it always has and pays nothing extra.
+    //
+    // It rides the root fetch's round trip (Promise.all below): +1 statement,
+    // +0 round trips. It is the check the cache's correctness rests on — a
+    // bundle is served only when the committed-write stamp it was read at is
+    // still the stamp storage reports — so it is NOT skippable, and a
+    // database with no stamp throws here rather than rendering.
+    const bootProbe =
+      !this.bootProbeIssued && bootCacheIsWarm(this.fetcher.driver)
+        ? readBootContentVersion(this.fetcher.driver)
+        : undefined;
+    this.bootProbeIssued = true;
+    const [record] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
+    if (bootProbe !== undefined) this.bootProbeVersion = await bootProbe;
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
@@ -842,9 +877,35 @@ export class RenderEngine implements RenderEngineLike {
     const permissionStatements = permissionCold ? readPermissionStatements(this.viewer) : [];
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
-      const coldStatements = [
+      // THE BOOT READ-SET, OR THE CONTENT-VERSION CACHE'S COPY OF IT.
+      //
+      // Three of the entries below are FIXED statements whose rows depend on
+      // nothing but the deck's content — the codename codehash, the template
+      // type-name fold and the head read-set. When the process holds a bundle
+      // whose committed-write version still matches storage
+      // (render/boot-cache.ts), those three entries carry the bundle's RESULT
+      // SETS instead of statements: they cost zero queries and are consumed
+      // by the same parsers a live result is consumed by, so nothing
+      // downstream can tell the difference.
+      //
+      // WHY AN ARRAY OF SLOTS RATHER THAN A CONDITIONAL STATEMENTS ARRAY:
+      // the parsers below read folded results by FIXED INDEX
+      // (parseRuleTypeIds by permissionStatementCount, parseStructureContents
+      // by a slice, the head by its own arithmetic). Splicing the cached
+      // results back at their original positions is what keeps those indices
+      // true — a hit and a miss then produce the same foldedResults array,
+      // and the index comments below stay accurate without restating them.
+      const bootHit =
+        this.bootProbeVersion === undefined
+          ? undefined
+          : bootBundleForVersion(this.fetcher.driver, this.bootProbeVersion);
+      const coldSlots: ColdBatchSlot[] = [
         ...permissionStatements,
-        ...(ruleTypesCold ? [this.fetcher.codenames.codehashStatement()] : []),
+        ...(ruleTypesCold
+          ? bootHit !== undefined
+            ? [{ cachedResult: bootHit.codehash }]
+            : [this.fetcher.codenames.codehashStatement()]
+          : []),
         // The *structure rule universe (one statement; the structured-content
         // resolution reads it as pure memory afterwards) + the *default rule
         // universe (the new-child type source, same statement shape).
@@ -865,12 +926,20 @@ export class RenderEngine implements RenderEngineLike {
         // universe rows first, so this is a self-contained JOIN). Rides the
         // cold batch: +1 statement, +0 round trips (the p20-email
         // prelude-prime precedent).
-        ...(structureCold ? [templateTypeNameStatement()] : []),
+        ...(structureCold
+          ? bootHit !== undefined
+            ? [{ cachedResult: bootHit.typeNames }]
+            : [templateTypeNameStatement()]
+          : []),
         // The head read-set, appended after every slot the parsers above
         // index into, so the head's index is stable at
         // permissionStatements.length + (ruleTypesCold ? 1 : 0)
         //                             + (structureCold ? 3 : 0).
-        ...(headReadsCold ? [headViewReadStatement()] : []),
+        ...(headReadsCold
+          ? bootHit !== undefined
+            ? [{ cachedResult: bootHit.headReads }]
+            : [headViewReadStatement()]
+          : []),
         // The freshness-stamp baseline rides LAST: the fixed-index parsers
         // above (permission by 0..n, structure by slice) read only the
         // prefix, so appending is fold-safe (same shape as the R17 removal
@@ -882,6 +951,9 @@ export class RenderEngine implements RenderEngineLike {
           ? [{ sql: DECK_DATA_VERSION_STATEMENT, params: [] as unknown[] }]
           : []),
       ];
+      const coldStatements = coldSlots.filter(
+        (slot): slot is SQLStatement => !isCachedColdSlot(slot),
+      );
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
@@ -899,7 +971,16 @@ export class RenderEngine implements RenderEngineLike {
         ...(coldStatements.length > 0 ? { additionalStatements: coldStatements } : {}),
       });
       this.lastPrefetch = stats;
-      foldedResults = stats.additionalResults;
+      // Splice the cached results back beside the executed ones, in slot
+      // order, so `foldedResults` has exactly the shape every parser below
+      // indexes by — whether this boot was a hit or a miss.
+      {
+        const executed = stats.additionalResults;
+        let cursor = 0;
+        foldedResults = coldSlots.map((slot) =>
+          isCachedColdSlot(slot) ? slot.cachedResult : (executed as SQLQueryResult[])[cursor++],
+        );
+      }
       // The rule ids must be memoized BEFORE enrichment: enrichAndStore
       // computes set keys (the RULE pattern's applies?) synchronously from
       // them. Sliced past the permission statements the batch also carried.
@@ -934,7 +1015,9 @@ export class RenderEngine implements RenderEngineLike {
       // the parsers above occupy: permission + codename + both universes +
       // template type-name + head read-set (index recomputed for the
       // composed batch in the lineage-reconciliation lane; the freshness
-      // lane's original +2 counted only the two universe statements).
+      // lane's original +2 counted only the two universe statements). A
+      // boot-cache hit splices the bundle's rows into the head slot but does
+      // not move the stamp's index (the splice preserves slot order).
       if (stampCold) {
         this.parseDeckDataVersion(
           foldedResults,
@@ -944,8 +1027,27 @@ export class RenderEngine implements RenderEngineLike {
             (headReadsCold ? 1 : 0),
         );
       }
+      // HAND THE BOOT READ-SET TO THE PROCESS CACHE, on the boot that
+      // actually read it. A miss is the only path that reaches here with real
+      // rows; a hit spliced the bundle's rows in and has nothing new to
+      // store. `version` is the probe's answer when this engine ran one, and
+      // undefined when the process held no bundle yet — which leaves the
+      // stored bundle PROVISIONAL (never served), so the next engine's probe
+      // is what versions it.
+      if (bootHit === undefined && ruleTypesCold && structureCold && headReadsCold) {
+        storeBootBundle(this.bootBundleFrom(foldedResults, {
+          codehashIndex: permissionStatements.length,
+          typeNamesIndex: permissionStatements.length + (ruleTypesCold ? 1 : 0) + 2,
+          headReadsIndex:
+            permissionStatements.length + (ruleTypesCold ? 1 : 0) + (structureCold ? 3 : 0),
+        }));
+      }
       // The root itself may not be in the walked set (already cached).
       await this.enrichAndStore(record);
+      // The probe is spent: it describes the deck as of THIS render's start,
+      // and letting a later render reuse it would let a bundle outlive the
+      // check that admitted it.
+      this.bootProbeVersion = undefined;
     }
     if (ruleTypesCold) {
       // Warm-closure FIRST render: the fold above never ran (the batch is
@@ -5048,6 +5150,35 @@ export class RenderEngine implements RenderEngineLike {
    *  memoized prepare pass uses, so a warm render pays zero round trips
    *  and does not re-add the statement to a batch. */
   private headReadsWarmed = false;
+
+  /** The content version the boot-cache probe read at the top of this
+   *  render, when it ran one. UNDEFINED means no probe: either this engine
+   *  has already spent its one probe, or the process held no boot bundle to
+   *  compare against. The cold batch consumes and clears it. */
+  private bootProbeVersion: number | undefined;
+
+  /** The boot-cache probe runs at most once per engine — it answers "is the
+   *  process bundle still current?", which is a question about the deck at
+   *  the start of a render, not a per-render gate. */
+  private bootProbeIssued = false;
+
+  /** Assemble the process boot bundle from this cold batch's folded
+   *  results. The three indices are the same fixed indices the parsers above
+   *  use; a MISS is the only caller, so every index here points at a result
+   *  storage actually returned. */
+  private bootBundleFrom(
+    folded: SQLQueryResult[] | undefined,
+    indices: { codehashIndex: number; typeNamesIndex: number; headReadsIndex: number },
+  ): BootBundle {
+    const empty: SQLQueryResult = { rows: [], rowsAffected: 0 };
+    return {
+      version: this.bootProbeVersion,
+      driver: this.fetcher.driver,
+      codehash: folded?.[indices.codehashIndex] ?? empty,
+      typeNames: folded?.[indices.typeNamesIndex] ?? empty,
+      headReads: folded?.[indices.headReadsIndex] ?? empty,
+    };
+  }
 
   /**
    * THE ASYNC-VIEW SEAM: warm the cards the head views read, so their

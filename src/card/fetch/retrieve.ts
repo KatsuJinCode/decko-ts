@@ -256,6 +256,39 @@ export async function retrieveFromDb(
 
   if (mark.kind === "name" && mark.name.isSimple) {
     // { key: mark_value } - mark_value is mark.key (retrieve.rb:54)
+    //
+    // THE REQUEST-LOCAL DEAD SET (fold cluster 3). A simple-name mark is the
+    // ONE fetch path that consults `cards` by key directly, so it is also
+    // the one path a primed lexicon negative cannot stop - the residue
+    // registry says so verbatim (render-plan.ts#point-row-by-key: "so no
+    // lexicon negative can stop them"). That made it the only cluster-3 arm
+    // with no ceiling at all: measured over the 50-page demo surface, every
+    // one of the 1,295 `WHERE key = ?` statements reads a key the request
+    // had not read before (repeats = 0 on every page), so memoisation wins
+    // nothing, and 448 of them are re-asks of keys the render ALREADY
+    // answered in a batched wave.
+    //
+    // PROVABLY ROW-SET IDENTICAL. `SELECT * FROM cards WHERE key = ?
+    // [AND trash = 0] LIMIT 1` returns the row iff a non-trashed row with
+    // that key exists. `heldKeyNegative` is true only when this engine
+    // HOLDS a `L-<key>` entry that is not an id, and the only writers of
+    // such an entry are database answers (lexicon.primeIdsByKey over
+    // seatNamesByWave's asked-and-missed set, and lexToId's own cacheFetch
+    // over its point-query miss). A negative therefore means the row does
+    // not exist, and the statement would have returned the same empty
+    // result it is skipped for.
+    //
+    // TWO GUARDS, both load-bearing:
+    //  - lookInTrash: the primed negatives come from `trash = 0`
+    //    statements, so they say nothing about a TRASHED row. A
+    //    look_in_trash read wants that row and still asks.
+    //  - a cold or EVICTED key is not held, so heldKeyNegative is false
+    //    and the read asks - the safe direction. (Within_key_counts resets
+    //    the temp cache at 10,000 keys, and a reset can only make this
+    //    fold ask MORE, never less.)
+    if (opts.lookInTrash !== true && lexicon.heldKeyNegative(mark.name.key)) {
+      return { row: undefined, freshFromDb: false };
+    }
     const result = await driver.query<CardsRow>(
       `SELECT * FROM cards WHERE key = ?${trashClause} LIMIT 1`,
       [mark.name.key],
