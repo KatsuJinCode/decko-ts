@@ -19,8 +19,9 @@
 //    (fixtures/scanjson-key-discrimination-edge-battery.json, captured from
 //    the old implementation on escaped/unicode/line-terminator/dangling-
 //    backslash edge keys plus the pathological string-value class at
-//    old-feasible sizes n<=12 - the old engine's own outputs, so any drift
-//    here is a behavior change, not just a speed change).
+//    old-feasible sizes (n<=12, including recorded n=4/8/12 captures of the
+//    exact shape the time pins below use) - the old engine's own outputs,
+//    so any drift here is a behavior change, not just a speed change).
 // 2. TIME: the pathological string-value shape at n=28 (~2^27 branches for
 //    the old engine; measured 2.0 s on the recording machine) must return
 //    in bounded time with the correct string-group bytes.
@@ -49,7 +50,9 @@ function loadBattery(): Record<string, BatteryEntry> {
 // Mirrors the scanner's private wrapText/styleFor through the PUBLIC alpha
 // table, so the expected bytes here are built from the same oracle-pinned
 // style source as the scanner (coderay-byte-identity pins those bytes
-// against the Ruby captures independently).
+// against the Ruby captures independently). wrapText applies coderayEscape
+// exactly like the scanner's private helper - the original pin omitted the
+// escape and its coupling check then failed on `&` vs `&amp;`.
 function styleFor(kind: string): string | undefined {
   for (const entry of ALPHA_STYLES) if (entry.kind === kind) return entry.style;
   return undefined;
@@ -57,27 +60,29 @@ function styleFor(kind: string): string | undefined {
 
 function wrapText(text: string, kind: string): string {
   const style = styleFor(kind);
-  return style === undefined ? text : `<span style="${style}">${text}</span>`;
+  const escaped = coderayEscape(text);
+  return style === undefined ? escaped : `<span style="${style}">${escaped}</span>`;
 }
 
-// The group-scoped alpha rules are documented (and oracle-pinned) on the
-// scanner itself: .string group/delimiter/content, alpha.rb:122-125.
-const STRING_GROUP_STYLE = "background-color:hsla(0,100%,50%,0.05)";
-const STRING_DELIM_STYLE = "color:#710";
-const STRING_CONTENT_STYLE = "color:#D20";
-
-function expectedStringGroupScan(innerRun: string, tail: string): string {
-  const openGroup = `<span style="${STRING_GROUP_STYLE}">`;
-  const delim = `<span style="${STRING_DELIM_STYLE}">${coderayEscape('"')}</span>`;
-  return (
-    "{" +
-    openGroup +
-    delim +
-    `<span style="${STRING_CONTENT_STYLE}">${coderayEscape(innerRun)}</span>` +
-    delim +
-    "</span>" +
-    tail
-  );
+// The pathological-shape expected bytes come from the OLD ENGINE ITSELF, not
+// from hand-modeled spans: the battery records old-engine outputs for the
+// same shape at old-feasible n=12, and the run-length splice (replace the
+// 12-a content run with an n-a run) was machine-verified against the
+// scanner at every pinned size - a plain ASCII run emits one content token
+// regardless of length, so nothing else in the output can move. The
+// original pin hand-modeled the tail ` x}` as raw bytes; the real scanners
+// (old and new alike) wrap a non-structural char after a string as an
+// :error token, so those hand-built expectations were wrong and started
+// firing only once the time assertion stopped failing first.
+function expectedPathologicalOutput(run: number): string {
+  const n12 = loadBattery()["pathological string-value run n=12 (old engine capture)"];
+  const out12 = n12.output;
+  const twelve = "a".repeat(12);
+  const first = out12.indexOf(twelve);
+  if (first === -1 || first !== out12.lastIndexOf(twelve)) {
+    throw new Error("battery n=12 record does not carry a unique 12-a content run");
+  }
+  return out12.replace(twelve, "a".repeat(run));
 }
 
 describe("scanJson key discrimination: pre-fix battery byte-identity", () => {
@@ -106,7 +111,7 @@ describe("scanJson key discrimination: pathological string-value shape returns i
     // Time first: at the pre-fix shape this is the assertion that fails
     // (the old engine was still enumerating at ~2 s here).
     expect(elapsedMs).toBeLessThan(500);
-    expect(out).toBe(expectedStringGroupScan("a".repeat(RUN), ` x}`));
+    expect(out).toBe(expectedPathologicalOutput(RUN));
   });
 
   it("string value run stays a string group as it grows (no classification drift, fast)", () => {
@@ -115,7 +120,7 @@ describe("scanJson key discrimination: pathological string-value shape returns i
       const out = scanJson(`{"${"a".repeat(run)}" x}`);
       const elapsedMs = performance.now() - t0;
       expect(elapsedMs).toBeLessThan(500);
-      expect(out).toBe(expectedStringGroupScan("a".repeat(run), ` x}`));
+      expect(out).toBe(expectedPathologicalOutput(run));
     }
   });
 
@@ -148,14 +153,24 @@ describe("scanJson key discrimination: pathological string-value shape returns i
 });
 
 // Guard the mirror helpers themselves: if someone changes the alpha table's
-// string-group rules, the expected-bytes builder above must follow - this
-// assertion makes that coupling loud instead of letting the pathological pin
-// silently compare against stale constants.
+// string-group rules or the escape behavior, the mirrored helpers above must
+// follow - these assertions make that coupling loud instead of letting the
+// pins silently compare against stale helpers.
 describe("pin helper coupling", () => {
-  it("alpha table agrees with the pinned string-group constants", () => {
-    expect(wrapText("&", "error")).toBe(`<span style="${styleFor("error")}">&amp;</span>`);
-    expect(STRING_GROUP_STYLE).toBe("background-color:hsla(0,100%,50%,0.05)");
-    expect(STRING_DELIM_STYLE).toBe("color:#710");
-    expect(STRING_CONTENT_STYLE).toBe("color:#D20");
+  it("alpha table agrees with the scanner's string-group constants", () => {
+    // alpha.rb group-scoped rules as documented (and oracle-pinned) on the
+    // scanner itself: .string group/delimiter/content, json.ts GROUP_SCOPED.
+    const stringGroup = "background-color:hsla(0,100%,50%,0.05)";
+    const stringContent = "color:#D20";
+    const fixture = readFileSync(
+      new URL("./real-deck-card-53-tinymce-expected-scan-output.html", FIXTURE_DIR),
+      "utf8",
+    );
+    // the real-content fixture is old-behavior-recorded bytes: its string
+    // groups must carry exactly the documented group/content styles
+    expect(fixture).toContain(`<span style="${stringGroup}">`);
+    expect(fixture).toContain(`<span style="${stringContent}">`);
+    // wrapText mirrors the scanner's private helper, escape included
+    expect(wrapText("&", "error")).toBe(`<span style="${styleFor("error")}">${coderayEscape("&")}</span>`);
   });
 });

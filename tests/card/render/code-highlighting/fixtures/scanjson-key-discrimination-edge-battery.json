@@ -202,5 +202,17 @@
   "string-value-plain-run-12": {
     "input": "{\"aaaaaaaaaaaa\" x}",
     "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "pathological string-value run n=4 (old engine capture)": {
+    "input": "{\"aaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "pathological string-value run n=8 (old engine capture)": {
+    "input": "{\"aaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "pathological string-value run n=12 (old engine capture)": {
+    "input": "{\"aaaaaaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
   }
 }

@@ -83,6 +83,58 @@ function groupInner(kind: "string" | "key", token: "content" | "char", text: str
   return style === undefined ? `<span>${escaped}</span>` : `<span style="${style}">${escaped}</span>`;
 }
 
+/** Whether the JSON string body starting at `start` (the char just after an
+ *  opening quote) closes at an unescaped quote whose following characters
+ *  are only whitespace up to a colon - i.e. the string is a KEY, not a
+ *  value. Single pass, no allocation, no regex backtracking possible.
+ *
+ *  This answers exactly what json.rb:41's key regex
+ *  `/^(?:[^\\"]+|\\.)*"\s*:/` answers - and the old form was this port's
+ *  one catastrophic-backtracking hazard: its star's alternatives overlap
+ *  (`[^\\"]+` consumes 1..k chars, `\\.` also starts at a backslash), so on
+ *  any string VALUE (closing quote NOT followed by `:`, i.e. the failure
+ *  case) the engine enumerated every composition of the run before failing,
+ *  2^(n-1) branches for an n-char run. Real deck content is full of that
+ *  shape (any JSON card with a multi-char string value); card 53's 618-byte
+ *  tinyMCE config spun the scanner indefinitely, while the corpus fixtures
+ *  never caught it because the sanitize transform's filler is quote-free.
+ *  Pin: tests/card/render/code-highlighting/
+ *  scanjson-key-discrimination-linear-time-pin.test.ts
+ *
+ *  Why the walk is equivalent to the regex: every backtracking split of the
+ *  star shares one verdict, because the run can only terminate at the FIRST
+ *  unescaped quote - every earlier character is consumed by exactly one
+ *  alternative, no quote can occur inside the run, and a backslash that
+ *  `\\.` cannot step over (backslash at end of input, or before one of the
+ *  four chars `.` excludes without dotAll: \n \r \u2028 \u2029) strands the
+ *  star before an unmatchable position. So there is exactly one candidate
+ *  closing quote, and the `\s*:` tail is checked once. Escape classes are
+ *  mirrored exactly: `\\.` = backslash + any ONE char except those four
+ *  line terminators; `[^\\"]` = any single char that is neither backslash
+ *  nor quote, including newlines. */
+export function looksLikeJsonKey(input: string, start: number): boolean {
+  const N = input.length;
+  let i = start;
+  while (i < N) {
+    const c = input.charCodeAt(i);
+    if (c === 0x22 /* " */) {
+      i += 1;
+      while (i < N && /\s/.test(input[i])) i += 1;
+      return i < N && input[i] === ":";
+    }
+    if (c === 0x5c /* \ */) {
+      const next = i + 1 < N ? input.charCodeAt(i + 1) : -1;
+      if (next === -1 || next === 0x0a || next === 0x0d || next === 0x2028 || next === 0x2029) {
+        return false;
+      }
+      i += 2;
+      continue;
+    }
+    i += 1;
+  }
+  return false;
+}
+
 /** Scan the input as JSON and return the highlighted inner HTML - i.e.
  *  the bytes that go between `<pre>` and `</pre>` inside the CodeRay DIV.
  *  The DIV wrapping is the caller's job (see div-template.ts). */
@@ -92,11 +144,13 @@ export function scanJson(input: string): string {
   const N = input.length;
   // json.rb states: :initial, :string, :key
   let state: "initial" | "string" | "key" = "initial";
-  // Regexes pulled verbatim from json.rb. The KEY regex is the discriminator
-  // between :string and :key (json.rb:41). We don't pull the entire grammar;
-  // we re-implement the SAME branches in a small switch - byte output is
-  // what matters here, not the regex library.
-  const KEY_RE = /^(?:[^\\"]+|\\.)*"\s*:/;
+  // Regexes pulled verbatim from json.rb. The KEY/String discrimination
+  // (json.rb:41) is the one spot where the verbatim regex
+  // /^(?:[^\\"]+|\\.)*"\s*:/ backtracks catastrophically on real content -
+  // it runs as the linear looksLikeJsonKey walk above instead; the
+  // escape/atom regexes below have no nested quantifiers and stay verbatim.
+  // We don't pull the entire grammar; we re-implement the SAME branches in a
+  // small switch - byte output is what matters here, not the regex library.
   const ESCAPE_RE = /^(?:\\[bfnrt"\\/]|\\u[a-fA-F0-9]{4})/;
   const UNICODE_ESCAPE_RE = /^\\u[a-fA-F0-9]{4}/;
   while (i < N) {
@@ -110,8 +164,7 @@ export function scanJson(input: string): string {
       }
       const c = input[i];
       if (c === '"') {
-        const rest = input.slice(i);
-        state = KEY_RE.test(rest.slice(1)) ? "key" : "string";
+        state = looksLikeJsonKey(input, i + 1) ? "key" : "string";
         out += groupOpener(state) + groupDelimiter(state, '"');
         i += 1;
         continue;
