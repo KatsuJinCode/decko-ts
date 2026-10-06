@@ -34,6 +34,7 @@ import type {
   SQLQueryResult,
   SQLStatement,
 } from "../../server/driver.js";
+import { classifyResidueStatement } from "./render-plan.js";
 import type { RenderPlanEntry } from "./render-plan.js";
 
 /** The plan-map key — the SAME keying recordRenderPlan uses (sql text +
@@ -48,6 +49,19 @@ export function renderPlanResultKey(sql: string, params: unknown[]): string {
  *  the engine's cached statement results must never survive a write. */
 export function isReadOnlyStatement(sql: string): boolean {
   return /^(SELECT|WITH)\b/i.test(sql.trimStart());
+}
+
+/** Whether a statement is per-request GATE state the plan may never answer.
+ *  The freshness gate's deck_data_version stamp read is the trigger for
+ *  every other invalidation: served from an armed map, a committed write's
+ *  version move would be invisible to the gate and a post-write render
+ *  could serve pre-write rows forever. The recorder already keeps this
+ *  class OUT of plans (render-plan.ts isPipelineAbleRenderStatement); this
+ *  is the same exclusion enforced where the plan is SERVED, so a seeded or
+ *  drifted plan that does carry the entry still cannot intercept it
+ *  (integration assembly r3, 2026-10-06 — the stamp-read-vs-plan pin). */
+function isGateStateStatement(sql: string): boolean {
+  return classifyResidueStatement(sql) === "freshness-stamp-read";
 }
 
 export class ReplayPlanRouter implements SQLDatabaseDriver {
@@ -85,7 +99,10 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const served = this.planResults?.get(renderPlanResultKey(sql, params));
+    // Gate state is answered live even when a plan entry matches exactly
+    // (see isGateStateStatement) — the map is consulted only for page data.
+    const served =
+      isGateStateStatement(sql) ? undefined : this.planResults?.get(renderPlanResultKey(sql, params));
     if (served !== undefined) return served as SQLQueryResult<T>;
     if (!isReadOnlyStatement(sql)) this.planResults = undefined;
     return this.base.query<T>(sql, params);
@@ -103,7 +120,9 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i] as { sql: string; params?: unknown[] } | undefined;
       const hit =
-        stmt === undefined ? undefined : map.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
+        stmt === undefined || isGateStateStatement(stmt.sql)
+          ? undefined
+          : map.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
       if (hit !== undefined) served[i] = hit;
       else misses.push(i);
     }

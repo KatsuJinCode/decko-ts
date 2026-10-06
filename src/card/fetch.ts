@@ -662,6 +662,13 @@ export class FetchEngine {
     this.cardCache.reset();
     this.lexiconCache.reset();
     this.codenames.resetCache();
+    // The armed render plan is derived state like the caches above: its rows
+    // were read at seat time against the deck AS IT WAS, so a reset (the
+    // freshness gate's version-triggered one in particular) must drop it —
+    // a map that survives the reset keeps answering post-write renders with
+    // pre-write rows (disarmRenderPlan's documented "explicit invalidation"
+    // arm, wired 2026-10-06 by the stamp-read-vs-plan pin).
+    this.replayRouter.disarmRenderPlan();
   }
 
   /** Cache::CardClass#after_write_to_temp_cache -> Cache::All#write_lexicon
