@@ -30,6 +30,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { buildOneTripClosure } from "../../../src/card/one-trip/closure-builder.js";
 import { ONE_TRIP_SIDE_DDL } from "../../../src/card/one-trip/side-db-schema.js";
 import {
@@ -165,23 +166,29 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
       .map((s) => ({ sql: s.sql, params: s.params }));
   }
 
-  /** The fetch's shape as tripped: the head statement (the walk CTE names
-   *  the derived edge store) and the keyset slice batch (json_each card
-   *  windows). The walls make this exactly 1 head + 1 batch — 2 trips. */
-  function fetchShape(driver: TripCapturingDriver): { heads: number; sliceBatches: number } {
-    let heads = 0;
-    let sliceBatches = 0;
-    const seen = new Set<string>();
-    for (const s of driver.statements) {
-      const key = `${s.sql}::${JSON.stringify(s.params)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (/one_trip_edges/i.test(s.sql)) heads += 1;
-      if (/json_each\(\?\)/i.test(s.sql) && /FROM \(SELECT DISTINCT co\.\* FROM cards/i.test(s.sql)) {
-        sliceBatches += 1;
-      }
+  /** The fetch's shape as CALLED (not as recorded): the head round trip is
+   *  one driver.query (the walk CTE names the derived edge store) and the
+   *  keyset slices ride ONE driver.batch call (the V3 transport). The walls
+   *  make the whole fetch exactly 2 live trips. Layer this UNDER the
+   *  TripCapturingDriver so every call passes through it. */
+  class FetchCallCountingDriver implements SQLDatabaseDriver {
+    heads = 0;
+    sliceBatchCalls = 0;
+    constructor(private readonly inner: SQLDatabaseDriver) {}
+    async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+      if (/one_trip_edges/i.test(sql)) this.heads += 1;
+      return this.inner.query<T>(sql, params);
     }
-    return { heads, sliceBatches };
+    async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+      if (
+        statements.length > 0 &&
+        statements.every((s) => /json_each\(\?\)/i.test(s.sql)) &&
+        statements.some((s) => /FROM \(SELECT DISTINCT co\.\* FROM cards/i.test(s.sql))
+      ) {
+        this.sliceBatchCalls += 1;
+      }
+      return this.inner.batch(statements);
+    }
   }
 
   it(
@@ -209,9 +216,10 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
 
       // ---- the LIVE posture render ---------------------------------------
       setLivePostureEnv();
-      const live = new TripCapturingDriver(
+      const callCounts = new FetchCallCountingDriver(
         new LocalSqliteDriver({ path: inlineDbPath, readonly: true }),
       );
+      const live = new TripCapturingDriver(callCounts);
       const liveBoot = await bootEngine(live);
       const liveHtml = await liveBoot.render.render(UNPLANNED_PAGE, "open", {});
 
@@ -223,14 +231,17 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
         "the live posture must not read one_trip_render_plans (stored plans are the demo stop-gap)",
       ).toHaveLength(0);
 
-      // THE FETCH-SHAPE PIN (the two walls): exactly ONE head statement (the
-      // walk CTE over the derived edge store, carrying the stamp column) and
-      // exactly ONE keyset slice batch — 2 live trips for the whole fetch.
-      const shape = fetchShape(live);
-      expect(shape.heads, "exactly one head statement (the live inclusion-tree fetch)").toBe(1);
+      // THE FETCH-SHAPE PIN (the two walls): the whole fetch is exactly 2
+      // live trips — ONE head query (the walk CTE over the derived edge
+      // store, carrying the stamp column) + ONE keyset slice batch (WALL 2's
+      // bounded-value transport, the V3 single-batch POST).
       expect(
-        shape.sliceBatches,
-        "exactly one keyset slice batch (WALL 2's bounded-value transport)",
+        callCounts.heads,
+        "exactly one head round trip (the live inclusion-tree fetch)",
+      ).toBe(1);
+      expect(
+        callCounts.sliceBatchCalls,
+        "exactly one keyset slice batch call (WALL 2's bounded-value transport)",
       ).toBe(1);
 
       // THE STAMP-RIDES-THE-STATEMENT PIN: the head is the same statement
@@ -295,9 +306,10 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
 
       // ---- the LIVE posture render ---------------------------------------
       setLivePostureEnv();
-      const live = new TripCapturingDriver(
+      const callCounts = new FetchCallCountingDriver(
         new LocalSqliteDriver({ path: inlineDbPath, readonly: true }),
       );
+      const live = new TripCapturingDriver(callCounts);
       const liveBoot = await bootEngine(live);
       const liveHtml = await liveBoot.render.render(PLANNED_PAGE, "open", {});
 
@@ -305,9 +317,14 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
         planTableReads(live),
         "a planned page under the live posture must not read one_trip_render_plans either — planned AND unplanned ride the same live statement",
       ).toHaveLength(0);
-      const shape = fetchShape(live);
-      expect(shape.heads, "exactly one head statement").toBe(1);
-      expect(shape.sliceBatches, "exactly one keyset slice batch").toBe(1);
+      expect(
+        callCounts.heads,
+        "exactly one head round trip (the live inclusion-tree fetch)",
+      ).toBe(1);
+      expect(
+        callCounts.sliceBatchCalls,
+        "exactly one keyset slice batch call",
+      ).toBe(1);
       expect(
         normalizeSlotIds(liveHtml),
         "the planned page's live-posture render must be byte-identical (modulo slot ids) to the OFF baseline",

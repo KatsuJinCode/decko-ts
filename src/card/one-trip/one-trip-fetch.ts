@@ -50,6 +50,21 @@ export function isInlineStoreSpec(storeSpec: string): boolean {
   return storeSpec === ONE_TRIP_STORE_INLINE;
 }
 
+/** THE STORE-PLANS POSTURE FLAG (the retarget's live-fetch posture,
+ *  2026-10-06): the stored render plans (one_trip_render_plans) are the DEMO
+ *  STOP-GAP only — the deliverable is the live batched inclusion-tree query
+ *  serving ALL pages with NO plan-table lookup in the critical path.
+ *  Default = the demo posture (plans read, replayed, armed — every standing
+ *  pin's subject unchanged); DECKO_ONE_TRIP_PLANS=0 selects the live
+ *  posture: the head statement drops the plan column entirely, so a plan
+ *  read is not merely skipped but ABSENT from the statement text — zero
+ *  one_trip_render_plans reads on any page, by construction. The flag is
+ *  read once per head build (the same per-seat cadence as the other DECKO_*
+ *  gates). */
+export function oneTripWantsStoredPlans(): boolean {
+  return process.env.DECKO_ONE_TRIP_PLANS !== "0";
+}
+
 /** Escape a filesystem path for SQL single-quoting (ATTACH's filename is a
  *  string literal here; bound parameters in ATTACH are not portable across
  *  the drivers this engine supports). */
@@ -235,14 +250,12 @@ members(id) AS (
 export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
 
 /** The head statement: page key (as SQLite-emitted JSON text), the page's
- *  rule candidates and search results (small aggregates), the page's
- *  recorded render plan (small JSON array, empty when the store carries
- *  none — stores built before the recorder are replay-inert, gracefully),
- *  the V2 materialization of the page's WHOLE member id list as one small
- *  sorted JSON array (id ascending, so the client's windows are contiguous
- *  keyset ranges), and — the STAMP-AS-COLUMN lane (2026-10-06, spec §c +
- *  §a.4) — two zero-bind GATE columns the render would otherwise pay live
- *  trips for:
+ *  rule candidates and search results (small aggregates), the V2
+ *  materialization of the page's WHOLE member id list as one small sorted
+ *  JSON array (id ascending, so the client's windows are contiguous keyset
+ *  ranges), and — the STAMP-AS-COLUMN lane (2026-10-06, spec §c + §a.4) —
+ *  two zero-bind GATE columns the render would otherwise pay live trips
+ *  for:
  *
  *  `deck_data_version` — the deck's committed-write stamp, the freshness
  *  gate's per-render read. Read HERE it is current-at-read in the SAME
@@ -261,8 +274,26 @@ export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
  *  §a.4's "settings count" arm). The D3 floor's fifth trip — one batch
  *  carrying this count + the stamp, the two statements plans never absorb —
  *  drops 1 -> 0 with both columns consumed. Separate columns, never one
- *  giant row — each value rides its own small TEXT cell. */
-function inlineHeadSql(): string {
+ *  giant row — each value rides its own small TEXT cell.
+ *
+ *  THE PLAN COLUMN IS POSTURE-CONDITIONAL (the live-fetch retarget,
+ *  2026-10-06): `readPlans` (the demo stop-gap posture) adds the recorded
+ *  render plan as one small JSON array read from one_trip_render_plans.
+ *  The LIVE posture (oneTripWantsStoredPlans() === false) OMITS the column
+ *  AND its page-key bind — the statement text carries no plan-table
+ *  reference at all, so the live posture's zero-plan-reads property is
+ *  structural (pinned by tests/card/one-trip/live-fetch-all-pages.test.ts),
+ *  not a runtime skip. */
+function inlineHeadSql(readPlans: boolean): string {
+  const planColumn = readPlans
+    ? `,
+  (
+    SELECT json_group_array(json_object('sql', t.sql, 'params', t.params_json))
+      FROM (SELECT sql, params_json FROM one_trip_render_plans
+             WHERE page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
+             ORDER BY seq) t
+  ) AS plan_json`
+    : "";
   return `${inlineStoreCteSql()}
 SELECT json_quote(?) AS page_key_json,
   (
@@ -287,13 +318,7 @@ SELECT json_quote(?) AS page_key_json,
       SELECT m.id FROM members m
       JOIN one_trip_search_nests n ON n.search_card_id = m.id
     )
-  ) AS search_results_json,
-  (
-    SELECT json_group_array(json_object('sql', t.sql, 'params', t.params_json))
-      FROM (SELECT sql, params_json FROM one_trip_render_plans
-             WHERE page_id = (SELECT id FROM cards WHERE "key" = ? AND trash = 0)
-             ORDER BY seq) t
-  ) AS plan_json,
+  ) AS search_results_json${planColumn},
   (
     SELECT json_group_array(m2.id)
       FROM (SELECT m.id FROM members m ORDER BY m.id) m2
@@ -333,7 +358,9 @@ interface InlineHeadRow {
   permission_gate_json: string | null;
   rule_candidates_json: string | null;
   search_results_json: string | null;
-  plan_json: string | null;
+  /** Present ONLY in the demo stop-gap posture (oneTripWantsStoredPlans);
+   *  the live posture's statement carries no plan column at all. */
+  plan_json?: string | null;
   member_ids_json: string | null;
 }
 
@@ -410,20 +437,21 @@ export async function fetchPageBundleInlineParts(
   pageName: string,
 ): Promise<{ raw: string; plan: RenderPlan | undefined; gateMeta: InlineHeadGateMeta }> {
   const pageKey = DeckoName.parse(pageName).key;
-  // five page-key placeholders: the walk seed, the members' page join, the
-  // page_key field, the rule-candidate page join, the plan's page join
-  const head = await driver.query<InlineHeadRow>(inlineHeadSql(), [
-    pageKey,
-    pageKey,
-    pageKey,
-    pageKey,
-    pageKey,
-  ]);
+  // THE POSTURE: stored plans are the demo stop-gap; the live posture's
+  // head statement omits the plan column and its bind entirely.
+  const readPlans = oneTripWantsStoredPlans();
+  // page-key placeholders: the walk seed, the members' page join, the
+  // page_key field, the rule-candidate page join — plus the plan's page
+  // join in the demo stop-gap posture only.
+  const headBinds = readPlans
+    ? [pageKey, pageKey, pageKey, pageKey, pageKey]
+    : [pageKey, pageKey, pageKey, pageKey];
+  const head = await driver.query<InlineHeadRow>(inlineHeadSql(readPlans), headBinds);
   const headRow = head.rows[0];
   if (headRow === undefined) {
     throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
-  const plan = renderPlanFromHeadCell(headRow.plan_json, pageKey);
+  const plan = readPlans ? renderPlanFromHeadCell(headRow.plan_json ?? null, pageKey) : undefined;
   // THE GATE COLUMNS (stamp-as-column lane): parsed here, beside the plan —
   // one statement carried the payload, the stamp, and the gate count.
   const rawVersion = headRow.deck_data_version;
