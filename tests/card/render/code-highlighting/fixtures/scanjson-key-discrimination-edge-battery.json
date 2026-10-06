@@ -1,0 +1,206 @@
+{
+  "basic-key-colon": {
+    "input": "{\"key\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>key</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "spaces-around-colon": {
+    "input": "{ \"a\" : 2 }",
+    "output": "{ <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span> : <span style=\"color:#00D\">2</span> }"
+  },
+  "escaped-quote-in-key": {
+    "input": "{\"escaped\\\"quote\": 3}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>escaped</span><span style=\"color:#60f\">\\&quot;</span><span>quote</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">3</span>}"
+  },
+  "escaped-backslash-in-key": {
+    "input": "{\"back\\\\slash\": 4}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>back</span><span style=\"color:#60f\">\\\\</span><span>slash</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">4</span>}"
+  },
+  "unicode-escape-in-key": {
+    "input": "{\"uni\\u00e9key\": 5}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>uni</span><span style=\"color:#60f\">\\u00e9</span><span>key</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">5</span>}"
+  },
+  "direct-unicode-key": {
+    "input": "{\"direct-unié\": 6}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>direct-unié</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">6</span>}"
+  },
+  "tab-escape-in-key": {
+    "input": "{\"tab\\tkey\": 7}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>tab</span><span style=\"color:#60f\">\\t</span><span>key</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">7</span>}"
+  },
+  "plain-string-value": {
+    "input": "\"hello world\"",
+    "output": "<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">hello world</span><span style=\"color:#710\">&quot;</span></span>"
+  },
+  "string-value-then-noncolon": {
+    "input": "{\"a\": \"bcd\" e}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">bcd</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">e</span>}"
+  },
+  "raw-newline-in-string": {
+    "input": "{\"a\": \"line1\nline2\"}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">line1\nline2</span><span style=\"color:#710\">&quot;</span></span>}"
+  },
+  "backslash-newline-in-string": {
+    "input": "{\"a\": \"bad\\\nkey\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">bad</span></span><span style=\"color:#F00;background-color:#FAA\">\\</span>\n<span style=\"color:#F00;background-color:#FAA\">k</span><span style=\"color:#F00;background-color:#FAA\">e</span><span style=\"color:#F00;background-color:#FAA\">y</span><span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">: 1}</span>"
+  },
+  "dangling-backslash-eos": {
+    "input": "{\"a\": \"abc\\",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">abc</span></span><span style=\"color:#F00;background-color:#FAA\">\\</span>"
+  },
+  "empty-key": {
+    "input": "{\"\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "empty-string-value": {
+    "input": "\"\"",
+    "output": "<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#710\">&quot;</span></span>"
+  },
+  "prefix-keys": {
+    "input": "{\"ab\": 1, \"abc\": 2}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>ab</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>, <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>abc</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">2</span>}"
+  },
+  "escaped-quote-then-close-key": {
+    "input": "{\"a\\\"b\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#60f\">\\&quot;</span><span>b</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "escaped-unicode-colon-string": {
+    "input": "{\"k\": \"\\u0041:\"}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#b0b\">\\u0041</span><span style=\"color:#D20\">:</span><span style=\"color:#710\">&quot;</span></span>}"
+  },
+  "double-backslash-then-quote": {
+    "input": "{\"\\\\\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span style=\"color:#60f\">\\\\</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "quote-adjacent-colon": {
+    "input": "{\":\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>:</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "nested-object": {
+    "input": "{\"outer\": {\"inner\": \"v\"}, \"n\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>outer</span><span style=\"color:#404\">&quot;</span></span>: {<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>inner</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">v</span><span style=\"color:#710\">&quot;</span></span>}, <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>n</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "newline-between-key-and-colon": {
+    "input": "{\"k\"\n: 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k</span><span style=\"color:#404\">&quot;</span></span>\n: <span style=\"color:#00D\">1</span>}"
+  },
+  "crlf-between-key-and-colon": {
+    "input": "{\"k\"\r\n: 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k</span><span style=\"color:#404\">&quot;</span></span> \n: <span style=\"color:#00D\">1</span>}"
+  },
+  "unicode-nl-between-key-and-colon": {
+    "input": "{\"k\" : 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k</span><span style=\"color:#404\">&quot;</span></span> : <span style=\"color:#00D\">1</span>}"
+  },
+  "array-of-strings": {
+    "input": "[\"a\", \"b\", \"c\"]",
+    "output": "[<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">a</span><span style=\"color:#710\">&quot;</span></span>, <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">b</span><span style=\"color:#710\">&quot;</span></span>, <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">c</span><span style=\"color:#710\">&quot;</span></span>]"
+  },
+  "string-with-invalid-unicode-escape": {
+    "input": "{\"a\": \"\\uZZZZ\"}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">\\u</span><span style=\"color:#D20\">ZZZZ</span><span style=\"color:#710\">&quot;</span></span>}"
+  },
+  "trailing-colonless-quote": {
+    "input": "{\"a\" \"b\" : 1}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">a</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>b</span><span style=\"color:#404\">&quot;</span></span> : <span style=\"color:#00D\">1</span>}"
+  },
+  "key-then-eos-no-colon": {
+    "input": "{\"lonelykey\"",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">lonelykey</span><span style=\"color:#710\">&quot;</span></span>"
+  },
+  "cr-in-key-body": {
+    "input": "{\"k\r\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k </span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "backslash-cr-in-string": {
+    "input": "{\"a\": \"bad\\\rx\"}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">bad</span></span><span style=\"color:#F00;background-color:#FAA\">\\</span> <span style=\"color:#F00;background-color:#FAA\">x</span><span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">}</span>"
+  },
+  "ideographic-space-after-key-quote": {
+    "input": "{\"k\"　: 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>k</span><span style=\"color:#404\">&quot;</span></span>　: <span style=\"color:#00D\">1</span>}"
+  },
+  "surrogate-pair-in-key": {
+    "input": "{\"😀key\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>😀key</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-1": {
+    "input": "{\"a\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">a</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-1": {
+    "input": "{\"a\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>a</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-2": {
+    "input": "{\"aa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-2": {
+    "input": "{\"aa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-3": {
+    "input": "{\"aaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-3": {
+    "input": "{\"aaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-4": {
+    "input": "{\"aaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-4": {
+    "input": "{\"aaaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-5": {
+    "input": "{\"aaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-5": {
+    "input": "{\"aaaaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaaaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-6": {
+    "input": "{\"aaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-6": {
+    "input": "{\"aaaaaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaaaaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-7": {
+    "input": "{\"aaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-7": {
+    "input": "{\"aaaaaaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaaaaaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-8": {
+    "input": "{\"aaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "key-plain-run-8": {
+    "input": "{\"aaaaaaaa\": 1}",
+    "output": "{<span style=\"color:#606\"><span style=\"color:#404\">&quot;</span><span>aaaaaaaa</span><span style=\"color:#404\">&quot;</span></span>: <span style=\"color:#00D\">1</span>}"
+  },
+  "string-value-plain-run-9": {
+    "input": "{\"aaaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "string-value-plain-run-10": {
+    "input": "{\"aaaaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "string-value-plain-run-11": {
+    "input": "{\"aaaaaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  },
+  "string-value-plain-run-12": {
+    "input": "{\"aaaaaaaaaaaa\" x}",
+    "output": "{<span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">aaaaaaaaaaaa</span><span style=\"color:#710\">&quot;</span></span> <span style=\"color:#F00;background-color:#FAA\">x</span>}"
+  }
+}
