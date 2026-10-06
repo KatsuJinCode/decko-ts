@@ -89,11 +89,21 @@ afterAll(() => {
 });
 
 describe("card-mod-help through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: :help/:help_text are unsupported; :lead dispatches compiled-in (oracle bytes)", async () => {
+  it("WITHOUT the mod: :help and :lead dispatch compiled-in (oracle bytes); :help_text is unsupported", async () => {
     const s = storage!;
-    await expect(s.engine.render("Oracle Help Probe", "help")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    // BOARDVIEW-FLAT-SEAM ADJUDICATION (the 422 lane): :help joined the
+    // compiled-in HTML_VIEWS record (render/views.ts imports card-mod-help's
+    // helpView — set/all/help.rb:6 is a BASE-format registration in Ruby,
+    // registrar.rb:79-84, visible deck-or-no-deck), so the pre-seam premise
+    // "help is mod-only" no longer holds — the same move this arm's
+    // MERGE-PASS-18 :lead re-pin below records. The WITHOUT arm now pins the
+    // SAME oracle bytes the WITH arm pins (single source: the mod
+    // registration adds nothing for help).
+    const helpHtml = normalize(await s.engine.render("Oracle Help Probe", "help"));
+    expect(helpHtml).toBe(FIXTURE.rendered["Oracle Help Probe#help"]);
+    // :help_text (help.rb:14-16) is NOT on the compiled record (outside the
+    // boardview lane's registered closure), so loader-less dispatch still
+    // raises - the mod remains its only registration.
     await expect(s.engine.render("Oracle Help Probe", "help_text")).rejects.toThrow(
       UnsupportedViewError,
     );
