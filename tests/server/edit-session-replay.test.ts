@@ -75,8 +75,17 @@ const DEFAULT_CAPTURES =
 const CAPTURES_DIR = process.env.DECKO_TS_EDIT_SESSION_CAPTURES ?? DEFAULT_CAPTURES;
 const MANIFEST_PATH = path.join(CAPTURES_DIR, "manifest.json");
 
-const DEFAULT_ORACLE =
-  "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3";
+// The oracle app's development.sqlite3 lives at this path IN whichever
+// checkout the oracle app is — tools/oracle/decko-oracle-app/ is in the repo.
+// It used to be spelled as the absolute
+// `C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3`;
+// that checkout still exists on this machine but no longer carries the oracle
+// app (MISSING 2026-10-06), so the default pointed at nothing while reading as
+// a valid default. Resolved relative to this file instead; DECKO_TS_ORACLE_DB
+// still overrides for a deliberately-chosen oracle deck.
+const DEFAULT_ORACLE = fileURLToPath(
+  new URL("../../tools/oracle/decko-oracle-app/db/development.sqlite3", import.meta.url),
+);
 const ORACLE_DB = process.env.DECKO_TS_ORACLE_DB ?? DEFAULT_ORACLE;
 
 const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "edit-session-replay-fixture.sqlite3");
