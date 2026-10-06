@@ -10,9 +10,10 @@
 // exception trips enumerated below. Any future engine change that
 // re-inflates hop counts — a new per-name point query, a wave that stopped
 // riding the batch, a second closure pass — crosses the ceiling and fails
-// the build mechanically. The warm re-render must stay ZERO (no question
-// re-asked), which is what makes the constant permanent and not a lucky
-// cold shape.
+// the build mechanically. The warm re-render must stay at its enumerated
+// floor (the freshness stamp + the late-seat type ask — see the exceptions
+// note at the end of this header), which is what makes the constant
+// permanent and not a lucky cold shape.
 //
 // THE ENUMERATED EXCEPTIONS (the round-trip classes a cold page render
 // legitimately spends beyond its one fused batch; each is carried with its
@@ -52,10 +53,14 @@
 //     spends its real db ask here.
 //
 // The ceiling encodes 1 + the exceptions' fixture maxima = 14. The WARM
-// re-render carries one documented exception: the LATE-SEAT TYPE ask (a
-// type card whose holder entered the prepared map after the cold render's
-// last priming pass costs its one-row ask on the next render, once per
-// engine) — every other warm question must answer from engine state.
+// re-render carries TWO documented exceptions: (a) the FRESHNESS STAMP —
+// one PK point SELECT of deck_data_version at every render entry
+// (d19ec179, 2026-10-05; render.ts DECK_DATA_VERSION_STATEMENT; the schema
+// header's "warm-render cost is ONE statement, not zero"; delivery
+// contract:79) — and (b) the LATE-SEAT TYPE ask (a type card whose holder
+// entered the prepared map after the cold render's last priming pass costs
+// its one-row ask on the next render, once per engine) — every other warm
+// question must answer from engine state.
 // Raising ANY class requires a receipt justification FIRST, then a ceiling
 // change in the SAME commit, so the law's envelope cannot drift silently.
 
@@ -141,7 +146,7 @@ async function seedLawFixtureDeck(s: RenderTestStorage): Promise<void> {
 }
 
 describe("the hops gate: one page, one database hit (plus the enumerated exceptions)", () => {
-  it("cold render of the fixture page stays under the law's ceiling; warm re-render is zero", async () => {
+  it("cold render of the fixture page stays under the law's ceiling; warm re-render stays at its enumerated floor (freshness stamp + late-seat type)", async () => {
     storage = await createRenderTestStorage();
     await seedLawFixtureDeck(storage);
 
@@ -160,17 +165,28 @@ describe("the hops gate: one page, one database hit (plus the enumerated excepti
     ).toBeLessThanOrEqual(HOPS_LAW_CEILING);
 
     // WARM: the law's permanence half — every question the cold render
-    // asked is answered from engine state now; zero round trips.
+    // asked is answered from engine state now.
+    // 2026-10-06 a1-mods-validation lane: the ceiling was 1 (the
+    // LATE-SEAT TYPE exception alone). d19ec179 (2026-10-05, B-arm freshness
+    // repair) added a second legitimate warm class: the deck_data_version
+    // stamp read at every render entry (render.ts
+    // DECK_DATA_VERSION_STATEMENT; db/schema.sqlite.sql [ENGINE-FRESHNESS]
+    // header: "the render contract's warm-render cost is ONE statement, not
+    // zero"; delivery contract:79). The justification receipt is that
+    // commit; this ceiling change carries it as the law requires.
+    // More than 2 means a question is being RE-ASKED.
     storage.counting.reset();
     await storage.engine.render("law fixture page", "open");
     const warm = storage.counting.snapshot();
     expect(
       warm.roundTrips,
-      `the warm re-render spent ${warm.roundTrips} round trips; the law allows 1: the ` +
-        `LATE-SEAT TYPE exception — a type card whose holder record entered the prepared ` +
-        `map after the priming pass's last run of the COLD render costs its one-row ask ` +
-        `on the next render, once per engine (enumerated in the header + the receipt's ` +
-        `per-hop justifications). More than 1 means a question is being RE-ASKED.`,
-    ).toBeLessThanOrEqual(1);
+      `the warm re-render spent ${warm.roundTrips} round trips; the law allows 2: the ` +
+        `FRESHNESS STAMP (one PK point SELECT at every render entry, d19ec179 — ` +
+        `render.ts DECK_DATA_VERSION_STATEMENT) + the LATE-SEAT TYPE exception — a type ` +
+        `card whose holder record entered the prepared map after the priming pass's ` +
+        `last run of the COLD render costs its one-row ask on the next render, once ` +
+        `per engine (both enumerated in the header + the receipts). More than 2 means ` +
+        `a question is being RE-ASKED.`,
+    ).toBeLessThanOrEqual(2);
   });
 });

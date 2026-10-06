@@ -232,18 +232,63 @@ let driver: LocalSqliteDriver;
 
 /** Load db/schema.sqlite.sql through the same driver.query seam the engine
  *  uses: strip line comments, split on statement-terminating semicolons,
- *  run each DDL statement. The DDL is static repo truth with no semicolons
- *  inside comments or values, so the split is exact. */
+ *  run each DDL statement.
+ *  2026-10-06 a1-mods-validation lane: the naive ";" split broke when the
+ *  schema gained the [ENGINE-FRESHNESS] block (d19ec179, 2026-10-05) — its
+ *  six CREATE TRIGGER ... BEGIN ... END bodies contain ";" inside the body,
+ *  so the split truncated every trigger and prepare failed with
+ *  "incomplete input". Replaced with the trigger-aware algorithm proven in
+ *  tests/card/fetch/fetch-test-storage.ts (quote/comment aware, tracks
+ *  trigger bodies and only splits on their terminating ";"). */
 async function loadCoreSchema(target: LocalSqliteDriver): Promise<void> {
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");
-  const statements = ddl
-    .split("\n")
-    .map((line) => line.replace(/--.*$/, ""))
-    .join("\n")
-    .split(";")
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 0);
-  for (const statement of statements) {
+  const statements: string[] = [];
+  let current = "";
+  let quote: string | null = null;
+  let inTriggerBody = false;
+  for (let i = 0; i < ddl.length; i++) {
+    const ch = ddl[i];
+    if (quote !== null) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "-" && ddl[i + 1] === "-") {
+      while (i < ddl.length && ddl[i] !== "\n") i++;
+      current += " ";
+      continue;
+    }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
+    if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
+      statements.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim() !== "") statements.push(current.trim());
+  for (const statement of statements.filter((statement) => statement !== "")) {
     await target.query(statement, []);
   }
 }

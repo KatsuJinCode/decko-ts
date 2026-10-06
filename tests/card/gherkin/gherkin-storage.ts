@@ -18,13 +18,21 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import type { Actor } from "../../../src/card/actions/types.js";
 
-/** Quote-aware `--` comment stripping + ";" split (the same splitter as the
- *  fetch and render storage streams — the DDL carries no ";" inside
- *  literals). */
+/** Quote-aware `--` comment stripping + ";" split. 2026-10-06
+ *  a1-mods-validation lane: this was the quote-only splitter, its doc
+ *  claiming "the DDL carries no ';' inside literals". db/schema.sqlite.sql
+ *  gained the [ENGINE-FRESHNESS] block (d19ec179, 2026-10-05) whose six
+ *  CREATE TRIGGER ... BEGIN ... END bodies contain ";" — the quote-only
+ *  split truncated every trigger at its first body semicolon and the
+ *  prepare failed with "incomplete input", so no gherkin storage could
+ *  boot (the whole suite red in the standing net). Replaced with the
+ *  trigger-aware splitter already proven in
+ *  tests/card/fetch/fetch-test-storage.ts — same algorithm. */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -42,7 +50,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;
