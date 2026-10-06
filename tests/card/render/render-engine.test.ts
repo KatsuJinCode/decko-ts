@@ -264,7 +264,22 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // primes + round 0 + 3 rule-lookup candidates): level-linear but ABOVE
     // Ruby. The walk is CACHED after first render - warm renders stay
     // at 0 (the test below).
-    expect(roundTripsByDepth).toEqual({ 1: 2, 2: 3, 4: 5, 8: 9 });
+    // Core reds lane re-pin 2026-10-06 (round trips 2/3/5/9 -> 4/5/7/11,
+    // statements 13/14/16/20 -> 19/20/22/26): the wave-seating architecture
+    // landing 63048200 replaced the single round-0 fetch-shapes batch with
+    // the per-wave seating ladder (chunked key IN-lists, side-key joins,
+    // resolution rounds; its own measured receipt: 5 probe pages RT
+    // 813/1150/45/771/472 -> 145/309/32/194/173, byte-identical), refined
+    // by 2f7131dd (call-local negative-priming ask/answer sets) and
+    // b7402a9f (closure retirement of proven-unresolvables). Verified on
+    // both trees: the old pins pass at d19ec179 and fail from 63048200
+    // onward (where the curve first measured 5/6/8/12). The invariants the
+    // pin guards are intact at the new readings — depth-LINEARITY
+    // (depth+3, +1 batch per level, constant in deck size) and the M3
+    // gate below, which now holds at EXACT equality: the TS curve 4/5/7/11
+    // equals Ruby's measured 4/5/7/11 at every depth. Warm renders stay at
+    // zero (the test below).
+    expect(roundTripsByDepth).toEqual({ 1: 4, 2: 5, 4: 7, 8: 11 });
     // Statements: the folded engine statements are constant; the rounds add
     // one fetch statement per level. Round 9 folded the *default rule
     // universe alongside the *structure universe so a nest-miss child
@@ -298,11 +313,16 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // LAST into the cold batch (+1 statement at every depth, +0 round
     // trips, 12/13/15/19 -> 13/14/16/20) — the delivery-contract:79
     // freshness arm. Warm renders now pay exactly that one stamp statement.
-    expect(statementsByDepth).toEqual({ 1: 13, 2: 14, 4: 16, 8: 20 });
-    // depth 8 costs one batch per level (9 round trips) while reading
+    // Core reds lane 2026-10-06: the wave-seating ladder adds a constant
+    // +6 folded statements at every depth (see the round-trip re-pin note
+    // above) — 19/20/22/26, still depth-constant per level (+1).
+    expect(statementsByDepth).toEqual({ 1: 19, 2: 20, 4: 22, 8: 26 });
+    // depth 8 costs one batch per level (11 round trips) while reading
     // O(page) rows instead of the whole deck per render - the trade this
-    // round's read-cost decision asked for - and lands BELOW Ruby's 11
-    // queries (pinned: TS <= Ruby at every measured depth, the M3 gate).
+    // round's read-cost decision asked for - and lands AT Ruby's 11
+    // queries (pinned: TS <= Ruby at every measured depth, the M3 gate;
+    // since the wave-seating re-pin the curves are equal at every depth,
+    // not just under).
     // Statements inside a batch are folded prepare work riding ONE round
     // trip, not round trips - the D1-billed axis stays the round-trip
     // count above.

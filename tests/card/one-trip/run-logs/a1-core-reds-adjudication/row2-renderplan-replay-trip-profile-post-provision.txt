@@ -1,0 +1,33 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+ [32m✓[39m tests/card/one-trip/renderplan-replay-trip-profile.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 5239[2mms[22m[39m
+   [32m✓[39m renderplan replay: the cold render's trip profile is plan-driven [2m(1)[22m
+     [33m[2m✓[22m[39m replays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF[33m 5237[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 23:37:57
+[2m   Duration [22m 6.50s[2m (tests 87%, transform 11%, import 2%)[22m
+

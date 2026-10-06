@@ -121,8 +121,21 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       const snapshot = storage.counting.snapshot();
       // Freshness lane 2026-10-05: +1 statement (the deck_data_version
       // stamp read folded into the cold batch), +0 round trips.
-      expect(snapshot.roundTrips).toBe(4);
-      expect(snapshot.statements).toBe(16); // HEAD 15 + 1 freshness stamp (folded, lineage-reconciliation lane)
+      // Core reds lane re-pin 2026-10-06 (4/16 -> 7/24): the wave-seating
+      // architecture landing 63048200 replaced the single round-0
+      // fetch-shapes batch with the per-wave seating ladder (chunked key
+      // IN-lists + side-key joins + resolution rounds, its own measured
+      // receipt: 5 probe pages RT 813/1150/45/771/472 -> 145/309/32/194/173,
+      // byte-identical), refined by 2f7131dd (negative-priming ask/answer
+      // fix) and b7402a9f (closure retirement of proven-unresolvables).
+      // Verified on both trees: 4/4 PASS at d19ec179 (this pin's own
+      // cause-commit), fail from 63048200 onward. The invariant the pin
+      // guards is intact at the new readings: depth-3 (7/24) minus
+      // depth-2 (6/23) = +1 round trip +1 statement per chain level,
+      // constant in deck size; renders stay byte-correct (the html
+      // assertions above are untouched and pass).
+      expect(snapshot.roundTrips).toBe(7);
+      expect(snapshot.statements).toBe(24); // wave-seating ladder, see above
     } finally {
       storage.close();
     }
@@ -215,8 +228,14 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // Freshness lane 2026-10-05 (composed onto the deployed fold by the
       // lineage-reconciliation lane): +1 statement (the deck_data_version
       // stamp read folded LAST into the cold batch), +0 round trips.
-      expect(snapshot.roundTrips).toBe(3);
-      expect(snapshot.statements).toBe(15);
+      // Core reds lane re-pin 2026-10-06 (3/15 -> 6/23): same cause as the
+      // depth-3 re-pin above — the wave-seating landing 63048200 (+
+      // 2f7131dd + b7402a9f) restructured the cold render's post-prelude
+      // batches from one fetch-shapes round into the per-wave seating
+      // ladder. +1 batch per chain level still holds (6 here vs the
+      // depth-3 case's 7).
+      expect(snapshot.roundTrips).toBe(6);
+      expect(snapshot.statements).toBe(23);
     } finally {
       storage.close();
     }

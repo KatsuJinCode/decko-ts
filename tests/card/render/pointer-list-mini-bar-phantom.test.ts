@@ -150,11 +150,24 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // single quotes around the class attribute (the captured bytes
       // use single quotes for this template's class attr; the data-
       // attrs ride on the same tag with single quotes too).
-      // Merge pass 2 flip: the captured chip is the BasicCs type's KEY
-      // form `basic_c` — the previous "swtktey" pin matched no oracle
-      // bytes (expected-v2 census: "swtktey" occurs zero times; 248/256
-      // denied mini_bar bodies carry BasicCs/22281).
-      expect(html).toContain("<div class='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'");
+      // BODY FLIP (core reds lane, 2026-10-06): the body chip is the
+      // DECK'S OWN type-card key, like the slot attrs below. bb430e0e
+      // (the-69-wave1-refill2, cluster 7) completed the Ruby mechanism:
+      // views.ts's phantom arm passes the phantom's RESOLVED identity
+      // (new_unknown_item_args' *default template walk, item.rb:245-248 +
+      // type.rb:78-80) into pointerListItemBodyForUnknown, so the body
+      // chip reads the same deck-relative identity the slot carries.
+      // bar.haml's class chip is the card's own type key — on the RAW
+      // oracle deck (22281 = BasicCs) Ruby renders TYPE-basic_c, exactly
+      // what the raw expected-v2 census pins ("swtktey" occurs zero
+      // times there; 248/256 denied mini_bar bodies carry BasicCs/22281);
+      // THIS fixture deck anonymized the same row to "swtktey", so the
+      // fixture-rendered body carries TYPE-swtktey. The pre-bb430e0e body
+      // constants matched the raw deck only through the constant token,
+      // not the mechanism; the old pins passed at this file's own last
+      // edit (b41c23dc) and fail from bb430e0e onward (this file was
+      // already red at 1eea0a85 on exactly this assertion).
+      expect(html).toContain("<div class='bar ALL TYPE-swtktey with-bar-menu nodblclick d-flex _card-link'");
       // Two quiet_denial spans (Ruby's :denial view substitutes both
       // bar_left's title and bar_right's ruleBarRightHtml).
       const deniedCount = (html.match(/<span class="denied"><!-- Sorry, you don't have permission \(read\) --><\/span>/g) || []).length;
@@ -172,13 +185,13 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // deck names that row "BasicCs" (the raw expected-v2 bytes pin
       // BasicCs — the verifier world emits exactly that); this fixture
       // corpus anonymized the same row to "swtktey", so the
-      // fixture-rendered slot attr carries the deck's own name. The BODY
-      // defaults below keep the raw-pinned constant tokens (the body
-      // builder's shape constants are raw-oracle pins, not deck reads).
+      // fixture-rendered slot attr carries the deck's own name.
       expect(html).toContain('data-card-type-name="swtktey"');
-      // The body's raw-pinned constant identity (single-quoted attrs).
+      // The body's identity (single-quoted attrs): the id is deck-stable
+      // (22281 in both decks); the name follows the deck like the chip
+      // above (BODY FLIP note).
       expect(html).toContain("data-card-type-id='22281'");
-      expect(html).toContain("data-card-type-name='BasicCs'");
+      expect(html).toContain("data-card-type-name='swtktey'");
     },
   );
 });

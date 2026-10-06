@@ -108,10 +108,19 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     // bar_right: the flat arm for a non-rule card is empty (the same bytes
     // the mod view emits — the coincidence the registrar note records).
     expect(await s.engine.render(SKIN, "bar_right")).toBe("");
-    // bar_bottom: the flat arm is NOT the <code> wrap (the WITH test pins
-    // the wrap).
+    // bar_bottom: the flat arm IS the <code> wrap. Re-pinned by the core
+    // reds lane (2026-10-06): the negative assertion here predates
+    // f1286ad6 (2026-10-02), which landed the skin override on the BASE
+    // table's bar_bottom (views.ts barBottomView's bootswatch_skin gate)
+    // so the loader-less grading pipeline dispatches it — the same
+    // base-table landing this file's own superseded-premise note already
+    // records for :core and bar_left. Ruby resolves bar_bottom by MRO
+    // with the type-set module ahead of bar.rb, so a bootswatch_skin
+    // card renders `wrap_with :code { render_core }` REGARDLESS of loader
+    // binding (card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:
+    // 69-73) — the WITH-mod test below pins the identical bytes.
     const bareBarBottom = await s.engine.render(SKIN, "bar_bottom");
-    expect(bareBarBottom.startsWith("<code>")).toBe(false);
+    expect(bareBarBottom.startsWith("<code>")).toBe(true);
   });
 
   it("WITH the mod: :closed carries the captured media block in bar_left", async () => {

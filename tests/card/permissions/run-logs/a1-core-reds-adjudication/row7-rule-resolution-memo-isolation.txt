@@ -1,0 +1,37 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/permissions/rule-resolution-memo.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 34[2mms[22m[39m
+   [32m✓[39m resolveRuleRowsByKeys per-driver memo [2m(5)[22m
+     [32m✓[39m resolves one key set once; repeat and reordered calls hit the memo[32m 8[2mms[22m[39m
+     [32m✓[39m partitions entries by withContent[32m 3[2mms[22m[39m
+     [32m✓[39m answers stale after an out-of-band mutation until expireRuleResolutionCache drops the driver's memo[32m 2[2mms[22m[39m
+     [32m✓[39m never shares entries across drivers[32m 4[2mms[22m[39m
+     [32m✓[39m returns an empty map for empty keys without touching the driver[32m 2[2mms[22m[39m
+   [31m❯[39m the write path invalidates the rule-resolution memo [2m(1)[22m
+[31m     [31m×[31m a committed CardActionEngine updateCard is visible to the next resolution with no manual expire[39m[32m 14[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/permissions/rule-resolution-memo.test.ts[2m > [22mthe write path invalidates the rule-resolution memo[2m > [22ma committed CardActionEngine updateCard is visible to the next resolution with no manual expire
+[31m[1mAssertionError[22m: expected 'anyone' to be 'anyone signed in' // Object.is equality[39m
+
+Expected: [32m"anyone[7m signed in[27m"[39m
+Received: [31m"anyone"[39m
+
+[36m [2m❯[22m tests/card/permissions/rule-resolution-memo.test.ts:[2m193:48[22m[39m
+    [90m191|[39m
+    [90m192|[39m       const after = await resolveRuleRowsByKeys(storage.driver, keys, …
+    [90m193|[39m       expect(after.get("*all+*read")?.content).toBe("anyone signed in"…
+    [90m   |[39m                                                [31m^[39m
+    [90m194|[39m     } finally {
+    [90m195|[39m       storage.close();
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m5 passed[39m[22m[90m (6)[39m
+[2m   Start at [22m 00:12:32
+[2m   Duration [22m 1.09s[2m (transform 81%, import 15%, tests 3%)[22m
+
