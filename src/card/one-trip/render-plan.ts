@@ -53,6 +53,10 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
     "The dangling-side canonical map (engine-lifetime memoized deck statement; search-result collision class bookkeeping).",
   ],
   [
+    "freshness-stamp-read",
+    "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, delivery contract:79) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it.",
+  ],
+  [
     "closure-prefetch-batch",
     "The render's own prefetch batches (prelude folds, side priming, rule anchors, permission/codename/structure folds; key IN-lists and pair joins) — engine-level state issued per cold render; the payload's seeded cache empties their ROUNDS, not the batch itself.",
   ],
@@ -99,6 +103,9 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
 export function classifyResidueStatement(sql: string): string | undefined {
   if (/codename IS NOT NULL/i.test(sql) || /codename IN \('anyone'/i.test(sql)) {
     return "engine-boot-codenames";
+  }
+  if (/FROM\s+"?deck_data_version"?\s+WHERE\s+"?id"?\s*=\s*(\?|1)\s*$/i.test(sql)) {
+    return "freshness-stamp-read";
   }
   if (/rules\.id AS ruleId/i.test(sql)) return "reached-rules-cte";
   if (/left_id IS NOT NULL AND \(NOT EXISTS/i.test(sql)) return "engine-boot-dangling-canonical";

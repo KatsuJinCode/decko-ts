@@ -110,7 +110,7 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     try { rmSync(sideDir, { recursive: true, force: true }); } catch { /* OS temp cleans up */ }
   });
 
-  it("OFF: the fixture obeys the law (cold <= 14, warm <= 1); ON: 1 data + residue <= 14 and warm <= 1, bytes identical", async () => {
+  it("OFF: the fixture obeys the law (cold <= 14, warm <= 2); ON: 1 data + residue <= 14 and warm <= 2, bytes identical", async () => {
     // ---- OFF posture: the law as the manifest test pins it ----
     storageOff = await createRenderTestStorage();
     await seedLawFixtureDeck(storageOff);
@@ -121,7 +121,15 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     storageOff.counting.reset();
     await storageOff.engine.render("law fixture page", "open");
     const offWarm = storageOff.counting.snapshot();
-    expect(offWarm.roundTrips).toBeLessThanOrEqual(1);
+    // WARM CEILING 2 (lineage-reconciliation lane, 2026-10-06): the composed
+    // engine's warm render pays the freshness stamp read (delivery
+    // contract:79, exactly ONE statement — measured) ON TOP OF the
+    // deployed-lineage warm floor of ONE id point fetch
+    // (`SELECT * FROM cards WHERE id IN (...)` — measured 1 RT warm on the
+    // pristine 41cc939c base with this very fixture; the freshness lane's
+    // own tree measured 0 warm queries because ITS engine had no such
+    // floor). 1 + 1 = 2; the law's shape (a bounded warm cost) is intact.
+    expect(offWarm.roundTrips).toBeLessThanOrEqual(2);
 
     // ---- the derived store, built from this same fixture deck ----
     sideDir = mkdtempSync(join(tmpdir(), "one-trip-hops-"));
@@ -156,10 +164,12 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     // THE PIN: the wired ON render produces the same bytes as the OFF path.
     expect(normalizeSlotIds(onHtml)).toBe(normalizeSlotIds(offHtml));
 
-    // Warm ON: the seating memo makes the payload free; the law's warm rule.
+    // Warm ON: the seating memo makes the payload free; the law's warm rule
+    // (ceiling 2: the same base warm floor + the freshness stamp read — see
+    // the OFF arm's note above).
     storageOn.counting.reset();
     await storageOn.engine.render("law fixture page", "open");
     const onWarm = storageOn.counting.snapshot();
-    expect(onWarm.roundTrips).toBeLessThanOrEqual(1);
+    expect(onWarm.roundTrips).toBeLessThanOrEqual(2);
   });
 });

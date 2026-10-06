@@ -19,7 +19,7 @@
 // table cites it). Not a standing-net manifest member (same convention as
 // the module's own tests — the net's 107 files stay 107).
 
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,6 +34,7 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
+import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 const hasMirror = mirrorAvailable();
 const REPORT_PATH = fileURLToPath(
@@ -55,6 +56,13 @@ interface PostureMeasurement {
 describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (trial-deck mirror)", () => {
   let sideDir = "";
   let sidePath = "";
+  // The engine decks render through the COMPOSED engine, whose freshness
+  // gate reads deck_data_version at every render entry and fails LOUDLY on
+  // an unmigrated database BY DESIGN (delivery contract:79). The shared
+  // mirror predates the stamp schema and is never modified, so every arm
+  // renders from this migrated temp copy instead (0003, order-safe; adds no
+  // render bytes).
+  let stampedDeckPath = "";
   const measurements: PostureMeasurement[] = [];
   const savedEnv = { gate: process.env.DECKO_ONE_TRIP, store: process.env.DECKO_ONE_TRIP_STORE };
 
@@ -64,6 +72,12 @@ describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (tri
     sidePath = join(sideDir, "one-trip-closure-side.sqlite3");
     const side = new LocalSqliteDriver({ path: sidePath });
     await buildOneTripClosure({ corpus, side, pageNames: [...PROBE_PAGES] });
+    // The stamp migration for the engine decks (see stampedDeckPath above).
+    stampedDeckPath = join(sideDir, "trial-deck-stamped.sqlite3");
+    copyFileSync(MIRROR_COPY_PATH, stampedDeckPath);
+    const stampedLoad = new LocalSqliteDriver({ path: stampedDeckPath });
+    await applyDeckDataVersionStampMigration(stampedLoad);
+    stampedLoad.close();
     // The gate is process-global; this worker's env only affects this file.
     process.env.DECKO_ONE_TRIP = "1";
     process.env.DECKO_ONE_TRIP_STORE = sidePath;
@@ -87,7 +101,7 @@ describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (tri
       delete process.env.DECKO_ONE_TRIP;
       try {
         const off = new TripCapturingDriver(
-          new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true }),
+          new LocalSqliteDriver({ path: stampedDeckPath, readonly: true }),
         );
         const offBoot = await bootEngine(off);
         const offHtml = await offBoot.render.render(name, "open", {});
@@ -97,7 +111,7 @@ describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (tri
         // attach + data fetch inside render(), then the named residue ---
         process.env.DECKO_ONE_TRIP = "1"; // restore the gate for the ON arm
         const on = new TripCapturingDriver(
-          new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true }),
+          new LocalSqliteDriver({ path: stampedDeckPath, readonly: true }),
         );
         const onBoot = await bootEngine(on);
         const tripsBeforeRender = on.trips;

@@ -26,6 +26,7 @@ import {
 } from "../../../src/card/one-trip/one-trip-fetch.js";
 import {
   MIRROR_COPY_PATH,
+  stampedMirrorCopyPath,
   PROBE_PAGES,
   TripCapturingDriver,
   captureBaselineRender,
@@ -48,7 +49,7 @@ describe.skipIf(!hasMirror)("one-trip fetch (trial-deck mirror)", () => {
     await buildOneTripClosure({ corpus: corpusDriver, side, pageNames: [...PROBE_PAGES] });
     await side.query("SELECT 1", []).catch(() => undefined);
     for (const name of PROBE_PAGES) {
-      baselines.set(name, await captureBaselineRender(MIRROR_COPY_PATH, name));
+      baselines.set(name, await captureBaselineRender(await stampedMirrorCopyPath(), name));
     }
   }, 240_000);
 

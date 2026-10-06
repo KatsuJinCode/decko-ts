@@ -101,8 +101,26 @@ async function makeInlineDeck(): Promise<{ deck: SQLDatabaseDriver; ids: Record<
   }
   // The freshness lane's stamp — installed BEFORE the plan triggers so the
   // composition is exercised by the same writes the plan pins assert on.
+  // Lineage-reconciliation lane (2026-10-06): db/schema.sqlite.sql NOW
+  // carries these very triggers (the freshness branch is merged into this
+  // line), so a plain re-install collides with "trigger ... already
+  // exists". The fixture text stays BYTE-VERBATIM; the installation is
+  // collision-tolerant — on a schema without the stamp (the pre-merge
+  // posture this fixture was extracted for) every statement applies; on
+  // the merged schema they are already present and no-op. The 11-trigger
+  // composition count below pins the same union either way.
   for (const statement of DECK_DATA_VERSION_DDL) {
-    await deck.query(statement, []);
+    try {
+      await deck.query(statement, []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // "already exists": the CREATE TRIGGER statements. "UNIQUE constraint
+      // failed" (code SQLITE_CONSTRAINT_PRIMARYKEY): the fixture's
+      // deck_data_version seed row (id=1), which the merged schema also
+      // seeds. Both mean the merged schema already carries this exact
+      // statement; anything else is a real failure.
+      if (!/already exists|UNIQUE constraint|PRIMARYKEY/i.test(message)) throw error;
+    }
   }
   // The inline store's own tables, then this lane's triggers (which need
   // BOTH cards and one_trip_render_plans to exist).

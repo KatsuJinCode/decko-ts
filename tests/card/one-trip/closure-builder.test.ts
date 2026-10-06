@@ -25,6 +25,7 @@ import {
 } from "../../../src/card/one-trip/closure-builder.js";
 import {
   MIRROR_COPY_PATH,
+  stampedMirrorCopyPath,
   PROBE_PAGES,
   captureBaselineRender,
   isContentIncludeFetch,
@@ -51,7 +52,7 @@ describe.skipIf(!hasMirror)("one-trip closure builder (trial-deck mirror)", () =
       pageNames: [...PROBE_PAGES],
     });
     for (const name of PROBE_PAGES) {
-      baselines.set(name, await captureBaselineRender(MIRROR_COPY_PATH, name));
+      baselines.set(name, await captureBaselineRender(await stampedMirrorCopyPath(), name));
     }
   }, 120_000);
 

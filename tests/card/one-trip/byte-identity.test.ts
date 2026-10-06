@@ -34,6 +34,7 @@ import {
 import { seatPageBundle } from "../../../src/card/one-trip/page-bundle-adapter.js";
 import {
   MIRROR_COPY_PATH,
+  stampedMirrorCopyPath,
   PROBE_PAGES,
   TripCapturingDriver,
   bootEngine,
@@ -84,10 +85,16 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
   for (const name of PROBE_PAGES) {
     it(`renders ${name} byte-identically from the one-trip payload`, async () => {
       // --- baseline: the current engine, untouched ---
-      const baseline = await captureBaselineRender(MIRROR_COPY_PATH, name);
+      // The composed engine's freshness gate requires the stamp (loud
+      // failure on unmigrated decks by design), so engines render from the
+      // fixture's stamp-migrated mirror copy; the shared mirror is never
+      // opened writable. The stamp adds no render bytes.
+      const baseline = await captureBaselineRender(await stampedMirrorCopyPath(), name);
 
       // --- one-trip arm: fresh engine, payload fetched in ONE trip, seated, rendered ---
-      const capture = new TripCapturingDriver(new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true }));
+      const capture = new TripCapturingDriver(
+        new LocalSqliteDriver({ path: await stampedMirrorCopyPath(), readonly: true }),
+      );
       const { fetcher, render } = await bootEngine(capture);
       await attachDerivedStore(capture, sidePath);
       const tripsBeforeFetch = capture.trips;

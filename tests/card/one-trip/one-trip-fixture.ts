@@ -14,12 +14,15 @@
 // opened writable). Tests that need it skip when the copy is absent so a
 // fresh clone without the corpus still runs the rest of the suite.
 
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
+import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 /** The 5 probe pages the lane receipt and the mission name. */
 export const PROBE_PAGES = ["Home", "Aikido", "About", "Eagle", "Taking_Stock"] as const;
@@ -29,6 +32,32 @@ export const MIRROR_COPY_PATH = fileURLToPath(
 );
 
 export const mirrorAvailable = (): boolean => existsSync(MIRROR_COPY_PATH);
+
+let stampedMirrorCopy: string | undefined;
+
+/** A stamp-migrated copy of the trial-deck mirror, created once per test
+ *  process (lineage-reconciliation lane, 2026-10-06).
+ *
+ *  WHY: the composed render engine reads deck_data_version at every render
+ *  entry and fails LOUDLY on an unmigrated database BY DESIGN (delivery
+ *  contract:79 — a silently skipped check is a silent staleness window; the
+ *  throw lives in RenderEngine#readDeckDataVersion). The shared mirror
+ *  predates the stamp schema and is NEVER opened writable, so any engine
+ *  booted for a render must run against this migrated copy (migration 0003,
+ *  order-safe; adds no render bytes, so byte-identity pins compare like
+ *  with like). Corpus/builder reads that never boot a render engine may keep
+ *  using MIRROR_COPY_PATH directly. */
+export async function stampedMirrorCopyPath(): Promise<string> {
+  if (stampedMirrorCopy === undefined) {
+    const dir = mkdtempSync(join(tmpdir(), "one-trip-stamped-mirror-"));
+    stampedMirrorCopy = join(dir, "trial-deck-mirror-stamped.sqlite3");
+    copyFileSync(MIRROR_COPY_PATH, stampedMirrorCopy);
+    const loader = new LocalSqliteDriver({ path: stampedMirrorCopy });
+    await applyDeckDataVersionStampMigration(loader);
+    loader.close();
+  }
+  return stampedMirrorCopy;
+}
 
 /** A row "looks like a cards row" when it carries an integer id plus at
  *  least one cards-shaped column — reads card rows from every statement

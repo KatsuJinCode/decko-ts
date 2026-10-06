@@ -201,8 +201,10 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // (composed onto the deployed fold by the lineage-reconciliation
       // lane): +1 more — the deck_data_version stamp read folds LAST on
       // the engine's first render (baseline for the per-request freshness
-      // gate, delivery contract:79).
-      expect(stats?.additionalResults?.length).toBe(8);
+      // gate, delivery contract:79). Composed batch measured 9: 3
+      // permission + codehash + 2 universes + template type-name + head
+      // read-set + stamp.
+      expect(stats?.additionalResults?.length).toBe(9);
     } finally {
       cold.close();
     }

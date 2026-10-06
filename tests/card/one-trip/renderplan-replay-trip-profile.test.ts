@@ -49,6 +49,7 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
+import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 const PAGE = "Home";
 /** The trip census's theoretical floor: 1 boot batch + 2 seat + 1 replay
@@ -119,6 +120,11 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
       side.close();
       copyFileSync(MIRROR_COPY_PATH, inlineDbPath);
       const loadDb = new LocalSqliteDriver({ path: inlineDbPath });
+      // The composed freshness gate reads deck_data_version at every render
+      // entry and fails LOUDLY on an unmigrated database by design — so this
+      // deck copy is migrated exactly the way a provisioned database is
+      // (0003, order-safe). The shared mirror itself is never touched.
+      await applyDeckDataVersionStampMigration(loadDb);
       for (const statement of ONE_TRIP_SIDE_DDL) {
         await loadDb.query(statement, []);
       }
@@ -191,8 +197,17 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
       // ---- the OFF baseline (unchanged path, the byte reference) ----------
       delete process.env.DECKO_ONE_TRIP;
       delete process.env.DECKO_ONE_TRIP_STORE;
+      // The baseline renders through the composed engine too, so its deck
+      // must carry the stamp as well (migrated temp copy; the shared mirror
+      // is never touched). The stamp adds no render bytes, so the byte pin
+      // below keeps comparing like with like.
+      const baselinePath = join(dir, "deck-baseline-stamped.sqlite3");
+      copyFileSync(MIRROR_COPY_PATH, baselinePath);
+      const baselineLoad = new LocalSqliteDriver({ path: baselinePath });
+      await applyDeckDataVersionStampMigration(baselineLoad);
+      baselineLoad.close();
       const baseline = new TripCapturingDriver(
-        new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true }),
+        new LocalSqliteDriver({ path: baselinePath, readonly: true }),
       );
       const baselineBoot = await bootEngine(baseline);
       const baselineHtml = await baselineBoot.render.render(PAGE, "open", {});
