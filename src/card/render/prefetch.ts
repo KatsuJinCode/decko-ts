@@ -1234,7 +1234,18 @@ function nextSideIds(rows: RawRow[], seenIds: Set<number>): number[] {
 export interface WarmupRef {
   name: string;
   context: string;
+  /** How this reference renders (default "full"). */
+  mode?: WarmupMode;
 }
+
+/** Reference classes, weakest to strongest:
+ *  - leaf: existence/title only ([[link]] targets) — prepared, not scanned;
+ *  - nav-item: nested with view :nav_item — a link, or for Pointer/List
+ *    types a dropdown of its items (each a link: leaves);
+ *  - navbar: nested with view :navbar_links — its [[links]] are nav items;
+ *  - full: rendered content — nests and pointer items are full, links leaf. */
+export type WarmupMode = "leaf" | "nav-item" | "navbar" | "full";
+export const WARMUP_MODE_RANK: Record<WarmupMode, number> = { leaf: 0, "nav-item": 1, navbar: 2, full: 3 };
 
 /** The references one scanned card's content contributes. Every class
  *  expands: which references render is NOT decidable from content syntax
@@ -1247,6 +1258,10 @@ export interface WarmupRef {
  *  cap, never from dropping a reference class. */
 export interface WarmupScan {
   refs: WarmupRef[];
+  /** Existence-only references: prepared like refs, never scanned (their
+   *  own references are not read by this page unless something else
+   *  reaches them as a ref). */
+  leaves?: WarmupRef[];
 }
 
 /** Structural view of a prepared render card (RenderCard satisfies it). */
@@ -1332,7 +1347,7 @@ export interface WarmupStats {
 export async function prefetchWarmupClosure(
   seeds: WarmupRef[],
   ctx: WarmupClosureContext,
-  scan: (card: WarmupCard) => WarmupScan,
+  scan: (card: WarmupCard, mode: WarmupMode) => WarmupScan,
 ): Promise<WarmupStats> {
   const stats: WarmupStats = { batches: 0, statements: 0, rounds: 0, cards: 0, fallbacks: 0 };
   const foldStats: PrefetchStats = {
@@ -1359,7 +1374,12 @@ export async function prefetchWarmupClosure(
   }
   /** Keyed by canonical key. */
   const pending = new Map<string, Entry>();
-  const pushRef = (ref: WarmupRef): void => {
+  /** The strongest reference class each key was reached as (WARMUP_MODE_RANK). */
+  const modes = new Map<string, WarmupMode>();
+  /** The class each scanned key was scanned at. */
+  const scannedAs = new Map<string, WarmupMode>();
+  const rank = (m: WarmupMode | undefined): number => WARMUP_MODE_RANK[m ?? "full"];
+  const pushRef = (ref: WarmupRef, modeOverride?: WarmupMode): void => {
     const abs = resolveWarmName(ref.name, ref.context);
     if (abs === undefined) return; // unresolved mark: the real nest renders it
     let key: string;
@@ -1367,6 +1387,30 @@ export async function prefetchWarmupClosure(
       key = DeckoName.parse(abs).key;
     } catch {
       return;
+    }
+    const mode: WarmupMode = modeOverride ?? ref.mode ?? "full";
+    const had = modes.get(key);
+    if (had === undefined || rank(mode) > rank(had)) {
+      modes.set(key, mode);
+      const done = scannedAs.get(key);
+      if (done !== undefined && rank(mode) > rank(done)) {
+        // reached again as a stronger class after its scan: re-scan at it
+        const prepared = ctx.getCard(key);
+        if (prepared !== undefined) {
+          scannedAs.set(key, mode);
+          const found = scan(prepared, mode);
+          for (const r of found.refs) pushRef(r);
+          for (const r of found.leaves ?? []) pushRef(r, "leaf");
+        }
+      } else if (done === undefined && had === "leaf" && !pending.has(key) && !dead.has(key)) {
+        // prepared as a leaf, now needs a scan
+        const prepared = ctx.getCard(key);
+        if (prepared !== undefined) {
+          scanned.delete(key);
+          scanCard(prepared);
+          return;
+        }
+      }
     }
     if (dead.has(key) || pending.has(key)) return;
     pending.set(key, { abs });
@@ -1384,20 +1428,27 @@ export async function prefetchWarmupClosure(
     virtualCheckQueue.push(entry.abs);
   };
 
-  const scanCard = (card: WarmupCard): void => {
+  function scanCard(card: WarmupCard): void {
     if (scanned.has(card.key)) return;
+    const mode = modes.get(card.key) ?? "full";
+    if (mode === "leaf") return; // prepared for existence only
     scanned.add(card.key);
-    if (ctx.scannedKeys?.has(card.key)) {
-      // An earlier warm-up call on this engine already chased this card's
-      // references (see scannedKeys on the context): skip the re-scan. The
-      // per-call bookkeeping still marks it scanned so within-call pushes
-      // never loop, and the drain that removed it from pending still makes
-      // progress.
-      return;
+    scannedAs.set(card.key, mode);
+    if (mode === "full") {
+      if (ctx.scannedKeys?.has(card.key)) {
+        // An earlier warm-up call on this engine already chased this card's
+        // references (see scannedKeys on the context): skip the re-scan. The
+        // per-call bookkeeping still marks it scanned so within-call pushes
+        // never loop, and the drain that removed it from pending still makes
+        // progress.
+        return;
+      }
+      ctx.scannedKeys?.add(card.key);
     }
-    ctx.scannedKeys?.add(card.key);
-    for (const ref of scan(card).refs) pushRef(ref);
-  };
+    const found = scan(card, mode);
+    for (const ref of found.refs) pushRef(ref);
+    for (const ref of found.leaves ?? []) pushRef(ref, "leaf");
+  }
 
   /** Run the queued virtual? walks; a hit constructs the same record the
    *  ladder's new_result_card would return (placeholder + rule type +

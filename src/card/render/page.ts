@@ -45,7 +45,7 @@ import { DeckoName } from "../name.js";
 import { findRule } from "../rules/lookup.js";
 import { applyViewOverride } from "../rules/apply.js";
 import { scanNests, referencedNames } from "./nest-syntax.js";
-import type { WarmupRef, WarmupScan } from "./prefetch.js";
+import type { WarmupMode, WarmupRef, WarmupScan } from "./prefetch.js";
 import { RenderFormat } from "./format.js";
 import type { RenderCard } from "./format.js";
 import {
@@ -412,7 +412,11 @@ async function renderPageBytesWithPageConfigInner(
   if (layout.kind === "card") {
     for (const piece of scanNests(layout.layoutCardContent ?? "")) {
       if (piece.kind === "nest" && piece.nest !== undefined && piece.nest.name !== "_main") {
-        layoutNestSeeds.push({ name: piece.nest.name, context: record.name.s });
+        layoutNestSeeds.push({
+          name: piece.nest.name,
+          context: record.name.s,
+          mode: nestWarmMode(piece.nest.options.view),
+        });
       }
     }
     await ensureCodenameMarksResolvable(engine);
@@ -536,27 +540,68 @@ async function warmUpLayoutNests(
  *  only their existence off the prepared map; a link target never renders
  *  in this page). Every pushed name keeps the REFERENCING card as its
  *  resolution context. */
-function scanWarmDeps(card: {
-  name: DeckoName;
-  dbContent: string;
-  typeCode: string | undefined;
-}): WarmupScan {
+function scanWarmDeps(
+  card: {
+    name: DeckoName;
+    dbContent: string;
+    typeCode: string | undefined;
+  },
+  mode: WarmupMode,
+): WarmupScan {
   const refs: WarmupRef[] = [];
+  const leaves: WarmupRef[] = [];
   const context = card.name.s;
-  for (const ref of referencedNames(card.dbContent)) {
-    refs.push({ name: ref.name, context });
+  const isItems = card.typeCode === "pointer" || card.typeCode === "list";
+  const items = (): string[] =>
+    card.dbContent
+      .split(/\n+/)
+      .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
+      .filter((s) => s !== "");
+  if (!LINKS_ARE_LEAVES) mode = "full";
+
+  if (mode === "nav-item") {
+    // view :nav_item (navbar-views.ts): a plain card renders as a link; a
+    // Pointer/List renders a dropdown whose items are links
+    // (nav_link_in_dropdown): existence + title only.
+    if (isItems) for (const item of items()) leaves.push({ name: item, context });
+    return { refs, leaves };
   }
+
+  for (const piece of scanNests(card.dbContent)) {
+    const nest = piece.nest;
+    if (nest === undefined || nest.comment !== undefined) continue;
+    refs.push({ name: nest.name, context, mode: nestWarmMode(nest.options.view) });
+  }
+  // A card rendered through :navbar_links nests each [[link]] target with
+  // view :nav_item; anywhere else a [[link]] is an existence-only anchor
+  // (renderLinkChunk's known/wanted class), so its target is a leaf.
   for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
     const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
-    if (target !== "") refs.push({ name: target, context });
+    if (target === "") continue;
+    if (!LINKS_ARE_LEAVES) refs.push({ name: target, context });
+    else if (mode === "navbar") refs.push({ name: target, context, mode: "nav-item" });
+    else leaves.push({ name: target, context });
   }
-  if (card.typeCode === "pointer" || card.typeCode === "list") {
-    for (const item of card.dbContent.split(/\n+/).map((s) => s.replace(/\[\[|\]\]/g, "").trim())) {
-      if (item !== "") refs.push({ name: item, context });
+  if (isItems) {
+    for (const item of items()) {
+      refs.push({ name: item, context, ...(mode === "navbar" ? { mode: "nav-item" as const } : {}) });
     }
   }
-  return { refs };
+  return { refs, leaves };
 }
+
+/** The warm-up class a nest's view implies (prefetch.ts WarmupMode). */
+function nestWarmMode(view: string | undefined): WarmupMode {
+  if (!LINKS_ARE_LEAVES) return "full";
+  if (view === "navbar_links") return "navbar";
+  if (view === "nav_item") return "nav-item";
+  return "full";
+}
+
+/** [[link]] targets are existence-only (LEAF): prepared, never scanned for
+ *  their own references, unless a nest, pointer item or navbar reaches them.
+ *  DECKO_WARMUP_LINKS_SPINE=1 restores the old transitive chase. */
+const LINKS_ARE_LEAVES = process.env.DECKO_WARMUP_LINKS_SPINE !== "1";
 
 /** Re-prime the lexicon entries the layout body's `:codename` marks resolve
  *  through. The temporary cache's max_keys reset (cache.ts TemporaryCache —

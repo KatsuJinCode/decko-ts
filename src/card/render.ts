@@ -107,6 +107,7 @@ import {
   type WarmupCard,
   type WarmupRef,
   type WarmupScan,
+  type WarmupMode,
   type WarmupStats,
 } from "./render/prefetch.js";
 import { readCardRowsByIdChunked } from "../server/chunked-row-reads.js";
@@ -4666,7 +4667,7 @@ export class RenderEngine implements RenderEngineLike {
    *  referencing card). */
   async warmupLayoutReferences(
     seeds: WarmupRef[],
-    scan: (card: WarmupCard) => WarmupScan,
+    scan: (card: WarmupCard, mode: WarmupMode) => WarmupScan,
     onRound?: () => Promise<void>,
   ): Promise<WarmupStats> {
     const stats = await prefetchWarmupClosure(
