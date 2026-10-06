@@ -168,6 +168,31 @@ async function renderPageBytesWithPageConfig(
   requestedView?: string,
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
+  // THE PAGE LANE'S SWEEP-SURFACE scope (renderSeats' doc): the layout
+  // warm-ups below seat AROUND the inner render() — one clear here puts the
+  // whole page's seats (main closure + layout closure) in this page render's
+  // sweep surface, and the next page's render starts from an empty one (the
+  // sweep-cascade cut: a page's chase seats must never become a later
+  // render's scan surface).
+  engine.beginPagePrepare();
+  try {
+    return await renderPageBytesWithPageConfigInner(
+      engine,
+      cardName,
+      requestedView,
+      historyParams,
+    );
+  } finally {
+    engine.endPagePrepare();
+  }
+}
+
+async function renderPageBytesWithPageConfigInner(
+  engine: RenderEngine,
+  cardName: string,
+  requestedView?: string,
+  historyParams?: HistoryRenderParams,
+): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
   const record = await engine.fetcher.fetchByName(cardName);

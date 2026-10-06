@@ -402,6 +402,47 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
 
+  /** THE SWEEP SURFACE (the sweep-cascade cut, warmflood-sweep-cut-lane
+   *  2026-10-06): the keys seated during the CURRENT render call. Every
+   *  prepare sweep that walks the whole render-card map is bounded to this
+   *  set, and this set is cleared at the start of each render call (and by
+   *  resetCaches()).
+   *
+   *  MEASURED MECHANISM IT CUTS: the sweeps' done-sets (structureProcessed,
+   *  pointerListHostsDone, linkScanDoneKeys, ...) are engine-lifetime, but
+   *  every sweep seats new cards AFTER the other sweeps' last pass of the
+   *  render, so each render's chase seats (pointer items, link targets,
+   *  wave seats, type-opt/template-junction targets) are the NEXT render's
+   *  unprocessed surface. Their content refs then resolve one shell deeper
+   *  into the corpus's connected lattice — measured (attribution probe,
+   *  warmflood-attribution-run4/5.log): +875 / +1,325 / +1,284 fresh map
+   *  cards per warm render at 370 / 551 / 500 trips, 100% of them outside
+   *  the page's byte closure (bytes are slot-stable across map sizes 477 →
+   *  3,961, so no view ever reads them). Bounding the sweeps to the
+   *  render's own seats keeps every byte-critical behavior (render 1 and
+   *  the post-reset render seat the whole closure, surface == map there)
+   *  while the warm render's sweeps find nothing new to chase. */
+  private renderSeats = new Set<string>();
+
+  /** The page lane's prepare marker: renderPageBytes seats the layout
+   *  closure AROUND its inner render() call, and those seats belong to the
+   *  PAGE render's surface — not to whatever render() runs next. While set,
+   *  render() does not clear renderSeats (renderPageBytes cleared it once,
+   *  at its own start). */
+  private pagePrepareDepth = 0;
+
+  /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
+   *  of the sweep surface for the whole page render, its layout warm-ups
+   *  included. Pair with endPagePrepare in a finally block. */
+  beginPagePrepare(): void {
+    this.pagePrepareDepth += 1;
+    this.renderSeats.clear();
+  }
+
+  endPagePrepare(): void {
+    this.pagePrepareDepth = Math.max(0, this.pagePrepareDepth - 1);
+  }
+
   /** M9 - bootswatch_skin new_customized_name's resolved answer, keyed by
    *  the skin card's canonical key. `name` is the answer itself (the card
    *  name the Customize button proposes); `asked` is every candidate the
@@ -795,6 +836,11 @@ export class RenderEngine implements RenderEngineLike {
    * for views outside the ported registry (the captured sentinel contract).
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
+    // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
+    // render seats (the sweep-cascade cut — renderSeats' doc). The page
+    // lane clears once for the whole page render (beginPagePrepare), so
+    // its inner render() leaves the layout warm-ups' seats in scope.
+    if (this.pagePrepareDepth === 0) this.renderSeats.clear();
     // Freshness gate (delivery contract:79): any render that could serve
     // warm bytes reads the deck's committed-write stamp FIRST — ONE
     // statement — and clears every derived cache when a committed write
@@ -1089,6 +1135,17 @@ export class RenderEngine implements RenderEngineLike {
       this.deckDataVersion = await this.readDeckDataVersion();
     }
     if (permissionCold) await this.ensureReadPermission(foldedResults);
+    // THE CLOSURE HALF OF THE SWEEP SURFACE (renderSeats' doc): the render's
+    // sweeps must also process the cards THIS render's root closure reaches
+    // that EARLIER renders seated — a nest target chased as another page's
+    // late seat sits in the map already (enrichAndStore's existing-key guard
+    // skipped it, so it never entered renderSeats), but when THIS page nests
+    // it, its structure substitution and its first processing ARE this
+    // render's byte obligation (the structure-corpus-replay drift case).
+    // The walk is closureWarm's own BFS (nest-reference reachability over
+    // the map, memory-only); chase residue of OTHER pages enters the surface
+    // only when THIS render's closure reaches it, so the cascade stays cut.
+    for (const key of this.closureSurface(record)) this.renderSeats.add(key);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
     // accessor; templating.rb#structure). On every first-render path this
@@ -1106,6 +1163,23 @@ export class RenderEngine implements RenderEngineLike {
     // walk (the ref walk skips empty keys)  their deck-constant verdict
     // seats under the "" key (see the method doc).
     await this.seatBlankKeyReadVerdict();
+    // THE RECOMPOSITION REFILL RESIDUAL (measured, sweep-cut lane
+    // 2026-10-06): on the first render after a committed-write reset the
+    // refill runs raw (the plan is legitimately disarmed by the reset per
+    // the stamp-read-vs-plan pin) and its solo tail lives in the SEAT
+    // PIPELINE, not in missing priming: composeCardRecord resolves each
+    // wave-fetched junction row's name through the lexicon one solo pair
+    // read at a time (measured post-bump: 53 `left_id = ? AND right_id = ?`
+    // probes issued from _DbLexicon.cacheFetch, 59 fetch-ladder legs, ~55
+    // wave-round trips, 16 cold-batch statements, 14 search re-runs — 182
+    // trips / 52 live pair probes). A reset-gated candidate prime here was
+    // measured and WITHDRAWN: gating a bigger/earlier candidate wave on the
+    // reset moved pin 2 by +2 trips (184) — the verdict ladders ride
+    // driver-level CTEs (resolveRuleRowsByRuleKeys / resolveRuleIdsByRule
+    // Keys) that never needed the seats, and the wave's own composer IS the
+    // solo-tail issuer. Closing pin 2 needs the fetch layer's seat pipeline
+    // to resolve row names in batched vehicles — a fetch/lexicon-lane
+    // refactor, recorded OPEN-BLOCKED in warmflood-sweep-cut-lane.md.
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -2039,6 +2113,7 @@ export class RenderEngine implements RenderEngineLike {
   resetCaches(): void {
     this.fetcher.resetCaches();
     this.renderCards.clear();
+    this.renderSeats.clear();
     this.idsByKey.clear();
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
@@ -2670,7 +2745,13 @@ export class RenderEngine implements RenderEngineLike {
     if (universe === undefined) return;
     for (let round = 0; round < 8; round++) {
       const toFetch = new Map<string, string>(); // ref name -> key
+      // SWEEP-SURFACE (renderSeats): process only cards THIS render seated.
+      // The done-sets below are engine-lifetime, so a card seated by an
+      // earlier render is either processed already or is that render's
+      // chase residue — chasing it is the sweep cascade (renderSeats' doc);
+      // no view ever reads it (bytes stable across map sizes 477 → 3,961).
       for (const [key, card] of this.renderCards) {
+        if (!this.renderSeats.has(key)) continue;
         if (this.structureProcessed.has(key)) continue;
         this.structureProcessed.add(key);
         const resolved = resolveStructuredContent(
@@ -2809,7 +2890,10 @@ export class RenderEngine implements RenderEngineLike {
    */
   private async primePreparedCardDerivedState(rootKey: string | undefined): Promise<void> {
     const typeIds = new Set<number>();
+    // SWEEP-SURFACE (renderSeats): new type ids arrive only with this
+    // render's seats; earlier renders' cards were primed already.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       const t = card.record.typeId;
       if (
         typeof t === "number" &&
@@ -2854,7 +2938,12 @@ export class RenderEngine implements RenderEngineLike {
       }
       const names = new Set<string>();
       if (seatCandidates) {
+        // SWEEP-SURFACE (renderSeats): candidate collection over this
+        // render's seats — the set is deterministic per root on the render
+        // that seats the closure (render 1 / post-reset), and warm renders
+        // seat nothing new.
         for (const card of this.renderCards.values()) {
+          if (!this.renderSeats.has(card.key)) continue;
           if (card.record.isNew) continue;
           for (const setting of candidateSettings) {
             let candidates: string[];
@@ -3599,7 +3688,16 @@ export class RenderEngine implements RenderEngineLike {
     const state = this.readPermission;
     if (state === undefined) return;
     if (this.verdictsJudgedAtMapSize === this.renderCards.size) return;
+    // SWEEP-SURFACE (renderSeats): judge this render's seats. Already-judged
+    // cards hit the has-checks and continue; earlier renders' cards were
+    // judged by their own render (every seat was surface-fresh then), so
+    // re-walking the whole map judges only the cascade's chase seats —
+    // rule-ladder queries for cards no view renders (the flood's verdict
+    // family). An earlier render's seat that stayed unjudged because its
+    // render died mid-prepare is re-surfaced by the page lane's recovery
+    // seam (ensurePermissionVerdicts) over the render that re-seats it.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined) {
         // The virtual cards (states.rb#virtual?): no row, no id — the read
         // rule resolves through the live name walk exactly like Ruby's
@@ -4086,7 +4184,11 @@ export class RenderEngine implements RenderEngineLike {
   private async enrichLinkTargetsForKnownClass(rootCard: RenderCard): Promise<void> {
     const targets: string[] = [];
     if (this.linkScanDoneKeys === undefined) this.linkScanDoneKeys = new Set();
+    // SWEEP-SURFACE (renderSeats): harvest link targets from this render's
+    // seats only. The rendered cards' targets seat on the render that seats
+    // the closure; earlier renders' residue holds no rendered anchor.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.linkScanDoneKeys.has(card.key)) continue;
       this.linkScanDoneKeys.add(card.key);
       const content = card.dbContent;
@@ -4378,7 +4480,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.renderCards.size === this.nestTypeOptLastSize) return;
     this.nestTypeOptLastSize = this.renderCards.size;
     const need = new Set<string>();
+    // SWEEP-SURFACE (renderSeats): scan this render's seats only.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.nestTypeOptScanned.has(card.key)) continue;
       this.nestTypeOptScanned.add(card.key);
       const content = card.dbContent;
@@ -4497,7 +4601,9 @@ export class RenderEngine implements RenderEngineLike {
     if (this.renderCards.size === this.templateLinkJunctionLastSize) return;
     this.templateLinkJunctionLastSize = this.renderCards.size;
     const need = new Set<string>();
+    // SWEEP-SURFACE (renderSeats): scan this render's seats only.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (this.templateLinkJunctionScanned.has(card.key)) continue;
       const content = card.dbContent;
       if (content === undefined || content === "" || !content.includes("{{")) continue;
@@ -4574,7 +4680,11 @@ export class RenderEngine implements RenderEngineLike {
    *  scan plus zero queries on an already-warm deck. */
   private async warmNestedSkinImages(): Promise<void> {
     const skinImageNames: string[] = [];
+    // SWEEP-SURFACE (renderSeats): skin cards this render seated — a warm
+    // render re-walking the whole map fetches the cascade's skin seats'
+    // +Image children solo (the flood's skin family).
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
         skinImageNames.push(`${card.name.s}+Image`);
       }
@@ -4624,7 +4734,12 @@ export class RenderEngine implements RenderEngineLike {
       // read verdicts precomputed exactly like list hosts').
       // Iterate the map directly (no intermediate array): the prewarmed
       // map holds the whole deck, and this filter runs every render.
+      // SWEEP-SURFACE (renderSeats): hosts this render seated — the
+      // engine-lifetime done-sets below mean an earlier render's hosts are
+      // either done already or are that render's chase residue, and
+      // re-walking them is the sweep cascade (renderSeats' doc).
       for (const card of this.renderCards.values()) {
+        if (!this.renderSeats.has(card.key)) continue;
         // The +*account cards' field records: card-mod-account
         // set/right/account/views.rb view :core nests +*email and +*password
         // (accountFieldNest, views.ts) — fields the CONTENT-based closure
@@ -5603,7 +5718,11 @@ export class RenderEngine implements RenderEngineLike {
     // render-engine / depth-sweep query-count gates pin the round-trip
     // shape, and the loop below would skip every card anyway.
     let hasDiscussionCard = false;
+    // SWEEP-SURFACE (renderSeats): this render's seats carry the closure's
+    // discussion cards (the page's own nests); a warm render's map walk
+    // over residue only finds cascade seats to run rule ladders against.
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id !== undefined && card.name.rightName?.key === "discussion") {
         hasDiscussionCard = true;
         break;
@@ -5615,6 +5734,7 @@ export class RenderEngine implements RenderEngineLike {
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
       if (card.name.rightName?.key !== "discussion") continue;
       this.taskVerdicts.set(
@@ -5638,7 +5758,11 @@ export class RenderEngine implements RenderEngineLike {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
+    // SWEEP-SURFACE (renderSeats): task verdicts for this render's seats —
+    // earlier renders' cards carry their verdicts already (the has-check
+    // below would skip them; the cascade's seats would not).
     for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
       if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
       const verdicts = await allTaskVerdictsForCard(
         this.fetcher,
@@ -6787,6 +6911,32 @@ export class RenderEngine implements RenderEngineLike {
    * renders those nests as unknown-card views, and so does the port's nest
    * path.
    */
+  /** THE SWEEP SURFACE's closure half (renderSeats' doc): the keys this
+   *  render's root closure reaches — closureWarm's BFS shape (nest-reference
+   *  reachability over the render-card map), collecting instead of
+   *  checking. Missing refs simply stop the walk down that branch (the cold
+   *  path seats them and enrichAndStore puts them in renderSeats); the
+   *  search-card gate is a warmth question, not reachability, and does not
+   *  belong here. Memory-only, bounded by the closure the map holds. */
+  private closureSurface(record: CardRecord): Set<string> {
+    const surface = new Set<string>();
+    if (record.key === undefined || record.key === "") return surface;
+    if (!this.renderCards.has(record.key)) return surface;
+    const queue: string[] = [record.key];
+    while (queue.length > 0) {
+      const key = queue.pop() as string;
+      if (surface.has(key)) continue;
+      const card = this.renderCards.get(key);
+      if (card === undefined) continue;
+      surface.add(key);
+      for (const ref of this.cardReferenceKeys(card)) {
+        if (this.structureRefMisses.has(ref)) continue;
+        if (!surface.has(ref) && this.renderCards.has(ref)) queue.push(ref);
+      }
+    }
+    return surface;
+  }
+
   private closureWarm(record: CardRecord): boolean {
     if (record.key === undefined || record.key === "") return false;
     if (!this.renderCards.has(record.key)) return false;
@@ -6961,6 +7111,7 @@ export class RenderEngine implements RenderEngineLike {
     };
     this.renderCards.set(key, card);
     if (record.id !== undefined) this.idsByKey.set(key, record.id);
+    this.renderSeats.add(key);
     this.renderCardsGrewSinceClosure = true;
     return card;
   }
