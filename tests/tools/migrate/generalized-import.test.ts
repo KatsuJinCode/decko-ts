@@ -7,11 +7,22 @@ import { describe, it, expect, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { LocalSqliteToolDriver } from "../../../tools/migrate/import.mjs";
 import { importFromSqlite } from "../../../tools/migrate/generalized-import.mjs";
 
-const DDL_PATH = "C:/localProjects/decko-ts/db/schema.sqlite.sql";
+// The schema comes from THIS worktree, resolved relative to this file. The
+// prior literal was the absolute `C:/localProjects/decko-ts/db/schema.sqlite.sql`
+// — a path into the stale machine-root checkout, which is a live git repo
+// (branch main, HEAD d839fb97) rather than a deleted one, so it answered
+// SILENTLY from an older tree instead of failing: on 2026-10-06 it lacked the
+// whole [ENGINE-FRESHNESS] deck_data_version block commit d19ec179 added, and
+// every import in this file was landing into a target schema the port under
+// test no longer ships. DECKO_MIGRATE_DDL overrides for a deliberate
+// against-another-schema proof (same override name as determinism.test.ts).
+const DEFAULT_DDL_PATH = fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url));
+const DDL_PATH = process.env.DECKO_MIGRATE_DDL ?? DEFAULT_DDL_PATH;
 const dirs: string[] = [];
 function makeDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "decko-gen-import-"));
