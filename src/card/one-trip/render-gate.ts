@@ -69,6 +69,21 @@ const attachedDrivers = new WeakMap<object, true>();
  *  which keeps the failure mode honest and the warm path at zero). */
 const seatedPages = new WeakMap<FetchEngine, Set<string>>();
 
+/**
+ * Drop the seating memo for one fetcher (the freshness composition,
+ * per-viewer-seat lane 2026-10-06): a moved deck_data_version stamp means
+ * every seated page's snapshot and every armed plan's in-memory results
+ * predate the current deck state. The render's freshness gate calls this
+ * alongside resetCaches() and replayRouter.disarmRenderPlan() so the next
+ * render RE-SEATS — a fresh bundle fetch plus a fresh plan replay from the
+ * store as it now stands — instead of answering from pre-move state.
+ * Memoize-before-trying semantics are preserved: a page whose seat FAILED
+ * re-tries only after the next stamp move, never within a warm session.
+ */
+export function invalidateSeatedPagePayloads(fetcher: FetchEngine): void {
+  seatedPages.delete(fetcher);
+}
+
 let warnedMisconfiguration = false;
 
 /**

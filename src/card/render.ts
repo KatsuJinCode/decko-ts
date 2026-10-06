@@ -27,7 +27,11 @@ import { getNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
 import { FetchEngine } from "./fetch.js";
-import { oneTripWantsPayload, seatOneTripPayloadForRender } from "./one-trip/render-gate.js";
+import {
+  invalidateSeatedPagePayloads,
+  oneTripWantsPayload,
+  seatOneTripPayloadForRender,
+} from "./one-trip/render-gate.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
 import { resolvePointerItemName } from "./render/pointer-list.js";
@@ -783,6 +787,22 @@ export class RenderEngine implements RenderEngineLike {
       const observed = await this.readDeckDataVersion();
       if (observed !== this.deckDataVersion) {
         this.resetCaches();
+        // The one-trip SEAT STATE is cache state too (per-viewer-seat lane,
+        // 2026-10-06): the armed plan's in-memory results and the seating
+        // memo predate the moved stamp. Left armed/memoized, this render
+        // answers matched reads from pre-move rows and the seat never
+        // re-fetches (measured at base: 397 live trips, 0 seat fetches,
+        // partial stale-arm answers). Dropped here, the seat gate below
+        // re-seats and re-arms from the store as it now stands.
+        this.fetcher.replayRouter.disarmRenderPlan();
+        invalidateSeatedPagePayloads(this.fetcher);
+        // The BOOT-LIFETIME state is cache state too (same lane): the reset
+        // wiped the codename registry's bulk load, and without this re-prime
+        // the post-reset render degrades to per-lookup live name reads
+        // (measured: 340 trips vs the 7-trip seated floor — worse than the
+        // 177-trip fresh ladder, because a fresh boot re-primes and this
+        // path did not). One batched statement, once per version move.
+        await this.fetcher.reprimeBootState();
         this.deckDataVersion = observed;
       }
     }
@@ -1944,6 +1964,22 @@ export class RenderEngine implements RenderEngineLike {
     // the first pass) would serve every card ALLOWED — the reset must be
     // complete, and a half-cleared memo is a latent deny-direction leak.
     this.verdictsJudgedAtMapSize = -1;
+    // The set-once WARM MARKERS complete the same rule (per-viewer-seat
+    // lane, 2026-10-06). Each marker records "this fold already ran this
+    // engine lifetime" on the deck-is-static assumption a stamp move
+    // breaks; its fold's outputs live in the caches this reset just
+    // emptied. Left set, the next render SKIPS the fold over empty caches
+    // (headReadsWarmed skips the head-read-set fold while pageHeadBytes is
+    // empty; the *Done sets skip the pointer/account/nest/template warm
+    // passes) and the render re-derives their reads one solo statement at
+    // a time — measured: the post-stamp-move render ran 297 trips / 509
+    // statements against the fresh-engine shape's 8 / 215, a 10x
+    // pair-exists-probe flood from the diverged walk.
+    this.headReadsWarmed = false;
+    this.pointerListHostsDone.clear();
+    this.accountFieldWarmDone.clear();
+    this.nestTypeOptTargetsDone.clear();
+    this.templateLinkJunctionTargetsDone.clear();
   }
 
   // -------------------------------------------------------------------------

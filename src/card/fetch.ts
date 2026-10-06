@@ -664,6 +664,23 @@ export class FetchEngine {
     this.codenames.resetCache();
   }
 
+  /** Re-prime the boot-lifetime state a resetCaches() wiped (the freshness
+   *  composition, per-viewer-seat lane 2026-10-06). The codename registry's
+   *  bulk load is BOOT state (bunny-edge-deck-boot.ts and every test boot
+   *  run it once, before the first render); resetCaches() clears the
+   *  registry's cache and nothing re-ran the load — so every post-reset
+   *  render degraded to per-lookup live name reads (measured: a
+   *  version-move reset under the one-trip seat re-seats the PAGE data
+   *  correctly yet still costs 340 trips vs the 7-trip seated floor and
+   *  the 177-trip fresh ladder). The registration (installNameEnvironment)
+   *  survives the reset — it registers THESE instances — but re-running it
+   *  here keeps the post-reset engine byte-identical in shape to a fresh
+   *  boot. Idempotent by the same contract the boot relies on. */
+  async reprimeBootState(): Promise<void> {
+    await this.codenames.ensureLoaded();
+    this.installNameEnvironment();
+  }
+
   /** Cache::CardClass#after_write_to_temp_cache -> Cache::All#write_lexicon
    *  (cache/all.rb:5-15): temp-cache writes of cards mirror the card into
    *  the Lexicon cache (id -> name and lex -> id; lex = the name for

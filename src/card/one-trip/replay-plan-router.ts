@@ -34,7 +34,10 @@ import type {
   SQLQueryResult,
   SQLStatement,
 } from "../../server/driver.js";
-import type { RenderPlanEntry } from "./render-plan.js";
+import {
+  isFreshnessStampRead,
+  type RenderPlanEntry,
+} from "./render-plan.js";
 
 /** The plan-map key — the SAME keying recordRenderPlan uses (sql text +
  *  JSON params), so a recorded entry and a later live statement match
@@ -85,6 +88,20 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    // THE FRESHNESS-STAMP BYPASS (per-viewer-seat lane, 2026-10-06): the
+    // stamp read is the render's invalidation probe — its result must be
+    // current-at-read, never replayed. Record-time filters keep the stamp
+    // out of NEW plans (acfb1977, isPipelineAbleRenderStatement), but a
+    // plan can REACH this router still carrying a stamp member — a store
+    // built by an older builder, a hand-seeded test store — and an armed
+    // stamp member would answer the freshness gate with the recorded
+    // version forever: no move is ever detected, the caches are never
+    // reset, pre-edit rows serve indefinitely. The router is the one seam
+    // every posture flows through, so the property is enforced HERE: a
+    // stamp read is always a live statement, armed or not.
+    if (this.planResults !== undefined && isFreshnessStampRead(sql)) {
+      return this.base.query<T>(sql, params);
+    }
     const served = this.planResults?.get(renderPlanResultKey(sql, params));
     if (served !== undefined) return served as SQLQueryResult<T>;
     if (!isReadOnlyStatement(sql)) this.planResults = undefined;
@@ -97,13 +114,17 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     // Consult per member; only the misses ride a real batch trip. Results
     // reassemble in statement order, so the caller sees exactly the shape
     // an all-live batch would have produced (a hit's rows ARE the rows the
-    // database returned for that statement against this deck).
+    // database returned for that statement against this deck). A stamp
+    // member is always a miss (the same never-serve property as query()
+    // above) — it rides the live batch and never disarms (it is a read).
     const served: (SQLQueryResult | undefined)[] = new Array(statements.length);
     const misses: number[] = [];
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i] as { sql: string; params?: unknown[] } | undefined;
       const hit =
-        stmt === undefined ? undefined : map.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
+        stmt === undefined || isFreshnessStampRead(stmt.sql)
+          ? undefined
+          : map.get(renderPlanResultKey(stmt.sql, stmt.params ?? []));
       if (hit !== undefined) served[i] = hit;
       else misses.push(i);
     }
