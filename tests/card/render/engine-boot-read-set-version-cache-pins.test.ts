@@ -361,6 +361,17 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
    *               Cost: today's boot cost + 1 statement.
    *   engine 3+ -- the probe reports the version the bundle carries: served,
    *               0 of the boot read-set.
+   *
+   * COMPOSED-POSTURE ARITHMETIC (integration assembly r3, 2026-10-06). This
+   * file was written on a lineage without the freshness gate. On the composed
+   * tree EVERY boot here is a cold-closure render of a fresh engine, and the
+   * freshness gate's FIRST-render baseline (stampCold) folds ONE
+   * deck_data_version read into the cold batch — the same statement text the
+   * probe issues, so it lands in the same `version` capture bucket. Every
+   * version-count pin below is the probe count + 1 baseline; the DELTA
+   * between a bundle-less boot (probe 0) and a bundled boot (probe 1) is
+   * still exactly 1, so the pins still fail if the probe fires without a
+   * bundle or fails to fire with one.
    */
   async function bootUntilVersioned(): Promise<BootReadSet[]> {
     const reads: BootReadSet[] = [];
@@ -382,12 +393,14 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     );
     expect(
       convergence[0].version.length,
-      "the first engine must run no probe: with no bundle in hand a probe cannot hit",
-    ).toBe(0);
+      "the first engine's one version read is the freshness baseline, not a probe: " +
+        "with no bundle in hand a probe cannot hit (composed posture: 1 baseline + 0 probe)",
+    ).toBe(1);
     expect(
       convergence[1].version.length,
-      "the second engine must run the probe -- that is what versions the bundle",
-    ).toBe(1);
+      "the second engine must run the probe -- that is what versions the bundle " +
+        "(composed posture: 1 baseline + 1 probe)",
+    ).toBe(2);
 
     // ...and the engine AFTER convergence issues none of the boot read-set.
     const { html, reads } = await boot();
@@ -404,8 +417,9 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     ).toBe(0);
     expect(
       reads.version.length,
-      "the warm boot must still read the content version -- that check is the cache's safety",
-    ).toBe(1);
+      "the warm boot must still read the content version -- that check is the cache's safety " +
+        "(composed posture: 1 freshness baseline + 1 probe)",
+    ).toBe(2);
   });
 
   it("PIN 3 -- a committed write bumps the version and the next boot re-reads", async () => {
@@ -436,8 +450,9 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     );
     expect(
       reads.version.length,
-      "the post-write boot must have probed: this is the check that noticed the move",
-    ).toBe(1);
+      "the post-write boot must have probed: this is the check that noticed the move " +
+        "(composed posture: 1 freshness baseline + 1 probe)",
+    ).toBe(2);
     expect(
       reads.total,
       `a moved content version must re-read the boot read-set, got ${reads.total}: ${JSON.stringify(reads, null, 2)}`,
@@ -530,10 +545,19 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
       reference.reads.total,
       "the reference engine must have read the whole boot read-set from storage",
     ).toBe(3);
-    expect(reference.reads.version.length, "a bundle-less process cannot probe").toBe(0);
-    expect(upgrade.reads.version.length, "the upgrade boot must probe").toBe(1);
+    expect(
+      reference.reads.version.length,
+      "a bundle-less process cannot probe (composed posture: 1 freshness baseline + 0 probe)",
+    ).toBe(1);
+    expect(
+      upgrade.reads.version.length,
+      "the upgrade boot must probe (composed posture: 1 baseline + 1 probe)",
+    ).toBe(2);
     expect(served.reads.total, "the served engine must not have read any of it").toBe(0);
-    expect(served.reads.version.length, "it must still have probed").toBe(1);
+    expect(
+      served.reads.version.length,
+      "it must still have probed (composed posture: 1 baseline + 1 probe)",
+    ).toBe(2);
     expect(slotNormalized(served.html)).toBe(slotNormalized(reference.html));
   });
 
@@ -544,8 +568,9 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     expect(bootCacheIsWarm(deck!.fetcher.driver), "the process must hold a bundle before the stamp can be removed").toBe(true);
     expect(
       convergence[1].version.length,
-      "the convergence boot must have run the version probe -- that is what versions the bundle",
-    ).toBe(1);
+      "the convergence boot must have run the version probe -- that is what versions the bundle " +
+        "(composed posture: 1 freshness baseline + 1 probe)",
+    ).toBe(2);
 
     // Remove the stamp table from the committed database. This is the
     // unmigrated database the freshness lane's schema header warns about.

@@ -96,6 +96,19 @@ export interface BootBundle {
  *  connection, replaces it. */
 let currentBundle: BootBundle | undefined;
 
+/** The CONNECTION a driver argument names, for the bundle's identity keys.
+ *  The bundle is per-CONNECTION (see bootCacheIsWarm); a delegating wrapper
+ *  that publicly exposes the connection it forwards to — the one-trip replay
+ *  plan router (`replayRouter.base`) — is that connection for identity
+ *  purposes, or the cache would be cold for every FetchEngine after the one
+ *  that happened to store the bundle (each FetchEngine wraps its driver in
+ *  its own router; integration assembly r3, 2026-10-06, boot-cache pins PIN
+ *  5). Terminal drivers expose no `base` and are their own connection. */
+function bundleIdentityDriver(driver: SQLDatabaseDriver): SQLDatabaseDriver {
+  const wrapper = driver as { readonly base?: SQLDatabaseDriver };
+  return wrapper.base ?? driver;
+}
+
 /** Whether THIS connection has a bundle to compare a content version
  *  against. The render gate consults this before paying the probe statement
  *  at all: with no bundle in hand there is nothing a probe could match, so a
@@ -112,7 +125,7 @@ let currentBundle: BootBundle | undefined;
  *  per-connection: round trips 5 -> 6 at every one of 32 depths, with a
  *  zero-hit probe at each. */
 export function bootCacheIsWarm(driver: SQLDatabaseDriver): boolean {
-  return currentBundle !== undefined && currentBundle.driver === driver;
+  return currentBundle !== undefined && currentBundle.driver === bundleIdentityDriver(driver);
 }
 
 /** The bundle this exact connection can serve at this exact content version,
@@ -126,7 +139,7 @@ export function bootBundleForVersion(
   version: number,
 ): BootBundle | undefined {
   if (currentBundle === undefined) return undefined;
-  if (currentBundle.driver !== driver) return undefined;
+  if (currentBundle.driver !== bundleIdentityDriver(driver)) return undefined;
   if (currentBundle.version === undefined) return undefined;
   return currentBundle.version === version ? currentBundle : undefined;
 }
@@ -135,7 +148,7 @@ export function bootBundleForVersion(
  *  rows from storage, with the version it observed — or with `undefined`
  *  when it had none to observe, which makes the bundle provisional. */
 export function storeBootBundle(bundle: BootBundle): void {
-  currentBundle = bundle;
+  currentBundle = { ...bundle, driver: bundleIdentityDriver(bundle.driver) };
 }
 
 /** Drop the process slot. Test-only seam: the cache is module state, and a
