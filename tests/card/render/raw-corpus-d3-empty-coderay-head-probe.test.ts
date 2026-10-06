@@ -32,15 +32,18 @@ import { existsSync, createReadStream } from "node:fs";
 import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
-import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { RAW_CORPUS_DB, RAW_CORPUS_VIEW_LANE_DIR, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { highlight } from "../../../src/card/render/code-highlighting/index.js";
 import { RenderFormat } from "../../../src/card/render/format.js";
 import { DeckoName } from "../../../src/card/name.js";
 
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
-const SHARD_DIR =
-  "C:/localProjects/decko-ts-lane-fix-d3-empty-coderay-head/tmp/raw-ground-truth/" +
-  "expected-v2/view-lane";
+// The view-lane yardstick shards, resolved from the private raw-corpus leg's
+// own contract module beside RAW_CORPUS_DB — the same leg, same capture. This
+// literal used to name the per-lane worktree
+// `decko-ts-lane-fix-d3-empty-coderay-head`, which no longer exists on this
+// machine; the sibling d8 probe carried its own copy of the same dead path.
+const SHARD_DIR = RAW_CORPUS_VIEW_LANE_DIR;
 
 const PROBE_CARDS = [
   // [id, name, the views the oracle captured, pin?]

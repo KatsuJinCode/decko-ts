@@ -1,0 +1,74 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [32m✓[39m tests/card/mod-loader/card-mod-api_key.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-date.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-integrate.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21792: the .simple-core wrapper + base :content slot open tag are byte-exact
+[22m[39mENGINE-NEST {"requested":"name","view":"name","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"signup alert email+*html message+*account+*email","unknown":true,"nestName":"+*account+*email"}
+ENGINE-NEST {"requested":"url","view":"url","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21792: the .email-html-link block + email_page href are byte-exact
+[22m[39mENGINE-NEST {"requested":"name","view":"name","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"signup alert email+*html message+*account+*email","unknown":true,"nestName":"+*account+*email"}
+ENGINE-NEST {"requested":"url","view":"url","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21784 (a *html message right): :content is byte-exact with the Ruby oracle [unwrapped at fold: card-mod-account :verify_url / :token_days (denial: :blank) through the test context]
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+ENGINE-NEST {"requested":"verify_url","view":"verify_url","card":"verification email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"verify_days","view":"verify_days","card":"verification email+*html message","nestName":"_"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21788 (a *html message right): :content is byte-exact with the Ruby oracle [unwrapped at fold: card-mod-account :reset_password_url / :reset_password_days through the test context]
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+ENGINE-NEST {"requested":"reset_password_url","view":"reset_password_url","card":"password reset email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"reset_password_days","view":"reset_password_days","card":"password reset email+*html message","nestName":"_"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21792 (a *html message right): :content is byte-exact with the Ruby oracle [blocked: capture: fixture omits the User context-item card (2693) so the seam answers no-context (byte 567, {{_|name}} arm)]
+[22m[39mENGINE-NEST {"requested":"name","view":"name","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"signup alert email+*html message+*account+*email","unknown":true,"nestName":"+*account+*email"}
+ENGINE-NEST {"requested":"url","view":"url","card":"signup alert email+*html message","nestName":"_"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*title","nestName":":title"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21796 (a *html message right): :content is byte-exact with the Ruby oracle [unwrapped at fold: the origin delta that used to sit at byte 737 is closed (fix-d1-url-origin lane, 2026-10-01): card_url resolves the per-render Env.origin, so the view lane renders the oracle's /*changed_card?view=history]
+[22m[39mENGINE-NEST {"requested":"link","view":"link","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"url","view":"url","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"last_action_verb","view":"last_action_verb","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"link","view":"link","card":"Anonymous","nestName":"_user"}
+ENGINE-NEST {"requested":"list_of_changes","view":"list_of_changes","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"subedits","view":"subedits","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"followed","view":"followed","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"unfollow_url","view":"unfollow_url","card":"*changed card","nestName":"_"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-email-raw-oracle.test.ts[2m > [22m[2mU6/C8 — the deck's email templates against the raw Ruby oracle[2m > [22m[2mcard 21796: the body resolves past :last_action_verb (ported), byte-exactness still tracked by the blocked pin above
+[22m[39mENGINE-NEST {"requested":"link","view":"link","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"url","view":"url","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"last_action_verb","view":"last_action_verb","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"link","view":"link","card":"Anonymous","nestName":"_user"}
+ENGINE-NEST {"requested":"list_of_changes","view":"list_of_changes","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"subedits","view":"subedits","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"followed","view":"followed","card":"*changed card","nestName":"_"}
+ENGINE-NEST {"requested":"unfollow_url","view":"unfollow_url","card":"*changed card","nestName":"_"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-email-raw-oracle.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 915[2mms[22m[39m
+   [32m✓[39m U6/C8 — the deck's email templates against the raw Ruby oracle [2m(13)[22m
+     [33m[2m✓[22m[39m card 21792: the .simple-core wrapper + base :content slot open tag are byte-exact[33m 601[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-content.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-collection.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-assets.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-email.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-session.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m      Tests [22m [1m[32m176 passed[39m[22m[2m | [22m[36m1 expected fail[39m[90m (177)[39m
+[2m   Start at [22m 21:09:29
+[2m   Duration [22m 9.47s[2m (transform 34%, tests 33%, import 33%, worker 1%)[22m
+
+[2m    Isolate [22m [33m9 workers spawned[39m[2m · ~654ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~5.23s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

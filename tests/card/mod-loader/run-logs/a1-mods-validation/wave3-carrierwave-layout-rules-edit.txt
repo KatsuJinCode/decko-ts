@@ -1,0 +1,231 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-layout.test.ts[2m > [22m[2mcard-mod-layout through the mod loader (A/B)[2m > [22m[2mWITH the mod: :navbar_links walks the content chunks into navbar items (navbar_links.rb:2-21)
+[22m[39mENGINE-NEST {"requested":"nav_item","view":"nav_item","card":"Layout Link Target","nestName":"Layout Link Target"}
+ENGINE-NEST {"requested":"nav_item","view":"nav_item","card":"Layout Nest Target","nestName":"Layout Nest Target"}
+ENGINE-NEST {"requested":"nav_item","view":"nav_item","card":"Layout Link Target","nestName":"Layout Link Target"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-layout.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 73[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics+discussion","unknown":true,"nestName":"Oracle Basics+discussion"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Home+discussion","unknown":true,"nestName":"Home+discussion"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics+discussion","unknown":true,"nestName":"Oracle Basics+discussion"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-edit-views.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-rules.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-cwwrite-output-seam.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 148[2mms[22m[39m
+ [31m❯[39m tests/card/mod-loader/card-mod-carrierwave.test.ts [2m([22m[2m36 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 35[2mms[22m[39m
+   [32m✓[39m storageTypeFromContent (set/abstract/attachment/01_storage_type.rb:102-116) [2m(5)[22m
+     [32m✓[39m classifies ~ as local (file_card_uploader.rb doc lines 88-92)[32m 1[2mms[22m[39m
+     [32m✓[39m classifies http(s) as web[32m 0[2mms[22m[39m
+     [32m✓[39m classifies (bucket) as cloud[32m 0[2mms[22m[39m
+     [32m✓[39m classifies :codename as coded[32m 0[2mms[22m[39m
+     [32m✓[39m returns unknown for empty / unrecognised content[32m 0[2mms[22m[39m
+   [32m✓[39m contextualizePath (file_card_uploader.rb doc lines 88-117) [2m(5)[22m
+     [32m✓[39m converts local ~/card_id/action.ext -> /files/card_id/action.ext[32m 0[2mms[22m[39m
+     [32m✓[39m returns web URLs raw[32m 0[2mms[22m[39m
+     [32m✓[39m derives the cloud URL from db data (the stored identifier is never the rendered filename)[32m 0[2mms[22m[39m
+     [32m✓[39m converts coded :codename/mod.ext -> /files/codename.mod.ext[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty for unknown content[32m 0[2mms[22m[39m
+   [32m✓[39m file :core (set/type/file.rb:24-28 + core.haml:1) [2m(3)[22m
+     [32m✓[39m emits the download anchor for a local file[32m 1[2mms[22m[39m
+     [32m✓[39m emits the download anchor for a web file[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty string for unknown / missing source[32m 0[2mms[22m[39m
+   [32m✓[39m image :core (set/type/image/html_views.rb:5-11) [2m(4)[22m
+     [32m✓[39m emits <img src=URL alt=NAME> for a web image[32m 0[2mms[22m[39m
+     [32m✓[39m emits <img src=/files/... alt=NAME> for a local image[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)[32m 0[2mms[22m[39m
+     [32m✓[39m the missing-sentinel branch is unreachable headless: dbContent missing takes the blank-src arm (with_valid_source, html_views.rb:13-34)[32m 0[2mms[22m[39m
+   [32m✓[39m image :full_width (set/type/image/html_views.rb:25-29) [2m(2)[22m
+     [32m✓[39m emits <img ... class=w-100>[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)[32m 0[2mms[22m[39m
+   [32m✓[39m image :preview (set/type/image/html_views.rb:36-43) [2m(2)[22m
+     [32m✓[39m wraps the :core medium variant in <div class=attachment-preview>[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty when the underlying :core is empty (blank-src short-circuit, corpus:79 *logo shape)[32m 0[2mms[22m[39m
+   [32m✓[39m image :content_changes (set/type/image/html_views.rb:49-51) [2m(1)[22m
+     [32m✓[39m returns the pair of :core bytes for a non-empty source[32m 0[2mms[22m[39m
+   [32m✓[39m imageOneLineContentView type guard (set/type/image.rb:18-20 scoping) [2m(3)[22m
+     [32m✓[39m an IMAGE-typed card renders the icon-sized :core — no wrap, no strip, no truncate (set/type/image.rb:18-20)[32m 0[2mms[22m[39m
+     [32m✓[39m a FILE-typed card falls through to the All-set html wrap arm (views.rb:29-32): strip_tags(core) truncated, text-muted wrap[32m 0[2mms[22m[39m
+     [32m✓[39m a non-attachment card falls through to the All-set html wrap arm too (the carrierwave gem defines no :one_line_content for any other set)[32m 0[2mms[22m[39m
+   [32m✓[39m favicon :link_tag (set/self/favicon.rb:7-11, perms: :none) [2m(2)[22m
+     [32m✓[39m emits <link rel=shortcut icon href=URL> for an image-typed favicon[32m 0[2mms[22m[39m
+     [32m✓[39m returns empty for a non-image favicon (no logo nest in headless)[32m 0[2mms[22m[39m
+   [32m✓[39m FAVICON_RAW_HELP_TEXT (set/self/favicon.rb:13-16) [2m(1)[22m
+     [32m✓[39m matches the Ruby prose verbatim[32m 0[2mms[22m[39m
+   [32m✓[39m search :image_complete (set/self/search.rb:2-7, cache: :never) [2m(1)[22m
+     [32m✓[39m returns the empty-result JSON in the headless port[32m 0[2mms[22m[39m
+   [31m❯[39m card-mod-carrierwave through the mod loader [2m(7)[22m
+     [32m✓[39m registers every set module in the basket (Ruby bookkeeping parity)[32m 2[2mms[22m[39m
+     [32m✓[39m records the perms: :none view-config for link_tag (set/self/favicon.rb:7)[32m 0[2mms[22m[39m
+     [32m✓[39m records the unknown: :blank view-config for source (set/type/image.rb:26-28)[32m 0[2mms[22m[39m
+     [32m✓[39m records the cache: :never view-config for image_complete (set/self/search.rb:2)[32m 0[2mms[22m[39m
+     [32m✓[39m renders a file card's :source through polymorphicSourceView (file branch)[32m 11[2mms[22m[39m
+     [32m✓[39m renders a file card's :core through polymorphicCoreView (download anchor)[32m 2[2mms[22m[39m
+[31m     [31m×[31m renders a blank-src image card's :core as empty body (corpus:79 *logo shape)[39m[32m 4[2mms[22m[39m
+ [31m❯[39m tests/card/mod-loader/card-mod-rules-views.test.ts [2m([22m[2m17 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 83[2mms[22m[39m
+   [31m❯[39m card-mod-rules setting-list family (A/B, oracle-pinned) [2m(16)[22m
+[31m     [31m×[31m WITHOUT the mod: every ported view raises UnsupportedViewError[39m[32m 27[2mms[22m[39m
+     [32m✓[39m WITHOUT the mod: the flat bar_setting_list renders on a Set card (the loader-less seam) and still raises on a non-Set card (the guard)[32m 8[2mms[22m[39m
+     [32m✓[39m WITH the mod loaded: the fixture's no-write proof holds (the oracle capture moved no rows)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :pill_setting_list renders the capture bytes byte-for-byte (rule_lists.rb:86-88 second definition)[32m 12[2mms[22m[39m
+     [32m✓[39m WITH the mod: :modal_pill_setting_list renders the capture bytes (rule_lists.rb:22-24 - the modal item view, NO slot wrap)[32m 2[2mms[22m[39m
+     [32m✓[39m WITH the mod: :accordion_rule_list renders the capture bytes (rule_lists.rb:26-31 - board_pills per group, NO slot wrap)[32m 2[2mms[22m[39m
+     [32m✓[39m WITH the mod: :board_rules_tab renders the capture bytes (filtered_rule_lists.rb:13-18 - filter form + the class_up'd accordion)[32m 2[2mms[22m[39m
+     [32m✓[39m WITH the mod: :filtered_accordion_rule_list renders the capture bytes (filtered_rule_lists.rb:20-22 - the set's own mark in the form action)[32m 1[2mms[22m[39m
+     [32m✓[39m WITH the mod: :overlay_rule_list_link renders the capture bytes (rule_lists.rb:65-72)[32m 1[2mms[22m[39m
+     [32m✓[39m WITH the mod: :template_link renders the capture bytes (template.rb:2-7 - the {{...}} literal, view-name link text)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :rule_board_link on a stored rule card renders the capture bytes (editor.rb:34-36)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :rule_nest_editor_link on a stored rule card renders the capture bytes (editor.rb:30-32)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :bar_setting_list composes the sorted visible settings' rule bars, unwrapped (rule_lists.rb:11-14)[32m 11[2mms[22m[39m
+     [32m✓[39m WITH the mod: :accordion_bar_list composes the six groups' accordions with :bar items (rule_lists.rb:33-38)[32m 4[2mms[22m[39m
+     [32m✓[39m WITH the mod: the out-of-set guards raise (set-module inclusion)[32m 1[2mms[22m[39m
+     [32m✓[39m WITH the mod: the load report lists the eleven registered views[32m 1[2mms[22m[39m
+   [32m✓[39m card-mod-rules bar_setting_list filter read (stub harness) [2m(1)[22m
+     [32m✓[39m voo.filter :common selects the COMMON_SETTINGS ∩ visible list in visible order (rule_lists.rb:12)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-edit-forms.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-rules-views-3.test.ts[2m > [22m[2mcard-mod-rules form-blocked views (rules-views-port-3, oracle-pinned)[2m > [22m[2mWITH the mod: :overlay_rule renders the capture bytes (board_rules_editor.rb:2-6 - the overlay wrap with breadcrumb)
+[22m[39mENGINE-NEST {"requested":"link","view":"link","card":"Set","nestName":"Set"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-rules-views-3.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-input-remainders.test.ts[2m > [22m[2mview :input — the rule arm through the walk (editor.rb:9-11 + 32-36)[2m > [22m[2mthe rule arm fires through a content nest too (the nested render reaches the same view)
+[22m[39mENGINE-NEST {"requested":"input","view":"input","card":"Input Rule Field","nestName":"Input Rule Field"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-input-remainders.test.ts[2m > [22m[2mview :input — input_defined_by_card (editor.rb:18-30)[2m > [22m[2ma rule value naming an existing card nests that card's :core (with_card + nest)
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"Custom Input Card","nestName":"Custom Input Card"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-input-remainders.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-edit.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-rules-views-2.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-rules-nest-oracle-pinned.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-layout-mycard-views.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/parityfix-row7-mod-edit-gemspec-summary.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 2[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/card-mod-carrierwave.test.ts[2m > [22mcard-mod-carrierwave through the mod loader[2m > [22mrenders a blank-src image card's :core as empty body (corpus:79 *logo shape)
+[31m[1mError[22m: Expect test to fail[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/card-mod-rules-views.test.ts[2m > [22mcard-mod-rules setting-list family (A/B, oracle-pinned)[2m > [22mWITHOUT the mod: every ported view raises UnsupportedViewError
+[31m[1mAssertionError[22m: promise resolved "'<div id="Xall-template_link-view" cla…'" instead of rejecting[39m
+
+[32m- Expected:[39m
+Error {
+  "message": "rejected promise",
+}
+
+[31m+ Received:[39m
+"<div id=\"Xall-template_link-view\" class=\"card-slot template_link-view ALL TYPE-set STAR SELF-Xall\" data-card-id=\"7\" data-card-name=\"*all\" data-card-type-id=\"5\" data-card-type-name=\"Set\" data-card-link-name=\"*all\" data-slot-id=\"927c7899d5c7f34a80bd\" data-slot=\"{&quot;view&quot;:&quot;template_link&quot;,&quot;show&quot;:[&quot;template_link&quot;]}\">{{<a rel=\"nofollow\" class=\"slotter\" href=\"/*all/modal_nest_rules\" data-remote=\"true\">modal_nest_rules</a>}}</div>"
+
+[36m [2m❯[22m tests/card/mod-loader/card-mod-rules-views.test.ts:[2m201:97[22m[39m
+    [90m199|[39m       ["*all+*read", "rule_nest_editor_link"],
+    [90m200|[39m     ] as const) {
+    [90m201|[39m       await expect(s.engine.render(cardName, view), `${view} must not …
+    [90m   |[39m                                                                                                 [31m^[39m
+    [90m202|[39m         UnsupportedViewError,
+    [90m203|[39m       );
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m12 passed[39m[22m[90m (14)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m211 passed[39m[22m[2m | [22m[36m1 expected fail[39m[2m | [22m[33m1 skipped[39m[90m (215)[39m
+[2m   Start at [22m 21:26:54
+[2m   Duration [22m 10.62s[2m (import 46%, transform 32%, tests 21%, worker 1%)[22m
+
+[2m    Isolate [22m [33m14 workers spawned[39m[2m · ~505ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~6.56s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

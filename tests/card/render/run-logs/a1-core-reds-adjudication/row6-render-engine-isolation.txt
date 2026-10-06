@@ -1,0 +1,111 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mfalls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics","nestName":"Oracle Basics"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mresolves compound references through the fallback (junction rows have NULL key columns)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Parent Card+rich_child","nestName":"Parent Card+rich_child"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders an absent nest target as Ruby's unknown view (empty: create denied)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"ghost","unknown":true,"nestName":"ghost"}
+
+ [31m❯[39m tests/card/render/render-engine.test.ts [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 84[2mms[22m[39m
+   [32m✓[39m nest syntax parsing (card-mod-content chunk/nest.rb port) [2m(7)[22m
+     [32m✓[39m splits content into literals and nests, preserving literal bytes[32m 1[2mms[22m[39m
+     [32m✓[39m parses pipe/semicolon options with the bare-value = view default[32m 0[2mms[22m[39m
+     [32m✓[39m folds nested option lists into items (nest.rb interpret_options)[32m 0[2mms[22m[39m
+     [32m✓[39m drops non-shark keys (option_string_to_hash)[32m 0[2mms[22m[39m
+     [32m✓[39m handles comment nests: # renders the escaped bracket text, ## renders nothing[32m 0[2mms[22m[39m
+     [32m✓[39m strips tags inside nest brackets before name parsing (nest.rb strip_tags)[32m 0[2mms[22m[39m
+     [32m✓[39m reports reference names for the prefetcher, flagging relative ones[32m 0[2mms[22m[39m
+   [32m✓[39m set pattern keys (mod/core/set_pattern port) [2m(7)[22m
+     [32m✓[39m computes the captured simple-card key list (ALL TYPE SELF)[32m 2[2mms[22m[39m
+     [32m✓[39m computes the captured compound-card key list (ALL ... SELF)[32m 0[2mms[22m[39m
+     [32m✓[39m emits bare STAR for star-named cards (04_star.rb anchorless)[32m 0[2mms[22m[39m
+     [32m✓[39m emits bare RSTAR for compound cards whose right is a star (05_rstar.rb)[32m 0[2mms[22m[39m
+     [32m✓[39m inserts bare RULE between RSTAR and RIGHT when isRule is supplied (06_rule.rb)[32m 0[2mms[22m[39m
+     [32m✓[39m omits RULE while the enrichment does not supply isRule (documented gap)[32m 0[2mms[22m[39m
+     [32m✓[39m falls back to the RichText anchor for TYPE_PLUS_RIGHT when the left type is unknown[32m 0[2mms[22m[39m
+   [32m✓[39m slot set-key classes through the render engine [2m(1)[22m
+     [32m✓[39m renders a star card's slot class with the bare STAR fragment[32m 21[2mms[22m[39m
+   [32m✓[39m view dispatch [2m(1)[22m
+     [32m✓[39m raises the unsupported-view UserError with the captured message shape[32m 0[2mms[22m[39m
+   [31m❯[39m batched inclusion prefetch: queries per render (decko#1282) [2m(6)[22m
+[31m     [31m×[31m renders chains of depth 1/2/4/8 with a CONSTANT query count[39m[32m 29[2mms[22m[39m
+     [32m✓[39m renders a warm closure with exactly ONE statement (the freshness stamp)[32m 9[2mms[22m[39m
+     [32m✓[39m falls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)[32m 4[2mms[22m[39m
+     [32m✓[39m resolves compound references through the fallback (junction rows have NULL key columns)[32m 6[2mms[22m[39m
+     [32m✓[39m terminates on inclusion cycles (UNION dedup + cache)[32m 4[2mms[22m[39m
+     [32m✓[39m renders an absent nest target as Ruby's unknown view (empty: create denied)[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/render-engine.test.ts[2m > [22mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[31m[1mAssertionError[22m: expected { '1': 4, '2': 5, '4': 7, '8': 11 } to deeply equal { '1': 2, '2': 3, '4': 5, '8': 9 }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "1": 2,[39m
+[32m-   "2": 3,[39m
+[32m-   "4": 5,[39m
+[32m-   "8": 9,[39m
+[31m+   "1": 4,[39m
+[31m+   "2": 5,[39m
+[31m+   "4": 7,[39m
+[31m+   "8": 11,[39m
+[2m  }[22m
+
+[36m [2m❯[22m tests/card/render/render-engine.test.ts:[2m267:31[22m[39m
+    [90m265|[39m     // Ruby. The walk is CACHED after first render - warm renders stay
+    [90m266|[39m     // at 0 (the test below).
+    [90m267|[39m     expect(roundTripsByDepth).toEqual({ 1: 2, 2: 3, 4: 5, 8: 9 });
+    [90m   |[39m                               [31m^[39m
+    [90m268|[39m     // Statements: the folded engine statements are constant; the roun…
+    [90m269|[39m     // one fetch statement per level. Round 9 folded the *default rule
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m21 passed[39m[22m[90m (22)[39m
+[2m   Start at [22m 00:15:42
+[2m   Duration [22m 1.36s[2m (transform 77%, import 13%, tests 9%)[22m
+

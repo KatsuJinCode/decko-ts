@@ -191,7 +191,17 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // registration surface on top of the wave-1 line; the composed-deck
       // census MEASURES 329 on the merged tree (324 wave-1 tip + 5 net-new
       // html-keyed registrations the fix carries).
-      ["html", 329],
+      // mod-completion-100 re-bump (core reds lane, 2026-10-06): 329 -> 338.
+      // Nine more html-keyed registrations landed AFTER the 329 pin, all
+      // mod-port surface, no new format key, still zero css/scss rows:
+      // 09cc26e3 (account walk) + right/account/views :content_formgroups,
+      // + type/sign_up/views :content_formgroups, + type/user :setup;
+      // b0a0d5e6 (tinymce chrome) + the six all/reference_editor
+      // nest_editor/nest_image chrome views. Measured on both trees with
+      // the same dump probe: exactly 329 at 4a2a035f (this pin's own
+      // cause-commit), exactly 338 at the current tip — the diff is
+      // precisely those nine rows.
+      ["html", 338],
 
       ["js", 2],
       ["json", 3],

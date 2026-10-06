@@ -27,8 +27,11 @@
 // Env gate (the corpus seed costs ~40s; ordinary suite runs skip):
 //   NAVBAR_CR_PARITY=1
 //
-// RUN (machine-local raw corpus, through the test queue):
-//   node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs \
+// RUN (machine-local raw corpus, through the test queue). The queue tool
+// resolves its own repo root, so run this from the checkout you want -- the
+// path to the tool used to be spelled as an absolute into the machine-root
+// checkout, which no longer carries this repo's state:
+//   node tools/test-queue/submit-test-job.mjs \
 //     --name navbarcr-parity-pin --cwd <worktree> \
 //     --cmd "npx vitest run tests/card/render/navbar-crlf-head-family-pages-byte-parity.test.ts --no-file-parallelism" \
 //     --env NAVBAR_CR_PARITY=1 --timeout-min 3

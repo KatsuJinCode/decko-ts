@@ -22,6 +22,40 @@ const REPO_ROOT = path.resolve(HERE, "..", "..");
 const FIXTURE_CORPUS_DIR = path.join(REPO_ROOT, "fixtures", "test-corpus");
 const PRIVATE_SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 
+// The OTHER private corpus leg: tmp/raw-ground-truth/, machine-local and
+// gitignored. It is NOT the fixtures/ leg and is not interchangeable with it —
+// raw-corpus-seeding.ts's header says so explicitly, because seeding from the
+// sanitized corpus silently invalidates a raw-capture comparison. It holds the
+// dump the oracle's expected-v2 captures rendered from, plus those captures'
+// view-lane shards.
+const RAW_CORPUS_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth");
+export { RAW_CORPUS_DIR };
+
+/** The raw ground-truth deck: the db the oracle's expected-v2 captures rendered from. */
+export const RAW_CORPUS_DB_PATH = path.join(RAW_CORPUS_DIR, "bench-corpus-raw.sqlite3");
+
+/**
+ * The oracle's `expected-v2/view-lane` shards — the per-card `views.content` /
+ * `views.open` yardstick the raw-corpus probes byte-compare against. Same
+ * private leg as RAW_CORPUS_DB_PATH and from the same capture, so it resolves
+ * beside it. Two probes each hardcoded their own absolute copy under a
+ * different per-lane worktree, both of which have since left this machine.
+ */
+export const RAW_CORPUS_VIEW_LANE_DIR = path.join(
+  RAW_CORPUS_DIR,
+  "expected-v2",
+  "view-lane",
+);
+
+/**
+ * The machine-local private corpus shard directory (gitignored, never
+ * committed). Exported so private-leg consumers resolve it from this
+ * contract instead of hardcoding an absolute machine path — see
+ * benchmarks/corpus-v2/README-coderay-byte-identity-shard-pair-provisioning.md
+ * for the provisioning command that restores the coderay gate's shard pair.
+ */
+export const PRIVATE_SHARD_DIR_PATH = PRIVATE_SHARD_DIR;
+
 const richCorpus = process.env.DECKO_TS_CORPUS_V2;
 
 // The rich leg is an EXPLICIT opt-in: when it is requested, the machine's

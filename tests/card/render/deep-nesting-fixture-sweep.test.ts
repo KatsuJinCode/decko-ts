@@ -387,12 +387,20 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    honest exception ("TS warm re-pays 34/42/42 RT on the unclosed
       //    past-cap chains"); it stays covered by a bounded assertion (the
       //    cold bound) instead of being skipped silently.
+      //    2026-10-06 a1-mods-validation lane: the warm bound was 0/0.
+      //    d19ec179 (2026-10-05) landed the deck_data_version freshness
+      //    gate — one PK point SELECT at every render entry (render.ts
+      //    DECK_DATA_VERSION_STATEMENT; the schema header's own words: the
+      //    warm-render cost is "ONE statement, not zero"). The gate is the
+      //    documented design, so the renderable-shape warm bound is now
+      //    exactly 1 statement / 1 round trip: anything more would be a
+      //    real cache regression, which is what this pin exists to catch.
       for (const row of rows) {
         const isTooDeepRejection =
           row.cold.renderError !== null || row.cold.quietErrorSpan !== null;
         if (!isTooDeepRejection) {
-          expect(row.warm.roundTrips).toBe(0);
-          expect(row.warm.statements).toBe(0);
+          expect(row.warm.roundTrips).toBe(1);
+          expect(row.warm.statements).toBe(1);
         } else {
           expect(row.warm.roundTrips).toBeLessThanOrEqual(43);
         }

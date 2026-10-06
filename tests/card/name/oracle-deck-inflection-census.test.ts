@@ -38,28 +38,44 @@
  * starts storing real keys, these assertions flip and the census becomes
  * runnable.
  *
- * ORACLE_RAW_DECK overrides the raw deck path; the suite SKIPS when neither
- * deck is present rather than failing.
+ * ORACLE_RAW_DECK overrides the raw deck path; DECKO_TS_CORPUS_V2 names the
+ * sanitized corpus deck (the same opt-in the rest of the corpus suites use).
+ * The suite SKIPS when neither deck is present rather than failing.
  */
 
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
+import { RAW_CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
 
-const DECKS: Array<{ label: string; path: string }> = [
+// Both decks resolve from the path contracts, never from an absolute machine
+// path. The prior literals named two locations that no longer carry anything:
+// `C:/localProjects/decko-ts-lane-m4verify/tmp/raw-ground-truth/` (a per-lane
+// worktree that has left this machine) and
+// `C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3`
+// (gone with the root checkout's private data — MISSING on 2026-10-06).
+//
+// The sanitized corpus deck gets NO default, deliberately. There is no
+// in-repo constant that is the real bench-corpus-v2: test-corpus-paths.ts's
+// CORPUS_DB_PATH is the committed MINIATURE by default and points at the rich
+// deck only when DECKO_TS_CORPUS_V2 is set. Defaulting to CORPUS_DB_PATH
+// would run this census against a different, miniature database and pin it
+// false. DECKO_TS_CORPUS_V2 is the documented name for that rich corpus, so
+// it is the override; unset, the deck is simply not present and the suite
+// skips under its existing contract (see the header).
+const DECKS: Array<{ label: string; path: string | undefined }> = [
   {
     label: "raw ground-truth deck",
-    path:
-      process.env["ORACLE_RAW_DECK"] ??
-      "C:/localProjects/decko-ts-lane-m4verify/tmp/raw-ground-truth/bench-corpus-raw.sqlite3",
+    path: process.env["ORACLE_RAW_DECK"] ?? RAW_CORPUS_DB_PATH,
   },
   {
     label: "sanitized corpus deck",
-    path: "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3",
+    path: process.env["DECKO_TS_CORPUS_V2"],
   },
 ];
 
-const present = DECKS.filter((d) => existsSync(d.path));
+const present = DECKS.filter((d): d is { label: string; path: string } =>
+  d.path !== undefined && existsSync(d.path));
 
 describe.skipIf(present.length === 0)(
   "U4b — the decks' key column cannot support the inflection census",

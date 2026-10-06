@@ -32,7 +32,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { generatedPassword } from "../../../src/testing/generated-credentials.js";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -109,6 +109,21 @@ describeIfCorpus("staging server sign-in endpoints (booted server, disposable co
       if (columns.includes("content") && !columns.includes("db_content")) {
         db.exec("ALTER TABLE cards RENAME COLUMN content TO db_content");
       }
+
+      // 2026-10-06 a1-mods-validation lane: the committed miniature corpus
+      // predates the [ENGINE-FRESHNESS] stamp (d19ec179, 2026-10-05), and
+      // the render path now fails LOUDLY by design when deck_data_version
+      // is missing (render.ts:1904) — the booted server answered 500 on
+      // every page. The copy is an already-provisioned database, so it gets
+      // the stamp the same way production does: the 0003 backfill migration
+      // (IF NOT EXISTS / INSERT OR IGNORE, order-safe). exec() runs the
+      // whole file including the trigger bodies.
+      db.exec(
+        readFileSync(
+          path.join(REPO_ROOT, "deploy", "migrations", "0003-deck-data-version-stamp.sql"),
+          "utf8",
+        ),
+      );
 
       const codenameId = (code: string): number =>
         (

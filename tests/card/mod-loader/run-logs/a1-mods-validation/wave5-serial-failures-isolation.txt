@@ -1,0 +1,414 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/render/pointer-list-mini-bar-phantom.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 993[2mms[22m[39m
+   [31m❯[39m pointer/list content view: outer-wrapper branch + phantom-item mini_bar (M3 fix pins) [2m(4)[22m
+     [33m[2m✓[22m[39m *star+*create list rule card renders the simple <div class="pointer-list"> outer wrapper (no card-list-bar prefix)[33m 376[2mms[22m[39m
+     [32m✓[39m *all+*layout list rule card (non-permission right) still renders the full <div class="card-list card-list-bar pointer-list"> prefix[32m 211[2mms[22m[39m
+     [32m✓[39m non-rule pointer card renders the full card-list-bar prefix (the previous default shape is preserved)[32m 210[2mms[22m[39m
+[31m     [31m×[31m phantom pointer/list item renders the mini_bar slot wrap + bar body + two denied spans[39m[32m 195[2mms[22m[39m
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mfalls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics","nestName":"Oracle Basics"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mresolves compound references through the fallback (junction rows have NULL key columns)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Parent Card+rich_child","nestName":"Parent Card+rich_child"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders an absent nest target as Ruby's unknown view (empty: create denied)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"ghost","unknown":true,"nestName":"ghost"}
+
+ [31m❯[39m tests/card/render/render-engine.test.ts [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 75[2mms[22m[39m
+   [32m✓[39m nest syntax parsing (card-mod-content chunk/nest.rb port) [2m(7)[22m
+     [32m✓[39m splits content into literals and nests, preserving literal bytes[32m 2[2mms[22m[39m
+     [32m✓[39m parses pipe/semicolon options with the bare-value = view default[32m 0[2mms[22m[39m
+     [32m✓[39m folds nested option lists into items (nest.rb interpret_options)[32m 0[2mms[22m[39m
+     [32m✓[39m drops non-shark keys (option_string_to_hash)[32m 0[2mms[22m[39m
+     [32m✓[39m handles comment nests: # renders the escaped bracket text, ## renders nothing[32m 0[2mms[22m[39m
+     [32m✓[39m strips tags inside nest brackets before name parsing (nest.rb strip_tags)[32m 0[2mms[22m[39m
+     [32m✓[39m reports reference names for the prefetcher, flagging relative ones[32m 0[2mms[22m[39m
+   [32m✓[39m set pattern keys (mod/core/set_pattern port) [2m(7)[22m
+     [32m✓[39m computes the captured simple-card key list (ALL TYPE SELF)[32m 2[2mms[22m[39m
+     [32m✓[39m computes the captured compound-card key list (ALL ... SELF)[32m 0[2mms[22m[39m
+     [32m✓[39m emits bare STAR for star-named cards (04_star.rb anchorless)[32m 0[2mms[22m[39m
+     [32m✓[39m emits bare RSTAR for compound cards whose right is a star (05_rstar.rb)[32m 0[2mms[22m[39m
+     [32m✓[39m inserts bare RULE between RSTAR and RIGHT when isRule is supplied (06_rule.rb)[32m 0[2mms[22m[39m
+     [32m✓[39m omits RULE while the enrichment does not supply isRule (documented gap)[32m 0[2mms[22m[39m
+     [32m✓[39m falls back to the RichText anchor for TYPE_PLUS_RIGHT when the left type is unknown[32m 0[2mms[22m[39m
+   [32m✓[39m slot set-key classes through the render engine [2m(1)[22m
+     [32m✓[39m renders a star card's slot class with the bare STAR fragment[32m 16[2mms[22m[39m
+   [32m✓[39m view dispatch [2m(1)[22m
+     [32m✓[39m raises the unsupported-view UserError with the captured message shape[32m 0[2mms[22m[39m
+   [31m❯[39m batched inclusion prefetch: queries per render (decko#1282) [2m(6)[22m
+[31m     [31m×[31m renders chains of depth 1/2/4/8 with a CONSTANT query count[39m[32m 31[2mms[22m[39m
+     [32m✓[39m renders a warm closure with exactly ONE statement (the freshness stamp)[32m 5[2mms[22m[39m
+     [32m✓[39m falls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)[32m 4[2mms[22m[39m
+     [32m✓[39m resolves compound references through the fallback (junction rows have NULL key columns)[32m 6[2mms[22m[39m
+     [32m✓[39m terminates on inclusion cycles (UNION dedup + cache)[32m 3[2mms[22m[39m
+     [32m✓[39m renders an absent nest target as Ruby's unknown view (empty: create denied)[32m 3[2mms[22m[39m
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3","nestName":"chain_c1+chain_c2+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-4 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3+chain_c4","nestName":"chain_c1+chain_c2+chain_c3+chain_c4"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mresolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+Oracle Basics+chain_c3","nestName":"chain_c1+Oracle Basics+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mkeeps a depth-2 junction render at the constant query shape (no regression)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2","nestName":"chain_c1+chain_c2"}
+
+ [31m❯[39m tests/card/render/junction-depth-closure.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 46[2mms[22m[39m
+   [31m❯[39m depth-3+ junction inclusion closure (deploy-notes finding 2 fix) [2m(4)[22m
+[31m     [31m×[31m renders a depth-3 junction inclusion chain, covered by the per-key closure rounds[39m[32m 26[2mms[22m[39m
+     [32m✓[39m renders a depth-4 junction inclusion chain, covered by the per-key closure rounds[32m 8[2mms[22m[39m
+     [32m✓[39m resolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses[32m 5[2mms[22m[39m
+[31m     [31m×[31m keeps a depth-2 junction render at the constant query shape (no regression)[39m[32m 5[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :core renders the captured skin-configuration skeleton
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :bar_bottom wraps the core in <code> (html_views.rb:69-73)
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+ [31m❯[39m tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 42[2mms[22m[39m
+   [31m❯[39m bootswatch_skin family (skin :core + the media bar_left) [2m(4)[22m
+[31m     [31m×[31m WITHOUT the mod: the flat arm is the bar-slots lane's base-table skin family[39m[32m 24[2mms[22m[39m
+     [32m✓[39m WITH the mod: :closed carries the captured media block in bar_left[32m 3[2mms[22m[39m
+     [32m✓[39m WITH the mod: :core renders the captured skin-configuration skeleton[32m 3[2mms[22m[39m
+     [32m✓[39m WITH the mod: :bar_bottom wraps the core in <code> (html_views.rb:69-73)[32m 2[2mms[22m[39m
+ [31m❯[39m tests/card/permissions/rule-resolution-memo.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 30[2mms[22m[39m
+   [32m✓[39m resolveRuleRowsByKeys per-driver memo [2m(5)[22m
+     [32m✓[39m resolves one key set once; repeat and reordered calls hit the memo[32m 7[2mms[22m[39m
+     [32m✓[39m partitions entries by withContent[32m 2[2mms[22m[39m
+     [32m✓[39m answers stale after an out-of-band mutation until expireRuleResolutionCache drops the driver's memo[32m 2[2mms[22m[39m
+     [32m✓[39m never shares entries across drivers[32m 3[2mms[22m[39m
+     [32m✓[39m returns an empty map for empty keys without touching the driver[32m 2[2mms[22m[39m
+   [31m❯[39m the write path invalidates the rule-resolution memo [2m(1)[22m
+[31m     [31m×[31m a committed CardActionEngine updateCard is visible to the next resolution with no manual expire[39m[32m 13[2mms[22m[39m
+ [31m❯[39m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 18[2mms[22m[39m
+   [31m❯[39m css/js format ancestry census (the survey + its no-observable pin) [2m(6)[22m
+     [32m✓[39m Ruby's html-descended registered formats are exactly rss and email_html[32m 1[2mms[22m[39m
+     [32m✓[39m css/js/scss never share a method table with html; rss/email_html always do[32m 0[2mms[22m[39m
+[31m     [31m×[31m composed-deck census: the format-key universe is exactly the measured six[39m[32m 5[2mms[22m[39m
+     [32m✓[39m composed-deck census: zero css-keyed and zero scss-keyed registrations[32m 1[2mms[22m[39m
+     [32m✓[39m composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views[32m 1[2mms[22m[39m
+     [32m✓[39m composed-deck census: the base-kind base-keyed rows are exactly follow's three notify views[32m 1[2mms[22m[39m
+   [32m✓[39m css/js chain scoping on the composed deck (post-fix behavior) [2m(3)[22m
+     [32m✓[39m a css/js chain miss for :last_action is EMPTY — the html row is invisible to CssFormat/JsFormat[32m 2[2mms[22m[39m
+     [32m✓[39m the base tail is format-shared: css chain of :last_action_verb carries the base row, never the html-keyed one[32m 1[2mms[22m[39m
+     [32m✓[39m the js-keyed tinymce rows answer a JS chain and no other format's chain[32m 1[2mms[22m[39m
+ [31m❯[39m tests/card/render/code-highlighting/coderay-byte-identity.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m12 failed[39m[2m)[22m[32m 10[2mms[22m[39m
+   [31m❯[39m code-highlighting: byte-identity vs Ruby oracle [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53 reproduces the captured json output verbatim[39m[32m 5[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198 reproduces the captured css output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+   [31m❯[39m code-highlighting: scanner-level byte-identity [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: langForTypeCode dispatch [2m(8)[22m
+     [32m✓[39m maps type_code json -> json[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code css -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code scss -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code layout_type -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code head -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code basic -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code search_type -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code undefined -> undefined[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: escape + DIV template shape [2m(3)[22m
+     [32m✓[39m escapes HTML entities and control codes per CodeRay[32m 0[2mms[22m[39m
+     [32m✓[39m wraps a scan in the CodeRay DIV template[32m 0[2mms[22m[39m
+     [32m✓[39m alpha theme table covers the kinds the corpus fixtures exercise[32m 0[2mms[22m[39m
+ [31m❯[39m tests/card/one-trip/renderplan-replay-trip-profile.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 6[2mms[22m[39m
+   [31m❯[39m renderplan replay: the cold render's trip profile is plan-driven [2m(1)[22m
+[31m     [31m×[31m replays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF[39m[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 20 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22mbootswatch_skin family (skin :core + the media bar_left)[2m > [22mWITHOUT the mod: the flat arm is the bar-slots lane's base-table skin family
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts:[2m114:48[22m[39m
+    [90m112|[39m     // the wrap).
+    [90m113|[39m     const bareBarBottom = await s.engine.render(SKIN, "bar_bottom");
+    [90m114|[39m     expect(bareBarBottom.startsWith("<code>")).toBe(false);
+    [90m   |[39m                                                [31m^[39m
+    [90m115|[39m   });
+    [90m116|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts[2m > [22mcss/js format ancestry census (the survey + its no-observable pin)[2m > [22mcomposed-deck census: the format-key universe is exactly the measured six
+[31m[1mAssertionError[22m: expected [ [ 'base', 7 ], …(5) ] to deeply equal [ [ 'base', 7 ], …(5) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -11,11 +11,11 @@[39m
+[2m      "email_text",[22m
+[2m      3,[22m
+[2m    ],[22m
+[2m    [[22m
+[2m      "html",[22m
+[32m-     329,[39m
+[31m+     338,[39m
+[2m    ],[22m
+[2m    [[22m
+[2m      "js",[22m
+[2m      2,[22m
+[2m    ],[22m
+
+[36m [2m❯[22m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts:[2m186:42[22m[39m
+    [90m184|[39m     const counts = new Map<string, number>();
+    [90m185|[39m     for (const e of entries) counts.set(e.formatKey, (counts.get(e.for…
+    [90m186|[39m     expect([...counts.entries()].sort()).toEqual([
+    [90m   |[39m                                          [31m^[39m
+    [90m187|[39m       ["base", 7],
+    [90m188|[39m       ["email_html", 2],
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[31m[1mAssertionError[22m: the trial-deck mirror copy must exist: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/card/one-trip/renderplan-replay-trip-profile.test.ts:[2m116:74[22m[39m
+    [90m114|[39m     `replays ${PAGE} to the 5-trip floor, zero covered-family live rea…
+    [90m115|[39m     async () => {
+    [90m116|[39m       expect(mirrorAvailable(), "the trial-deck mirror copy must exist…
+    [90m   |[39m                                                                          [31m^[39m
+    [90m117|[39m       dir = mkdtempSync(join(tmpdir(), "renderplan-replay-pin-"));
+    [90m118|[39m       inlineDbPath = join(dir, "deck-inline-materialized.sqlite3");
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/permissions/rule-resolution-memo.test.ts[2m > [22mthe write path invalidates the rule-resolution memo[2m > [22ma committed CardActionEngine updateCard is visible to the next resolution with no manual expire
+[31m[1mAssertionError[22m: expected 'anyone' to be 'anyone signed in' // Object.is equality[39m
+
+Expected: [32m"anyone[7m signed in[27m"[39m
+Received: [31m"anyone"[39m
+
+[36m [2m❯[22m tests/card/permissions/rule-resolution-memo.test.ts:[2m193:48[22m[39m
+    [90m191|[39m
+    [90m192|[39m       const after = await resolveRuleRowsByKeys(storage.driver, keys, …
+    [90m193|[39m       expect(after.get("*all+*read")?.content).toBe("anyone signed in"…
+    [90m   |[39m                                                [31m^[39m
+    [90m194|[39m     } finally {
+    [90m195|[39m       storage.close();
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/junction-depth-closure.test.ts[2m > [22mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[31m[1mAssertionError[22m: expected 7 to be 4 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 4[39m
+[31m+ 7[39m
+
+[36m [2m❯[22m tests/card/render/junction-depth-closure.test.ts:[2m124:35[22m[39m
+    [90m122|[39m       // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+    [90m123|[39m       // stamp read folded into the cold batch), +0 round trips.
+    [90m124|[39m       expect(snapshot.roundTrips).toBe(4);
+    [90m   |[39m                                   [31m^[39m
+    [90m125|[39m       expect(snapshot.statements).toBe(16); // HEAD 15 + 1 freshness s…
+    [90m126|[39m     } finally {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/junction-depth-closure.test.ts[2m > [22mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22mkeeps a depth-2 junction render at the constant query shape (no regression)
+[31m[1mAssertionError[22m: expected 6 to be 3 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 6[39m
+
+[36m [2m❯[22m tests/card/render/junction-depth-closure.test.ts:[2m218:35[22m[39m
+    [90m216|[39m       // lineage-reconciliation lane): +1 statement (the deck_data_ver…
+    [90m217|[39m       // stamp read folded LAST into the cold batch), +0 round trips.
+    [90m218|[39m       expect(snapshot.roundTrips).toBe(3);
+    [90m   |[39m                                   [31m^[39m
+    [90m219|[39m       expect(snapshot.statements).toBe(15);
+    [90m220|[39m     } finally {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/pointer-list-mini-bar-phantom.test.ts[2m > [22mpointer/list content view: outer-wrapper branch + phantom-item mini_bar (M3 fix pins)[2m > [22mphantom pointer/list item renders the mini_bar slot wrap + bar body + two denied spans
+[31m[1mAssertionError[22m: expected '<div id="Xhome-content-view" class="c…' to contain '<div class=\'bar ALL TYPE-basic_c wit…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- <div [7mclass='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'[27m[39m
+[31m+ <div [7mid="Xhome-content-view" class="card-slot content-view ALL TYPE-hfvpssv STAR SELF-Xhome d0-card-content" data-card-id="77" data-card-name="*home" data-card-type-id="34843" data-card-type-name="hfvpssv" data-card-link-name="*home" data-slot-id="f87afcbcb65c204a8a38" data-slot="{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}"><div class="card-list card-list-bar pointer-list"><div class="pointer-item item-bar"><div id="yzzw-mini_bar-view" class="card-slot mini_bar-view ALL TYPE-swtktey" data-card-name="yzzw" data-card-type-id="22281" data-card-type-name="swtktey" data-card-link-name="yzzw" data-slot-id="b95d2aec445bf0318ee6" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;yzzw&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;}"><div class='bar ALL TYPE-swtktey with-bar-menu nodblclick d-flex _card-link' data-card-link-name='yzzw' data-card-name='yzzw' data-card-type-id='22281' data-card-type-name='swtktey' data-slot-id="987855e068203e1ce485">[27m[39m
+[31m+ <span class="denied"><!-- Sorry, you don't have permission (read) --></span>[39m
+[31m+ <span class="denied"><!-- Sorry, you don't have permission (read) --></span>[39m
+[31m+ </div>[39m
+[31m+ </div></div></div>[39m
+[31m+ </div>[39m
+
+[36m [2m❯[22m tests/card/render/pointer-list-mini-bar-phantom.test.ts:[2m157:20[22m[39m
+    [90m155|[39m       // bytes (expected-v2 census: "swtktey" occurs zero times; 248/2…
+    [90m156|[39m       // denied mini_bar bodies carry BasicCs/22281).
+    [90m157|[39m       expect(html).toContain("<div class='bar ALL TYPE-basic_c with-ba…
+    [90m   |[39m                    [31m^[39m
+    [90m158|[39m       // Two quiet_denial spans (Ruby's :denial view substitutes both
+    [90m159|[39m       // bar_left's title and bar_right's ruleBarRightHtml).
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/render-engine.test.ts[2m > [22mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[31m[1mAssertionError[22m: expected { '1': 4, '2': 5, '4': 7, '8': 11 } to deeply equal { '1': 2, '2': 3, '4': 5, '8': 9 }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "1": 2,[39m
+[32m-   "2": 3,[39m
+[32m-   "4": 5,[39m
+[32m-   "8": 9,[39m
+[31m+   "1": 4,[39m
+[31m+   "2": 5,[39m
+[31m+   "4": 7,[39m
+[31m+   "8": 11,[39m
+[2m  }[22m
+
+[36m [2m❯[22m tests/card/render/render-engine.test.ts:[2m267:31[22m[39m
+    [90m265|[39m     // Ruby. The walk is CACHED after first render - warm renders stay
+    [90m266|[39m     // at 0 (the test below).
+    [90m267|[39m     expect(roundTripsByDepth).toEqual({ 1: 2, 2: 3, 4: 5, 8: 9 });
+    [90m   |[39m                               [31m^[39m
+    [90m268|[39m     // Statements: the folded engine statements are constant; the roun…
+    [90m269|[39m     // one fetch statement per level. Round 9 folded the *default rule
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mjson-tinymce-corpus-53 reproduces the captured json output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mcss-corpus-198 reproduces the captured css output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-corpus-314 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2339 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2347 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2575 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mjson-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mcss-corpus-198: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/20]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/20]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m8 failed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[31m20 failed[39m[22m[2m | [22m[1m[32m53 passed[39m[22m[90m (73)[39m
+[2m   Start at [22m 22:59:31
+[2m   Duration [22m 4.95s[2m (tests 38%, transform 35%, import 26%, worker 1%)[22m
+
+[2m    Isolate [22m [33m8 workers spawned[39m[2m · ~212ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~1.48s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+
