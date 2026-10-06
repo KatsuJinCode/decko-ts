@@ -53,9 +53,14 @@ import {
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 
 const PAGE = "Home";
-/** The trip census's theoretical floor: 1 boot batch + 2 seat + 1 replay
- *  batch + 1 order-dependent search-count. */
-const FLOOR_TRIPS = 5;
+/** The trip census's floor: 1 boot batch + 2 seat + 1 replay batch. The
+ *  census's original floor was 5 — its fifth member was the cold batch's
+ *  live count+stamp discharge (the two statements plans never absorb). The
+ *  stamp-as-column lane (2026-10-06) folded BOTH into the seat head as
+ *  zero-bind columns (spec §c + §a.4): the discharge is empty, the trip is
+ *  gone, and the search-count rides the replay batch as an unfolded live
+ *  member. */
+const FLOOR_TRIPS = 4;
 
 /** The pipeline-able statement filter: SELECT/WITH-shaped corpus reads in a
  *  NAMED residue class (render-plan.ts's registry), excluding the seat's
@@ -225,11 +230,13 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
         "the replay-path render must be byte-identical (modulo slot ids) to the OFF baseline",
       ).toBe(normalizeSlotIds(baselineHtml));
 
-      // THE FLOOR PIN: 1 boot batch + 2 seat + 1 replay batch + 1 search-count.
+      // THE FLOOR PIN: 1 boot batch + 2 seat + 1 replay batch (the
+      // count+stamp trip died in the stamp-as-column lane; the search-count
+      // rides the replay batch as an unfolded live member).
       expect(
         replay.trips,
         `the replay-path cold render spent ${replay.trips} round trips; the census floor is ${FLOOR_TRIPS} ` +
-          `(1 boot batch + 2 seat + 1 replay batch + 1 search-count) — every pipeline-able ` +
+          `(1 boot batch + 2 seat + 1 replay batch) — every pipeline-able ` +
           `family must be answered from the plan result set, never live`,
       ).toBe(FLOOR_TRIPS);
 
@@ -293,15 +300,24 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
         ).toBe(folded.statements.length);
       }
 
-      // THE ORDER-DEPENDENT PIN: the search-count still travels live (the
-      // one genuinely sequential trip the floor keeps).
+      // THE ORDER-DEPENDENT PIN: no order-dependent statement reaches the
+      // driver. HONEST HISTORY (found when the stamp-as-column lane ran this
+      // pin against the composed posture): at base this assertion expected 1
+      // and the 1 was the PERMISSION gate-count (statement 3 of
+      // readPermissionStatements), which the registry's /COUNT\(\*\)/ tail
+      // misclassifies as "search-count" — Home's search nests never fill
+      // their limit, so no real search-count exists here. The gate-count now
+      // rides the seat head as a zero-bind column (spec §a.4), so zero
+      // COUNT-shaped statements reach the driver; the plan-swallowing guard
+      // for genuinely order-dependent shapes lives in the recorder filter
+      // (ORDER_DEPENDENT_CLASSES), which this pin's local filter mirrors.
       const searchCounts = replay.statements.filter(
         (s) => classifyResidueStatement(s.sql) === "search-count",
       );
       expect(
-        searchCounts.length,
-        "the order-dependent search-count must still reach the driver (the plan must not swallow it)",
-      ).toBe(1);
+        searchCounts,
+        "no COUNT-shaped statement may reach the driver on this page (the gate-count rides the head column; a real search-count would name a registry gap)",
+      ).toHaveLength(0);
     },
     600_000,
   );

@@ -65,6 +65,10 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
     "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, delivery contract:79) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it. (Registered as \"freshness-stamp-read\" on the pre-merge trunk; renamed to the seat lane's class name in the r5 adjudication — one registry entry, one shape predicate: isFreshnessStampRead.)",
   ],
   [
+    "permission-gate-count",
+    "The read-permission state's gate counters (read-rules.ts statement 3: hasReadRules / hasCatchAllReadRule — one 0-bind COUNT over the deck's read-rule cards). Viewer-independent deck GATE state, resolved once per engine and cleared by the stamp-move reset: the one-trip seat head carries it as a zero-bind column (spec §a.4's \"settings count\" arm — stamp-as-column lane, 2026-10-06); every other posture issues it inside the cold closure batch. Never a plan entry: a plan-served gate count would be re-armed from recording-time rows after a bump's reset+re-seat and answer the permission resolver with pre-move state (the exact stale-verdict class the freshness-stamp exclusion exists for). (Was misclassified \"search-count\" by the /COUNT\\(\\*\\)/ tail until the stamp-as-column lane named it.)",
+  ],
+  [
     "closure-prefetch-batch",
     "The render's own prefetch batches (prelude folds, side priming, rule anchors, permission/codename/structure folds; key IN-lists and pair joins) — engine-level state issued per cold render; the payload's seeded cache empties their ROUNDS, not the batch itself.",
   ],
@@ -118,6 +122,24 @@ export function isFreshnessStampRead(sql: string): boolean {
   return /SELECT "version" FROM "deck_data_version" WHERE "id" = 1/i.test(sql);
 }
 
+/** THE PERMISSION GATE-COUNT SHAPE (stamp-as-column lane, 2026-10-06): the
+ *  read-permission state's gate counters (read-rules.ts statement 3). The
+ *  seat head carries its row as a zero-bind column; the recorder, the
+ *  classifier, and every plan consumer test THIS predicate, so the property
+ *  "plans never absorb the gate count" holds in every posture — the same
+ *  one-shape-one-predicate discipline as the stamp exclusion above. The
+ *  shape anchors on the statement's two stable signatures (the `c` +
+ *  `catchAll` projection over the deck's read-rule cards); it is NOT order-
+ *  dependent — it is GATE state, excluded from plans for the staleness
+ *  reason the registry entry names. */
+export function isPermissionGateCountRead(sql: string): boolean {
+  return (
+    /^SELECT COUNT\(\*\) AS c/i.test(sql.trim()) &&
+    /catchAll/i.test(sql) &&
+    /FROM cards WHERE cards\.right_id/i.test(sql)
+  );
+}
+
 /** Classify one statement's SQL text into a residue class, or undefined
  *  when the registry does not know it (a registry bug — tests fail). */
 export function classifyResidueStatement(sql: string): string | undefined {
@@ -127,6 +149,9 @@ export function classifyResidueStatement(sql: string): string | undefined {
   // render, before any deck work.
   if (isFreshnessStampRead(sql)) {
     return "freshness-stamp";
+  }
+  if (isPermissionGateCountRead(sql)) {
+    return "permission-gate-count";
   }
   if (/codename IS NOT NULL/i.test(sql) || /codename IN \('anyone'/i.test(sql)) {
     return "engine-boot-codenames";
@@ -218,6 +243,15 @@ export function isPipelineAbleRenderStatement(sql: string): boolean {
   // One shape, one predicate: the router's never-serve guard tests the
   // same isFreshnessStampRead this exclusion names.
   if (isFreshnessStampRead(sql)) return false;
+  // THE GATE-COUNT EXCLUSION (stamp-as-column lane, 2026-10-06): the read-
+  // permission state's gate counters are engine gate state, cleared by the
+  // stamp-move reset — a plan entry would be re-armed from recording-time
+  // rows after a bump's reset+re-seat and answer the permission resolver
+  // with pre-move state. The one-trip seat head carries the row as a
+  // zero-bind column (current-at-read, same snapshot as the payload); every
+  // other posture issues it live inside the cold closure batch. Same
+  // one-shape-one-predicate discipline as the stamp exclusion above.
+  if (isPermissionGateCountRead(sql)) return false;
   return !ORDER_DEPENDENT_CLASSES.has(family);
 }
 
