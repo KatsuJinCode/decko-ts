@@ -419,10 +419,15 @@ describe("card-mod-carrierwave through the mod loader", () => {
   // for any future regression of the same shape.
   // -----------------------------------------------------------------------
 
-  // Inverted on purpose: the nested set-file registration divergence
-  // (known divergence: see known-divergences-from-ruby.md). The :core +
-  // :full_width byte assertions stay live under it.fails.
-  it.fails("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
+  // 2026-10-06 a1-mods-validation lane: this pin was previously inverted
+  // (it.fails) against the nested set-file registration divergence
+  // (known-divergences-from-ruby.md). The divergence's render half was
+  // closed by commit 1ec27612 item (4) — "blank-src short-circuits to
+  // empty string like Ruby handle_source" (corpus-proven, 2,205 entries) —
+  // and both :core and :full_width now resolve, so the inversion went
+  // stale: it contradicted the Ruby original (html_views.rb:13-34 blank-src
+  // arm renders empty). assertions kept as a positive pin.
+  it("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
     const s = storage!;
     // The image type card needs a codename so the render engine resolves
     // typeCode === "image" via peekNameForId (render.ts:610 + 834).

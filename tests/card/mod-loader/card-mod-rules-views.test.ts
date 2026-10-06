@@ -194,7 +194,16 @@ describe("card-mod-rules setting-list family (A/B, oracle-pinned)", () => {
       ["*all", "overlay_rule_list_link"],
       ["*all", "board_rules_tab"],
       ["*all", "filtered_accordion_rule_list"],
-      ["*all", "template_link"],
+      // 2026-10-06 a1-mods-validation lane: template_link removed from the
+      // raise list. It is flat-registered at src/card/render/views.ts:6322
+      // (with its own Set-guard at views.ts:1671-1673 raising
+      // UnsupportedViewError for non-Set cards — the render.rb#view_method
+      // semantics) because the loader-less page sweep needs it for every
+      // :template-mode nest; the mod manifest registers the SAME body for
+      // the chain-aware deck (card-mod-rules.ts:2871). Same accepted
+      // architecture move as bar_setting_list below (p20-email-views) and
+      // the roleviews :lead/:configs flats — a *all render here is the
+      // seam working, not a leak. Guard arm pinned in the seam test below.
       ["*all+*read", "rule_board_link"],
       ["*all+*read", "rule_nest_editor_link"],
     ] as const) {
@@ -216,6 +225,17 @@ describe("card-mod-rules setting-list family (A/B, oracle-pinned)", () => {
     // Ruby (pattern/all.rb:49-55) — the flat entry reproduces the dispatch
     // raise.
     await expect(s.engine.render("*all+*read", "bar_setting_list")).rejects.toThrow(
+      UnsupportedViewError,
+    );
+    // 2026-10-06 a1-mods-validation lane: same two arms for the flat
+    // template_link entry (views.ts:6322) — renders on the Set card
+    // *all through the same body the mod manifest registers
+    // (card-mod-rules.ts:2871), and the in-view Set-guard still raises
+    // for a non-Set card, matching render.rb#view_method.
+    const templateLinkHtml = await s.engine.render("*all", "template_link");
+    expect(templateLinkHtml).toContain(`card-slot template_link-view`);
+    expect(templateLinkHtml).toContain(`modal_nest_rules`);
+    await expect(s.engine.render("*all+*read", "template_link")).rejects.toThrow(
       UnsupportedViewError,
     );
   });
