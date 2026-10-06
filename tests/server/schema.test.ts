@@ -158,7 +158,7 @@ describe("schema.sqlite.sql vs src/server/schema.ts inventory", () => {
 });
 
 describe("schema.sqlite.sql executes on better-sqlite3", () => {
-  it("creates all 12 core tables", () => {
+  it("creates all 13 core tables", () => {
     const tables = (
       db
         .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")

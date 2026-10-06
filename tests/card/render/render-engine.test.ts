@@ -293,7 +293,12 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // so no lane interaction) and identically at the merged tip
     // (job-1790792062952-890df2dd). The round-trip line above is untouched
     // (2/3/5/9, still below Ruby's 4/5/7/11); warm renders stay at zero.
-    expect(statementsByDepth).toEqual({ 1: 12, 2: 13, 4: 15, 8: 19 });
+    // Freshness lane 2026-10-05 (composed onto the deployed fold by the
+    // lineage-reconciliation lane): the deck_data_version stamp read folds
+    // LAST into the cold batch (+1 statement at every depth, +0 round
+    // trips, 12/13/15/19 -> 13/14/16/20) — the delivery-contract:79
+    // freshness arm. Warm renders now pay exactly that one stamp statement.
+    expect(statementsByDepth).toEqual({ 1: 13, 2: 14, 4: 16, 8: 20 });
     // depth 8 costs one batch per level (9 round trips) while reading
     // O(page) rows instead of the whole deck per render - the trade this
     // round's read-cost decision asked for - and lands BELOW Ruby's 11
@@ -304,7 +309,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8]);
   });
 
-  it("renders a warm closure with ZERO queries", async () => {
+  it("renders a warm closure with exactly ONE statement (the freshness stamp)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedChain(storage, 8);
@@ -312,7 +317,11 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       storage.counting.reset();
       const html = await storage.engine.render("chain_l1", "content");
       expect(html).toContain("level 8 end");
-      expect(storage.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+      // Freshness lane 2026-10-05: the warm render pays exactly the
+      // deck_data_version stamp read (delivery contract:79 — the committed
+      // state must be observable on the next request, so the warm render's
+      // floor is one statement, not zero).
+      expect(storage.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       storage.close();
     }

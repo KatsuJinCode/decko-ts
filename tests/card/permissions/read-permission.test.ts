@@ -197,19 +197,27 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // card-mod-format's head views read deck-level setting cards that
       // no reference closure can reach, so the prefetch rides THIS batch
       // as a 7th folded statement. `batches` above stays 1 — the round
-      // trip, the billed axis, is unchanged.
-      expect(stats?.additionalResults?.length).toBe(7);
+      // trip, the billed axis, is unchanged. Freshness lane 2026-10-05
+      // (composed onto the deployed fold by the lineage-reconciliation
+      // lane): +1 more — the deck_data_version stamp read folds LAST on
+      // the engine's first render (baseline for the per-request freshness
+      // gate, delivery contract:79).
+      expect(stats?.additionalResults?.length).toBe(8);
     } finally {
       cold.close();
     }
   });
 
-  it("warm re-render of a denied card issues zero queries", async () => {
+  it("warm re-render of a denied card issues only the freshness stamp", async () => {
     const s = storage!;
     await s.engine.render("Secret Thing", "open");
     s.counting.reset();
     expect(await s.engine.render("Secret Thing", "open")).toBe(quietDenial());
-    expect(s.counting.snapshot()).toEqual({ statements: 0, roundTrips: 0 });
+    // Freshness lane 2026-10-05: the warm render's floor is the
+    // deck_data_version stamp read (one statement, one round trip — the
+    // delivery-contract:79 gate that keeps a cached denial verdict from
+    // outliving a committed rule change).
+    expect(s.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
   });
 
   it("resetCaches clears the permission state (re-resolution works)", async () => {

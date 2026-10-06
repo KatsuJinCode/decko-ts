@@ -119,8 +119,10 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // nests the junction programmatically and no content reference
       // reaches it; same batch, same EXISTS gate shape).
       const snapshot = storage.counting.snapshot();
+      // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+      // stamp read folded into the cold batch), +0 round trips.
       expect(snapshot.roundTrips).toBe(4);
-      expect(snapshot.statements).toBe(15);
+      expect(snapshot.statements).toBe(16); // HEAD 15 + 1 freshness stamp (folded, lineage-reconciliation lane)
     } finally {
       storage.close();
     }
@@ -210,8 +212,11 @@ describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () 
       // port added TWO prelude statements (12 -> 14, see the depth-3 test
       // above): the email field-setting anchors and the +*test context
       // junction priming - same batch, round trips unchanged.
+      // Freshness lane 2026-10-05 (composed onto the deployed fold by the
+      // lineage-reconciliation lane): +1 statement (the deck_data_version
+      // stamp read folded LAST into the cold batch), +0 round trips.
       expect(snapshot.roundTrips).toBe(3);
-      expect(snapshot.statements).toBe(14);
+      expect(snapshot.statements).toBe(15);
     } finally {
       storage.close();
     }

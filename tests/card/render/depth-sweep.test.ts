@@ -172,14 +172,20 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // Prior shape history: 2 + max(0, depth-1) RTs / 12 statements at the
     // 2026-09-27 cold-query lane (the waves took depth 1 to 5/17; the fold
     // brought 5 -> 4).
+    // Freshness lane 2026-10-05 (composed onto the deployed fold by the
+    // lineage-reconciliation lane): the deck_data_version stamp read folds
+    // LAST into the cold batch (+1 statement at every depth, +0 round
+    // trips, 18 -> 19 base) — the delivery-contract:79 freshness arm.
     const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 18 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 19 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
     }
-    // Warm cache: zero queries on the second render (the rule cache is hit).
-    expect(rows.every((r) => r.warmRoundTrips === 0 && r.warmStatements === 0)).toBe(true);
+    // Warm cache: the second render pays exactly the freshness-stamp
+    // statement (one statement, one round trip — the contract-compliant
+    // warm-render cost) and nothing else.
+    expect(rows.every((r) => r.warmRoundTrips === 1 && r.warmStatements === 1)).toBe(true);
 
     if (ARTIFACT_WRITE_REQUESTED) {
       mkdirSync("benchmarks/results", { recursive: true });

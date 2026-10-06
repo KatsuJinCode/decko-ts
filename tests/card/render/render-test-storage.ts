@@ -24,11 +24,18 @@ import type { Lex } from "../../../src/card/fetch/lexicon.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the DDL carries no
  *  ";" inside literals - same splitter contract as the fetch stream's
- *  storage; see tests/card/fetch/fetch-test-storage.ts for the rationale). */
+ *  storage; see tests/card/fetch/fetch-test-storage.ts for the rationale).
+ *  Trigger-aware since the deck_data_version freshness stamp
+ *  (db/schema.sqlite.sql): a CREATE TRIGGER body carries ";" before its
+ *  closing "END;" — while inside a body, ";" does not terminate the
+ *  statement and the body ends at the bare word END. This schema's trigger
+ *  bodies are single UPDATE statements with no nested BEGIN/CASE..END; the
+ *  splitter deliberately does not parse deeper. */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -46,7 +53,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;

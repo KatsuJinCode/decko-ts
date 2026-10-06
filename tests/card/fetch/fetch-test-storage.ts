@@ -21,20 +21,20 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 
 /** Split a DDL file into executable statements: strip `--` comments
  *  (quote-aware - the DDL carries no "--" inside literals) and split on ";".
- *
- *  TRIGGER-AWARE (plan-invalidation lane, 2026-10-05). A CREATE TRIGGER body
- *  carries its own ";" before END ("... SET version = version + 1 WHERE id = 1;
- *  END"), so a naive split tears the trigger in half and SQLite rejects the
- *  fragment with "incomplete input". Inside a trigger body the terminator is
- *  the `END` that closes `BEGIN`, not the first ";" — so once `BEGIN` opens we
- *  scan for the matching END and resume splitting after it. This is what lets
- *  a test load the freshness lane's REAL trigger text
- *  (deck_data_version, d19ec179) alongside this lane's, instead of a
- *  re-typed copy that could drift from it. */
+ *  TRIGGER-AWARE (both the freshness lane's deck_data_version stamp and the
+ *  plan-invalidation lane's render-plan drop triggers): a CREATE TRIGGER body
+ *  carries its own ";" before its closing "END;" — while inside a body, ";"
+ *  does not terminate the statement and the body ends at the bare word END.
+ *  This is what lets one test deck install the freshness lane's REAL trigger
+ *  text (deck_data_version, d19ec179) alongside the plan-invalidation
+ *  triggers (41cc939c) instead of re-typed copies that could drift. Kept in
+ *  lockstep with the render stream's copy
+ *  (tests/card/render/render-test-storage.ts). */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -52,21 +52,24 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
-    // A trigger body: BEGIN ... ; END — consume through the matching END so
-    // the body's internal ";" never splits the statement. `END` is matched
-    // case-insensitively as a whole word; the body's own nested CASE/SELECT
-    // constructs in this schema do not nest another BEGIN...END pair.
-    if (/create\s+trigger/i.test(current) && /\bbegin\b/i.test(current.slice(current.search(/begin/i)))) {
-      const end = ddl.slice(i).search(/\bEND\b/i);
-      if (end !== -1) {
-        current += ddl.slice(i, i + end + 3);
-        i += end + 2;
-        statements.push(current.trim());
-        current = "";
-        continue;
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
       }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
     }
     if (ch === ";") {
+      if (inTriggerBody) {
+        current += ch;
+        continue;
+      }
       statements.push(current.trim());
       current = "";
       continue;
