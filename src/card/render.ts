@@ -2294,6 +2294,7 @@ export class RenderEngine implements RenderEngineLike {
     this.waveAskedSimpleKeys = undefined;
     this.waveAskedPairs = undefined;
     this.waveAskedSideKeyPairs.clear();
+    this.primeAskedIds = undefined;
     this.typeCardsPrimed.clear();
   }
 
@@ -3505,6 +3506,18 @@ export class RenderEngine implements RenderEngineLike {
    */
   private async primeRowsForComposition(rows: CardsRow[]): Promise<void> {
     if (rows.length === 0) return;
+    // r6-edge-regression lane (2026-10-06): the residue reads below had NO
+    // ask memory — every wave call re-collected every side/type id not in
+    // ITS OWN rows and re-batched it, so the sweepproof late-seat sweep's
+    // added wave traffic multiplied the SAME per-id reads (Home measured
+    // one id 17x per render, 487 id-to-name statements where the r5 tree
+    // issued 196). The wave ask maps above set the contract: a point read
+    // by id is definitive ("the deck is static per engine lifetime"), so
+    // the prime asks each id ONCE per engine and lets the lexicon absorb
+    // the rest — cleared in resetCaches alongside the knowledge it indexes,
+    // exactly like waveAskedSimpleKeys/waveAskedPairs.
+    if (this.primeAskedIds === undefined) this.primeAskedIds = new Set();
+    const askedPrimeIds = this.primeAskedIds;
     const inHand = new Map<number, CardsRow>();
     const missing = new Set<number>();
     const fullRows: CardsRow[] = [];
@@ -3519,7 +3532,12 @@ export class RenderEngine implements RenderEngineLike {
       let added = 0;
       for (const row of source) {
         for (const side of [row.left_id, row.right_id]) {
-          if (typeof side === "number" && !inHand.has(side) && !missing.has(side)) {
+          if (
+            typeof side === "number" &&
+            !inHand.has(side) &&
+            !missing.has(side) &&
+            !askedPrimeIds.has(side)
+          ) {
             missing.add(side);
             added += 1;
           }
@@ -3527,7 +3545,8 @@ export class RenderEngine implements RenderEngineLike {
         if (
           typeof row.type_id === "number" &&
           !inHand.has(row.type_id) &&
-          !missing.has(row.type_id)
+          !missing.has(row.type_id) &&
+          !askedPrimeIds.has(row.type_id)
         ) {
           missing.add(row.type_id);
           added += 1;
@@ -3571,6 +3590,10 @@ export class RenderEngine implements RenderEngineLike {
       missing.clear();
       for (let i = 0; i < ids.length; i += PRIME_ID_CHUNK) {
         const chunk = ids.slice(i, i + PRIME_ID_CHUNK);
+        // Ask memory is written at ASK time: an absent id is definitive too
+        // (a point read by id found nothing), so its one read must never
+        // re-batch on a later wave call.
+        for (const id of chunk) askedPrimeIds.add(id);
         const results = await this.fetcher.driver.batch(
           chunk.map((id) => ({
             sql: "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
@@ -4875,6 +4898,12 @@ export class RenderEngine implements RenderEngineLike {
    *  warm-zero query-shape pins hold. */
   private waveAskedSimpleKeys?: Map<string, string>;
   private waveAskedPairs?: Map<string, { leftId: number; rightId: number; lex: Lex }>;
+  /** r6-edge-regression lane (2026-10-06): the composition primer's own
+   *  ask memory — every side/type id primeRowsForComposition ever batched,
+   *  so a later wave call (the sweepproof late-seat sweep adds them)
+   *  re-asks nothing. Same contract and same resetCaches clearing as the
+   *  wave ask maps. */
+  private primeAskedIds?: Set<number>;
   /** Side-KEY join asks (the depth-2 shape), keyed "<leftKey>~<rightKey>" -
    *  the same engine-lifetime memory. A join miss converts to a pair-id ask
    *  (askedPairs) on the retry round, so this set never blocks that. */
