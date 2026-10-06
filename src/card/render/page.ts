@@ -157,9 +157,18 @@ export async function renderPageBytes(
   // that with the pageConfigActive flag:
   // every nest resolved inside this call (including the prepare render's)
   // reads "content"; bare renders keep the railtie "titled".
-  return engine.runWithPageConfig(() =>
-    renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
-  );
+  //
+  // The page is one request: no Temporary-cache reset may drop an entry this
+  // request seated before its synchronous readers use it
+  // (TemporaryCache#hold; the reset is deferred to the request's end).
+  const releaseCaches = engine.fetcher.holdTemporaryCaches();
+  try {
+    return await engine.runWithPageConfig(() =>
+      renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+    );
+  } finally {
+    releaseCaches();
+  }
 }
 
 async function renderPageBytesWithPageConfig(

@@ -93,10 +93,35 @@ export class TemporaryCache {
     return this.store.has(key);
   }
 
+  /**
+   * The request hold. Ruby's within_key_counts reset is invisible in Ruby's
+   * output because every reader heals a miss with a synchronous database
+   * read (lexicon.rb:71-76). The port's synchronous readers (the name
+   * environment's mark parse, pointer item renders) cannot read the
+   * database, so an entry dropped in the middle of a request could turn
+   * into an "Error rendering" span (the trial deck's Wagneer page: id 34374
+   * dropped by the fourth reset of one request). While any hold is open the
+   * store grows past maxKeys instead of resetting; the overage resets once,
+   * when the last hold is released. The cache is therefore sized per
+   * request, and a reset can only ever happen between requests.
+   */
+  hold(): () => void {
+    this.holds += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.holds -= 1;
+      if (this.holds === 0 && this.store.size > this.maxKeys) this.reset();
+    };
+  }
+
+  private holds = 0;
+
   private withinKeyCounts(body: () => void): void {
     if (this.reps >= this.maxKeys) {
       this.reps = this.store.size;
-      if (this.reps > this.maxKeys) this.reset();
+      if (this.reps > this.maxKeys && this.holds === 0) this.reset();
     }
     body();
   }

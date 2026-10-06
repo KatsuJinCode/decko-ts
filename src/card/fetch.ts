@@ -657,6 +657,18 @@ export class FetchEngine {
     if (isCardValue(left)) this.expireCard(left);
   }
 
+  /** Hold both Temporary caches (card and lexicon) for one request: no
+   *  within_key_counts reset fires until the returned release runs (see
+   *  TemporaryCache#hold). Release exactly once, in a finally. */
+  holdTemporaryCaches(): () => void {
+    const releaseCards = this.cardCache.temp.hold();
+    const releaseLexicon = this.lexiconCache.temp.hold();
+    return () => {
+      releaseCards();
+      releaseLexicon();
+    };
+  }
+
   /** cache/class_methods.rb#reset (42-46): reset every cache instance. */
   resetCaches(): void {
     this.cardCache.reset();

@@ -842,6 +842,19 @@ export class RenderEngine implements RenderEngineLike {
    * for views outside the ported registry (the captured sentinel contract).
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
+    // One render is one request: hold the Temporary caches so no
+    // within_key_counts reset drops an entry this render seated before its
+    // synchronous readers use it (TemporaryCache#hold). Nested inside a
+    // page render the page's own hold is already open; holds nest.
+    const releaseCaches = this.fetcher.holdTemporaryCaches();
+    try {
+      return await this.renderHeld(cardName, view, params);
+    } finally {
+      releaseCaches();
+    }
+  }
+
+  private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<string> {
     // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
     // render seats (the sweep-cascade cut — renderSeats' doc). The page
     // lane clears once for the whole page render (beginPagePrepare), so
