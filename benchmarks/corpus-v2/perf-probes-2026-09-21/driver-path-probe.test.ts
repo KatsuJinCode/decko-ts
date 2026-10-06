@@ -5,10 +5,19 @@
 import { describe, expect, it, afterAll } from "vitest";
 import Database from "better-sqlite3";
 import { appendFileSync, rmSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   createStructureSeededStorageFor,
 } from "../../tests/card/render/structure-corpus-seeding.js";
 import { readShardLines, CORPUS_DB } from "../../tests/card/render/permission-corpus-seeding.js";
+
+// The watchdog log belongs to THIS worktree. It used to be the absolute
+// `C:/localProjects/decko-ts/tmp-watchdog.log` -- a probe in this repo writing
+// its diagnostic output into the machine-root checkout, which is a different
+// working tree, so two probes running at once overwrote each other's logs.
+const WATCHDOG_LOG = fileURLToPath(
+  new URL("../../../tmp/driver-path-probe-watchdog.log", import.meta.url),
+);
 
 let storage: Awaited<ReturnType<typeof createStructureSeededStorageFor>> | undefined;
 afterAll(() => {
@@ -36,9 +45,9 @@ describe("driver path bisection (seeded engine storage)", () => {
       const first = readShardLines()[0] as { name: string };
       t = Date.now();
       const watchLog = (msg: string): void => {
-        appendFileSync("C:/localProjects/decko-ts/tmp-watchdog.log", msg + "\n");
+        appendFileSync(WATCHDOG_LOG, msg + "\n");
       };
-      rmSync("C:/localProjects/decko-ts/tmp-watchdog.log", { force: true });
+      rmSync(WATCHDOG_LOG, { force: true });
       const watch = setInterval(() => {
         const stmts = storage!.counting.statements;
         const last = stmts[stmts.length - 1] ?? "(none)";

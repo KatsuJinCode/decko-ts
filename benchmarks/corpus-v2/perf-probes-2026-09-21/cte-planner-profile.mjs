@@ -3,8 +3,26 @@
 // the planner pathology. better-sqlite3 is synchronous, so each phase runs
 // under a shell `timeout` in the caller.
 import Database from "better-sqlite3";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 
-const DB = "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+// The sanitized corpus leg, resolved the way every sibling corpus script
+// resolves it (benchmarks/corpus-v2/audit-shard-entries-against-both-corpus-legs.mjs
+// line 55, and five more). This literal used to be an absolute path into the
+// machine-root checkout; that checkout exists but no longer carries the deck
+// (bench-corpus-v2.sqlite3 is MISSING there, 2026-10-06), so the profiler was
+// pointing at nothing. The leg is gitignored and rebuildable via
+// build_corpus_v2.py.
+const DB = process.env.DECKO_TS_CORPUS_V2 ?? path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
+if (!existsSync(DB)) {
+  console.error(
+    `sanitized corpus leg missing: ${DB}\n` +
+      `rebuild it with benchmarks/corpus-v2/build_corpus_v2.py, or set DECKO_TS_CORPUS_V2 to an existing one`,
+  );
+  process.exit(1);
+}
 const db = new Database(DB, { readonly: true });
 console.log("phase", "cards", db.prepare("SELECT COUNT(*) n FROM cards WHERE trash=0").get().n);
 

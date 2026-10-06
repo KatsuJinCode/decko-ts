@@ -19,8 +19,11 @@
 // uses). Env gate (the corpus seed costs ~40s; ordinary suite runs skip):
 //   GEM_ANCHORED_CLOSURE_REPLAY=1
 //
-// RUN (machine-local raw corpus, through the test queue):
-//   node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs \
+// RUN (machine-local raw corpus, through the test queue). The queue tool
+// resolves its own repo root, so run this from the checkout you want -- the
+// path to the tool used to be spelled as an absolute into the machine-root
+// checkout, which no longer carries this repo's state:
+//   node tools/test-queue/submit-test-job.mjs \
 //     --name gemclose-family-pin --cwd <worktree> \
 //     --cmd "npx vitest run tests/card/render/gem-anchored-residual-pages-byte-parity.test.ts --no-file-parallelism" \
 //     --env GEM_ANCHORED_CLOSURE_REPLAY=1 --timeout-min 3

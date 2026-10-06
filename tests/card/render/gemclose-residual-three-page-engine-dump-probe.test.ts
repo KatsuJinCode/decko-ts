@@ -10,8 +10,11 @@
 //
 // RUN (through the machine test queue only; env-gated so ordinary suite
 // runs skip the ~40s corpus seed -- the PERMANENT verdict lives in
-// gem-anchored-residual-pages-byte-parity.test.ts):
-//   node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs \
+// gem-anchored-residual-pages-byte-parity.test.ts). The queue tool resolves
+// its own repo root, so run this from the checkout you want -- the path to
+// the tool used to be spelled as an absolute into the machine-root checkout,
+// which no longer carries this repo's state:
+//   node tools/test-queue/submit-test-job.mjs \
 //     --name gemclose-probe --cwd <worktree> \
 //     --env GEMCLOSE_PROBE=1 \
 //     --cmd "npx vitest run tests/card/render/gemclose-residual-three-page-engine-dump-probe.test.ts --no-file-parallelism" \

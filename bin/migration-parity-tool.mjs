@@ -26,12 +26,21 @@ import {
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// Proven lane tooling not yet productized (PLAN.md G2/G4): default locations where the
-// instruments live today, in the busy lane worktree that produced the 2026-10-02 oracle run.
-const LANE_WORKTREE_DEFAULT =
-  "C:/localProjects/decko-ts-lane-final-dataset/fixtures/corpus-v2/live-recapture-2026-10-02";
-const LANE_DRIVER_DEFAULT =
-  "C:/localProjects/decko-ts-lane-final-dataset/tools/oracle/dual-lane-direct-driver.mjs";
+// Proven lane tooling not yet productized (PLAN.md G2/G4): default locations
+// where the instruments live. Both are in-repo paths, so they resolve against
+// THIS checkout rather than the per-lane worktree that produced the 2026-10-02
+// oracle run -- that worktree (decko-ts-lane-final-dataset) has since been
+// removed from this machine, and the absolute default made every invocation
+// point at a directory that no longer exists. Each stays overridable through
+// its PARITY_* env var (lines 111-113), so a deliberately-chosen instrument
+// elsewhere is still reachable.
+const LANE_WORKTREE_DEFAULT = path.join(
+  REPO,
+  "fixtures",
+  "corpus-v2",
+  "live-recapture-2026-10-02",
+);
+const LANE_DRIVER_DEFAULT = path.join(REPO, "tools", "oracle", "dual-lane-direct-driver.mjs");
 
 function usage(exitCode = EXIT_OK) {
   const lines = [

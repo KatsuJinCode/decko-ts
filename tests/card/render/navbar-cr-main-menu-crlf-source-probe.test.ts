@@ -11,8 +11,11 @@
 // rendered pages for byte-diffing against the oracle shards. Diagnostic only
 // (writes bytes; asserts presence) -- env-gated like the sibling probes.
 //
-// RUN (test queue only):
-//   node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs \
+// RUN (test queue only). The queue tool resolves its own repo root, so run
+// this from the checkout you want -- the path to the tool used to be spelled
+// as an absolute into the machine-root checkout, which no longer carries this
+// repo's state:
+//   node tools/test-queue/submit-test-job.mjs \
 //     --name navbarcr-probe --cwd <worktree> \
 //     --cmd "npx vitest run tests/card/render/navbar-cr-main-menu-crlf-source-probe.test.ts --no-file-parallelism" \
 //     --env NAVBARCR_PROBE=1 --timeout-min 3

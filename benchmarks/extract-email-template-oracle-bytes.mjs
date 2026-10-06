@@ -16,21 +16,32 @@
 //
 // Inputs (READ-ONLY; nothing under pass17-int is written):
 //   tmp/raw-deck/raw-deck-copy.sqlite3   (byte copy of the raw deck)
-//   pass17-int/tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-*.jsonl
+//   tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-*.jsonl
 //
 // Output: fixtures/captured/email-templates-raw-oracle.json
 //   { provenance, cards: [...], references: [...], views: { id: {view: html} } }
 //
-// Run from the lane worktree root: node benchmarks/extract-email-template-oracle-bytes.mjs
+// Run from the repo root: node benchmarks/extract-email-template-oracle-bytes.mjs
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
 
-const RAW_DECK = 'tmp/raw-deck/raw-deck-copy.sqlite3';
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const RAW_DECK = process.env.RAW_DECK ?? path.join(REPO_ROOT, 'tmp/raw-deck/raw-deck-copy.sqlite3');
+// The oracle view-lane shards: the same private raw-corpus leg the corpus
+// probes read (src/testing/test-corpus-paths.ts RAW_CORPUS_VIEW_LANE_DIR), and
+// the sibling of RAW_DECK above -- the deck was already staged in-repo, only
+// the shards still pointed at `C:/localProjects/decko-ts-pass17-int`, a
+// worktree that has left this machine. Overridable for a deliberately-pinned
+// capture elsewhere.
 const ORACLE_DIR =
-  'C:/localProjects/decko-ts-pass17-int/tmp/raw-ground-truth/expected-v2/view-lane';
+  process.env.ORACLE_VIEW_LANE_DIR ??
+  path.join(REPO_ROOT, 'tmp/raw-ground-truth/expected-v2/view-lane');
 
 const db = new Database(RAW_DECK, { readonly: true });
 const COLS =

@@ -23,9 +23,11 @@
 // inner loop, where n = renderCards.size. Old: O(n × awaited-fetches)
 // where each "cache-hit fetch" still paid a microtask boundary.
 //
-// Run: node C:/localProjects/decko-ts/node_modules/vitest/vitest.mjs run
-//   --root C:/localProjects/decko-ts
-//   tests/card/render/closed-view-structure-content-bench.test.ts
+// Run (from the repo root of the checkout you want -- this used to name the
+// machine-root checkout's own vitest and --root, and that checkout no longer
+// carries this repo's state):
+//   npx vitest run --no-file-parallelism \
+//     tests/card/render/closed-view-structure-content-bench.test.ts
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import {
