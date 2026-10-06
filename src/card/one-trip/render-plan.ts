@@ -21,10 +21,13 @@
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import {
+  absorbSideKeyArmRows,
+  buildDriftArmIndex,
   decomposeMergedRows,
   foldRenderPlanEntries,
   replayFoldWantsMerge,
 } from "./replay-fold.js";
+import type { DriftArmIndex } from "./replay-fold.js";
 
 /** The NAMED residue classes. Every class names WHO issues the statement
  *  and WHY the payload cannot cover it. This registry is the honest cost
@@ -244,6 +247,26 @@ export async function replayRenderPlan(
   driver: SQLDatabaseDriver,
   plan: RenderPlan,
 ): Promise<unknown[]> {
+  return (await replayRenderPlanWithIndex(driver, plan)).results;
+}
+
+/** The replay that ALSO builds the drift arm index (driftfix lane): the
+ *  per-bind-value index the armed router answers drifted IN-list asks from.
+ *  The index is built from the SAME results the replay arms — ladder or
+ *  folded, identical rows by the exactness contract — plus, on the folded
+ *  path, the side-key arm's raw per-combination rows before decompose
+ *  strips them. The plain replayRenderPlan keeps its exact signature and
+ *  contract for every existing caller; the render gate is the one caller
+ *  that needs the index. */
+export interface ReplayedPlanWithIndex {
+  results: unknown[];
+  index: DriftArmIndex;
+}
+
+export async function replayRenderPlanWithIndex(
+  driver: SQLDatabaseDriver,
+  plan: RenderPlan,
+): Promise<ReplayedPlanWithIndex> {
   if (replayFoldWantsMerge()) {
     const folded = foldRenderPlanEntries(plan.entries);
     try {
@@ -265,7 +288,9 @@ export async function replayRenderPlan(
       for (let i = 0; i < plan.entries.length; i++) {
         if (perEntry[i] === undefined) perEntry[i] = { rows: [], rowsAffected: 0 };
       }
-      return perEntry;
+      const index = buildDriftArmIndex(plan.entries, perEntry);
+      absorbSideKeyArmRows(index, plan.entries, folded, results);
+      return { results: perEntry, index };
     } catch {
       // fall through to the ladder
     }
@@ -275,5 +300,5 @@ export async function replayRenderPlan(
     params: entry.params,
   }));
   const results = await driver.batch(statements);
-  return results;
+  return { results, index: buildDriftArmIndex(plan.entries, results) };
 }
