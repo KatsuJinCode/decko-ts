@@ -9,6 +9,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { canonicalIndexStatements } from "../migrate/serving-indexes.mjs";
 
 /** Tables whose ROWS never leave this machine, whatever the source holds:
  *  - sessions / auth_sessions hold sign-in session tokens (secrets);
@@ -56,15 +57,33 @@ export function schemaStatements(db) {
     else sql = sql.replace(/^CREATE\s+(UNIQUE\s+)?INDEX\s+(?!IF\s+NOT\s+EXISTS)/i, (_m, u) => `CREATE ${u ?? ""}INDEX IF NOT EXISTS `);
     out.push({ type: r.type, name: r.name, table: r.tbl_name, sql });
   }
+  for (const c of missingCanonicalIndexes(db, out)) out.push({ type: "index", name: c.name, table: c.table, sql: c.sql });
   return out;
 }
 
+/** Canonical indexes (db/schema.sqlite.sql) the source lacks by name, for
+ *  tables the source holds. A snapshot taken before an index joined the
+ *  canonical schema would otherwise hand its gap to the D1 copy. */
+function missingCanonicalIndexes(db, statements) {
+  const tables = new Set(statements.filter((s) => s.type === "table").map((s) => s.table));
+  const have = new Set(
+    db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map((r) => r.name),
+  );
+  return canonicalIndexStatements({ tables: [...tables] }).filter((c) => !have.has(c.name));
+}
+
 /** Index count per table: each inserted row costs 1 + this many rows
- *  written on D1 (measured on local D1: 3 rows into a 2-index table = 9). */
+ *  written on D1 (measured on local D1: 3 rows into a 2-index table = 9).
+ *  Counts the canonical indexes the import adds, not just the source's. */
 export function indexCounts(db) {
   const m = new Map();
   for (const r of db.prepare("SELECT tbl_name t, count(*) n FROM sqlite_master WHERE type='index' AND sql IS NOT NULL GROUP BY tbl_name").all()) {
     m.set(r.t, Number(r.n));
+  }
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()
+    .map((r) => r.name).filter((t) => !TABLES_SKIPPED.has(t));
+  for (const c of missingCanonicalIndexes(db, tables.map((t) => ({ type: "table", table: t })))) {
+    m.set(c.table, (m.get(c.table) ?? 0) + 1);
   }
   return m;
 }
