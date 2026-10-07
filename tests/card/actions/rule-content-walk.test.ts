@@ -292,6 +292,55 @@ describe("ruleContentForCard - the rule(:captcha) candidate walk (rule/all.rb:5-
   });
 });
 
+describe("ruleWalkPatternInput - the left type of a compound whose left is missing (quick_type)", () => {
+  // class_methods.rb#quick_type: `Card.fetch name, new: {}` - a missing or
+  // trashed left is a NEW card, typed by the new-card chain (here the
+  // deck's *all+*default rule); only a blank left answers "RichText".
+  const BASIC_CS_ID = 70;
+  async function seedDefaultTypedDeck(storage: ActionsTestStorage): Promise<void> {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: BASIC_CS_ID, name: "BasicCs", typeId: CARDTYPE_ID });
+    await storage.engine.driver.query(
+      "UPDATE cards SET type_id = ? WHERE left_id = 7 AND right_id = 8",
+      [BASIC_CS_ID],
+    );
+    await seedCard(storage, { id: 120, name: "Gone Left", typeId: RICH_TEXT_ID, trash: true });
+  }
+
+  it("an absent left answers the new-card type from *all+*default", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Never Existed+watermark", null));
+      expect(pattern.leftTypeName).toBe("BasicCs");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("a trashed left answers the new-card type, not its stored type", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Gone Left+watermark", null));
+      expect(pattern.leftTypeName).toBe("BasicCs");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("an existing left answers its own type", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Pudding+watermark", null));
+      expect(pattern.leftTypeName).toBe("RichText");
+    } finally {
+      storage.close();
+    }
+  });
+});
+
 // ---------------------------------------------------------------------------
 // The engine wiring: prepareRecaptchaSaveInput resolves rule(:captcha)
 // through the walk when the config carries no explicit override.

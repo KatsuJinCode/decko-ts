@@ -47,6 +47,8 @@
 import type { FetchEngine } from "../fetch.js";
 import type { DeckoName } from "../name.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
+import { resolveTypeId } from "./type-resolution.js";
+import { CardActionError } from "./types.js";
 import {
   ruleNamesForCard,
   settingCardNameForCode,
@@ -147,18 +149,41 @@ async function typeNameOfId(
 }
 
 /** quick_type's live left-type fetch (class_methods.rb:59-71): the left
- *  card's type name; an unknown left card omits the field (the registry's
- *  RichText fallback then applies, the oracle-pinned default). */
+ *  card's type name. quick_type fetches the left with `new: {}`, so a left
+ *  that does not exist (or is trashed) is a NEW card and answers the type a
+ *  new card of that name would get (type.rb:58-66 ensure_type_id: the
+ *  type-assignment walk, then the new-card template chain ending at
+ *  *all+*default). Only a blank left name answers the literal "RichText". */
 async function leftTypeNameOf(
   fetch: FetchEngine,
   name: DeckoName,
 ): Promise<string | undefined> {
-  const left = name.leftName;
-  if (left === undefined) return undefined;
+  return quickTypeName(fetch, name.leftName);
+}
+
+/** class_methods.rb#quick_type over a name: the type name of the card with
+ *  that name, or of the new card a fetch with `new: {}` would build for it.
+ *  Shared by every pattern-input builder that needs a compound card's left
+ *  type (the *type plus right anchor). */
+export async function quickTypeName(
+  fetch: FetchEngine,
+  left: DeckoName | undefined,
+): Promise<string | undefined> {
+  if (left === undefined || left.s === "") return "RichText";
   const record = await fetch.fetch(left.s);
-  const leftTypeId = record?.typeId;
-  if (leftTypeId === undefined || leftTypeId === null) return undefined;
-  return typeNameOfId(fetch, leftTypeId);
+  if (record !== undefined) {
+    const leftTypeId = record.typeId;
+    if (leftTypeId === undefined || leftTypeId === null) return undefined;
+    return typeNameOfId(fetch, leftTypeId);
+  }
+  let newTypeId: number;
+  try {
+    newTypeId = await resolveTypeId(fetch, { name: left });
+  } catch (err) {
+    if (err instanceof CardActionError) return undefined;
+    throw err;
+  }
+  return typeNameOfId(fetch, newTypeId);
 }
 
 /** standard_rule? (rule/all.rb:37-40): `Card.fetch_type_id(name.right) ==
