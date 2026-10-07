@@ -268,17 +268,24 @@ async function budgetExceededResponse(
 async function withBudget(
   budgetMs: number,
   retryAfterSeconds: number,
-  work: () => Promise<Response>,
+  work: (signal: AbortSignal | undefined) => Promise<Response>,
   slowPage: () => Promise<Response>,
 ): Promise<Response> {
-  if (!Number.isFinite(budgetMs) || budgetMs <= 0) return await work();
+  if (!Number.isFinite(budgetMs) || budgetMs <= 0) return await work(undefined);
 
+  // When the budget fires, the abandoned work is told to stop: the live
+  // render checks this signal before every pass and every round trip, so it
+  // issues no more statements once its 503 is on the way.
+  const abort = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let expired = false;
+  let slow: Promise<Response> | undefined;
   const expiry = new Promise<Response>((resolve) => {
     timer = setTimeout(() => {
       expired = true;
-      resolve(slowPage());
+      abort.abort();
+      slow = slowPage();
+      resolve(slow);
     }, budgetMs);
     // Never hold the process open on the timer alone: if the platform drops
     // the connection, the timer must not be the reason the isolate lingers.
@@ -286,13 +293,14 @@ async function withBudget(
   });
 
   try {
-    return await Promise.race([work(), expiry]);
+    return await Promise.race([work(abort.signal), expiry]);
   } catch (err) {
     // The budget already produced its answer if it is going to. A work
     // rejection arriving after the timer fired is a symptom of the request
-    // we already abandoned, not of the one we are answering — so answer the
-    // abandoned one the same way and never let it surface as a 500.
-    if (expired) return await slowPage();
+    // we already abandoned (the live render throws when it is told to
+    // stop), not of the one we are answering — so answer the abandoned one
+    // with the same 503, built once, and never let it surface as a 500.
+    if (expired) return await (slow ?? slowPage());
     throw err;
   } finally {
     if (timer !== undefined) clearTimeout(timer);
@@ -351,7 +359,7 @@ export async function handleEngineRequest(
   return await withBudget(
     budgetMs,
     retryAfterSeconds,
-    () => dispatchEngineRequest(request, deck, options),
+    (signal) => dispatchEngineRequest(request, deck, options, signal),
     () => budgetExceededResponse(deck, budgetMs, retryAfterSeconds),
   );
 }
@@ -363,6 +371,7 @@ async function dispatchEngineRequest(
   request: Request,
   deck: Deck,
   options?: EngineRequestOptions,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const url = new URL(request.url);
 
@@ -532,6 +541,7 @@ async function dispatchEngineRequest(
             const live = await liveRenderPage(deck.fetcher.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
               requestedView: pageView,
               historyParams,
+              signal,
             });
             return live.html;
           } finally {

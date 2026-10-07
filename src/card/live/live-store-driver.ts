@@ -29,6 +29,14 @@ import { RequestStore, type Missing, type Widening } from "./request-store.js";
 import { CARDS_COLUMNS, foldNoCase } from "./store-row-evaluator.js";
 import { compactStatement, compactWrap, decodeCompact } from "./compact-rows.js";
 
+/** Thrown by a live render whose request was abandoned (its budget fired). */
+export class LiveRenderAborted extends Error {
+  constructor() {
+    super("live render stopped: the request's budget was exceeded");
+    this.name = "LiveRenderAborted";
+  }
+}
+
 export interface LiveStoreStats {
   round_trips: number;
   local_answers: number;
@@ -167,7 +175,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
    *  neighbours as identity rows (off: every ring row whole, as before). */
   constructor(
     private readonly base: SQLDatabaseDriver,
-    private readonly opts: { ringAll?: boolean; compact?: boolean; identityRing?: boolean } = {},
+    private readonly opts: { ringAll?: boolean; compact?: boolean; identityRing?: boolean; signal?: AbortSignal } = {},
   ) {
     this.compact = opts.compact ?? true;
     this.identityRing = opts.identityRing ?? true;
@@ -339,6 +347,8 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   private async roundTrip(need: NeedSet): Promise<void> {
+    // A request whose budget fired sends nothing more (live-render.ts).
+    if (this.opts.signal?.aborted === true) throw new LiveRenderAborted();
     // ONE round trip: what the render is waiting on + the ring.
     this.frontier(need);
     const st = this.store;

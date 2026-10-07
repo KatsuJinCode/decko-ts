@@ -40,7 +40,9 @@ import type { HistoryRenderParams } from "../history/render-seam.js";
 import { renderPageBytes } from "../render/page.js";
 import { resetBootCache } from "../render/boot-cache.js";
 import { DeckoName } from "../name.js";
-import { LiveStoreDriver, type LiveStoreStats } from "./live-store-driver.js";
+import { LiveRenderAborted, LiveStoreDriver, type LiveStoreStats } from "./live-store-driver.js";
+
+export { LiveRenderAborted };
 
 /** Boots a fresh render engine over the given driver (the edge's serving
  *  boot). Called once per pass. */
@@ -63,6 +65,11 @@ export interface LiveRenderOptions {
   /** Expand each trip's ring around every fetched row (LiveStoreDriver
    *  ringAll). */
   ringAll?: boolean;
+  /** Aborted when the request's budget fires (bunny-edge-engine-request.ts
+   *  withBudget): the render stops before its next pass or round trip and
+   *  throws LiveRenderAborted, so an abandoned request sends no more
+   *  statements. */
+  signal?: AbortSignal;
 }
 
 export interface LivePassReport {
@@ -133,6 +140,7 @@ export async function liveRenderPage(
   // default (DECKO_LIVE_COMPACT=0 / DECKO_LIVE_IDENTITY_RING=0 turn them off).
   const live = new LiveStoreDriver(base, {
     ringAll,
+    signal: opts.signal,
     compact: env?.DECKO_LIVE_COMPACT !== "0",
     identityRing: env?.DECKO_LIVE_IDENTITY_RING !== "0",
   });
@@ -160,6 +168,7 @@ export async function liveRenderPage(
   DeckoName.beginRequestScope();
   try {
     for (let p = 1; p <= MAX_PASSES; p += 1) {
+      if (opts.signal?.aborted === true) throw new LiveRenderAborted();
       const asked = new Set<string>();
       const lazyAsked = new Set<string>();
       live.mode = blockNext ? "block" : "spec";
