@@ -31,7 +31,7 @@ require "json"
 
 QUESTIONS = JSON.parse(File.read(ENV.fetch("SEMANTICS_QUESTIONS")))
 OUT_PATH = ENV.fetch("SEMANTICS_ANSWERS")
-KINDS = %w[counts read_all queries view_defs_full event_defs_full id_fetch inflection_rows role_permissions].freeze
+KINDS = (ENV["SEMANTICS_ONLY_KINDS"]&.split(",") || %w[counts read_all queries view_defs_full event_defs_full id_fetch inflection_rows role_permissions]).freeze
 
 def safe
   yield
@@ -230,36 +230,54 @@ ordered.each do |question|
       end
 
     when "inflection_rows"
+      # The rows of a mirror deck (SEMANTICS_MIRROR, read-only) whose stored
+      # key differs from the key Ruby computes for the stored name. Ruby
+      # computes keys with the card gem's own inflection initializer
+      # (card-1.110.0 config/initializers/inflections.rb: "this", "anonymous"
+      # and "s" uncountable). Each row is then probed in the capture deck
+      # under four states: the card gem's inflections or none, and the
+      # capture deck's stored key or the mirror's.
+      require "sqlite3"
       reset_caches
-      rows = Card.where(trash: false).where.not(key: nil).where.not(name: nil).pluck(:id, :name, :key)
-      checked = rows.length
-      stock = rows.map { |cid, name, key| [cid, name, key, name.to_name.key] }
-      divergent = stock.reject { |_, _, key, computed| key == computed }
-      without = divergent.to_h { |cid, _, _, computed| [cid, computed] }
-      captured = divergent.to_h { |cid, _, key, _| [cid, key] }
+      mirror_path = ENV.fetch("SEMANTICS_MIRROR")
+      mdb = SQLite3::Database.new(mirror_path, readonly: true)
+      mrows = mdb.execute("SELECT id, name, key FROM cards WHERE trash = 0 AND name IS NOT NULL AND key IS NOT NULL")
+      mdb.close
+      checked = mrows.length
+      divergent = mrows.reject { |_, name, key| name.to_name.key == key }.map do |mid, name, mkey|
+        deck = Card.where(id: mid).pluck(:name, :key, :trash).first
+        deck_id = mid
+        if deck.nil? || deck[0] != name
+          alt = Card.where(name: name, trash: false).pluck(:id, :name, :key, :trash).first
+          deck_id = alt&.first
+          deck = alt && alt[1..]
+        end
+        { "mirror_id" => mid, "deck_id" => deck_id, "name" => name, "mirror_key" => mkey,
+          "ruby_key" => name.to_name.key, "captured_key" => deck && deck[1] }
+      end
+      probe_rows = divergent.reject { |d| d["deck_id"].nil? }
+      uncountables = %w[this anonymous s]
 
       probe_state = lambda do |label, mirror_keys, renames|
         reset_caches
         out = nil
         ActiveRecord::Base.transaction do
-          if mirror_keys
-            divergent.each { |cid, *| Card.where(id: cid).update_all(key: without[cid]) }
-          end
+          probe_rows.each { |d| Card.where(id: d["deck_id"]).update_all(key: d["mirror_key"]) } if mirror_keys
           reset_caches
-          out = divergent.each_with_index.map do |(cid, name, _, _), i|
+          out = probe_rows.each_with_index.map do |d, i|
+            cid = d["deck_id"]
+            name = d["name"]
             stored = Card.where(id: cid).pluck(:key).first
             computed = name.to_name.key
-            by_name = safe { Card.fetch(name)&.id }
-            by_stored_key = safe { Card.fetch(stored)&.id }
-            find_by_computed = safe { Card.where(key: computed, trash: false).pluck(:id).first }
             by_id = safe { Card[cid] }
             entry = {
               "id" => cid, "name" => name, "stored_key" => stored, "computed_key" => computed,
-              "fetch_by_name" => by_name, "fetch_by_stored_key" => by_stored_key,
-              "row_by_computed_key" => find_by_computed,
+              "fetch_by_name" => safe { Card.fetch(name)&.id },
+              "fetch_by_stored_key" => safe { Card.fetch(stored)&.id },
+              "row_by_computed_key" => safe { Card.where(key: computed, trash: false).pluck(:id).first },
               "exist_by_name" => safe { Card.exist?(name) },
               "fetch_by_id" => by_id.is_a?(String) ? by_id : by_id&.id,
-              "fetch_by_id_key" => by_id.is_a?(String) || by_id.nil? ? nil : by_id.key.to_s
+              "fetch_by_id_name" => by_id.is_a?(String) || by_id.nil? ? nil : by_id.name.to_s
             }
             if i < renames
               entry["rename"] = safe do
@@ -274,7 +292,23 @@ ordered.each do |question|
                     back.name = name
                     back.save!
                     restored = Card.where(id: cid).pluck(:key).first
-                    result = { "renamed_key" => after[1], "renamed_name" => after[0], "restored_key" => restored }
+                    result = { "renamed_name" => after[0], "renamed_key" => after[1], "restored_key" => restored }
+                  end
+                  raise ActiveRecord::Rollback
+                end
+                reset_caches
+                result
+              end
+              entry["create_same_name"] = safe do
+                result = nil
+                ActiveRecord::Base.transaction(requires_new: true) do
+                  Card::Auth.as_bot do
+                    dup = Card.create(name: name, type_id: Card::Codename.id(:basic) || Card::BasicID)
+                    result = if dup.errors.any?
+                               { "created" => false, "errors" => dup.errors.full_messages.first(3) }
+                             else
+                               { "created" => true, "new_id" => dup.id, "new_key" => dup.key.to_s }
+                             end
                   end
                   raise ActiveRecord::Rollback
                 end
@@ -292,20 +326,16 @@ ordered.each do |question|
       end
 
       states = []
-      states << probe_state.call("stock_inflector+captured_keys", false, 12)
-      states << probe_state.call("stock_inflector+mirror_keys", true, 12)
-      ActiveSupport::Inflector.inflections(:en) { |i| i.uncountable %w[s this anonymous] }
+      states << probe_state.call("card_gem_inflections+captured_keys", false, 12)
+      states << probe_state.call("card_gem_inflections+mirror_keys", true, 12)
+      inflections = ActiveSupport::Inflector.inflections(:en)
+      uncountables.each { |w| inflections.uncountables.delete(w) }
       reset_caches
-      states << probe_state.call("deck_table+captured_keys", false, 12)
-      states << probe_state.call("deck_table+mirror_keys", true, 12)
-      {
-        "checked_rows" => checked,
-        "divergent" => divergent.map do |cid, name, key, computed|
-          { "id" => cid, "name" => name, "captured_key" => captured[cid], "stock_key" => computed,
-            "key_was" => key }
-        end,
-        "states" => states
-      }
+      no_table_check = { "anonymous" => "Anonymous".to_name.key, "this" => "delete this".to_name.key }
+      states << probe_state.call("no_inflections+captured_keys", false, 12)
+      states << probe_state.call("no_inflections+mirror_keys", true, 12)
+      { "mirror" => File.basename(mirror_path), "checked_rows" => checked, "divergent" => divergent,
+        "no_table_check" => no_table_check, "states" => states }
     end
 
   answers[id.to_s] = answer

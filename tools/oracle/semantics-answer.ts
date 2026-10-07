@@ -54,6 +54,7 @@ import {
 import { parseOptionsWithLexicon, executeQuery, executeCount } from "../../src/cql/execute.js";
 import { ruleWalkPatternInput } from "../../src/card/actions/rule-content-walk.js";
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
+import { HTML_VIEWS } from "../../src/card/render/views.js";
 
 const QUESTIONS = JSON.parse(readFileSync(process.env.SEMANTICS_QUESTIONS!, "utf8"));
 const OUT_PATH = process.env.SEMANTICS_ANSWERS!;
@@ -207,11 +208,26 @@ async function cqlNames(query: Record<string, unknown>): Promise<string[] | stri
   return safe(async () => {
     const r = await executeQuery(fetcher.driver, { ...query, return: "name" }, await cqlOptions());
     if ("count" in r) return `ERR:count-result-for-name-query`;
-    return (r.rows as unknown as Array<Record<string, unknown>>).map((row) => String(row.name ?? Object.values(row)[0]));
+    // return: "name" projects name, left_id, right_id (SqlStatement#full_field);
+    // the name is the stored simple name or Lexicon.lex_to_name of the sides,
+    // as Ruby's Query::Run does for the same rows.
+    const out: string[] = [];
+    for (const row of r.rows as unknown as Array<{ name: string | null; left_id: number | null; right_id: number | null }>) {
+      if (row.left_id !== null && row.left_id !== undefined) {
+        const composed = await fetcher.lexicon.composeName(row.left_id, row.right_id);
+        out.push(composed === undefined ? "" : composed.s);
+      } else {
+        out.push(row.name ?? "");
+      }
+    }
+    return out;
   });
 }
 
 // The mod deck, booted once (views and events).
+// The engine-native flat views (render/views.ts HTML_VIEWS) answer on every
+// set; snapshot their names before the mod deck registers into the same record.
+const engineFlatViews = new Set(Object.keys(HTML_VIEWS));
 const loader = defaultDeckLoader();
 const tsViewNames = Object.keys(loader.viewsTable()).sort();
 
@@ -542,6 +558,7 @@ for (const question of QUESTIONS.questions) {
         for (const v of tsViewNames) {
           const chain = loader.viewChain(setKeys, v, "html");
           if (chain.length > 0) views.push({ view: v, owner: chain[0]!.setModule });
+          else if (engineFlatViews.has(v)) views.push({ view: v, owner: "ENGINE" });
         }
         out.push({ set: sname, set_keys: setKeys, views });
       }
