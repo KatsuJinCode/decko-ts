@@ -52,7 +52,8 @@
 #   4c. The corpus was captured on the deck the engine is seeded from
 #       (tools/oracle/corpus-deck-pairing-gate.mjs): the capture provenance's
 #       deck sha equals the staged bench sha, and every captured row holds the
-#       input card's id. Needs CAPTURE_INPUT_SET and CAPTURE_PROVENANCE.
+#       input card's id. Needs CAPTURE_INPUT_SET and CAPTURE_PROVENANCE (and
+#       CAPTURE_DECK when the capture ran on a Decko-schema deck built from the bench).
 #   5. The artifacts directory is fresh (the driver's artifacts-reuse guard
 #      would refuse a reused dir; this script checks first and says so).
 
@@ -193,8 +194,15 @@ echo "CORPUS-SHAPE OK (0 stale denied-seam occurrences; 0 s3 asset-host carriers
 # failures. CAPTURE_INPUT_SET is the capture rig's input set
 # (disputed-set-resolved.json); CAPTURE_PROVENANCE is the capture's
 # provenance manifest (its deck sha is compared with the staged bench sha).
+# CAPTURE_DECK (optional): the Decko-schema deck the capture ran on, when it was
+# built from the bench (Ruby needs the Decko schema and derived names/keys);
+# the gate then proves the provenance names that file and that its card and
+# reference rows equal the bench's.
 CAPTURE_INPUT_SET="${CAPTURE_INPUT_SET:-}"
 CAPTURE_PROVENANCE="${CAPTURE_PROVENANCE:-}"
+CAPTURE_DECK="${CAPTURE_DECK:-}"
+CAPTURE_DECK_ARGS=()
+[ -z "$CAPTURE_DECK" ] || CAPTURE_DECK_ARGS=(--capture-deck "$CAPTURE_DECK")
 [ -n "$CAPTURE_INPUT_SET" ] || die "CAPTURE_INPUT_SET is blank -- name the capture rig's disputed-set-resolved.json so the corpus/deck pairing can be checked"
 [ -n "$CAPTURE_PROVENANCE" ] || die "CAPTURE_PROVENANCE is blank -- name the corpus's capture-provenance manifest so the capture deck sha can be compared with the graded bench"
 PAIRING_JSON="$DIGEST_DIR/corpus-deck-pairing.json"
@@ -202,6 +210,7 @@ node "$REPO/tools/oracle/corpus-deck-pairing-gate.mjs" \
   --corpus "$REPO/tmp/raw-ground-truth" \
   --input-set "$CAPTURE_INPUT_SET" \
   --provenance "$CAPTURE_PROVENANCE" \
+  "${CAPTURE_DECK_ARGS[@]}" \
   --mode gate --json "$PAIRING_JSON" \
   || die "corpus was not captured on the graded deck (see $PAIRING_JSON) -- re-capture on the bench deck, or seed the engine from the capture deck"
 
