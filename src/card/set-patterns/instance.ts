@@ -29,8 +29,27 @@ export class PatternInstance {
   /** @anchor_name (Base#initialize); undefined for anchorless patterns. */
   private readonly anchor: DeckoName | undefined;
 
-  /** @anchor_id (Base#find_anchor_id). */
-  private readonly anchorIdValue: number | null | undefined;
+  /** @anchor_id (Base#find_anchor_id), computed on first use: the render
+   *  path reads only set names, and the anchor id is a lexicon lookup. The
+   *  one reader (ruleLookupKey, via ruleLookupKeysForCard) reads it in the
+   *  same synchronous step that builds the instance, and the lookup is a
+   *  pure cache read, so deferring it never changes its answer. */
+  private anchorIdMemo: { value: number | null | undefined } | undefined;
+
+  private get anchorIdValue(): number | null | undefined {
+    if (this.anchorIdMemo === undefined) {
+      // Base#find_anchor_id: `self.class.try(:anchor_id, card) ||
+      // @anchor_name.card_id` - the || also fires when the override returns
+      // nil (e.g. *self on a new card, whose id is nil).
+      this.anchorIdMemo = {
+        value:
+          this.spec.anchorName === undefined
+            ? undefined
+            : this.spec.anchorId?.(this.card) || this.anchor?.cardId || undefined,
+      };
+    }
+    return this.anchorIdMemo.value;
+  }
 
   private constructor(spec: PatternSpec, card: PatternCardInput) {
     this.spec = spec;
@@ -39,18 +58,12 @@ export class PatternInstance {
     // no anchor state at all.
     if (spec.anchorName === undefined) {
       this.anchor = undefined;
-      this.anchorIdValue = undefined;
       return;
     }
     const anchorString = spec.anchorName(card);
     // nil.to_name is the empty name in Ruby (e.g. *type on an inconsistent
     // card with type_id but no type_name -> set name "+*type").
     this.anchor = DeckoName.parse(anchorString ?? "");
-    // Base#find_anchor_id: `self.class.try(:anchor_id, card) ||
-    // @anchor_name.card_id` - the || also fires when the override returns
-    // nil (e.g. *self on a new card, whose id is nil).
-    this.anchorIdValue =
-      spec.anchorId?.(card) || this.anchor?.cardId || undefined;
   }
 
   /**

@@ -161,16 +161,23 @@ export async function renderPageBytes(
   // The page is one request: no Temporary-cache reset may drop an entry this
   // request seated before its synchronous readers use it
   // (TemporaryCache#hold; the reset is deferred to the request's end).
-  await resolveIdMarksInRequestedName(engine, cardName);
-  // (Stub decks in the edge request tests carry a partial fetcher.)
-  const releaseCaches =
-    typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
+  // The request scope of the name memos (DeckoName.beginRequestScope):
+  // parse and mark memos live for this page and are dropped with it.
+  DeckoName.beginRequestScope();
   try {
-    return await engine.runWithPageConfig(() =>
-      renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
-    );
+    await resolveIdMarksInRequestedName(engine, cardName);
+    // (Stub decks in the edge request tests carry a partial fetcher.)
+    const releaseCaches =
+      typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
+    try {
+      return await engine.runWithPageConfig(() =>
+        renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+      );
+    } finally {
+      releaseCaches();
+    }
   } finally {
-    releaseCaches();
+    DeckoName.endRequestScope();
   }
 }
 
@@ -394,7 +401,8 @@ async function renderPageBytesWithPageConfigInner(
   // @rendered holds whatever the last view dispatch left there — the :raw
   // view's raw source while a `{{_main}}` inside the MAIN card's own
   // content is being chunked (D6, page 470).
-  const mainBody = rootFormat.renderView(
+  const skipSync = engine.skipSyncRender?.() === true;
+  const mainBody = skipSync ? "" : rootFormat.renderView(
     mainView,
     {
       nest_name: "_main",
@@ -464,8 +472,9 @@ async function renderPageBytesWithPageConfigInner(
   // them before the layout dispatch reads their content. See
   // RenderEngine.applyLateSeatStructureContent's doc.
   await engine.applyLateSeatStructureContent();
-  const interior =
-    layout.kind === "card"
+  const interior = engine.skipSyncRender?.() === true
+    ? ""
+    : layout.kind === "card"
       ? rootFormat.processLayoutContent(layout.layoutCardContent ?? "")
       : codeDefaultLayoutInterior(rootFormat);
 

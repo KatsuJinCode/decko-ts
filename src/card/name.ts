@@ -119,6 +119,9 @@ export class DeckoName {
   static {
     onDeckInflectionsChanged(() => {
       DeckoName.cache.clear();
+      DeckoName.parseMemo?.clear();
+      DeckoName.leftNameMemo = new WeakMap();
+      DeckoName.markMemo?.clear();
     });
   }
 
@@ -172,6 +175,74 @@ export class DeckoName {
   static parse(obj: string | number | null | undefined | DeckoName): DeckoName {
     if (obj instanceof DeckoName) return obj; // Cardname.new returns obj if already one
     let str = obj == null ? "" : String(obj);
+    // Inside a request scope only (beginRequestScope): strings with no
+    // id/codename mark ("~", ":") parse to a pure function of the text (and
+    // the inflection state, whose change clears this memo like `cache`).
+    // Hot: compound names are re-split per call otherwise.
+    const parseMemo = DeckoName.parseMemo;
+    if (parseMemo !== undefined) {
+      const memo = parseMemo.get(str);
+      if (memo !== undefined) return memo;
+      if (!str.includes("~") && !str.includes(":")) {
+        const parsed = DeckoName.parseUncached(str);
+        parseMemo.set(str, parsed);
+        return parsed;
+      }
+    }
+    // Strings WITH a mark resolve through the lexicon / codename registry:
+    // within one request those answer from the request's own rows (an id
+    // has one name, a codename one card), so a SUCCESSFUL resolution is
+    // memoized while a request scope is open (failures re-run: a mark the
+    // lexicon cannot resolve yet may resolve later in the request). Outside
+    // a request scope nothing here is memoized.
+    if (DeckoName.markMemo !== undefined) {
+      const marked = DeckoName.markMemo.get(str);
+      if (marked !== undefined) return marked;
+      const parsed = DeckoName.parseUncached(str);
+      DeckoName.markMemo.set(str, parsed);
+      return parsed;
+    }
+    return DeckoName.parseUncached(str);
+  }
+
+  private static markMemo: Map<string, DeckoName> | undefined;
+
+  /** Open / close a request scope for the parse and mark memos (see
+   *  parse). Scopes nest (a page render opens one, its inner render() opens
+   *  another): the outermost begin starts from empty memos and the
+   *  outermost end drops every name memo, so nothing outlives the request.
+   *  Outside a scope nothing new is memoized. */
+  static beginRequestScope(): void {
+    DeckoName.requestScopeDepth += 1;
+    if (DeckoName.requestScopeDepth > 1) return;
+    DeckoName.clearParseMemo();
+    DeckoName.markMemo = new Map();
+    DeckoName.parseMemo = new Map();
+  }
+
+  static endRequestScope(): void {
+    if (DeckoName.requestScopeDepth === 0) return;
+    DeckoName.requestScopeDepth -= 1;
+    if (DeckoName.requestScopeDepth > 0) return;
+    DeckoName.markMemo = undefined;
+    DeckoName.parseMemo = undefined;
+    DeckoName.clearParseMemo();
+  }
+
+  private static requestScopeDepth = 0;
+  private static parseMemo: Map<string, DeckoName> | undefined;
+
+  /** Drop the name memos (both are pure functions of the text and the
+   *  inflection tables; callers that want request-scoped state clear them
+   *  at the request boundary). */
+  static clearParseMemo(): void {
+    DeckoName.parseMemo?.clear();
+    DeckoName.cache.clear();
+    DeckoName.leftNameMemo = new WeakMap();
+    DeckoName.markMemo?.clear();
+  }
+
+  private static parseUncached(str: string): DeckoName {
 
     if (str.includes(DeckoName.JOINT)) {
       // new_from_compound_string: split on the joint and parse each part
@@ -377,8 +448,18 @@ export class DeckoName {
 
   /** cardname lib/cardname/parts.rb #left_name. */
   get leftName(): DeckoName | undefined {
-    return this.isSimple ? undefined : this.getRange(0, -2);
+    if (this.isSimple) return undefined;
+    // A name is immutable and its left part is baseParse of its own parts
+    // (a pure function of the text and the inflection tables), so it is
+    // computed once per instance; the memo is dropped with the name cache.
+    const memo = DeckoName.leftNameMemo.get(this);
+    if (memo !== undefined) return memo;
+    const left = this.getRange(0, -2);
+    DeckoName.leftNameMemo.set(this, left);
+    return left;
   }
+
+  private static leftNameMemo = new WeakMap<DeckoName, DeckoName>();
 
   /** left and right of a compound card (cardname lib/cardname/parts.rb #parents). */
   get parents(): string[] {

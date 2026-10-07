@@ -49,9 +49,14 @@ export function ruleNamesForCard(
   settingName: Nameish,
 ): string[] {
   const setting = DeckoName.parse(settingName).s;
-  return patternsForCard(card).map((pattern) =>
-    ruleName(pattern.setName, setting),
-  );
+  // ruleName(set, setting) per pattern, with the setting's half parsed once
+  // (at the first pattern, exactly where ruleName would first parse it).
+  let settingPart: string | undefined;
+  return patternsForCard(card).map((pattern) => {
+    const setPart = DeckoName.parse(pattern.setName).s;
+    settingPart ??= DeckoName.parse(setting).s;
+    return `${setPart}+${settingPart}`;
+  });
 }
 
 /**

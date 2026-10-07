@@ -203,7 +203,14 @@ let inflectionState: InflectionState = {
  * inflections-block semantics: deck uncountables append, deck rules prepend
  * over the defaults, later definitions winning). Call once at deck-boot /
  * corpus-seed time, before any name is parsed. */
+let lastAppliedConfig: DeckInflectionConfig | undefined;
+
 export function applyDeckInflections(config: DeckInflectionConfig): void {
+  // Re-applying the SAME config object leaves the tables unchanged, so it
+  // must not invalidate every memoized name (every engine boot applies the
+  // deck's one config).
+  if (config === lastAppliedConfig) return;
+  lastAppliedConfig = config;
   const deckSingular = config.singular ? rules(config.singular).reverse() : [];
   const deckPlural = config.plural ? rules(config.plural).reverse() : [];
   const uncountableWords = config.uncountables
@@ -219,6 +226,7 @@ export function applyDeckInflections(config: DeckInflectionConfig): void {
 
 /** Restore the gem's standard (default English) inflection tables. */
 export function resetDeckInflections(): void {
+  lastAppliedConfig = undefined;
   inflectionState = {
     singularRules: DEFAULT_SINGULAR_RULES,
     pluralRules: DEFAULT_PLURAL_RULES,

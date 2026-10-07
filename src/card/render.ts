@@ -849,9 +849,13 @@ export class RenderEngine implements RenderEngineLike {
     // page render the page's own hold is already open; holds nest.
     const releaseCaches =
       typeof this.fetcher?.holdTemporaryCaches === "function" ? this.fetcher.holdTemporaryCaches() : () => {};
+    // The name memos' request scope (DeckoName.beginRequestScope); nested
+    // inside a page render it joins the page's scope.
+    DeckoName.beginRequestScope();
     try {
       return await this.renderHeld(cardName, view, params);
     } finally {
+      DeckoName.endRequestScope();
       releaseCaches();
     }
   }
@@ -1949,7 +1953,8 @@ export class RenderEngine implements RenderEngineLike {
     // serializer omits exactly that enrollment from the root slot - the
     // page-lane and nest renders pass their own optional explicitly and are
     // NOT roots (format.ts#slotOptions root-drop arm reads this flag).
-    const baseHtml = format.renderView(view, params.viewOpts ?? {}, "show", true);
+    const baseHtml =
+      this.skipSyncRender?.() === true ? "" : format.renderView(view, params.viewOpts ?? {}, "show", true);
 
     // A denied render never reaches view dispatch (the denial span REPLACES
     // the view in renderView), so view-override rules cannot apply to it —
@@ -3218,6 +3223,7 @@ export class RenderEngine implements RenderEngineLike {
       const sideKeyPairs: { left: string; right: string; raw: string }[] = [];
       const sideIdPairs: { leftId: number; rightId: number; lex: Lex }[] = [];
       const nextRound: string[] = [];
+      let heldSeatThisRound = false;
       for (const raw of pending) {
         let name: DeckoName;
         try {
@@ -3253,6 +3259,7 @@ export class RenderEngine implements RenderEngineLike {
           ) {
             const held = this.fetcher.retrieveFromCacheByKey(key);
             if (held !== undefined) {
+              heldSeatThisRound = true;
               await this.cacheFetchedRecord(held);
               seatedAny = true;
             } else {
@@ -3315,6 +3322,14 @@ export class RenderEngine implements RenderEngineLike {
         // Nothing fetchable: every pending name waits on sides that resolve
         // next round or is already seated/asked.
         if (nextRound.length === 0) break;
+        // Fixpoint: a round that asked nothing and seated nothing changed no
+        // state the round reads (renderCards, the ask sets, the lexicon), so
+        // when it re-pends exactly the names it started with, every later
+        // round is the same no-op up to MAX_WAVE_ROUNDS. Stop now.
+        if (!heldSeatThisRound && nextRound.length >= pending.size) {
+          const next = new Set(nextRound);
+          if (next.size === pending.size && [...next].every((raw) => pending.has(raw))) break;
+        }
         pending.clear();
         for (const raw of nextRound) pending.add(raw);
         continue;
@@ -4657,6 +4672,14 @@ export class RenderEngine implements RenderEngineLike {
   /** Stats of the last warmupLayoutReferences call (probe/verification
    *  surface — round trips, statements, rounds, fallbacks). */
   lastWarmupStats: WarmupStats | undefined;
+
+  /** DISCOVERY PASS (request-local live render): when set and true at one of
+   *  the page's synchronous view renders, that render is skipped (returns
+   *  ""). Only a discovery pass that has already consumed a speculative
+   *  "no rows" sets it: such a pass is never the page, its bytes are
+   *  discarded, and a synchronous render issues no reads. The page is always
+   *  rendered by a pass for which this is false at every render point. */
+  skipSyncRender: (() => boolean) | undefined;
 
   /** The layout warm-up chase, bounded + batched (see
    *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
