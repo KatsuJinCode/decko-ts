@@ -30,7 +30,7 @@
 import { writeFileSync } from "node:fs";
 import { NodeSqliteDriver } from "./node-sqlite-driver.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
-import { bootEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
+import { bootEdgeServingEngines, refreshEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
 import { applyServedEnvironmentDeltas } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
@@ -148,7 +148,9 @@ try {
     counter.bytes = 0;
     t0 = performance.now();
     cpu0 = process.cpuUsage();
-    const r = await liveRenderPage(deck.fetcher.driver, page, (d) => bootEdgeServingEngines(d), {});
+    const r = await liveRenderPage(deck.fetcher.driver, page, (d) => bootEdgeServingEngines(d), {
+      refreshDiscoveryEngine: refreshEdgeServingEngines,
+    });
     const cpu1 = process.cpuUsage(cpu0);
     extra.process_cpu_ms = Math.round((cpu1.user + cpu1.system) / 1000);
     extra.pass_cpu_ms = r.passes.reduce((a, p) => a + p.cpu_ms, 0);

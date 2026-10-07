@@ -448,6 +448,7 @@ export class RenderEngine implements RenderEngineLike {
   beginPagePrepare(): void {
     this.pagePrepareDepth += 1;
     this.renderSeats.clear();
+    if (this.sweepAllHeldCards) for (const key of this.renderCards.keys()) this.renderSeats.add(key);
   }
 
   endPagePrepare(): void {
@@ -2270,8 +2271,52 @@ export class RenderEngine implements RenderEngineLike {
   resetCaches(): void {
     this.fetcher.resetCaches();
     this.renderCards.clear();
-    this.renderSeats.clear();
     this.idsByKey.clear();
+    this.resetDerivedRenderState();
+  }
+
+  /** INCREMENTAL DISCOVERY (live render, src/card/live/live-render.ts). One
+   *  engine serves a request's discovery passes, which answer unknown reads
+   *  with a speculative "no rows"; everything it holds as ABSENT is therefore
+   *  provisional. Between passes this keeps what is positive and pure of the
+   *  request's rows (the fetch layer's stored cards and lexicon ids, the
+   *  seated stored render cards) and drops the rest, so the next pass asks
+   *  again. The page bytes never come from this engine: a fresh engine
+   *  renders them under the completion rule, so anything this misses costs a
+   *  pass, never a byte.
+   *    level 2: the fetch layer's negatives, id-less render cards, and every
+   *             derived render-side cache (verdicts, rules, searches,
+   *             structure, ask memories, warm markers);
+   *    level 1: only the ask/miss/scan memories and the fetch negatives. */
+  clearProvisionalState(level = 2): void {
+    if (level >= 3) {
+      this.fetcher.resetCaches();
+      this.fetcher.lexicon.forgetDurableRecords();
+    }
+    else this.fetcher.purgeNegatives();
+    if (level < 2) {
+      this.structureRefMisses.clear();
+      this.waveAskedSimpleKeys = undefined;
+      this.waveAskedPairs = undefined;
+      this.waveAskedSideKeyPairs.clear();
+      this.warmupScannedKeys.clear();
+      this.primeAskedIds = undefined;
+      return;
+    }
+    for (const [key, card] of this.renderCards) {
+      if (level >= 4 || card.id === undefined) this.renderCards.delete(key);
+    }
+    if (level >= 4) this.idsByKey.clear();
+    this.resetDerivedRenderState();
+  }
+
+  /** Incremental discovery: a page prepare's sweep surface (renderSeats)
+   *  starts with every card the engine holds, as a fresh engine's would hold
+   *  every card it seated in this render. */
+  sweepAllHeldCards = false;
+
+  private resetDerivedRenderState(): void {
+    this.renderSeats.clear();
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
     this.sessionMyCardHtml = undefined;

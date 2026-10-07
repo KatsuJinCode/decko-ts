@@ -669,6 +669,19 @@ export class FetchEngine {
     };
   }
 
+  /** Incremental live discovery (RenderEngine.clearProvisionalState): forget
+   *  every NEGATIVE the fetch layer holds (a card-cache entry that is not a
+   *  stored card, a lexicon entry that maps to nothing). A discovery pass's
+   *  negatives may come from a speculative "no rows", so the next pass must
+   *  ask again; real negatives are re-answered from the request's row store
+   *  without a round trip. Positive entries are kept. */
+  purgeNegatives(): number {
+    return (
+      this.cardCache.temp.purge((_k, v) => !isCardValue(v) || v.id === undefined) +
+      this.lexiconCache.temp.purge((_k, v) => v === undefined || v === null)
+    );
+  }
+
   /** cache/class_methods.rb#reset (42-46): reset every cache instance. */
   resetCaches(): void {
     this.cardCache.reset();

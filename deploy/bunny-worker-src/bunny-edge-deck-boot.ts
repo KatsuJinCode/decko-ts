@@ -130,6 +130,22 @@ export async function bootCorpusDeckEngines(
   return { fetcher, render };
 }
 
+/** Re-run the boot's data-dependent steps on an engine that is kept across
+ *  the discovery passes of one live request (src/card/live/live-render.ts,
+ *  incremental discovery): the codename registry and the virtual-card rule
+ *  universe were read when the request store may not yet have held their
+ *  rows, so each pass reads them again from the store. */
+export async function refreshEdgeServingEngines(driver: SQLDatabaseDriver, render: RenderEngine): Promise<void> {
+  const fetcher = render.fetcher;
+  fetcher.codenames.resetCache();
+  await fetcher.reprimeBootState();
+  const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+  fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+    contents: structureUniverseFromResults(universeResult),
+    ruleTypeIds: structureRuleTypesFromResults(universeResult),
+  });
+}
+
 /** THE EDGE SERVING BOOT: the corpus boot above plus the two serving
  *  fields the Bunny edge handler's bootDeck has always set. One function, so
  *  the handler and the measurement harness (benchmarks/speed-ship) boot the
