@@ -72,6 +72,7 @@
 // testability pattern the sibling worker-src modules keep.
 
 import { BunnyDbQueryCounter } from "../../src/card/drivers/bunny-db.js";
+import { probeRecordPost } from "./bunny-edge-isolate-probe.js";
 
 /** The header this instrument adds to every response. */
 export const EDGE_SERVER_TIMING_HEADER = "Server-Timing";
@@ -134,6 +135,7 @@ export function edgeDbTimingFetch(): typeof fetch {
     } finally {
       ledgerDbMs += Math.max(0, Date.now() - t0);
       ledgerPosts += 1;
+      probeRecordPost(Math.max(0, Date.now() - t0));
     }
   };
 }
