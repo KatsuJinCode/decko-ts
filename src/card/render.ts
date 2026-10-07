@@ -3683,9 +3683,13 @@ export class RenderEngine implements RenderEngineLike {
         this.deniedVerdictsByKey.set(refKey, read === false);
         continue;
       }
-      // Plain simple names stay unseeded (no setting shape, no rule
-      // universe to consult); the simple-starred arm follows.
-      if (!parsed.s.startsWith("*")) continue;
+      // SIMPLE arm, starred or not: ok_to_read? (permissions.rb:139-146)
+      // walks permission_rule_id(:read) for EVERY new card. A plain simple
+      // name ({{user design|closed}}) types from the *default template
+      // exactly like a starred one, so on this deck it lands on
+      // BasicCs+*type+*read ("Anyone Signed In") and Anonymous is denied.
+      // Leaving it unseated read as ALLOWED in isDenied and rendered the
+      // full bar to readers Ruby denies.
       const defaulted = this.newCardDefaultType(parsed);
       const input = {
         name: parsed,

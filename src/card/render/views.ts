@@ -5476,7 +5476,10 @@ const miniBarView: ViewFn = (ctx) => {
     return slotWrapCommon(
       ctx.fmt,
       "mini_bar",
-      pointerListItemBodyForUnknown(ctx.fmt.urlKey(), {
+      // slot_cardname (wrap.rb:50-54): url_key only for a NEW COMPOUND
+      // card (the BW Oversight phantom leaves); a simple unknown name
+      // ("user design") keeps its display form.
+      pointerListItemBodyForUnknown(slotCardname(ctx.fmt.card), {
         ...(ctx.fmt.card.setKeys !== undefined ? { setKeys: ctx.fmt.card.setKeys } : {}),
         ...(ctx.fmt.card.typeName !== undefined ? { typeName: ctx.fmt.card.typeName } : {}),
         ...(ctx.fmt.card.typeId !== undefined ? { typeId: ctx.fmt.card.typeId } : {}),
