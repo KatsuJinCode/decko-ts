@@ -189,6 +189,10 @@ export interface PrefetchContext {
    *  stats.additionalResults). Must not depend on the closure's output —
    *  they execute alongside the prelude folds in one round trip. */
   additionalStatements?: SQLStatement[];
+  /** Request-local live render only: compose the root and the prelude rows
+   *  but do not walk the root's inclusion closure (its nests are prepared
+   *  only when the synchronous render asks for them). */
+  skipClosureWalk?: boolean;
 }
 
 /**
@@ -463,6 +467,7 @@ export async function prefetchInclusionClosure(
 
   const composed = await composeAndCache([rootRow], ctx, stats);
   stats.additionalResults = additionalResults;
+  if (ctx.skipClosureWalk === true) return stats;
   await driveClosure(
     [rootRow, ...preludeTestContextRows],
     [...composed, ...preludeSideComposed, ...preludeTestContextComposed, ...preludeItemComposed],
