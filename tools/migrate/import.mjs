@@ -441,6 +441,9 @@ export async function importDump(opts) {
 
   // Indexes after the bulk load (see module doc).
   for (const statement of schema.createIndexes) await driver.query(statement, []);
+  // Planner statistics, after the rows are in and after the indexes exist.
+  // ANALYZE writes only sqlite_stat1, never a corpus row.
+  await driver.query("ANALYZE", []);
   // [ENGINE-FRESHNESS] stamp triggers + row LAST — after the bulk load, so
   // the per-row trigger fire never happens during import (see
   // parseTargetSchema's note).

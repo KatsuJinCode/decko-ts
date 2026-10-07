@@ -128,6 +128,12 @@ describe("schema.sqlite.sql vs src/server/schema.ts inventory", () => {
         "cards_trash_index",
         "cards_key_binary_index",
         "cards_codename_binary_index",
+        // SQLite-only serving-path indexes for planners without statistics
+        // (db/schema.sqlite.sql, cards index block).
+        "cards_name_trash_index",
+        "cards_right_id_trash_index",
+        "cards_codename_present_index",
+        "cards_key_last_char_index",
       ],
       card_acts: ["card_acts_actor_id_index", "card_acts_card_id_index", "acts_acted_at_index"],
       card_actions: ["card_actions_card_act_id_index", "card_actions_card_id_index"],

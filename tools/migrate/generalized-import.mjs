@@ -277,6 +277,11 @@ export async function importFromSqlite(opts) {
     }
     await flush();
     for (const statement of schema.createIndexes) await driver.query(statement, []);
+    // Planner statistics, after the rows are in and after the indexes exist.
+    // Without them SQLite guesses: on the deck's read-rules join it picks
+    // cards_trash_index over cards_right_id_index and reads every live row.
+    // ANALYZE writes only sqlite_stat1, never a corpus row.
+    await driver.query("ANALYZE", []);
     await driver.query("PRAGMA synchronous = NORMAL", []);
     await driver.query("PRAGMA wal_checkpoint(TRUNCATE)", []);
 
