@@ -133,6 +133,12 @@ export interface Widening {
   /** junctions whose left key is in sideL and right key in sideR: full */
   sideL: string[];
   sideR: string[];
+  /** RULE SETS: [anchor id, set codename] — the set card anchor+<set> and
+   *  every rule card under it (set+<setting>) arrive whole. [left id, right
+   *  id] with codename "type_plus_right": the set card
+   *  <left+right>+*type plus right and its rules. Optional. */
+  ruleSets?: [number, string][];
+  tprSets?: [number, number][];
 }
 
 export class RequestStore {
@@ -262,7 +268,8 @@ export class RequestStore {
     identityRows = true,
   ): { full: SQLStatement; identity: SQLStatement; identityColumns: readonly string[] } | undefined {
     const total =
-      w.fullKeys.length + w.idKeys.length + w.fullIds.length + w.idIds.length + w.lefts.length + w.leftKeys.length + w.pairs.length;
+      w.fullKeys.length + w.idKeys.length + w.fullIds.length + w.idIds.length + w.lefts.length + w.leftKeys.length + w.pairs.length +
+      (w.ruleSets?.length ?? 0) + (w.tprSets?.length ?? 0);
     if (total === 0) return undefined;
     const ctes: string[] = [];
     const params: unknown[] = [];
@@ -295,6 +302,48 @@ export class RequestStore {
           `JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (SELECT value FROM json_each(?))`,
       );
       params.push(JSON.stringify(w.sideL), JSON.stringify(w.sideR));
+    }
+    // RULE SETS of rows the engine reads (live-store-driver.ts frontier):
+    // the set cards its rule walk resolves (X+*self, Type+*type,
+    // Right+*right, <Type+Right>+*type plus right) and the rule cards under
+    // them, whole. The walk reads exactly these whole; as identity rows each
+    // set level and each rule level cost one more trip.
+    if (w.ruleSets?.length || w.tprSets?.length) {
+      const setParts: string[] = [];
+      const setParams: string[] = [];
+      if (w.ruleSets?.length) {
+        setParts.push(
+          `SELECT s.id FROM json_each(?) p JOIN cards s ON s.left_id = json_extract(p.value, '$[0]') ` +
+            `JOIN cards sr ON sr.id = s.right_id AND sr.codename = json_extract(p.value, '$[1]')`,
+        );
+        setParams.push(JSON.stringify(w.ruleSets));
+      }
+      if (w.tprSets?.length) {
+        setParts.push(
+          `SELECT s.id FROM json_each(?) p JOIN cards m ON m.left_id = json_extract(p.value, '$[0]') AND m.right_id = json_extract(p.value, '$[1]') ` +
+            `JOIN cards s ON s.left_id = m.id JOIN cards sr ON sr.id = s.right_id AND sr.codename = 'type_plus_right'`,
+        );
+        setParams.push(JSON.stringify(w.tprSets));
+      }
+      // Inlined twice (the set cards, then the rules under them), so the
+      // parameters follow the text order. Only the settings the page render
+      // reads through these sets are fetched (measured: *structure,
+      // *default, *content options; *read, *update, *delete, *comment,
+      // *help ... arrive as identity rows, as before). The set cards
+      // themselves arrive whole (DECKO_LIVE_RULE_SETS_SELF=filtered: a
+      // `*self` set card only when it carries one of those rules; one more
+      // trip on the deep pages for about 10 KB less).
+      const sets = setParts.join(" UNION ");
+      const RULES = `('structure','default','content_options')`;
+      const ruleOf = `SELECT c.id FROM cards c JOIN cards cr ON cr.id = c.right_id AND cr.codename IN ${RULES} WHERE c.left_id IN (${sets})`;
+      const selfMode = (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RULE_SETS_SELF : undefined) ?? "all";
+      const setCards =
+        selfMode === "all"
+          ? sets
+          : `SELECT s.id FROM cards s JOIN cards sr ON sr.id = s.right_id WHERE s.id IN (${sets}) AND (sr.codename <> 'self' OR s.id IN (SELECT left_id FROM cards WHERE id IN (${ruleOf})))`;
+      fullParts.push(setCards, ruleOf);
+      if (selfMode === "all") params.push(...setParams, ...setParams);
+      else params.push(...setParams, ...setParams, ...setParams);
     }
     // Every other junction of a left side arrives as an identity row: a
     // junction the render then reads whole (a field X+image, a rule

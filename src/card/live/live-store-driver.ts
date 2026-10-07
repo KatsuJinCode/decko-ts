@@ -90,6 +90,8 @@ class NeedSet {
   readonly sideL = new Set<string>();
   readonly sideR = new Set<string>();
   readonly exact = new Map<string, SQLStatement>();
+  readonly ruleSets = new Map<string, [number, string]>();
+  readonly tprSets = new Map<string, [number, number]>();
 
   get size(): number {
     return (
@@ -127,6 +129,8 @@ class NeedSet {
     o.sideL.forEach((k) => this.sideL.add(k));
     o.sideR.forEach((k) => this.sideR.add(k));
     o.exact.forEach((v, k) => this.exact.set(k, v));
+    o.ruleSets.forEach((v, k) => this.ruleSets.set(k, v));
+    o.tprSets.forEach((v, k) => this.tprSets.set(k, v));
   }
 
   /** Move everything out into a fresh set. */
@@ -143,6 +147,8 @@ class NeedSet {
     this.sideL.clear();
     this.sideR.clear();
     this.exact.clear();
+    this.ruleSets.clear();
+    this.tprSets.clear();
     return t;
   }
 }
@@ -168,6 +174,10 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   private readonly leftKeysPending = new Set<string>();
   private readonly compact: boolean;
   private readonly identityRing: boolean;
+  private readonly ruleSetsOn =
+    typeof process === "undefined" || process.env?.DECKO_LIVE_RULE_SETS !== "0";
+  private readonly ruleExpanded = new Set<number>();
+  private readonly ruleSetsAsked = new Set<string>();
 
   /** ringAll: expand the ring around EVERY fetched row, not only the rows
    *  the engine read. More rows per trip, fewer dependency levels.
@@ -222,6 +232,36 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
             if (i != null && !this.store.full.has(i) && (!this.store.idKnown.has(i) || this.store.present.has(i))) need.fullIds.add(i);
           }
           if (!this.store.leftComplete.has(r.id)) need.lefts.add(r.id);
+        }
+      }
+      // RULE SETS (DECKO_LIVE_RULE_SETS=0 turns them off): the sets this read
+      // row belongs to, whose set cards and rule cards the rule walk reads
+      // whole: <row>+*self, <type>+*type, <right>+*right for a junction, and
+      // <type of left>+<right>+*type plus right.
+      if (this.ruleSetsOn && !r.trash && !this.ruleExpanded.has(r.id)) {
+        this.ruleExpanded.add(r.id);
+        const add = (anchor: number | null | undefined, code: string) => {
+          if (anchor == null) return;
+          const k = `${anchor}:${code}`;
+          if (this.ruleSetsAsked.has(k)) return;
+          this.ruleSetsAsked.add(k);
+          need.ruleSets.set(k, [anchor, code]);
+        };
+        // A type card's own *self set is rarely read (its rules come through
+        // the *type set of the cards of that type): measured 1 of 38 read.
+        const typeRow = r.type_id != null ? (this.store.rowById(r.type_id) as { codename?: string | null } | undefined) : undefined;
+        if (typeRow?.codename !== "cardtype") add(r.id, "self");
+        add(r.type_id, "type");
+        if (r.left_id != null && r.right_id != null) {
+          add(r.right_id, "right");
+          const leftType = (this.store.rowById(r.left_id) as { type_id?: number } | undefined)?.type_id;
+          if (leftType != null) {
+            const k = `${leftType}:${r.right_id}`;
+            if (!this.ruleSetsAsked.has(`tpr:${k}`)) {
+              this.ruleSetsAsked.add(`tpr:${k}`);
+              need.tprSets.set(k, [leftType, r.right_id]);
+            }
+          }
         }
       }
       if (this.store.contentExpanded.has(r.id) || !this.store.full.has(r.id)) continue;
@@ -395,6 +435,8 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       pairs: [...need.pairs.values()].filter(([l]) => !st.leftComplete.has(l)),
       sideL: [...need.sideL],
       sideR: [...need.sideR],
+      ruleSets: [...need.ruleSets.values()],
+      tprSets: [...need.tprSets.values()],
     };
     const widening = st.wideningStatements(w, this.identityRing);
     const exact = [...need.exact.entries()].filter(([k]) => !this.exact.has(k));
@@ -440,12 +482,29 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         // (no trash filter), so each such id is now known: present if its row
         // came back, absent otherwise.
         const named: number[] = [];
-        for (const r of (this.exact.get(exact[c.at]![0])?.rows ?? []) as Record<string, unknown>[]) {
-          for (const col of ["id", "type_id", "left_id", "right_id"]) {
-            if (r[col] !== null && r[col] !== undefined) named.push(Number(r[col]));
+        const results = (this.exact.get(exact[c.at]![0])?.rows ?? []) as Record<string, unknown>[];
+        // The search's own rows are whole `cards` rows (c0.*): seat them from
+        // the search's answer. The companion (searchCompanion) no longer
+        // re-sends them; an id is marked known only when its row is seated
+        // here or the companion was asked for it.
+        const own: Record<string, unknown>[] = [];
+        const unseated = new Set<number>();
+        for (const r of results) {
+          if (r.id === null || r.id === undefined) continue;
+          if (CARDS_COLUMNS.every((col) => col in r)) {
+            own.push(Object.fromEntries(CARDS_COLUMNS.map((col) => [col, r[col]])));
+            named.push(Number(r.id));
+          } else {
+            unseated.add(Number(r.id));
           }
         }
-        st.absorbFull(named, rows);
+        for (const r of results) {
+          for (const col of ["type_id", "left_id", "right_id"]) {
+            const v = r[col];
+            if (v !== null && v !== undefined && !unseated.has(Number(v))) named.push(Number(v));
+          }
+        }
+        st.absorbFull(named, [...own, ...rows]);
       }
       this.stats.rows_fetched += st.rowsFetched - before;
     }
@@ -499,8 +558,10 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   /** The companion of a search statement (a `cards` row select generated by
-   *  the CQL engine: `SELECT [DISTINCT] c0.* ...`): every row its result
-   *  names by id, read trash-agnostically, with the search's own parameters
+   *  the CQL engine: `SELECT [DISTINCT] c0.* ...`): the type, left and right
+   *  rows its result rows name, read trash-agnostically, leaving out the
+   *  result rows themselves (the search's own answer carries them whole and
+   *  the store seats them from it), with the search's own parameters
    *  (so the companion never binds more than the search does). Undefined for
    *  any other statement, and for REGEXP searches, whose function a server
    *  may not host. */
@@ -509,12 +570,18 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     return {
       sql:
         `WITH __q AS (${s.sql}) SELECT ${CARDS_COLUMNS.map((c) => `cards.${c}`).join(", ")} FROM cards WHERE id IN ` +
-        `(SELECT id FROM __q UNION SELECT type_id FROM __q UNION SELECT left_id FROM __q UNION SELECT right_id FROM __q)`,
+        `(SELECT type_id FROM __q UNION SELECT left_id FROM __q UNION SELECT right_id FROM __q) ` +
+        `AND id NOT IN (SELECT id FROM __q)`,
       params: s.params ?? [],
     };
   }
 
   close(): void {
+    if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_RULESETS === "1") {
+      process.stderr.write(
+        `RULESETS ${JSON.stringify({ asked: [...this.ruleSetsAsked], demanded: [...this.demanded] })}\n`,
+      );
+    }
     this.store.close();
     this.exact.clear();
   }
