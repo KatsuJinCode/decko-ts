@@ -18,11 +18,11 @@
 //   in ONE round trip after the pass. The next pass prepares the recorded
 //   cards up front (RenderEngine.demandSeeds).
 //
-//   AUTOMATIC CHOICE. When collect pass 2 records more than 60 questions the
-//   request switches to full speculation (warm-up chase on, fresh engine per
-//   pass, no seeds); once a speculative pass records at most 11 reads and no
-//   new card, the next pass blocks on its reads instead, paying at most one
-//   blocking round trip before it turns speculative again.
+//   AUTOMATIC CHOICE (off by default). When collect pass 2 records more than
+//   autoThreshold questions the request switches to full speculation
+//   (warm-up chase on, fresh engine per pass, no seeds); with autoTail on,
+//   once a speculative pass records at most autoTail reads and no new card,
+//   the next pass blocks on its reads instead.
 //
 //   LAZY STRUCTURE REFERENCES. Every pass substitutes *structure templates
 //   but does not chase the cards their content references
@@ -50,8 +50,7 @@ export interface LiveRenderOptions {
   requestedView?: string;
   historyParams?: HistoryRenderParams;
   /** Collect pass 2 recording more than this many questions switches the
-   *  request to full speculation (the POC's 60; default here 0, i.e. always
-   *  switch, which needs fewer trips on this engine; env
+   *  request to full speculation (the POC's 60; default here: never; env
    *  DECKO_LIVE_AUTO_THRESHOLD overrides). */
   autoThreshold?: number;
   /** In the speculation branch: a pass recording at most this many reads
@@ -128,10 +127,14 @@ export async function liveRenderPage(
   const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL !== "0";
   const live = new LiveStoreDriver(base, { ringAll });
   const passes: LivePassReport[] = [];
-  // Default 0: speculate from pass 3 on. With the all-rows ring this gives
-  // the fewest trips on the trial deck (About 10, Conflict Done Well 12,
-  // Pattern 15), which is what a slow database hop rewards.
-  const threshold = opts.autoThreshold ?? (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : 0);
+  // Default: never switch (collect mode throughout). With lazy structure
+  // references collect mode needs the fewest trips and the least CPU on the
+  // 40 gate pages (7-12 trips, median 8; speculation from pass 3: 7-19),
+  // because the speculation branch's warm-up chase keeps discovering
+  // site-wide link chains one level per pass.
+  const threshold =
+    opts.autoThreshold ??
+    (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : Number.POSITIVE_INFINITY);
   // Default 0 (no blocking tail): with lazy structure references a blocking
   // pass pays one sequential round trip per fetch-ladder step of the walks
   // it runs eagerly (Kimberly Winston 26 trips against 12 without it).
