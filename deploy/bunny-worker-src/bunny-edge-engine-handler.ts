@@ -196,13 +196,7 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   // production this is the platform fetch (behavior identical) and in the
   // vitest parity harness a stub installed before the first request still
   // runs. No query, no retry, no timeout semantics change.
-  const driver = new BunnyDbDriver({
-    url: config.url,
-    authToken: config.authToken,
-    timeoutMs: resolveEdgePipelineTimeoutMs(env),
-    fetchImpl: edgeDbTimingFetch(),
-    queryCounter: edgeDriverQueryCounter(),
-  });
+  const driver = getDriver(config, env);
   // THE ONE-TRIP DEPLOYMENT BOOT: when the config gate is armed the engine
   // boots with the raised Temporary-cache cap (ONE_TRIP_BOOT_MAX_TEMPORARY_
   // CACHE_KEYS in bunny-edge-deck-boot.ts — the default cap's 10k reset is
@@ -216,6 +210,22 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
     driver,
     oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {},
   );
+}
+
+/** The isolate's database driver, built once and shared by the deck boot
+ *  and the cookieless live page path (handleEngineRequest's DeferredDeck),
+ *  which reads through it without waiting for a deck boot. Like the deck it
+ *  is built from the first request's resolved config. */
+let isolateDriver: BunnyDbDriver | undefined;
+function getDriver(config: ResolvedDbConfig, env: EdgeEnv): BunnyDbDriver {
+  isolateDriver ??= new BunnyDbDriver({
+    url: config.url,
+    authToken: config.authToken,
+    timeoutMs: resolveEdgePipelineTimeoutMs(env),
+    fetchImpl: edgeDbTimingFetch(),
+    queryCounter: edgeDriverQueryCounter(),
+  });
+  return isolateDriver;
 }
 
 function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
@@ -480,7 +490,9 @@ async function routeBunnyEngineRequest(
       request,
       env,
       async () =>
-        handleEngineRequest(request, await getDeck(resolved, env), {
+        // The deck boots only if this request needs it (DeferredDeck): a
+        // page served live reads through the driver alone.
+        handleEngineRequest(request, { driver: getDriver(resolved, env), deck: () => getDeck(resolved, env) }, {
           budgetMs: renderBudgetMs,
           // Cookieless: the request-local live render may serve it
           // (liveRenderApplies; DECKO_LIVE_RENDER=0 turns it off).

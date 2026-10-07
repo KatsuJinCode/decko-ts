@@ -37,6 +37,7 @@
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
@@ -71,6 +72,18 @@ import { newCardRouteResponse } from "./bunny-edge-new-card-form.js";
 export interface Deck {
   fetcher: FetchEngine;
   render: RenderEngine;
+}
+
+/** A deck the request boots only when it needs one. The live page path
+ *  (liveRenderApplies) reads through the database driver alone and boots its
+ *  own engines over its request store, so a cookieless page served live pays
+ *  no deck boot: on a fresh isolate that is two sequential round trips and
+ *  the boot's CPU. Every other arm (files, new-card form, /api/card, the
+ *  normal render, the error and budget pages) awaits `deck()` first, which
+ *  boots once per isolate exactly as before. */
+export interface DeferredDeck {
+  driver: SQLDatabaseDriver;
+  deck: () => Promise<Deck>;
 }
 
 /** Per-request deadline behavior. Both fields are optional and BOTH DEFAULTS
@@ -355,16 +368,17 @@ export function json(
 
 export async function handleEngineRequest(
   request: Request,
-  deck: Deck,
+  deck: Deck | DeferredDeck,
   options?: EngineRequestOptions,
 ): Promise<Response> {
+  const source: DeferredDeck = "render" in deck ? { driver: deck.fetcher.driver, deck: async () => deck } : deck;
   const budgetMs = options?.budgetMs ?? 0;
   const retryAfterSeconds = options?.retryAfterSeconds ?? EDGE_BUDGET_RETRY_AFTER_SECONDS;
   return await withBudget(
     budgetMs,
     retryAfterSeconds,
-    (signal) => dispatchEngineRequest(request, deck, options, signal),
-    () => budgetExceededResponse(deck, budgetMs, retryAfterSeconds),
+    (signal) => dispatchEngineRequest(request, source, options, signal),
+    async () => budgetExceededResponse(await source.deck(), budgetMs, retryAfterSeconds),
   );
 }
 
@@ -373,7 +387,7 @@ export async function handleEngineRequest(
  *  gate queries too), not only the HTML render. */
 async function dispatchEngineRequest(
   request: Request,
-  deck: Deck,
+  source: DeferredDeck,
   options?: EngineRequestOptions,
   signal?: AbortSignal,
 ): Promise<Response> {
@@ -391,7 +405,7 @@ async function dispatchEngineRequest(
   // (404, text/plain, "Could not find <id>." — measured on
   // culturesmith.com/files/103/3649-small.jpg).
   if (/^\/files\/\d+\/[^/]+/.test(url.pathname)) {
-    return filesRouteResponse(deck, url.pathname);
+    return filesRouteResponse(await source.deck(), url.pathname);
   }
 
   const parsed = parsePath(url.pathname, url.searchParams);
@@ -405,7 +419,7 @@ async function dispatchEngineRequest(
       // ok?(:create) on the virtual card) lives in
       // bunny-edge-new-card-form.ts; the measured 404 this replaces is
       // capture-log-demo-nav.jsonl seq 97.
-      return await newCardRouteResponse(deck, parsed.typeName);
+      return await newCardRouteResponse(await source.deck(), parsed.typeName);
     }
     if (parsed.kind === "notFound") {
       // THE NO-ROUTE CLASS (p2-error-shell lane, 2026-10-03): paths that
@@ -440,6 +454,7 @@ async function dispatchEngineRequest(
         if (name === undefined || name === "") {
           return json(400, { error: "empty card name" });
         }
+        const deck = await source.deck();
         const record = await deck.fetcher.fetchByName(name);
         if (record === undefined || record.name === undefined) {
           return json(404, { error: "card not found", name });
@@ -541,14 +556,14 @@ async function dispatchEngineRequest(
     const historyParams = historyRenderParamsFromWire(parsed.params);
     const renderLive = async () =>
       (
-        await liveRenderPage(deck.fetcher.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
+        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
           requestedView: pageView,
           historyParams,
           signal,
         })
       ).html;
     const pageHtml = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
-      ? await withIsolateRenderLock(() => renderPageBytes(deck.render, parsed.name, pageView, historyParams))
+      ? await source.deck().then((d) => withIsolateRenderLock(() => renderPageBytes(d.render, parsed.name, pageView, historyParams)))
       : requestContextAvailable()
         ? // CONCURRENT: the live render boots its own engines over its own
           // request store, and runs in its own request context (name
@@ -562,7 +577,7 @@ async function dispatchEngineRequest(
             } finally {
               // The passes' engines installed their own name environments;
               // hand the process-global one back to the isolate's deck.
-              deck.fetcher.installNameEnvironment?.();
+              (await source.deck()).fetcher.installNameEnvironment?.();
             }
           });
     return html(200, applyServedEnvironmentDeltas(pageHtml));
@@ -603,9 +618,9 @@ async function dispatchEngineRequest(
       );
     }
     if (mapped.status === 404) {
-      return renderDeckoNotFoundErrorPage(deck, parsed.name);
+      return renderDeckoNotFoundErrorPage(await source.deck(), parsed.name);
     }
-    return renderDeckoServerErrorPage(deck, parsed.name);
+    return renderDeckoServerErrorPage(await source.deck(), parsed.name);
   }
 }
 
