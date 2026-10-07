@@ -7425,6 +7425,12 @@ export class RenderEngine implements RenderEngineLike {
       return false;
     }
     if (!card.name.isCompound) return false;
+    // rule? is standard_rule? OR preference? (all.rb:32-53). The preference
+    // shape (`*all+*all+*follow`: trunk a Set, preferer a User or `*all`)
+    // has a non-Set left, so the two-part check below misses it; the set
+    // keys' RULE token is the computed rule? verdict (enrichAndStore's
+    // fetching predicate) and decides it.
+    if (card.setKeys.split(/\s+/).includes("RULE")) return true;
     const rightKey = card.name.rightName?.key;
     const leftKey = card.name.leftName?.key;
     if (rightKey === undefined || leftKey === undefined) return false;
