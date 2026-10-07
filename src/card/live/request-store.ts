@@ -76,6 +76,36 @@ export interface Missing {
 
 const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
 
+/** Cloudflare D1's SQLite refuses a compound SELECT of more than five terms
+ *  ("too many terms in compound SELECT"). */
+export const MAX_COMPOUND_TERMS = 5;
+
+/** `name(id) AS (p1 UNION p2 ...)` as one or more CTEs whose compound
+ *  SELECTs each have at most MAX_COMPOUND_TERMS terms: a longer list becomes
+ *  `name_0`, `name_1`, ... of up to five terms each, and `name` is their
+ *  UNION. The set of ids is the same either way, and every statement that
+ *  reads these CTEs tests membership only (`id IN (SELECT id FROM name)`),
+ *  so neither the rows nor their order can change. */
+export function unionCtes(name: string, parts: readonly string[]): string[] {
+  if (parts.length <= MAX_COMPOUND_TERMS) return [`${name}(id) AS (${parts.join(" UNION ")})`];
+  const groups: string[] = [];
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i += MAX_COMPOUND_TERMS) {
+    const sub = `${name}_${groups.length}`;
+    out.push(...unionCtes(sub, parts.slice(i, i + MAX_COMPOUND_TERMS)));
+    groups.push(`SELECT id FROM ${sub}`);
+  }
+  if (groups.length <= MAX_COMPOUND_TERMS) {
+    out.push(`${name}(id) AS (${groups.join(" UNION ")})`);
+  } else {
+    // More than five groups: union the groups under a distinct name, so
+    // their own sub-CTEs cannot collide with this level's.
+    out.push(...unionCtes(`${name}_g`, groups));
+    out.push(`${name}(id) AS (SELECT id FROM ${name}_g)`);
+  }
+  return out;
+}
+
 /** The certified statement families and the keys / ids / left sides each
  *  needs before the store may answer it. undefined = not certifiable. */
 export function needsOf(sql: string, params: readonly unknown[]): Need | undefined {
@@ -303,7 +333,7 @@ export class RequestStore {
     // on the 40 gate pages: 1-2 fewer trips on some pages for about 170 KB
     // more per page, which at the real database's 2.2 s per MB costs more
     // than the trips it saves.
-    ctes.push(`fs(id) AS (${fullParts.join(" UNION ")})`);
+    ctes.push(...unionCtes("fs", fullParts));
     const parts: string[] = [
       "SELECT id FROM fs",
       // the left-side rows themselves (a leftKeys side is fetched here)
@@ -319,7 +349,7 @@ export class RequestStore {
       parts.push(`SELECT id FROM cards WHERE id IN (SELECT value FROM json_each(?))`);
       params.push(JSON.stringify(w.idIds));
     }
-    ctes.push(`seed(id) AS (${parts.join(" UNION ")})`);
+    ctes.push(...unionCtes("seed", parts));
     // The type / left / right parts of the rows that arrive whole arrive
     // whole too: they are the deck's shared cards (types, settings, the
     // simple cards a junction is named by), which the render reads whole.

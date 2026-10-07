@@ -903,6 +903,14 @@ const RULE_SUFFIX_LAST_CHARS = [
  *
  * Row ORDER is not part of the contract (the legacy statement has no
  * ORDER BY either); the check script reports whether it matched.
+ *
+ * AT MOST FIVE TERMS PER COMPOUND SELECT. Cloudflare D1 runs SQLite with
+ * the compound-SELECT limit at 5 (measured in workerd's local D1: 5 terms
+ * run, 6 answer "too many terms in compound SELECT"). The two left-arm edge
+ * sets, `dl` and `tl`, are therefore joined through one materialized union,
+ * `dtl`: one left-arm term over dl UNION tl derives exactly the rows the two
+ * separate left-arm terms did, so `resolved` keeps its row set with five
+ * terms. Pinned by tests/card/permissions/rule-closure-d1-compound-limit.test.ts.
  */
 export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `WITH RECURSIVE\n` +
@@ -938,6 +946,11 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `dr(parent, child) AS MATERIALIZED (\n` +
   `  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
   `),\n` +
+  `dtl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT parent, child FROM dl\n` +
+  `  UNION\n` +
+  `  SELECT parent, child FROM tl\n` +
+  `),\n` +
   `resolved(id, ckey) AS (\n` +
   `  SELECT c.id, c."key" FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
@@ -947,13 +960,8 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
   `  UNION\n` +
   `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-  `    JOIN dl ON dl.child = l.id\n` +
-  `    JOIN cards j ON j.id = dl.parent AND +j.trash = 0\n` +
-  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-  `  UNION\n` +
-  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-  `    JOIN tl ON tl.child = l.id\n` +
-  `    JOIN cards j ON j.id = tl.parent AND +j.trash = 0\n` +
+  `    JOIN dtl ON dtl.child = l.id\n` +
+  `    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n` +
   `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
   `  UNION\n` +
   `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
