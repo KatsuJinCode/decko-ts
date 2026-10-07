@@ -58,7 +58,7 @@ export interface LiveRenderOptions {
    *  env DECKO_LIVE_AUTO_TAIL overrides). */
   autoTail?: number;
   /** Blocking round trips a tail pass may pay before it turns speculative
-   *  (default 1). */
+   *  (default: no limit). */
   autoTailTrips?: number;
   /** Expand each trip's ring around every fetched row (LiveStoreDriver
    *  ringAll). */
@@ -124,7 +124,11 @@ export async function liveRenderPage(
   opts: LiveRenderOptions = {},
 ): Promise<LiveRenderResult> {
   const env = typeof process !== "undefined" ? process.env : undefined;
-  const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL !== "0";
+  // Narrow ring by default (DECKO_LIVE_RING_ALL=1 widens it). In collect
+  // mode the all-rows ring saves 0-4 trips but fetches ~18k rows instead of
+  // ~10k; on the 40 gate pages local wall at 0 ms is median 304 ms narrow
+  // against 586 ms wide.
+  const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL === "1";
   const live = new LiveStoreDriver(base, { ringAll });
   const passes: LivePassReport[] = [];
   // Default: never switch (collect mode throughout). With lazy structure

@@ -391,7 +391,16 @@ export function templateReferenceNames(
   templateContent: string,
   contextName?: DeckoName,
 ): string[] {
+  // Request-scoped memo (DeckoName.requestMemo): the structure sweep walks
+  // every seated card on every render, and the request-local live render
+  // re-renders the page once per discovery pass. A result that dropped an
+  // unresolved mark is not memoized: a later read may resolve it.
+  const memo = DeckoName.requestMemo<readonly string[]>(TEMPLATE_REFERENCE_MEMO);
+  const memoKey = memo === undefined ? "" : `${contextName?.s ?? ""}\n${templateContent}`;
+  const hit = memo?.get(memoKey);
+  if (hit !== undefined) return [...hit];
   const names: string[] = [];
+  let dropped = false;
   for (const ref of referencedNames(templateContent)) {
     if (ref.relative) continue;
     if (ref.name === "") continue;
@@ -403,10 +412,15 @@ export function templateReferenceNames(
       names.push(DeckoName.parse(ref.name).absoluteName(contextName).s);
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        dropped = true;
         continue; // unresolved mark: the render's nest path reports it safely
       }
       throw err;
     }
   }
+  if (memo !== undefined && !dropped) memo.set(memoKey, [...names]);
   return names;
 }
+
+/** Owner of templateReferenceNames' request memo. */
+const TEMPLATE_REFERENCE_MEMO = {};
