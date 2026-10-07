@@ -129,7 +129,13 @@ export async function liveRenderPage(
   // ~10k; on the 40 gate pages local wall at 0 ms is median 304 ms narrow
   // against 586 ms wide.
   const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL === "1";
-  const live = new LiveStoreDriver(base, { ringAll });
+  // Compact result encoding and identity-only ring neighbours, both on by
+  // default (DECKO_LIVE_COMPACT=0 / DECKO_LIVE_IDENTITY_RING=0 turn them off).
+  const live = new LiveStoreDriver(base, {
+    ringAll,
+    compact: env?.DECKO_LIVE_COMPACT !== "0",
+    identityRing: env?.DECKO_LIVE_IDENTITY_RING !== "0",
+  });
   const passes: LivePassReport[] = [];
   // Default: never switch (collect mode throughout). With lazy structure
   // references collect mode needs the fewest trips and the least CPU on the

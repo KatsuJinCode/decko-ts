@@ -11,13 +11,25 @@
 // pipeline POSTs (= round trips, the deck boot's included on the first
 // page), bytes of database responses (db_bytes), and wall time. All pages share one isolate, as on the edge.
 //
+// Options (environment of this harness, not of the bundle):
+//   EDGE_HOP_MS=<n>       hold every pipeline response n ms (injected hop)
+//   EDGE_MS_PER_MB=<n>    and n ms more per MB of response (the real database
+//                         measured ~2,200: recovery/DEPLOY-CHECK-de14230a.md)
+//   EDGE_CONCURRENT=1     dispatch all pages at once into the one isolate;
+//                         per-page counters are then isolate-wide (0 = n/a)
+//   EDGE_BINDINGS=<json>  extra bindings (e.g. {"DECKO_EDGE_RENDER_BUDGET_MS":"2000"})
+//   EDGE_TAIL_WAIT_MS=<n>  after the last response, wait n ms and report the
+//                         pipeline requests that still arrived
+//   EDGE_STMT_LOG=<file>  append one JSON line per statement: page, kind,
+//                         response bytes, rows, and bytes per column
+//
 // workerd is Cloudflare's runtime, not Bunny's (Deno-based); it proves the
 // bundle runs on a non-node V8 runtime with node: modules only through the
 // nodejs_compat layer. "@bunny.net/edgescript-sdk" is replaced by a shim
 // that captures the serve() handler. With compatibility date 2025-09-01 the
 // bundle fails to load ("No such module node:fs"); 2026-09-01 loads it.
 import http from "node:http";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
@@ -26,6 +38,25 @@ const [bundlePath, dbPath, outDir, ...pages] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const db = new DatabaseSync(dbPath, { readOnly: true });
 const counters = { posts: 0, stmts: 0, bytes: 0 };
+const hopMs = Number(process.env.EDGE_HOP_MS ?? 0);
+const msPerMb = Number(process.env.EDGE_MS_PER_MB ?? 0);
+const concurrent = process.env.EDGE_CONCURRENT === "1";
+const extraBindings = process.env.EDGE_BINDINGS ? JSON.parse(process.env.EDGE_BINDINGS) : {};
+const stmtLog = process.env.EDGE_STMT_LOG;
+let currentPage = "";
+function logStatement(stmt, result) {
+  if (!stmtLog) return;
+  const res = result?.response?.result;
+  const perCol = {};
+  if (res && res.cols.length) {
+    res.cols.forEach((c, i) => {
+      perCol[c.name] = res.rows.reduce((n, r) => n + Buffer.byteLength(JSON.stringify(r[i])), 0);
+    });
+  }
+  const sql = stmt.sql.replace(/\s+/g, " ");
+  const kind = sql.startsWith("WITH lf(id)") ? "ring" : sql.startsWith("WITH __q AS") ? "companion" : sql.slice(0, 80);
+  appendFileSync(stmtLog, JSON.stringify({ page: currentPage, kind, bytes: Buffer.byteLength(JSON.stringify(result)), rows: res?.rows.length ?? 0, perCol, ...(process.env.EDGE_STMT_SQL === "1" ? { sql: stmt.sql, args: stmt.args } : {}) }) + "\n");
+}
 
 function toJs(v) {
   switch (v?.type) {
@@ -66,16 +97,24 @@ const server = http.createServer((req, res) => {
     const results = body.requests.map((r) => {
       if (r.type === "close") return { type: "ok", response: { type: "close" } };
       counters.stmts += 1;
+      let out;
       try {
-        return { type: "ok", response: { type: "execute", result: execute(r.stmt) } };
+        out = { type: "ok", response: { type: "execute", result: execute(r.stmt) } };
       } catch (e) {
-        return { type: "error", error: { message: e.message, code: "SQLITE_ERROR" } };
+        out = { type: "error", error: { message: e.message, code: "SQLITE_ERROR" } };
       }
+      logStatement(r.stmt, out);
+      return out;
     });
     const payload = JSON.stringify({ results });
     counters.bytes += Buffer.byteLength(payload);
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(payload);
+    const reply = () => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(payload);
+    };
+    const hold = hopMs + (msPerMb * Buffer.byteLength(payload)) / 1e6;
+    if (hold > 0) setTimeout(reply, hold);
+    else reply();
   });
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -98,29 +137,50 @@ const mf = new Miniflare(
     ],
     compatibilityDate: "2026-09-01",
     compatibilityFlags: ["nodejs_compat"],
-    bindings: { DECKO_DB_URL: dbUrl, DECKO_DB_TOKEN: "local-mirror-token" },
+    bindings: { DECKO_DB_URL: dbUrl, DECKO_DB_TOKEN: "local-mirror-token", ...extraBindings },
   }),
 );
-try {
-  for (const page of pages) {
+async function one(page, t00) {
+  if (!concurrent) {
     counters.posts = 0;
     counters.stmts = 0;
     counters.bytes = 0;
-    const url = `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
-    const t0 = performance.now();
-    let status = 0;
-    let text = "";
-    try {
-      const resp = await mf.dispatchFetch(url);
-      status = resp.status;
-      text = await resp.text();
-    } catch (e) {
-      text = String(e?.stack ?? e);
-    }
-    const wall = Math.round(performance.now() - t0);
-    const file = join(outDir, `${page.replace(/[^A-Za-z0-9]+/g, "_")}.html`);
-    writeFileSync(file, text);
-    console.log(JSON.stringify({ page, status, bytes: text.length, posts: counters.posts, stmts: counters.stmts, db_bytes: counters.bytes, wall_ms: wall, file, head: status === 200 ? undefined : text.slice(0, 300) }));
+  }
+  currentPage = page;
+  const url = `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
+  const t0 = performance.now();
+  let status = 0;
+  let text = "";
+  let headers = {};
+  try {
+    const resp = await mf.dispatchFetch(url);
+    status = resp.status;
+    headers = Object.fromEntries(resp.headers);
+    text = await resp.text();
+  } catch (e) {
+    text = String(e?.stack ?? e);
+  }
+  const wall = Math.round(performance.now() - t0);
+  const file = join(outDir, `${page.replace(/[^A-Za-z0-9]+/g, "_")}.html`);
+  writeFileSync(file, text);
+  const c = concurrent ? { posts: 0, stmts: 0, bytes: 0 } : counters;
+  console.log(JSON.stringify({ page, status, bytes: text.length, posts: c.posts, stmts: c.stmts, db_bytes: c.bytes, wall_ms: wall, finished_at_ms: Math.round(performance.now() - t00), budget: headers["x-decko-edge-budget"], file, head: status === 200 ? undefined : text.slice(0, 300) }));
+}
+try {
+  const t00 = performance.now();
+  if (concurrent) {
+    await Promise.all(pages.map((p) => one(p, t00)));
+    console.log(JSON.stringify({ concurrent: pages.length, total_ms: Math.round(performance.now() - t00), posts: counters.posts, stmts: counters.stmts, db_bytes: counters.bytes }));
+  } else {
+    for (const page of pages) await one(page, t00);
+  }
+  // EDGE_TAIL_WAIT_MS: wait after the last response and report the pipeline
+  // requests that arrived meanwhile (an abandoned render still running).
+  const tail = Number(process.env.EDGE_TAIL_WAIT_MS ?? 0);
+  if (tail > 0) {
+    const before = { posts: counters.posts, stmts: counters.stmts };
+    await new Promise((r) => setTimeout(r, tail));
+    console.log(JSON.stringify({ tail_ms: tail, posts_after_last_response: counters.posts - before.posts, stmts_after_last_response: counters.stmts - before.stmts }));
   }
 } finally {
   await mf.dispose();

@@ -310,6 +310,22 @@ export class StoreRowEvaluator {
     return true;
   }
 
+  /** Replace a seated row with a fuller copy of it (an identity row read
+   *  whole). The indexed columns (key, left, right) are the same values, so
+   *  the indexes stand. */
+  replace(raw: CardRow): void {
+    const id = asNumeric(raw.id);
+    if (typeof id !== "number" || !this.rowsById.has(id)) return;
+    const row: CardRow = {};
+    for (const c of CARDS_COLUMNS) row[c] = raw[c] === undefined ? null : raw[c];
+    this.rowsById.set(id, row);
+  }
+
+  /** The seated rows whose left side is `left`, ascending by id. */
+  idsWithLeft(left: number): readonly number[] {
+    return this.idsByLeft.get(left) ?? [];
+  }
+
   get size(): number {
     return this.rowsById.size;
   }
