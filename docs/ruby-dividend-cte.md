@@ -1,9 +1,9 @@
 # Ruby dividend — porting the deck-1282 batched-inclusion prefetch back to card
 
 > Stream: `minimax-ruby-dividend` (Decko Core issue #9,
-> [optimization](https://github.com/KatsuJinCode/decko-ts/issues/9)).
+> [optimization](https://github.com/<owner>/decko-ts/issues/9)).
 > Compiled for the annotated upstream series opener (issue #12,
-> [delivery](https://github.com/KatsuJinCode/decko-ts/issues/12)).
+> [delivery](https://github.com/<owner>/decko-ts/issues/12)).
 > 2026-09-21.
 
 ## Why this doc exists
@@ -304,7 +304,7 @@ Run pattern, mirroring `benchmarks/run_ruby_bench.rb`:
 ```
 cd tools/oracle/decko-oracle-app
 RAILS_ENV=development decko runner \
-  C:/localProjects/decko-ts/prototype/measure.rb
+  REPO_ROOT/decko-ts/prototype/measure.rb
 ```
 
 The measurement script (see `prototype/measure.rb`):

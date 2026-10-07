@@ -33,6 +33,7 @@ import { describe, expect, it } from "vitest";
 import { ALPHA_STYLES } from "../../../../src/card/render/code-highlighting/alpha-style.js";
 import { coderayEscape } from "../../../../src/card/render/code-highlighting/escape.js";
 import { scanJson } from "../../../../src/card/render/code-highlighting/scanners/json.js";
+import { itOrSkipLoud } from "../../../support/describe-with-corpus.js";
 
 const FIXTURE_DIR = new URL("./fixtures/", import.meta.url);
 
@@ -132,7 +133,7 @@ describe("scanJson key discrimination: pathological string-value shape returns i
   // read-only extract; committed fixture - a stock tinyMCE config, no deck
   // identity). Expected bytes captured from the fixed implementation and
   // cross-checked old-vs-new on the same class at n<=12 in the battery.
-  it.runIf(Boolean(process.env.DECKO_TS_SCANJSON_REAL_CARD53_PIN))(
+  itOrSkipLoud(!(Boolean(process.env.DECKO_TS_SCANJSON_REAL_CARD53_PIN)), "tests/card/render/code-highlighting/scanjson-key-discrimination-linear-time-pin.test.ts", "Boolean(process.env.DECKO_TS_SCANJSON_REAL_CARD53_PIN)")(
     "real deck card 53 (*tiny_mce) db_content scans in bounded time to the captured bytes",
     () => {
       const content = readFileSync(

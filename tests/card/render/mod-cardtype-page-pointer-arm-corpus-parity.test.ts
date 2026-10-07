@@ -27,7 +27,7 @@
 //
 // The expected bytes are the raw-oracle page-lane shard under
 // tmp/raw-ground-truth/expected-v2/page-lane/ (gitignored, copied into the
-// worktree; see brandonDojoTech tmp/wrong-goal-hunt/modarm-lane.md).
+// worktree; see REPO_DIR an internal work log).
 //
 // RUN (explicitly — needs the machine-local raw corpus, ~40s to seed plus
 // one page render):
@@ -46,6 +46,7 @@ import { describe, expect, it } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -85,7 +86,7 @@ describe("Mod cardtype page: the self-set pointer arm is oracle-pinned", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/mod-cardtype-page-pointer-arm-corpus-parity.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -97,7 +98,7 @@ describe("Mod cardtype page: the self-set pointer arm is oracle-pinned", () => {
       // head bytes carry the engine-default fog s3 form and every
       // attachment URL diverges.
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
       const yardstick = loadModYardstick();
       expect(yardstick, "no page-lane yardstick entry for Mod").toBeDefined();

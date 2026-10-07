@@ -14,7 +14,7 @@
 //   `process_content` (card-1.110.0 lib/card/format/content.rb:4-8 ->
 //   content.rb:77-82, `opts[:chunk_list] || @format.chunk_list`), so the
 //   highlighted JavaScript body is chunked as references-only: the bare
-//   hosts `culturesmith.uservoice.com` and
+//   hosts `example.com.uservoice.com` and
 //   `cdn.uservoice.com/javascripts/widgets/tab.js` stay highlighted source
 //   text. The ONE anchor the oracle emits inside the whole card is
 //   `[[http://www.wagn.org|Wagn]]` at offset 3439 -- a Link chunk, and Link
@@ -50,12 +50,13 @@ import { RAW_CORPUS_DB, RAW_CORPUS_VIEW_LANE_DIR, createRawStructureSeededStorag
 import { highlight } from "../../../src/card/render/code-highlighting/index.js";
 import { RenderFormat } from "../../../src/card/render/format.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 // The view-lane yardstick shards, resolved from the private raw-corpus leg's
 // own contract module beside RAW_CORPUS_DB — the same leg, same capture. This
 // literal used to name the per-lane worktree
-// `decko-ts-lane-fix-d8-classic-layout-js-autolink`, which no longer exists on
+// ``, which no longer exists on
 // this machine; the sibling d3 probe carried its own copy of the same dead path.
 const SHARD_DIR = RAW_CORPUS_VIEW_LANE_DIR;
 
@@ -107,7 +108,7 @@ describe("D8 Classic Layout (314) CodeRay body runs the :references chunk list",
     { timeout: 1_800_000 },
     async (ctx) => {
       if (process.env.D8_LAYOUT_CHUNK_LIST_PROBE !== "1") {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-d8-layout-chunk-list-probe.test.ts", "not (process.env.D8_LAYOUT_CHUNK_LIST_PROBE !== \"1\")");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

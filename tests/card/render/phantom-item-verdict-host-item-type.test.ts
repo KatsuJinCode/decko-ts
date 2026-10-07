@@ -23,7 +23,7 @@
 // body rendered where the captured oracle renders the FULL bar body
 // (bar-body/card-title/bar-menu) for both exemplars:
 //   * 18560 Kimberly Richardson — item "Kimberly Sensei does not
-//     contribute directly to Culturesmith at this time" (host
+//     contribute directly to the reference deck at this time" (host
 //     +musings, item type consideration; oracle shard-000013)
 //   * 14546 Michael Christensen+musings — same shape (shard-000010)
 // The verdict and the rendered identity were computed from DIFFERENT

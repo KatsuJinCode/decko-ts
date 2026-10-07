@@ -50,6 +50,7 @@ import {
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 
@@ -58,7 +59,7 @@ const hasMirror = mirrorAvailable();
 // class whose single-row bundle trips the serving DB's value limit).
 const PIN_PAGES = ["Taking_Stock", "Aikido"] as const;
 
-describe.skipIf(!hasMirror)("inline chunked fetch: byte-equal to the single-row bundle", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts", "hasMirror")("inline chunked fetch: byte-equal to the single-row bundle", () => {
   let dir = "";
   let sidePath = "";
   let inlineDbPath = "";

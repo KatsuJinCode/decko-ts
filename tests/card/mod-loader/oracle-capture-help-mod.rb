@@ -3,7 +3,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-help-mod.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-help-mod.rb
 #
 # Records to fixtures/captured/help-mod-loader.json:
 # 1. mod load order as Cardio::Mod::Dirs assembled it (core mods, gem mods,

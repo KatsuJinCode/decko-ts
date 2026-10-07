@@ -13,12 +13,13 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { it, expect } from "vitest";
 import { engineChecks } from "../../tools/migrate/engine-bridge.mjs";
 import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
+import { itOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const reportPath: string | undefined = process.env.DECKO_MIGRATE_REPORT;
 const targetPath: string | undefined = process.env.DECKO_MIGRATE_TARGET;
 const spotCount = Number(process.env.DECKO_MIGRATE_SPOT ?? "25");
 
-it.skipIf(reportPath === undefined || targetPath === undefined)(
+itOrSkipLoud(reportPath === undefined || targetPath === undefined, "tests/migrate/cli-engine-verification.test.ts", "not (reportPath === undefined || targetPath === undefined)")(
   "migration engine verification (CLI-driven)",
   { timeout: 600_000 },
   async () => {

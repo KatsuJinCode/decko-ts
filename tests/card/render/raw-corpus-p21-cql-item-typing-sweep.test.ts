@@ -1,4 +1,4 @@
-// raw-corpus-p21-cql-item-typing-sweep.test.ts -- the pass-21 CQL item-typing
+// raw-corpus-p21-cql-item-typing-sweep.test.ts -- the a work item CQL item-typing
 // port's instrument (lane-p21-cqltype, base 46b6976). The class (p20-phantom-
 // verdict-triage.md Family A, the phantom-TYPE arm): phantom list items must
 // be TYPED from the winning `*content options` Search card's CQL `type` key
@@ -83,9 +83,9 @@ const TYPED_SLOT_PINS: ReadonlyArray<{ page: string; excerpt: string }> = [
   {
     page: "Starhawk",
     excerpt:
-      '<div id="starhawk_ha_not_yet_contributed_directly_to_culturesmith-mini_bar-view" ' +
+      '<div id="starhawk_ha_not_yet_contributed_directly_to_example.com-mini_bar-view" ' +
       'class="card-slot mini_bar-view ALL TYPE-consideration" ' +
-      'data-card-name="Starhawk has not yet contributed directly to Culturesmith" ' +
+      'data-card-name="Starhawk has not yet contributed directly to the reference deck" ' +
       'data-card-type-id="2979" data-card-type-name="consideration"',
   },
 ];

@@ -53,6 +53,7 @@ import {
 import { ruleNamesForCard } from "../../../src/card/set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../../src/card/set-patterns/types.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import type { SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -71,7 +72,7 @@ const CANONICAL_RAW_SHA256 =
 // with the flag set, a missing or sha-mismatched copy fails loud instead of
 // silently shrinking the census.
 const CENSUS_REQUESTED = process.env.STRUCTURE_CENSUS === "1";
-const describeIfCorpus = CENSUS_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(CENSUS_REQUESTED, "tests/card/rules/structure-governance-census-probe.test.ts", "the structure census was not requested (set DECKO_TS_CENSUS=1)");
 
 interface CardRow {
   id: number;

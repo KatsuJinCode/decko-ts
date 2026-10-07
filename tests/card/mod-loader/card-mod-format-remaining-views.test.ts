@@ -2,7 +2,7 @@
 // 2026-09-29 recount lists 21 for this mod; :smart_label landed on
 // lane-follow2 9b980a5 and is covered by card-mod-format-smart-label.test.ts,
 // and four stay unported with named reasons — see the receipt
-// brandonDojoTech tmp/wrong-goal-hunt/format-views-port.md). This suite
+// REPO_DIR an internal work log). This suite
 // ports FIFTEEN:
 //
 //   set/self/home.rb:2-4          :home_url            (home_path's sibling)

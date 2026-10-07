@@ -3,7 +3,7 @@
 # keys. Output cited in tests/card/set-patterns comments.
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tests/card/set-patterns/set-pattern-oracle-probe2.rb
+#   RAILS_ENV=development bundle exec decko runner REPO_ROOT/decko-ts/tests/card/set-patterns/set-pattern-oracle-probe2.rb
 
 require "json"
 

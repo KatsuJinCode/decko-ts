@@ -8,9 +8,9 @@
 // content — EMPTY on the real deck — in the titled body. The trial edge
 // served that heading-only page and its 24h shared cache pinned it: an
 // operator clicking "Sign In" got no email field, no password field, no
-// submit. Live production culturesmith.com renders the form; the capture
+// submit. Live production example.com renders the form; the capture
 // this file pins against is production's own anonymous GET /*signin
-// (brandonDojoTech tmp/wrong-goal-hunt/live-signin-ref.html, 2026-10-03).
+// (REPO_DIR an internal work log, 2026-10-03).
 //
 // What is DERIVED from the deck at render time (not capture-copied): the
 // card id in the form dom id, the subcards' type/set keys (from the render

@@ -9,11 +9,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "benchmarks/**/*.ts"],
-  "exclude": [
-    "benchmarks/corpus-v2/perf-probes-2026-09-21",
-    "prototype"
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
   ]
 }

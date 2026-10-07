@@ -689,7 +689,7 @@ export class RenderEngine implements RenderEngineLike {
    *  a warm render of the same set card only re-does identical work —
    *  the dead renderCards map scan, the left_id SQL query, the child
    *  re-enrichment and the full setting-group loop that made warm
-   *  set-card renders ~2x the pass-5 warm medians. Keyed by card id
+   *  set-card renders ~2x the a work item warm medians. Keyed by card id
    *  (R16's corrected test: stored children carry
    *  record.leftId === setCard.id, not a name-key match), so the first
    *  render of each set card always runs the full preload and every
@@ -1347,11 +1347,11 @@ export class RenderEngine implements RenderEngineLike {
     // Pass #2: cards enrichAndStore'd during search preparation (their
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
-    // Pass-2 misses (refs surfaced by search-enriched cards) seat here too —
+    // a work item misses (refs surfaced by search-enriched cards) seat here too —
     // the universe + type names are loaded by now.
     await this.seatUnknownRefReadVerdicts();
     // The blank-key seat is idempotent (has("") guard); re-called for the
-    // same reason the pass-2 ref seat is.
+    // same reason the a work item ref seat is.
     await this.seatBlankKeyReadVerdict();
     // Pass #2 populateTypeCodes: cards enriched during runSearch also
     // need their typeCode patched (their enrichAndStore ran AFTER the
@@ -2477,9 +2477,9 @@ export class RenderEngine implements RenderEngineLike {
    * `card_url` (env/location.rb:19-21) is `"#{Env.origin}#{card_path
    * rel}"`, so the empty origin yields the bare rooted path — the view
    * lane's `/User`, against the page lane's
-   * `https://culturesmith.com/User`. SAME flag, SAME production-config
+   * `https://example.com/User`. SAME flag, SAME production-config
    * block as defaultHtmlViewConfig above; the oracle pins both halves
-   * (6588/6588 page rows carry `decko.rootUrl='https://culturesmith.com
+   * (6588/6588 page rows carry `decko.rootUrl='https://example.com
    * /'`, 4 view rows carry `decko.rootUrl='/'`).
    */
   envOriginConfig(): string {
@@ -2862,7 +2862,7 @@ export class RenderEngine implements RenderEngineLike {
    * 17-19 standard_content's new_card branch: `db_content ||
    * (new_card? ? default_content : "")`, default_content = template&.
    * db_content — the SAME winning rule card newCardDefaultType reads the
-   * type from). p20-nest-selection: the pass-15 class's 19 Project pages
+   * type from). p20-nest-selection: the a work item class's 19 Project pages
    * pin the applied form — the oracle's +discussion titled body is
    * `discussion+*right+*default`'s `<p> </p>\r\n<p> </p>` verbatim.
    * Returns undefined when the universe is not loaded or no candidate
@@ -4200,7 +4200,7 @@ export class RenderEngine implements RenderEngineLike {
    * prepare errors and continues (nested-raise semantics), but the sync
    * render's gate reads only the precomputed verdicts — an unresolved state
    * leaves every card unjudged, and `isDenied`'s unjudged-allowed contract
-   * then renders read-denied bodies in full (Ruby denies them; the pass-15
+   * then renders read-denied bodies in full (Ruby denies them; the a work item
    * triage booked 130 such pages). The standalone permission batch is three
    * small statements — it succeeds where the folded closure batch died.
    * No-op on a healthy prepare: ensureReadPermission returns the memoized
@@ -4714,7 +4714,7 @@ export class RenderEngine implements RenderEngineLike {
    *  format.ts) classify known/wanted off the prepared map, and Ruby asks a
    *  LIVE fetch per anchor. A fresh-process render of a card whose content
    *  (or static help popover) links cards no {{nest}} reference reaches
-   *  emitted wanted-card for existing cards — 15 pass-15 dump entries
+   *  emitted wanted-card for existing cards — 15 a work item dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
    *  5x card-body links like Anthony Gonzales's [[Bluevolution]]).
    *
@@ -5473,7 +5473,7 @@ export class RenderEngine implements RenderEngineLike {
       // Skin-typed cards join for the same reason: card-mod-style
       // set/type/skin.rb:3 `include_set List` puts Type::Skin on
       // Abstract::List, so a Skin host's items run the identical
-      // nest_item walk (the pass-15 Skin pages' phantom items need their
+      // nest_item walk (the a work item Skin pages' phantom items need their
       // read verdicts precomputed exactly like list hosts').
       // Iterate the map directly (no intermediate array): the prewarmed
       // map holds the whole deck, and this filter runs every render.
@@ -6650,7 +6650,7 @@ export class RenderEngine implements RenderEngineLike {
         // same pattern input the structure walk uses (leftTypeName for the
         // type_plus_right anchor — class_methods.rb:58-72 left_type; the
         // bare 4-field input anchored every compound card's candidate on
-        // the registry's RichText fallback). MERGE-PASS-18: censustail3's
+        // the registry's RichText fallback). MERGE-a work item: censustail3's
         // input kept under perm-allow2's applyUpdateOverride layer below.
         this.structurePatternInputForSync(card),
         this.taskState,

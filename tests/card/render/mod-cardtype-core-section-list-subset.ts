@@ -1,4 +1,4 @@
-// GENERATED from tmp/wrong-goal-hunt/pass15-page-fail-classification.json
+// GENERATED from an internal work log
 // (primary=byte-family:c-structural, mech=mod-body-empty) plus the mixed
 // mod: history row - the 28 Mod-cardtype pages whose oracle body is the
 // type/mod.rb section list. Population list only; yardstick bytes load from

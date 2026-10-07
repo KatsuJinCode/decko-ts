@@ -125,7 +125,7 @@ describe("card-mod-format set/type/toggle — :input + :labeled_editor raise par
     // set/type/toggle.rb:19-21 — `toggle + toggle_label`. `toggle`
     // raises first (leftmost operand); `toggle_label` would emit
     // `<label for="content_X">X</label>` (live-probed, see
-    // tmp/wrong-goal-hunt/format-views-port.md row "labeled_editor"),
+    // an internal work log row "labeled_editor"),
     // but the view as written never reaches it. The parity raise is
     // the same shape as :input's.
     await expect(

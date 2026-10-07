@@ -54,6 +54,7 @@ import {
   type ContentFn,
 } from "../../../src/card/render/content-overrides.js";
 import type { RenderFormat } from "../../../src/card/render/format.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const GEMS = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems";
 
@@ -95,7 +96,7 @@ const BASKET_SOURCES: Array<{ file: string; line: string }> = [
 const CATALOG_OVERRIDE_FILE =
   "card-mod-list-0.20.0/set/self/input_type/right/content_options.rb";
 
-describe.runIf(existsSync(`${GEMS}/card-mod-list-0.20.0`))(
+describeOrSkipLoud(!(existsSync(`${GEMS}/card-mod-list-0.20.0`)), "tests/card/render/content-options-catalog-render-path-pins.test.ts", "existsSync(`${GEMS}/card-mod-list-0.20.0`)")(
   "the gem-side 11-item catalog (basket assembly)",
   () => {
     it("every basket op the mods declare is present, and they assemble to 11", () => {

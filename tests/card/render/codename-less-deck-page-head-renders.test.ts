@@ -1,5 +1,5 @@
 // A deck lacking the codename set must still render its pages - the
-// edge-site-shell lane's residual #4 (brandonDojoTech/tmp/wrong-goal-hunt/
+// edge-site-shell lane's residual #4 (WORK_DIR/
 // edge-site-shell-lane.md): the page HEAD's setting reads fetch ":codename"
 // marks (`Card::Rule.global_setting(:title)` in Ruby; the port's
 // globalSettingContent in src/card/render/page.ts) and an unmapped codename

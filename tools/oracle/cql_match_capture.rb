@@ -4,8 +4,8 @@
 # Run (from tools/oracle/decko-oracle-app, with the scratch MariaDB server
 # up - see docs/oracle-harness.md "MySQL rung"):
 #   RAILS_ENV=development ORACLE_DB=mysql2 \
-#     RUBY_DLL_PATH=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch/lib \
-#     bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/cql_match_capture.rb
+#     RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
+#     bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/cql_match_capture.rb
 #
 # Why this rung exists: `match` is MySQL/PostgreSQL-only in card 1.110 (the
 # query compiler routes it through ConnectionAdapters#match; the abstract

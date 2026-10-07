@@ -102,15 +102,15 @@
 #
 # FULL RUN (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development \
-#   DATABASE_URL=sqlite3:C:/localProjects/decko-ts/tmp/raw-ground-truth/deck/corpus-v2.sqlite3?readonly=true \
-#   bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
+#   DATABASE_URL=sqlite3:REPO_ROOT/decko-ts/tmp/raw-ground-truth/deck/corpus-v2.sqlite3?readonly=true \
+#   bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
 #
 # SAMPLE RUN (isolated deck copy, same app):
 #   RAILS_ENV=development \
-#   DATABASE_URL=sqlite3:C:/localProjects/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3?readonly=true \
-#   DUAL_LANE_DB=C:/localProjects/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3 \
-#   DUAL_LANE_SAMPLE=C:/localProjects/decko-ts/tmp/raw-ground-truth/scripts/dual-lane-recapture-sample-cards.json \
-#   bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
+#   DATABASE_URL=sqlite3:REPO_ROOT/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3?readonly=true \
+#   DUAL_LANE_DB=REPO_ROOT/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3 \
+#   DUAL_LANE_SAMPLE=REPO_ROOT/decko-ts/tmp/raw-ground-truth/scripts/dual-lane-recapture-sample-cards.json \
+#   bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
 
 require "json"
 require "fileutils"
@@ -300,17 +300,17 @@ end
 #      boots RAILS_ENV=development). Without the flip, a nested view error
 #      re-raises page-wide instead of rendering the quiet inline
 #      `<span class="render-error">Error rendering: ...</span>` live serves
-#      (verified in tmp/live-wire/blog.html:400);
+#      (verified in an internal work log);
 #   3. `Rails.env = "production"` while the page renders: html error.rb:91
 #      `show_all_errors? = Auth.always_ok? || Rails.env.development?` — under
 #      development the quiet error span carries an admin backtrace tooltip
 #      live anonymous visitors never see. The only other render-path gate on
 #      Rails.env is a dev-only StUb debug log (no byte effect);
-#   4. `Cardio.config.deck_origin = "https://culturesmith.com"`: Env.origin
+#   4. `Cardio.config.deck_origin = "https://the reference deck"`: Env.origin
 #      (used by card_url for decko.rootUrl and every absolute URL in page
 #      bytes) falls back to deck_origin when there is no request; the
 #      production deck serves with that origin (live-wire bytes:
-#      decko.rootUrl='https://culturesmith.com/');
+#      decko.rootUrl='https://the reference deck/');
 #   5. `Cardio.config.default_html_view = :content`: html default_nest_view
 #      (set/all/html.rb:17) reads this config for every nest WITHOUT an
 #      explicit view. The railtie default (card-mod-format mod/format.rb:2)
@@ -340,7 +340,7 @@ def with_capture_page_bucket
   old_default_html_view = Cardio.config.default_html_view
   Cardio.config.raise_all_rendering_errors = false
   Rails.env = "production"
-  Cardio.config.deck_origin = "https://culturesmith.com"
+  Cardio.config.deck_origin = "https://the reference deck"
   Cardio.config.default_html_view = :content
   yield
 ensure

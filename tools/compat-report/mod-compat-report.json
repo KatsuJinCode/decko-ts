@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-10-03T12:42:22.039Z",
   "gemDir": "$GEM_HOME",
-  "repo": "C:\\localProjects\\decko-ts-lane-mod-porting-harness",
+  "repo": "<repo-root>",
   "surface": {
     "implementedPatterns": [
       "all",

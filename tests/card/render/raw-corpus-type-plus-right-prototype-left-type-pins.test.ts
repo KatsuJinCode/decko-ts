@@ -56,6 +56,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -93,7 +94,7 @@ function pageOracle(dir: string, shard: string, name: string): string | undefine
   return readShard(dir, shard).find((l) => l.name === name)?.page_html;
 }
 
-describe.runIf(PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT)(
+describeOrSkipLoud(!(PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT), "tests/card/render/raw-corpus-type-plus-right-prototype-left-type-pins.test.ts", "PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT")(
   "type-plus-right prototype left-type pins (view-lane + page-lane oracle bytes)",
   () => {
     it("renders the trio byte-exact against the oracle (fix IN)", async () => {

@@ -15,7 +15,7 @@
 #
 # Run (from the oracle app dir):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-skipped/tools/oracle/capture-name-env-main-params.rb
+#     REPO_ROOT//tools/oracle/capture-name-env-main-params.rb
 #
 # READ-ONLY: the probe mutates only the in-process Card::Env.params hash; no
 # card is saved. The probe itself asserts the card_actions count is unchanged

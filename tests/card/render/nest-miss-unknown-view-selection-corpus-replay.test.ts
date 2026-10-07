@@ -65,6 +65,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { NEST_MISS_PAGE_SUBSET } from "./nest-miss-unknown-view-selection-subset.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -165,7 +166,7 @@ describe("nest-miss unknown-view selection (34 c-structural nest-selection pages
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/nest-miss-unknown-view-selection-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -198,7 +199,7 @@ describe("nest-miss unknown-view selection (34 c-structural nest-selection pages
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/nest-miss-unknown-view-selection-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

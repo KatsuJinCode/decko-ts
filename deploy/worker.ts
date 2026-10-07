@@ -299,7 +299,7 @@ const HOME_CARD_NAME = "Home";
 const OPEN_VIEW = "open";
 
 /** The static-asset head tags, in the same order and shape a real decko page
- *  serves (receipt: brandonDojoTech/tmp/live-wire/Home.html head section):
+ *  serves (receipt: REPO_DIR/an internal work log head section):
  *  viewport meta, the Material Icons font stylesheet, the compiled decko skin
  *  stylesheet, then the script tags — jQuery + jquery-ujs from the same CDNs
  *  the live page uses (the compiled all-script.js BUNDLES jquery-ui and
@@ -443,7 +443,7 @@ async function renderCardPage(
   try {
     const view = await deck.render.render(cardName, requestedView, params);
     // Body wrapper = the live decko page shell (receipt:
-    // brandonDojoTech/tmp/live-wire/Home.html line 81): everything visible
+    // REPO_DIR/an internal work log line 81): everything visible
     // rides inside <article class="container flex-shrink-0" role="main"> —
     // the decko page gutter. Without it, anything the shell emits as a
     // direct body child (here the record-JSON/status menu line) sits at

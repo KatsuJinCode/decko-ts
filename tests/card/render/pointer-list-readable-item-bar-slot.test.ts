@@ -12,7 +12,7 @@
 //         entry id 45410 "yol" content view -> items
 //         `id="awheasxlcszvy-bar-view"` with data-card-id and the
 //         bar-left card-title body).
-//       - live wire (tmp/live-wire/Aikido_Oak_Cliff.html): the
+//       - live wire (an internal work log): the
 //         Aikido Oak Cliff+related list renders its readable items as
 //         `<div id="aikido_oak_cliff-gallery-bar-view"
 //         class="card-slot bar-view ..." data-card-id="44345" ...>`

@@ -1,5 +1,5 @@
 // raw-corpus-email-views-sweep.test.ts -- THIS SUITE's sweep runner (not a
-// pin): renders every page of the pass-20 email-views class (the
+// pin): renders every page of the a work item email-views class (the
 // roleviews leftovers 1-4: the EmailTemplate `:core =
 // render_read_form` family, the Abstract::TestContext / email_text
 // message pages, and Shark) over the full-deck corpus seed and reports,
@@ -19,6 +19,7 @@
 // (roleviews leftover 4).
 
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -33,7 +34,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "email-views-sweep");
 
 const SWEEP_REQUESTED = process.env.EMAIL_SWEEP === "1";
 
-/** The pass-20 email-views class population (see header). */
+/** The a work item email-views class population (see header). */
 const CLASS_EMAIL_VIEWS = [
   "follower notification email", "follower notification email+*html message",
   "follower notification email+*text message", "password reset email",
@@ -63,7 +64,7 @@ function loadOraclePageEntries(wanted: string[]): Map<string, { page_html?: stri
 
 describe("raw-corpus email-views class sweep", () => {
   it("renders the 14-page email-views class and records byte verdicts", { timeout: 1_800_000 }, async (ctx) => {
-    if (!SWEEP_REQUESTED) { ctx.skip(); return; }
+    if (!SWEEP_REQUESTED) { skipLoud(ctx, "tests/card/render/raw-corpus-email-views-sweep.test.ts", "SWEEP_REQUESTED"); return; }
     expect(existsSync(RAW_CORPUS_DB)).toBe(true);
     expect(existsSync(PAGE_LANE_DIR)).toBe(true);
 

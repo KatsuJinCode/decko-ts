@@ -43,7 +43,7 @@ function declaredEvents(): Array<{ setPath: string } & ModEventRegistration> {
   return out;
 }
 
-/** The recount's 31 names (tmp/wrong-goal-hunt/mod-coverage-recount-raw.json
+/** The recount's 31 names (an internal work log
  *  core.ruby.events), in the recount's order. */
 const RECOUNT_31 = [
   "admin_tasks",

@@ -1,6 +1,6 @@
 // stale-running-job-adjudication.test.mjs -- coverage for the runner's
 // --adjudicate-stale path, the code that repaired the wedged shared queue on
-// 2026-10-04 (tmp/wrong-goal-hunt/queue-repair-corpus-redesignation-lane.md).
+// 2026-10-04 (an internal work log).
 //
 // THE DEFECT UNDER TEST. run-test-queue-runner.mjs claims a job by renaming
 // pending/<id>.job.json -> running/<id>.job.json, then drains only from

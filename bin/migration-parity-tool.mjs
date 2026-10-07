@@ -34,7 +34,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // point at a directory that no longer exists. Each stays overridable through
 // its PARITY_* env var (lines 111-113), so a deliberately-chosen instrument
 // elsewhere is still reachable.
-const LANE_WORKTREE_DEFAULT = path.join(
+const process.cwd() = path.join(
   REPO,
   "fixtures",
   "corpus-v2",
@@ -117,8 +117,8 @@ function parseArgs(argv) {
     captureOnly: false,
     reportOnly: false,
     dryRun: false,
-    captureInstrument: process.env.PARITY_CAPTURE_INSTRUMENT || path.join(LANE_WORKTREE_DEFAULT, "capture-live-pages-culturesmith-2026-10-02.mjs"),
-    classifier: process.env.PARITY_CLASSIFIER || path.join(LANE_WORKTREE_DEFAULT, "analyze-live-oracle-three-way.mjs"),
+    captureInstrument: process.env.PARITY_CAPTURE_INSTRUMENT || path.join(process.cwd(), "capture-live-pages.mjs"),
+    classifier: process.env.PARITY_CLASSIFIER || path.join(process.cwd(), "analyze-live-oracle-three-way.mjs"),
     directDriver: process.env.PARITY_DIRECT_DRIVER || LANE_DRIVER_DEFAULT,
     stagingPort: 3100,
     workers: 8,

@@ -35,7 +35,7 @@ import {
   createStructureSeededStorageFor,
   readShardLines,
 } from "./structure-corpus-seeding.js";
-import { prewarmStaticDeck } from "../../../benchmarks/corpus-v2/prewarm-static-deck.js";
+import { prewarmStaticDeck } from "../../support/prewarm-static-deck.js";
 
 /** Compare two HTML strings ignoring the random data-slot-id field
  *  (capture-time placeholder is the literal "RANDOMIZED"; engine emits

@@ -1,4 +1,4 @@
-// Page-level regression for the pass-15 "whitespace-only (families)" class:
+// Page-level regression for the a work item "whitespace-only (families)" class:
 // the 5 CodeRay-highlighted Layout cards whose stored bodies use CRLF line
 // endings. The engine used to emit one extra space per CRLF inside the
 // highlighted <pre> block (`</span>` + " " + "\n" where the oracle has
@@ -40,6 +40,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -85,7 +86,7 @@ function spaceNewlineCount(block: string): number {
 
 // Hermetic page-level CRLF pin: NOT carried here — the hermetic storage boot re-emits the layout body verbatim in template mode (the CodeRay html core routing is deeper page-lane/mod wiring than createRenderTestStorage wires), so a synthetic page pin would assert the un-normalized path and pin the WRONG thing. The to_unix mechanism itself is pinned by the committed unit gate tests/card/render/code-highlighting/coderay-to-unix-crlf.test.ts; the page-level CRLF signature stays with the oracle replay below (explicit opt-in).
 
-(PAGE_PARITY_REQUESTED ? describe : describe.skip)(
+describeOrSkipLoud(!(PAGE_PARITY_REQUESTED), "tests/card/render/layout-code-crlf-page-parity.test.ts", "PAGE_PARITY_REQUESTED")(
   "layout CodeRay blocks: no CRLF-derived space before a newline (raw-capture replay, opt-in)",
   () => {
     it(

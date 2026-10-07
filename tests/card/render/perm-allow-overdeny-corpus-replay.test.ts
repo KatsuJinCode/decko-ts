@@ -1,11 +1,11 @@
-// perm-allow over-deny corpus replay -- the pass-15 triage's OPPOSITE
+// perm-allow over-deny corpus replay -- the a work item triage's OPPOSITE
 // permission class: pages where the engine DENIES a card Ruby's mod
-// set-module ok_to_read? overrides grant (tmp/wrong-goal-hunt/
+// set-module ok_to_read? overrides grant (an internal work log
 // pass15-page-fail-classes.md, sig permission_denied_mismatch + the four
 // over-deny pages the perm-leak port documented).
 //
 // The mechanism (gem-pinned + oracle-probed, see
-// tmp/wrong-goal-hunt/perm-allow-ruby-probe/): thirteen mod set files define
+// an internal work log): thirteen mod set files define
 // their own ok_to_read? -- right::head/script are unconditional `true`, the
 // account family answers own_account?/own_email?, asset_output delegates to
 // the left card. The generic stored-rule hash path denies exactly these
@@ -34,6 +34,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -131,7 +132,7 @@ describe("perm-allow over-deny corpus replay (capture-deck Ruby-allowed pages)",
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/perm-allow-overdeny-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -165,7 +166,7 @@ describe("perm-allow over-deny corpus replay (capture-deck Ruby-allowed pages)",
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/perm-allow-overdeny-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

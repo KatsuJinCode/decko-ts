@@ -41,6 +41,7 @@ const REPO_ROOT = path.resolve(
 );
 
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 // The expected +conversation labeled slot, byte-verbatim from the corpus
 // expectation (shard 000017, occurrence at char 8736 of the local vintage —
@@ -77,7 +78,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe.runIf(process.env.INCLUSION_GRADE10_PINS === "1" && existsSync(RAW_CORPUS_DB))(
+describeOrSkipLoud(!(process.env.INCLUSION_GRADE10_PINS === "1" && existsSync(RAW_CORPUS_DB)), "tests/card/render/grade10-missing-card-inclusion-anchor-pins.test.ts", "process.env.INCLUSION_GRADE10_PINS === \"1\" && existsSync(RAW_CORPUS_DB)")(
   "grade-10 missing-card inclusion wanted-card anchor pins (message-000004)",
   () => {
     beforeAll(async () => {
@@ -88,7 +89,7 @@ describe.runIf(process.env.INCLUSION_GRADE10_PINS === "1" && existsSync(RAW_CORP
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));
       storage.fetcher.installNameEnvironment();

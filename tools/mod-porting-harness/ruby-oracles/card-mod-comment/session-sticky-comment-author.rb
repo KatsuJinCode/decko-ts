@@ -160,13 +160,13 @@ end
 # session (comment.rb:6), and the signature carries "Name (Not signed in)".
 s1_session = {}
 c1 = run_save("body before comment",
-              { comment: "hello", comment_author: "Julian" }, s1_session,
+              { comment: "hello", comment_author: "the project owner" }, s1_session,
               signed_in: false)
 emit(behaviorId: "event:add_comment",
      kind: "event-state-machine",
      scenario: "first_save_anonymous_declares_name",
      gemSource: "set/all/comment.rb:5-12,14-25,28-44",
-     request: { comment: "hello", comment_author: "Julian" },
+     request: { comment: "hello", comment_author: "the project owner" },
      auth: { signedIn: false, name: nil },
      sessionBefore: { comment_author: nil },
      contentBefore: "body before comment",
@@ -175,9 +175,9 @@ emit(behaviorId: "event:add_comment",
 
 # Scenario 2 (THE session-sticky pin): a SECOND save with NO author param,
 # same session — Ruby's reader (comment.rb:16-19) takes the session arm
-# first, so the second comment signs "Julian (Not signed in)" again.
-s2_session = { comment_author: "Julian" }
-c2 = run_save("body before comment\n<hr>\n<p>hello</p>\n<div class=\"w-comment-author\">Julian (Not signed in).....#{FROZEN_NOW}</div>",
+# first, so the second comment signs "the project owner (Not signed in)" again.
+s2_session = { comment_author: "the project owner" }
+c2 = run_save("body before comment\n<hr>\n<p>hello</p>\n<div class=\"w-comment-author\">the project owner (Not signed in).....#{FROZEN_NOW}</div>",
               { comment: "again" }, s2_session,
               signed_in: false)
 emit(behaviorId: "event:add_comment",
@@ -186,8 +186,8 @@ emit(behaviorId: "event:add_comment",
      gemSource: "set/all/comment.rb:6,16-19",
      request: { comment: "again" },
      auth: { signedIn: false, name: nil },
-     sessionBefore: { comment_author: "Julian" },
-     contentBefore: "body before comment\n<hr>\n<p>hello</p>\n<div class=\"w-comment-author\">Julian (Not signed in).....#{FROZEN_NOW}</div>",
+     sessionBefore: { comment_author: "the project owner" },
+     contentBefore: "body before comment\n<hr>\n<p>hello</p>\n<div class=\"w-comment-author\">the project owner (Not signed in).....#{FROZEN_NOW}</div>",
      contentAfter: c2.content,
      sessionAfter: s2_session)
 
@@ -229,13 +229,13 @@ emit(behaviorId: "event:add_comment",
 # (comment.rb:7): the session write ALREADY happened (line 6), the content
 # does NOT change. The sticky write is not gated on a non-blank comment.
 s5_session = {}
-c5 = run_save("body", { comment: "", comment_author: "Julian" }, s5_session,
+c5 = run_save("body", { comment: "", comment_author: "the project owner" }, s5_session,
               signed_in: false)
 emit(behaviorId: "event:add_comment",
      kind: "event-state-machine",
      scenario: "blank_comment_still_sticks_author",
      gemSource: "set/all/comment.rb:6-7",
-     request: { comment: "", comment_author: "Julian" },
+     request: { comment: "", comment_author: "the project owner" },
      auth: { signedIn: false, name: nil },
      sessionBefore: { comment_author: nil },
      contentBefore: "body",

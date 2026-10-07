@@ -1,5 +1,5 @@
 // Mechanism 2 of the live-wire page-render defect verdict
-// (brandonDojoTech tmp/wrong-goal-hunt/live-wire-class-tokens.md, 2026-09-28):
+// (REPO_DIR an internal work log, 2026-09-28):
 // the engine does not APPLY name-context title shortening on rule bars whose
 // context has MORE THAN ONE part. Probe evidence (pos600
 // `ASCSR2010gallery02+*self`, identical on pos6/827/1030/1240):

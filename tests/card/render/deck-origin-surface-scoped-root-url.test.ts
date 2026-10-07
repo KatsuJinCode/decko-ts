@@ -2,7 +2,7 @@
 // PER-SURFACE value (card_url("")), not a constant. This is the pin for the
 // surface split.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //   mod/script/set/all/head_javascript.rb:33-40 `decko_script_variables`
 //     -> :35  "decko.rootUrl": card_url("")
 //   card/lib/card/env/location.rb:19-21
@@ -20,9 +20,9 @@
 // the view-function surface. The two capture lanes photograph both shapes:
 //
 //   PAGE lane   `with_capture_page_bucket` assigns
-//               Cardio.config.deck_origin = "https://culturesmith.com"
+//               Cardio.config.deck_origin = "https://example.com"
 //               (capture-dual-lane-page-and-view.rb:343, restored at :348)
-//               -> decko.rootUrl='https://culturesmith.com/'   6588/6588 rows
+//               -> decko.rootUrl='https://example.com/'   6588/6588 rows
 //   VIEW lane   `capture_view_lane` (:277-287) renders OUTSIDE that block and
 //               `Card::Env.reset` (:439) left no controller
 //               -> decko.rootUrl='/'                            cards 34754/34758
@@ -33,8 +33,8 @@
 // unseated root whose content nests the head card's :core — render.ts:1385),
 // the view lane reaches the page-lane builder and got the page-surface bytes:
 // the four *head-family view rows carried
-// `decko.rootUrl='https://culturesmith.com/'` where the oracle carries `/`,
-// a +24 delta that is exactly the length of "https://culturesmith.com".
+// `decko.rootUrl='https://example.com/'` where the oracle carries `/`,
+// a +24 delta that is exactly the length of "https://example.com".
 //
 // The fix reads the surface through the engine's own accessor
 // (`engine.envOriginConfig()` -> `envOriginForSurface(pageConfigActive)`,
@@ -54,7 +54,7 @@ import {
 import { headContent, renderPageBytes } from "../../../src/card/render/page.js";
 import { DeckoName } from "../../../src/card/name.js";
 
-const PAGE_ROOT_URL = "decko.rootUrl='https://culturesmith.com/';";
+const PAGE_ROOT_URL = "decko.rootUrl='https://example.com/';";
 const VIEW_ROOT_URL = "decko.rootUrl='/';";
 
 let storage: RenderTestStorage | undefined;
@@ -124,7 +124,7 @@ describe("decko.rootUrl is surface-scoped (head_javascript.rb:35 card_url(\"\"))
     // The negative half, and the one the defect actually broke: the view
     // surface must not carry the page surface's origin anywhere in the
     // script_variables block.
-    expect(head).not.toContain("https://culturesmith.com");
+    expect(head).not.toContain("https://example.com");
   });
 
   it("PAGE surface, called directly: the same builder under runWithPageConfig carries the origin", async () => {
@@ -143,7 +143,7 @@ describe("decko.rootUrl is surface-scoped (head_javascript.rb:35 card_url(\"\"))
     expect(rootCard).toBeDefined();
     const before = s.engine.envOriginConfig();
     await s.engine.runWithPageConfig(async () => {
-      expect(s.engine.envOriginConfig()).toBe("https://culturesmith.com");
+      expect(s.engine.envOriginConfig()).toBe("https://example.com");
     });
     expect(s.engine.envOriginConfig()).toBe(before);
     expect(before).toBe("");

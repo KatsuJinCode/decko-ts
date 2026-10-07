@@ -63,6 +63,7 @@ import {
 } from "./render-test-storage.js";
 import { ModLoader } from "../../../src/card/mod-loader.js";
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The capture's line, byte-for-byte. The OLD yardstick vintage and the
  *  2026-10-05 recapture agree here (adjudicate evidence chain point 2). */
@@ -173,7 +174,7 @@ const CORPUS_PRESENT = existsSync(
     .pathname.replace(/^\/([A-Za-z]:)/, "$1"),
 );
 
-describe.skipIf(!REPLAY || !CORPUS_PRESENT)(
+describeOrSkipLoud(!REPLAY || !CORPUS_PRESENT, "tests/card/render/parityfix-row6-bootswatch-skin-parent-pointer-corpus-replay.test.ts", "not (!REPLAY || !CORPUS_PRESENT)")(
   "journal skin customized page bytes (corpus replay)",
   () => {
     it("renders the capture's Inherit-from line and seats the pointer under the name the view builds", async () => {
@@ -182,7 +183,7 @@ describe.skipIf(!REPLAY || !CORPUS_PRESENT)(
       );
       const views = await import("../../../src/card/render/views.js");
       views.setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
       const Database = (await import("better-sqlite3")).default;
       const idLister = new Database(RAW_CORPUS_DB, { readonly: true });

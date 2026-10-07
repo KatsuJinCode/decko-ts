@@ -91,7 +91,7 @@ describe("render integration: mini-bar cols setting", () => {
     await seedCard(storage, { id: 12, name: "User", codename: "user", typeId: 5 });
     // the *thanks setting card + a non-rule leaf
     await seedCard(storage, { id: 20, name: "*thanks", codename: "thanks", typeId: SETTING_TYPE_ID });
-    // 2026-09-27 pass-9 gate: *type must exist BEFORE the first render on
+    // 2026-09-27 a work item gate: *type must exist BEFORE the first render on
     // this engine. The cold render's prelude primes lex_to_id for every
     // set-pattern anchor card (*self, *type, *all) and caches absences as
     // negative entries ("a stored nil is a hit", cache.rb#fetch); a card

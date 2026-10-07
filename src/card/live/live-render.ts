@@ -9,7 +9,7 @@
 // in this request's scope only.
 //
 // How a page is found (the proof of concept's rounds 3-8,
-// recovery/poc/WRITEUP.md in brandonDojoTech):
+// an internal write-up):
 //
 //   COLLECT MODE. The reference-chasing warm-ups are off. Each pass renders
 //   on a FRESH engine and records every card its synchronous render asked

@@ -1,8 +1,8 @@
-// perm-leak-denial-corpus-replay.test.ts -- the pass-15 triage's
+// perm-leak-denial-corpus-replay.test.ts -- the a work item triage's
 // permission-verdict class, denial-wrapper-leak subset: pages where the
 // engine RENDERS a read-denied card's main body where the oracle wraps the
 // main slot in the denial frame (130 pages at tip 017b182; the triage is
-// tmp/wrong-goal-hunt/pass15-page-fail-classes.md in brandonDojoTech).
+// an internal work log in REPO_DIR).
 //
 // Root cause (traced on 20120122+BW+RVW, card 11179): the cold prepare
 // render's folded batch died on SQLite's expression-depth limit (the
@@ -40,6 +40,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { PERM_LEAK_PAGE_SUBSET } from "./perm-leak-denial-page-subset.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -117,7 +118,7 @@ describe("perm-leak denial-wrapper corpus replay (130 triage pages)", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/perm-leak-denial-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -151,7 +152,7 @@ describe("perm-leak denial-wrapper corpus replay (130 triage pages)", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/perm-leak-denial-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

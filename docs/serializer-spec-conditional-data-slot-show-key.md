@@ -10,7 +10,7 @@ truth (swap-manifest-37-view-expectations-2026-10-03.json).
 The data-slot attribute's `show` list (`data-slot="{&quot;view&quot;:...,
 &quot;show&quot;:[...],&quot;hide&quot;:[...]}"`) is emitted IFF the slot
 carries actionable hide/visibility information beyond the requested view
-itself. Derived from live culturesmith.com behavior measured 2026-10-03
+itself. Derived from live reference-deck behavior measured 2026-10-03
 (live-check-71: carry/omit agreement with the recaptured expectations
 37/37):
 

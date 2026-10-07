@@ -192,7 +192,7 @@ export async function createRawStructureSeededStorage(
   // recovered from the production-stored keys, applied before any corpus
   // name is parsed so engine key computation matches the keys the oracle
   // deck stored/rendered (participant_s, at_this_time, brandon_s ...).
-  // Without this the 105-row key/inflection family diverges (merge-pass-2
+  // Without this the 105-row key/inflection family diverges (merge-a work item
   // finding A / view-lane class 3). Table + rationale:
   // src/card/name/oracle-deck-inflections.ts (the deck-data census copy this
   // replaces lived at tmp/raw-ground-truth/scripts/oracle-deck-inflection-config.ts).
@@ -484,7 +484,7 @@ export async function createRawStructureSeededStorage(
   // corpus dump: the capture-time deck held materialized bytes the dump does
   // not carry (M8 class — card 34179 "journal skin customized" holds a
   // 221,051-byte compiled-CSS block the corpus lacks; the envelope equalities
-  // are in tmp/wrong-goal-hunt/scss-double-emit-fix-lane.md). The p21 oracle
+  // are in an internal work log). The p21 oracle
   // capture carries those bytes, so the restoration is capture-sourced, not
   // hand-authored: tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs
   // re-derives them from the capture files, verifies every envelope equality,

@@ -36,7 +36,7 @@ require "json"
 
 REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "admin-view-pins.json")
-PIN_DIR   = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-unpinned-views"
+PIN_DIR   = "CAPTURE_DIR"
 
 SLOT_ID_RE   = /data-slot-id=(["'])\h+\1/.freeze
 COLLAPSE_RE  = /(card-[0-9a-z_:]+-)-?[0-9]+(-collapse-id)/.freeze

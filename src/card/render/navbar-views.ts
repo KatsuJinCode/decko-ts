@@ -156,7 +156,7 @@ function navDropdown(ctx: ViewContext): string {
  *  Unresolvable ITEM NAMES and EMPTY renders drop from the join entirely:
  *  Ruby's item walk renders ITEM CARDS (Abstract::List#list_cards —
  *  set/abstract/list.rb, the card-mod-layout module this file ports), so a
- *  raw item string that is no card reference ("https://culturesmith.com/
+ *  raw item string that is no card reference ("https://example.com/
  *  card/new|New Card", corpus card 38283 *Opportunities) never becomes a
  *  render and its join separator vanishes with it; the same for a render
  *  that resolves to no bytes (the engine's unknown-card substitution).

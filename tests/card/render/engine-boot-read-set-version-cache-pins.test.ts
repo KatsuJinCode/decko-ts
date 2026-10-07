@@ -32,7 +32,7 @@
 // MEASUREMENT, NOT ASSUMPTION. Every pin reports the exact SQL the counting
 // driver saw, classified into the three boot families by SQL text (the same
 // by-text classification the trip census uses,
-// tmp/wrong-goal-hunt/trip-census-lane.md §2.2), plus both count axes: the
+// an internal work log §2.2), plus both count axes: the
 // statement axis and the round-trip axis (CountingRenderDriver counts a
 // batch as ONE round trip and N statements).
 //
@@ -288,7 +288,7 @@ function classifyBootReads(deck: BootDeck): BootReadSet {
  *  engines rendering the same card can never be byte-equal as-is. Slot-
  *  normalize that one attribute before the byte contract is judged — the
  *  same normalization the gate2 byte contract uses (10/10 slot-normalized-
- *  identical, tmp/wrong-goal-hunt/gate2-request-trace-lane.md). Everything
+ *  identical, an internal work log). Everything
  *  else in the bytes is compared verbatim. */
 function slotNormalized(html: string): string {
   return html.replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="<nonce>"');
@@ -505,7 +505,7 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     // Every pin above reuses the deck's fetcher, which is the deploy's shape
     // (ActorRenderEngines holds one base fetcher for the isolate). The trip
     // census measured the OTHER posture -- "fresh driver + FetchEngine +
-    // RenderEngine per page" (tmp/wrong-goal-hunt/trip-census-lane.md §2.1) --
+    // RenderEngine per page" (an internal work log §2.1) --
     // which is what the roadmap's cluster-5 row (5-6 statements per cold
     // engine) counts. This pin measures the same posture through the cache, so
     // the receipt's before/after numbers are comparable with the census.

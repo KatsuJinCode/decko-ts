@@ -41,6 +41,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { setDeploymentFollowLiveConfig } from "../../../src/card/render/deployment-follow-live-config.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -71,7 +72,7 @@ describe("comment box: the _left update-rule inheritance walk", () => {
     { timeout: 240_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/comment-box-left-rule-update-inheritance-pins.test.ts", "REPLAY_REQUESTED");
         return;
       }
       // The graded environment's live deployment constants (the probe
@@ -82,7 +83,7 @@ describe("comment box: the _left update-rule inheritance walk", () => {
         mainStylesheetRevisionDigits: "1790384218",
         footerDeckoVersion: "0.19.1",
         recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
-        deckoRootUrl: "https://culturesmith.com/",
+        deckoRootUrl: "https://example.com/",
       });
 
       const db = new Database(RAW_CORPUS_DB, { readonly: true });

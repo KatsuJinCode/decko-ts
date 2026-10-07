@@ -2,7 +2,7 @@
 # oracle app and record Ruby card behavior to fixtures/captured/smoke.json.
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture.rb
+#   RAILS_ENV=development bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/capture.rb
 #
 # Determinism contract:
 # - seeding is create-if-missing (re-runs converge; ids stay stable per DB)

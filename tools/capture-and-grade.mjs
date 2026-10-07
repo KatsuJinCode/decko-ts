@@ -75,7 +75,7 @@
 //
 // USAGE
 //   Full post-deploy recapture + grade (the one command):
-//     node capture-and-grade.mjs --repo C:\localProjects\decko-ts-pass13-int
+//     node capture-and-grade.mjs --repo REPO_ROOT\decko-ts-pass13-int
 //   Explicit fresh recapture (archives existing shards first):
 //     node capture-and-grade.mjs --repo <repo> --fresh
 //   One-shard proof (smallest shard, no full capture):
@@ -126,13 +126,13 @@
 //                           generation; after an interrupted run, re-run with
 //                           the SAME --run-id to resume: verifier-fast skips
 //                           phases whose artifacts already parse).
-//   --staging-url <url>     default https://170.9.231.182/staging
+//   --staging-url <url>     default: none (set --staging-url)
 //   --staging-auth <u:p>    basic auth for the direct gate; default reads env
 //                           DUAL_LANE_STAGING_AUTH. When absent, the gate goes
 //                           over ssh (oci-agents key) and curls
 //                           127.0.0.1:3100/_status on the VM.
 //   --oracle-repo <dir>     checkout holding the Ruby oracle app + corpus
-//                           (default C:\localProjects\decko-ts; used read-only).
+//                           (default REPO_ROOT\decko-ts; used read-only).
 //   --quiet                 do not forward the capture's live output lines.
 //
 // EXIT CODES: 0 pass (floors met), 1 fail, 2 stalled, 3 staging gate failed
@@ -172,12 +172,12 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // dual-lane-verifier-fast.mjs is the grading engine this runner drives. It is
 // not owned by this lane; resolution order: explicit env override, next to
 // this file (the tracked home after this lane merges), then the working
-// location it lives in today (brandonDojoTech tmp).
+// location it lives in today (REPO_DIR tmp).
 function resolveVerifierFast() {
   const candidates = [
     process.env.DUAL_LANE_VERIFIER_FAST,
     path.join(SCRIPT_DIR, "dual-lane-verifier-fast.mjs"),
-    "C:\\localProjects\\brandonDojoTech\\tmp\\verifier-fast\\dual-lane-verifier-fast.mjs",
+    null,
   ].filter(Boolean);
   for (const c of candidates) {
     if (existsSync(c)) return c;
@@ -212,9 +212,9 @@ function parseArgs(argv) {
     photographRoot: null,
     photographs: null,
     runId: null,
-    stagingUrl: "https://170.9.231.182/staging",
+    stagingUrl: process.env.DUAL_LANE_STAGING_URL ?? null,
     stagingAuth: process.env.DUAL_LANE_STAGING_AUTH ?? null,
-    oracleRepo: "C:\\localProjects\\decko-ts",
+    oracleRepo: process.env.DECKO_TS_ORACLE_REPO ?? process.cwd(),
     quiet: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -256,7 +256,7 @@ function stamp() {
 
 // ---------- floors (explicit, CLI-overridable) ----------
 
-// Defaults are the pass-13 gate: view=8030, page=2069, and a NEW capture-error
+// Defaults are the a work item gate: view=8030, page=2069, and a NEW capture-error
 // floor (max 3, target 0). One-shard proofs auto-relax (full-corpus floors are
 // unreachable on one shard and this corpus generation legitimately renders
 // hundreds of page CAPTURE_ERROR sentinels) unless pinned via --floors.
@@ -354,7 +354,7 @@ async function main() {
   if (!VERIFIER_FAST) {
     fail(
       "dual-lane-verifier-fast.mjs not found (looked at $DUAL_LANE_VERIFIER_FAST, " +
-        `${SCRIPT_DIR}, brandonDojoTech tmp/verifier-fast) -- cannot grade without it`,
+        `${SCRIPT_DIR}, REPO_DIR tmp/verifier-fast) -- cannot grade without it`,
     );
   }
 
@@ -382,14 +382,14 @@ async function main() {
   // ---------- staging gate ----------
 
   function stagingGateViaSsh() {
-    const key = "C:/Users/jpswi/.ssh/oci-agents";
+    const key = process.env.DUAL_LANE_SSH_KEY ?? "<path-to-ssh-key>";
     const r = spawnSync(
       "ssh",
       [
         "-i", key,
         "-o", "ConnectTimeout=10",
         "-o", "StrictHostKeyChecking=accept-new",
-        "ubuntu@170.9.231.182",
+        process.env.DUAL_LANE_SSH_TARGET ?? "<user>@<host>",
         "curl -s --max-time 10 http://127.0.0.1:3100/_status",
       ],
       { encoding: "utf8", timeout: 30_000, windowsHide: true },

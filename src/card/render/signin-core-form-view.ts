@@ -25,7 +25,7 @@
 //   end
 //
 // The BYTE oracle is production's own anonymous GET /*signin
-// (brandonDojoTech tmp/wrong-goal-hunt/live-signin-ref.html, captured
+// (REPO_DIR an internal work log, captured
 // 2026-10-03; the form region extracted verbatim as
 // signin-form-region-ref.txt in that directory). The hermetic pin
 // (tests/card/mod-loader/signin-core-form-view.test.ts) transcribes the

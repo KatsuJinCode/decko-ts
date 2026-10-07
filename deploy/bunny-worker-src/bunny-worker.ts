@@ -1,5 +1,5 @@
 // deploy/bunny-worker-src/bunny-worker.ts — request handler for the scrubbed
-// Culturesmith deck stored in Bunny Database, served by a Bunny Edge
+// the reference deck stored in Bunny Database, served by a Bunny Edge
 // Scripting STANDALONE script.
 //
 // AUDIT 2026-10-01 against the current product docs (fetched live that day;

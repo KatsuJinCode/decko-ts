@@ -466,7 +466,7 @@ if (opts.apply) {
     try {
       const res = spawnSync(
         opts.wranglerBin,
-        ["d1", "execute", "decko-ts-demo-db", "--local", "--file", relChunk],
+        ["d1", "execute", "", "--local", "--file", relChunk],
         {
           cwd: opts.applyDir,
           encoding: "utf8",

@@ -9,7 +9,7 @@
 #
 # Run (from the oracle app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-row8-parity/tools/oracle/search_oracle_capture.rb
+#     REPO_ROOT//tools/oracle/search_oracle_capture.rb
 #
 # Output: fixtures/captured/search-oracle-battery.json
 # (deep-sorted keys, 2-space pretty, trailing newline, LF — the harness
@@ -34,7 +34,7 @@
 
 require "json"
 
-REPO_ROOT = "C:/localProjects/decko-ts-lane-row8-parity"
+REPO_ROOT = "REPO_ROOT/"
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "search-oracle-battery.json")
 
 def deep_sort(obj)
@@ -124,7 +124,7 @@ Card::Auth.as_bot do
       "ruby" => RUBY_VERSION,
       "card" => "1.110.0",
       "decko" => "0.20.0",
-      "app" => "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+      "app" => "REPO_ROOT/decko-oracle-app-2026-10-03 (dev sqlite)",
       "engine" => "Card.search(**query, return: \"name\") — the real CQL interpreter"
     },
     "normalization" =>

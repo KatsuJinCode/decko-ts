@@ -1,7 +1,7 @@
 // Page-parity pins for the two named perm residuals:
 //
 //   1. "Anonymous+*account" — the standing over-deny the perm-allow replay
-//      hard-assert block fails on alone since pass-15 (recorded signature
+//      hard-assert block fails on alone since a work item (recorded signature
 //      exp 17603 / act 14299, first diff at 8200 = the nested
 //      Anonymous+*account+*email labeled slot the oracle renders allowed
 //      with its mailto content).
@@ -34,6 +34,7 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   CORPUS_PRESENT,
   OUT_DIR,
@@ -52,7 +53,7 @@ describe("p22 perm-overdeny page parity (the lane's two named residual pages)", 
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!PIN_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/p22-perm-overdeny-page-parity.test.ts", "PIN_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

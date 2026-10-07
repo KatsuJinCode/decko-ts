@@ -2,7 +2,7 @@
 // from inside a view body is its OWN rescue scope, so a raising delegated
 // render still lets the enclosing view's `wrap` emit its card-slot div.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   1. Every `render!` in Ruby is independently rescued.
 //      card/lib/card/format/render.rb:7-14

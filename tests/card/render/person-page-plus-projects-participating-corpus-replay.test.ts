@@ -34,6 +34,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -77,7 +78,7 @@ describe("person page +Project(s) Participating structured search (corpus replay
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED && !PROBE_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/person-page-plus-projects-participating-corpus-replay.test.ts", "not (!REPLAY_REQUESTED && !PROBE_REQUESTED)");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

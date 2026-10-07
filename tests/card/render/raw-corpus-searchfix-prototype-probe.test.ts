@@ -1,6 +1,6 @@
 // raw-corpus-searchfix-prototype-probe.test.ts -- the p22 search-regression-fix
 // port's mechanism probe. Boots the engine over the raw ground-truth corpus,
-// renders the Search page FIRST (no isolated renders before it -- the pass-13
+// renders the Search page FIRST (no isolated renders before it -- the a work item
 // first-render-wins lesson, job-1790820154566 / job-1790822005721), THEN
 // introspects, for the six *content options rule bars on that page, which leg
 // of ruleSetPrototypeTypeCode fails when the `_category-recent` class is
@@ -26,6 +26,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -61,7 +62,7 @@ describe("raw-corpus searchfix prototype leg probe (Search page)", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!PROBE_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-searchfix-prototype-probe.test.ts", "PROBE_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

@@ -5,7 +5,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-content-inputs.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-content-inputs.rb
 #
 # Records to fixtures/captured/content-inputs.json:
 # 1. mod load order Cardio::Mod::Dirs assembled (the deck's card mods that

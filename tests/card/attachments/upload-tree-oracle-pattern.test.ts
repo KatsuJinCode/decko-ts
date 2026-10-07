@@ -1,7 +1,7 @@
 // The E4.4.a file-side oracle evidence: the port's attachment WRITE path
 // produces the file tree PATTERN captured from the Ruby oracle deck
 // (fixtures/captured/oracle-upload-file-tree.json — a read-only sha256
-// capture of C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/files/,
+// capture of REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app/files/,
 // the deck whose uploads were written by the live card-mod-carrierwave
 // machinery; capture provenance + the card_actions no-write receipt are in
 // the fixture's provenance block).

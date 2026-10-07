@@ -143,7 +143,7 @@ function makeTransport(server: MockServer, over: Partial<SmtpTransportOptions> =
     port: server.port,
     user: "brandon@culturesmith.com",
     pass: "test-app-password",
-    from: "no-reply@culturesmith.com",
+    from: "no-reply@example.com",
     ...over,
   });
 }
@@ -152,7 +152,7 @@ function textMessage(over: Partial<MailMessage> = {}): MailMessage {
   return {
     to: "jane@example.net",
     from: "Decko Bot",
-    subject: "reset password for Culturesmith",
+    subject: "reset password for the reference deck",
     textBody: "Hello Jane,\n\nUse this link to reset your password.\n",
     tags: { trigger: "password_reset" },
     ...over,
@@ -180,7 +180,7 @@ describe("transportFromEnv config wiring", () => {
     expect(s.describe()).toContain("smtp.protonmail.ch");
     expect(s.describe()).toContain("587");
     expect(s.describe()).toContain("starttls=auto");
-    expect(s.describe()).toContain("from=no-reply@culturesmith.com");
+    expect(s.describe()).toContain("from=no-reply@example.com");
     expect(s.describe()).toContain("user=brandon@culturesmith.com");
     // the app password must never be describable
     expect(s.describe()).not.toContain("secret");
@@ -226,7 +226,7 @@ describe("SmtpTransport wire conversation", () => {
       "\u0000brandon@culturesmith.com\u0000test-app-password",
     );
     // envelope-from = resolved actual address; envelope-to = the recipient.
-    expect(server.captured.mailFrom).toBe("no-reply@culturesmith.com");
+    expect(server.captured.mailFrom).toBe("no-reply@example.com");
     expect(server.captured.rcptTos).toEqual(["jane@example.net"]);
     expect(server.captured.quitSeen).toBe(true);
 
@@ -237,12 +237,12 @@ describe("SmtpTransport wire conversation", () => {
     const headers = headerBlock.split("\r\n").filter((l) => /^[A-Za-z-]+:/.test(l));
     const names = headers.map((h) => h.slice(0, h.indexOf(":")));
     expect(names).toEqual(["Date", "From", "To", "Message-ID", "Subject", "MIME-Version", "Content-Type", "Content-Transfer-Encoding"]);
-    expect(headerBlock).toContain('From: "Decko Bot" <no-reply@culturesmith.com>');
+    expect(headerBlock).toContain('From: "Decko Bot" <no-reply@example.com>');
     expect(headerBlock).toContain("To: jane@example.net");
-    expect(headerBlock).toContain("Subject: reset password for Culturesmith");
+    expect(headerBlock).toContain("Subject: reset password for the reference deck");
     expect(headerBlock).toContain("Content-Type: text/plain; charset=utf-8");
     // Message-ID references the envelope domain.
-    expect(headerBlock).toMatch(/Message-ID: <[^@]+@culturesmith\.com>/);
+    expect(headerBlock).toMatch(/Message-ID: <[^@]+@example\.com>/);
   });
 
   it("Cc+Bcc join RCPT TO but the Bcc header never reaches DATA (Ruby SmtpEnvelope)", async () => {
@@ -268,16 +268,16 @@ describe("SmtpTransport wire conversation", () => {
   it("a configured From default overrides even a bare template address (email_config.rb:64: Card::Mailer.default[:from] wins)", async () => {
     const server = await startMockServer();
     openServers.push(server);
-    const t = makeTransport(server); // from = no-reply@culturesmith.com
+    const t = makeTransport(server); // from = no-reply@example.com
     await t.sendMail(textMessage({ from: "brandon@culturesmith.com" }));
 
     // actual address = config default; the template's bare address (which is
     // its conf_text under configured_from_name_and_email) becomes the
     // display name since it differs from the actual.
-    expect(server.captured.mailFrom).toBe("no-reply@culturesmith.com");
+    expect(server.captured.mailFrom).toBe("no-reply@example.com");
     const headerBlock = server.captured.data!.split("\r\n\r\n")[0]!;
     expect(headerBlock).toContain(
-      'From: "brandon@culturesmith.com" <no-reply@culturesmith.com>',
+      'From: "brandon@culturesmith.com" <no-reply@example.com>',
     );
   });
 

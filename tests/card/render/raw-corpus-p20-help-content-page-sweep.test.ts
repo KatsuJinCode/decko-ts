@@ -35,6 +35,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { P20_HELP_CONTENT_PAGE_SUBSET } from "./raw-corpus-p20-help-content-pages.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -81,7 +82,7 @@ describe("raw-corpus p20-help-content sweep (38 pages, two mechanisms)", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!SWEEP_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-p20-help-content-page-sweep.test.ts", "SWEEP_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

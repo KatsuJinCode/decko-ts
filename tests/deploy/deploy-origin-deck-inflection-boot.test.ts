@@ -25,7 +25,7 @@
 //   Dungeons and Dragons+SCarol :: open  RIGHT-s_carol / SELF-...-s_carol
 //                                         vs ..._carol              (-12 B)
 // Both were classified ENGINE DEFECT by the divergent-16 triage lane
-// (tmp/wrong-goal-hunt/divergent-16-triage-lane.md §4 rows 8 and 9), and
+// (an internal work log §4 rows 8 and 9), and
 // §6 of that receipt proves the derivation flips when the table is applied.
 //
 // WHICH ORIGINS. Two ship:
@@ -34,7 +34,7 @@
 // Both constructed `new FetchEngine(driver)` and went straight to the
 // lexicon warm / name-environment install. Neither applied the table, so
 // neither derived a single deck-correct key. The Bunny entry is the origin
-// behind the graded edge origin `https://decko-edge-wm2um.bunny.run`.
+// behind the graded edge origin `https://edge.culturesmith.com`.
 //
 // WHAT IS PINNED HERE, AND WHY TWO KINDS OF ASSERTION.
 //  - The behavioural half drives the REAL deploy/worker.ts fetch handler

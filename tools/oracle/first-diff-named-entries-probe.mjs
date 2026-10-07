@@ -85,7 +85,7 @@ const { setDeploymentCloudAssetHost } = await import(
   pathToFileURL(path.join(REPO, "src", "card", "render", "views.ts")).href
 );
 const DEPLOYMENT_CLOUD_ASSET_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com";
 setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
 // The same deployment's serializer + head constants (serializer-follow-live
@@ -114,7 +114,7 @@ setDeploymentFollowLiveConfig({
   mainStylesheetRevisionDigits: "1790384218",
   footerDeckoVersion: "0.19.1",
   recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
-  deckoRootUrl: "https://culturesmith.com/",
+  deckoRootUrl: "https://the reference deck/",
 });
 
 const targets = readFileSync(path.isAbsolute(TARGETS) ? TARGETS : path.join(REPO, TARGETS), "utf8")

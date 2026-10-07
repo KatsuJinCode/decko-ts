@@ -3,7 +3,7 @@
 //
 // Renders page 470 "AsIn Layout" — the only captured page whose MAIN card's
 // own content nests `{{_main}}` — through the sha-verified raw corpus copy
-// and writes the bytes to tmp/wrong-goal-hunt/fix-d6/ so the receipt
+// and writes the bytes to an internal work log so the receipt
 // can show the exact residual against the frozen oracle shard
 // (expected-v2/page-lane/recapture-raw-shard-000000.jsonl entry id 470).
 //
@@ -17,10 +17,11 @@ import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
-const OUT_DIR = path.join(REPO_ROOT, "tmp", "wrong-goal-hunt", "fix-d6");
+const OUT_DIR = path.join(REPO_ROOT, "tmp", "the work log", "fix-d6");
 const DUMP_PATH = path.join(OUT_DIR, "page-470-rendered.html");
 const ORACLE_PATH = path.join(
   REPO_ROOT,
@@ -39,7 +40,7 @@ describe("D6 evidence arm: page 470 layout-as-_main", () => {
     { timeout: 170_000 },
     async (ctx) => {
       if (!REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/fix-d6-main-nest-page470-dump.test.ts", "REQUESTED");
         return;
       }
       expect(existsSync(RAW_CORPUS_DB), `raw corpus copy missing: ${RAW_CORPUS_DB}`).toBe(true);

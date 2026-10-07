@@ -35,7 +35,7 @@
 // Production-vs-capture environment deltas this module pins (the five
 // production-equivalent settings): default_html_view = :content on the
 // page path only (the bare view path keeps the development default
-// :titled), deck_origin https://culturesmith.com, and carrierwave cloud
+// :titled), deck_origin https://example.com, and carrierwave cloud
 // attachments resolving to the absolute bucket URL. The captured page
 // JSONL bytes are the contract; every template below is diff-pinned
 // against them.
@@ -362,7 +362,7 @@ async function renderPageBytesWithPageConfigInner(
   // pair junction OR-tuple of 20120122+BW+RVW) leaves the read-permission
   // state unresolved and every prepared card unjudged. The sync gate's
   // unjudged-allowed contract would then render the read-denied MAIN body in
-  // full where Ruby emits the denial frame (the pass-15 triage's 130
+  // full where Ruby emits the denial frame (the a work item triage's 130
   // denial-wrapper-leak pages) — denial, not byte noise. Resolve the state
   // from the standalone three-statement batch and judge the prepared map
   // BEFORE any sync render. No-op when the prepare landed (memoized state +
@@ -998,14 +998,14 @@ async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   // same headContent for an unseated root whose content nests the head
   // card's :core). The page lane runs it under runWithPageConfig
   // (renderPageBytes, page.ts:130-142) with the capture's
-  // deck_origin = "https://culturesmith.com" (capture-dual-lane-page-and-view
+  // deck_origin = "https://example.com" (capture-dual-lane-page-and-view
   // .rb:343); the VIEW lane runs it with the railtie default
   // (card/lib/cardio/railtie.rb:28 config.deck_origin = nil) and no
   // controller (card/lib/card/env.rb:17), so origin is "" and card_url("")
   // is the bare "/". engine.envOriginConfig() is that per-surface value
   // (render.ts:1770-1772, render/deck-origin.ts:73-75) — reading it here
   // is what the constant could not do. Oracle: 6588/6588 page rows carry
-  // 'https://culturesmith.com/', cards 34754 / 34758 views carry '/'.
+  // 'https://example.com/', cards 34754 / 34758 views carry '/'.
   const rootUrl = deckoRootUrl() ?? `${engine.envOriginConfig()}/`;
   return (
     `<script>\n//<![CDATA[\n` +

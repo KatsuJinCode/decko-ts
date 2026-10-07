@@ -34,7 +34,7 @@ function makeSourceDb(): string {
 
 const REPO_ROOT = scratchDir("decko-det-repo-");
 // The schema comes from THIS worktree, resolved relative to this file. The
-// prior default was the absolute `C:/localProjects/decko-ts/db/schema.sqlite.sql`
+// prior default was the absolute `REPO_ROOT/decko-ts/db/schema.sqlite.sql`
 // — a path into the stale machine-root checkout, which is a live git repo
 // (branch main, HEAD d839fb97) rather than a deleted one, so it answered
 // SILENTLY from an older tree instead of failing: on 2026-10-06 it lacked the

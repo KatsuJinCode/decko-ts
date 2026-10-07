@@ -21,10 +21,11 @@ import {
   RAW_CORPUS_DB,
   createRawStructureSeededStorage,
 } from "../render/raw-corpus-seeding.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import type { RenderTestStorage } from "../render/render-test-storage.js";
 
 const REPLAY_REQUESTED = process.env.PERM_WARM_VERDICT_REPLAY === "1";
-const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/permissions/read-verdict-warm-engine-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 const WARMUP_PAGES = [
   "Lauren Rayburn+*account",
@@ -55,7 +56,7 @@ describeIfCorpus("warm engine: a card already in the render map is still judged"
   it("denies `tags` to the anonymous reader after five unrelated page renders", async () => {
     for (const page of WARMUP_PAGES) await storage!.engine.renderPage(page);
     const html = await storage!.engine.renderPage("tags");
-    expect(html).not.toContain("Culturesmith uses two methods to tag");
+    expect(html).not.toContain("the reference deck uses two methods to tag");
     expect(storage!.engine.isDenied({ id: 128, key: "tags" } as never)).toBe(true);
   }, 300_000);
 });

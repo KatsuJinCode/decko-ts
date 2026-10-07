@@ -28,7 +28,7 @@
  *  RenderEngine#imageCdnHost (set by the entry's bootDeck), so only the
  *  capture-env forms remain to rewrite. */
 export const SPACES_ASSET_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com";
 
 /** The capture fog form the engine's page bytes carry (page.ts
  *  CLOUD_URL_PREFIX; head-views.ts FOG_CLOUD_URL_HOST + "/files/"). */
@@ -100,7 +100,7 @@ export function filesLeafVariant(leaf: string): string | undefined {
 }
 
 /** The text/plain 404 body the LIVE app serves for a /files/ id it cannot
- *  resolve — measured 2026-10-02: GET https://culturesmith.com/files/103/
+ *  resolve — measured 2026-10-02: GET https://the reference deck/files/103/
  *  3649-small.jpg -> 404, 19 bytes, text/plain, "Could not find 103." */
 export function filesNotFoundBody(id: string): string {
   return `Could not find ${id}.`;

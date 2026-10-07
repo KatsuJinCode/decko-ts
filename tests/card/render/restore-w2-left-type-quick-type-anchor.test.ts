@@ -5,7 +5,7 @@
 // dual-lane grade uses) and are ENV-GATED so ordinary suite runs and the
 // standing net skip them; the wave's receipts carry the ungated evidence
 // (tools/oracle/first-diff-named-entries-probe.mjs runs, logged in
-// brandonDojoTech tmp/wrong-goal-hunt/restore-w2-format-lane.md).
+// REPO_DIR an internal work log).
 //
 // BLOCK 1 -- the quick_type contract the format.ts leftTypeNameFor fallback
 // now consumes (the W2 lane's fix): Ruby pattern/class_methods.rb:59-71
@@ -32,6 +32,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..", "..");
@@ -67,7 +68,7 @@ const rawBoot = async () => {
   return storage;
 };
 
-describe.skipIf(!GATED)(
+describeOrSkipLoud(!GATED, "tests/card/render/restore-w2-left-type-quick-type-anchor.test.ts", "GATED")(
   "restore-w2: the quick_type contract behind leftTypeNameFor's fallback (raw corpus)",
   () => {
     it(
@@ -141,7 +142,7 @@ describe.skipIf(!GATED)(
   },
 );
 
-describe.skipIf(!GATED)(
+describeOrSkipLoud(!GATED, "tests/card/render/restore-w2-left-type-quick-type-anchor.test.ts", "GATED")(
   "restore-w2: byte-exact pins for the W2-class entries that pass at base (raw corpus)",
   () => {
     // <shard>, <card name>, <view> -- the five PASS rows of the lane's

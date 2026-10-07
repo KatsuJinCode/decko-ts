@@ -13,7 +13,7 @@
 //
 // The deploy chain's runner is EXTERNAL: `wrangler d1 migrations apply`
 // (package.json:18, migrations_dir at wrangler.toml:104). Verified first-hand
-// at wrangler 4.148.0 --local (tmp/wrong-goal-hunt/migration-0003-collision-lane.md
+// at wrangler 4.148.0 --local (an internal work log
 // §1): migrations are enumerated in lexical filename order, applied
 // unrecorded files in that order, recorded in `d1_migrations` by FULL
 // FILENAME, deduped by exact filename, recorded names that no longer match a

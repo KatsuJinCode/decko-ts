@@ -301,7 +301,7 @@ export class RequestStore {
    *  caps a statement at 100 bound parameters). The json_each rewrite was
    *  checked row-identical, content and order, against the per-value
    *  placeholder form on 89 real captured parameter sets (batch-shape probe,
-   *  brandonDojoTech 401190c7). */
+   *  REPO_DIR 401190c7). */
   wideningStatements(
     w: Widening,
     identityRows = true,

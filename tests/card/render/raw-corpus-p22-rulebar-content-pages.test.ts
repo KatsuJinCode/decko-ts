@@ -1,4 +1,4 @@
-// raw-corpus-p22-rulebar-content-pages.test.ts -- the pass-22 rule-bar
+// raw-corpus-p22-rulebar-content-pages.test.ts -- the a work item rule-bar
 // one-line-content port's evidence probe. Renders the three pages the plan
 // names here (plan §(b)) through the engine's REAL page
 // renderer over the RAW ground-truth corpus and records the bar-right
@@ -40,6 +40,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -127,7 +128,7 @@ describe("raw-corpus p22 rule-bar one-line content pages (3 named pages)", () =>
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-p22-rulebar-content-pages.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -148,7 +149,7 @@ describe("raw-corpus p22 rule-bar one-line content pages (3 named pages)", () =>
 
       // NOTE (probe r3/postfix lesson, job-1790820154566-11c4aa44 and
       // job-1790822005721-8c8b5410): any ISOLATED card render placed
-      // BEFORE the page renders poisons them -- the pass-13 census's
+      // BEFORE the page renders poisons them -- the a work item census's
       // "first-render-wins renderCards" mechanism is live on this seat
       // (both pages' 17743 bars rendered the mini-bar shape with no
       // one-line after an isolated :core/:bar render). The pages are

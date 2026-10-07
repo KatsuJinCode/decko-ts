@@ -215,7 +215,7 @@ import {
 import { RenderFormat, wrappedTitleInner } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
-// pass-19 merge 5 resolution (read-both-sides, union): the two lanes each
+// a work item merge 5 resolution (read-both-sides, union): the two lanes each
 // added a DIFFERENT import on the same line-region. cardtype-tpl (HEAD)
 // added `h` for its add_button producers; roleviews added `DECK_ORIGIN`
 // for its ten mod view registrations. Both symbols are used in this file
@@ -329,9 +329,9 @@ const linknameView: ViewFn = ({ fmt }) => fmt.urlKey();
  *  (serializable.rb:20-22 `Cardio.config.deck_origin ||
  *  "#{protocol}#{request&.host_with_port}"`), so the SAME helper renders
  *  two shapes and the frozen record pins BOTH:
- *    - SERVED PAGE: `https://culturesmith.com/User` (signup alert email's
+ *    - SERVED PAGE: `https://example.com/User` (signup alert email's
  *      `{{_|url}}`, page-lane shard recapture-raw-shard-000016) and
- *      `https://culturesmith.com/*changed_card` (follower notification
+ *      `https://example.com/*changed_card` (follower notification
  *      email's) — that capture sets deck_origin for the page lane only
  *      (capture-dual-lane-page-and-view.rb:343, restored at :348);
  *    - VIEW FUNCTION: `/User` — the SAME card 21792, the SAME `{{_|url}}`,
@@ -356,7 +356,7 @@ const urlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  card's id) is the id-prefixed mark. Ruby-exact card_url bytes
  *  (env/location.rb:19-22 `card_url rel = "#{Env.origin}#{card_path rel}"`,
  *  card_path location.rb:6-16 prefixing the relative URL root):
- *  `/~<id>` with the origin absent, `https://culturesmith.com/~<id>`
+ *  `/~<id>` with the origin absent, `https://example.com/~<id>`
  *  with it present. SURFACE-SCOPED like urlView above — the same
  *  `fmt.cardUrl` seam over the same per-render `Env.origin`, so each
  *  surface renders its own Ruby-true form. The no-id arm keeps
@@ -377,7 +377,7 @@ const idUrlView: ViewFn = ({ fmt }) =>
  *  lib/cardname/variants.rb:8-13, case-preserving "Oracle_Format_Probe");
  *  card_url (card-1.110.0 lib/card/env/location.rb:19-21) → the
  *  SURFACE-SCOPED resource:
- *  "https://culturesmith.com/Oracle_Format_Probe" on the served page,
+ *  "https://example.com/Oracle_Format_Probe" on the served page,
  *  "/Oracle_Format_Probe" on the view-function lane — Env.origin is a
  *  per-render value, serializable.rb:20-22; the urlView above);
  *  html link_to_resource (set/all/links.rb:127-130) → add_resource_opts
@@ -452,7 +452,7 @@ const urlLinkView: ViewFn = ({ fmt }) => {
  *  untouched). Then html link_to (links.rb:101-106): href = the cleaned
  *  resource (path.rb:35-36 String bypass), text = raw(text || opts[:href])
  *  (links.rb:103) — the anchor BODY is the href verbatim (raw-marked, no
- *  second escape — the pass-15 split: only the attribute value crosses the
+ *  second escape — the a work item split: only the attribute value crosses the
  *  escape boundary, h() here = Rails tag_helper html_escape).
  *
  *  Per Ruby, these three views declare NO options (uri.rb's bare `view
@@ -783,7 +783,7 @@ function cardtypeAddLinkView({ fmt }: ViewContext): string {
  *  This is the whole remaining divergence on the 12 Cardtype pages whose
  *  `+*type+by_name` member search is empty on BOTH sides (Tracked Item,
  *  event, Proto Item, URI, Group, Log Entry, Task, Mirror List,
- *  Mirrored List, Notification template — the pass-15 cardtype-template
+ *  Mirrored List, Notification template — the a work item cardtype-template
  *  class); on the other 51 the same anchor is one region among the
  *  search-driven ones. */
 function cardtypeAddButtonView({ fmt }: ViewContext): string {

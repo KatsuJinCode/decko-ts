@@ -8,7 +8,7 @@
 //   contract lives in mod-object-address-shape-parity.test.ts.// The card-level set-module content-override universe pins: the port of Ruby's
 // set-module `def content` hook at the CARD-CONTENT level (the seam the corpus
 // record path grades). Lane: set-override-fidelity 2026-10-03 (relaunch);
-// derivation = brandonDojoTech/tmp/wrong-goal-hunt/set-override-fidelity-lane.md
+// derivation = WORK_DIR/set-override-fidelity-lane.md
 // "[relaunch t1] RUBY DERIVATION COMPLETE".
 //
 // Ruby mechanism (why these answers exist): set modules are included into each

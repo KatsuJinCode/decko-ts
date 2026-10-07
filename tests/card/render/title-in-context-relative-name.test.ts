@@ -14,7 +14,7 @@
 //   appended LAST. SUPERSEDED PIN CORRECTION (2026-09-28, live-wire
 //   mechanism-3 work): an earlier version of this test expected the WANTED
 //   +management mini_bar to carry NO name_context, pinned to the stale
-//   live-v0.19.1 capture tmp/wrong-goal-hunt/captures/live_Aikido_2.html.
+//   live-v0.19.1 capture an internal work log
 //   The graded v0.20.0 capture contradicts that byte: the SAME shape
 //   (a wanted, id-less +management mini_bar nested directly in the page
 //   body) is the Conflict_Done_Well page in
@@ -28,7 +28,7 @@
 //   unknown-card gate was an overfit to the stale capture and was removed
 //   (name-context-slot-json-gate.test.ts pins both oracle shapes).
 //
-// Live bytes (tmp/wrong-goal-hunt/captures/live_Aikido_2.html):
+// Live bytes (an internal work log):
 //   <span class="card-title" title="+management"><span>+</span>management</span>
 //   <span class="card-title" title="+overview">...
 //   data-slot="{...&quot;home_view&quot;:&quot;titled&quot;,&quot;name_context&quot;:&quot;aikido_2&quot;}"
@@ -36,7 +36,7 @@
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-async function seedAikido2Shape(storage: RenderTestStorage): Promise<void> {
+async function seedFieldwork2Shape(storage: RenderTestStorage): Promise<void> {
   // The page card with two body nests: a KNOWN +overview (titled) and an
   // UNSEEDED +management (fetch miss -> wanted card, closed->mini_bar).
   await seedCard(storage, {
@@ -59,7 +59,7 @@ async function seedAikido2Shape(storage: RenderTestStorage): Promise<void> {
 describe("title_in_context: relative slot titles under the page context", () => {
   it("renders +overview/+management titles relative and the main title full (live /Aikido_2 shape)", async () => {
     const storage = await createRenderTestStorage();
-    await seedAikido2Shape(storage);
+    await seedFieldwork2Shape(storage);
     const html = await storage.engine.render("Aikido 2", "titled");
 
     // The MAIN card's own title renders pre-context (naming yields the
@@ -89,7 +89,7 @@ describe("title_in_context: relative slot titles under the page context", () => 
 
   it("keeps the full junction title when the same card renders OUT of context", async () => {
     const storage = await createRenderTestStorage();
-    await seedAikido2Shape(storage);
+    await seedFieldwork2Shape(storage);
     // Direct render: no parent context -> the name stays whole.
     const direct = await storage.engine.render("Aikido 2+overview", "titled");
     expect(direct).toContain('<span class="card-title" title="Aikido 2+overview">');

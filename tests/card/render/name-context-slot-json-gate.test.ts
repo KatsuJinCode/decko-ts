@@ -1,5 +1,5 @@
 // Mechanism 3 of the live-wire page-render defect verdict
-// (brandonDojoTech tmp/wrong-goal-hunt/live-wire-class-tokens.md, 2026-09-28):
+// (REPO_DIR an internal work log, 2026-09-28):
 // the engine omits the `,"name_context":"..."` member from bar data-slot JSON
 // after `"home_view":"open"` on content-page nests. Probe evidence (pos1450
 // Occupy page, pos1600 Sylvester; probe snap=3 eng=0 live=3 for the

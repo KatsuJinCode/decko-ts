@@ -3,7 +3,7 @@
   "refs": 531,
   "totalRows": 2809,
   "bytes": 1622567,
-  "file": "C:\\localProjects\\decko-ts\\tools\\deploy\\cf-scale-deck\\seed.sql",
+  "file": "<repo-root>",
   "dimensions": {
     "ordinary": 2000,
     "chainDepth": 32,

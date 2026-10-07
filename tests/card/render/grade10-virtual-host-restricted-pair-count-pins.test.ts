@@ -46,6 +46,7 @@ const VIEW_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2", 
 
 import { compareNormalized } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The count-family entries pinned full-parity: Task+*right and
  *  Task+Log Entry+*type plus right, both views. Full parity here also covers
@@ -63,7 +64,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe.runIf(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR))(
+describeOrSkipLoud(!(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-virtual-host-restricted-pair-count-pins.test.ts", "process.env.SEATFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 count family: the restricted pair renders on *default-row-less virtual hosts",
   () => {
     const expected = new Map<string, string>();
@@ -91,7 +92,7 @@ describe.runIf(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) &&
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

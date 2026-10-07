@@ -17,6 +17,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -35,7 +36,7 @@ describe("gem-anchored closure: further *head-family candidate pages", () => {
     { timeout: 240_000 },
     async (ctx) => {
       if (!PROBE_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/gemclose-head-family-candidate-pages-dump-probe.test.ts", "PROBE_REQUESTED");
         return;
       }
       expect(existsSync(RAW_CORPUS_DB), `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

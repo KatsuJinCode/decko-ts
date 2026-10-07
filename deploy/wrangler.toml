@@ -3,17 +3,17 @@
 # The operator story lives in deploy/README.md; architecture and
 # compatibility notes in docs/deploy-notes.md. Summary:
 #
-#   1. npx wrangler d1 create decko-ts-demo-db      -> copy the returned id
+#   1. npx wrangler d1 create       -> copy the returned id
 #   2. paste it into database_id below
-#   3. npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0001-schema.sql
-#   4. npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
+#   3. npx wrangler d1 execute  --remote --file migrations/0001-schema.sql
+#   4. npx wrangler d1 execute  --remote --file seed/seed.sql
 #   5. npx wrangler deploy
 #   6. curl smoke checks (README has them)
 #
 # Everything runs from this deploy/ directory (wrangler resolves main,
 # migrations_dir and alias paths relative to this file).
 
-name = "decko-ts-demo"
+name = ""
 main = "worker.ts"
 compatibility_date = "2026-09-01"
 # Deliberately NO nodejs_compat: the worker graph is Web-standard-only.
@@ -28,7 +28,7 @@ compatibility_date = "2026-09-01"
 # real id printed by `wrangler d1 create`.
 [[d1_databases]]
 binding = "DB"
-database_name = "decko-ts-demo-db"
+database_name = ""
 database_id = "TBD_REPLACE_AFTER_WRANGLER_D1_CREATE"
 migrations_dir = "migrations"
 

@@ -422,7 +422,7 @@ describe("bunny edge history page-path seam — full chrome on the three views",
     // error status still answers — the no-silent-fallback contract this pin
     // exists for is carried by the status assertion + the chrome identity;
     // the message-surface assertion is superseded, recorded here and in
-    // tmp/wrong-goal-hunt/fold11-lane.md.
+    // an internal work log
     const { status, body } = await getBody("/History_Probe_Renamed/act?act_id=999999999");
     expect(status).toBeGreaterThanOrEqual(400);
     expect(body).toContain("Wild Card");

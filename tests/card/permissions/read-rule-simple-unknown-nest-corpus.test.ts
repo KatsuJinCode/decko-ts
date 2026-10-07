@@ -30,10 +30,11 @@ import {
   RAW_CORPUS_DB,
   createRawStructureSeededStorage,
 } from "../render/raw-corpus-seeding.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import type { RenderTestStorage } from "../render/render-test-storage.js";
 
 const REPLAY_REQUESTED = process.env.PERM_SIMPLE_UNKNOWN_REPLAY === "1";
-const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/permissions/read-rule-simple-unknown-nest-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 /** The slot region for one mini_bar slot, located by its data-card-name. */
 function slotRegion(html: string, cardName: string): string | undefined {

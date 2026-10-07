@@ -2,7 +2,7 @@
 
 Generated: 2026-10-02T01:46:52.787Z
 Gem dir:   $GEM_HOME
-Repo:      C:\localProjects\decko-ts-lane-fixr-tools
+Repo:      REPO_ROOT\
 
 ## Summary
 

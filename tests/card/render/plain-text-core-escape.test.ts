@@ -1,6 +1,6 @@
 // PlainText-type core escapes html entities - the census
 // "html-entity-escape" singleton (page 19562 angieup, census receipt
-// brandonDojoTech/tmp/wrong-goal-hunt/page-mechanism-census.md: the
+// WORK_DIR/page-mechanism-census.md: the
 // +source_title content-view renders "Son, It&#39;s Okay If You
 // Don&#39;t Get Laid Tonight" in the oracle, raw apostrophes in ours).
 //

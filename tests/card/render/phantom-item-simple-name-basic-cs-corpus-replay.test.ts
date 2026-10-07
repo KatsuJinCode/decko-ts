@@ -42,6 +42,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, it, expect, afterAll } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -71,7 +72,7 @@ async function seedShared(): Promise<RawStorage> {
   return storage;
 }
 
-describe.skipIf(!RUN)("unresolved-host phantom identity: simple names take the deck basic card (view187 census)", () => {
+describeOrSkipLoud(!RUN, "tests/card/render/phantom-item-simple-name-basic-cs-corpus-replay.test.ts", "RUN")("unresolved-host phantom identity: simple names take the deck basic card (view187 census)", () => {
   it(
     "RVW:open renders its simple-named phantom item with the deck basic identity (BasicCs/22281/basic_c), not RichText",
     async () => {

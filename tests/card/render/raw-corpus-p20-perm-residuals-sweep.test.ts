@@ -1,9 +1,9 @@
-// raw-corpus-p20-perm-residuals-sweep.test.ts -- the pass-20 permission-
+// raw-corpus-p20-perm-residuals-sweep.test.ts -- the a work item permission-
 // residuals port's sweep runner (lane-p20-perm, base b2f4700). Its
 // class is the 11 non-perm-sweep pages routed to it by four earlier port
 // receipts, plus a grows-as-pages-flip hard-assert block:
 //
-//   - 4 mixed18 route-outs booked to perm (tmp/wrong-goal-hunt/mixed18-lane.md
+//   - 4 mixed18 route-outs booked to perm (an internal work log
 //     round-3 ledger: "the perm regions remain route-out (perm-allow family,
 //     as pinned by the dead agents)" on BW Oversight+ARCHETYPALLY, Starhawk,
 //     Daemeon Reiydelle, Michael Christensen; the mixed18 engine commits are
@@ -11,11 +11,11 @@
 //     these pages carry their full diff here, of which this suite owns the
 //     permission-shaped regions);
 //   - 3 Role pages whose :configs role->items grouping the mm-roleviews port
-//     proved capture-state-bound (tmp/wrong-goal-hunt/mm-roleviews-lane.md
+//     proved capture-state-bound (an internal work log
 //     leftover 5: Administrator, Administrator+Dashboard, Help Desk);
 //   - 3 layout pages the mm-whitespace port left with a `{{*foot|core}}` nest
 //     rendering as its literal text where the oracle renders the read-denied
-//     span (tmp/wrong-goal-hunt/mm-whitespace-lane.md leftovers: home-layout,
+//     span (an internal work log leftovers: home-layout,
 //     bdwilliamscraig-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
 //
 // Block 1 (report-only): renders each page over the full-deck corpus seed,
@@ -50,7 +50,7 @@ import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 // the lane base f9d81361 (scratch baseline worktree, same 236-byte host
 // delta) — this suite simply predates the binding contract's enforcement.
 const SPACES_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -219,7 +219,7 @@ describe(
         // The *Opportunities dropdown's dropped join slot (relaunch #5
         // verdict, full-capture survey): the deck navbar's *Opportunities
         // menu (card 38283) carries a raw item that is no card reference
-        // ("https://culturesmith.com/card/new|New Card") between the second
+        // ("https://example.com/card/new|New Card") between the second
         // *dropdown divider and the read-denied tail item. Ruby's item join
         // KEEPS that item's separator slot, so its menu renders
         // `divider + "\n\n" + <denied>` — and that is the shape ALL 6,542

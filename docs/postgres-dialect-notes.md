@@ -491,7 +491,7 @@ behaviors a future wave must reason about:
 
 **State on disk.** This repo carries `db/schema.sqlite.sql` (the
 engine's target) and `db/schema.mysql-reference.sql` (production
-SourceDeck MySQL truth, dated 2026-09-07). It does NOT carry
+the reference deck MySQL truth, dated 2026-09-07). It does NOT carry
 `db/schema.postgres.sql`; PG DDL conversion is documented as the
 schema stream's responsibility (`src/server/drivers/postgres-dialect.ts:478-484`
 — "DDL helpers — used by callers that build PG DDL from the engine's

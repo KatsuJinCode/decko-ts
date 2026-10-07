@@ -18,7 +18,7 @@ Plus `tests/tools/shadow/shadow-router.test.ts` — the harness proof (two
 in-process http stubs in place of Ruby / TS, end-to-end assertions on
 the proxy's contract).
 
-[t5]: https://github.com/KatsuJinCode/decko-ts/issues/
+[t5]: https://github.com/<owner>/decko-ts/issues/
 
 ## How this becomes the cutover evidence (#10 / #11)
 
@@ -43,8 +43,8 @@ The transition path is: **corpus parity (today) → shadow-1% on live
 traffic (this router, narrow policy) → shadow-100% (broader policy) →
 cutover**. Each rung is gated on the same-pct metric from the report.
 
-[10]: https://github.com/KatsuJinCode/decko-ts/issues/10
-[11]: https://github.com/KatsuJinCode/decko-ts/issues/11
+[10]: https://github.com/<owner>/decko-ts/issues/10
+[11]: https://github.com/<owner>/decko-ts/issues/11
 
 ## How the router is wired
 

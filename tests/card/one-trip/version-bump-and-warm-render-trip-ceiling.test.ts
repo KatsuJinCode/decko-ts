@@ -1,5 +1,5 @@
 // THE TRIP-CEILING PINS for the recomposition trip-flood (warmflood-fix lane,
-// 2026-10-06 — spec: brandonDojoTech tmp/wrong-goal-hunt/tripflood-fix-prep-work/
+// 2026-10-06 — spec: REPO_DIR an internal work log
 // tripflood-red-pin-spec.md; mechanism: tripflood-recomposition-fix-design.md).
 //
 // WHAT THIS PINS: the ROUND-TRIP CEILING of the two postures the warm-render
@@ -84,6 +84,7 @@ import {
   type CapturedStatement,
 } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 
@@ -143,7 +144,7 @@ async function renderAndMeasure(
   return { html, trips, stats };
 }
 
-describe.skipIf(!hasMirror)("version-bump and warm-render trip ceiling (the recomposition trip-flood pins)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render-trip-ceiling.test.ts", "hasMirror")("version-bump and warm-render trip ceiling (the recomposition trip-flood pins)", () => {
   let sideDir = "";
   let workDbPath = "";
   let rawDb: InstanceType<typeof Database> | undefined;

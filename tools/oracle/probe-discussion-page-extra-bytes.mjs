@@ -21,7 +21,7 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-discussion-page-extra-bytes.mjs \
-//     --repo C:/localProjects/decko-ts-lane-dlsig \
+//     --repo REPO_ROOT/ \
 //     [--name "BHG 1948 Ch 7 p 22 Old Fashioned Sugar Cookies and Fig Bars+discussion"] \
 //     [--names "A+discussion|B+discussion"] \
 //     [--shard recapture-raw-shard-000017.jsonl] [--out tmp/dlsig-probe]

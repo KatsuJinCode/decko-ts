@@ -82,12 +82,12 @@ Deliberate omissions, not gaps:
 ## Running the Ruby capture
 
 ```bash
-cd C:/localProjects/decko-ts/tools/oracle/decko-oracle-app
+cd REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app
 cp db/development.sqlite3 db/write-conformance.sqlite3
 RAILS_ENV=development \
   DATABASE_URL=sqlite3:db/write-conformance.sqlite3 \
   bundle exec decko runner \
-  C:/localProjects/decko-ts/benchmarks/capture-write-conformance.rb
+  REPO_ROOT/decko-ts/benchmarks/capture-write-conformance.rb
 ```
 
 The script REFUSES to run unless the connected database file matches
@@ -109,7 +109,7 @@ junction parents stay alive while their children come out.
 ## Running the TS replay
 
 ```bash
-cd C:/localProjects/decko-ts
+cd REPO_ROOT/decko-ts
 npx vitest run tests/card/conformance/write-path.test.ts
 ```
 

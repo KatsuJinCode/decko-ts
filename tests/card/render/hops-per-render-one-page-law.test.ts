@@ -17,7 +17,7 @@
 //
 // THE ENUMERATED EXCEPTIONS (the round-trip classes a cold page render
 // legitimately spends beyond its one fused batch; each is carried with its
-// justification in tmp/wrong-goal-hunt/db-roundtrip-elimination-lane.md,
+// justification in an internal work log,
 // "Per-hop justifications for the final constant", awaiting operator
 // acceptance). On this fixture (nested inclusion + pointer list with an
 // unknown item + wiki link) the measured constant is 14 round trips:

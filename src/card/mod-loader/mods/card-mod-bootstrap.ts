@@ -1436,7 +1436,7 @@ const cardModBootstrap: DeckoModManifest = {
       // :core view is template :haml (core.haml) - the HAML depends on
       // accordion_bar + field_nest + nest :content, a structured-content
       // surface not in this port. :bar_left IS PORTED (bar-slots lane
-      // 2026-09-29, byte-shaped to the pass-15 V6 dump) but registered in
+      // 2026-09-29, byte-shaped to the a work item V6 dump) but registered in
       // the BASE views table (views.ts barLeftView) - the corpus grading
       // pipeline never binds a ModLoader, so only base-table
       // registrations dispatch on the graded surface. :customize_button

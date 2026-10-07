@@ -3,7 +3,7 @@
 // Re-derivation of the grade-10 corpus digest gate (the original instrument
 // lived in the grade-10 worktree's gitignored tmp/grade10-instrument/ and that
 // worktree is gone). Construction transcribed from the grade-10 receipt's own
-// words (brandonDojoTech tmp/wrong-goal-hunt/grade10-lane.md section 1, citing
+// words (REPO_DIR an internal work log section 1, citing
 // canonical-corpus-designation-2026-10-04.md sweep-3 addendum): per lane
 // directory, sorted "<full filename including .jsonl>" + one space + the
 // file's sha256 hex, one line per shard, joined with "\n", trailing "\n"

@@ -40,6 +40,7 @@ import { createServer as netCreateServer } from "node:net";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import { ensureStagingServerDist } from "./staging-server-dist-bootstrap.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -53,7 +54,7 @@ const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "signin-endpoint-fixture.sqlite
 const TEST_PASSWORD = generatedPassword("signinendpoint");
 const HOLDER_ID = 583;
 
-const describeIfCorpus = CORPUS_PATH !== null ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(CORPUS_PATH !== null, "tests/card/auth/signin-endpoint.test.ts", "the committed miniature corpus (fixtures/test-corpus/) is not present");
 
 interface Fixture {
   baseUrl: string;

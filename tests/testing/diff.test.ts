@@ -140,7 +140,7 @@ describe("compareNormalized (both sides normalized, then exact bytes)", () => {
 // The two fragments below are the REAL bytes the canvas capture and the engine
 // emitted for the `mod: core` page entry at 35ca70a, taken verbatim from the
 // first-diff probe's own output pair
-// (decko-ts-lane-longtail-firstdiff/tmp/longtail-firstdiff/probe-batch4/
+// (/tmp/longtail-firstdiff/probe-batch4/
 //  {expected,actual}--mod_core__page.html). Both are 329 bytes; the only
 // difference between them is the accordion group token, in BOTH positions the
 // engine emits it (the `data-bs-target='#...'` fragment and the `id='...'`

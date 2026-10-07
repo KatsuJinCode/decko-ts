@@ -81,4 +81,4 @@ lane records is comparative (ON never costs more than OFF at the same boundary) 
 
 ## Receipt
 
-tmp/wrong-goal-hunt/one-trip-serve-lane.md (append-only, brandonDojoTech repo).
+an internal work log (append-only, REPO_DIR repo).

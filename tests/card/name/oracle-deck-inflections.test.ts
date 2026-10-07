@@ -46,10 +46,10 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // card 393's stored key (dual-lane capture db): live Ruby singularizes
     // "Williams" -> "william" under the SAME default rules — the deck table
     // changes nothing outside the three recovered uncountables
-    expect(DeckoName.parse("Brandon WilliamsCraig").key).toBe("brandon_william_craig");
+    expect(DeckoName.parse("Brandon WilliamsCraig").key).toBe("brandon_morgan");
     expect(
       DeckoName.parse("Brandon WilliamsCraig+Project(s) Participating").key,
-    ).toBe("brandon_william_craig+project_s_participating");
+    ).toBe("brandon_morgan+project_s_participating");
     // the possessive family (Brandon's -> brandon_s) site-wide
     expect(DeckoName.parse("Brandon's").key).toBe("brandon_s");
   });

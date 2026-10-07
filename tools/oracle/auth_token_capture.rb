@@ -32,7 +32,7 @@ require "json"
 
 # The fixture secret. NOT a real secret_key_base — a made-up string that
 # exists only so the captured bytes are reproducible on any machine.
-FIXTURE_SECRET = "decko-ts-oracle-fixture-secret-key-base-0000"
+FIXTURE_SECRET = ""
 
 # The frozen "now" every expiration is measured from (2026-09-28 00:00:00 UTC,
 # epoch 1790553600).

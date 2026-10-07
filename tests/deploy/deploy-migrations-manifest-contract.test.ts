@@ -14,7 +14,7 @@
 // The deploy chain's runner is EXTERNAL (package.json:18,
 // `wrangler d1 migrations apply`, migrations_dir at wrangler.toml:104), and
 // its behavior was verified first-hand at wrangler 4.148.0 --local (probe
-// receipt: tmp/wrong-goal-hunt/migration-0003-collision-lane.md §1): it
+// receipt: an internal work log §1): it
 // enumerates *.sql in lexical filename order, records full filenames in
 // d1_migrations, dedupes by exact filename, silently ignores recorded names
 // that no longer match a file, and re-runs any file whose name is not

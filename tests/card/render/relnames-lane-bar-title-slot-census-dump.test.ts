@@ -4,7 +4,7 @@
 // fixture and the graded expected-v2 view lane).
 //
 // Env-gated (RELNAMES_DUMP=1) so it never runs inside the standing net.
-// Writes to tmp/wrong-goal-hunt/relnames-09-engine-<id>-<view>.html.
+// Writes to an internal work log
 import { describe, it, afterAll, expect } from "vitest";
 import Database from "better-sqlite3";
 import fs from "node:fs";
@@ -18,9 +18,10 @@ import {
 import { installHelpRules } from "../../../src/card/render/help-popover.js";
 import { normalizeSlotIds } from "../../../src/testing/diff.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
+import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const TARGET_IDS = [217, 268, 273, 294, 300, 302, 315] as const;
-const OUT_DIR = path.join(process.cwd(), "tmp", "wrong-goal-hunt");
+const OUT_DIR = path.join(process.cwd(), "tmp", "the work log");
 
 let storage: RenderTestStorage | undefined;
 afterAll(() => {
@@ -148,7 +149,7 @@ describe("relnames lane probe: engine bar-title slot census", () => {
   // RELNAMES_DUMP=1 it must SKIP. The first cut asserted the env inside the
   // body, which turned the skip into a standing-net FAILURE — caught by
   // net job-1791129726236-79fb68b5 (1 failed | 93 passed | 2 skipped).
-  it.skipIf(process.env.RELNAMES_DUMP !== "1")(
+  itOrSkipLoud(process.env.RELNAMES_DUMP !== "1", "tests/card/render/relnames-lane-bar-title-slot-census-dump.test.ts", "not (process.env.RELNAMES_DUMP !== \"1\")")(
     "dumps the engine's own bytes per target surface",
     { timeout: 600_000 },
     async () => {

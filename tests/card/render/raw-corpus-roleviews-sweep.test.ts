@@ -1,5 +1,5 @@
 // raw-corpus-roleviews-sweep.test.ts -- THIS SUITE's sweep runner (not a
-// pin): renders every page of the pass-15 `engine-gap: unsupported-view`
+// pin): renders every page of the a work item `engine-gap: unsupported-view`
 // class (pass15-page-fail-classes.md, tip 017b182) over the full-deck corpus
 // seed and reports, per page: does the engine still emit any
 // `view (X) not supported` render-error alert, which X, and is the page
@@ -14,6 +14,7 @@
 //     --maxWorkers=2 --no-file-parallelism
 
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -28,7 +29,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "roleviews-sweep");
 
 const SWEEP_REQUESTED = process.env.ROLEVIEWS_SWEEP === "1";
 
-/** The pass-15 `engine-gap: unsupported-view` population, verbatim from
+/** The a work item `engine-gap: unsupported-view` population, verbatim from
  *  pass15-page-fail-classification.json (34 pages). */
 const CLASS_UNSUPPORTED = [
   "Administrator", "AiBerk", "Anyone", "Anyone Signed In", "CB_role",
@@ -63,7 +64,7 @@ function loadOraclePageEntries(wanted: string[]): Map<string, { page_html?: stri
 
 describe("raw-corpus unsupported-view class sweep", () => {
   it("renders the 34-page unsupported-view class and records alert evidence", { timeout: 1_800_000 }, async (ctx) => {
-    if (!SWEEP_REQUESTED) { ctx.skip(); return; }
+    if (!SWEEP_REQUESTED) { skipLoud(ctx, "tests/card/render/raw-corpus-roleviews-sweep.test.ts", "SWEEP_REQUESTED"); return; }
     expect(existsSync(RAW_CORPUS_DB)).toBe(true);
     expect(existsSync(PAGE_LANE_DIR)).toBe(true);
 

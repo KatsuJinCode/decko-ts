@@ -1,6 +1,6 @@
 # event-execution-seam.md — the ModEventFn execution seam report
 
-Worktree `C:\localProjects\decko-ts-lane-eventseam`, branch `lane-eventseam`,
+Worktree `REPO_ROOT\`, branch `lane-eventseam`,
 branched off pass13-int `d6b1957` (carries the 31 core-event declarations).
 node_modules junctioned to the main repo (`cmd /c mklink /J`). No push, no
 merge, no deploy, no default-deck composition change.
@@ -128,7 +128,7 @@ Two defects the batch's own tests caught during the green run:
   save-path file). Zero failures either side.
 
 Gate environment disclosures:
-1. The base worktree (C:/localProjects/decko-ts-pass13-int) carries stale
+1. The base worktree (REPO_ROOT/decko-ts-pass13-int) carries stale
    UNTRACKED `dist/tests/` output its vitest run also collected (108
    files = 2×54), so its raw totals double-count; the failure-set diff
    was computed on `tests/`-path failing FILES only, both sides.

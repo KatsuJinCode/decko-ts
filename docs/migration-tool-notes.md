@@ -2,8 +2,8 @@
 
 The M4 one-click migration path: any Ruby Decko mysqldump becomes a working
 decko-ts SQLite database — same data, new runtime underneath, no editorial
-transforms. This generalizes the proven SourceDeck importer
-(workspace `scripts/source-deck-migration/`) into a reusable tool.
+transforms. This generalizes the proven the reference deck importer
+(a private production dump (not distributed)`) into a reusable tool.
 Port-tracker stream 14, wave 3 (2026-09-20). Upstream proposal:
 decko-commons/decko#1282.
 
@@ -25,13 +25,13 @@ node tools/migrate/migrate.mjs --dump <file.sql> --out <deck.sqlite> --verify [-
 ## Parser grammar and design (parse-dump.mjs)
 
 Ground truth: the production dump grammar (mysqldump 10.13 over MySQL 8.0,
-verified against the SourceDeck 2026-09-07 dump — 1177 `INSERT INTO
+verified against the reference deck 2026-09-07 dump — 1177 `INSERT INTO
 `x` VALUES` statements, 0 column-list variants, single physical lines up to
 3.6 MB) plus the `--complete-insert` column-list variant for robustness.
 Everything else in a dump (LOCK/UNLOCK TABLES, `/*!...*/` conditional
 comments, `--`/`#` comments, CREATE/DROP/SET) is skipped quote-aware.
 
-**The design constraint is the lesson from the 1.2 GB SourceDeck
+**The design constraint is the lesson from the 1.2 GB the reference deck
 migration**: naive backtracking regexes (`/'(?:[^'\\]|\\.)*'/` over a full
 line) HANG on production dumps. The parser is therefore:
 

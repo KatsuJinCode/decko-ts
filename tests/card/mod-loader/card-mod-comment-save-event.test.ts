@@ -6,7 +6,7 @@
 //
 // Capture provenance: the oracle app on the disposable corpus copy
 // (write-conformance-surfaces1.sqlite3; the corpus sha256 is unchanged —
-// the no-write proof is in brandonDojoTech/tmp/wrong-goal-hunt/
+// the no-write proof is in WORK_DIR/
 // surfaces-batch1-lane.md). The capture ran the saves under
 // Card::Auth.as_bot with NO HTTP session, so Auth.signed_in? was false and
 // the rendered author fell to the "Anonymous (Not signed in)" arm — a

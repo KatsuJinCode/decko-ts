@@ -37,13 +37,13 @@
 #   data-select2-id ("<unique_id>-<epoch seconds>" - Time.now based)
 # The TS test applies the same normalization to its own renders before
 # comparing. A re-run must produce byte-identical JSON (verified: the two
-# runs recorded in tmp/wrong-goal-hunt/forms-lane.md).
+# runs recorded in an internal work log).
 
 require "json"
 
 REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "edit-forms.json")
-PIN_DIR   = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-auth-forms"
+PIN_DIR   = "CAPTURE_DIR"
 
 TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },

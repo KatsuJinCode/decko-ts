@@ -1,6 +1,6 @@
-// name-key-url-shape.test.ts -- view-keys suite (pass-16 H5/L1, name-key &
-// URL shaping). Byte pins extracted from the pass-15 fresh-process dump
-// pairs (C:/localProjects/decko-ts-pass15-int/tmp/raw-ground-truth/
+// name-key-url-shape.test.ts -- view-keys suite (a work item H5/L1, name-key &
+// URL shaping). Byte pins extracted from the a work item fresh-process dump
+// pairs (REPO_ROOT/decko-ts-pass15-int/tmp/raw-ground-truth/
 // enumeration/view-fail-dump-phases/) and re-confirmed against the
 // own baseline sweep. One case per shape rule:
 //

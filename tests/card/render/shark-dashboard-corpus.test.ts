@@ -18,10 +18,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 import { compareNormalized } from "../../../src/testing/diff.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 
 const REPLAY_REQUESTED = process.env.SHARK_DASHBOARD_REPLAY === "1";
-const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/render/shark-dashboard-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 function expectedPage(name: string): string {
   const dir = path.join(path.dirname(RAW_CORPUS_DB), "expected-v2", "page-lane");
@@ -39,7 +40,7 @@ describeIfCorpus("Shark dashboard page", () => {
   let storage: RenderTestStorage | undefined;
 
   beforeAll(async () => {
-    setDeploymentCloudAssetHost("https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com");
+    setDeploymentCloudAssetHost("https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com");
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
     const ids = (
       idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>

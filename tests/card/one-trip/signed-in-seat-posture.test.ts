@@ -64,6 +64,7 @@ import {
   type EngineBoot,
 } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 const MIGRATION_PATH = fileURLToPath(
@@ -128,7 +129,7 @@ function coveredFamilyLiveReads(statements: { sql: string }[]): number {
   return count;
 }
 
-describe.skipIf(!hasMirror)("signed-in viewer's one-trip seat posture (inline serving posture)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.ts", "hasMirror")("signed-in viewer's one-trip seat posture (inline serving posture)", () => {
   let sideDir = "";
   let sidePath = "";
   let workDbPath = "";

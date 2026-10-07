@@ -13,10 +13,11 @@
 import Database from "better-sqlite3";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 
 const REPLAY_REQUESTED = process.env.VIRTUAL_SEARCH_HELP_REPLAY === "1";
-const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/render/virtual-search-raw-help-text-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 describeIfCorpus("virtual-search fields: set-module raw_help_text", () => {
   let storage: RenderTestStorage | undefined;

@@ -3,7 +3,7 @@
 // new-card record (the p21 fix-toggle Group A regression, 98 entries).
 //
 // MECHANISM (probe-proven by the p21-view-regression-attribution work,
-// tmp/wrong-goal-hunt/p21-view-regression-attribution-lane.md, and re-derived
+// an internal work log, and re-derived
 // here against the frozen corpus): the corpus's `agree+*right` set (set card
 // 17693) carries TWO rules --
 //   - `agree+*right+*structure` (rule 28589, RichText-typed, template

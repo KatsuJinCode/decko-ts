@@ -3,7 +3,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-api-key-views.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-api-key-views.rb
 #
 # Records to fixtures/captured/api-key-views.json:
 # 1. The three superView-trio views (:titled, :titled_content, :content)

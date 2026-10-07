@@ -16,7 +16,7 @@
 // handler (bunny-edge-engine-handler.ts) dispatches through the carried
 // request core, whose URL grammar is THIS parsePath. Union resolution
 // (superset-of-information, recorded in
-// tmp/wrong-goal-hunt/deploy-union-lane.md): parsePath below is the
+// an internal work log): parsePath below is the
 // LINEAGE grammar PLUS the integration root worker.ts's three verified
 // upgrades, because the wired serving path must lose no capability either
 // lineage carried:

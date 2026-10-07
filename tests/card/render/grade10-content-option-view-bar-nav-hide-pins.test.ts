@@ -44,6 +44,7 @@ const VIEW_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2", 
 
 import { compareNormalized } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The hide-family entries pinned full-parity (4 of the 12; the probe
  *  measures all 12). Each was graded failing with the bar_nav insertion on
@@ -60,7 +61,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe.runIf(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR))(
+describeOrSkipLoud(!(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-content-option-view-bar-nav-hide-pins.test.ts", "process.env.SEATFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 hide family: the *content option view rule bar carries no bar_nav hide",
   () => {
     const expected = new Map<string, string>();
@@ -88,7 +89,7 @@ describe.runIf(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) &&
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

@@ -8,6 +8,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -20,7 +21,7 @@ describe("D2 lane page dump", () => {
     { timeout: 1_800_000 },
     async (ctx) => {
       if (!REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/d2-lane-page-dump.test.ts", "REQUESTED");
         return;
       }
       expect(existsSync(RAW_CORPUS_DB), `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

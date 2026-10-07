@@ -3,7 +3,7 @@
 // were in OPPOSITE directions, so nothing here is a per-string special
 // case.
 //
-// GEM SOURCE (C:/localProjects/archive/decko-fork-study/decko/):
+// GEM SOURCE (REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   mod/date/set/type/date.rb:6-8
 //       view :core do

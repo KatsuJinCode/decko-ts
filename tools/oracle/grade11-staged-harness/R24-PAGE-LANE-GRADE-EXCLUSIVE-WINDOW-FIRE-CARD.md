@@ -4,7 +4,7 @@ Prepared by lane `r24prep` on 2026-10-06. **The grade is NOT fired here.** Every
 below is verified so the lead's exclusive window is spent on the run, not on
 discovering a refused guard.
 
-- Worktree: `C:/localProjects/decko-ts-lane-r24prep-2026-10-06`
+- Worktree: `REPO_ROOT/`
 - Branch: `lane-r24-pagegrade-prep-2026-10-06`
 - Grade tip: **`7bc63c1cdf1cdf1c264433882eae23b04fe8d2a4`**
   (= `origin/lane-integration-2026-10-06`, verified by `git fetch` + `git rev-parse` on 2026-10-06)
@@ -18,7 +18,7 @@ discovering a refused guard.
 Source corpus tree (the seam-applied copy the grade-11 seam-clean run bound):
 
 ```
-C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/seamreanchor-work/fresh-corpus-copy/tmp/raw-ground-truth
+WORK_DIR/seamreanchor-work/fresh-corpus-copy/tmp/raw-ground-truth
 ```
 
 Digests recomputed on 2026-10-06 with `compute-corpus-lane-digests.mjs` (the
@@ -46,7 +46,7 @@ grade consumes.** What exists and what I did instead:
 - The harness's real third input is `bench-corpus-raw.sqlite3`, whose sha256 is
   tabulated above. That is the input that has a digest of record and that Guard 1
   refuses without.
-- Files matching `*manifest*` under `tmp/wrong-goal-hunt/` are transform
+- Files matching `*manifest*` under `an internal work log` are transform
   manifests for the denied-seam and close-71 corpus rewrites
   (`asset-host-transform-manifest.json` and kin), not grade inputs.
 
@@ -83,7 +83,7 @@ from the grade-11 seam-clean aggregate. Re-runnable:
 
 ```
 node tools/oracle/grade11-staged-harness/classify-page-lane-failures.mjs \
-  C:/localProjects/decko-ts-lane-grade11-2026-10-05/tmp/grade11/full-canvas-da23517d3ac1ec40f6737203fb7c068e0fe21678-w1-grade11-seamclean/w0-aggregate.json \
+  REPO_ROOT//tmp/grade11/full-canvas-da23517d3ac1ec40f6737203fb7c068e0fe21678-w1-grade11-seamclean/w0-aggregate.json \
   --corpus <raw-ground-truth> --json tmp/grade11-prep/divergence-class-table.json
 ```
 
@@ -211,7 +211,7 @@ The two same-canvas points on record:
 | workers | tip | wall | entries | source |
 |---|---|---|---|---|
 | 1 | `da23517d` (grade-11 seam-clean) | **6,950.4 s = 115.8 min** | 16,738 | `full-canvas-...-seamclean.log`, `WALL 6950.4s workers=1` |
-| 8 | `814b3bd` (older) | 1,497.7 s = 25.0 min | 16,862 | `tmp/wrong-goal-hunt/w8-scaling-probe-lane.md` |
+| 8 | `814b3bd` (older) | 1,497.7 s = 25.0 min | 16,862 | `an internal work log` |
 
 They are **different tips and different corpora**, so the W=1→W=8 ratio is not a
 valid scale factor at `7bc63c1c` — the seat merge, driftfix and warmflood work all
@@ -242,8 +242,8 @@ only if the lead needs a number with a measurement behind it — then hold 2.5 h
 ### 5a. Environment
 
 ```bash
-export GRADE_REPO='C:/localProjects/decko-ts-lane-r24prep-2026-10-06'
-export FRESH_CORPUS_PATH='C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/seamreanchor-work/fresh-corpus-copy/tmp/raw-ground-truth'
+export GRADE_REPO='REPO_ROOT/'
+export FRESH_CORPUS_PATH='WORK_DIR/seamreanchor-work/fresh-corpus-copy/tmp/raw-ground-truth'
 export FOLD_TIP='7bc63c1cdf1cdf1c264433882eae23b04fe8d2a4'
 export WORKERS=6
 export RUN_SUFFIX='-r24'
@@ -259,7 +259,7 @@ passes because the prep commit touches `tools/` only
 ### 5b. Broadcast the hold — send this before firing
 
 > **EXCLUSIVE WINDOW — page-lane grade R24.** Worktree
-> `C:/localProjects/decko-ts-lane-r24prep-2026-10-06`, tip `7bc63c1c`. Starting
+> `REPO_ROOT/`, tip `7bc63c1c`. Starting
 > now, **45 minutes**. Do not `git checkout`, re-point, or re-stage that worktree,
 > and do not touch `tmp/raw-ground-truth/` or `tmp/grade11/` in it — the run reads
 > both. Other lanes continue; nothing else needs this worktree. Release when the

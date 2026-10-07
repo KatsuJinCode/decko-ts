@@ -532,7 +532,7 @@ function phaseDone(idx) {
   return true;
 }
 
-// ---------- brace-matched aggregate extraction (pass-8 scanner, proven) ----------
+// ---------- brace-matched aggregate extraction (a work item scanner, proven) ----------
 
 function extractAfter(label, text, from) {
   const i = text.indexOf(label, from);
@@ -764,7 +764,7 @@ function spawnPhase(idx) {
 
     const t0 = Date.now();
     // Weight-aware deadline (instrument-reliability lane): max(--deadline-min,
-    // 1.5 x the phase's recorded pass-19 weight); --flat-deadline = the old
+    // 1.5 x the phase's recorded a work item weight); --flat-deadline = the old
     // flat behavior. Both the weight and the effective deadline go on the
     // START line so every run records which rule set its deadline.
     const weightS = phaseWeightSec(group, shardWeights);

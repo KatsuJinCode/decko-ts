@@ -36,6 +36,7 @@ import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -129,7 +130,7 @@ describe("re-photography instrument render arm (lane-rephoto)", () => {
     { timeout: 170_000 },
     async (ctx) => {
       if (!RENDER_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/re-photograph-entry-replay.test.ts", "RENDER_REQUESTED");
         return;
       }
       expect(

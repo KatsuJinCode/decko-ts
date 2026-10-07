@@ -41,7 +41,7 @@ reference-key fix below). Measured workloads
 
 | workload | measured | budget |
 | --- | --- | --- |
-| warm-render-sample (60 shard-0 entries, pass-2 avg) | **6.05 ms/entry** | 25 |
+| warm-render-sample (60 shard-0 entries, a work item avg) | **6.05 ms/entry** | 25 |
 | pathological-class (id=641 `tgpqpf+uiqxodma` :closed) | **9 ms** | 2000 |
 | statement-discipline (warm render statements) | **7** | 10 |
 | closureWarm-coverage (cold cards after prewarm) | **0** | 0 |
@@ -152,8 +152,7 @@ stay at 0/0. The round-trip + statement totals do not vary with depth;
 
 `deploy/src/worker-metrics.ts` is the per-request + isolate-aggregate
 metrics recorder specified by Gate 6 of the upstream proposal
-(`docs/upstream-1282-external-critical-review-fulltext.md`
-lines 137–139). Wired into the Cloudflare Worker fetch handler
+([decko-commons/decko#1282](https://github.com/decko-commons/decko/pull/1282)). Wired into the Cloudflare Worker fetch handler
 (`deploy/worker.ts`); the architecture comment is at
 `deploy/src/worker-metrics.ts:6-22`:
 
@@ -264,7 +263,7 @@ exercises every route over HTTP).
 
 ## 7. Live deployment measurement (first numbers)
 
-2026-09-23, worker version `d9a3e8c7` deployed as the `decko-ts-demo`
+2026-09-23, worker version `d9a3e8c7` deployed as the ``
 Worker on the demo account — the synthetic 15-card demo deck (zero real
 content, per the CF data rule). Client numbers from a workstation include
 network RTT to the edge.

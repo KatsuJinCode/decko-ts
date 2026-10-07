@@ -22,7 +22,7 @@
 #
 # Run (from the oracle app dir):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-skipped/tools/oracle/capture-view-registry-directives.rb
+#     REPO_ROOT//tools/oracle/capture-view-registry-directives.rb
 
 require "json"
 

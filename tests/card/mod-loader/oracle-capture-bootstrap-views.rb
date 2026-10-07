@@ -2,9 +2,9 @@
 # loader port (decko-ts mod-port stream, card-mod-bootstrap-0.20.0).
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development RUBY_DLL_PATH=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch/lib \
+#   RAILS_ENV=development RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
 #     bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-bootstrap-views.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-bootstrap-views.rb
 #
 # Records to fixtures/captured/bootstrap-views.json:
 # 1. the :carousel view bytes (set/all/bootstrap/carousel.rb:2-8 wrapping

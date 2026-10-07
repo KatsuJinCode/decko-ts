@@ -1,7 +1,7 @@
 // gemclose-residual-three-page-engine-dump-probe.test.ts -- the gem-anchored-
 // closure port's diagnostic probe: renders EXACTLY the three nest-selection
 // residual pages the replays-adjudication left red
-// (tmp/wrong-goal-hunt/replays-adjudication-lane.md verdict table, b2 sweep)
+// (an internal work log verdict table, b2 sweep)
 // on a COPIED raw corpus database (tmp/raw-ground-truth/bench-corpus-raw.sqlite3
 // staged into this worktree; the pass20-int original is never opened for
 // writes) and dumps the engine's page bytes to tmp/gemclose-probe/ for the
@@ -26,6 +26,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -48,7 +49,7 @@ describe("gem-anchored closure: three residual pages, engine byte dump", () => {
     { timeout: 240_000 },
     async (ctx) => {
       if (!PROBE_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/gemclose-residual-three-page-engine-dump-probe.test.ts", "PROBE_REQUESTED");
         return;
       }
       expect(existsSync(RAW_CORPUS_DB), `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

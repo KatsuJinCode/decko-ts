@@ -27,7 +27,7 @@
 //
 // NAME OVERRIDES WITHOUT A CONFIG: --worker-name <name> / --db-name <name>
 // attribute against names alone, for deploys with no committed wrangler config
-// — the frozen demo pair (Worker decko-ts-demo + D1 decko-ts-demo-db, named
+// — the frozen demo pair (Worker  + D1 , named
 // only in deploy/cleanup.mjs and docs/one-click-cf-deploy-inventory.md) is
 // exactly that case. Without --config no config file is read at all, so the
 // overrides cannot silently mix with whatever another config declares. With an
@@ -313,7 +313,7 @@ export function readWranglerDeployConfig(configPath) {
 /**
  * The config-free attribution source: --worker-name / --db-name, for deploys
  * that have no committed wrangler config to point --config at. The frozen demo
- * pair (Worker decko-ts-demo + D1 decko-ts-demo-db, named only in
+ * pair (Worker  + D1 , named only in
  * deploy/cleanup.mjs and docs/one-click-cf-deploy-inventory.md) is exactly
  * this case.
  *
@@ -1088,7 +1088,7 @@ Examples
   node scripts/deploy/one-click-teardown.mjs
   node scripts/deploy/one-click-teardown.mjs --json
   node scripts/deploy/one-click-teardown.mjs -c scripts/deploy/one-click-deck/wrangler.oneclick.toml
-  node scripts/deploy/one-click-teardown.mjs --worker-name decko-ts-demo --db-name decko-ts-demo-db
+  node scripts/deploy/one-click-teardown.mjs --worker-name  --db-name 
   node scripts/deploy/one-click-teardown.mjs --yes
   node scripts/deploy/one-click-teardown.mjs --yes --confirm-plan <fingerprint>
 `;

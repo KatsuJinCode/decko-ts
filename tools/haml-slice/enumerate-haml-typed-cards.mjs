@@ -27,8 +27,8 @@ const DBS = (
   process.argv[2]
     ? [process.argv[2]]
     : [
-        "C:/localProjects/decko-ts/tmp/raw-ground-truth/bench-corpus-raw.sqlite3",
-        "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3",
+        "REPO_ROOT/decko-ts/tmp/raw-ground-truth/bench-corpus-raw.sqlite3",
+        "REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3",
       ]
 );
 

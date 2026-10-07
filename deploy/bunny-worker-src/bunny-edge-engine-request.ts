@@ -146,7 +146,7 @@ export function withIsolateRenderLock<T>(fn: () => Promise<T>): Promise<T> {
 
 /**
  * THE DEADLINE (cold-render reliability, 2026-10-03 — measured, see
- * tmp/wrong-goal-hunt/cold-render-reliability-lane.md).
+ * an internal work log).
  *
  * A cold render on this edge is a long SERIAL chain of database round trips:
  * the trial edge measured 1,151 HTTP round trips (4.9 MB of database
@@ -194,7 +194,7 @@ type EdgeEnv = Record<string, string | undefined>;
 /** The edge script variable that retunes the deadline WITHOUT a publish —
  *  the same operational property DECKO_EDGE_CACHE_TTL has for the cache TTL
  *  (a variable update is effective on running isolates immediately, proven
- *  live 2026-10-02 in tmp/wrong-goal-hunt/ttl-24h-apply-lane.md). */
+ *  live 2026-10-02 in an internal work log). */
 export const EDGE_RENDER_BUDGET_ENV_VAR = "DECKO_EDGE_RENDER_BUDGET_MS";
 
 /** Resolve the per-request render budget from the edge environment.

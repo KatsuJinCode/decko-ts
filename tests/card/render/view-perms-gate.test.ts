@@ -185,7 +185,7 @@ describe("render-format view-permission gate", () => {
   // (focal-denial-page-corpus-replay.test.ts, 4 exemplars byte-exact);
   // these units pin the branch ROUTING and the signed-in message bytes the
   // corpus cannot capture (its viewer is always Anonymous) — the same bytes
-  // the live-Ruby probe tmp/wrong-goal-hunt/focal-denial-ruby-probe/
+  // the live-Ruby probe an internal work log
   // signed-in-loud-denial-probe.rb extracts (loud_denial_message
   // `when Auth.signed_in?` -> format_need_permission_task + format_denied_task
   // = "You need permission to read this.").

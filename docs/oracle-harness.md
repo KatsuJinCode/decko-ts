@@ -223,7 +223,7 @@ Windows zip, run entirely in userspace:
    top), `lib/mysqlclient.lib` = copy of `libmariadb.lib`, plus
    `libmariadb.dll`.
 3. Build: `gem install --local <cache>/mysql2-0.5.7.gem --no-document --
-   --with-mysql-dir=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch`.
+   --with-mysql-dir=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch`.
    The resulting import lib binds to `libmariadb.dll` (MariaDB's own dll
    name, not MySQL's). Noise from a RubyInstaller pacman keyring hook
    during the build is non-blocking.
@@ -231,7 +231,7 @@ Windows zip, run entirely in userspace:
    client lib dir (RubyInstaller's DLL search mechanism; vendoring next
    to the .so and PATH entries both failed). EVERY mysql2-rung command
    therefore needs
-   `RUBY_DLL_PATH=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch/lib`.
+   `RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib`.
 5. The app Gemfile carries `gem "mysql2", "~> 0.5.7", require: false`.
    The `require: false` is NOT optional: bundler's auto-require otherwise
    loads mysql2 on EVERY boot and the default SQLite rung dies with

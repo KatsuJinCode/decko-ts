@@ -186,7 +186,7 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // The pre-V4 engine rendered wanted-card here through map luck (the
       // prepared closure never chased "Set", so the nest path seated a
       // phantom); the V4 prepare-phase link-target warm pass seats the real
-      // card (pass-18 bar-slots merge obligation). Absence stays wanted:
+      // card (a work item bar-slots merge obligation). Absence stays wanted:
       // link-known-class-and-pointer-paging.test.ts pins the "Nobody At
       // All" shape.
       expect(helpContentOf(html)).toBe(

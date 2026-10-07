@@ -36,7 +36,7 @@
 // the mini_bar slot wrap even when the inner item is unknown/phantom,
 // and renders a bar-shaped body with denied spans inside. The captured
 // oracle for every phantom item in the corpus has the SAME type info
-// (type_name "BasicCs", type_id 22281 — merge-pass-2 census corrected
+// (type_name "BasicCs", type_id 22281 — merge-a work item census corrected
 // the earlier "swtktey" mis-survey, which matched no oracle bytes) —
 // this is the corpus's default type card for phantom items. The port
 // reproduces the shape so the captured bytes match. Real, non-phantom
@@ -354,7 +354,7 @@ const POINTER_PAGING_MAX_PAGES = 100;
 
 /** The `view :paging` nav bytes (card-mod-collection set/abstract/paging/
  *  paging.haml, rendered when show_paging? holds). Byte-pinned against the
- *  pass-15 dump pairs quoted at pointerListCoreHtml — single-quoted class
+ *  a work item dump pairs quoted at pointerListCoreHtml — single-quoted class
  *  attributes (the deck's HAML attr wrapper), the lis on ONE line
  *  (`= paging_links.join`), and the paging-context numbers one per line
  *  (one haml expression per line). Headless current_page is always 0
@@ -547,7 +547,7 @@ export function pointerListItemBodyForUnknown(
   // data-card-link-name='Test_Person_01' over data-card-name='Test Person
   // 01'; Z4 exemplar Testing Requirements+Pages open:
   // data-card-link-name='6th_Kyu_Requirements' over the raw double-space
-  // '6th Kyu  Requirements'; the pass-15 Skin
+  // '6th Kyu  Requirements'; the a work item Skin
   // pages' multi-word phantom items, "simple skin" -> simple_skin — the
   // same urlKey derivation). data-card-name keeps slotCardname's rule:
   // the raw stored/authored name (these phantoms are simple names).

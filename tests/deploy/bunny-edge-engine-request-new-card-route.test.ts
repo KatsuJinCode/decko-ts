@@ -3,11 +3,11 @@
 // the lineage parsePath's /new/:type grammar).
 //
 // THE MEASURED GAP (manifest-completion lane,
-// tmp/wrong-goal-hunt/manifest-completion-lane.md section 2.1): /new/Sign_up
+// an internal work log section 2.1): /new/Sign_up
 // — the signup-form route the deck's OWN chrome links twice on every page
 // (the *account_links navbar arm and the signin form's "...or sign up!"
 // link, both href="/new/Sign_up" in the live-wire capture
-// tmp/wrong-goal-hunt/live-signin-ref.html) — answered 404 on the wire
+// an internal work log) — answered 404 on the wire
 // (capture-log-demo-nav.jsonl seq 97, gc "miss; store=skip-404"): parsePath
 // mapped it onto the generic name+view arm, the card "new" does not exist,
 // and the render answered the full-chrome not_found page.

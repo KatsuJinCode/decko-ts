@@ -47,6 +47,7 @@ import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-see
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 import { executeQuery } from "../../../src/cql/execute.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -82,7 +83,7 @@ function referredVideosWithUpdatedAt(db: InstanceType<typeof Database>): Array<{
     ).map((r) => ({ id: r.id, key: r.key, updatedAt: r.updated_at }));
 }
 
-describe.skipIf(!PINS_REQUESTED || !CORPUS_PRESENT)(
+describeOrSkipLoud(!PINS_REQUESTED || !CORPUS_PRESENT, "tests/card/render/cql-append-sort-execution-pins.test.ts", "not (!PINS_REQUESTED || !CORPUS_PRESENT)")(
   "CQL append/sort execution-wave pins (media+GBA W2b #9)",
   () => {
     const bootstrap = { storage: undefined as unknown as Awaited<ReturnType<typeof createRawStructureSeededStorage>> };

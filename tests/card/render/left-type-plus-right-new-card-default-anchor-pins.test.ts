@@ -2,7 +2,7 @@
 // TYPE_PLUS_RIGHT anchor of a card whose LEFT is not a stored card is
 // Card's DEFAULT type, never the nesting context card's type.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   card/lib/card/set/pattern/class_methods.rb:59-71 is the whole rule —
 //

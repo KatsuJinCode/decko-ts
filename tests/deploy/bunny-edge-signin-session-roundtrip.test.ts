@@ -57,6 +57,7 @@ import {
   type BunnyEdgeEnv,
 } from "../../deploy/bunny-worker-src/bunny-edge-signin-session-surface.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
+import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
@@ -452,7 +453,7 @@ const LIVE = process.env.DECKO_LIVE_TRIAL_DB === "1";
 /** Read a named key out of the creds file. Returns the VALUE; the caller
  *  must never log it. Absent key -> undefined, and the test skips. */
 function trialSecret(key: string): string | undefined {
-  const file = process.env.DECKO_TRIAL_CREDS ?? "C:/localProjects/brandonDojoTech/library/data/creds";
+  const file = process.env.DECKO_TRIAL_CREDS ?? "";
   let text: string;
   try {
     text = readFileSync(file, "utf8");
@@ -466,7 +467,7 @@ function trialSecret(key: string): string | undefined {
   return undefined;
 }
 
-describe.skipIf(!LIVE)("LIVE: Bunny trial DB, real driver over the real network", () => {
+describeOrSkipLoud(!LIVE, "tests/deploy/bunny-edge-signin-session-roundtrip.test.ts", "LIVE")("LIVE: Bunny trial DB, real driver over the real network", () => {
   const url = trialSecret("BUNNY_TRIAL_DB_URL");
   const token = trialSecret("BUNNY_TRIAL_DB_TOKEN");
 

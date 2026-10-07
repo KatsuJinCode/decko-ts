@@ -1,7 +1,7 @@
 // help-content-rule-page-flip-replay.test.ts -- the help-content suite's
 // fresh-process flip measurement over the escape-family population (the 35+
 // `mod: X+*style|script` rule pages + *on create|delete|update + *style rule
-// pages the escape-family receipt routed here). For every pass-15 fail-dump
+// pages the escape-family receipt routed here). For every a work item fail-dump
 // exemplar of the family (tmp/raw-ground-truth/enumeration/view-fail-dump-
 // full/html/<shard>-<name slug>-closed.expected.html) this spec renders the
 // page from the raw corpus DB with the same seeding the official dump protocol
@@ -32,6 +32,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   createRawStructureSeededStorage,
   RAW_CORPUS_DB,
@@ -125,7 +126,7 @@ describe("help-content lane: escape-family flip measurement", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/help-content-rule-page-flip-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

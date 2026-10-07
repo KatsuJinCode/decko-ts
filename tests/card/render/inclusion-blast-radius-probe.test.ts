@@ -24,6 +24,7 @@ const REPO_ROOT = path.resolve(
 
 import { normalizeForReplay } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const PAGE_NAMES = [
   "message-000004",
@@ -48,7 +49,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe.runIf(process.env.INCLUSION_BLAST_PROBE === "1" && existsSync(RAW_CORPUS_DB))(
+describeOrSkipLoud(!(process.env.INCLUSION_BLAST_PROBE === "1" && existsSync(RAW_CORPUS_DB)), "tests/card/render/inclusion-blast-radius-probe.test.ts", "process.env.INCLUSION_BLAST_PROBE === \"1\" && existsSync(RAW_CORPUS_DB)")(
   "inclusion blast-radius probe",
   () => {
     beforeAll(async () => {
@@ -59,7 +60,7 @@ describe.runIf(process.env.INCLUSION_BLAST_PROBE === "1" && existsSync(RAW_CORPU
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));
       storage.fetcher.installNameEnvironment();

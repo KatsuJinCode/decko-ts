@@ -35,7 +35,7 @@
 const fs = require("fs");
 const { execFileSync } = require("child_process");
 
-const DONOR_REPO = "C:/localProjects/decko-ts-restored";
+const DONOR_REPO = "REPO_ROOT/decko-ts-restored";
 const donorCache = new Map();
 function donorFile(rev, path) {
   const key = `${rev}:${path}`;

@@ -3,7 +3,7 @@
 // view's bar_bottom renders the STANDARD content view, whose wrap emits
 // the content-view slot inside the accordion body.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   Ruby's RULE set pattern is pattern_applies? -> card.rule?
 //   (card/mod/core/set_pattern/06_rule.rb:16) and

@@ -15,13 +15,13 @@
 //     difference): the `{{+Source Title}}` nest's slot carries
 //     nest_name "+Source Title" while data-card-name stays absolute
 //     ("The End of Awe by Maureen Dowd - NYTimes+Source Title").
-//   - live wire (tmp/live-wire/*.html, the arbiter): nest_name values
+//   - live wire (an internal work log, the arbiter): nest_name values
 //     are authored bytes — "+tag", "+related", "+Source Title",
 //     "+Organizer(s)", "_main", "Su$tainability" (dollar intact),
 //     "Conflict_Done_Well+class_schedule" (authored underscores) —
 //     never the absolutized forms the engine emitted before this fix
 //     ("Brandon WilliamsCraig+Image", "Cheryl Honey+Recommendations",
-//     ... in tmp/wrong-goal-hunt/ours/*.html).
+//     ... in an internal work log).
 //
 // The pointer/list item path (views.ts#renderPointerListItem) keeps
 // passing the item's absolute name explicitly — live pins the item

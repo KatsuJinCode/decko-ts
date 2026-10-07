@@ -82,7 +82,7 @@ export const EXIT_USAGE = 2;
 
 /**
  * The 5 standard probe pages — the same set the one-trip lane pinned
- * byte-identical (tmp/wrong-goal-hunt/one-trip-implementation-lane.md).
+ * byte-identical (an internal work log).
  * Literal card names; the tool URL-encodes them for the staging server.
  * The DEFAULT sample stays the proven page set; view routes join a sample
  * through the targets file.
@@ -128,7 +128,7 @@ export function viewQueryValue(view) {
 
 /**
  * The fetch headers for a VIEW route — the corpus convention from the
- * live-check-71 capture (live-check-71-fetch-culturesmith-2026-10-03.mjs):
+ * live-check-71 capture (live-check-71-fetch-reference-deck-2026-10-03.mjs):
  * views are fetched XHR-shaped (narrow Accept + X-Requested-With) while
  * pages are document navigations. The local staging instrument keys its
  * view dispatch off the ?view= query, so these headers are fidelity to the

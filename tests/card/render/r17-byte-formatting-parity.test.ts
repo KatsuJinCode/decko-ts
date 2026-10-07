@@ -91,7 +91,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 46002, name: "ronald test+*account", leftId: 46001, rightId: 40, dbContent: "" });
   await seedCard(s, { id: 17692, name: "agree" });
   await seedCard(s, { id: 46003, name: "ronald test+agree", leftId: 46001, rightId: 17692, typeId: TOGGLE_TYPE_ID, dbContent: "" });
-  await seedCard(s, { id: 62001, name: "list host", typeId: 9, dbContent: "[[Known Target]] and [[People Green]] and Culturesmith.com, plus [[https://decko.org|the decko site]]" });
+  await seedCard(s, { id: 62001, name: "list host", typeId: 9, dbContent: "[[Known Target]] and [[People Green]] and example.com, plus [[https://decko.org|the decko site]]" });
   await seedCard(s, { id: 62002, name: "Known Target", dbContent: "known" });
   await seedCard(s, { id: 62010, name: "bar host", typeId: 9, dbContent: "{{+absent item|closed}}" });
   await seedCard(s, { id: 62011, name: "list holder", typeId: 3, dbContent: "absent item" });
@@ -166,14 +166,14 @@ describe("R17 byte-formatting lane pins", () => {
     expect(html).toContain('wanted-card" href="/People_Green"');
     // HostUri: http:// prepended, comma outside the anchor.
     expect(html).toContain(
-      '<a target="_blank" class="external-link" href="http://Culturesmith.com">Culturesmith.com</a>,',
+      '<a target="_blank" class="external-link" href="http://example.com">example.com</a>,',
     );
     // Explicit-resource wiki link keeps the link-chunk shape (position
     // order: the [[...]] chunk consumed its URI). The attribute order is
     // links.rb add_resource_opts insertion order (target, class, href) -
     // the frozen oracle corpus carries 798 external anchors, all
     // target-first, zero target-last (census-tail full-corpus scan,
-    // 2026-09-29; the earlier merge-pass-2 pin predates the frozen
+    // 2026-09-29; the earlier merge-a work item pin predates the frozen
     // expected-v2 bytes and pinned the reverse order).
     expect(html).toContain(
       '<a target="_blank" class="external-link" href="https://decko.org">the decko site</a>',

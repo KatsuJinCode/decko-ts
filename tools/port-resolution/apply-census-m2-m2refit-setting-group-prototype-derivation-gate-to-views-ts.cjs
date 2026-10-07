@@ -26,7 +26,7 @@ const { execFileSync } = require("child_process");
 
 const P = "src/card/render/views.ts";
 const DONOR_REV = "43d55e80";
-const DONOR_REPO = "C:/localProjects/decko-ts-restored";
+const DONOR_REPO = "REPO_ROOT/decko-ts-restored";
 
 function crlfCounts(buf) {
   let cr = 0;

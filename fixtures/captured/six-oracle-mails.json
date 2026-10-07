@@ -6,7 +6,7 @@
     "decko_bot_account_email": "no-reply@decko.org"
   },
   "oracle": {
-    "app": "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+    "app": "REPO_ROOT/decko-oracle-app-2026-10-03 (dev sqlite)",
     "card": "1.110.0",
     "decko": "0.20.0",
     "delivery": "ActionMailer test delivery (Card::Mailer + ActionMailer::Base both :test); no SMTP, no network",

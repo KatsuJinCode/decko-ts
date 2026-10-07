@@ -72,10 +72,10 @@ describe("highlighter seams H2: script-body JS tokens (the Classic Layout oracle
     // (alpha.rb:91), bare spaces, the .keyword var span, the .key token,
     // the .string group with its delimiters
     const out = scanHtml(
-      '<script type="text/javascript">\n  var uservoiceOptions = {\n    key: \'culturesmith\',\n    showTab: true\n  };\n</script>',
+      '<script type="text/javascript">\n  var uservoiceOptions = {\n    key: \'example.com\',\n    showTab: true\n  };\n</script>',
     );
     expect(out).toContain(
-      '<span style="color:#070;font-weight:bold">&gt;</span>\n<span style="background-color:hsla(0,0%,0%,0.07);color:black">  <span style="color:#080;font-weight:bold">var</span> uservoiceOptions = {\n    <span style="color:#606">key</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">\'</span><span style="color:#D20">culturesmith</span><span style="color:#710">\'</span></span>,',
+      '<span style="color:#070;font-weight:bold">&gt;</span>\n<span style="background-color:hsla(0,0%,0%,0.07);color:black">  <span style="color:#080;font-weight:bold">var</span> uservoiceOptions = {\n    <span style="color:#606">key</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">\'</span><span style="color:#D20">example.com</span><span style="color:#710">\'</span></span>,',
     );
   });
 
@@ -85,7 +85,7 @@ describe("highlighter seams H2: script-body JS tokens (the Classic Layout oracle
     // bare, `function` re-arms function-expected and the next ident gets
     // the .function span (java_script.rb:115-132's refinement chain)
     const out = scanHtml(
-      '<script type="text/javascript">\n  var uservoiceOptions = {\n    key: \'culturesmith\',\n    showTab: true\n  };\n  function _loadUserVoice() {\n    var s = document.createElement(\'script\');\n  };\n</script>',
+      '<script type="text/javascript">\n  var uservoiceOptions = {\n    key: \'example.com\',\n    showTab: true\n  };\n  function _loadUserVoice() {\n    var s = document.createElement(\'script\');\n  };\n</script>',
     );
     expect(out).toContain(
       '<span style="color:#606">showTab</span>: <span style="color:#069">true</span>\n  };\n  <span style="color:#080;font-weight:bold">function</span> <span style="color:#06B;font-weight:bold">_loadUserVoice</span>() {\n    <span style="color:#080;font-weight:bold">var</span> s = document.createElement(<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">\'</span><span style="color:#D20">script</span><span style="color:#710">\'</span></span>);',

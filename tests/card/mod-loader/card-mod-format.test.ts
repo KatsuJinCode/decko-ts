@@ -259,7 +259,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // `Card::Env.reset`), where origin is "". So the Ruby-true form HERE
     // is the rooted path. The page-lane counterpart is pinned separately
     // below; both shapes are in the frozen record for the same mark
-    // (`/User` vs `https://culturesmith.com/User`, card 21792).
+    // (`/User` vs `https://example.com/User`, card 21792).
     // mm-roleviews 2026-09-30 had moved this value to the absolute
     // URL under the "graded surface is the page corpus" adjudication;
     // that adjudication could not express the other lane's bytes, which
@@ -272,24 +272,24 @@ describe("card-mod-format through the mod loader (A/B)", () => {
   it("WITH the mod: :url renders the origin-absolute card_url on the PAGE lane", async () => {
     const s = storage!;
     // The other half of the same seam. The page capture sets
-    // `Cardio.config.deck_origin = "https://culturesmith.com"`
+    // `Cardio.config.deck_origin = "https://example.com"`
     // (capture-dual-lane-page-and-view.rb:343, restored at :348), so
     // every page render sees a non-empty origin and the same helper
     // returns the absolute URL. runWithPageConfig is exactly the scope
     // page.ts:141 wraps renderPageBytes in, so this is the surface the
     // 6588 page-lane oracle rows pin (`decko.rootUrl=
-    // 'https://culturesmith.com/'`; `<a href="https://culturesmith.com/
+    // 'https://example.com/'`; `<a href="https://example.com/
     // User">` on card 21792).
     expect(
       await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url")),
-    ).toBe("https://culturesmith.com/Oracle_Format_Probe");
+    ).toBe("https://example.com/Oracle_Format_Probe");
   });
 
   it("WITH the mod: :id_url renders the view-lane id-mark card_url (base.rb:29)", async () => {
     const s = storage!;
     // Ruby-exact card_url form (env/location.rb:19-21, card_path
     // location.rb:6-16): `/~<id>` with the origin absent,
-    // `https://culturesmith.com/~<id>` with it present. Surface-scoped
+    // `https://example.com/~<id>` with it present. Surface-scoped
     // like the sibling :url above — this render() is the view-function
     // lane, so origin is "". The former bare ~200 was the pre-card_url
     // divergence (strand-fold receipt limitation 4), closed by the
@@ -302,7 +302,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     const s = storage!;
     expect(
       await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "id_url")),
-    ).toBe("https://culturesmith.com/~200");
+    ).toBe("https://example.com/~200");
   });
 
   it("WITH the mod: :id_url renders blank for an unknown card (no id)", async () => {
@@ -360,7 +360,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(
       await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url_link")),
     ).toBe(
-      '<a target="_blank" class="external-link" href="https://culturesmith.com/Oracle_Format_Probe">https://culturesmith.com/Oracle_Format_Probe</a>',
+      '<a target="_blank" class="external-link" href="https://example.com/Oracle_Format_Probe">https://example.com/Oracle_Format_Probe</a>',
     );
   });
 

@@ -12,7 +12,7 @@
 //
 // The page-mechanism-census found this defect in 20 of the 346 clean-state
 // sampled pages (census §3 mechanism #5 "double-escape"): the engine emits
-// `data-card-name="Paula Craig - I&amp;#39;m Staying Inside"` where the
+// `data-card-name="Sample Card 183 - I&amp;#39;m Staying Inside"` where the
 // oracle emits `data-card-name="Paula Craig - I&#39;m Staying Inside"`
 // (single-escape). The `&amp;` is the double-escape artefact: callers pass
 // h(name.s) — already `&#39;` — and emitAttrs then re-escapes `&` to

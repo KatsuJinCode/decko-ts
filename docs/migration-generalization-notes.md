@@ -161,12 +161,12 @@ matches. Per-row spot at ids 1, 2, 100, 1000, 49829: source row ==
 target row (all columns). `name IS NULL OR empty`: source 20 / target 20
 (exact match).
 
-## What stayed SourceDeck-specific
+## What stayed the reference deck-specific
 
 Zero things. The generalization replaces the mysqldump parser (which was
-already proven on the SourceDeck 1.2 GB dump) but the mysqldump CLI
+already proven on the reference deck 1.2 GB dump) but the mysqldump CLI
 remains — it is one entry point that uses the same downstream pipeline.
-No SourceDeck-specific code path was carried into the generalized
+No the reference deck-specific code path was carried into the generalized
 importer: schema mapping, settings inventory, name reconstruction,
 round-trip report, and determinism proof are pure generic logic.
 

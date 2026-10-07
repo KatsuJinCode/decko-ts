@@ -21,7 +21,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app of the MAIN checkout):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-cwinput/tools/oracle/carrierwave-input-half-probe-outputter.rb
+#     REPO_ROOT//tools/oracle/carrierwave-input-half-probe-outputter.rb
 
 require "json"
 require "digest"

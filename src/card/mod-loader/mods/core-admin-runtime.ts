@@ -701,7 +701,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  - a headless engine has no gem filesystem, so the groups are
  *    transcribed from the DECK'S OWN RENDERED TRUTH — the `<h3>Styles</h3>`
  *    / `<h3>Scripts</h3>` sections of the 28 `mod: *` page rows in the
- *    pass-15 page-lane yardstick — the same oracle-pinned-table pattern as
+ *    a work item page-lane yardstick — the same oracle-pinned-table pattern as
  *    MOD_BAR_RIGHT_ASSETS below, and the same "expectation = the oracle
  *    bytes, never the reverse" rule the bootswatch lane applied.
  *  - CROSS-CHECK: every group is reproduced by the installed gem trees'
@@ -722,7 +722,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  undefined on every lookup: measured on the `mod: defaults` page, the
  *  nested `mod: ace editor` / `api key` / `bar and box` bars rendered an
  *  EMPTY bar-right where the oracle shows `configurations, scripts` /
- *  `styles` / `scripts, styles` (pass-15 dump, 3 of the 26 bar-right rows
+ *  `styles` / `scripts, styles` (a work item dump, 3 of the 26 bar-right rows
  *  on that one page), and their own pages dropped the Styles/Scripts
  *  sections. The other 29 mods are unaffected — no other gem stem contains
  *  an underscore or a space. */
@@ -909,7 +909,7 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
   // filenames exist nowhere in the installed gem set nor in the decko
   // distribution (archive/decko-fork-study/decko/mod: 32 mod dirs, none of
   // them shades). Adjudicated 2026-10-04; evidence and the superseded
-  // assertion: tmp/wrong-goal-hunt/shades-adjudication-lane.md.
+  // assertion: an internal work log
   style: {
     styles: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
   },

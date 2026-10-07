@@ -32,7 +32,7 @@
 //                      render_core
 //                    end
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 // every `render!` is independently rescued — card/lib/card/format/render.rb
 // :7-14 and :96-100 (`wrap_and_render ... rescue StandardError => e;
 // rescue_view e, view`), reached from a view body's `render_core` /

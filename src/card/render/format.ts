@@ -1619,7 +1619,7 @@ export class RenderFormat {
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
     //     gate renders "" for Anonymous - the plain-card shape (corpus
     //     10488 `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: culturesmith.com/Steven_Goldin+Menu
+    //     re-proven LIVE 2026-10-03: example.com/Steven_Goldin+Menu
     //     ?view=content|open carry zero denial spans, stored content still
     //     embeds the blank nest).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
@@ -1632,7 +1632,7 @@ export class RenderFormat {
     //     (corpus 636 `Menu+*right+*default`: is_template? wraps :core in
     //     nest_mode :template, modal_nest_view substitutes :template_nest,
     //     template_nest.rb:2 `unknown: true`). Re-proven LIVE 2026-10-03:
-    //     culturesmith.com/Menu+*right+*default?view=content renders the
+    //     example.com/Menu+*right+*default?view=content renders the
     //     span exactly at the blank-nest position.
     //
     // The earlier "blank renders the nil-card empty result" branch (and its
@@ -1933,7 +1933,7 @@ export class RenderFormat {
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
       // *structure rule; fetch.ts:388-395 sets dbContent = the rule
       // template). Wiping it here rendered every structured virtual nest
-      // (the pass-15 class's BWjournal +Body titled slot) with an empty
+      // (the a work item class's BWjournal +Body titled slot) with an empty
       // body — the seven mini_bar children of Body+*right+*structure
       // vanished with the template. A genuine new-card emulation carries
       // dbContent "" so this keeps byte-identity for it too. Toggle-typed
@@ -2148,7 +2148,7 @@ export class RenderFormat {
     // 26-28) and template = the *default rule card for a nest-miss
     // (templating.rb new_card_template — no *structure rule governs here,
     // else the fetch-level virtual resolution would have produced the card
-    // and this builder would not run). The pass-15 class pins the applied
+    // and this builder would not run). The a work item class pins the applied
     // form: the oracle's associative_inquiry-discussion-titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
     // verbatim. (The Round-9 note below — "the *default CONTENT is not
@@ -2374,7 +2374,7 @@ export class RenderFormat {
    * (card_path, location.rb:6-16, prefixes the site root when `rel` is
    * not already rooted). Modeling BOTH halves here is what makes the
    * surface seam load-bearing: the same helper yields `/User` on the
-   * view-function lane and `https://culturesmith.com/User` on the served
+   * view-function lane and `https://example.com/User` on the served
    * page, which is exactly what the frozen record pins on both lanes.
    */
   cardUrl(rel: string): string {
@@ -2511,8 +2511,8 @@ export class RenderFormat {
     // chunks); :nest_only = [Nest] (nests only).
     // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
     // oracle leaves every bare URL inside the highlighted output verbatim
-    // (0 bare-URL autolinks in the entire pass-15 page-lane oracle).
-    // MERGE-PASS-18 composition: the compile-engines chunk-list dispatch
+    // (0 bare-URL autolinks in the entire a work item page-lane oracle).
+    // MERGE-a work item composition: the compile-engines chunk-list dispatch
     // kept (code-file chunk lists never run the URI autolink pass), with
     // bar-slots V4's context arg threaded through both expansion arms so
     // the wikilink resolution carries this card's name context everywhere
@@ -3100,7 +3100,7 @@ export class RenderFormat {
    *  options+*right+*default is a junction — never simple — and keeps its
    *  rule name).
    *
-   *  Merge note (pass-18): both merge parents landed the SAME three codenames —
+   *  Merge note (a work item): both merge parents landed the SAME three codenames —
    *  this Z10 table (keyed on the resolved name's codename, here) and
    *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
    *  codename, consulted first at the view layer) carry identical values
@@ -3484,7 +3484,7 @@ export interface RenderEngineLike {
    *  *default rule card's db_content for a nest-miss new card
    *  (default_content = template&.db_content, mod/core set/all/content.rb:
    *  26-28). The SAME rule newCardDefaultType reads the type from.
-   *  p20-nest-selection: the pass-15 class pins the applied form — the
+   *  p20-nest-selection: the a work item class pins the applied form — the
    *  oracle's +discussion titled body is `discussion+*right+*default`'s
    *  `<p> </p>` x2 verbatim. Optional; engines without it keep the
    *  new-child dbContent "". */
@@ -3559,7 +3559,7 @@ export interface RenderEngineLike {
    *  production config the page capture applies,
    *  capture-dual-lane-page-and-view.rb:343) and "" otherwise (railtie
    *  default nil + a requestless runner). `card_url` interpolates it, so
-   *  this is what decides `/User` vs `https://culturesmith.com/User` for
+   *  this is what decides `/User` vs `https://example.com/User` for
    *  the :url / :id_url / :url_link views. See RenderFormat.envOrigin
    *  and render/deck-origin.ts for the full mechanism.
    *  Optional: engines without it take the requestless fallback "". */
@@ -3577,7 +3577,7 @@ export interface RenderEngineLike {
   canConfigure?(card: RenderCard): boolean | undefined;
   /** The deck's CDN/asset host for carrierwave cloud images
    *  (A-30): the endpoint live serves file URLs from —
-   *  e.g. `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`.
+   *  e.g. `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`.
    *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
    *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
@@ -3681,7 +3681,7 @@ export interface SettingClassWithRules {
  *  pins the opposite for a List-typed `+Articles` under Research
  *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
  *  createable -> "" for the anonymous capture session): the nest emits
- *  NOTHING — the pass-15 class's 10 phantom `+Articles` open slots. */
+ *  NOTHING — the a work item class's 10 phantom `+Articles` open slots. */
 interface UnknownViewDecl {
   view: string;
   /** true renders the requested view; a string names the substituted view. */
@@ -3698,7 +3698,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   //   end
   // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
   // +discussion renders its requested titled view with the *default rule's
-  // content body (the pass-15 class's 19 Project pages; oracle slot
+  // content body (the a work item class's 19 Project pages; oracle slot
   // associative_inquiry-discussion-titled-view carries show:[titled,
   // comment_box] and body <p> </p> x2 = discussion+*right+*default's
   // db_content). The comment_box show flip itself is already open-coded in
@@ -3739,7 +3739,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // view (permission.rb:38-40) and the denial check still runs; the new
   // card's read verdict denies (BasicCs+*type+*read = "Anyone Signed In",
   // Anonymous denied) and the nest renders the 76-byte quiet denial span.
-  // LIVE-PROVEN 2026-10-03: culturesmith.com/Cardtype+*type+*guide
+  // LIVE-PROVEN 2026-10-03: example.com/Cardtype+*type+*guide
   // ?view=content|open render the span at "click its ellipses icon (...)"
   // in both the frozen capture and today's live bytes.
   { view: "board_link", config: true },
@@ -4322,7 +4322,7 @@ export function expandContentLinks(
       // html_escape): authored `&amp;` doubles to `&amp;amp;` there and a
       // raw `&` escapes once - the Montessori exemplar's exact split. An
       // h() on the label (the earlier code) double-escaped every entity
-      // in the visible anchor text (pass-15 "double-escape" class).
+      // in the visible anchor text (a work item "double-escape" class).
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the

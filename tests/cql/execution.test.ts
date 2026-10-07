@@ -720,7 +720,7 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
 });
 
 describe("deferred keys surface honestly at execution time", () => {
-  // Re-pinned by the pass-17 integration (lane-cql-found-by): the wave-2
+  // Re-pinned by the a work item integration (lane-cql-found-by): the wave-2
   // deferral is gone — string found_by values resolve via
   // resolveFoundByConditions. The unsupported hash-value shape refuses
   // loudly at execution (execute.ts), never a silent empty.

@@ -1,6 +1,6 @@
 # admin-compose — the core-mod composition line (lane receipt)
 
-Lane `lane-admincompose` (worktree `C:/localProjects/decko-ts-lane-admincompose`).
+Lane `lane-admincompose` (worktree `REPO_ROOT/`).
 Carries the composition that docs/admin-surface.md's merge note scoped: the
 core mod manifest, landed by lane-admin for its admin surface, wired into the
 composed default deck. Base for every number below: **pristine pass13-int

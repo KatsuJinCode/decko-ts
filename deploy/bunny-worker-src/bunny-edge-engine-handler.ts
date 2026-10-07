@@ -25,7 +25,7 @@
 // replaces is superseded wholesale; its capabilities that the carried core
 // lacked were PORTED INTO the carried core (the hardened /api/card decode,
 // the ?view= query arm, the mapRenderError 404 family) — recorded per
-// resolution in tmp/wrong-goal-hunt/deploy-union-lane.md.
+// resolution in an internal work log
 //
 // THE edge-session-cache-stack CARRY LANE (2026-10-03, the operator-named
 // strict-superset add at THIS call site): the deploy lineage's cache/session
@@ -47,7 +47,7 @@
 //   postures, none implies another. Unarmed + cookieless + read-verb is the
 //   byte-identical union path: a Cookie header scan finds nothing,
 //   serveWithEdgeCache calls render() directly, no cache contact, no extra
-//   headers. Receipt: tmp/wrong-goal-hunt/edge-stack-carry-lane.md.
+//   headers. Receipt: an internal work log
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {

@@ -133,7 +133,7 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // the SAME prelude batch (9 -> 10 base): card-mod-format's head
     // views read deck-level setting cards no reference closure can
     // reach. Round trips - the billed axis - are unchanged.
-    // 2026-09-30 pass-20 integration re-pin (10 -> 12 base): the p20-email
+    // 2026-09-30 a work item integration re-pin (10 -> 12 base): the p20-email
     // port's junction-priming prelude batch (the email field-anchor prelude
     // statement + the +*test context junction priming — one batch) adds two
     // statements at every depth. Measured 12 at depth 1 at BOTH the email

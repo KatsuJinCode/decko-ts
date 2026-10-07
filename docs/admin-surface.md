@@ -1,6 +1,6 @@
 # admin-surface.md — the core mod's admin surface report
 
-Worktree `C:\localProjects\decko-ts-lane-admin`, branch `lane-admin`, one
+Worktree `REPO_ROOT\`, branch `lane-admin`, one
 commit off pass12-int `0722964` (merge pass 12 — the newest integration;
 carries lane-mod-a, lane-mod-b, lane-defaultlayout). node_modules junctioned
 to the main repo (`cmd /c mklink /J`). No push, no merge, no deploy, no
@@ -14,7 +14,7 @@ Scope: "port the core mod's admin surface: its 13 missing views and begin the
 save events unported"). All of it landed:
 
 - **The 13 view names = 18 view registrations** across three set files.
-  The recount (tmp/wrong-goal-hunt/mod-coverage-recount-raw.json, `core`
+  The recount (an internal work log, `core`
   entry: 13 htmlViewNames) counts DISTINCT names; the gem declares 18 views
   under them — set/self/admin.rb (:core, :warning), set/self/mod.rb
   (:cardtypes, :settings, :tasks, :configurations, :roles), set/type/mod.rb
@@ -109,7 +109,7 @@ Two defects the batch's own tests caught during the green run (not assumed):
 - `npx vitest run tests/card/render --maxWorkers=2 --no-file-parallelism`
     lane : 28 failed | 328 passed (356), 18 files failed of 58
     base  : 28 failed | 328 passed (356), 18 files failed of 58
-    (base worktree C:/localProjects/decko-ts-lane-admin-base, detached at
+    (base worktree REPO_ROOT/, detached at
     0722964 = the branch's parent, own node_modules junction)
     sorted failure-set diff: NEW_FAILURES_VS_BASE=0 FIXED_VS_BASE=0
 - `npx vitest run tests/card/mod-loader --maxWorkers=2 --no-file-parallelism`
@@ -168,7 +168,7 @@ Gate artifacts: tmp-gate-{render,modloader}-{lane,base}-full.log +
 - The lane's own collision audit: no seed-table view collides with the 13
   names except :core (chain-scoped, see #1); the render + mod-loader
   failure sets are untouched.
-- tmp/wrong-goal-hunt/mod-views-a-lane.md's cross-mod seam note stands:
+- an internal work log's cross-mod seam note stands:
   box_bottom's dependencies (card-mod-history) are unaffected by this lane.
 
 ## Files

@@ -6,7 +6,7 @@
 // WHAT THIS IS, AND WHY IT EXISTS
 //   The whole-site grade boots one `npx vitest run` child PER PHASE (24
 //   phases for the 48-shard set) and the driver runs 2 of them at a time, so
-//   the 137.6 worker-minutes of render compute the pass-19 log records become
+//   the 137.6 worker-minutes of render compute the a work item log records become
 //   69.1 minutes of wall clock on a 28-core machine
 //   (grade-hours-autopsy-lane.md, Mechanism table). Two of the costs are
 //   structural rather than fundamental:
@@ -556,7 +556,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     pathToFileURL(path.join(REPO_ROOT, "src", "card", "render", "views.ts")).href
   );
   const DEPLOYMENT_CLOUD_ASSET_HOST =
-    "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+    "https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com";
   setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
   // The aggregate's OWN directory, which is not necessarily OUT_DIR: a pooled

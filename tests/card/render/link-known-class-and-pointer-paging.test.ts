@@ -2,7 +2,7 @@
 //
 // V4 — wikilink anchors must classify known/wanted from LIVE card existence
 // (links.rb:140-144 add_known_or_wanted_class -> Card.known?, a live
-// fetch), not from prepared-map luck. The pass-15 view-fail dump pins the
+// fetch), not from prepared-map luck. The a work item view-fail dump pins the
 // class both ways:
 //
 // - Oracle KNOWN where the engine emitted wanted-card for EXISTING cards:
@@ -20,7 +20,7 @@
 // identical in a fresh process and a warm one. The port's defect: the
 // known check reads ONLY the prepared render-card map, so a fresh-process
 // render emits wanted-card for existing cards whose names no {{nest}}
-// reference reaches (the instrument hazard the pass-15 doc measured:
+// reference reaches (the instrument hazard the a work item doc measured:
 // `Aikido Oak Cliff+discussion :open` flips when the map warms).
 //
 // V8 — the pointer core paginates at Ruby's default_limit 20

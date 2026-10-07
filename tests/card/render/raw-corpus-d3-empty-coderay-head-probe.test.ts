@@ -36,12 +36,13 @@ import { RAW_CORPUS_DB, RAW_CORPUS_VIEW_LANE_DIR, createRawStructureSeededStorag
 import { highlight } from "../../../src/card/render/code-highlighting/index.js";
 import { RenderFormat } from "../../../src/card/render/format.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 // The view-lane yardstick shards, resolved from the private raw-corpus leg's
 // own contract module beside RAW_CORPUS_DB — the same leg, same capture. This
 // literal used to name the per-lane worktree
-// `decko-ts-lane-fix-d3-empty-coderay-head`, which no longer exists on this
+// ``, which no longer exists on this
 // machine; the sibling d8 probe carried its own copy of the same dead path.
 const SHARD_DIR = RAW_CORPUS_VIEW_LANE_DIR;
 
@@ -110,7 +111,7 @@ describe("D3 empty-CodeRay head family (*all+*head / PCTS+*self+*head :core)", (
     { timeout: 1_800_000 },
     async (ctx) => {
       if (process.env.D3_EMPTY_CODERAY_PROBE !== "1") {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-d3-empty-coderay-head-probe.test.ts", "not (process.env.D3_EMPTY_CODERAY_PROBE !== \"1\")");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

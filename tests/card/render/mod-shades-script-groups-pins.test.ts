@@ -3,7 +3,7 @@
 // GRADED CORPUS (the yardstick this engine is graded against:
 // tmp/raw-ground-truth/expected-v2/capture-manifest.json — "POST-HOC MANIFEST
 // for the frozen pre-M1 yardstick", corpus sha256 739c470e24f88967448fba25f6461
-// 70776f52cc4a2634b4fe0817a1031b71eb1, copied down the pass-12/13 archive
+// 70776f52cc4a2634b4fe0817a1031b71eb1, copied down the a work item/13 archive
 // chain). The live-site CSS id the capture carries is 1786554352 = 2026-08-12.
 //
 //   page-lane/recapture-raw-shard-000043.jsonl, id 49308 "mod: shades",
@@ -49,13 +49,13 @@
 //
 // WHAT THIS FILE PREVIOUSLY PINNED, AND WHY IT LOST (ERRATA — recorded, not
 // rewritten; the superseded assertion is quoted in the receipt
-// tmp/wrong-goal-hunt/shades-adjudication-lane.md).
+// an internal work log).
 // It pinned a four-file local group (decko_logo.js, decko_org.js.coffee,
 // snap.js, snap_svg.js) and cited
 // tmp/serializer-followup/probe-green5/expected--mod_shades__page.html as
 // "the graded expected-v2 corpus". That file is NOT the graded corpus. It
 // is a LIVE recapture of the production site taken 2026-09-03, whose
-// `decko.cssPath` is culturesmith-production-storage.fra1.cdn
+// `decko.cssPath` is example.com-production-storage.fra1.cdn
 // .digitaloceanspaces.com/files/45514/1790384218.css — DigitalOcean
 // infrastructure, CSS id 1790384218 = 2026-09-26, i.e. 44.3 days AFTER the
 // graded yardstick's 2026-08-12 s3.amazonaws.com capture. The sibling
@@ -66,7 +66,7 @@
 // offset 32, where the four-file list begins. The site changed between the
 // two captures; the frozen yardstick did not. Those four filenames also
 // exist nowhere in the installed Ruby gem set or in the decko distribution
-// (C:/localProjects/archive/decko-fork-study/decko/mod has 32 mod dirs,
+// (REPO_ROOT/archive/decko-fork-study/decko/mod has 32 mod dirs,
 // none of them shades). The four-file group is a live-server mutation the
 // yardstick never recorded, not an engine regression.
 //

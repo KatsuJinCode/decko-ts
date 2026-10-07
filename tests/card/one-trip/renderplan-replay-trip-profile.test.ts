@@ -50,8 +50,16 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
+
+/**
+ * These suites run against a local mirror copy of the reference deck, which
+ * is not redistributed in this fork. Without it they cannot run at all, so
+ * they skip (and say so) rather than fail on missing data.
+ */
+const hasMirror = mirrorAvailable();
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const PAGE = "Home";
 /** The trip census's floor: 1 boot batch + 2 seat + 1 replay batch. The
@@ -96,7 +104,7 @@ const RENDER_PLANS_DDL =
   " params_json TEXT NOT NULL," +
   " PRIMARY KEY (page_id, seq))";
 
-describe("renderplan replay: the cold render's trip profile is plan-driven", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/renderplan-replay-trip-profile.test.ts", "hasMirror")("renderplan replay: the cold render's trip profile is plan-driven", () => {
   let dir = "";
   let inlineDbPath = "";
   const savedEnv = {
@@ -121,7 +129,6 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
   it(
     `replays ${PAGE} to the 5-trip floor, zero covered-family live reads, bytes equal to OFF`,
     async () => {
-      expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
       dir = scratchDir("renderplan-replay-pin-");
       inlineDbPath = join(dir, "deck-inline-materialized.sqlite3");
 

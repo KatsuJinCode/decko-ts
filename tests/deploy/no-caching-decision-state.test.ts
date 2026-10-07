@@ -30,6 +30,7 @@ import { handleEngineRequest, type Deck } from "../../deploy/bunny-worker-src/bu
 import { ActorRenderEngines } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
 import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { applyServedEnvironmentDeltas } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
+import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const MIRROR = join(process.cwd(), "benchmarks", "one-trip-render", "deck-analyzed.sqlite3");
 const GATE_PAGES = join(process.cwd(), "tmp", "gate", "pages.txt");
@@ -86,7 +87,7 @@ async function get(env: Env, path: string, anonymousLive: boolean): Promise<{ st
 const live = (env: Env, page: string) => get(env, `/${encodeURIComponent(page.replace(/ /g, "_"))}`, true);
 const deckView = (env: Env, page: string) => get(env, `/${encodeURIComponent(page.replace(/ /g, "_"))}/titled`, false);
 
-describe.skipIf(!HAVE_MIRROR)("no decision state outlives a request", () => {
+describeOrSkipLoud(!HAVE_MIRROR, "tests/deploy/no-caching-decision-state.test.ts", "HAVE_MIRROR")("no decision state outlives a request", () => {
   let env: Env | undefined;
   beforeAll(async () => {
     env = await openEnv();
@@ -224,7 +225,7 @@ describe.skipIf(!HAVE_MIRROR)("no decision state outlives a request", () => {
   }, 120_000);
 });
 
-describe.skipIf(!HAVE_MIRROR || !existsSync(GATE_PAGES))("marker-edit proof across the 40 gate pages", () => {
+describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-caching-decision-state.test.ts", "not (!HAVE_MIRROR || !existsSync(GATE_PAGES))")("marker-edit proof across the 40 gate pages", () => {
   let env: Env | undefined;
   beforeAll(async () => {
     env = await openEnv();

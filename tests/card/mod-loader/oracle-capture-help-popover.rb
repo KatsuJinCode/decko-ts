@@ -4,7 +4,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-help-popover.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-help-popover.rb
 #
 # Records to fixtures/captured/help-popover.json:
 # 1. the set-module view registration Card::Set::Right::Help::HtmlFormat

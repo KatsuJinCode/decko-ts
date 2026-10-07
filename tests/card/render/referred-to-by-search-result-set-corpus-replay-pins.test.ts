@@ -26,7 +26,7 @@
 // verdict — and the corpus stores the left's name with spaces. The capture's
 // permission material and name inflection post-date/pre-date the corpus
 // generation; the pre-scrub capture-era deck is not on disk to confirm
-// (checked decko-ts-oracle-app-2026-10-03 development.sqlite3: a different
+// (checked  development.sqlite3: a different
 // generation, zero reference rows). The pin asserts the engine's
 // corpus-faithful shape for that bar so any future walk change that denies
 // it (or renames it) fails here.
@@ -45,6 +45,7 @@ import {
   createRawStructureSeededStorage,
 } from "./raw-corpus-seeding.js";
 import { renderPageBytes } from "../../../src/card/render/page.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -131,7 +132,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
     { timeout: 240_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/referred-to-by-search-result-set-corpus-replay-pins.test.ts", "REPLAY_REQUESTED");
         return;
       }
       // The graded environment's live deployment constants (the probe
@@ -143,7 +144,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
         mainStylesheetRevisionDigits: "1790384218",
         footerDeckoVersion: "0.19.1",
         recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
-        deckoRootUrl: "https://culturesmith.com/",
+        deckoRootUrl: "https://example.com/",
       });
 
       const db = new Database(RAW_CORPUS_DB, { readonly: true });

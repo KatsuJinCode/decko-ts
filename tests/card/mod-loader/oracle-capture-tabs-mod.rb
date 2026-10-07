@@ -2,8 +2,8 @@
 # port (decko-ts mod-port stream, card-mod-tabs-0.20.0).
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development RUBY_DLL_PATH=C:/localProjects/decko-ts/tools/oracle/mysql-client-scratch/lib \
-#     bundle exec decko runner C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-tabs-mod.rb
+#   RAILS_ENV=development RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
+#     bundle exec decko runner REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-tabs-mod.rb
 #
 # Records to fixtures/captured/tabs-mod-loader.json:
 # 1. the set-module view registrations card-mod-tabs contributed

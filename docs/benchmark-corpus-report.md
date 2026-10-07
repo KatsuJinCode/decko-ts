@@ -7,7 +7,7 @@ own environment block). Date of all measurements: 2026-09-19.
 
 ## 1. The sanitized benchmark corpus
 
-- Source: `source-deck-migration/incoming/source-deck-2026-09-07.sql`
+- Source: `a private production dump (not distributed)`
   (1.2 GB mysqldump), parsed in one linear pass anchored on
   `INSERT INTO ... VALUES` line boundaries (no chunk-wide backtracking
   regexes; per-field matching is the quote/backslash-aware scanner pattern

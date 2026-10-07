@@ -1,5 +1,5 @@
 // raw-corpus-escape-family-page-sweep.test.ts -- the escape-family suite's
-// sweep: renders the pass-15 triage's 82 escape/encoding pages (the four
+// sweep: renders the a work item triage's 82 escape/encoding pages (the four
 // primary classes pinned in raw-corpus-escape-family-pages.ts) through the
 // engine's REAL page renderer over the RAW ground-truth corpus, and compares
 // byte-for-byte against the oracle's captured page HTML.
@@ -31,6 +31,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { ESCAPE_FAMILY_PAGE_SUBSET } from "./raw-corpus-escape-family-pages.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -77,7 +78,7 @@ describe("raw-corpus escape-family sweep (82 pages, four classes)", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!SWEEP_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-escape-family-page-sweep.test.ts", "SWEEP_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

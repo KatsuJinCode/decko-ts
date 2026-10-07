@@ -6,7 +6,7 @@
 #
 # Run:
 #   cd tools/oracle/decko-oracle-app && RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-admin/tests/card/mod-loader/oracle-probe-core-admin-facts.rb
+#     REPO_ROOT//tests/card/mod-loader/oracle-probe-core-admin-facts.rb
 
 require "json"
 

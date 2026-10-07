@@ -24,7 +24,7 @@
 #    capture. The capture performs ZERO card writes.
 #
 # Targets (all existing cards; ids verified by probes 1-4 recorded in
-# C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/unpinned-view-captures.md):
+# WORK_DIR/unpinned-view-captures.md):
 #   basic_note  "Oracle Basics" id 605 RichText (the edit2 target)
 #   deck_level  "Home"          id 521 RichText (the edit2 target)
 #   decko_logo  "Decko logo"    id 291 Image    (the deck's Image card)
@@ -47,7 +47,7 @@ require "json"
 
 REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "bar-box-format-views.json")
-PIN_DIR   = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-unpinned-views"
+PIN_DIR   = "CAPTURE_DIR"
 
 ACTORS = %w[bot sara anonymous].freeze
 

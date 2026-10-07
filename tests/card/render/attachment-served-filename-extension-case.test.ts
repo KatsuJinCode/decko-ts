@@ -1,7 +1,7 @@
 // attachment-served-filename-extension-case.test.ts -- the cd-smalls suite's
-// RED pin for the attachment-filename-case class (7 pages, pass-15 content-div
-// subclass "attachment-filename-case", receipt brandonDojoTech
-// tmp/wrong-goal-hunt/cd-smalls-lane.md):
+// RED pin for the attachment-filename-case class (7 pages, a work item content-div
+// subclass "attachment-filename-case", receipt REPO_DIR
+// an internal work log):
 //
 //   The 7 pages' ONLY diff region is an img src extension case: the engine
 //   serves ".../8871-medium.JPG" where the oracle serves

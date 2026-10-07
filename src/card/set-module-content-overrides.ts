@@ -3,7 +3,7 @@
 // from SET-MODULE CODE rather than from its DB row.
 //
 // Ruby mechanism (set-override-fidelity lane, 2026-10-03 relaunch — full
-// derivation with file:line in brandonDojoTech/tmp/wrong-goal-hunt/
+// derivation with file:line in WORK_DIR/
 // set-override-fidelity-lane.md, "[relaunch t1] RUBY DERIVATION COMPLETE"):
 //
 // 1. Base: Card::Content::All#content = `structured_content || standard_content`

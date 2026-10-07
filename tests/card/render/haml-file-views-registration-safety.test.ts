@@ -28,7 +28,7 @@
 // the engine's main content renderer for EVERY card -
 // ViewRegistrationTable#chainFor (src/card/mod-loader/mod-registrar.ts) falls
 // back to all registering set modules when a card's chain does not match
-// (tmp/wrong-goal-hunt/mod-views-a-lane.md, batch 3). `:core` is the most
+// (an internal work log, batch 3). `:core` is the most
 // dangerous name in the engine, so the last block pins the invariant: a
 // plain card's :core must not change when these views exist in the deck.
 

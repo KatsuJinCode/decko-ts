@@ -62,7 +62,7 @@ const OUT = path.isAbsolute(argValue("--out", ""))
   : path.join(REPO, argValue("--out", "tmp/harness-corpus-repair/selftest-staging-graded-truth.json"));
 const CAPTURE =
   argValue("--capture", "") ||
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
+  "WORK_DIR/p21-probe-results/nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
 const VIEW_LANE_DIR = path.join(REPO, "tmp", "raw-ground-truth", "expected-v2", "view-lane");
 
 // ---- the capture records: name -> record, from the expected-v2 view-lane shards ----
@@ -225,7 +225,7 @@ const RECORD_FIELDS = ["name", "key", "type", "type_code", "codename", "content"
 // The extraction rule + its calibration are re-verified here so this check does
 // not depend on the extractor's in-memory state.
 const LIVE_RAW_VIEW_DIR =
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe";
+  "WORK_DIR/m8-siblings-litera-live-probe";
 const LIVE_RAW_WRAPPER_START = '<div id="main">';
 const LIVE_RAW_WRAPPER_END = "</div><script>";
 function extractLiveRawContent(body) {
@@ -237,8 +237,8 @@ function extractLiveRawContent(body) {
   return body.slice(from, end);
 }
 const LIVE_CALIBRATION = [
-  { name: "cerulean skin", file: "live-raw-view-cerulean-skin-culturesmith-2026-10-03.html" },
-  { name: "journal skin", file: "live-raw-view-journal-skin-culturesmith-2026-10-03.html" },
+  { name: "cerulean skin", file: "live-raw-view-cerulean-skin-reference-deck-2026-10-03.html" },
+  { name: "journal skin", file: "live-raw-view-journal-skin-reference-deck-2026-10-03.html" },
 ];
 function liveCaptureRecordFor(prov) {
   if (!prov?.liveCapture) return undefined;

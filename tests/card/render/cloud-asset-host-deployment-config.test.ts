@@ -9,7 +9,7 @@
 //   2. DEPLOYMENT OVERRIDE: setDeploymentCloudAssetHost(SPACES_HOST) flips
 //      every emission site that has no per-engine imageCdnHost to the
 //      DigitalOcean Spaces form live serves
-//      (`https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces
+//      (`https://example.com-production-storage.fra1.cdn.digitaloceanspaces
 //      .com/files/<id>/<leaf>` — live-check-71: DO 34/34 pages, s3 = 0
 //      occurrences). The per-engine imageCdnHost keeps precedence where a
 //      caller passes it, so the edge deployment's existing per-engine
@@ -27,7 +27,7 @@ import {
 import { cloudAttachmentUrl } from "../../../src/card/render/head-views.js";
 
 const SPACES_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com";
 const DO_PREFIX = `${SPACES_HOST}/files/`;
 const FOG_PREFIX = "http://s3.amazonaws.com//files/";
 

@@ -21,7 +21,7 @@
 //   It does not prove the whole 48-shard canvas agrees; it proves the two
 //   paths agree on the shard list given. `--files` defaults to shard 0, the
 //   lightest recorded shard, which is also the one that produces a MIXED
-//   verdict (its pass-19 weight is 31.6 s, split from P1's 63.2 s), so the
+//   verdict (its a work item weight is 31.6 s, split from P1's 63.2 s), so the
 //   comparison exercises the failure-classification branches and not only the
 //   all-pass path. Running it over more shards costs one more grade per path
 //   per shard and is the same command with a longer --files list.

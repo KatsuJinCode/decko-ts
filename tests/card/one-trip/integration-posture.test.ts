@@ -36,6 +36,7 @@ import {
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 const REPORT_PATH = fileURLToPath(
@@ -54,7 +55,7 @@ interface PostureMeasurement {
   onBytes: number;
 }
 
-describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/integration-posture.test.ts", "hasMirror")("one-trip wired render path: OFF vs ON postures (trial-deck mirror)", () => {
   let sideDir = "";
   let sidePath = "";
   // The engine decks render through the COMPOSED engine, whose freshness

@@ -7,7 +7,7 @@
 // THE MAPPING (derived from data, never guessed -- census:
 // close-71-lane.md step 3; exactly one prefix form exists on each side):
 //   FROM (frozen):  http://s3.amazonaws.com//files/
-//   TO   (live):    https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/
+//   TO   (live):    https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com/files/
 // Tails (<id>/<name>.<ext>) are carried through unchanged; the replacement
 // is a pure byte-level prefix substitution (it cannot touch line endings,
 // so CRLF-per-line discipline holds by construction).
@@ -61,7 +61,7 @@ const STAGING = path.join(REPO, "tmp", "raw-ground-truth", "expected-v2");
 const VIEW_DIR = path.join(STAGING, "view-lane");
 const PAGE_DIR = path.join(STAGING, "page-lane");
 const CAPTURES = argValue("--captures") ??
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/live-check-71-captures-2026-10-03";
+  "WORK_DIR/live-check-71-captures-2026-10-03";
 const OUT_DIR = path.join(REPO, "fixtures", "corpus-v2", "asset-host-follow-live-close-71");
 const FORWARD_MANIFEST = path.join(OUT_DIR, "asset-host-transform-manifest.json");
 const INVERSE_MANIFEST = path.join(OUT_DIR, "asset-host-transform-inverse-manifest.json");
@@ -71,7 +71,7 @@ const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
 // ---------- the mapping (both directions, exact forms from the census) ----------
 const S3_PREFIX = "http://s3.amazonaws.com//files/";
 const DO_PREFIX =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/";
+  "https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com/files/";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const fail = (msg) => {
@@ -289,7 +289,7 @@ if (MODE === "apply") {
     appliedAt: new Date().toISOString(),
     mapping: { from: S3_PREFIX, to: DO_PREFIX, tails: "carried through unchanged (pure prefix substitution)" },
     groundTruth: {
-      liveCheck: "brandonDojoTech/tmp/wrong-goal-hunt/live-check-71-captures-2026-10-03 (2026-10-03T19:43Z, 71 GETs, 71/71 LIVE-CONFIRMS-RECAPTURED)",
+      liveCheck: "WORK_DIR/live-check-71-captures-2026-10-03 (2026-10-03T19:43Z, 71 GETs, 71/71 LIVE-CONFIRMS-RECAPTURED)",
       validation: "34/34 gen-2 page expectations equal the saved live captures after removing ONLY CF __CF$cv$params tokens + data-slot-id hashes",
     },
     prestate: {

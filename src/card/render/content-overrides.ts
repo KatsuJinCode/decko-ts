@@ -125,7 +125,7 @@ export interface RegisteredContentOverride {
    *  RegisteredSetModule.modName). */
   readonly modName: string;
   readonly fn: ContentFn;
-  /** MERGE-PASS-18 discriminator (compile-engines merge): does the set
+  /** MERGE-a work item discriminator (compile-engines merge): does the set
    *  module's `def content` carry an `assign_type` (the card's TYPE-effect
    *  moves before the type set modules resolve — card-mod-date's
    *  when_created family) or not (the card KEEPS its type, so the

@@ -1,5 +1,5 @@
 // Pin for the deployment follow-live configuration (serializer-follow-live
-// lane) — the graded environment emits the LIVE culturesmith deployment's
+// lane) — the graded environment emits the LIVE example.com deployment's
 // serializer forms + head constants when it sets this config, and the
 // UNSET default stays byte-identical to the frozen-corpus engine.
 //
@@ -76,10 +76,10 @@ describe("deployment follow-live config: frozen default preserved", () => {
     );
     expect(
       applyDeploymentCssRevision(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
     );
     expect(footerDeckoVersion()).toBeUndefined();
     expect(recaptchaSiteKey()).toBeUndefined();
@@ -203,18 +203,18 @@ describe("deployment follow-live config: live head constants", () => {
     setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "1790384218" });
     expect(
       applyDeploymentCssRevision(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
     );
     // the script asset's revision is NOT the stylesheet's — untouched.
     expect(
       applyDeploymentCssRevision(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
     );
     // the fog double-slash form (unset asset host) rewrites the same way.
     expect(
@@ -230,11 +230,11 @@ describe("deployment follow-live config: live head constants", () => {
     setDeploymentFollowLiveConfig({
       footerDeckoVersion: "0.19.1",
       recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
-      deckoRootUrl: "https://culturesmith.com/",
+      deckoRootUrl: "https://example.com/",
     });
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
-    expect(deckoRootUrl()).toBe("https://culturesmith.com/");
+    expect(deckoRootUrl()).toBe("https://example.com/");
   });
 
   it("the deployment default_html_view answers implicit-nest view resolution", () => {

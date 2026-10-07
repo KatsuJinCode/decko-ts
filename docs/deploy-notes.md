@@ -185,10 +185,10 @@ deploy binds no object storage, and there are no file uploads.
 `node deploy/cleanup.mjs` prints the plan (two resources);
 `--yes` executes:
 
-- `npx wrangler delete decko-ts-demo` (the name is a POSITIONAL:
+- `npx wrangler delete ` (the name is a POSITIONAL:
   `wrangler delete [name]` — wrangler 4.135.0 declares no `--name` flag;
   interactive confirmation expected)
-- `npx wrangler d1 delete decko-ts-demo-db --skip-confirmation` (flag
+- `npx wrangler d1 delete  --skip-confirmation` (flag
   verified against the Cloudflare D1 command docs)
 
 That is the complete footprint; nothing else is created by this deploy.

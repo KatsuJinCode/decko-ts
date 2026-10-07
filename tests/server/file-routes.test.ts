@@ -17,7 +17,7 @@
 // Self-contained storage boot (mirrors tests/card/actions/actions-test-storage.ts's
 // pattern but local to tests/server — the actions harness documents a stream
 // boundary and is not imported across it). All fixture content is synthetic
-// (DATA RULE: no real SourceDeck content).
+// (DATA RULE: no real reference-deck content).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, rmSync, mkdtempSync, existsSync } from "node:fs";

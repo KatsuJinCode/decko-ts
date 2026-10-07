@@ -2,14 +2,14 @@
 
 Stream 4, wave 1 (2026-09-19). Ground truth and deliverables:
 
-- **Production truth**: `C:\localProjects\source-deck-migration\incoming\source-deck-2026-09-07.sql` — 1.2 GB mysqldump 10.13 (MySQL 8.0.39 dump of server 8.0.45), host `private-wikirate-production-...digitalocean.com`, database `source-deck`.
+- **Production truth**: a private MySQL 8.0 production dump (1.2 GB, mysqldump 10.13), not distributed.
 - **Engine truth**: installed gems `gems/card-1.110.0` and `decko-0.20.0`.
 - Deliverables: `db/schema.sqlite.sql` (executable port target), `db/schema.mysql-reference.sql` (verbatim extraction), `src/server/schema.ts` (row types + inventory), `tests/server/schema.test.ts` (sync + round-trip proof).
 
 ## Re-derivation recipe (the 1.2 GB dump is never read whole)
 
 ```bash
-D=/c/localProjects/source-deck-migration/incoming/source-deck-2026-09-07.sql
+D=/absolute/path/to/your-deck-dump.sql
 
 # 1. Locate every CREATE TABLE block (all 12 sit in the dump's schema section,
 #    lines 19-1534; the gaps are INSERT data, e.g. card_changes spans 134-1025).
@@ -53,11 +53,11 @@ Row counts: mysqldump carries no live row counts, so exact counts are **n/a** wi
 
 - `card-1.110.0/mod/core/data/schema/` — the engine's schema migrations: create `card_acts`/`card_actions`/`card_changes` (20140822...), `card_virtuals` (20180514...), `delayed_jobs` (20170908...). The base `cards`/`card_references`/`card_revisions` tables predate tracked migrations (the earliest migration `20110511221913` *requires* pre-1.6 installs; older migrations were removed from the gem), so the dump is the only complete record of their final shape — hence dump-as-ground-truth.
 - Later core migrations the dump reflects (and the gem's own `db/schema.rb` does NOT): `cards_trash_index` (20240628...), unique `index_card_virtuals_on_left_id_and_right_id` (20200805...), unique `cards_codename_index` (20241017...). The dump is *newer* than the gem's schema dump; where they disagreed, the dump won.
-- **Warning**: `card-1.110.0/db/schema.rb` is NOT engine truth — it is an ActiveRecord site dump regenerated from some other database (version stamp `2026_09_19_200002`). It contains a legacy `users` table and site-custom `library_*` tables that do not exist in SourceDeck production. Do not derive DDL from it; the core-table columns do match the dump and were used as a cross-check.
+- **Warning**: `card-1.110.0/db/schema.rb` is NOT engine truth — it is an ActiveRecord site dump regenerated from some other database (version stamp `2026_09_19_200002`). It contains a legacy `users` table and site-custom `library_*` tables that do not exist in the reference deck production. Do not derive DDL from it; the core-table columns do match the dump and were used as a cross-check.
 
 ### Excluded from the core DDL
 
-- Nothing from the SourceDeck dump was excluded: it has no site-custom or mod tables.
+- Nothing from the reference deck dump was excluded: it has no site-custom or mod tables.
 - Known mod/extension points (for future waves, listed per the task):
   - `card-mod-delayed_job` — consumes `delayed_jobs` (table itself ships with core).
   - Rails session store — consumes `sessions` (same: base schema, not a mod).

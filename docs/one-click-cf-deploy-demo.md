@@ -170,7 +170,7 @@ The account then rests until the UTC reset — no trickle, no retries.
   `wrangler d1 delete decko-one-click-db` is a decision to be made
   deliberately, planned and gated like any other write, not a casual cleanup.
 - Four pre-existing resources are out of scope for this demo and are neither
-  created nor touched by it: `decko-ts-demo-db` (the partial-import
-  database), worker `decko-ts-demo`, `decko-ts-scale-test-db`, and worker
+  created nor touched by it: `` (the partial-import
+  database), worker ``, `decko-ts-scale-test-db`, and worker
   `decko-ts-scale-test`. This demo uses fresh names
   (`decko-one-click-demo`, `decko-one-click-db`) for exactly that reason.

@@ -3,7 +3,7 @@
 // card/act/action/changes rows against the captured DB state.
 //
 // The oracle capture lives OUTSIDE this repo (machine-local artifact):
-//   C:\localProjects\brandonDojoTech\tmp\wrong-goal-hunt\captures-auth-forms\edit-session\
+//   CAPTURE_DIR\edit-session\
 //   manifest.json = per-step request/params, response status+sha256+bytes,
 //   and the raw act/action/changes rows written after each state change
 //   (the G-series run: probe card "Session Replay Probe G 2026-09-28",
@@ -67,18 +67,19 @@ import { createServer as netCreateServer } from "node:net";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
+import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 const DEFAULT_CAPTURES =
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-auth-forms/edit-session";
+  "CAPTURE_DIR/edit-session";
 const CAPTURES_DIR = process.env.DECKO_TS_EDIT_SESSION_CAPTURES ?? DEFAULT_CAPTURES;
 const MANIFEST_PATH = path.join(CAPTURES_DIR, "manifest.json");
 
 // The oracle app's development.sqlite3 lives at this path IN whichever
 // checkout the oracle app is — tools/oracle/decko-oracle-app/ is in the repo.
 // It used to be spelled as the absolute
-// `C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3`;
+// `REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3`;
 // that checkout still exists on this machine but no longer carries the oracle
 // app (MISSING 2026-10-06), so the default pointed at nothing while reading as
 // a valid default. Resolved relative to this file instead; DECKO_TS_ORACLE_DB
@@ -131,8 +132,7 @@ interface Manifest {
   steps: StepEntry[];
 }
 
-const describeIfFixture =
-  existsSync(MANIFEST_PATH) && existsSync(ORACLE_DB) ? describe : describe.skip;
+const describeIfFixture = describeOrSkipLoud(!(existsSync(MANIFEST_PATH) && existsSync(ORACLE_DB)), "tests/server/edit-session-replay.test.ts", "existsSync(MANIFEST_PATH) && existsSync(ORACLE_DB)");
 
 let manifest: Manifest;
 let server: ChildProcess | null = null;

@@ -44,7 +44,7 @@
 //     callers can distinguish transport failures from server-reported
 //     SQL errors.
 //   - COLD-RENDER RELIABILITY (2026-10-03, measured — see
-//     tmp/wrong-goal-hunt/cold-render-reliability-lane.md). A cold page
+//     an internal work log). A cold page
 //     render on the edge is a LONG SERIAL CHAIN of pipeline POSTs: the
 //     trial edge measured 1,151 HTTP round trips (4.9 MB of database
 //     response) to produce one 76-byte page, and 814 for Home. Wall time

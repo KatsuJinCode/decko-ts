@@ -2,7 +2,7 @@
  * THE DEPLOYED DECK'S INFLECTION TABLE (deck-boot data, not engine defaults).
  *
  * This is the production home of the inflection amendments the deployed deck
- * (the Culturesmith production corpus this repo serves) computes card keys
+ * (the reference deck production corpus this repo serves) computes card keys
  * under. Every deck-serving origin MUST apply this table at boot, BEFORE any
  * name is parsed or any row is primed — the same moment a Rails deck's
  * config/initializers/inflections.rb runs — via

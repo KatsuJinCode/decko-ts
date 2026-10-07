@@ -3,7 +3,7 @@
 // Blast-radius adjudication for the set-override-fidelity lane (RELAUNCH #4):
 // diffs THIS lane's full-canvas per-entry failures against the grade-9 base of
 // record (7e843131 = this branch's base tip, committed at
-// brandonDojoTech/tmp/wrong-goal-hunt/grade9-run4b-canvas-artifacts/
+// WORK_DIR/grade9-run4b-canvas-artifacts/
 // 7e843131-full-fails.json).
 //
 //   FIXED  = base fail that passes on this tip — legal ONLY for the four
@@ -27,7 +27,7 @@ import path from "node:path";
 const artifactsDir = process.argv[2];
 const basePath =
   process.argv[3] ??
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/grade9-run4b-canvas-artifacts/7e843131-full-fails.json";
+  "WORK_DIR/grade9-run4b-canvas-artifacts/7e843131-full-fails.json";
 if (!artifactsDir) {
   console.error("usage: analyze-set-override-canvas-diff-2026-10-03.mjs <artifacts-dir> [base-fails-json]");
   process.exit(2);

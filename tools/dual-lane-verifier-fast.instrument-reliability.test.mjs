@@ -51,7 +51,7 @@ const WEIGHTS = buildShardWeights(PASS19_PHASE_WEIGHTS_S);
 const TOTAL_S = PASS19_PHASE_WEIGHTS_S.reduce((a, b) => a + b, 0);
 
 describe("instrument-reliability: weight math", () => {
-  it("even-split shard weights reconstruct every recorded pass-19 phase duration", () => {
+  it("even-split shard weights reconstruct every recorded a work item phase duration", () => {
     expect(PASS19_PHASE_WEIGHTS_S).toHaveLength(24);
     for (let p = 0; p < 24; p++) {
       const pair = [defaultShardName(2 * p), defaultShardName(2 * p + 1)];

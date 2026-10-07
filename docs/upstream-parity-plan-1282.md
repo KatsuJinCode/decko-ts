@@ -57,14 +57,6 @@ moved to the round-trip axis (statements fold, round trips are the
 #1282 metric), T4 declaration files, P1 test type fixes (runtime
 behavior unchanged).
 
-> Coordination update, 2026-09-21: [Decko Core](core/README.md) is the
-> governing project contract. The [private work board](core/work-board.md)
-> maps these streams to acceptance issues without changing active ownership.
-> [Publication gates](core/governance.md) apply to all delivery work below.
-> Public placement and deployments require the project owner's
-> exact-package approval.
-> PostgreSQL and shared Ruby/TS optimization are parallel work on that board.
-
 Work items executing the full migration plan. Spec sources:
 decko-commons/decko issue 1282 (byte-parity acceptance, constant-queries
 promise, one-click deploy, seamless migration, provider adapters) and the
@@ -155,10 +147,10 @@ Status legend: `[x]` landed, `[~]` in flight, `[ ]` queued.
 - `[ ]` T3 config-page provisioning payload doubling as recovery artifact
   (non-button providers).
 - `[ ]` T4 migration tool generalization (tracker stream 14) — the
-  proven SourceDeck importer into the one-click path.
+  proven the reference deck importer into the one-click path.
 - `[ ]` T5 shadow-compare router (TS behind Ruby, live-traffic byte
   comparison, clean-cutover report).
-- `[ ]` T7 published metrics: live source-deck.example vs actual CF deploy
+- `[ ]` T7 published metrics: the live reference deck vs actual CF deploy
   (needs upstream and site-owner coordination; local numbers are
   engineering artifacts).
 

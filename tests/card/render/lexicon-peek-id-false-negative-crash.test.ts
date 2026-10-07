@@ -1,12 +1,12 @@
 // A synchronous lexicon peek must not persist a false negative - the
 // page-20595 crash class ("CoffeeScript+*type+*delete", the engine-crash
 // singleton of the 2026-09-29 mechanism census, receipt
-// brandonDojoTech/tmp/wrong-goal-hunt/page-mechanism-census.md: our
+// WORK_DIR/page-mechanism-census.md: our
 // renderPage raised "card not found" where the Ruby oracle rendered the
 // full 16,819-byte titled page, data-card-id 20595).
 //
 // Mechanism (traced 2026-09-29, census-order reproduction in the
-// decko-ts-lane-censustail2 worktree, tmp/census-tail/crash-order.log):
+//  worktree, tmp/census-tail/crash-order.log):
 // DbLexicon.peekId is the warm-cache-only SYNC mirror of id() that the CQL
 // parser reaches mid-render (render.ts resolveCardId -> peekId, the
 // idFromVal path). Its lookup went through CardCache.read, which is Ruby's

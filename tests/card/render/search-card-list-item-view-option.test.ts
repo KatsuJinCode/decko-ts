@@ -15,7 +15,7 @@
 //
 // Wire receipt: blog/Latest_News nest `Latest news item|item:titled`; live
 // serves card-list-titled + search-result-item item-titled x9
-// (tmp/wrong-goal-hunt captures). Before the fix the engine rendered bar
+// (an internal work log captures). Before the fix the engine rendered bar
 // items for every item:view — the origin's postProcessSearchCards bridge
 // masked it (retired in r18).
 
