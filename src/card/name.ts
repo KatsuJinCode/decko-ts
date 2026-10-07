@@ -230,6 +230,12 @@ export class DeckoName {
   }
 
   private static requestScopeDepth = 0;
+
+  /** True when no request scope is open and no parse or mark memo exists
+   *  (the request-local render's no-state-survives check). */
+  static requestScopeIsClosed(): boolean {
+    return DeckoName.requestScopeDepth === 0 && DeckoName.parseMemo === undefined && DeckoName.markMemo === undefined;
+  }
   private static parseMemo: Map<string, DeckoName> | undefined;
 
   /** Drop the name memos (both are pure functions of the text and the

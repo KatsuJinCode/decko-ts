@@ -38,6 +38,8 @@ import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
+import { liveRenderPage } from "../../src/card/live/live-render.js";
+import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
 import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
 import {
@@ -82,6 +84,47 @@ export interface EngineRequestOptions {
   /** `Retry-After` value, in seconds, on the budget-exceeded response.
    *  Default EDGE_BUDGET_RETRY_AFTER_SECONDS. */
   retryAfterSeconds?: number;
+  /** The caller vouches the request is ANONYMOUS (no session): only then may
+   *  a page take the request-local live render (see liveRenderApplies). */
+  anonymous?: boolean;
+  /** The edge env's DECKO_LIVE_RENDER ("0" turns the live render off). */
+  liveRenderFlag?: string;
+}
+
+/**
+ * THE REQUEST-LOCAL LIVE RENDER (src/card/live/live-render.ts) serves an
+ * anonymous GET page uncached in a handful of batched round trips, storing
+ * nothing between requests. ON by default; DECKO_LIVE_RENDER=0 turns it off.
+ * It applies only where it has been byte-checked against the normal render:
+ * an anonymous GET/HEAD of a bare page path (/:card) with no ?view= and no
+ * history query. Signed-in viewers, writes, /:card/:view paths and history
+ * views take the normal render until they are covered.
+ */
+export function liveRenderApplies(
+  request: Request,
+  url: URL,
+  options: EngineRequestOptions | undefined,
+  pageView: string | undefined,
+  historyParams: Record<string, unknown>,
+): boolean {
+  if (options?.anonymous !== true) return false;
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  const flag =
+    options.liveRenderFlag ?? (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RENDER : undefined);
+  if (flag === "0") return false;
+  if (!pathViewIsBareArm(url.pathname) || pageView !== undefined) return false;
+  return Object.keys(historyParams).length === 0;
+}
+
+/** One render at a time per isolate. The engine's sync name environment
+ *  and boot bundle are process-global, and the live render boots a fresh
+ *  engine per pass; renders that interleave across awaits would read each
+ *  other's environment. */
+let renderLock: Promise<unknown> = Promise.resolve();
+export function withIsolateRenderLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = renderLock.then(fn, fn);
+  renderLock = run.catch(() => undefined);
+  return run;
 }
 
 /**
@@ -308,7 +351,7 @@ export async function handleEngineRequest(
   return await withBudget(
     budgetMs,
     retryAfterSeconds,
-    () => dispatchEngineRequest(request, deck),
+    () => dispatchEngineRequest(request, deck, options),
     () => budgetExceededResponse(deck, budgetMs, retryAfterSeconds),
   );
 }
@@ -319,6 +362,7 @@ export async function handleEngineRequest(
 async function dispatchEngineRequest(
   request: Request,
   deck: Deck,
+  options?: EngineRequestOptions,
 ): Promise<Response> {
   const url = new URL(request.url);
 
@@ -481,12 +525,22 @@ async function dispatchEngineRequest(
     // ("?view= fills the view-less arm") holds. An explicit path view still
     // wins (the action arg never falls through to params).
     const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
-    const pageHtml = await renderPageBytes(
-      deck.render,
-      parsed.name,
-      pageView,
-      historyRenderParamsFromWire(parsed.params),
-    );
+    const historyParams = historyRenderParamsFromWire(parsed.params);
+    const pageHtml = liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
+      ? await withIsolateRenderLock(async () => {
+          try {
+            const live = await liveRenderPage(deck.fetcher.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
+              requestedView: pageView,
+              historyParams,
+            });
+            return live.html;
+          } finally {
+            // The passes' engines installed their own name environments;
+            // hand the process-global one back to the isolate's deck.
+            deck.fetcher.installNameEnvironment?.();
+          }
+        })
+      : await withIsolateRenderLock(() => renderPageBytes(deck.render, parsed.name, pageView, historyParams));
     return html(200, applyServedEnvironmentDeltas(pageHtml));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

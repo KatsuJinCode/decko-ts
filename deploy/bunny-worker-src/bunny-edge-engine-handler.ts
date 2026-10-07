@@ -480,7 +480,13 @@ async function routeBunnyEngineRequest(
       request,
       env,
       async () =>
-        handleEngineRequest(request, await getDeck(resolved, env), { budgetMs: renderBudgetMs }),
+        handleEngineRequest(request, await getDeck(resolved, env), {
+          budgetMs: renderBudgetMs,
+          // Cookieless: the request-local live render may serve it
+          // (liveRenderApplies; DECKO_LIVE_RENDER=0 turns it off).
+          anonymous: true,
+          liveRenderFlag: env.DECKO_LIVE_RENDER,
+        }),
       resolveEdgeContentCache(env),
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );

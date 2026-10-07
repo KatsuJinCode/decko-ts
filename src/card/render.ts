@@ -878,7 +878,7 @@ export class RenderEngine implements RenderEngineLike {
     // the gate-first order gave, now enforced inside the seat.
     let seat: OneTripSeatResult | undefined;
     const runSeat = async (): Promise<OneTripSeatResult | undefined> =>
-      oneTripWantsPayload()
+      !this.liveRequest && oneTripWantsPayload()
         ? await seatOneTripPayloadForRender(cardName, this.fetcher, {
             lastSeenVersion: this.deckDataVersion,
             onStampMove: async (observed) => {
@@ -4316,7 +4316,12 @@ export class RenderEngine implements RenderEngineLike {
   fetchRenderCard(name: string): RenderCard | undefined {
     const requested = DeckoName.parse(name);
     const card = this.renderCards.get(requested.key);
-    if (card === undefined) return undefined;
+    if (card === undefined) {
+      // Collect mode (live-batch): the sync render asked for a card the
+      // prepare phase did not seat — record the question for the next pass.
+      this.demandRecorder?.add(requested.s);
+      return undefined;
+    }
     if (card.id !== undefined || card.record.isNew !== true) return card; // stored: results.rb:8
     if (card.name.s === requested.s) return card; // the mark already named it
     // Same key by construction - the lookup above is keyed on it - so the
@@ -4681,6 +4686,22 @@ export class RenderEngine implements RenderEngineLike {
    *  rendered by a pass for which this is false at every render point. */
   skipSyncRender: (() => boolean) | undefined;
 
+  /** COLLECT MODE (request-local live render). demandRecorder collects every
+   *  card the synchronous render asked the prepared map for and did not
+   *  find; demandSeeds are names an earlier pass of THIS request asked for,
+   *  which the page prepares up front (existence + enrichment, no reference
+   *  chase). Both are per-engine, and the engine lives for one pass. */
+  demandRecorder: Set<string> | undefined;
+  demandSeeds: string[] | undefined;
+  /** With collect mode on, the reference-chasing warm-ups are skipped: the
+   *  render asks for what it needs instead. */
+  warmupChaseOff = false;
+  /** Set on the engines of the request-local live render
+   *  (src/card/live/live-render.ts): the render never seats a one-trip plan
+   *  payload, whatever DECKO_ONE_TRIP says. That path stores nothing between
+   *  requests and reads no plan. */
+  liveRequest = false;
+
   /** The layout warm-up chase, bounded + batched (see
    *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
    *  references (spine: nest targets + pointer/list items, which render
@@ -4693,7 +4714,13 @@ export class RenderEngine implements RenderEngineLike {
     seeds: WarmupRef[],
     scan: (card: WarmupCard, mode: WarmupMode) => WarmupScan,
     onRound?: () => Promise<void>,
+    force = false,
   ): Promise<WarmupStats> {
+    if (this.warmupChaseOff && !force) {
+      const empty: WarmupStats = { batches: 0, statements: 0, rounds: 0, cards: 0, fallbacks: 0 };
+      this.lastWarmupStats = empty;
+      return empty;
+    }
     const stats = await prefetchWarmupClosure(
       seeds,
       {

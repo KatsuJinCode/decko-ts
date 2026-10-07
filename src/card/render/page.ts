@@ -268,6 +268,17 @@ async function renderPageBytesWithPageConfigInner(
   } catch (error) {
     prepareError = error as Error;
   }
+  if (engine.demandSeeds !== undefined && engine.demandSeeds.length > 0) {
+    // Collect mode: prepare what earlier passes of this request asked for,
+    // as existence + enrichment only (no reference chase), then judge them.
+    const seeded = await engine.warmupLayoutReferences(
+      engine.demandSeeds.map((name) => ({ name, context: name, mode: "leaf" as const })),
+      scanWarmDeps,
+      () => ensureCodenameMarksResolvable(engine),
+      true,
+    );
+    if (seeded.cards > 0) await engine.refreshVerdicts();
+  }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) {
     throw prepareError ?? new Error(`render card not prepared: ${record.name.s}`);

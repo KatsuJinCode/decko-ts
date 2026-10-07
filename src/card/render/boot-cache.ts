@@ -154,6 +154,12 @@ export function storeBootBundle(bundle: BootBundle): void {
 /** Drop the process slot. Test-only seam: the cache is module state, and a
  *  test that cannot clear it cannot measure a cold boot. Production has no
  *  caller -- invalidation is the content version's job, not a manual drop. */
+/** True when no boot bundle is held (the request-local render's
+ *  no-state-survives check reads it after a request). */
+export function bootCacheIsEmpty(): boolean {
+  return currentBundle === undefined;
+}
+
 export function resetBootCache(): void {
   currentBundle = undefined;
 }
