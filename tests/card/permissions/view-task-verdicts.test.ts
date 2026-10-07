@@ -219,6 +219,34 @@ describe("ok_to_<task>? verdicts (permissions.rb:105-157)", () => {
   });
 });
 
+describe("_left inheritance of create (permissions.rb:55-71)", () => {
+  it("judges a junction's _left create by the real left's UPDATE parties", async () => {
+    // left_permission_rule_id :67-71: a real left's :create is remapped to
+    // :update, and permitted? then asks among? who_can over THAT rule's
+    // items. Host+*self+*update -> [[Anyone]] allows; Host+*self+*create ->
+    // [[Editor]] would deny, so the verdict shows which rule was judged.
+    const s = await createRenderTestStorage();
+    try {
+      await seedTaskDeck(s);
+      await seedCard(s, { id: 40, name: "Host", typeId: 14, dbContent: "host" });
+      await seedCard(s, { id: 41, leftId: 40, rightId: 9, typeId: SET_TYPE_ID }); // Host+*self
+      await seedCard(s, { id: 42, leftId: 41, rightId: 3, dbContent: "[[Anyone]]" }); // +*update
+      await seedReference(s, 42, 6, "anyone");
+      await seedCard(s, { id: 43, leftId: 41, rightId: 4, dbContent: "[[Editor]]" }); // +*create
+      await seedReference(s, 43, 7, "editor");
+      await seedCard(s, { id: 44, leftId: 40, rightId: 13, dbContent: "junction" }); // Host+Widget
+      await seedCard(s, { id: 45, leftId: 44, rightId: 9, typeId: SET_TYPE_ID }); // Host+Widget+*self
+      await seedCard(s, { id: 46, leftId: 45, rightId: 4, dbContent: "_left" }); // +*create
+      const state = await taskState(s);
+      const junction: PatternCardInput = { name: "Host+Widget", id: 44, typeId: 14, typeName: "Basic" };
+      expect(await taskVerdictForCard(s.fetcher, junction, "create", state)).toBe(true);
+      expect((await allTaskVerdictsForCard(s.fetcher, junction, state)).create).toBe(true);
+    } finally {
+      s.close();
+    }
+  });
+});
+
 describe("junction create sides (ok_to_create_side, permissions.rb:127-137)", () => {
   it("passes when every side part exists (part_card.new_card? false)", async () => {
     const s = storage!;

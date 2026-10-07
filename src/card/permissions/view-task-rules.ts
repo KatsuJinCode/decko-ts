@@ -250,14 +250,14 @@ export async function allTaskVerdictsForCard(
   const needed = WRITE_TASK_CODENAMES.filter((task) => state.hasTaskRules[task]);
   if (needed.length === 0) return out;
   for (const task of needed) {
-    const ruleId = await applicableRuleId(fetcher, card, task, state, depth);
-    if (ruleId === undefined) continue; // no applicable rule card -> deny (already false)
+    const resolved = await applicableRule(fetcher, card, task, state, depth);
+    if (resolved === undefined) continue; // no applicable rule card -> deny (already false)
     // permissions.rb:148-153 update == permit(:update) at render time.
     if (task !== "create") {
-      out[task] = amongParties(state, task, ruleId);
+      out[task] = amongParties(state, resolved.task, resolved.ruleId);
       continue;
     }
-    if (!amongParties(state, task, ruleId)) {
+    if (!amongParties(state, resolved.task, resolved.ruleId)) {
       out.create = false; // ok_to_create? :121 permit(:create) failed
       continue;
     }
@@ -358,9 +358,27 @@ async function permitVerdict(
   task: WriteTask,
   state: ViewTaskState,
 ): Promise<boolean | undefined> {
-  const ruleId = await applicableRuleId(fetcher, card, task, state);
-  if (ruleId === undefined) return false;
-  return amongParties(state, task, ruleId);
+  const resolved = await applicableRule(fetcher, card, task, state);
+  if (resolved === undefined) return false;
+  return amongParties(state, resolved.task, resolved.ruleId);
+}
+
+/** The applicable rule card AND the task whose party table judges it. The
+ *  two differ after a `_left` remap: a compound card's :create inherits the
+ *  real left's :update rule (permissions.rb:69), so the verdict is
+ *  `Auth.as_card.among? who_can(:update)` over that update rule's items. The
+ *  party tables are keyed by task, so looking an update rule up in the create
+ *  table finds no parties and denies a member Ruby allows. */
+async function applicableRule(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  task: WriteTask,
+  state: ViewTaskState,
+  depth = 0,
+): Promise<{ ruleId: number; task: WriteTask } | undefined> {
+  const resolvedTask: { task: WriteTask } = { task };
+  const ruleId = await applicableRuleId(fetcher, card, task, state, depth, resolvedTask);
+  return ruleId === undefined ? undefined : { ruleId, task: resolvedTask.task };
 }
 
 /** Card::Query-free port of permissions.rb:55-71 permission_rule_id: the
@@ -389,7 +407,9 @@ async function applicableRuleId(
   task: WriteTask,
   state: ViewTaskState,
   depth = 0,
+  resolvedTask?: { task: WriteTask },
 ): Promise<number | undefined> {
+  if (resolvedTask !== undefined) resolvedTask.task = task;
   if (!state.hasTaskRules[task]) return undefined;
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
@@ -438,6 +458,7 @@ async function applicableRuleId(
     inheritedTask,
     state,
     depth + 1,
+    resolvedTask,
   );
 }
 
