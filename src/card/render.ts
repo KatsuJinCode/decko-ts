@@ -4596,7 +4596,17 @@ export class RenderEngine implements RenderEngineLike {
     this.coreAdminRuntimeEnsured = true;
     const host = modEngineHost(this, this.fetcher);
     bindModuleAdminHost(host);
+    const before = new Set(this.renderCards.keys());
     await prepareAdminRuntime(host);
+    // The runtime caches every codename card into the render map AFTER the
+    // page's verdict pass, outside its seats, and the :configs lists nest
+    // them. Judge them now: a card with no verdict reads as allowed, which
+    // rendered *recaptcha settings (read rule: Administrator) as a full
+    // bar to the anonymous reader where Ruby renders the denial.
+    for (const [key, card] of this.renderCards) {
+      if (before.has(key)) continue;
+      await this.canReadCard(card.record, card.typeName);
+    }
   }
 
   /** Interface hook: track an unknown-card nest target. The render
