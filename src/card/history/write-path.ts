@@ -95,6 +95,8 @@ export interface CreateCardInput {
    *  create saves too (card-mod-carrierwave set/abstract/attachment.rb
    *  :20-24; the update path already carried comment). Defaults to NULL. */
   comment?: string | null;
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
 }
 
 export interface UpdateCardInput {
@@ -146,6 +148,8 @@ export interface UpdateCardInput {
    *  dirty tracking compares the assigned values against a blank record,
    *  not against the trashed row. */
   changedFields?: readonly TrackedField[];
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
 }
 
 export interface SavedAction {
@@ -244,14 +248,21 @@ export class ActWriter {
 
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
-    const actionIdSelect = this.pushInsertAction(stmts, {
+    const actionRow = {
       cardId,
       superActionId: input.superActionId ?? null,
       actionType: actionTypeCode("create"),
-      draft: 0,
       comment: input.comment ?? null,
-    });
-    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
+    const batch = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const actId = batch.actId;
+    const actionId = input.reservedActionId ?? batch.actionId;
 
     // finalize_action: first_create? (set/all/history.rb:38-40 —
     // "@current_action.action_type == :create && action_count == 1") skips
@@ -350,13 +361,18 @@ export class ActWriter {
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, input.cardId, ts);
     const updateCardsIndex = this.pushUpdateCardsRow(stmts, input, changed, ts);
-    const actionIdSelect = this.pushInsertAction(stmts, {
+    const actionRow = {
       cardId: input.cardId,
       superActionId: input.superActionId ?? null,
       actionType: actionTypeCode(actionType),
-      draft: 0,
       comment: input.comment ?? null,
-    });
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
     if (backfill !== null) {
       // store_card_changes_for_create_action (events.rb:95-100): the create
       // action gets one change per TRACKED_FIELDS entry, valued with the
@@ -398,7 +414,10 @@ export class ActWriter {
       actionIdSelect,
     });
 
-    const saved = { actId: this.requireActId(actId), actionId: requireId(actionId) };
+    const saved = {
+      actId: this.requireActId(actId),
+      actionId: input.reservedActionId ?? requireId(actionId),
+    };
     const updateResult = results[updateCardsIndex];
     if (updateResult.rowsAffected !== 1) {
       throw new Error(
@@ -468,6 +487,45 @@ export class ActWriter {
     await this.driver.batch(stmts);
   }
 
+  /** Insert an action row before its card is stored, card_id NULL, and
+   *  return its id. Ruby builds the supercard's action at :initialize and
+   *  saves it ahead of the subcards stored during the supercard's :store
+   *  stage, setting card_id only at :finalize (`@current_action.update!
+   *  card_id: id`, events.rb:26-27), so a junction's action precedes the
+   *  actions of the side cards its create makes. Pass the returned id as
+   *  `reservedActionId` to the createCard/updateCard call that stores the
+   *  card: that call fills the row instead of inserting one. */
+  async reserveAction(input: {
+    actionType: "create" | "update";
+    superActionId?: number | null;
+  }): Promise<number> {
+    const stmts: SQLStatement[] = [];
+    const actIdSelect =
+      this.actId === null ? this.pushInsertAct(stmts, null, sqlDateTime(this.clock())) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: input.superActionId ?? null,
+      actionType: actionTypeCode(input.actionType),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
+  }
+
+  /** Fill a reserved action row (see reserveAction) — the statement that
+   *  replaces pushInsertAction for a save whose action was reserved. */
+  private pushFillReservedAction(
+    stmts: SQLStatement[],
+    reservedId: number,
+    input: { cardId: number; superActionId: number | null; actionType: number; comment: string | null },
+  ): void {
+    stmts.push({
+      sql: "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+      params: [input.cardId, input.superActionId, input.actionType, input.comment, reservedId],
+    });
+  }
+
   /** The act row's id once at least one action has been persisted. */
   currentActId(): number | null {
     return this.actId;
@@ -517,7 +575,7 @@ export class ActWriter {
   private pushInsertAction(
     stmts: SQLStatement[],
     input: {
-      cardId: number;
+      cardId: number | null;
       superActionId: number | null;
       actionType: number;
       draft: SQLBoolean;

@@ -822,6 +822,12 @@ export class CardActionEngine {
     );
     await this.dispatchEventStage("validate", validationCard());
 
+    // A compound card's own action row is saved before the side subcards
+    // its create makes (ActWriter.reserveAction has the Ruby mechanism), so
+    // it is reserved here and filled by the row write below.
+    const reservedActionId = name.isCompound
+      ? await writer.reserveAction({ actionType: "create", superActionId: input.superActionId ?? null })
+      : undefined;
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
     // (prepare_new_side :118-125).
@@ -904,6 +910,7 @@ export class CardActionEngine {
         changedFields: (Object.keys(after) as (keyof CardFieldState)[]).filter(
           (f) => after[f] !== null,
         ),
+        reservedActionId,
         key: name.isSimple ? name.key : null,
         // set_read_rule store event (permissions.rb:1-5): a revival is a
         // :create save, so the derivation runs (new_card? is true via
@@ -1059,6 +1066,7 @@ export class CardActionEngine {
       }),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
+      reservedActionId,
     });
     // :store_attachment! + :correct_identifier (the finalizer's block
     // comment): bytes land at files/<card>/<action><ext> and the column

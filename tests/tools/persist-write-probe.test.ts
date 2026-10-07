@@ -22,11 +22,13 @@
 //  10  create over existing name        20 update with unsafe html
 //  21  create without type or content   22 create plain text with html
 //
-// It is a driver, not an assertion: it writes its JSON and asserts only that
-// the op list completed. Nothing skips silently — a missing source deck
-// FAILS with the path it wanted.
+// It writes its JSON, runs tools/persistence/compare-persist.mjs against the
+// committed Ruby dumps, and asserts which steps diverge. Without the oracle
+// deck it skips and says so on stderr; with PERSIST_PARITY=1 a missing deck
+// fails with the path it wanted.
 
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -53,6 +55,18 @@ const SRC =
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PERSIST_DIR = path.join(REPO, "tmp/persist");
 const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json");
+// The Ruby oracle's per-step dumps, committed so the comparison runs without
+// a Ruby install.
+const RUBY_STEPS =
+  process.env.PERSIST_RUBY_STEPS ?? path.join(REPO, "tests/fixtures/persistence-oracle");
+// Steps whose row delta still differs from the oracle, each explained in
+// recovery/parity-team/persistence.md:
+//   7  re-creating a junction while its left side is trashed: the oracle deck
+//      lacks the production UNIQUE (left_id, right_id) index and Ruby inserts
+//      a second junction row; the port revives the trashed one.
+//  19  Card#update!(trash: false) on a trashed card (history "restore"): the
+//      port's update has no trash field and does not reach trashed rows.
+const KNOWN_DIVERGENCES = [7, 19];
 const PREFIX = "PersistProbe";
 // Same string as the Ruby half's UNSAFE_HTML.
 const UNSAFE_HTML =
@@ -410,6 +424,24 @@ describe("persistence write probe (TS half)", () => {
     }
     writeFileSync(OUT, JSON.stringify(out, null, 2));
     expect(out.length).toBe(22);
+
+    // Compare against the Ruby oracle's dumps for the same op list
+    // (tools/persistence/run-ruby-steps.sh). Each operation's own row delta
+    // must match, except the divergences recovery/parity-team/persistence.md
+    // records; a newly matching step fails here too, so the list is kept
+    // honest in both directions.
+    const report = path.join(PERSIST_DIR, "compare-report.json");
+    const run = spawnSync(
+      process.execPath,
+      [path.join(REPO, "tools/persistence/compare-persist.mjs"), RUBY_STEPS, OUT, report],
+      { windowsHide: true, encoding: "utf8" },
+    );
+    expect(run.status, run.stderr).not.toBe(2); // 2 = a missing input
+    const steps = (JSON.parse(readFileSync(report, "utf8")) as { steps: Row[] }).steps;
+    const diverging = steps
+      .filter((s) => (s.deltaFaults as unknown[]).length > 0)
+      .map((s) => Number(s.step));
+    expect(diverging).toEqual(KNOWN_DIVERGENCES);
   }, 900000);
 });
 
