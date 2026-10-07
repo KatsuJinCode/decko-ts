@@ -322,6 +322,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
    *  under 1 KB of content on this deck; every page's rule walk reads
    *  several of them). DECKO_LIVE_ALL_RULES=0 off. */
   private globalRulesSent = new Set<string>();
+  private firstTripDone = false;
   private globalRuleSets(): number[] {
     if (!this.ruleSetsOn || (typeof process !== "undefined" && process.env?.DECKO_LIVE_ALL_RULES === "0")) return [];
     const out: number[] = [];
@@ -498,6 +499,22 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     if (this.askedLefts) {
       for (const x of need.fullIds) if (this.store.present.has(x) && !this.store.leftComplete.has(x)) need.lefts.add(x);
     }
+    // FIRST TRIP (DECKO_LIVE_FIRST_GLOBALS=0 off): *all and *all plus, every
+    // rule under them and the layout card their *layout rule names arrive
+    // whole now, by key, instead of once the engine has asked for *all (the
+    // second trip) and then read *all+*layout (a trip after that). Every
+    // page's layout chain starts from them.
+    let wholeLeftKeys: string[] | undefined;
+    if (!this.firstTripDone) {
+      this.firstTripDone = true;
+      if (this.ruleSetsOn && (typeof process === "undefined" || process.env?.DECKO_LIVE_FIRST_GLOBALS !== "0")) {
+        wholeLeftKeys = ["*all", "*all_plu"];
+        for (const k of wholeLeftKeys) {
+          need.fullKeys.add(k);
+          this.globalRulesSent.add(k);
+        }
+      }
+    }
     this.frontier(need);
     const st = this.store;
     const w: Widening = {
@@ -513,6 +530,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       ruleSets: [...need.ruleSets.values()],
       tprSets: [...need.tprSets.values()],
       wholeLefts: this.globalRuleSets(),
+      ...(wholeLeftKeys !== undefined ? { wholeLeftKeys } : {}),
     };
     const widening = st.wideningStatements(w, this.identityRing);
     const exact = [...need.exact.entries()].filter(([k]) => !this.exact.has(k));

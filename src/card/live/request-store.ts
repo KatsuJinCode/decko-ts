@@ -142,6 +142,10 @@ export interface Widening {
   /** set cards whose every junction (their rules) arrives whole: *all and
    *  *all plus, which every page's rule walk reads. Optional. */
   wholeLefts?: number[];
+  /** the same by key, for the first trip, before any id is known; with
+   *  them, the card each one's *layout rule names (a [[link]] or a bare
+   *  name), whole. Optional. */
+  wholeLeftKeys?: string[];
 }
 
 export class RequestStore {
@@ -272,7 +276,7 @@ export class RequestStore {
   ): { full: SQLStatement; identity: SQLStatement; identityColumns: readonly string[] } | undefined {
     const total =
       w.fullKeys.length + w.idKeys.length + w.fullIds.length + w.idIds.length + w.lefts.length + w.leftKeys.length + w.pairs.length +
-      (w.ruleSets?.length ?? 0) + (w.tprSets?.length ?? 0) + (w.wholeLefts?.length ?? 0);
+      (w.ruleSets?.length ?? 0) + (w.tprSets?.length ?? 0) + (w.wholeLefts?.length ?? 0) + (w.wholeLeftKeys?.length ?? 0);
     if (total === 0) return undefined;
     const ctes: string[] = [];
     const params: unknown[] = [];
@@ -309,6 +313,19 @@ export class RequestStore {
     if (w.wholeLefts?.length) {
       fullParts.push(`SELECT id FROM cards WHERE left_id IN (SELECT value FROM json_each(?))`);
       params.push(JSON.stringify(w.wholeLefts));
+    }
+    if (w.wholeLeftKeys?.length) {
+      const anchors = `SELECT id FROM cards WHERE "key" COLLATE NOCASE IN (SELECT value FROM json_each(?))`;
+      fullParts.push(anchors, `SELECT id FROM cards WHERE left_id IN (${anchors})`);
+      // The layout card a *layout rule under them names: its content is one
+      // [[link]] or a bare name. A hint: a miss costs bytes, never output.
+      fullParts.push(
+        `SELECT l.id FROM cards r JOIN cards s ON s.id = r.right_id AND s.codename = 'layout' ` +
+          `JOIN cards l ON l.name = trim(replace(replace(r.db_content, '[[', ''), ']]', '')) ` +
+          `WHERE r.left_id IN (${anchors}) AND l.left_id IS NULL`,
+      );
+      const k = JSON.stringify(w.wholeLeftKeys);
+      params.push(k, k, k);
     }
     // RULE SETS of rows the engine reads (live-store-driver.ts frontier):
     // the set cards its rule walk resolves (X+*self, Type+*type,
