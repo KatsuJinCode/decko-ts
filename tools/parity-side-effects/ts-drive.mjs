@@ -189,7 +189,7 @@ async function call(method, path, params) {
   if (cookie) headers.cookie = cookie;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: () => FROZEN, attachmentStore, accountMail,
+      driver, fetcher, now: () => FROZEN, attachmentStore, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
     },
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",

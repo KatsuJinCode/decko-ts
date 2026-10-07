@@ -157,6 +157,17 @@ end
 
 $steps = []
 
+# Who the cookie session is signed in as after the request: the session's
+# user key (Card::Auth.signin writes session[session_user_key]). Reading
+# Card::Auth.current_id instead would report whoever the integrate stage
+# last acted as (a signup acts as the new account), not the session.
+def session_user
+  id = SESS.request&.session&.[](Card::Auth.session_user_key)
+  id.present? && id.to_i != Card::AnonymousID ? card_name(id) : nil
+rescue StandardError
+  nil
+end
+
 def step(name)
   before = counts
   since = max_id("card_actions")
@@ -181,7 +192,7 @@ def step(name)
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
     files: files_list - files_before, mail: drain_mail, extra: extra,
-    signed_in_as: (Card::Auth.current_id == Card::AnonymousID ? nil : card_name(Card::Auth.current_id))
+    signed_in_as: session_user
   }
 end
 

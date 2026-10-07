@@ -250,14 +250,14 @@ export async function allTaskVerdictsForCard(
   const needed = WRITE_TASK_CODENAMES.filter((task) => state.hasTaskRules[task]);
   if (needed.length === 0) return out;
   for (const task of needed) {
-    const ruleId = await applicableRuleId(fetcher, card, task, state, depth);
-    if (ruleId === undefined) continue; // no applicable rule card -> deny (already false)
+    const rule = await applicableRuleId(fetcher, card, task, state, depth);
+    if (rule === undefined) continue; // no applicable rule card -> deny (already false)
     // permissions.rb:148-153 update == permit(:update) at render time.
     if (task !== "create") {
-      out[task] = amongParties(state, task, ruleId);
+      out[task] = amongParties(state, rule.task, rule.ruleId);
       continue;
     }
-    if (!amongParties(state, task, ruleId)) {
+    if (!amongParties(state, rule.task, rule.ruleId)) {
       out.create = false; // ok_to_create? :121 permit(:create) failed
       continue;
     }
@@ -358,9 +358,9 @@ async function permitVerdict(
   task: WriteTask,
   state: ViewTaskState,
 ): Promise<boolean | undefined> {
-  const ruleId = await applicableRuleId(fetcher, card, task, state);
-  if (ruleId === undefined) return false;
-  return amongParties(state, task, ruleId);
+  const rule = await applicableRuleId(fetcher, card, task, state);
+  if (rule === undefined) return false;
+  return amongParties(state, rule.task, rule.ruleId);
 }
 
 /** Card::Query-free port of permissions.rb:55-71 permission_rule_id: the
@@ -389,7 +389,7 @@ async function applicableRuleId(
   task: WriteTask,
   state: ViewTaskState,
   depth = 0,
-): Promise<number | undefined> {
+): Promise<{ ruleId: number; task: WriteTask } | undefined> {
   if (!state.hasTaskRules[task]) return undefined;
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
@@ -409,11 +409,14 @@ async function applicableRuleId(
   // match over the stored content.
   const name = DeckoName.parse(card.name);
   const value = state.ruleContent[task].get(firstResolved) ?? "";
+  // The verdict reads the resolved rule's parties under the task it was
+  // resolved FOR: a real left's :create inherits through its :update rule
+  // (:69), so that rule's parties live in the update map.
   if (depth >= 16 || !LEFT_RULE_VALUE.test(value) || !name.isCompound) {
-    return firstResolved;
+    return { ruleId: firstResolved, task };
   }
   const leftName = name.leftName;
-  if (leftName === undefined || leftName.key === "") return firstResolved;
+  if (leftName === undefined || leftName.key === "") return { ruleId: firstResolved, task };
   const left = await fetcher.fetchByName(leftName.key, { skipVirtual: true });
   // The real left's type anchor (the *type candidate) — CardRecord carries
   // the id, the anchor NAME comes from the type card (the same shape

@@ -11,6 +11,7 @@
 //              type, and the card_changes field list
 //   mail       captured outgoing mail: recipients and subject
 //   files      stored file names (card and action ids normalised away)
+//   resized    which image variants are real resizes of the original
 //   session    who the request sequence is signed in as afterwards
 // Event order is scored separately (see below): the TypeScript engine runs
 // most event bodies as engine code rather than named mod events, so a
@@ -77,12 +78,22 @@ const normBody = (b) => String(b ?? "").replace(/token=[A-Za-z0-9._-]+/g, "token
 const mail = (s) => (s.mail ?? []).map((m) => `to ${[].concat(m.to).join(",")} from ${[].concat(m.from).join(",")}: ${m.subject} :: ${normBody(m.body_excerpt)}`).join(" | ") || "-";
 const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
+// Image variants: which stored versions are real resizes (bytes differ from
+// the -original file). Byte equality across engines is not expected (two
+// encoders); whether a variant was resized at all is.
+const resized = (s) => {
+  const list = s.files ?? [];
+  const original = list.find((f) => /-original\.[a-z]+$/.test(f.path));
+  if (original === undefined) return "-";
+  return list.filter((f) => f !== original && f.size !== original.size)
+    .map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "(none)";
+};
 
 // Ruby errors on denial read "Sorry! Please sign in or sign up to do that."
 // for every anonymous denial; compare like for like.
 const fields = {
   status: (s) => String(s.status),
-  writes, actions, mail, files, session,
+  writes, actions, mail, files, resized, session,
 };
 
 // ---- event order: the ordered list of distinct event names each engine

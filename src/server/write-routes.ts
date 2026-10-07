@@ -93,6 +93,7 @@
 // API shape (200 + ids) — not part of the captured browser session.
 
 import type { SQLDatabaseDriver } from "./driver.js";
+import type { NotifyTransport } from "../card/notify/types.js";
 import type { FetchEngine } from "../card/fetch.js";
 import type { CardRecord } from "../card/fetch/card-record.js";
 import { SessionStore } from "../card/auth/index.js";
@@ -195,6 +196,11 @@ export interface WriteRouteContext {
    *  sends no account mail, and the trigger answers the not-configured
    *  error instead of silently succeeding. */
   accountMail?: Omit<AccountFlowContext, "driver" | "fetcher" | "sessions">;
+  /** Where save-path notifications go: the follower notification emails
+   *  card-mod-follow sends after a signed-in save (notify.rb:13-16, the
+   *  engine's default follow-notify hook). Absent = the notify module's
+   *  no-op transport, which drops them. */
+  notifyTransport?: NotifyTransport;
 }
 
 export interface WriteRouteResponse {
@@ -1016,6 +1022,7 @@ export async function handleWriteRequest(
     // prepareRecaptchaSaveInput), so an unarmed host registers the event and
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await observedModEventRuntime(ctx),
+    ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
   });
 
