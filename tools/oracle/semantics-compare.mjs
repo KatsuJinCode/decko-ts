@@ -34,6 +34,8 @@ const questions = JSON.parse(readFileSync(questionsPath, "utf8")).questions;
 //     the TS registry's "All::History::Views" / "all/history/views" name the
 //     same set module (format suffix and namespace stripped, CamelCase to
 //     snake_case for paths).
+//  8. Rendered HTML (render_core): data-slot-id is a random per-render
+//     token in both engines and is masked, as in the byte gate.
 // Nothing else is masked. Ids are compared.
 const PREDICATE_KEYS = new Set(["rstar", "star", "simple", "compound", "relative", "absolute", "starts_with_joint"]);
 function norm(v, key) {
@@ -41,6 +43,7 @@ function norm(v, key) {
   if (v === 1 || v === true) return true;
   if (v === undefined) return null;
   if (v === null && key !== undefined && PREDICATE_KEYS.has(key)) return false;
+  if (key === "core" && typeof v === "string") return v.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="X"');
   return v;
 }
 const isErr = (v) => typeof v === "string" && v.startsWith("ERR:");

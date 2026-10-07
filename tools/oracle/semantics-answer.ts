@@ -56,6 +56,7 @@ import { isPreferenceName, isStandardRuleName, ruleWalkPatternInput } from "../.
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
 import { HTML_VIEWS } from "../../src/card/render/views.js";
 import { readPermissionOverride, updatePermissionOverride } from "../../src/card/permissions/read-override.js";
+import { resolveTypeId } from "../../src/card/actions/type-resolution.js";
 
 const QUESTIONS = JSON.parse(readFileSync(process.env.SEMANTICS_QUESTIONS!, "utf8"));
 const OUT_PATH = process.env.SEMANTICS_ANSWERS!;
@@ -77,6 +78,35 @@ const fetcher = storage.fetcher;
 const engine = storage.engine;
 fetcher.installNameEnvironment();
 await fetcher.warmLexicon(liveIds);
+
+// Synthetic cards (SEMANTICS_SYNTHETIC: {"cards": [{name, type_code?, content}]}),
+// inserted into this private in-memory storage before any question is
+// answered. Each card's type is the engine's own new-card type (explicit
+// type_code first, then the type-assignment and template chain), the same
+// resolution Ruby's Card.create runs. Compound names are stored as side ids.
+if (process.env.SEMANTICS_SYNTHETIC) {
+  const spec = JSON.parse(readFileSync(process.env.SEMANTICS_SYNTHETIC, "utf8")) as {
+    cards: Array<{ name: string; type_code?: string; content?: string }>;
+  };
+  let nextId = 900001;
+  for (const card of spec.cards) {
+    const name = DeckoName.parse(card.name);
+    const typeId = await resolveTypeId(fetcher, card.type_code !== undefined ? { typeCode: card.type_code, name } : { name });
+    const leftId = name.isCompound ? await fetcher.lexicon.id(name.leftName!) : undefined;
+    const rightId = name.isCompound ? await fetcher.lexicon.id(name.rightName!) : undefined;
+    if (name.isCompound && (leftId === undefined || rightId === undefined)) {
+      throw new Error(`synthetic card ${card.name}: a side does not exist`);
+    }
+    await fetcher.driver.query(
+      "INSERT INTO cards (id, name, key, left_id, right_id, type_id, db_content, trash, created_at, updated_at, creator_id, updater_id) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 0, '2026-10-07 00:00:00', '2026-10-07 00:00:00', 1, 1)",
+      [nextId++, name.isCompound ? null : name.s, name.isCompound ? null : name.key, leftId ?? null, rightId ?? null, typeId, card.content ?? ""],
+    );
+  }
+  fetcher.resetCaches();
+  fetcher.installNameEnvironment();
+  await fetcher.warmLexicon(liveIds);
+}
 
 const codenameIds = new Map<string, number>(
   (raw.prepare("SELECT id, codename FROM cards WHERE codename IS NOT NULL AND codename <> ''").all() as Array<{
@@ -603,6 +633,18 @@ for (const question of QUESTIONS.questions) {
           else if (engineFlatViews.has(v)) views.push({ view: v, owner: "ENGINE" });
         }
         out.push({ set: sname, set_keys: setKeys, views });
+      }
+      answer = out;
+      break;
+    }
+
+    case "render_core": {
+      // The card's core view as the anonymous viewer (Ruby:
+      // card.format(:html).render(:core)).
+      const names = payload.names as unknown as string[];
+      const out: unknown[] = [];
+      for (const n of names) {
+        out.push({ name: n, core: await safe(() => engine.render(n, "core")) });
       }
       answer = out;
       break;

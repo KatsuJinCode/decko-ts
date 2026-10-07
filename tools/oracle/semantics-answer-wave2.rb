@@ -145,6 +145,11 @@ ordered.each do |question|
         { "set" => sname, "set_keys" => safe { c.safe_set_keys }, "views" => views }
       end
 
+    when "render_core"
+      payload["names"].map do |n|
+        { "name" => n, "core" => safe { Card.fetch(n).format(:html).render(:core) } }
+      end
+
     when "event_defs_full"
       payload["sets"].map do |sname|
         c = Card[sname]
