@@ -86,6 +86,9 @@ export interface CreateCardInput {
   /** card_actions.super_action_id passthrough for subcard actions
    *  (events.rb:88-92: the supercard's current action). */
   superActionId?: number | null;
+  /** A card_actions row reserved for this create by reserveCreateAction:
+   *  the create fills it instead of inserting a new one. */
+  reservedActionId?: number;
   /** Explicitly mark this create as the act's primary card. Defaults to
    *  "the first operation on the writer" (the common request shape); see
    *  ActWriter docs. */
@@ -237,15 +240,27 @@ export class ActWriter {
     );
 
     const stmts: SQLStatement[] = [];
-    const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
-    const actionIdSelect = this.pushInsertAction(stmts, {
-      cardId,
-      superActionId: input.superActionId ?? null,
-      actionType: actionTypeCode("create"),
-      draft: 0,
-      comment: input.comment ?? null,
-    });
-    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    let actIdSelect: number | undefined;
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushClearOwnDrafts(stmts, cardId);
+      stmts.push({
+        sql: "UPDATE card_actions SET card_id = ?, super_action_id = ?, comment = ? WHERE id = ?",
+        params: [cardId, input.superActionId ?? null, input.comment ?? null, input.reservedActionId],
+      });
+    } else {
+      actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
+      actionIdSelect = this.pushInsertAction(stmts, {
+        cardId,
+        superActionId: input.superActionId ?? null,
+        actionType: actionTypeCode("create"),
+        draft: 0,
+        comment: input.comment ?? null,
+      });
+    }
+    const batch = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const actId = batch.actId ?? this.actId ?? undefined;
+    const actionId = input.reservedActionId ?? batch.actionId;
 
     // finalize_action: first_create? (set/all/history.rb:38-40 —
     // "@current_action.action_type == :create && action_count == 1") skips
@@ -263,6 +278,28 @@ export class ActWriter {
 
     await this.finalizeActCard(cardId, this.isActCardOp(cardId, input.isActCard));
     return { cardId, actId: this.requireActId(actId), actionId: requireId(actionId) };
+  }
+
+  /** Reserve this act's next action row for a create whose card row cannot
+   *  be inserted yet. A compound card's missing sides are inserted before it
+   *  (the junction row needs their ids), but Ruby records the compound's
+   *  own action first and the sides' actions after it, as subactions
+   *  (director/store.rb: the supercard's action is assigned before its
+   *  subcards store). The reserved row carries the act and the create type;
+   *  createCard({ reservedActionId }) fills in the card. */
+  async reserveCreateAction(): Promise<number> {
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: null,
+      actionType: actionTypeCode("create"),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
   }
 
   // -----------------------------------------------------------------------
@@ -499,7 +536,7 @@ export class ActWriter {
   private pushInsertAction(
     stmts: SQLStatement[],
     input: {
-      cardId: number;
+      cardId: number | null;
       superActionId: number | null;
       actionType: number;
       draft: SQLBoolean;

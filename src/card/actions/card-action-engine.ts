@@ -317,6 +317,9 @@ interface ResolvedSides {
   rightId: number | null;
   /** Subcard creates this resolution performed (same act). */
   created: (CardActionSummary & { actId: number })[];
+  /** The compound's own action row, reserved before its first missing
+   *  side was created (ActWriter.reserveCreateAction). */
+  reservedActionId?: number;
 }
 
 /** Engine for one actor; one applyAction = one act. Construct per request
@@ -822,8 +825,9 @@ export class CardActionEngine {
 
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
-    // (prepare_new_side :118-125).
-    const sides = await this.ensureSides(writer, name);
+    // (prepare_new_side :118-125). The compound's own action is recorded
+    // before the sides' actions, as Ruby orders them.
+    const sides = await this.ensureSides(writer, name, undefined, { reserveOwnAction: true });
 
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
@@ -1027,6 +1031,7 @@ export class CardActionEngine {
         rightId: sides.rightId,
         isNew: true,
       }),
+      ...(sides.reservedActionId !== undefined ? { reservedActionId: sides.reservedActionId } : {}),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
     });
@@ -2563,10 +2568,12 @@ export class CardActionEngine {
     writer: ActWriter,
     name: DeckoName,
     selfId?: number,
+    opts: { reserveOwnAction?: boolean } = {},
   ): Promise<ResolvedSides> {
     const created: (CardActionSummary & { actId: number })[] = [];
     if (!name.isCompound) return { leftId: null, rightId: null, created };
     const idsByKey = new Map<string, number>();
+    let reservedActionId: number | undefined;
     const resolveSide = async (sideName: DeckoName | undefined): Promise<number | null> => {
       if (sideName === undefined) return null;
       const key = sideName.key;
@@ -2576,6 +2583,9 @@ export class CardActionEngine {
       if (selfId !== undefined && id === selfId) {
         id = await this.recreateObstructedSide(writer, sideName, selfId, created);
       } else if (id === undefined) {
+        if (opts.reserveOwnAction === true && reservedActionId === undefined) {
+          reservedActionId = await writer.reserveCreateAction();
+        }
         const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
         id = sub.cardId;
         created.push(sub);
@@ -2585,7 +2595,7 @@ export class CardActionEngine {
     };
     const leftId = await resolveSide(name.leftName);
     const rightId = await resolveSide(name.rightName);
-    return { leftId, rightId, created };
+    return { leftId, rightId, created, ...(reservedActionId !== undefined ? { reservedActionId } : {}) };
   }
 
   /** prepare_obstructed_side (name_events.rb:144-150) + clear_name
