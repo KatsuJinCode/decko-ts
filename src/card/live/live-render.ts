@@ -96,11 +96,14 @@ async function renderPass(
   collect: { seeds: Set<string>; asked: Set<string> } | undefined,
   skipSync: (() => boolean) | undefined,
   lazy: { asked: Set<string>; eager: ReadonlySet<string> } | undefined,
+  deniedRootKey: string | undefined,
+  out: { engine?: RenderEngine },
 ): Promise<string> {
   // A FRESH engine per pass: a speculative pass's engine saw zero-row
   // answers and is discarded; only the store (real rows) carries over.
   resetBootCache();
   const { render } = await boot(live);
+  out.engine = render;
   render.liveRequest = true;
   if (collect !== undefined) {
     render.warmupChaseOff = true;
@@ -109,6 +112,14 @@ async function renderPass(
     // Round 9 step 2: collect passes skip the prepare walks of a read-denied
     // root (its hidden body's items and links are never rendered).
     render.skipDeniedRootWalks = true;
+    // Junction sides the demand-seed warm-up composes through are prepared,
+    // not scanned: scanning them chased their whole content closure, one
+    // level per pass (DECKO_LIVE_SIDES_SCAN=1 restores it).
+    if (deniedRootKey !== undefined) {
+      render.skipRootClosureWalk = true;
+      render.skipRootClosureKey = deniedRootKey;
+    }
+    render.warmupSidesUnscanned = !(typeof process !== "undefined" && process.env?.DECKO_LIVE_SIDES_SCAN === "1");
   }
   if (skipSync !== undefined) render.skipSyncRender = skipSync;
   if (lazy !== undefined) {
@@ -172,14 +183,24 @@ export async function liveRenderPage(
   // default, DECKO_LIVE_STRUCTURE_WALKS=1 restores the eager walk).
   const lazyRefs = env?.DECKO_LIVE_STRUCTURE_WALKS !== "1";
   const eagerRefs = new Set<string>();
+  // Denied root: once a collect pass has judged the page root read-denied,
+  // later passes skip its inclusion-closure walk (RenderEngine
+  // skipRootClosureWalk; DECKO_LIVE_DENIED_CLOSURE=1 keeps the walk).
+  const skipDeniedClosure = env?.DECKO_LIVE_DENIED_CLOSURE !== "1";
+  let deniedRootKey: string | undefined;
   DeckoName.beginRequestScope();
   try {
     for (let p = 1; p <= MAX_PASSES; p += 1) {
       if (opts.signal?.aborted === true) throw new LiveRenderAborted();
       const asked = new Set<string>();
       const lazyAsked = new Set<string>();
+      const out: { engine?: RenderEngine } = {};
       live.mode = blockNext ? "block" : "spec";
       live.blockTrips = blockNext ? tailTrips : undefined;
+      if (env?.DECKO_LIVE_TRACE_STACK !== undefined) {
+        live.stackTrace = new Map();
+        live.stackDepth = Number(env.DECKO_LIVE_TRACE_STACK) || 6;
+      }
       const t0 = performance.now();
       let html: string | undefined;
       let threw: unknown;
@@ -189,9 +210,17 @@ export async function liveRenderPage(
         // issue no reads). Collect passes keep them: the render is what
         // records their questions.
         const skipSync = choice === "speculate" ? () => live.mode === "spec" && live.pendingCount > 0 : undefined;
-        html = await renderPass(live, boot, page, opts, choice === "collect" ? { seeds, asked } : undefined, skipSync, lazyRefs ? { asked: lazyAsked, eager: eagerRefs } : undefined);
+        html = await renderPass(live, boot, page, opts, choice === "collect" ? { seeds, asked } : undefined, skipSync, lazyRefs ? { asked: lazyAsked, eager: eagerRefs } : undefined, choice === "collect" ? deniedRootKey : undefined, out);
       } catch (err) {
         threw = err;
+      }
+      if (skipDeniedClosure && choice === "collect" && deniedRootKey === undefined && out.engine !== undefined) {
+        try {
+          const root = out.engine.fetchRenderCard(page);
+          if (root !== undefined && out.engine.isDenied(root)) deniedRootKey = root.key;
+        } catch {
+          /* no verdict: keep walking */
+        }
       }
       const pendingReads = live.pendingCount;
       const fresh = [...asked].filter((n) => !seeds.has(n));
@@ -211,6 +240,11 @@ export async function liveRenderPage(
       if (done) {
         if (threw !== undefined) throw threw;
         return { html: html as string, stats: live.stats, passes, choice };
+      }
+      if (env?.DECKO_LIVE_TRACE === "1") {
+        process.stderr.write(
+          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
+        );
       }
       if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length + lazyFresh.length === 0 && pendingReads <= tail) blockNext = true;
       if (pendingReads > 0) await live.flushSpeculative();

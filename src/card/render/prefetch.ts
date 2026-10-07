@@ -189,6 +189,10 @@ export interface PrefetchContext {
    *  stats.additionalResults). Must not depend on the closure's output —
    *  they execute alongside the prelude folds in one round trip. */
   additionalStatements?: SQLStatement[];
+  /** Request-local live render only: compose the root and the prelude rows
+   *  but do not walk the root's inclusion closure (its nests are prepared
+   *  only when the synchronous render asks for them). */
+  skipClosureWalk?: boolean;
 }
 
 /**
@@ -463,6 +467,7 @@ export async function prefetchInclusionClosure(
 
   const composed = await composeAndCache([rootRow], ctx, stats);
   stats.additionalResults = additionalResults;
+  if (ctx.skipClosureWalk === true) return stats;
   await driveClosure(
     [rootRow, ...preludeTestContextRows],
     [...composed, ...preludeSideComposed, ...preludeTestContextComposed, ...preludeItemComposed],
@@ -1306,6 +1311,11 @@ export interface WarmupClosureContext extends PrefetchContext {
    *  ensureCodenameMarksResolvable). Runs once per round, matching the
    *  baseline chase's per-batch cadence. */
   onRound?: () => Promise<void>;
+  /** Junction sides queued only to compose a compound name are prepared as
+   *  existence-only leaves, never scanned (request-local live render's
+   *  demand-seed warm-up only; without it such a side is scanned as "full"
+   *  and its content's references are chased). */
+  sidesUnscanned?: boolean;
 }
 
 export interface WarmupStats {
@@ -1621,6 +1631,7 @@ export async function prefetchWarmupClosure(
           !pending.has(left.key)
         ) {
           pending.set(left.key, { abs: left.s });
+          if (ctx.sidesUnscanned === true && !modes.has(left.key)) modes.set(left.key, "leaf");
         }
         if (
           rightCard === undefined &&
@@ -1630,6 +1641,7 @@ export async function prefetchWarmupClosure(
           !pending.has(right.key)
         ) {
           pending.set(right.key, { abs: right.s });
+          if (ctx.sidesUnscanned === true && !modes.has(right.key)) modes.set(right.key, "leaf");
         }
       }
     }

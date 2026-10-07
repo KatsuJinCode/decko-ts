@@ -39,6 +39,7 @@ import { DeckoName } from "../../src/card/name.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 
 const argv = process.argv.slice(2);
+if (process.env.DECKO_LIVE_TRACE_STACK !== undefined) Error.stackTraceLimit = 60;
 const arg = (k: string, d: string) => {
   const i = argv.indexOf(`--${k}`);
   return i === -1 || i === argv.length - 1 ? d : argv[i + 1];
@@ -59,7 +60,8 @@ const spin = (ms: number) => {
   }
 };
 
-const counter = { rts: 0, stmts: 0, rows: 0, dbMs: 0 };
+const counter = { rts: 0, stmts: 0, rows: 0, dbMs: 0, bytes: 0 };
+const sizeOf = (r: SQLQueryResult) => { try { return JSON.stringify(r.rows).length; } catch { return 0; } };
 const base = new NodeSqliteDriver(dbPath, true);
 // --stmt-hist: count statements by shape (whitespace-normalized, first 140
 // chars) with local execution time, and print the top 25 by time at exit.
@@ -88,6 +90,7 @@ const counted: SQLDatabaseDriver = {
     counter.dbMs += performance.now() - t0;
     note(sql, performance.now() - t0);
     counter.rows += r.rows.length;
+    counter.bytes += sizeOf(r);
     return r;
   },
   async batch(stmts: SQLStatement[]): Promise<SQLQueryResult[]> {
@@ -104,7 +107,10 @@ const counted: SQLDatabaseDriver = {
     }
     const r = await base.batch(stmts);
     counter.dbMs += performance.now() - t0;
-    for (const x of r) counter.rows += x.rows.length;
+    for (const x of r) {
+      counter.rows += x.rows.length;
+      counter.bytes += sizeOf(x);
+    }
     return r;
   },
 };
@@ -118,6 +124,7 @@ const extra: Record<string, unknown> = {};
 await base.query("SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL", []);
 await base.query("SELECT COUNT(*) AS c FROM cards WHERE trash = 0", []);
 let t0 = performance.now();
+let cpu0 = process.cpuUsage();
 try {
   if (mode === "baseline") {
     // --temp-cap N: the Temporary-cache key cap (default: Ruby's 10,000).
@@ -138,7 +145,9 @@ try {
     counter.stmts = 0;
     counter.rows = 0;
     counter.dbMs = 0;
+    counter.bytes = 0;
     t0 = performance.now();
+    cpu0 = process.cpuUsage();
     const r = await liveRenderPage(deck.fetcher.driver, page, (d) => bootEdgeServingEngines(d), {});
     html = applyServedEnvironmentDeltas(r.html);
     extra.choice = r.choice;
@@ -157,8 +166,13 @@ try {
     counter.stmts = 0;
     counter.rows = 0;
     counter.dbMs = 0;
+    counter.bytes = 0;
     t0 = performance.now();
+    cpu0 = process.cpuUsage();
     html = await request();
+    const c1 = process.cpuUsage(cpu0);
+    extra.first_cpu_ms = Math.round((c1.user + c1.system) / 1000);
+    extra.first_db_bytes = counter.bytes;
     extra.boot_trips = bootTrips;
     extra.state_after = { boot_bundle_empty: bootCacheIsEmpty(), name_scope_closed: DeckoName.requestScopeIsClosed() };
     const freshCard = arg("fresh-check", "");
@@ -192,6 +206,7 @@ try {
   outcome = `${(err as Error)?.name}: ${String((err as Error)?.message ?? err).slice(0, 300)}`;
 }
 const wallMs = performance.now() - t0;
+const cpuUsed = process.cpuUsage(cpu0);
 if (out) writeFileSync(out, html);
 const report = {
   page,
@@ -203,6 +218,8 @@ const report = {
   rows_returned: counter.rows,
   local_wall_ms: Math.round(wallMs),
   local_db_ms: Math.round(counter.dbMs),
+  cpu_ms: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
+  db_bytes: counter.bytes,
   injected_latency_ms: latency,
   ...(Object.keys(extra).length > 0 ? { extra } : {}),
 };

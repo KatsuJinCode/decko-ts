@@ -335,6 +335,22 @@ export class RequestStore {
         `UNION SELECT left_id FROM cards WHERE id IN (SELECT id FROM seed) AND left_id IS NOT NULL ` +
         `UNION SELECT right_id FROM cards WHERE id IN (SELECT id FROM seed) AND right_id IS NOT NULL)`,
     );
+    // starFull: junctions of the reach whose right part is a `*` card (set
+    // cards X+*right, rule cards X+*type+*default ...) arrive whole: the
+    // engine's rule walks read them whole, each a trip later otherwise.
+    const starMode = typeof process !== "undefined" ? process.env?.DECKO_LIVE_STAR_FULL : undefined;
+    const SETS = `('self','type','right','type_plus_right','all_plus','rstar','star','ltype_rtype')`;
+    ctes.push(
+      starMode === "1"
+        ? `star(id) AS (SELECT c.id FROM cards c JOIN cards r ON r.id = c.right_id WHERE c.id IN (SELECT id FROM ext) AND r."key" LIKE '*%')`
+        : starMode === "2"
+          ? `star(id) AS (SELECT c.id FROM cards c JOIN cards r ON r.id = c.right_id WHERE c.id IN (SELECT id FROM ext) AND r.codename IN ${SETS})`
+          : starMode === "3"
+            ? `star(id) AS (SELECT c.id FROM cards c JOIN cards r ON r.id = c.right_id WHERE c.id IN (SELECT id FROM ext) AND r.codename IN ${SETS} ` +
+              `UNION SELECT c.id FROM cards c JOIN cards s ON s.id = c.left_id JOIN cards sr ON sr.id = s.right_id JOIN cards r ON r.id = c.right_id ` +
+              `WHERE c.id IN (SELECT id FROM ext) AND sr.codename IN ${SETS} AND r."key" LIKE '*%')`
+            : `star(id) AS (SELECT NULL WHERE 0)`,
+    );
     const head = `WITH ${ctes.join(", ")} `;
     const fullCols = CARDS_COLUMNS.map((c) => `cards.${c}`).join(", ");
     // identityRows off: the rest of the reach arrives whole too (the ring
@@ -344,14 +360,14 @@ export class RequestStore {
     return {
       full: {
         sql:
-          `${head}SELECT ${fullCols} FROM cards WHERE (id IN (SELECT id FROM fs) OR id IN (SELECT id FROM pt)) ` +
+          `${head}SELECT ${fullCols} FROM cards WHERE (id IN (SELECT id FROM fs) OR id IN (SELECT id FROM pt) OR id IN (SELECT id FROM star)) ` +
           `AND id NOT IN (SELECT value FROM json_each(?))`,
         params: [...params, JSON.stringify([...this.full])],
       },
       identity: {
         sql:
           `${head}SELECT ${idCols} FROM cards WHERE id IN (SELECT id FROM ext) ` +
-          `AND id NOT IN (SELECT id FROM fs) AND id NOT IN (SELECT id FROM pt) AND id NOT IN (SELECT value FROM json_each(?))`,
+          `AND id NOT IN (SELECT id FROM fs) AND id NOT IN (SELECT id FROM pt) AND id NOT IN (SELECT id FROM star) AND id NOT IN (SELECT value FROM json_each(?))`,
         params: [...params, JSON.stringify([...this.present])],
       },
       identityColumns,
