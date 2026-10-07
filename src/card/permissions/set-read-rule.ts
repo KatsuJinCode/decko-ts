@@ -71,7 +71,7 @@ import { DeckoName } from "../name.js";
 import { ruleClassName, ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import { resolveRuleIdsByKeys } from "./read-rules.js";
-import { quickTypeName } from "../actions/rule-content-walk.js";
+import { isPreferenceName, quickTypeName } from "../actions/rule-content-walk.js";
 
 /** permissions.rb:56 — the "_left" (or [[_left]]) rule content that makes a
  *  compound card read through its left card. */
@@ -615,7 +615,9 @@ async function patternCardInput(
     typeId: card.typeId,
     typeName: card.typeId !== null ? ((await cardName(deps, card.typeId)) ?? null) : null,
     leftTypeName,
-    isRule: parsed.isCompound ? await isStandardRuleName(deps, parsed) : false,
+    isRule: parsed.isCompound
+      ? (await isStandardRuleName(deps, parsed)) || (await isPreferenceName(deps.fetch, parsed))
+      : false,
   };
 }
 

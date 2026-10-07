@@ -72,6 +72,7 @@ import {
   SETTING_GROUPS,
   isTemplatedNestsName,
   templateLinkSetNameFromParts,
+  visibleSettingCodenames,
   visibleSettingsForGroup,
 } from "./render/views.js";
 import { RULE_TYPE_IDS_FOR_PRELOAD } from "./render/virtual-rule-card.js";
@@ -4689,6 +4690,19 @@ export class RenderEngine implements RenderEngineLike {
    *  fetchRenderCard. This hook fetches + enriches + memoizes the card
    *  so the next fetchRenderCard call sees it. Returns undefined for a
    *  fetch miss (the caller falls back to an empty slot). */
+  /** card-mod-rules set/type/set.rb:73-75 visible_setting_codenames for a
+   *  set card by name: the card, its pattern (right) card and its anchor
+   *  (left) card are prepared first, because the prototype type the
+   *  restriction reads comes from them. Undefined for a card that does not
+   *  exist or is not Set-typed (Ruby raises NoMethodError there). */
+  async visibleSettingCodenamesFor(name: string): Promise<ReadonlyArray<string> | undefined> {
+    const card = await this.prepareItemForRender(name);
+    if (card === undefined) return undefined;
+    if (card.name.leftName !== undefined) await this.prepareItemForRender(card.name.leftName.s);
+    if (card.name.rightName !== undefined) await this.prepareItemForRender(card.name.rightName.s);
+    return visibleSettingCodenames(this, card);
+  }
+
   async prepareItemForRender(name: string): Promise<RenderCard | undefined> {
     const cached = this.fetchRenderCard(name);
     if (cached !== undefined) return cached;

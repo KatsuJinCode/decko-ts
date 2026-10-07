@@ -116,7 +116,8 @@ export async function ruleWalkPatternInput(
   let isRule = false;
   if (base.name.isCompound) {
     leftTypeName = await leftTypeNameOf(fetch, base.name);
-    isRule = await isStandardRuleName(fetch, base.name);
+    // rule? (rule/all.rb:32-34): standard_rule? || preference?
+    isRule = (await isStandardRuleName(fetch, base.name)) || (await isPreferenceName(fetch, base.name));
   }
   return {
     name: base.name.s,
@@ -192,7 +193,7 @@ export async function quickTypeName(
  *  deck's codename registry; either codename missing -> false (the
  *  rule-less-seed divergence, the same allow contract set-read-rule.ts
  *  documents). */
-async function isStandardRuleName(
+export async function isStandardRuleName(
   fetch: FetchEngine,
   name: DeckoName,
 ): Promise<boolean> {
@@ -214,4 +215,31 @@ async function isStandardRuleName(
     leftRecord.typeId === setId &&
     rightRecord.typeId === settingId
   );
+}
+
+/** preference? (rule/all.rb:42-54): a per-user setting card,
+ *  SET+USER+SETTING. True when the name has more than two parts, its right
+ *  part is a Setting, the name without its last two parts is a Set, and the
+ *  second-to-last part (the preferer) is User-typed or is the *all card.
+ *  Ruby's valid_preferer? raises when the preferer card does not exist
+ *  (`self[-2]` is nil); the engine answers false there. */
+export async function isPreferenceName(fetch: FetchEngine, name: DeckoName): Promise<boolean> {
+  const parts = name.parts;
+  if (parts.length <= 2) return false;
+  const [setId, settingId, userId] = await Promise.all([
+    fetch.codenames.id("set"),
+    fetch.codenames.id("setting"),
+    fetch.codenames.id("user"),
+  ]);
+  if (setId === undefined || settingId === undefined) return false;
+  const right = name.rightName;
+  if (right === undefined) return false;
+  const rightRecord = await fetch.fetch(right.s);
+  if (rightRecord?.typeId !== settingId) return false;
+  const trunk = parts.slice(0, -2).join("+");
+  const trunkRecord = await fetch.fetch(trunk);
+  if (trunkRecord?.typeId !== setId) return false;
+  const preferer = await fetch.fetch(parts[parts.length - 2] ?? "");
+  if (preferer === undefined) return false;
+  return (userId !== undefined && preferer.typeId === userId) || preferer.codename === "all";
 }

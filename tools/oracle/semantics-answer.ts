@@ -52,7 +52,7 @@ import {
   type ViewTaskState,
 } from "../../src/card/permissions/view-task-rules.js";
 import { parseOptionsWithLexicon, executeQuery, executeCount } from "../../src/cql/execute.js";
-import { ruleWalkPatternInput } from "../../src/card/actions/rule-content-walk.js";
+import { isPreferenceName, isStandardRuleName, ruleWalkPatternInput } from "../../src/card/actions/rule-content-walk.js";
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
 import { HTML_VIEWS } from "../../src/card/render/views.js";
 import { readPermissionOverride, updatePermissionOverride } from "../../src/card/permissions/read-override.js";
@@ -373,11 +373,10 @@ for (const question of QUESTIONS.questions) {
           right: await safe(() => sideName(c.rightId)),
           trunk: await safe(() => name.trunk),
           tag: await safe(() => name.tag),
-          // The engine carries standard_rule? only (set-read-rule.ts: the
-          // preference? stream is not ported), so rule? is standard_rule?.
+          // rule? = standard_rule? || preference? (ruleWalkPatternInput).
           "rule?": input.isRule === true,
-          "standard_rule?": input.isRule === true,
-          "preference?": "ERR:NotPorted:preference? has no engine predicate",
+          "standard_rule?": await safe(() => isStandardRuleName(fetcher, name)),
+          "preference?": await safe(() => isPreferenceName(fetcher, name)),
           content: c.dbContent ?? "",
         });
       }
@@ -433,7 +432,12 @@ for (const question of QUESTIONS.questions) {
           set: sname,
           rule_cards: names,
           rule_cards_by_name: typeof names === "string" ? names : [...names].sort(),
-          visible_setting_codenames: "ERR:NotPorted:visible_setting_codenames has no engine counterpart",
+          visible_setting_codenames: await safe(async () => {
+            const list = await engine.visibleSettingCodenamesFor(sname);
+            return list === undefined
+              ? "ERR:NoMethodError:undefined method `visible_setting_codenames'"
+              : [...list].sort();
+          }),
         });
       }
       answer = out;

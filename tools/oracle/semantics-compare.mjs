@@ -48,9 +48,15 @@ const isNotPorted = (v) => typeof v === "string" && v.startsWith("ERR:NotPorted"
 //  5. Errors: the same rejection carries a different exception class name in
 //     each language (Card::Error::BadQuery vs CqlBadQuery); two errors match
 //     when their messages match.
+//  7. Ruby's NoMethodError message ends with the receiver's inspect
+//     ("for #<Card:0x...>", "for an instance of Card"), which carries a
+//     per-process object address: an undefined-method error matches on the
+//     method name alone.
 const errMessage = (v) => {
   const m = /^ERR:(?:[A-Za-z0-9_]+::)*[A-Za-z0-9_]+:(.*)$/s.exec(v);
-  return m === null ? v : m[1].trim();
+  const msg = m === null ? v : m[1].trim();
+  const nm = /^undefined method `([^']+)'/.exec(msg);
+  return nm === null ? msg : `undefined method \`${nm[1]}'`;
 };
 
 function snake(s) {

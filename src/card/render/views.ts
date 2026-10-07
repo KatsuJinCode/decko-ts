@@ -3147,6 +3147,20 @@ export function visibleSettingsForGroup(
   });
 }
 
+/** card-mod-rules set/type/set.rb:73-75 visible_setting_codenames: every
+ *  registered setting, group by group in Card::Setting.groups order, that
+ *  applies to the set's prototype type. Defined on Set-typed cards only:
+ *  undefined for any other card (Ruby raises NoMethodError there). */
+export function visibleSettingCodenames(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): ReadonlyArray<string> | undefined {
+  const typeId = setCard.record.typeId;
+  if (typeId === undefined || typeId === null) return undefined;
+  if (engine.peekCodenameById?.(typeId) !== "set") return undefined;
+  return Object.keys(GROUP_TO_SETTINGS).flatMap((group) => visibleSettingsForGroup(engine, setCard, group));
+}
+
 /** Settings that declared `restricted_to_type:` in their setting_opts
  *  (the only two across the loaded mods — grep over card-1.110.0/mod +
  *  card-mod-* 2026-09-26). Values are the permitted type CODES
