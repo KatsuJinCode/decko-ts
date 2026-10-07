@@ -5169,13 +5169,22 @@ function barDivHtml(ctx: ViewContext): string {
   // The LONGER star-right rule-row shape stays wanted via parts.length
   // (Message+Conversation+*type plus right+*head, recapture-raw-shard-000017,
   // delta +203 pre-fix) - unchanged.
+  // Card.known?(name) (states.rb:24-26) is fetch(name).present?, and fetch
+  // returns VIRTUAL cards (states.rb:52-57: compound with an applicable
+  // *structure rule) — an id-less compound under a structure rule is known
+  // (media+GBA+YouTube Browser's <video>+GBA YTlinkControl bars).
+  const virtualKnown =
+    card.id === undefined &&
+    card.name.isCompound &&
+    fmt.engine.phantomVirtualStructure?.(card.name, card.typeName, card.typeId) !== undefined;
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,
     card.name.s,
-    card.name.isRStar &&
-      card.name.parts.length === 2 &&
-      !(card.name.left ?? "").startsWith("*"),
+    virtualKnown ||
+      (card.name.isRStar &&
+        card.name.parts.length === 2 &&
+        !(card.name.left ?? "").startsWith("*")),
   );
   return (
     `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${dataSlotId}>\n` +
