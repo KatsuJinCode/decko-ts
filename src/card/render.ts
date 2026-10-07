@@ -36,6 +36,7 @@ import {
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
 import { resolvePointerItemName } from "./render/pointer-list.js";
+import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
@@ -5628,7 +5629,11 @@ export class RenderEngine implements RenderEngineLike {
    *  closure's merged-wave pre-pass (fetch-composer batch lane V3), which
    *  must collect the SAME names the per-host pass would ask. */
   private pointerItemNamesOf(card: RenderCard): string[] {
-    return card.dbContent
+    // A set module's `def content` override replaces the stored items
+    // (`*input type+*right+*content options`: the list-input catalog), and
+    // Ruby fetches the items it actually lists, so the walk reads the same
+    // content the item views render.
+    return (listItemContentOverride(card) ?? card.dbContent)
       .toString()
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
