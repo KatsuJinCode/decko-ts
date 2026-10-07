@@ -28,6 +28,7 @@ export {
 } from "./attachment-content.js";
 export {
   AttachmentStore,
+  BlobAttachmentStore,
   LocalAttachmentStore,
   type AttachmentStoreInput,
   type StoredAttachment,
