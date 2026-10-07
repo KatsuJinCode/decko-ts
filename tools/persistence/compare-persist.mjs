@@ -30,18 +30,28 @@
 //               measures each operation on its own, so one early divergence
 //               does not fail every later step by inheritance.
 //
+// DELIBERATE DIFFERENCES. An optional fourth argument names a JSON file of
+// declared, reasoned differences: { differences: [{ step, title, reason,
+// deltaFaults: [...] }] }. A step whose delta faults are EXACTLY the declared
+// list (same faults, same values, nothing more or less) is counted as a
+// deliberate difference, not a mismatch. A declared step whose faults change
+// in any way, or that starts matching, is reported as a mismatch, so the
+// declaration cannot drift from what the engines actually do.
+//
 // Exit 0 when every step's state matches, 1 on any difference, 2 on a missing
 // input (never silently skips).
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const [rubyDir, tsFile, reportFile] = process.argv.slice(2);
+const [rubyDir, tsFile, reportFile, expectFile] = process.argv.slice(2);
 if (!rubyDir || !tsFile) {
-  console.error("usage: compare-persist.mjs <rubyStepsDir> <tsStateJson> [reportJson]");
+  console.error(
+    "usage: compare-persist.mjs <rubyStepsDir> <tsStateJson> [reportJson] [deliberateDifferencesJson]",
+  );
   process.exit(2);
 }
-for (const p of [rubyDir, tsFile]) {
+for (const p of [rubyDir, tsFile, ...(expectFile ? [expectFile] : [])]) {
   if (!existsSync(p)) {
     console.error(`MISSING INPUT: ${p}`);
     process.exit(2);
@@ -218,10 +228,31 @@ const rubySteps = readdirSync(rubyDir)
   .map((f) => JSON.parse(readFileSync(path.join(rubyDir, f), "utf8")));
 const tsSteps = JSON.parse(readFileSync(tsFile, "utf8"));
 
+const declared = new Map();
+if (expectFile) {
+  for (const d of JSON.parse(readFileSync(expectFile, "utf8")).differences ?? []) {
+    declared.set(Number(d.step), d);
+  }
+}
+/** Order-insensitive, key-order-insensitive identity of a fault list. */
+const canonical = (value) => {
+  if (Array.isArray(value)) return `[${value.map(canonical).sort().join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
 const EMPTY = { tables: {}, order: { card_acts: [], card_actions: [] } };
 let prevRuby = EMPTY;
 let prevTs = EMPTY;
-const report = { steps: [], totals: { steps: 0, stateMatching: 0, deltaMatching: 0 } };
+const report = {
+  steps: [],
+  totals: { steps: 0, stateMatching: 0, deltaMatching: 0, deltaDeliberate: 0 },
+};
 for (const ts of tsSteps) {
   const ruby = rubySteps.find((r) => Number(r.step) === Number(ts.step));
   const entry = {
@@ -245,14 +276,31 @@ for (const ts of tsSteps) {
     prevRuby = a;
     prevTs = b;
   }
+  const decl = declared.get(Number(ts.step));
+  entry.deliberate = null;
+  if (decl !== undefined) {
+    const exact =
+      entry.deltaFaults.length > 0 && canonical(entry.deltaFaults) === canonical(decl.deltaFaults ?? []);
+    entry.deliberate = { title: decl.title, declaredFaultsMatch: exact };
+  }
+  // A mismatch is any delta fault not covered, exactly, by a declaration.
+  entry.unexpectedDeltaFaults = entry.deliberate?.declaredFaultsMatch ? [] : entry.deltaFaults;
+  if (decl !== undefined && !entry.deliberate.declaredFaultsMatch && entry.deltaFaults.length === 0) {
+    // The declared difference vanished: the declaration is stale.
+    entry.unexpectedDeltaFaults = [{ kind: "declared-difference-absent", step: ts.step }];
+  }
   report.steps.push(entry);
   report.totals.steps += 1;
   if (entry.stateFaults.length === 0) report.totals.stateMatching += 1;
   if (entry.deltaFaults.length === 0) report.totals.deltaMatching += 1;
+  else if (entry.unexpectedDeltaFaults.length === 0) report.totals.deltaDeliberate += 1;
 }
 report.passRate = {
   state: `${report.totals.stateMatching}/${report.totals.steps}`,
   delta: `${report.totals.deltaMatching}/${report.totals.steps}`,
+  deltaDeliberate: report.totals.deltaDeliberate,
+  deltaUnexpected:
+    report.totals.steps - report.totals.deltaMatching - report.totals.deltaDeliberate,
 };
 const text = JSON.stringify(report, null, 2) + "\n";
 if (reportFile) writeFileSync(reportFile, text);
@@ -260,8 +308,12 @@ else process.stdout.write(text);
 for (const s of report.steps) {
   console.error(
     `${String(s.step).padStart(2)} ${s.label.padEnd(48)} ruby=${s.rubyOk} ts=${s.tsOk} ` +
-      `state=${s.stateFaults.length} delta=${s.deltaFaults.length}`,
+      `state=${s.stateFaults.length} delta=${s.deltaFaults.length}` +
+      (s.deliberate ? ` deliberate=${s.deliberate.declaredFaultsMatch ? "as-declared" : "DRIFTED"}` : ""),
   );
 }
-console.error(`state ${report.passRate.state} matching, delta ${report.passRate.delta} matching`);
+console.error(
+  `state ${report.passRate.state} matching, delta ${report.passRate.delta} matching, ` +
+    `${report.passRate.deltaDeliberate} deliberate, ${report.passRate.deltaUnexpected} unexpected`,
+);
 process.exit(report.totals.steps > 0 && report.totals.stateMatching === report.totals.steps ? 0 : 1);

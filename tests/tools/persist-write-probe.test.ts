@@ -59,14 +59,18 @@ const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json"
 // a Ruby install.
 const RUBY_STEPS =
   process.env.PERSIST_RUBY_STEPS ?? path.join(REPO, "tests/fixtures/persistence-oracle");
-// Steps whose row delta still differs from the oracle, each explained in
-// recovery/parity-team/persistence.md:
-//   7  re-creating a junction while its left side is trashed: the oracle deck
-//      lacks the production UNIQUE (left_id, right_id) index and Ruby inserts
-//      a second junction row; the port revives the trashed one.
+// The one deliberate difference, declared with its reason and its exact row
+// delta: step 7, re-creating a junction while its left side is trashed. Ruby
+// inserts a second junction row (possible only because the oracle deck lacks
+// the production UNIQUE (left_id, right_id) index); the port revives the
+// trashed row. The comparator accepts step 7 only if its delta is exactly the
+// declared one.
+const DELIBERATE = path.join(RUBY_STEPS, "deliberate-differences.json");
+const DELIBERATE_STEPS = [7];
+// Steps whose row delta still differs from the oracle without a declaration.
 //  19  Card#update!(trash: false) on a trashed card (history "restore"): the
 //      port's update has no trash field and does not reach trashed rows.
-const KNOWN_DIVERGENCES = [7, 19];
+const KNOWN_DIVERGENCES = [19];
 const PREFIX = "PersistProbe";
 // Same string as the Ruby half's UNSAFE_HTML.
 const UNSAFE_HTML =
@@ -433,15 +437,19 @@ describe("persistence write probe (TS half)", () => {
     const report = path.join(PERSIST_DIR, "compare-report.json");
     const run = spawnSync(
       process.execPath,
-      [path.join(REPO, "tools/persistence/compare-persist.mjs"), RUBY_STEPS, OUT, report],
+      [path.join(REPO, "tools/persistence/compare-persist.mjs"), RUBY_STEPS, OUT, report, DELIBERATE],
       { windowsHide: true, encoding: "utf8" },
     );
     expect(run.status, run.stderr).not.toBe(2); // 2 = a missing input
     const steps = (JSON.parse(readFileSync(report, "utf8")) as { steps: Row[] }).steps;
     const diverging = steps
-      .filter((s) => (s.deltaFaults as unknown[]).length > 0)
+      .filter((s) => (s.unexpectedDeltaFaults as unknown[]).length > 0)
       .map((s) => Number(s.step));
     expect(diverging).toEqual(KNOWN_DIVERGENCES);
+    const deliberate = steps
+      .filter((s) => (s.deliberate as { declaredFaultsMatch?: boolean } | null)?.declaredFaultsMatch === true)
+      .map((s) => Number(s.step));
+    expect(deliberate).toEqual(DELIBERATE_STEPS);
   }, 900000);
 });
 
