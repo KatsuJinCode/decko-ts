@@ -21,6 +21,11 @@
 //   9  no-op update                     19 revive child (MODEL path)
 //  10  create over existing name        20 update with unsafe html
 //  21  create without type or content   22 create plain text with html
+//  23  create revert subject            28 revert to previous (last act)
+//  24  update revert subject            29 delete revert subject
+//  25  rename revert subject            30 restore from history
+//  26  revert to this (undo rename)     31 revert to previous of a create
+//  27  revert to this (create content) 32 update a nested deck card
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
 // committed Ruby dumps, and asserts which steps diverge. Without the oracle
@@ -34,6 +39,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "../../src/card/fetch.js";
+import { RenderEngine } from "../../src/card/render.js";
 import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
 import type { CreateCardInput, UpdateCardInput } from "../../src/card/actions/types.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
@@ -55,6 +61,8 @@ const SRC =
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PERSIST_DIR = path.join(REPO, "tmp/persist");
 const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json");
+// The TS deck as the op list left it, kept only for the whole-deck comparison.
+const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
 // The Ruby oracle's per-step dumps, committed so the comparison runs without
 // a Ruby install.
 const RUBY_STEPS =
@@ -65,17 +73,17 @@ const RUBY_STEPS =
 // the production UNIQUE (left_id, right_id) index); the port revives the
 // trashed row. The comparator accepts step 7 only if its delta is exactly the
 // declared one.
-const DELIBERATE = path.join(RUBY_STEPS, "deliberate-differences.json");
+const DELIBERATE = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
 const DELIBERATE_STEPS = [7];
 // Steps whose row delta still differs from the oracle without a declaration.
-//  19  Card#update!(trash: false) on a trashed card (history "restore"): the
-//      port's update has no trash field and does not reach trashed rows.
-const KNOWN_DIVERGENCES = [19];
+const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
 // Same string as the Ruby half's UNSAFE_HTML.
 const UNSAFE_HTML =
   '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
   '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
+// Same string as the Ruby half's NESTED_DECK_CONTENT (step 32).
+const NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>";
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -252,6 +260,36 @@ describe("persistence write probe (TS half)", () => {
       if (id === undefined) throw new Error(`probe card missing: ${name}`);
       return id;
     };
+    // The rendered result of a revert: the reverted card's core view from a
+    // fresh render engine over the same deck (the request's soft redirect
+    // re-renders the card fresh), as the Ruby half renders it.
+    const renderAfter = async (cardId: number): Promise<Row> => {
+      try {
+        const row = (
+          await driver.query<Row>("SELECT trash, type_id FROM cards WHERE id = ?", [cardId])
+        ).rows[0];
+        const name = [...(await names()).entries()].find(([, id]) => id === cardId)?.[0];
+        if (name === undefined) return { error: `no name for card ${cardId}` };
+        const typeName = (
+          await driver.query<{ name: string }>("SELECT name FROM cards WHERE id = ?", [row.type_id])
+        ).rows[0]?.name;
+        const trash = Number(row.trash) === 1;
+        if (trash) return { name, trash, type: typeName, core: null };
+        // The render engine's freshness stamp table (db/schema.sqlite.sql
+        // deck_data_version); the oracle deck predates it. It is a port-only
+        // table, excluded from the row comparisons.
+        await driver.query(
+          `CREATE TABLE IF NOT EXISTS "deck_data_version" (
+             "id" INTEGER PRIMARY KEY CHECK ("id" = 1), "version" INTEGER NOT NULL DEFAULT 0)`,
+          [],
+        );
+        await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
+        const renderer = new RenderEngine(new FetchEngine(driver));
+        return { name, trash, type: typeName, core: await renderer.render(name, "core") };
+      } catch (error) {
+        return { error: error instanceof Error ? `${error.name}: ${error.message}` : String(error) };
+      }
+    };
     const record = async (
       step: number,
       label: string,
@@ -259,7 +297,11 @@ describe("persistence write probe (TS half)", () => {
       detail: Row,
     ): Promise<void> => {
       const state = await probeState(driver);
-      out.push({ step, label, detail, state });
+      const render =
+        kind === "revert" && detail.ok === true && typeof detail.value === "number"
+          ? await renderAfter(detail.value)
+          : undefined;
+      out.push({ step, label, detail, state, ...(render !== undefined ? { render } : {}) });
       warn(
         `[persist] ${step} ${label} ok=${String(detail.ok)} ` +
           `cards=${(state.cards as Row[]).length} ` +
@@ -401,13 +443,11 @@ describe("persistence write probe (TS half)", () => {
       });
       // 19 is the MODEL-API revival: Ruby revives with Card#update!(trash:
       // false) on the trashed row, which Card.find reaches because find has
-      // no trash filter. The engine's update has no trash field and resolves
-      // its row through the retrieval seam, which filters trash. Last on
-      // purpose: Ruby leaves a live child under a trashed parent, and every
-      // later op would inherit that state.
+      // no trash filter; the engine's equivalent is an update with
+      // lookInTrash. Ruby leaves a live child under a trashed parent.
       await op(19, "revive child (model path: update trash=false)", "trash", async () => {
         const childId = await idOf(`${PREFIX} Parent+${PREFIX} Child`);
-        return engine.updateCard({ cardId: childId, trash: false } as unknown as UpdateCardInput);
+        return engine.updateCard({ cardId: childId, trash: false, lookInTrash: true } as UpdateCardInput);
       });
       await op(20, "update with unsafe html", "update", () =>
         engine.updateCard({ cardId: revivedId, content: UNSAFE_HTML } as UpdateCardInput),
@@ -422,12 +462,90 @@ describe("persistence write probe (TS half)", () => {
           content: UNSAFE_HTML,
         } as CreateCardInput),
       );
+      // 23-31: the history pane's revert and restore requests, through the
+      // engine's revert path (the server's /update/<mark>?revert_actions[]=..
+      // and ?revert_to=previous&revert_act=.. land on the same call).
+      const actionIdsOf = async (name: string): Promise<number[]> =>
+        (
+          await driver.query<{ id: number }>(
+            "SELECT id FROM card_actions WHERE card_id = ? ORDER BY id",
+            [await idOf(name)],
+          )
+        ).rows.map((r) => Number(r.id));
+      const actOf = async (actionId: number): Promise<number> =>
+        Number(
+          (
+            await driver.query<{ card_act_id: number }>(
+              "SELECT card_act_id FROM card_actions WHERE id = ?",
+              [actionId],
+            )
+          ).rows[0].card_act_id,
+        );
+      const rev = `${PREFIX} Rev`;
+      await op(23, "create revert subject", "create", () =>
+        engine.createCard({ name: rev, ...rich, content: `one [[${PREFIX} B]]` } as CreateCardInput),
+      );
+      await op(24, "update revert subject", "update", async () =>
+        engine.updateCard({ cardId: await idOf(rev), content: "two" } as UpdateCardInput),
+      );
+      await op(25, "rename revert subject", "rename", async () =>
+        engine.updateCard({ cardId: await idOf(rev), name: `${rev} Renamed` } as UpdateCardInput),
+      );
+      await op(26, "revert to this (undoes the rename)", "revert", async () =>
+        engine.revertActions({
+          cardId: await idOf(`${rev} Renamed`),
+          actionIds: [(await actionIdsOf(`${rev} Renamed`))[1]],
+        }),
+      );
+      await op(27, "revert to this (the create's content)", "revert", async () =>
+        engine.revertActions({ cardId: await idOf(rev), actionIds: [(await actionIdsOf(rev))[0]] }),
+      );
+      await op(28, "revert to previous (the last act)", "revert", async () =>
+        engine.revertActions({
+          cardId: await idOf(rev),
+          revertToPrevious: true,
+          actId: await actOf((await actionIdsOf(rev)).at(-1)!),
+        }),
+      );
+      await op(29, "delete revert subject", "delete", async () =>
+        engine.deleteCard({ cardId: await idOf(rev) }),
+      );
+      await op(30, "restore from history (revert a trashed card)", "revert", async () =>
+        engine.revertActions({ cardId: await idOf(rev), actionIds: [(await actionIdsOf(rev)).at(-2)!] }),
+      );
+      await op(31, "revert to previous of a create (trashes it)", "revert", async () =>
+        engine.revertActions({
+          cardId: await idOf(`${PREFIX} Plain`),
+          revertToPrevious: true,
+          actId: await actOf((await actionIdsOf(`${PREFIX} Plain`))[0]),
+        }),
+      );
+      // 32: a save of an existing deck card nested by another existing card
+      // (Number nests Number+description). Its writes land outside the
+      // probe's rows; tools/persistence/compare-decks.mjs measures them.
+      await op(32, "update a nested deck card", "update", async () => {
+        const nested = (
+          await driver.query<{ id: number }>(
+            `SELECT c.id FROM cards c JOIN cards l ON l.id = c.left_id JOIN cards r ON r.id = c.right_id
+             WHERE l.key = 'number' AND r.key = 'description' AND c.trash = 0`,
+            [],
+          )
+        ).rows[0];
+        if (nested === undefined) throw new Error("deck card missing: Number+description");
+        return engine.updateCard({ cardId: Number(nested.id), content: NESTED_DECK_CONTENT } as UpdateCardInput);
+      });
     } finally {
       driver.close();
+      // PERSIST_KEEP_TS_DECK=<path>: keep the deck as the op list left it,
+      // for the whole-deck row comparison (tools/persistence/compare-decks.mjs).
+      // The caller owns that copy and removes it.
+      const keep = process.env.PERSIST_KEEP_TS_DECK;
+      if (keep !== undefined && keep !== "") copyFileSync(dbPath, keep);
+      copyFileSync(dbPath, FINAL_DECK);
       for (const f of [dbPath, `${dbPath}-shm`, `${dbPath}-wal`]) rmSync(f, { force: true });
     }
     writeFileSync(OUT, JSON.stringify(out, null, 2));
-    expect(out.length).toBe(22);
+    expect(out.length).toBe(32);
 
     // Compare against the Ruby oracle's dumps for the same op list
     // (tools/persistence/run-ruby-steps.sh). Each operation's own row delta
@@ -450,6 +568,37 @@ describe("persistence write probe (TS half)", () => {
       .filter((s) => (s.deliberate as { declaredFaultsMatch?: boolean } | null)?.declaredFaultsMatch === true)
       .map((s) => Number(s.step));
     expect(deliberate).toEqual(DELIBERATE_STEPS);
+
+    // The rendered result of every revert step equals Ruby's, byte for byte.
+    const renders = spawnSync(
+      process.execPath,
+      [path.join(REPO, "tools/persistence/compare-renders.mjs"), RUBY_STEPS, OUT],
+      { windowsHide: true, encoding: "utf8" },
+    );
+    const renderSummary = JSON.parse(renders.stdout) as { compared: number; same: number };
+    expect(renderSummary.compared, renders.stderr).toBe(5);
+    expect(renderSummary.same, renders.stderr).toBe(5);
+
+    // Every row either engine wrote OUTSIDE the probe's own records, in every
+    // table of the deck, matches the Ruby oracle's (its delta committed as
+    // ruby-outside-delta.json): ancestor timestamps, other cards' acts,
+    // actions, changes and references, and any other table.
+    try {
+      const decks = spawnSync(
+        process.execPath,
+        [
+          path.join(REPO, "tools/persistence/compare-decks.mjs"),
+          SRC,
+          path.join(REPO, "tests/fixtures/persistence-oracle/ruby-outside-delta.json"),
+          FINAL_DECK,
+          path.join(PERSIST_DIR, "compare-decks-report.json"),
+        ],
+        { windowsHide: true, encoding: "utf8" },
+      );
+      expect(decks.status, decks.stderr).toBe(0);
+    } finally {
+      for (const f of [FINAL_DECK, `${FINAL_DECK}-shm`, `${FINAL_DECK}-wal`]) rmSync(f, { force: true });
+    }
   }, 900000);
 });
 

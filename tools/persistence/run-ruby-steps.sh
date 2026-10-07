@@ -15,7 +15,7 @@ set -u
 APP_DIR="${1:?oracle app dir}"
 SRC="${2:?source deck}"
 OUT="${3:?output dir}"
-STEPS="${4:-22}"
+STEPS="${4:-32}"
 HERE="$(dirname "$(readlink -f "$0")")"
 SCRIPT="$HERE/persist-write-probe.rb"
 WORK="$(dirname "$OUT")"
@@ -46,4 +46,10 @@ for i in $(seq 1 "$STEPS"); do
   fi
   rm -f "$log"
 done
+# KEEP_DECK=<path>: keep a copy of the deck as the op list left it, for the
+# whole-deck row comparison (tools/persistence/compare-decks.mjs). The caller
+# owns that copy and removes it.
+if [ -n "${KEEP_DECK:-}" ]; then
+  cp "$DECK" "$KEEP_DECK" && echo "=== kept final deck: $KEEP_DECK"
+fi
 echo "=== done: $(ls "$OUT" | wc -l) step files"

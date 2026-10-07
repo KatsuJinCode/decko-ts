@@ -30,7 +30,7 @@
 
 require "json"
 
-OUTDIR = ARGV[0] or abort "usage: persist-write-probe.rb <outdir> <stepIndex 1..22>"
+OUTDIR = ARGV[0] or abort "usage: persist-write-probe.rb <outdir> <stepIndex 1..32>"
 STEP = Integer(ARGV[1] || "0")
 abort "step index must be >= 1" if STEP < 1
 
@@ -39,6 +39,8 @@ PREFIX = "PersistProbe"
 # script element, a javascript: link, and allowed markup that must survive.
 UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
               '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>'
+# The new content step 32 gives an existing, nested deck card.
+NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>"
 
 # The probe's own cards: the simple ones by name, and everything reachable
 # from them through left_id/right_id (compound cards carry NULL name/key).
@@ -132,6 +134,37 @@ def id_of(name)
   by_id[:names][name]
 end
 
+# The id of a card's Nth action (1-based, id order, drafts included), or of
+# its last action when n is :last. Both engines number a card's actions the
+# same way while their rows match, so an ordinal names the same action.
+def nth_action_id(name, n)
+  ids = Card::Action.where(card_id: id_of(name)).order(:id).pluck(:id)
+  n == :last ? ids.last : ids[n - 1]
+end
+
+def act_of_action(action_id)
+  Card::Action.find(action_id).card_act_id
+end
+
+# A revert request exactly as the history pane's links send it
+# (card-mod-history set/all/history/actions.rb revert_actions_link): an
+# update of the card fetched with look_in_trash, the card hash assigned, and
+# the revert parameters in Env.params, which the :rollback_actions event
+# reads. Mirrors CardController#update over Card.uri_fetch.
+def revert_request(name, revert_params)
+  params = ActiveSupport::HashWithIndifferentAccess.new(
+    revert_params.merge("mark" => name, "look_in_trash" => "true", "assign" => "true",
+                        "card" => { "skip" => "validate_renaming" })
+  )
+  Card::Env.params = params
+  card = Card.uri_fetch(params)
+  raise "revert target not found: #{name}" unless card
+  card.update! params[:card].to_h
+  card
+ensure
+  Card::Env.params = {}
+end
+
 # One op per label, in order. Each returns the value or raises; the caller
 # records what happened either way, because a raised op IS a finding.
 #
@@ -197,6 +230,46 @@ def run_op(step)
     [:create, "create without type or content", -> { Card.create!(name: "PersistProbe Bare") }]
   when 22
     [:create, "create plain text with html", -> { Card.create!(name: "PersistProbe Plain", type: "PlainText", content: UNSAFE_HTML) }]
+  # 23-31: the history pane's revert and restore requests.
+  when 23
+    [:create, "create revert subject", -> { Card.create!(name: "PersistProbe Rev", type: "RichText", content: "one [[PersistProbe B]]") }]
+  when 24
+    [:update, "update revert subject", -> { Card.find(id_of("PersistProbe Rev")).update!(content: "two") }]
+  when 25
+    [:rename, "rename revert subject", -> { Card.find(id_of("PersistProbe Rev")).update!(name: "PersistProbe Rev Renamed") }]
+  when 26
+    [:revert, "revert to this (undoes the rename)", lambda {
+      revert_request("PersistProbe Rev Renamed", "revert_actions" => [nth_action_id("PersistProbe Rev Renamed", 2).to_s])
+    }]
+  when 27
+    [:revert, "revert to this (the create's content)", lambda {
+      revert_request("PersistProbe Rev", "revert_actions" => [nth_action_id("PersistProbe Rev", 1).to_s])
+    }]
+  when 28
+    [:revert, "revert to previous (the last act)", lambda {
+      act = act_of_action(nth_action_id("PersistProbe Rev", :last))
+      revert_request("PersistProbe Rev", "revert_to" => "previous", "revert_act" => act.to_s)
+    }]
+  when 29
+    [:delete, "delete revert subject", -> { Card.find(id_of("PersistProbe Rev")).delete! }]
+  when 30
+    [:revert, "restore from history (revert a trashed card)", lambda {
+      ids = Card::Action.where(card_id: id_of("PersistProbe Rev")).order(:id).pluck(:id)
+      revert_request("PersistProbe Rev", "revert_actions" => [ids[-2].to_s])
+    }]
+  when 31
+    [:revert, "revert to previous of a create (trashes it)", lambda {
+      act = act_of_action(nth_action_id("PersistProbe Plain", 1))
+      revert_request("PersistProbe Plain", "revert_to" => "previous", "revert_act" => act.to_s)
+    }]
+  # 32: a save of an existing deck card that another existing card nests
+  # (Number nests Number+description): its writes land outside the probe's
+  # rows, including the nester's update_ancestor_timestamps bump. Measured
+  # by tools/persistence/compare-decks.mjs.
+  when 32
+    [:update, "update a nested deck card", lambda {
+      Card.fetch("Number+description").update!(content: NESTED_DECK_CONTENT)
+    }]
   else
     abort "unknown step #{step}"
   end
@@ -217,6 +290,24 @@ detail = Thread.new do
   end
 end.value
 
+# The rendered result of a revert: the reverted card's core view, fetched as
+# the request's soft redirect re-fetches it (fresh from the database, trash
+# included so a revert that trashes the card still reports its name and
+# type; a trashed card has no core view to render).
+render = nil
+if kind == :revert && detail["ok"] && detail["value"].is_a?(Integer)
+  render = Thread.new do
+    Card::Auth.as_bot do
+      Card::Cache.reset_all
+      card = Card.fetch(detail["value"], look_in_trash: true)
+      { "name" => card.name.to_s, "trash" => card.trash, "type" => card.type_name.to_s,
+        "core" => card.trash ? nil : card.format(:html).render(:core).to_s }
+    rescue StandardError => e
+      { "error" => "#{e.class}: #{e.message}" }
+    end
+  end.value
+end
+
 state = probe_state
 warn "[persist] #{STEP} #{label} ok=#{detail['ok']} " \
      "cards=#{state['cards'].size} acts=#{state['card_acts'].size} " \
@@ -227,5 +318,6 @@ require "fileutils"
 FileUtils.mkdir_p(OUTDIR)
 File.write(
   File.join(OUTDIR, format("step-%02d.json", STEP)),
-  JSON.pretty_generate({ "step" => STEP, "label" => label, "detail" => detail, "state" => state })
+  JSON.pretty_generate({ "step" => STEP, "label" => label, "detail" => detail, "state" => state,
+                         **(render ? { "render" => render } : {}) })
 )

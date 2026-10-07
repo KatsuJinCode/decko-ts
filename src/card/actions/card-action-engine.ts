@@ -55,6 +55,7 @@ import {
   type CardFieldState,
 } from "../history/write-path.js";
 import { actionTypeCode } from "../history/action.js";
+import { sqlDateTime } from "../history/act.js";
 import { DeckoName } from "../name.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
@@ -75,9 +76,11 @@ import {
   type CardActionSummary,
   type CreateCardInput,
   type DeleteCardInput,
+  type RevertActionsInput,
   type SubcardInput,
   type UpdateCardInput,
 } from "./types.js";
+import { actionsToRevert, revisionOf, type Revision } from "./revert-actions.js";
 import {
   assertNameAvailable,
   findTrashedCardByLex,
@@ -753,6 +756,7 @@ export class CardActionEngine {
     // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
+    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -1174,9 +1178,17 @@ export class CardActionEngine {
     const row = await this.fetchRowById(input.cardId);
     // Card[id] of a missing or trashed card fetches nil (retrieval adds
     // trash = 0 — fetch/retrieval_from_db_query) and update! on nil fails;
-    // revival-from-trash is the CREATE path's job.
-    if (row === undefined || row.trash === 1) {
+    // revival-from-trash by name is the CREATE path's job. A look_in_trash
+    // fetch (retrieve.rb:31) reaches the trashed row: the history pane's
+    // revert requests update a trashed card that way.
+    if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    if (input.trash === true && input.withinRollback !== true) {
+      throw new CardActionError(
+        "revert-unsupported",
+        "an update cannot trash a card; trashing is deleteCard",
+      );
     }
     // extract_type_id! precedence (type.rb:81-92) — resolved BEFORE the ok?
     // gate, because Ruby evaluates permissions in the validate stage with
@@ -1280,7 +1292,21 @@ export class CardActionEngine {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
     // II (director.rb:26): the integrate seam before the notify hooks (see
-    // the create path's note).
+    // the create path's note). A no-op save commits nothing, so ActiveRecord
+    // runs no after_commit integration phase for it (phases.rb:3) and its
+    // nesters are not touched.
+    if (input.withinRollback === true) {
+      // :rollback_actions ends with `abort :success`: the director is
+      // aborted, so the integration phase never runs for the request
+      // (phases.rb:13-15, :48-50) — no ancestor timestamps, no integrate
+      // events, no follower notifications. The cache expiry already ran.
+      return result;
+    }
+    await this.bumpAncestorTimestamps(
+      CardActionEngine.savedCardIds(result).filter(
+        (id) => !(result?.actCardActionOmitted === true && id === row.id),
+      ),
+    );
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -1418,8 +1444,9 @@ export class CardActionEngine {
     if (nameChanged && newName !== undefined) {
       // validate_renaming (name_events.rb:55-61) — skipped when the change
       // is only a new variant of the same key (`name_before_act == name`
-      // is key equality, cardname.rb#==).
-      if (newName.key !== currentKey) {
+      // is key equality, cardname.rb#==), and when the request carries
+      // card[skip]=validate_renaming (the history revert links do).
+      if (newName.key !== currentKey && input.skipValidateRenaming !== true) {
         if (input.content !== undefined && input.content !== (before.db_content ?? undefined)) {
           throw new CardActionError(
             "rename-conflict",
@@ -1490,6 +1517,13 @@ export class CardActionEngine {
     if (resolvedTypeId !== undefined && resolvedTypeId !== before.type_id) {
       after.type_id = resolvedTypeId;
     }
+    // Card#update!(trash: false) on a trashed row: an ordinary :update save
+    // whose only difference may be the trash flag (identify_action gives
+    // :update — the trash change is not to true). Trashing is deleteCard.
+    if (input.trash === false) after.trash = 0;
+    // withinRollback: the rollback's nested update! may trash the card and
+    // still records an :update action (corrected after the write below).
+    if (input.trash === true && input.withinRollback === true) after.trash = 1;
     const lexBefore = this.lexOfRow(before);
     let lexAfter = lexBefore;
     let renameSides: ResolvedSides["created"] | undefined;
@@ -1574,6 +1608,7 @@ export class CardActionEngine {
       ...(after.right_id !== before.right_id && !nameChanged ? ["right_id"] : []),
       ...(after.db_content !== before.db_content ? ["db_content"] : []),
       ...(after.type_id !== before.type_id ? ["type_id"] : []),
+      ...(after.trash !== before.trash ? ["trash"] : []),
     ];
     const saved = await writer.updateCard({
       cardId: row.id,
@@ -1596,6 +1631,15 @@ export class CardActionEngine {
       isActCard: opts.isActCard ?? true,
     });
     if (saved === null) return null; // no-op save: nothing persisted
+    if (after.trash === 1 && before.trash === 0) {
+      // Only the rollback's nested update! reaches here (guarded above): the
+      // ActWriter identifies a trash flip as :delete, but the outer
+      // director's action is :update (lib/card/director/all.rb:19-28).
+      await this.fetch.driver.query("UPDATE card_actions SET action_type = ? WHERE id = ?", [
+        actionTypeCode("update"),
+        saved.actionId,
+      ]);
+    }
     // SP (director.rb:20) + SS (director.rb:21): the storage-phase seams
     // run for PERSISTED saves only — a no-op save produced no action for
     // events to belong to (disclosed divergence: Ruby's director would
@@ -1853,6 +1897,155 @@ export class CardActionEngine {
     }
   }
 
+  /** event :update_ancestor_timestamps (card-mod-history-0.20.0
+   *  set/all/history/events.rb:1-7, :integrate stage, every committed save):
+   *  every card that nests a saved card — directly, or through nesters of
+   *  nesters (history_ancestor_ids, set/all/history.rb:20-26, at most five
+   *  levels below the saved card) — gets updater_id = the acting account and
+   *  updated_at = now, then its cache entry expires. Nesters come from
+   *  card_references rows with ref_type "I" (nesting_ids, history.rb:98-102);
+   *  a nester's own nesters are followed only while it is live (`id.card&.`,
+   *  a trash-filtering fetch). Runs after the finalize stage, so it sees the
+   *  references the save itself just wrote or cleared. */
+  private async bumpAncestorTimestamps(cardIds: readonly number[]): Promise<void> {
+    const driver = this.fetch.driver;
+    const nestersOf = async (id: number): Promise<number[]> =>
+      (
+        await driver.query<{ referer_id: number }>(
+          `SELECT DISTINCT referer_id FROM card_references
+           WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT NULL`,
+          [id],
+        )
+      ).rows.map((r) => Number(r.referer_id));
+    const isLive = async (id: number): Promise<boolean> => {
+      const row = await this.fetchRowById(id);
+      return row !== undefined && row.trash === 0;
+    };
+    const ancestors = async (id: number, level: number): Promise<number[]> => {
+      if (level > 5) return [];
+      const direct = await nestersOf(id);
+      const out = [...direct];
+      for (const parent of direct) {
+        if (await isLive(parent)) out.push(...(await ancestors(parent, level + 1)));
+      }
+      return out;
+    };
+    const ids = new Set<number>();
+    for (const cardId of cardIds) for (const a of await ancestors(cardId, 0)) ids.add(a);
+    if (ids.size === 0) return;
+    const list = [...ids];
+    const actingId = (await this.actingIdForWrite()) ?? this.actor?.id ?? null;
+    await driver.query(
+      `UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (${list.map(() => "?").join(", ")})`,
+      [actingId, sqlDateTime(this.clock()), ...list],
+    );
+    for (const id of list) {
+      const row = await this.fetchRowById(id);
+      const name = row !== undefined ? await this.composedNameOf(row) : undefined;
+      if (name !== undefined) {
+        const record = newCardRecord(name);
+        record.id = id;
+        this.fetch.expireCard(record);
+      }
+    }
+    expireRuleResolutionCache(driver);
+  }
+
+  /** The cards a result saved: the act card and every subcard action. */
+  private static savedCardIds(result: ActionResult | null): number[] {
+    if (result === null) return [];
+    return [...new Set([result.cardId, ...result.subactions.map((s) => s.cardId)])];
+  }
+
+  // -----------------------------------------------------------------------
+  // Revert — the history pane's "revert to this" / "revert to previous" /
+  // restore requests (card-mod-history set/all/history/events.rb:40-46
+  // :rollback_actions, revision.rb process_revert_actions). The request is an
+  // update of the card fetched look_in_trash with card[skip]=
+  // validate_renaming; when it names actions, :rollback_actions replaces it
+  // with `update! update_args` (the revisions) and aborts the outer save with
+  // :success, so the stored result is ONE ordinary save of the reverted
+  // attributes. Other cards' actions in the request become subcards of that
+  // save (update_args[:subcards][action.card.name]).
+  // -----------------------------------------------------------------------
+
+  async revertActions(input: RevertActionsInput): Promise<ActionResult | null> {
+    const driver = this.fetch.driver;
+    const row = await this.fetchRowById(input.cardId);
+    if (row === undefined) {
+      throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    const actions = await actionsToRevert(driver, {
+      actId: input.actId,
+      actionIds: input.actionIds,
+    });
+    if (actions.length === 0) {
+      // rollback_request? is false: the outer update runs as sent (only the
+      // skip flag assigned), a no-op save.
+      return this.updateCard({ cardId: row.id, lookInTrash: true, skipValidateRenaming: true });
+    }
+    let own: Revision = {};
+    const others = new Map<number, { row: CardsRow; rev: Revision }>();
+    for (const action of actions) {
+      const actionCard = action.card_id === row.id ? row : await this.fetchRowById(action.card_id);
+      if (actionCard === undefined) continue;
+      const rev = await revisionOf(driver, actionCard, action, input.revertToPrevious === true);
+      if (action.card_id === row.id) own = { ...own, ...rev };
+      else others.set(action.card_id, { row: actionCard, rev: { ...(others.get(action.card_id)?.rev ?? {}), ...rev } });
+    }
+    const subcards: Record<string, SubcardInput> = {};
+    for (const { row: other, rev } of others.values()) {
+      const otherName = await this.composedNameOf(other);
+      const unsupported =
+        otherName === undefined ||
+        other.trash === 1 ||
+        rev.trash === true ||
+        (rev.name !== undefined && rev.name !== other.name) ||
+        (rev.left_id !== undefined && rev.left_id !== other.left_id) ||
+        (rev.right_id !== undefined && rev.right_id !== other.right_id);
+      if (unsupported) {
+        throw new CardActionError(
+          "revert-unsupported",
+          `reverting another card's rename or trash state in the same request is not supported (card ${other.id})`,
+        );
+      }
+      subcards[otherName.s] = {
+        content: rev.db_content ?? "",
+        ...(typeof rev.type_id === "number" ? { typeId: rev.type_id } : {}),
+      };
+    }
+    const hasSubcards = Object.keys(subcards).length > 0;
+    // The card's own revision. A revision with trash: true (reverting a
+    // create "to previous") trashes the card through the same nested
+    // update!: an :update action, no delete events (withinRollback).
+    const isCompound = row.left_id !== null;
+    if (isCompound && (own.left_id !== undefined && own.left_id !== row.left_id ||
+      own.right_id !== undefined && own.right_id !== row.right_id)) {
+      throw new CardActionError(
+        "revert-unsupported",
+        `reverting a compound card's parts is not supported (card ${row.id})`,
+      );
+    }
+    const result = await this.updateCard({
+      cardId: row.id,
+      lookInTrash: true,
+      skipValidateRenaming: true,
+      withinRollback: true,
+      ...(!isCompound && own.name !== undefined && own.name !== row.name ? { name: own.name } : {}),
+      ...(own.db_content !== undefined && own.db_content !== null ? { content: own.db_content } : {}),
+      ...(typeof own.type_id === "number" && own.type_id !== row.type_id ? { typeId: own.type_id } : {}),
+      ...(own.trash === false && row.trash === 1 ? { trash: false } : {}),
+      ...(own.trash === true && row.trash === 0 ? { trash: true } : {}),
+      ...(hasSubcards ? { subcards } : {}),
+    });
+    // :rollback_actions then runs clear_drafts (this actor's drafts of the
+    // card); a save that changed something already cleared them.
+    if (result === null) {
+      await this.newWriter(await this.actingIdForWrite()).clearOwnDrafts(row.id);
+    }
+    return result;
+  }
+
   // -----------------------------------------------------------------------
   // Delete — Card#delete! (trash.rb:11-21): an update save with trash:
   // true. Codenamed (system) cards are undeletable (validate_delete
@@ -1997,6 +2190,7 @@ export class CardActionEngine {
     };
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note).
+    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(result));
     await this.dispatchEventStage("integrate", deletedCard());
     await this.dispatchSavePathIntegrations(result);
     return result;

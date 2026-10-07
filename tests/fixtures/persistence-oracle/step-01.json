@@ -27,8 +27,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:15:22.417515",
-        "updated_at": "2026-10-07 19:15:22.417515"
+        "created_at": "2026-10-07 22:32:08.988068",
+        "updated_at": "2026-10-07 22:32:08.988068"
       }
     ],
     "card_acts": [
@@ -37,7 +37,7 @@
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:15:22.586533"
+        "acted_at": "2026-10-07 22:32:09.165228"
       }
     ],
     "card_actions": [

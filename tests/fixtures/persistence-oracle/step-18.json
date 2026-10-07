@@ -34,8 +34,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:15:22.417515",
-        "updated_at": "2026-10-07 19:18:12.228312"
+        "created_at": "2026-10-07 22:32:08.988068",
+        "updated_at": "2026-10-07 22:35:06.412360"
       },
       {
         "id": 3378,
@@ -53,8 +53,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:15:34.076809",
-        "updated_at": "2026-10-07 19:15:34.076809"
+        "created_at": "2026-10-07 22:32:21.464980",
+        "updated_at": "2026-10-07 22:32:21.464980"
       },
       {
         "id": 3379,
@@ -72,8 +72,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:15:34.085285",
-        "updated_at": "2026-10-07 19:16:20.557207"
+        "created_at": "2026-10-07 22:32:21.470607",
+        "updated_at": "2026-10-07 22:33:15.773598"
       },
       {
         "id": 3380,
@@ -91,8 +91,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:16:32.641420",
-        "updated_at": "2026-10-07 19:16:32.641420"
+        "created_at": "2026-10-07 22:33:30.023280",
+        "updated_at": "2026-10-07 22:33:30.023280"
       },
       {
         "id": 3381,
@@ -110,8 +110,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:17:22.290522",
-        "updated_at": "2026-10-07 19:17:22.290522"
+        "created_at": "2026-10-07 22:34:17.502783",
+        "updated_at": "2026-10-07 22:34:17.502783"
       },
       {
         "id": 3382,
@@ -129,8 +129,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:18:23.063957",
-        "updated_at": "2026-10-07 19:18:47.058042"
+        "created_at": "2026-10-07 22:35:17.886252",
+        "updated_at": "2026-10-07 22:35:40.028260"
       },
       {
         "id": 3383,
@@ -148,8 +148,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:18:33.918372",
-        "updated_at": "2026-10-07 19:18:33.918372"
+        "created_at": "2026-10-07 22:35:28.752655",
+        "updated_at": "2026-10-07 22:35:28.752655"
       },
       {
         "id": 3384,
@@ -167,8 +167,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-07 19:18:33.923143",
-        "updated_at": "2026-10-07 19:18:47.067524"
+        "created_at": "2026-10-07 22:35:28.758362",
+        "updated_at": "2026-10-07 22:35:40.035906"
       }
     ],
     "card_acts": [
@@ -177,112 +177,112 @@
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:15:22.586533"
+        "acted_at": "2026-10-07 22:32:09.165228"
       },
       {
         "id": 116061,
         "card_id": 3379,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:15:34.156240"
+        "acted_at": "2026-10-07 22:32:21.536730"
       },
       {
         "id": 116062,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:15:46.980858"
+        "acted_at": "2026-10-07 22:32:35.737452"
       },
       {
         "id": 116063,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:15:57.936569"
+        "acted_at": "2026-10-07 22:32:49.806663"
       },
       {
         "id": 116064,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:16:08.984571"
+        "acted_at": "2026-10-07 22:33:03.284353"
       },
       {
         "id": 116065,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:16:20.603991"
+        "acted_at": "2026-10-07 22:33:15.839367"
       },
       {
         "id": 116066,
         "card_id": 3380,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:16:32.688891"
+        "acted_at": "2026-10-07 22:33:30.072702"
       },
       {
         "id": 116067,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:16:58.992615"
+        "acted_at": "2026-10-07 22:33:53.652647"
       },
       {
         "id": 116068,
         "card_id": 3381,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:17:22.474758"
+        "acted_at": "2026-10-07 22:34:17.702227"
       },
       {
         "id": 116069,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:17:34.990160"
+        "acted_at": "2026-10-07 22:34:30.192427"
       },
       {
         "id": 116070,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:17:46.816707"
+        "acted_at": "2026-10-07 22:34:42.668123"
       },
       {
         "id": 116071,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:18:00.218999"
+        "acted_at": "2026-10-07 22:34:54.586662"
       },
       {
         "id": 116072,
         "card_id": 3377,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:18:12.285433"
+        "acted_at": "2026-10-07 22:35:06.459462"
       },
       {
         "id": 116073,
         "card_id": 3382,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:18:23.114847"
+        "acted_at": "2026-10-07 22:35:17.942282"
       },
       {
         "id": 116074,
         "card_id": 3384,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:18:33.973935"
+        "acted_at": "2026-10-07 22:35:28.807890"
       },
       {
         "id": 116075,
         "card_id": 3382,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-07 19:18:47.116494"
+        "acted_at": "2026-10-07 22:35:40.081618"
       }
     ],
     "card_actions": [
