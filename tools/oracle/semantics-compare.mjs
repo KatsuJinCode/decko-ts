@@ -45,6 +45,13 @@ function norm(v, key) {
 }
 const isErr = (v) => typeof v === "string" && v.startsWith("ERR:");
 const isNotPorted = (v) => typeof v === "string" && v.startsWith("ERR:NotPorted");
+//  5. Errors: the same rejection carries a different exception class name in
+//     each language (Card::Error::BadQuery vs CqlBadQuery); two errors match
+//     when their messages match.
+const errMessage = (v) => {
+  const m = /^ERR:(?:[A-Za-z0-9_]+::)*[A-Za-z0-9_]+:(.*)$/s.exec(v);
+  return m === null ? v : m[1].trim();
+};
 
 function snake(s) {
   return s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/([A-Z])([A-Z][a-z])/g, "$1_$2").toLowerCase();
@@ -84,6 +91,7 @@ function diffDeep(path, a, b, diffs, key) {
   const isObjA = a !== null && typeof a === "object";
   const isObjB = b !== null && typeof b === "object";
   if (!isObjA || !isObjB) {
+    if (isErr(a) && isErr(b) && !isNotPorted(b) && errMessage(a) === errMessage(b)) return;
     if (norm(a, key) !== norm(b, key)) {
       diffs.push({
         path, ruby: a ?? null, ts: b ?? null,
@@ -380,7 +388,7 @@ for (const question of questions) {
   results.push({
     id: Number(id), category: question.category, kind: question.kind,
     items, passed, notPorted, status: diffs.length === 0 ? "pass" : "fail",
-    diffCount: diffs.length, diffs: diffs.slice(0, 400), ...(extra ? { extra } : {}),
+    diffCount: diffs.length, diffs: CUSTOM[question.kind] ? diffs : diffs.slice(0, 400), ...(extra ? { extra } : {}),
   });
 }
 

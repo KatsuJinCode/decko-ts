@@ -55,6 +55,7 @@ import { parseOptionsWithLexicon, executeQuery, executeCount } from "../../src/c
 import { ruleWalkPatternInput } from "../../src/card/actions/rule-content-walk.js";
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
 import { HTML_VIEWS } from "../../src/card/render/views.js";
+import { readPermissionOverride, updatePermissionOverride } from "../../src/card/permissions/read-override.js";
 
 const QUESTIONS = JSON.parse(readFileSync(process.env.SEMANTICS_QUESTIONS!, "utf8"));
 const OUT_PATH = process.env.SEMANTICS_ANSWERS!;
@@ -101,6 +102,7 @@ async function permissionStateFor(viewer: ReadViewer): Promise<{ read: ReadPermi
 const firstBatch = (await fetcher.driver.batch(readPermissionStatements())) as never[];
 const anonymousId = anonymousIdFromResults(firstBatch as never);
 const anonymous = await permissionStateFor({ signedIn: false, actorId: anonymousId });
+const anonymousKey = anonymousId === undefined ? undefined : (await fetcher.fetchById(anonymousId))?.key;
 
 async function nameOfRecord(id: number): Promise<string | undefined> {
   const rec = await fetcher.fetchById(id);
@@ -186,17 +188,53 @@ function nameAlgebra(s: string): Record<string, unknown> {
   };
 }
 
+/** The engine's write verdicts: the task algebra plus the identity override
+ *  on update (own_account?, read-override.ts updatePermissionOverride), as
+ *  RenderEngine#updateVerdictForCard applies it. */
 async function writeVerdicts(
   input: PatternCardInput,
   task: ViewTaskState,
+  viewerKey?: string,
 ): Promise<{ create: unknown; update: unknown; delete: unknown }> {
   const verdicts = await safe(() => allTaskVerdictsForCard(fetcher, input, task));
   if (typeof verdicts === "string") return { create: verdicts, update: verdicts, delete: verdicts };
-  return {
-    create: verdicts.create ?? null,
-    update: verdicts.update ?? null,
-    delete: verdicts.delete ?? null,
-  };
+  let update: unknown = verdicts.update ?? null;
+  if (!task.alwaysOk) {
+    const override = await safe(() =>
+      updatePermissionOverride(DeckoName.parse(String(input.name)), {
+        viewerKey,
+        fetchByKey: (key) => fetcher.fetchByKey(key),
+        fetchById: (cardId) => fetcher.fetchById(cardId),
+      }),
+    );
+    if (override !== undefined) update = override;
+  }
+  return { create: verdicts.create ?? null, update, delete: verdicts.delete ?? null };
+}
+
+/** The engine's read verdict for an arbitrary viewer state: the read
+ *  overrides first (RenderEngine#cardReadAllowed), then the stored rule. */
+async function readVerdict(c: CardRecord, name: string, state: ReadPermissionState, viewerKey?: string): Promise<unknown> {
+  if (!state.alwaysOk) {
+    const leftRead = async (leftName: DeckoName): Promise<boolean | undefined> => {
+      const left = await fetcher.fetchByName(leftName.s);
+      return left?.readRuleId === undefined || left.readRuleId === null
+        ? undefined
+        : canReadByStoredRule(left.readRuleId, state);
+    };
+    const override = await safe(() =>
+      readPermissionOverride(DeckoName.parse(name), {
+        viewerKey,
+        fetchByKey: (key) => fetcher.fetchByKey(key),
+        fetchById: (cardId) => fetcher.fetchById(cardId),
+        leftReadVerdict: (leftName) => leftRead(leftName),
+      }),
+    );
+    if (override !== undefined) return override;
+  }
+  return c.readRuleId === undefined || c.readRuleId === null
+    ? "ERR:no-read-rule-id"
+    : canReadByStoredRule(c.readRuleId, state);
 }
 
 const cqlOptions = async () => ({
@@ -458,7 +496,7 @@ for (const question of QUESTIONS.questions) {
           id: c.id,
           name: await nameForRecord(c),
           read: await safe(() => engine.canReadCard(c, typeof input.typeName === "string" ? input.typeName : undefined)),
-          ...(await writeVerdicts(input, anonymous.task)),
+          ...(await writeVerdicts(input, anonymous.task, anonymousKey)),
         });
       }
       answer = out;
@@ -647,6 +685,7 @@ for (const question of QUESTIONS.questions) {
           ? { signedIn: false, actorId: anonymousId }
           : { signedIn: true, actorId: a.actor_id };
         const state = await permissionStateFor(viewer);
+        const viewerKey = (await fetcher.fetchById(a.actor_id))?.key;
         const verdicts: unknown[] = [];
         for (const cid of cardIds) {
           const c = await fetcher.fetchById(cid);
@@ -655,10 +694,8 @@ for (const question of QUESTIONS.questions) {
             continue;
           }
           const input = await patternInputFor(c);
-          const read = c.readRuleId === undefined || c.readRuleId === null
-            ? "ERR:no-read-rule-id"
-            : canReadByStoredRule(c.readRuleId, state.read);
-          const w = await writeVerdicts(input, state.task);
+          const read = await readVerdict(c, String(input.name), state.read, viewerKey);
+          const w = await writeVerdicts(input, state.task, viewerKey);
           verdicts.push([cid, read, w.create, w.update, w.delete]);
         }
         out.push({ role: a.role, actor_id: a.actor_id, verdicts });
