@@ -75,7 +75,12 @@ CREATE INDEX "cards_right_id_index"     ON "cards" ("right_id");
 CREATE INDEX "cards_read_rule_id_index" ON "cards" ("read_rule_id");
 CREATE INDEX "cards_created_at_index"   ON "cards" ("created_at");
 CREATE INDEX "cards_updated_at_index"   ON "cards" ("updated_at");
-CREATE INDEX "cards_trash_index"        ON "cards" ("trash");
+-- No cards_trash_index. The production MySQL schema carries one, but "trash"
+-- holds two values, so the index never narrows a search; on a planner without
+-- statistics (Bunny Database) it is the index the planner picks for every
+-- " AND trash = 0" predicate, reading the whole live deck. Retired in
+-- deploy/migrations/0008-cards-serving-path-indexes.sql, and import paths that
+-- copy a source's indexes skip it (tools/migrate/serving-indexes.mjs).
 -- BINARY-collation twins of the two NOCASE unique indexes above (2026-09-23,
 -- D1 read-cost diagnosis): the engine's lookups compare BINARY ("key" = ? at
 -- src/card/fetch/retrieve.ts:260, lexicon.ts:232, name-validation.ts:97;
@@ -89,22 +94,19 @@ CREATE INDEX "cards_trash_index"        ON "cards" ("trash");
 -- weaker BINARY constraint never rejects a row the schema didn't already
 -- reject. Fresh databases get these via 0001-schema.sql; already-provisioned
 -- databases apply deploy/migrations/0002-card-text-binary-lookup-indexes.sql.
--- NOTE: pair with a post-seed ANALYZE — without planner stats SQLite still
--- probes cards_trash_index for every " AND trash = 0" predicate.
 CREATE UNIQUE INDEX "cards_key_binary_index"      ON "cards" ("key");
 CREATE UNIQUE INDEX "cards_codename_binary_index" ON "cards" ("codename");
 -- Serving-path indexes for databases that cannot hold planner statistics.
--- Bunny Database rejects ANALYZE, so sqlite_stat1 never exists there and the
--- planner treats "trash = 0" as selective as any equality: it reads every
--- live card through cards_trash_index for name lookups, the read-rule join
--- and the setting lookups. A two-column (col, trash) index beats the
--- one-column trash index under the no-statistics cost model, so the planner
--- picks it. The partial index answers "codename IS NOT NULL" from the few
--- hundred coded cards instead of the whole table, and the expression index
--- serves the permission-rule resolver's substr("key", -1) prefilter.
--- Measured on a 21,682-card deck over 16 real pages: median rows read per
--- page 492,404 -> 315,945, with byte-identical output. Each index was kept
--- only if removing it raised rows read and adding it regressed no statement.
+-- Bunny Database rejects ANALYZE, so sqlite_stat1 never exists there. The
+-- (col, trash) indexes let name lookups, the read-rule join and the setting
+-- lookups seek on both predicates at once. The partial index answers
+-- "codename IS NOT NULL" from the few hundred coded cards instead of the
+-- whole table, and the expression index serves the permission-rule
+-- resolver's substr("key", -1) prefilter.
+-- Measured on a 21,682-card deck over 16 real pages, median rows read per
+-- page: 492,404 with the production index set; 315,945 with these four;
+-- 222,213 with these four and no cards_trash_index. Output byte-identical
+-- throughout. Each index changes at least one plan when removed.
 -- Already-provisioned databases apply
 -- deploy/migrations/0008-cards-serving-path-indexes.sql.
 CREATE INDEX "cards_name_trash_index"       ON "cards" ("name", "trash");

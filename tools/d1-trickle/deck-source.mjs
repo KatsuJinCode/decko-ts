@@ -9,7 +9,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { canonicalIndexStatements } from "../migrate/serving-indexes.mjs";
+import { canonicalIndexStatements, isRetiredIndex } from "../migrate/serving-indexes.mjs";
 
 /** Tables whose ROWS never leave this machine, whatever the source holds:
  *  - sessions / auth_sessions hold sign-in session tokens (secrets);
@@ -52,6 +52,9 @@ export function schemaStatements(db) {
   const out = [];
   for (const r of rows) {
     if (TABLES_SKIPPED.has(r.tbl_name)) continue;
+    // Retired by the canonical schema (cards_trash_index); a snapshot may
+    // still carry it.
+    if (r.type === "index" && isRetiredIndex(r.name)) continue;
     let sql = String(r.sql).trim();
     if (r.type === "table") sql = sql.replace(/^CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/i, "CREATE TABLE IF NOT EXISTS ");
     else sql = sql.replace(/^CREATE\s+(UNIQUE\s+)?INDEX\s+(?!IF\s+NOT\s+EXISTS)/i, (_m, u) => `CREATE ${u ?? ""}INDEX IF NOT EXISTS `);
@@ -74,11 +77,13 @@ function missingCanonicalIndexes(db, statements) {
 
 /** Index count per table: each inserted row costs 1 + this many rows
  *  written on D1 (measured on local D1: 3 rows into a 2-index table = 9).
- *  Counts the canonical indexes the import adds, not just the source's. */
+ *  Counts the indexes the import creates: the source's, less retired ones,
+ *  plus the canonical ones the source lacks. */
 export function indexCounts(db) {
   const m = new Map();
-  for (const r of db.prepare("SELECT tbl_name t, count(*) n FROM sqlite_master WHERE type='index' AND sql IS NOT NULL GROUP BY tbl_name").all()) {
-    m.set(r.t, Number(r.n));
+  for (const r of db.prepare("SELECT tbl_name t, name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL").all()) {
+    if (isRetiredIndex(r.name)) continue;
+    m.set(r.t, (m.get(r.t) ?? 0) + 1);
   }
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()
     .map((r) => r.name).filter((t) => !TABLES_SKIPPED.has(t));
