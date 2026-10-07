@@ -243,10 +243,11 @@ export async function liveRenderPage(
       }
       if (env?.DECKO_LIVE_TRACE === "1") {
         process.stderr.write(
-          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
+          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ threw: threw === undefined ? undefined : String((threw as Error)?.stack ?? threw).slice(0, 600), htmlLen: html?.length, fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
         );
       }
       if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length + lazyFresh.length === 0 && pendingReads <= tail) blockNext = true;
+      if (env?.DECKO_LIVE_SET_HINTS !== "0") live.hintSetNames(fresh);
       if (pendingReads > 0) await live.flushSpeculative();
       for (const n of fresh) seeds.add(n);
       for (const k of lazyFresh) eagerRefs.add(k);
