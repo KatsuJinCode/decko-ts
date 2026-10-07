@@ -245,7 +245,7 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
       writesRows: 0,
       executeOnly: false,
       describe: () =>
-        `DDL only (13 CREATE TABLE + 33 CREATE INDEX): 0 DATA rows. ` +
+        `DDL only (13 CREATE TABLE + 36 CREATE INDEX): 0 DATA rows. ` +
         `Counted 0 under the table-rows convention; index entries are absorbed by headroom.`,
       remoteCommands: () => [
         `npx wrangler d1 execute ${dbName} --remote --config ${relToRepo(CONFIG_TOML)} --file ${relToRepo(SCHEMA_FILE)}`,
@@ -270,7 +270,7 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
       writesRows: ANALYZE_ROWS_ESTIMATE,
       executeOnly: false,
       describe: () =>
-        `Writes sqlite_stat1 (one row per index, 33 indexes; conservatively ${ANALYZE_ROWS_ESTIMATE}). ` +
+        `Writes sqlite_stat1 (one row per index, 36 indexes; conservatively ${ANALYZE_ROWS_ESTIMATE}). ` +
         `Without this the planner probes cards_trash_index (whole deck) per lookup.`,
       remoteCommands: () => [
         `npx wrangler d1 execute ${dbName} --remote --config ${relToRepo(CONFIG_TOML)} --command "ANALYZE"`,
