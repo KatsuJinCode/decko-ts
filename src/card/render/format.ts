@@ -51,6 +51,7 @@ import { resolveContentOverride } from "./content-overrides.js";
 import { NO_REQUEST_ORIGIN } from "./deck-origin.js";
 import { serializerFollowsLive } from "./deployment-follow-live-config.js";
 import { mainNestWithoutMainError } from "./errors.js";
+import { debugFlag } from "../debug-flags.js";
 
 /** The self-set title overrides, keyed on the rendered card's codename.
  *  Lives HERE, not in views.ts, because TWO surfaces read it: the
@@ -1830,7 +1831,10 @@ export class RenderFormat {
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
     const view = this.modalNestView(requestedView, effectiveCard);
+    // Diagnostic trace, opt-in: DECKO_DEBUG_ENGINE_NEST=1.
+    if (debugFlag("DECKO_DEBUG_ENGINE_NEST")) {
       console.log("ENGINE-NEST", JSON.stringify({ requested: requestedView, view, card: effectiveCard?.name?.s, unknown: effectiveCard?.unknown, nestName: nest.name }));
+    }
     const viewOpts: Record<string, unknown> = {
       // nest_name = the AUTHORED reference through DeckoName.parse —
       // verbatim for authored/relative forms (card-mod-content

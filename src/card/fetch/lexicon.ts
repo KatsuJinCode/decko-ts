@@ -23,6 +23,7 @@ import { DeckoName } from "../name.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { CardCache } from "./cache.js";
+import { debugFlag } from "../debug-flags.js";
 
 /** lib/card/name.rb:16-17 Name.joint; Card::Name.joint delegates to it. */
 const JOINT = DeckoName.JOINT;
@@ -398,7 +399,8 @@ export class DbLexicon {
   /** lexicon.rb#name_to_lex */
   private async nameToLex(name: DeckoName): Promise<Lex | undefined> {
     if (name.isSimple) return name.s;
-    if (name.s.includes("account+email") || name.s === "Probe Signup+*account") console.log("LEX-DEBUG", name.s, "isSimple:", name.isSimple, "left:", name.leftName?.s, "right:", name.rightName?.s);
+    // Diagnostic trace, opt-in: DECKO_DEBUG_LEX=1.
+    if (debugFlag("DECKO_DEBUG_LEX") && (name.s.includes("account+email") || name.s === "Probe Signup+*account")) console.log("LEX-DEBUG", name.s, "isSimple:", name.isSimple, "left:", name.leftName?.s, "right:", name.rightName?.s);
     const leftId = await this.id(name.leftName ?? DeckoName.parse(""));
     if (leftId === undefined) return undefined;
     const rightId = await this.id(name.rightName ?? DeckoName.parse(""));
