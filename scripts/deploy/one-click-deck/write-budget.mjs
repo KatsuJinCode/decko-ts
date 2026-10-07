@@ -19,7 +19,7 @@
 //   absorbs the delta; the /_status + __metrics probe after the run is what
 //   reports the platform's own number.
 // * DDL (CREATE TABLE / CREATE INDEX) is counted as 0 data rows.
-// * ANALYZE writes one sqlite_stat1 row per index (33 in the current schema)
+// * ANALYZE writes one sqlite_stat1 row per index (36 in the current schema)
 //   plus per-table entries; estimated conservatively at 50 rows.
 // * The ledger keys on the UTC date because the D1 free-tier day resets at
 //   UTC midnight (5pm PT).
@@ -38,7 +38,7 @@ export const GUARD_ROW_LIMIT = D1_FREE_DAILY_ROW_WRITES * GUARD_FRACTION; // 80,
  * tool's steps are write-dominated and read-trivial). */
 export const D1_FREE_DAILY_ROW_READS = 5_000_000;
 
-/** Conservative ANALYZE cost: sqlite_stat1 rows for 33 indexes + tables. */
+/** Conservative ANALYZE cost: sqlite_stat1 rows for 36 indexes + tables. */
 export const ANALYZE_ROWS_ESTIMATE = 50;
 
 function utcDateStamp(date = new Date()) {

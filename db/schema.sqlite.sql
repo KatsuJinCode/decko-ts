@@ -93,6 +93,24 @@ CREATE INDEX "cards_trash_index"        ON "cards" ("trash");
 -- probes cards_trash_index for every " AND trash = 0" predicate.
 CREATE UNIQUE INDEX "cards_key_binary_index"      ON "cards" ("key");
 CREATE UNIQUE INDEX "cards_codename_binary_index" ON "cards" ("codename");
+-- Serving-path indexes for databases that cannot hold planner statistics.
+-- Bunny Database rejects ANALYZE, so sqlite_stat1 never exists there and the
+-- planner treats "trash = 0" as selective as any equality: it reads every
+-- live card through cards_trash_index for name lookups, the read-rule join
+-- and the setting lookups. A two-column (col, trash) index beats the
+-- one-column trash index under the no-statistics cost model, so the planner
+-- picks it. The partial index answers "codename IS NOT NULL" from the few
+-- hundred coded cards instead of the whole table, and the expression index
+-- serves the permission-rule resolver's substr("key", -1) prefilter.
+-- Measured on a 21,682-card deck over 16 real pages: median rows read per
+-- page 492,404 -> 315,945, with byte-identical output. Each index was kept
+-- only if removing it raised rows read and adding it regressed no statement.
+-- Already-provisioned databases apply
+-- deploy/migrations/0008-cards-serving-path-indexes.sql.
+CREATE INDEX "cards_name_trash_index"       ON "cards" ("name", "trash");
+CREATE INDEX "cards_right_id_trash_index"   ON "cards" ("right_id", "trash");
+CREATE INDEX "cards_codename_present_index" ON "cards" ("codename", "id", "name", "left_id", "right_id") WHERE "codename" IS NOT NULL;
+CREATE INDEX "cards_key_last_char_index"    ON "cards" (substr("key", -1));
 
 
 -- ----------------------------------------------------------------------------
