@@ -24,7 +24,9 @@
 //      Decko-schema deck built from the graded deck, whose names and keys
 //      Ruby needs derived), the provenance's capturedDeckSha256 must equal
 //      that file's sha, and every card and reference row must equal the
-//      graded deck's on the content columns (PAIRED-BY-CONTENT).
+//      graded deck's on the content columns (PAIRED-BY-CONTENT). With
+//      --names-and-keys, cards.name and cards.key must also be equal row for
+//      row (a graded deck staged with the capture deck's key repair).
 //   2. Per-entry capture identity, every row of every lane. The capture's
 //      input set (--input-set, the rig's disputed-set-resolved.json) names the
 //      card id each entry was meant to photograph. For each row:
@@ -106,17 +108,22 @@ export function checkDeckIdentity(provenance, gradedDeckSha) {
  *  fetches; both are derived from the columns compared here. */
 export const CONTENT_CARD_COLUMNS = ["id", "codename", "left_id", "right_id", "type_id", "trash",
   "read_rule_class", "read_rule_id", "creator_id", "updater_id", "created_at", "updated_at"];
+/** With --names-and-keys the graded deck must also carry the capture deck's
+ *  names and keys row for row: the strict form, for a graded deck staged with
+ *  the capture deck's key repair so both sides read identical data. */
+export const NAME_KEY_COLUMNS = ["name", '"key"'];
 const REFERENCE_COLUMNS = ["id", "referer_id", "referee_key", "referee_id", "ref_type", "is_present"];
 
 /** Content-level pairing: every card and reference row of the graded deck is
  *  present, identical, in the capture deck and vice versa. `db` has the graded
  *  deck as main and the capture deck attached as `cap`. Content is `content`
  *  in the graded deck and `db_content` in a Decko-schema capture deck. */
-export function compareDeckContent(db) {
+export function compareDeckContent(db, { namesAndKeys = false } = {}) {
   const capCols = db.prepare("SELECT name FROM pragma_table_info('cards', 'cap')").all().map((r) => r.name);
   const capContent = capCols.includes("db_content") ? "db_content" : "content";
-  const g = [...CONTENT_CARD_COLUMNS.map((c) => `g.${c}`), "g.content"].join(", ");
-  const c = [...CONTENT_CARD_COLUMNS.map((x) => `c.${x}`), `c.${capContent}`].join(", ");
+  const cols = namesAndKeys ? [...CONTENT_CARD_COLUMNS, ...NAME_KEY_COLUMNS] : CONTENT_CARD_COLUMNS;
+  const g = [...cols.map((c) => `g.${c}`), "g.content"].join(", ");
+  const c = [...cols.map((x) => `c.${x}`), `c.${capContent}`].join(", ");
   const cardsOnlyGraded = db.prepare(`SELECT count(*) n FROM (SELECT ${g.replace(/g\./g, "")} FROM main.cards g EXCEPT SELECT ${c.replace(/c\./g, "")} FROM cap.cards c)`).get().n;
   const cardsOnlyCapture = db.prepare(`SELECT count(*) n FROM (SELECT ${c.replace(/c\./g, "")} FROM cap.cards c EXCEPT SELECT ${g.replace(/g\./g, "")} FROM main.cards g)`).get().n;
   const r = REFERENCE_COLUMNS.join(", ");
@@ -143,7 +150,7 @@ async function main() {
   const inputSet = arg("--input-set");
   const mode = arg("--mode", "gate");
   if (!corpus || !inputSet || !["gate", "report"].includes(mode)) {
-    console.error("PAIRING-USAGE: --corpus <dir> --input-set <json> [--deck <sqlite>] [--provenance <json>] [--mode gate|report] [--json <out>]");
+    console.error("PAIRING-USAGE: --corpus <dir> --input-set <json> [--deck <sqlite>] [--provenance <json>] [--capture-deck <sqlite> [--names-and-keys]] [--mode gate|report] [--json <out>]");
     process.exit(2);
   }
   const deckPath = arg("--deck", path.join(corpus, "bench-corpus-raw.sqlite3"));
@@ -163,7 +170,8 @@ async function main() {
     const declared = provenance?.deck?.capturedDeckSha256 ?? null;
     const cmp = new Database(deckPath, { readonly: true, fileMustExist: true });
     cmp.prepare("ATTACH DATABASE ? AS cap").run(captureDeck);
-    const content = compareDeckContent(cmp);
+    const namesAndKeys = process.argv.includes("--names-and-keys");
+    const content = { ...compareDeckContent(cmp, { namesAndKeys }), namesAndKeys };
     cmp.close();
     const shaOk = declared === captureSha;
     deckIdentity = { ...content, verdict: shaOk ? content.verdict : "MISMATCH", captureDeckSha: captureSha, provenanceCapturedDeckSha: declared, graded: gradedSha };

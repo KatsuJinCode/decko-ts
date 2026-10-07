@@ -143,9 +143,9 @@ function richFixture(rows, opts) {
   db.close();
   return f;
 }
-function runGateWithCaptureDeck(f, captureDeck, sha) {
+function runGateWithCaptureDeck(f, captureDeck, sha, extra = []) {
   writeFileSync(f.prov, JSON.stringify({ deck: { capturedDeckSha256: sha } }));
-  const r = spawnSync(process.execPath, [GATE, "--corpus", f.corpus, "--input-set", f.inputSet, "--provenance", f.prov, "--capture-deck", captureDeck, "--mode", "gate"], { encoding: "utf8", windowsHide: true, timeout: 30_000 });
+  const r = spawnSync(process.execPath, [GATE, "--corpus", f.corpus, "--input-set", f.inputSet, "--provenance", f.prov, "--capture-deck", captureDeck, "--mode", "gate", ...extra], { encoding: "utf8", windowsHide: true, timeout: 30_000 });
   return { code: r.status, out: r.stdout + r.stderr };
 }
 const fileSha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
@@ -192,4 +192,38 @@ test("checkDeckIdentity: no deck sha in the provenance is UNVERIFIED, never PAIR
   assert.equal(checkDeckIdentity({}, "aa").verdict, "UNVERIFIED");
   assert.equal(checkDeckIdentity({ deck: { capturedDeckSha256: "aa" } }, "aa").verdict, "PAIRED");
   assert.equal(checkDeckIdentity({ deck: { sourceSnapshotSha256: "bb" } }, "aa").verdict, "MISMATCH");
+});
+
+// --names-and-keys: a graded deck staged with the capture deck's key repair must
+// carry the capture deck's names and keys row for row. The rich fixture's graded
+// deck keeps keys in raw name form ("Alpha") while the capture deck carries the
+// runtime form ("alpha"), as the bench and the capture deck of record do.
+test("--names-and-keys refuses a graded deck whose keys are not the capture deck's", () => {
+  const f = richFixture(allPaired());
+  try {
+    const cap = captureDeckFor(f);
+    assert.equal(runGateWithCaptureDeck(f, cap, fileSha(cap)).code, 0, "content-only pairing passes");
+    const r = runGateWithCaptureDeck(f, cap, fileSha(cap), ["--names-and-keys"]);
+    assert.equal(r.code, 2, r.out);
+    assert.match(r.out, /"cardsOnlyGraded": 3/);
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test("--names-and-keys refuses one differing compound name and passes the key-repaired deck", () => {
+  const f = richFixture(allPaired());
+  try {
+    const cap = captureDeckFor(f);
+    const g = new Database(path.join(f.corpus, "bench-corpus-raw.sqlite3"));
+    g.exec('UPDATE cards SET "key" = lower(name)');
+    g.close();
+    const ok = runGateWithCaptureDeck(f, cap, fileSha(cap), ["--names-and-keys"]);
+    assert.equal(ok.code, 0, ok.out);
+    assert.match(ok.out, /PAIRED-BY-CONTENT/);
+    const g2 = new Database(path.join(f.corpus, "bench-corpus-raw.sqlite3"));
+    g2.exec("UPDATE cards SET name = NULL WHERE id = 11");
+    g2.close();
+    const bad = runGateWithCaptureDeck(f, cap, fileSha(cap), ["--names-and-keys"]);
+    assert.equal(bad.code, 2, bad.out);
+    assert.match(bad.out, /"cardsOnlyGraded": 1/);
+  } finally { rmSync(f.root, { recursive: true, force: true }); }
 });

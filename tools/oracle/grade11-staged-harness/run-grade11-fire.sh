@@ -203,6 +203,13 @@ CAPTURE_PROVENANCE="${CAPTURE_PROVENANCE:-}"
 CAPTURE_DECK="${CAPTURE_DECK:-}"
 CAPTURE_DECK_ARGS=()
 [ -z "$CAPTURE_DECK" ] || CAPTURE_DECK_ARGS=(--capture-deck "$CAPTURE_DECK")
+# PAIRING_NAMES_AND_KEYS=1: the staged bench was given the capture deck's
+# derived names and keys (the key-repaired graded deck), so the pairing check
+# must also hold on cards.name and cards.key, row for row.
+if [ "${PAIRING_NAMES_AND_KEYS:-0}" = "1" ]; then
+  [ -n "$CAPTURE_DECK" ] || die "PAIRING_NAMES_AND_KEYS=1 needs CAPTURE_DECK"
+  CAPTURE_DECK_ARGS+=(--names-and-keys)
+fi
 [ -n "$CAPTURE_INPUT_SET" ] || die "CAPTURE_INPUT_SET is blank -- name the capture rig's disputed-set-resolved.json so the corpus/deck pairing can be checked"
 [ -n "$CAPTURE_PROVENANCE" ] || die "CAPTURE_PROVENANCE is blank -- name the corpus's capture-provenance manifest so the capture deck sha can be compared with the graded bench"
 PAIRING_JSON="$DIGEST_DIR/corpus-deck-pairing.json"
