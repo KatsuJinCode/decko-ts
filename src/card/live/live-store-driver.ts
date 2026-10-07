@@ -75,7 +75,12 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   /** content-referenced keys whose left junctions should be fetched */
   private readonly leftKeysPending = new Set<string>();
 
-  constructor(private readonly base: SQLDatabaseDriver) {}
+  /** ringAll: expand the ring around EVERY fetched row, not only the rows
+   *  the engine read. More rows per trip, fewer dependency levels. */
+  constructor(
+    private readonly base: SQLDatabaseDriver,
+    private readonly opts: { ringAll?: boolean } = {},
+  ) {}
 
   private nameOf(id: number, depth = 0): string | undefined {
     if (depth > 8) return undefined;
@@ -105,7 +110,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         this.leftKeysPending.delete(k);
       }
     }
-    for (const id of this.demanded) {
+    for (const id of this.opts.ringAll === true ? [...this.store.present] : this.demanded) {
       if (this.store.expanded.has(id)) continue;
       const r = this.store.rowById(id) as
         | { id: number; type_id: number; left_id: number | null; right_id: number | null; db_content: string | null; trash: number }

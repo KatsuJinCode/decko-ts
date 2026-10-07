@@ -45,8 +45,9 @@ export interface LiveRenderOptions {
   requestedView?: string;
   historyParams?: HistoryRenderParams;
   /** Collect pass 2 recording more than this many questions switches the
-   *  request to full speculation (default 60, fitted on 8 pages, held on
-   *  the POC's 100 random pages). */
+   *  request to full speculation (the POC's 60; default here 0, i.e. always
+   *  switch, which needs fewer trips on this engine; env
+   *  DECKO_LIVE_AUTO_THRESHOLD overrides). */
   autoThreshold?: number;
   /** In the speculation branch: a pass recording at most this many reads
    *  makes the next pass block on them (default 11; 0 = off). */
@@ -54,6 +55,9 @@ export interface LiveRenderOptions {
   /** Blocking round trips a tail pass may pay before it turns speculative
    *  (default 1). */
   autoTailTrips?: number;
+  /** Expand each trip's ring around every fetched row (LiveStoreDriver
+   *  ringAll). */
+  ringAll?: boolean;
 }
 
 export interface LivePassReport {
@@ -105,9 +109,14 @@ export async function liveRenderPage(
   boot: LiveEngineBoot,
   opts: LiveRenderOptions = {},
 ): Promise<LiveRenderResult> {
-  const live = new LiveStoreDriver(base);
+  const env = typeof process !== "undefined" ? process.env : undefined;
+  const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL !== "0";
+  const live = new LiveStoreDriver(base, { ringAll });
   const passes: LivePassReport[] = [];
-  const threshold = opts.autoThreshold ?? 60;
+  // Default 0: speculate from pass 3 on. With the all-rows ring this gives
+  // the fewest trips on the trial deck (About 10, Conflict Done Well 12,
+  // Pattern 15), which is what a slow database hop rewards.
+  const threshold = opts.autoThreshold ?? (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : 0);
   const tail = opts.autoTail ?? 11;
   const tailTrips = opts.autoTailTrips === undefined || opts.autoTailTrips < 0 ? undefined : opts.autoTailTrips;
   const seeds = new Set<string>();
