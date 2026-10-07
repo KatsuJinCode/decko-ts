@@ -2776,42 +2776,10 @@ function renderCategoryAccordion(fmt: RenderFormat, card: RenderCard, rules: Ren
   let body = `<div class="_setting-list"><div class="accordion bar-accordion">`;
   const groupBlocks: string[] = [];
   for (const groupName of SETTING_GROUPS) {
-    const gated = visibleSettingsForGroup(fmt.engine, card, groupName);
-    // Census M10b, the fitted stored-pair escape (the M1 seat's fitting
-    // class, cited because no 0.20 mechanism produces it): the graded
-    // bytes pin BOTH outcomes for template-derived List prototypes 
-    // Message+Conversation+*type plus right drops the virtual pair (the
-    // M2 badge-3 bytes, setting-group-applies-gate-pins) while
-    // Exhibit+Item+*type plus right renders both pair bars (the 22-bar
-    // p21 oracle: STORED *content options 17743 + virtual
-    // *content_option_view). The only corpus-visible differentiator is
-    // the stored pair sibling; a set carrying one keeps both, in the
-    // group's static order.
-    const pairStored =
-      ruleByCodename.has("content_options") || ruleByCodename.has("content_option_view");
-    // SEATFIX ESCAPE (2026-10-04, grade-10 count family, 4 entries): the
-    // graded corpus (pre-era1658 vintage, view digest 08c5a287...) pins the
-    // restricted pair PRESENT on every set-card accordion it captures —
-    // Task+*right 5, Task+Log Entry+*type plus right 5, Collection+*right 5,
-    // Exhibit+Item+*type plus right 5, *input type+*right 5 (11 sampled
-    // sets, own badge census) — EXCEPT Message+Conversation+*type plus
-    // right (badge 3), the census-M2 fitting target pinned by
-    // setting-group-applies-gate-pins. The deck state does NOT derive that
-    // split: Task+*right+*default (21892) and Message+Conversation+*type
-    // plus right+*default (22020) are BOTH stored List-typed rule rows, so
-    // M2's template chain resolves both and templateDerived excludes both.
-    // No 0.20 mechanism produces the distribution (M2's own comment: the
-    // gems' applies lambdas are constant false); the corpus is the spec,
-    // so the pair renders for template-derived prototypes outside the
-    // pinned outlier. Fit class: M10b's own. Corpus cost, named: none
-    // measured — every corpus set-card accordion except the outlier pins
-    // editing badge 5.
-    const pairVisible = seatfixPairVisible(fmt.engine, card, groupName, pairStored);
-    const settings = (GROUP_TO_SETTINGS[groupName] ?? []).filter(
-      (codename) =>
-        gated.includes(codename) ||
-        (pairVisible && (codename === "content_options" || codename === "content_option_view")),
-    );
+    // visible_settings(group) (set/type/set.rb:76-84): the group's settings
+    // the prototype type admits — the restricted content-options pair only
+    // for list/pointer/session prototypes.
+    const settings = visibleSettingsForGroup(fmt.engine, card, groupName);
     const collapseId = `card-${safeKey}-${groupName.toLowerCase()}-collapse-id`;
     let block = `<div class='accordion-item _setting-group'>\n`;
     block += `<h2 class='accordion-header nodblclick w-100'>\n`;
@@ -3145,7 +3113,7 @@ export function visibleSettingsForGroup(
 ): ReadonlyArray<string> {
   const settings = GROUP_TO_SETTINGS[groupName];
   if (engine.peekCodenameById === undefined) return settings;
-  const { code: prototypeCode, templateDerived } = setPrototypeTypeInfo(engine, setCard);
+  const { code: prototypeCode } = setPrototypeTypeInfo(engine, setCard);
   return settings.filter((codename) => {
     // The restricted pair (content_options/content_option_view) renders
     // only for prototypes whose type is STORED or ASSIGNED - a
@@ -3160,12 +3128,14 @@ export function visibleSettingsForGroup(
     // (supports_content_options?, constant false) cannot produce the
     // badge-5 shapes - the oracle is the spec (serializer-followup2
     // census M2).
+    // Ruby's rule exactly (setting.rb applies_to_cardtype): visible iff the
+    // prototype's type is in restricted_to_type, however that type was
+    // derived. The earlier "template-derived types never qualify" fit was
+    // standing in for the *structure half of the template chain, which
+    // templateTypeCode now resolves.
     const restricted = SETTING_RESTRICTED_TO_TYPE.get(codename);
     if (restricted === undefined) return true;
-    if (prototypeCode === undefined || !restricted.includes(prototypeCode)) {
-      return false;
-    }
-    return !templateDerived;
+    return prototypeCode !== undefined && restricted.includes(prototypeCode);
   });
 }
 
@@ -3263,6 +3233,30 @@ function setPrototypeTypeInfo(
     if (coldTypeId === undefined) return undefined;
     return engine.peekCodenameById?.(coldTypeId);
   };
+  /** The prototype's template type (type.rb type_id_from_template ->
+   *  templating.rb new_card_template): the *default rule, UNLESS a
+   *  *structure rule applies to the *default-typed dup, in which case the
+   *  structure card's own type. newCardDefaultType ports that chain for a
+   *  new card by name (with the TPR supercard's type as left type); the
+   *  set's own *default is the fallback when the engine lacks the hook.
+   *  Census over the 829 captured set boards: this derivation predicts
+   *  every editing badge (RichText+Gallery10+*type plus right: *default
+   *  RichText, structure HTML -> badge 3; Message+Conversation: *default
+   *  List, structure Search -> badge 3). */
+  const templateTypeCode = (protoName: string, leftTypeName?: string): string | undefined => {
+    let parsed: DeckoName;
+    try {
+      parsed = DeckoName.parse(protoName);
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return defaultRuleTypeCode();
+      }
+      throw err;
+    }
+    const typed = engine.newCardDefaultType?.(parsed, leftTypeName);
+    if (typed !== undefined) return engine.peekCodenameById?.(typed.typeId);
+    return defaultRuleTypeCode();
+  };
   /** The set card's own pattern code: the RIGHT part's codename
    *  (*self / *right / *type / *type plus right) for anchored sets, the
    *  card's own codename for the anchorless *all / *rstar / *all plus
@@ -3293,7 +3287,7 @@ function setPrototypeTypeInfo(
       if (real !== undefined && real.typeId !== undefined) {
         return { code: engine.peekCodenameById?.(real.typeId), templateDerived: false };
       }
-      return { code: defaultRuleTypeCode(), templateDerived: true };
+      return { code: templateTypeCode(anchorName), templateDerived: true };
     }
     // 03_type.rb prototype_args {type: anchor}: the explicit type wins
     // (type.rb normalize_type_attributes) — the prototype's type id IS
@@ -3321,7 +3315,10 @@ function setPrototypeTypeInfo(
         const assigned = RIGHT_SETTING_TYPE_ASSIGNMENT[anchorCodename];
         if (assigned !== undefined) return { code: assigned, templateDerived: false };
       }
-      return { code: defaultRuleTypeCode(), templateDerived: true };
+      return {
+        code: anchorName !== undefined ? templateTypeCode(`*dummy+${anchorName}`) : defaultRuleTypeCode(),
+        templateDerived: true,
+      };
     }
     // 08_type_plus_right.rb: a `+<right>` part under a typed supercard;
     // type_id_from_code walks the prototype's assigning pattern modules in
@@ -3357,7 +3354,13 @@ function setPrototypeTypeInfo(
           if (rightAssigned !== undefined) return { code: rightAssigned, templateDerived: false };
         }
       }
-      return { code: defaultRuleTypeCode(), templateDerived: true };
+      return {
+        code:
+          typeName !== undefined && anchorRightName !== undefined
+            ? templateTypeCode(`*dummy+${anchorRightName}`, typeName)
+            : defaultRuleTypeCode(),
+        templateDerived: true,
+      };
     }
     default:
       return { code: undefined, templateDerived: false };
@@ -3430,68 +3433,6 @@ const TYPE_PLUS_RIGHT_TYPE_ASSIGNMENT: Readonly<Record<string, string>> = {
   "set::setting": "list",
   "set::style": "pointer",
 };
-
-/** The one set-card surface whose graded bytes pin the restricted pair
- *  ABSENT (editing badge 3) while every other captured set-card accordion
- *  pins it present (badge 5) — the census-M2 fitting target. See the
- *  SEATFIX ESCAPE comment in renderCategoryAccordion. */
-const SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER: ReadonlySet<string> = new Set([
-  "Message+Conversation+*type plus right",
-]);
-
-/** ALLSETFIX (2026-10-04, the allsetfix lane): the anchorless ALL-pattern
- *  set cards, the one family where the restricted pair's absence is
- *  Ruby-DERIVABLE — gem lines over corpus facts. Mechanism: the
- *  content_options / content_option_view setting_opts `applies` lambdas read
- *  `prototype.rule_card(:input_type).supports_content_options?` /
- *  `supports_content_option_view?`, and card-mod-list
- *  set/all/supports_content_options.rb:8-15 defines the all-set defaults
- *  false; grep over the loaded gems finds no overriding set module (the same
- *  citation chain as SETTING_NEVER_VISIBLE). The ALL set module is every
- *  card's lowest-precedence set module, so the predicates are false for
- *  every prototype and visible_settings can never admit the restricted pair
- *  on *all / *rstar / *all plus — a stored pair RULE BAR (the deck's
- *  `*all+*content option view` cascade rule 277) is a rules-list surface,
- *  not an accordion admission. The graded corpus confirms the Ruby verdict
- *  on *all (editing badge 3; the grade-10 first-diffs at 30215/32281/37974
- *  are exactly this pair's two lis). Scoped to the three anchorless sets
- *  where corpus and Ruby agree; the pairStored and template-derived arms for
- *  anchored sets are untouched (the seatfix suite SEATFIX_GRADE10_PINS=1
- *  stays green). */
-const ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS: ReadonlySet<string> = new Set([
-  "*all",
-  "*rstar",
-  "*all plus",
-]);
-
-/** SEATFIX (2026-10-04): the shared restricted-pair visibility verdict for
- *  the set-card accordion — the M10b stored-pair escape plus the grade-10
- *  count-family template-derived escape (the full grounding is the SEATFIX
- *  ESCAPE comment in renderCategoryAccordion). The verdict preload
- *  (render.ts preloadVirtualRuleVerdicts) enumerates the SAME final
- *  settings list through this helper: its existing-rule memo and denied
- *  verdicts key on (setCard, settingCodename), and a setting the sync path
- *  renders but the preload skipped renders with the bar_nav hide wrongly
- *  fired and its one-line EMPTY (the grade-10 Collection+*right+*content
- *  option view bytes: the rule cascade's *all+*content option view card
- *  277 carries the "smart_label" one-line the memo miss dropped). */
-export function seatfixPairVisible(
-  engine: RenderEngineLike,
-  setCard: RenderCard,
-  groupName: string,
-  pairStored: boolean,
-): boolean {
-  if (GROUP_TO_SETTINGS[groupName]?.includes("content_options") !== true) return false;
-  // ALLSETFIX GATE (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS above): the
-  // pairStored arm below must not re-admit what Ruby's all-set default
-  // (false, no overriding set module) never admits on the anchorless
-  // ALL-pattern sets — rule 277's bar lives in the rules list, not in this
-  // accordion's settings list (graded badge 3, offsets 30215/32281/37974).
-  if (ALLSETFIX_ANCHORLESS_ALL_PATTERN_SETS.has(setCard.name.s)) return false;
-  if (pairStored) return true;
-  if (SEATFIX_PAIR_TEMPLATE_DERIVED_OUTLIER.has(setCard.name.s)) return false;
-  return setPrototypeTypeInfo(engine, setCard).templateDerived;
-}
 
 /** The six fixed Card::Setting.groups keys (card-1.110.0 lib/card/setting.rb
  *  :45-54). Ruby's category_accordion iterates these in order; the captured

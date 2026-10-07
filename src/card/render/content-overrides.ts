@@ -244,6 +244,19 @@ BUILT_IN_DEFAULT_REGISTRY.register({
   supersedesType: false,
 });
 
+/** The overridden ITEM content of a list/pointer card whose set module
+ *  replaces `def content` with format-independent items — today exactly
+ *  `*input type+*right+*content options` (registered above). Callers that
+ *  count or walk items without a format (the rule bar's one_line_content:
+ *  card-mod-list set/abstract/01_list/html_views.rb:99-105 counts
+ *  item_strings of card.content, so Ruby's override shadows the stored row
+ *  there too) read it here; undefined means "use db_content". */
+export function listItemContentOverride(card: RenderCard): string | undefined {
+  return cardBelongsToSet(card, "self/*input_type+*right+*content_option")
+    ? listInputOptionsContent()
+    : undefined;
+}
+
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
 
 /** Bind a registry as the render-path default (call after the mod loader's

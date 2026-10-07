@@ -30,6 +30,15 @@
 // so the restricted pair passed the gate and the engine rendered 5.
 // The fix folds the constant-false applies pair into the one gate every
 // consumer shares, Ruby's applies_to_cardtype semantics.
+//
+// CORRECTION (2026-10-06, engine-parity lane): the applies lambdas are NOT
+// evaluated on this path — visible_settings calls applies_to_cardtype with
+// ONE argument, so only restricted_to_type decides. Message+Conversation's
+// badge 3 comes from the prototype's TYPE: templating.rb new_card_template
+// makes the set's Search-typed *structure rule the template, so the
+// prototype types Search and the restricted pair is not listed. The fixture
+// below carries that structure rule; a List prototype (no structure rule)
+// lists the pair (badge 5), as 829/829 captured set boards confirm.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -85,12 +94,25 @@ async function seedDeck(): Promise<RenderTestStorage> {
     typeId: 3,
     dbContent: "",
   });
+  // The set's *structure rule (Search-typed — the corpus's Message+
+  // Conversation+*type plus right+*structure). templating.rb
+  // new_card_template: a structure rule that applies to the *default-typed
+  // dup BECOMES the template, so the prototype types Search, not List.
+  await seedCard(storage, { id: 6, name: "Search", codename: "search_type", typeId: 2 });
+  await seedCard(storage, { id: 24, name: "*structure", codename: "structure", typeId: 2 });
+  await seedCard(storage, {
+    id: 45,
+    leftId: 43,
+    rightId: 24,
+    typeId: 6,
+    dbContent: '{"right_plus":"Conversation"}',
+  });
   return storage;
 }
 
 describe("setting-group applies gate (census M2, Message editing-group shape)", () => {
   it(
-    "the editing group counts 3 (help, input_type, guide) — the constant-false applies pair never renders",
+    "the editing group counts 3 (help, input_type, guide) — the Search-typed structure template keeps the pair out",
     async () => {
       const s = await seedDeck();
       const html = await s.engine.render("Message+Conversation+*type plus right", "open");
