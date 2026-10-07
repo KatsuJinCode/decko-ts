@@ -204,6 +204,30 @@ export class RequestStore {
     return r === undefined ? undefined : Number(r.id);
   }
 
+  /** A SPECULATIVE answer for a certifiable statement the store cannot yet
+   *  prove complete: the matching rows it already holds whole, in storage
+   *  order. Rows held only as identity rows are left out. A pass that reads
+   *  this answer has consumed a speculative answer (the statement's missing
+   *  parts are fetched with the next trip), so it is never the page; the
+   *  rows it does get are storage's own. Returns [] when any returned row
+   *  carries no id (a projection the store cannot tell whole from partial). */
+  partialAnswer(sql: string, params: readonly unknown[]): Record<string, unknown>[] {
+    const ps = params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
+    let rows: Record<string, unknown>[] | undefined;
+    try {
+      rows = this.rows.evaluate(sql, ps) as Record<string, unknown>[] | undefined;
+    } catch {
+      return [];
+    }
+    if (rows === undefined) return [];
+    const out: Record<string, unknown>[] = [];
+    for (const r of rows) {
+      if (r.id === null || r.id === undefined) return [];
+      if (this.full.has(Number(r.id))) out.push({ ...r });
+    }
+    return out;
+  }
+
   /** What a statement still needs, or undefined when it is not a certifiable
    *  family. All lists empty means: answerable locally now. */
   missing(sql: string, params: readonly unknown[]): Missing | undefined {
