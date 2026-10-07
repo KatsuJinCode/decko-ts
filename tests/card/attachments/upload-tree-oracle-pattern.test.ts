@@ -57,6 +57,7 @@ import { CardActionEngine } from "../../../src/card/actions/card-action-engine.j
 import type { Actor } from "../../../src/card/actions/types.js";
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
 import { storeAssetOutput } from "../../../src/card/attachments/asset-output-write.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // ---------------------------------------------------------------------------
 // Self-contained storage boot (the file-routes.test.ts pattern; the harness
@@ -203,7 +204,7 @@ beforeAll(async () => {
     );
   }
 
-  filesDir = mkdtempSync(join(tmpdir(), "decko-ts-upload-tree-test-"));
+  filesDir = scratchDir("decko-ts-upload-tree-test-");
   fetchEngine = new FetchEngine(driver);
   engine = new CardActionEngine(fetchEngine, {
     actor: JOE,

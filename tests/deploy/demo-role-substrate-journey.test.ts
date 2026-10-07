@@ -94,6 +94,7 @@ import {
   readPermissionStatements,
 } from "../../src/card/permissions/read-rules.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -165,7 +166,7 @@ function armDemoProfile(): void {
  * 0001..0004 chain exactly as it shipped before this port.
  */
 async function deck(opts: { withRoles?: boolean; applyRolesTwice?: boolean } = {}): Promise<Deck> {
-  const dir = mkdtempSync(join(tmpdir(), "decko-demo-roles-"));
+  const dir = scratchDir("decko-demo-roles-");
   const path = join(dir, "demo.sqlite");
   openDecks.push(path);
 

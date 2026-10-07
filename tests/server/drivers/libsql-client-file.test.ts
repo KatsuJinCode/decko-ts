@@ -19,6 +19,7 @@ import path from "node:path";
 import { createClient, type Client, type InValue } from "@libsql/client";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { runDriverConformance } from "./conformance.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 class LibSqlClientFileDriver implements SQLDatabaseDriver {
   constructor(private readonly client: Client) {}
@@ -51,7 +52,7 @@ class LibSqlClientFileDriver implements SQLDatabaseDriver {
   }
 }
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "decko-libsql-file-test-"));
+const tempDir = scratchDir("decko-libsql-file-test-");
 const dbPath = path.join(tempDir, "decko-test.db").replace(/\\/g, "/");
 
 afterAll(() => {

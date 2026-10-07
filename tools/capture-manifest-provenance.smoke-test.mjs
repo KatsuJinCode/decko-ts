@@ -28,8 +28,9 @@ import {
   stageFile,
   verifyManifestForGrading,
 } from "./capture-manifest-provenance.mjs";
+import { scratchDir } from "../tests/support/scratch-dir.mjs";
 
-const tmp = mkdtempSync(path.join(os.tmpdir(), "capture-manifest-smoke-"));
+const tmp = scratchDir("capture-manifest-smoke-");
 let failures = 0;
 let checks = 0;
 

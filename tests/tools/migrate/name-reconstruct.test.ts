@@ -11,9 +11,10 @@ import {
   reconstructCardName,
   countNullNameJunctions,
 } from "../../../tools/migrate/name-reconstruct.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 function makeTargetDb(): { path: string; driver: InstanceType<typeof LocalSqliteToolDriver> } {
-  const dir = mkdtempSync(join(tmpdir(), "decko-name-recon-"));
+  const dir = scratchDir("decko-name-recon-");
   const path = join(dir, "target.sqlite");
   const db = new Database(path);
   db.exec(`

@@ -26345,6 +26345,7 @@ var plan = await ro.query(
 );
 console.log(`serving DB: page:${PAGE} id=${servingPageId}, plan rows=${plan.rows.length}`);
 var tmp = mkdtempSync(join(tmpdir(), "v4-spot-integrity-"));
+process.on("exit", () => { if (process.env.DECKO_KEEP_SCRATCH !== "1") rmSync(tmp, { force: true, recursive: true, maxRetries: 5 }); });
 var tempStore = join(tmp, "materialized-with-serving-plan.sqlite3");
 copyFileSync(LOCAL_MATERIALIZED_COPY, tempStore);
 var localDb = new LocalSqliteDriver({ path: tempStore });

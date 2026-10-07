@@ -42,6 +42,7 @@ import {
   manifestPath,
 } from "../../tools/incremental-diff-grade.mjs";
 import { sha256File, verifyManifestForGrading } from "../../tools/capture-manifest-provenance.mjs";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 // ---------- synthetic repo fixture ----------
 
@@ -90,7 +91,7 @@ interface Repo {
 }
 
 function makeSyntheticRepo(): Repo {
-  const repo = mkdtempSync(join(tmpdir(), "decko-diffgrade-"));
+  const repo = scratchDir("decko-diffgrade-");
   const rg = join(repo, "tmp", "raw-ground-truth");
   const viewLane = join(rg, "expected-v2", "view-lane");
   const pageLane = join(rg, "expected-v2", "page-lane");

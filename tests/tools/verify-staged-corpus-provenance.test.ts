@@ -31,6 +31,7 @@ import {
   verifyStagedCorpus,
   verifyStagedCorpora,
 } from "../../tools/verify-staged-corpus-provenance.mjs";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 // A fake corpus: a real SQLite header (magic + change counter at offset 24,
 // exactly what sqliteHeaderChangeCounter reads) followed by filler bytes. Two
@@ -65,7 +66,7 @@ function writeManifest(dir: string, opts: {
 // <root>/expected-v2/capture-manifest.json -- the exact relative layout
 // stagedCorpusPath/stagedCorpusManifestPath derive under a --repo dir.
 function makeSyntheticRepo(label: string): { repo: string; cleanup: () => void } {
-  const repo = mkdtempSync(join(tmpdir(), `swapguard-${label}-`));
+  const repo = scratchDir(`swapguard-${label}-`);
   mkdirSync(join(repo, "tmp", "raw-ground-truth", "deck-recapture"), { recursive: true });
   mkdirSync(join(repo, "tmp", "raw-ground-truth", "expected-v2"), { recursive: true });
   return { repo, cleanup: () => rmSync(repo, { recursive: true, force: true }) };

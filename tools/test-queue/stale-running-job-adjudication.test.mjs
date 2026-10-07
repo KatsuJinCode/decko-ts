@@ -48,12 +48,13 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scratchDir } from "../../tests/support/scratch-dir.mjs";
 
 const RUNNER = fileURLToPath(new URL("./run-test-queue-runner.mjs", import.meta.url));
 
 /** A scratch queue with one stranded job and its log, aged by `ageMin`. */
 function makeScene(name, { ageMin = 600, attemptHeader = true, ownerPid = 39872 } = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), `tq-stale-${name}-`));
+  const root = scratchDir(`tq-stale-${name}-`);
   const queueDir = path.join(root, "queue");
   for (const d of ["pending", "running", "results", "logs"]) {
     mkdirSync(path.join(queueDir, d), { recursive: true });
@@ -240,7 +241,7 @@ describe("test-queue --adjudicate-stale", () => {
   });
 
   it("an empty running/ is a no-op, not an error", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "tq-stale-empty-"));
+    const root = scratchDir("tq-stale-empty-");
     try {
       const queueDir = path.join(root, "queue");
       for (const d of ["pending", "running", "results", "logs"]) {
@@ -256,7 +257,7 @@ describe("test-queue --adjudicate-stale", () => {
   });
 
   it("the normal drain path still runs a pending job (the flag did not break it)", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "tq-stale-drain-"));
+    const root = scratchDir("tq-stale-drain-");
     try {
       const queueDir = path.join(root, "queue");
       for (const d of ["pending", "running", "results", "logs"]) {

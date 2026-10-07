@@ -63,6 +63,7 @@ import {
   normalizeSlotIds,
   type EngineBoot,
 } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 const MIGRATION_PATH = fileURLToPath(
@@ -137,7 +138,7 @@ describe.skipIf(!hasMirror)("signed-in viewer's one-trip seat posture (inline se
   const savedEnv = { gate: process.env.DECKO_ONE_TRIP, store: process.env.DECKO_ONE_TRIP_STORE };
 
   beforeAll(async () => {
-    sideDir = mkdtempSync(join(tmpdir(), "perviewer-seat-"));
+    sideDir = scratchDir("perviewer-seat-");
     workDbPath = join(sideDir, "mirror-migrated-inline.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, workDbPath);
     // The freshness stamp (this lineage's render path fails loudly without

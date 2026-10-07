@@ -68,6 +68,7 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "../../tests/card/one-trip/one-trip-fixture.js";
+import { scratchDir } from "../../tests/support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 const outPath = process.env.DECKO_TRIP_CENSUS_OUT ?? "";
@@ -279,7 +280,7 @@ async function buildMaterializedCopy(
   recordPlans: boolean,
   targetPath = MATERIALIZED_COPY_PATH,
 ): Promise<void> {
-  const tmpDir = mkdtempSync(join(tmpdir(), "trip-census-build-"));
+  const tmpDir = scratchDir("trip-census-build-");
   try {
     // 1. build the derived tables into a side file (the corpus tests' build)
     const sidePath = join(tmpDir, "one-trip-side.sqlite3");

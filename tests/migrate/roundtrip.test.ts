@@ -28,13 +28,14 @@ import {
   changesInsert,
   referencesInsert,
 } from "./synthetic-dump.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 const dirs: string[] = [];
 function makeDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-roundtrip-"));
+  const dir = scratchDir("decko-roundtrip-");
   dirs.push(dir);
   return dir;
 }

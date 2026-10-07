@@ -28,6 +28,7 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { normalizeSlotIds } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** The law's ceiling (hops-per-render-one-page-law.test.ts — change only
  *  with a receipt justification in that file's own discipline). */
@@ -132,7 +133,7 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     expect(offWarm.roundTrips).toBeLessThanOrEqual(2);
 
     // ---- the derived store, built from this same fixture deck ----
-    sideDir = mkdtempSync(join(tmpdir(), "one-trip-hops-"));
+    sideDir = scratchDir("one-trip-hops-");
     const sidePath = join(sideDir, "one-trip-closure-side.sqlite3");
     const side = new LocalSqliteDriver({ path: sidePath });
     const corpusOfOff = storageOff.counting as unknown as SQLDatabaseDriver;

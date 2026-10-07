@@ -19,6 +19,7 @@ import { CardActionEngine } from "../../../src/card/actions/card-action-engine.j
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
 import { givenStandardDeck, freshWorld, closeWorld, whenGoToCard, thenSee, type GherkinWorld } from "./gherkin-steps.js";
 import { installGherkinNameEnvironment, seedCard, TYPE_IDS } from "./gherkin-storage.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** The attachment cardtype codename cards (card-mod-carrierwave
  *  set/type/file.rb `attachment :file` codename `file`; set/type/image.rb
@@ -52,7 +53,7 @@ export async function freshAttachmentWorld(): Promise<AttachmentWorld> {
     typeId: TYPE_IDS.cardtype,
   });
   await installGherkinNameEnvironment(world.storage);
-  const filesDir = mkdtempSync(join(tmpdir(), "decko-ts-gherkin-attach-"));
+  const filesDir = scratchDir("decko-ts-gherkin-attach-");
   const engine = new CardActionEngine(world.storage.fetcher, {
     actor: world.actor,
     ipAddress: "127.0.0.1",

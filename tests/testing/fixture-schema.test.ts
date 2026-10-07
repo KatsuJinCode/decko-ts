@@ -21,6 +21,7 @@ import {
   UNKNOWN_VIEW_INPUT,
   UNKNOWN_VIEW_LABEL,
 } from "../../src/testing/fixture-schema.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const SMOKE_PATH = join(repoRoot, "fixtures", "captured", "smoke.json");
@@ -34,7 +35,7 @@ const loadRealCql = (): ReturnType<typeof validateCqlBasicFixture> =>
 let tempDir: string;
 
 beforeAll(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "decko-ts-fixture-schema-"));
+  tempDir = scratchDir("decko-ts-fixture-schema-");
 });
 
 afterAll(() => {

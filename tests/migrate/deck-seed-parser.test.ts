@@ -7,6 +7,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deckSeedRows, decodeLiteral } from "../../tools/migrate/deck-seed-parser.mjs";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 type Row = { table: string; columns: string[] | undefined; values: unknown[] };
 
@@ -29,7 +30,7 @@ function synthDeckInsert(): string {
 
 const dirs: string[] = [];
 function tmp(): string {
-  const d = mkdtempSync(join(tmpdir(), "deck-seed-parser-"));
+  const d = scratchDir("deck-seed-parser-");
   dirs.push(d);
   return d;
 }

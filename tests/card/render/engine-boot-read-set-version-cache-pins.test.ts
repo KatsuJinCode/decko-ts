@@ -57,6 +57,7 @@ import {
   resetBootCache,
 } from "../../../src/card/render/boot-cache.js";
 import { CountingRenderDriver, splitSqlStatements } from "./render-test-storage.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // ids follow tests/card/permissions/read-permission.test.ts:5-27:
 //   1 *all (Set)  2 Set (type)  3 *read  4 Basic  5 Anyone  6 Anonymous
@@ -108,7 +109,7 @@ let deckSeq = 0;
  *  deck still holds open). */
 function openDeck(dbPath?: string): BootDeck {
   deckSeq += 1;
-  const dir = dbPath === undefined ? mkdtempSync(join(tmpdir(), `decko-bootcache-${deckSeq}-`)) : "";
+  const dir = dbPath === undefined ? scratchDir(`decko-bootcache-${deckSeq}-`) : "";
   const path = dbPath ?? join(dir, "deck.sqlite");
   const driver = new LocalSqliteDriver({ path });
   const counting = new CountingRenderDriver(driver);

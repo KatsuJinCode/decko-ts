@@ -20,6 +20,7 @@ import {
   importDump,
 } from "../../tools/migrate/import.mjs";
 import { MysqldumpInsertParser } from "../../tools/migrate/parse-dump.mjs";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
@@ -67,7 +68,7 @@ describe("streaming bounded memory", () => {
   it(
     "imports 1M rows with a bounded parser buffer and bounded heap growth",
     async () => {
-      const dir = mkdtempSync(join(tmpdir(), "decko-stream-"));
+      const dir = scratchDir("decko-stream-");
       dirs.push(dir);
       const dumpPath = join(dir, "million.sql");
       const fileBytes = generateSessionsDump(dumpPath);

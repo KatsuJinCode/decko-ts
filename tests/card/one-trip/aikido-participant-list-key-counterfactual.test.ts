@@ -38,6 +38,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { TripCapturingDriver, bootEngine, normalizeSlotIds } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const LOCAL_COPY_PATH = fileURLToPath(
   new URL("../../../benchmarks/cold-latency-rig/cold-latency-local-copy.sqlite3", import.meta.url),
@@ -77,8 +78,8 @@ describe.skipIf(!copyAvailable || !capturesAvailable)(
   "Aikido participant-list key counterfactual: one cell, OFF path only",
   () => {
     it("renaming card 406's key on a scratch deck makes the OFF render match the ON bytes", async () => {
-      const scratchDir = mkdtempSync(join(tmpdir(), "aikido-key-counterfactual-"));
-      const scratchDb = join(scratchDir, "scratch-deck.sqlite3");
+      const scratchRoot = scratchDir("aikido-key-counterfactual-");
+      const scratchDb = join(scratchRoot, "scratch-deck.sqlite3");
       copyFileSync(LOCAL_COPY_PATH, scratchDb);
       try {
         // THE ONE-CELL MUTATION, on the scratch copy only.
@@ -141,7 +142,7 @@ describe.skipIf(!copyAvailable || !capturesAvailable)(
         expect(after.rows[0]?.key).toBe(COMPOSED_KEY);
         expect(before.rows[0]?.key).toBe(STORED_KEY);
       } finally {
-        try { rmSync(scratchDir, { recursive: true, force: true }); } catch { /* OS temp cleans up */ }
+        try { rmSync(scratchRoot, { recursive: true, force: true }); } catch { /* OS temp cleans up */ }
       }
     }, 900_000);
   },

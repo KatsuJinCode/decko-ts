@@ -25,6 +25,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scratchDir } from "../../tests/support/scratch-dir.mjs";
 
 const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TOOL_DIR, "..", "..");
@@ -32,7 +33,7 @@ const RUNNER = path.join(TOOL_DIR, "run-standing-net.mjs");
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "tests", "standing-net.json"), "utf8"));
 const GUARD = MANIFEST.envGuard ?? null;
 
-const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "standing-net-guard-proof-"));
+const scratchRoot = scratchDir("standing-net-guard-proof-");
 const FAKE_ENV_VALUE = "guard-proof-redacted-value";
 
 function writeStubBin(dir) {

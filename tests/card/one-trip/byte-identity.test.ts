@@ -42,6 +42,7 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 const HARNESS_REPORT_PATH = fileURLToPath(
@@ -66,7 +67,7 @@ describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirro
   const measurements: PageMeasurement[] = [];
 
   beforeAll(async () => {
-    const dir = mkdtempSync(join(tmpdir(), "one-trip-accept-"));
+    const dir = scratchDir("one-trip-accept-");
     sidePath = join(dir, "one-trip-closure-side.sqlite3");
     corpusDriver = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
     const side = new LocalSqliteDriver({ path: sidePath });

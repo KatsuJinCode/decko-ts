@@ -51,6 +51,7 @@ import {
 } from "../../../src/card/attachments/asset-output-write.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { UnsupportedViewError, Voo, type RenderFormat, type ViewContext } from "../../../src/card/render/format.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // ---------------------------------------------------------------------------
 // seeds — the shapes the four views read
@@ -574,7 +575,7 @@ async function makeWriteHarness() {
     );
   }
   const fetchEngine = new FetchEngine(driver);
-  const filesDir = mkdtempSync(join(tmpdir(), "decko-ts-cwwrite-seam-test-"));
+  const filesDir = scratchDir("decko-ts-cwwrite-seam-test-");
   const store = new LocalAttachmentStore(filesDir);
   const actor = { id: 1, name: DeckoName.parse("Joe Admin") } as never;
   const engine = new CardActionEngine(fetchEngine, {

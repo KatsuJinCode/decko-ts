@@ -29,6 +29,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { buildOneTripClosure } from "../../../src/card/one-trip/closure-builder.js";
 import { TripCapturingDriver, bootEngine, normalizeSlotIds } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** The lane's local COPY of the operator's scrubbed serving deck — the same
  *  file the cold-latency rig measured. The backup at
@@ -118,7 +119,7 @@ const findings: Record<string, unknown> = {};
 describe.skipIf(!copyAvailable)("Aikido OFF/ON byte divergence: attribution", () => {
   beforeAll(async () => {
     mkdirSync(OUT_DIR, { recursive: true });
-    sideDir = mkdtempSync(join(tmpdir(), "aikido-divergence-"));
+    sideDir = scratchDir("aikido-divergence-");
     const storePath = join(sideDir, "one-trip-closure-side.sqlite3");
     const corpus = new LocalSqliteDriver({ path: LOCAL_COPY_PATH, readonly: true });
     const side = new LocalSqliteDriver({ path: storePath });

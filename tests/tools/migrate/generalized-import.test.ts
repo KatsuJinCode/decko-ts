@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { LocalSqliteToolDriver } from "../../../tools/migrate/import.mjs";
 import { importFromSqlite } from "../../../tools/migrate/generalized-import.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // The schema comes from THIS worktree, resolved relative to this file. The
 // prior literal was the absolute `C:/localProjects/decko-ts/db/schema.sqlite.sql`
@@ -25,7 +26,7 @@ const DEFAULT_DDL_PATH = fileURLToPath(new URL("../../../db/schema.sqlite.sql", 
 const DDL_PATH = process.env.DECKO_MIGRATE_DDL ?? DEFAULT_DDL_PATH;
 const dirs: string[] = [];
 function makeDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-gen-import-"));
+  const dir = scratchDir("decko-gen-import-");
   dirs.push(dir);
   return dir;
 }
