@@ -147,6 +147,20 @@ if [ "$HEAD_SHA" != "$FOLD_TIP" ]; then
   git -C "$REPO" merge-base --is-ancestor "$FOLD_TIP" "$HEAD_SHA" ||
     die "worktree HEAD $HEAD_SHA does not descend from FOLD_TIP $FOLD_TIP -- re-point first (see grade11-lane.md fire-me card)"
   CODE_DIFF=$(git -C "$REPO" diff --name-only "$FOLD_TIP" "$HEAD_SHA" -- src tests benchmarks)
+  # SEEDING_PAIRED_CORPUS=1 (with PAIRING_NAMES_AND_KEYS=1): the graded deck is
+  # a key-repaired, content-paired copy of the pinned bench, so the seeder's
+  # override table must name its sha. Exactly these two seeding-input files may
+  # then differ from FOLD_TIP; src/ and every other test file may not, and the
+  # diff is printed into the fire log.
+  if [ "${SEEDING_PAIRED_CORPUS:-0}" = "1" ]; then
+    [ "${PAIRING_NAMES_AND_KEYS:-0}" = "1" ] || die "SEEDING_PAIRED_CORPUS=1 needs PAIRING_NAMES_AND_KEYS=1 (the strict pairing proof)"
+    SEEDING_INPUTS="tests/card/render/raw-corpus-seeding.ts
+tests/card/render/raw-corpus-override-capture-restored-rows.json"
+    echo "GUARD3 seeding-input diff allowed (SEEDING_PAIRED_CORPUS=1):"
+    git -C "$REPO" diff "$FOLD_TIP" "$HEAD_SHA" -- tests/card/render/raw-corpus-seeding.ts | cat
+    git -C "$REPO" diff -U0 "$FOLD_TIP" "$HEAD_SHA" -- tests/card/render/raw-corpus-override-capture-restored-rows.json | cat
+    CODE_DIFF=$(printf '%s\n' "$CODE_DIFF" | grep -vxF "$SEEDING_INPUTS" || true)
+  fi
   [ -z "$CODE_DIFF" ] || die "HEAD differs from FOLD_TIP in engine code paths -- re-point is stale:
 $CODE_DIFF"
 fi
