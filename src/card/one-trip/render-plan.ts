@@ -164,7 +164,9 @@ export function classifyResidueStatement(sql: string): string | undefined {
   //  guards of different breadth.)
   if (/rules\.id AS ruleId/i.test(sql)) return "reached-rules-cte";
   if (/left_id IS NOT NULL AND \(NOT EXISTS/i.test(sql)) return "engine-boot-dangling-canonical";
-  if (/WITH RECURSIVE (reached|anc|name_walk)/i.test(sql)) return "reached-rules-cte";
+  // The rule universe's upward walk (setting/rules/up) and the read-rule
+  // closure (anc/tc/...) open "WITH RECURSIVE" with a newline.
+  if (/WITH RECURSIVE\s+(reached|anc|name_walk|setting\(id\))/i.test(sql)) return "reached-rules-cte";
   if (/SELECT DISTINCT c\.type_id AS type_id/i.test(sql)) return "engine-fold-type-names";
   if (/SELECT \* FROM cards WHERE key IN \(/i.test(sql)) return "engine-fold-head-reads";
   if (/SELECT name, left_id, right_id FROM cards WHERE id = \? LIMIT 1/i.test(sql)) {
