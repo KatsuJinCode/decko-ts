@@ -2,6 +2,13 @@
   "meta": {
     "what": "Capture-restored card rows the raw corpus dump lacks. Applied by tests/card/render/raw-corpus-seeding.ts to the STAGED deck only; the sha-pinned corpus file is never mutated. M8 skin:record class (20 bootswatch skins, residual-classes-dfe642b-w5.txt class [20]) plus journal skin customized 34179 (harness-corpus-repair) plus the two bootstrap SCSS source siblings 33852/33848 (m8-siblings-litera, M8 corpus-materialization remainder) plus litera skin 33872, the one bootswatch skin with no capture record, restored from the LIVE site's ?view=raw route (m8-siblings-litera), plus litera skin customized 34530, restored from the same LIVE route and class-calibrated on journal skin customized 34179's oracle envelope (litera-custom-skin).",
     "corpusSha256": "6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e",
+    "contentPairedCorpora": [
+      {
+        "sha256": "305caac1fea4435174e3e98eef84105471faa67efe3ad9b42ea411f5dc15cc2c",
+        "derivation": "6a44dfdc with cards.name and cards.key taken row by row from the key-repaired capture deck e9c040ea (the deck the 2026-10-06 corpus of record was captured on); every other column is 6a44dfdc's",
+        "proof": "tools/oracle/corpus-deck-pairing-gate.mjs --capture-deck <e9c040ea> --names-and-keys: PAIRED-BY-CONTENT (0 differing card or reference rows, name and key included); the capture deck's content columns equal 6a44dfdc's (PAIRED-BY-CONTENT without the flag), so this table's content patches address the same rows"
+      }
+    ],
     "generatedBy": "tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs",
     "generatedAt": "2026-10-04T04:47:46.858Z",
     "provenance": [

@@ -506,14 +506,21 @@ export async function createRawStructureSeededStorage(
     const overridePath = path.join(REPO_ROOT, "tests", "card", "render",
       "raw-corpus-override-capture-restored-rows.json");
     const override = JSON.parse(readFileSync(overridePath, "utf8")) as {
-      meta: { corpusSha256: string };
+      meta: { corpusSha256: string; contentPairedCorpora?: Array<{ sha256: string }> };
       cards: Array<{ id: number; content?: string; note?: string }>;
       references: CorpusReferenceRow[];
     };
     const corpusSha = createHash("sha256").update(readFileSync(RAW_CORPUS_DB)).digest("hex");
-    if (override.meta.corpusSha256 !== corpusSha) {
+    // A content-paired corpus differs from the pinned one only outside the
+    // columns this table patches (each entry records its derivation and the
+    // pairing-gate proof), so the restored rows address the same cards.
+    const acceptedShas = [
+      override.meta.corpusSha256,
+      ...(override.meta.contentPairedCorpora ?? []).map((p) => p.sha256),
+    ];
+    if (!acceptedShas.includes(corpusSha)) {
       throw new Error(
-        `capture-restored override table is pinned to corpus ${override.meta.corpusSha256} ` +
+        `capture-restored override table is pinned to corpus ${acceptedShas.join(" / ")} ` +
           `but this worktree's corpus is ${corpusSha} — refusing to seed foreign bytes`,
       );
     }
