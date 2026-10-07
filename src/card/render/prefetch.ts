@@ -1306,6 +1306,11 @@ export interface WarmupClosureContext extends PrefetchContext {
    *  ensureCodenameMarksResolvable). Runs once per round, matching the
    *  baseline chase's per-batch cadence. */
   onRound?: () => Promise<void>;
+  /** Junction sides queued only to compose a compound name are prepared as
+   *  existence-only leaves, never scanned (request-local live render's
+   *  demand-seed warm-up only; without it such a side is scanned as "full"
+   *  and its content's references are chased). */
+  sidesUnscanned?: boolean;
 }
 
 export interface WarmupStats {
@@ -1621,6 +1626,7 @@ export async function prefetchWarmupClosure(
           !pending.has(left.key)
         ) {
           pending.set(left.key, { abs: left.s });
+          if (ctx.sidesUnscanned === true && !modes.has(left.key)) modes.set(left.key, "leaf");
         }
         if (
           rightCard === undefined &&
@@ -1630,6 +1636,7 @@ export async function prefetchWarmupClosure(
           !pending.has(right.key)
         ) {
           pending.set(right.key, { abs: right.s });
+          if (ctx.sidesUnscanned === true && !modes.has(right.key)) modes.set(right.key, "leaf");
         }
       }
     }

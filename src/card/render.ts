@@ -4733,6 +4733,11 @@ export class RenderEngine implements RenderEngineLike {
   /** With collect mode on, the reference-chasing warm-ups are skipped: the
    *  render asks for what it needs instead. */
   warmupChaseOff = false;
+  /** Request-local live render only: in the warm-up closure, junction sides
+   *  queued to compose a compound name are prepared but never scanned
+   *  (prefetch.ts WarmupClosureContext.sidesUnscanned). Off everywhere
+   *  else. */
+  warmupSidesUnscanned = false;
   /** Set on the engines of the request-local live render
    *  (src/card/live/live-render.ts): the render never seats a one-trip plan
    *  payload, whatever DECKO_ONE_TRIP says. That path stores nothing between
@@ -4808,6 +4813,7 @@ export class RenderEngine implements RenderEngineLike {
           : {}),
         prepareFallback: async (name) => (await this.prepareItemForRender(name)) ?? undefined,
         ...(onRound !== undefined ? { onRound } : {}),
+        ...(this.warmupSidesUnscanned ? { sidesUnscanned: true } : {}),
       },
       scan,
     );

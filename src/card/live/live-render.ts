@@ -109,6 +109,10 @@ async function renderPass(
     // Round 9 step 2: collect passes skip the prepare walks of a read-denied
     // root (its hidden body's items and links are never rendered).
     render.skipDeniedRootWalks = true;
+    // Junction sides the demand-seed warm-up composes through are prepared,
+    // not scanned: scanning them chased their whole content closure, one
+    // level per pass (DECKO_LIVE_SIDES_SCAN=1 restores it).
+    render.warmupSidesUnscanned = !(typeof process !== "undefined" && process.env?.DECKO_LIVE_SIDES_SCAN === "1");
   }
   if (skipSync !== undefined) render.skipSyncRender = skipSync;
   if (lazy !== undefined) {
@@ -173,6 +177,10 @@ export async function liveRenderPage(
       const lazyAsked = new Set<string>();
       live.mode = blockNext ? "block" : "spec";
       live.blockTrips = blockNext ? tailTrips : undefined;
+      if (env?.DECKO_LIVE_TRACE_STACK !== undefined) {
+        live.stackTrace = new Map();
+        live.stackDepth = Number(env.DECKO_LIVE_TRACE_STACK) || 6;
+      }
       const t0 = performance.now();
       let html: string | undefined;
       let threw: unknown;
@@ -204,6 +212,11 @@ export async function liveRenderPage(
       if (done) {
         if (threw !== undefined) throw threw;
         return { html: html as string, stats: live.stats, passes, choice };
+      }
+      if (env?.DECKO_LIVE_TRACE === "1") {
+        process.stderr.write(
+          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
+        );
       }
       if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length + lazyFresh.length === 0 && pendingReads <= tail) blockNext = true;
       if (pendingReads > 0) await live.flushSpeculative();

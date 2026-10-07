@@ -275,6 +275,30 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     return this.spec.size;
   }
 
+  /** Diagnostics (DECKO_LIVE_TRACE_STACK=<depth>): pending reads counted by
+   *  the engine frames that issued them; reset by the caller per pass. */
+  stackTrace: Map<string, number> | undefined = undefined;
+  stackDepth = 6;
+
+  /** Diagnostics (DECKO_LIVE_TRACE): what the pending speculative reads ask
+   *  for, with ids resolved to names where the store knows them. */
+  describePending(): Record<string, unknown> {
+    const s = this.spec;
+    const nm = (x: number) => this.nameOf(x) ?? `#${x}`;
+    return {
+      fullKeys: [...s.fullKeys],
+      idKeys: [...s.idKeys],
+      fullIds: [...s.fullIds].map(nm),
+      idIds: [...s.idIds].map(nm),
+      lefts: [...s.lefts].map(nm),
+      leftKeys: [...s.leftKeys],
+      pairs: [...s.pairs.values()].map(([l, r]) => `${nm(l)}+${nm(r)}`),
+      sideL: [...s.sideL],
+      sideR: [...s.sideR],
+      exact: [...s.exact.values()].map((x) => `${x.sql.replace(/\s+/g, " ").slice(0, 160)} ${JSON.stringify(x.params ?? []).slice(0, 120)}`),
+    };
+  }
+
   async batch(stmts: SQLStatement[]): Promise<SQLQueryResult[]> {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const results: (SQLQueryResult | undefined)[] = new Array(stmts.length);
@@ -315,6 +339,15 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         else this.blockTrips -= 1;
       }
       if (this.mode === "spec") {
+        if (this.stackTrace !== undefined) {
+          const st = (new Error().stack ?? "").split("\n").slice(2);
+          const frames = st
+            .map((l) => l.trim().replace(/^at /, "").replace(/ \(.*$/, ""))
+            .filter((f) => !/^(async )?(LiveStoreDriver|Object\.|Promise|process|new Promise|Array\.)/.test(f) && f !== "")
+            .slice(0, this.stackDepth);
+          const k = frames.join(" < ");
+          this.stackTrace.set(k, (this.stackTrace.get(k) ?? 0) + need.size);
+        }
         this.spec.addAll(need);
         return results as SQLQueryResult[];
       }
