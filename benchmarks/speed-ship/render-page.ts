@@ -15,15 +15,14 @@
 //                    round short sleeps up to ~15.6 ms steps)
 // --db <path>        sqlite file (default: the trial-deck mirror copy)
 // --out <file>       write the page HTML here
-// --no-name-scan     skip installDeckNameEnvironment (the edge boot's
-//                    deck-wide name scan)
+// --name-scan        run the deck-wide name scan at boot (off by default,
+//                    as on the edge; DECKO_EDGE_NAME_SCAN=1 there)
 
 import { writeFileSync } from "node:fs";
 import { NodeSqliteDriver } from "./node-sqlite-driver.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
-import { bootCorpusDeckEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
-import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
-import { SPACES_ASSET_HOST, applyServedEnvironmentDeltas } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
+import { bootEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
+import { applyServedEnvironmentDeltas } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 
 const argv = process.argv.slice(2);
@@ -110,9 +109,12 @@ try {
     // --temp-cap N: the Temporary-cache key cap (default: Ruby's 10,000).
     // A tiny cap fires the within_key_counts reset on nearly every write.
     const cap = arg("temp-cap", "");
-    const { fetcher, render } = await bootCorpusDeckEngines(counted, cap === "" ? {} : { maxTemporaryCacheKeys: Number(cap) });
-    if (!argv.includes("--no-name-scan")) await installDeckNameEnvironment(counted, fetcher);
-    render.imageCdnHost = SPACES_ASSET_HOST;
+    // The edge handler's own serving boot (bootDeck): the deck-wide name
+    // scan only with --name-scan (DECKO_EDGE_NAME_SCAN=1 on the edge).
+    const { render } = await bootEdgeServingEngines(counted, {
+      ...(cap === "" ? {} : { maxTemporaryCacheKeys: Number(cap) }),
+      nameScan: argv.includes("--name-scan"),
+    });
     html = applyServedEnvironmentDeltas(await renderPageBytes(render, page, undefined, {}));
   } else {
     throw new Error(`unknown mode ${mode}`);

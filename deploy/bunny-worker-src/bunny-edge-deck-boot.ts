@@ -54,6 +54,8 @@ import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
+import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
+import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -126,4 +128,41 @@ export async function bootCorpusDeckEngines(
   });
 
   return { fetcher, render };
+}
+
+/** THE EDGE SERVING BOOT: the corpus boot above plus the two serving
+ *  fields the Bunny edge handler's bootDeck has always set. One function, so
+ *  the handler and the measurement harness (benchmarks/speed-ship) boot the
+ *  same way.
+ *
+ *  The deck-wide name scan (installDeckNameEnvironment: every trash-0 row's
+ *  name, about 21,700 on the trial deck, poured into the lexicon) is OFF by
+ *  default. It costs round trips instead of saving them: the Temporary cache
+ *  keeps only the last 10,000 keys of it, and the request re-reads the rest.
+ *  Measured on the trial-deck mirror: dropping it changes no byte on the 40
+ *  gate pages (benchmarks/speed-ship/gate.py) and removes its own statement
+ *  plus the re-reads it caused. The corpus boot's own name-environment
+ *  install and codename load (above) are what the sync name readers need.
+ *  DECKO_EDGE_NAME_SCAN=1 restores the scan. */
+export async function bootEdgeServingEngines(
+  driver: SQLDatabaseDriver,
+  opts: { maxTemporaryCacheKeys?: number; nameScan?: boolean } = {},
+): Promise<DeckEngines> {
+  const engines = await bootCorpusDeckEngines(
+    driver,
+    opts.maxTemporaryCacheKeys === undefined ? {} : { maxTemporaryCacheKeys: opts.maxTemporaryCacheKeys },
+  );
+  const nameScan = opts.nameScan ?? (typeof process !== "undefined" && process.env?.DECKO_EDGE_NAME_SCAN === "1");
+  if (nameScan) {
+    await installDeckNameEnvironment(driver, engines.fetcher);
+  } else {
+    // Everything the scan's caller relied on except the scan itself: this
+    // boot owns the process-global name environment at the moment it
+    // returns, and the codename registry is loaded (no statement when the
+    // corpus boot already loaded it).
+    engines.fetcher.installNameEnvironment();
+    await engines.fetcher.codenames.ensureLoaded();
+  }
+  engines.render.imageCdnHost = SPACES_ASSET_HOST;
+  return engines;
 }

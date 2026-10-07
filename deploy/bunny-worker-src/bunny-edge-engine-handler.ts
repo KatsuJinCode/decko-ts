@@ -52,7 +52,7 @@
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
-  bootCorpusDeckEngines,
+  bootEdgeServingEngines,
   ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS,
 } from "./bunny-edge-deck-boot.js";
 import { oneTripWantsPayload } from "../../src/card/one-trip/render-gate.js";
@@ -83,8 +83,6 @@ import {
   resolveEdgeRenderBudgetMs,
   type Deck,
 } from "./bunny-edge-engine-request.js";
-import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
-import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 import {
   applyEdgeServerTimingHeader,
   edgeDbTimingFetch,
@@ -177,11 +175,10 @@ let actorEngines: ActorRenderEngines | undefined;
  *    rule universe wired over THIS boot's driver (the person-section fix —
  *    without the hook every structure-rule junction renders as missing, the
  *    measured 171px person-page drop);
- *  - plus the lexicon prime this line's serving boot has always run
- *    (installDeckNameEnvironment: junction-name composition over the full
- *    trash-0 scan, the id-mark /~<id> resolution warm — its
- *    installNameEnvironment + codenames.ensureLoaded calls are idempotent
- *    after the corpus boot's own);
+ *  - the deck-wide lexicon prime (installDeckNameEnvironment: junction-name
+ *    composition over the full trash-0 scan) is OFF unless
+ *    DECKO_EDGE_NAME_SCAN=1 — it cost round trips instead of saving them
+ *    (bootEdgeServingEngines' doc carries the measurement);
  *  - plus the deploy lineage's two serving-boot fields the bare boot
  *    lacked: the per-pipeline hop timeout resolved off
  *    DECKO_EDGE_PIPELINE_TIMEOUT_MS (the P1 incident fix; needs the
@@ -213,15 +210,12 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   // into a pessimization). Unarmed, the boot is byte-for-byte the deployed
   // default. The gate reads the process env (on the edge the env bag IS
   // process.env) — the same var the render path's seat check reads.
-  const { fetcher, render } = await bootCorpusDeckEngines(
+  // bootEdgeServingEngines: the corpus boot + imageCdnHost, without the
+  // deck-wide name scan unless DECKO_EDGE_NAME_SCAN=1 (see its doc).
+  return await bootEdgeServingEngines(
     driver,
-    oneTripWantsPayload()
-      ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS }
-      : {},
+    oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {},
   );
-  await installDeckNameEnvironment(driver, fetcher);
-  render.imageCdnHost = SPACES_ASSET_HOST;
-  return { fetcher, render };
 }
 
 function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {

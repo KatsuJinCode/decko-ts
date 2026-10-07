@@ -161,6 +161,7 @@ export async function renderPageBytes(
   // The page is one request: no Temporary-cache reset may drop an entry this
   // request seated before its synchronous readers use it
   // (TemporaryCache#hold; the reset is deferred to the request's end).
+  await resolveIdMarksInRequestedName(engine, cardName);
   // (Stub decks in the edge request tests carry a partial fetcher.)
   const releaseCaches =
     typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
@@ -171,6 +172,21 @@ export async function renderPageBytes(
   } finally {
     releaseCaches();
   }
+}
+
+/** A requested name may carry id marks (`/~10`, `/~10+*email`). Its parse
+ *  is synchronous, and the synchronous name environment only knows ids some
+ *  earlier async read proved. Ruby resolves a mark with a synchronous
+ *  database read (lexicon.rb:71-76); here each mark is read asynchronously
+ *  first (DbLexicon#name records the durable id/name entry the synchronous
+ *  parse consults), so the page never depends on whether a boot-time scan
+ *  or an earlier request happened to warm the id. No statement when the
+ *  name has no `~<digits>` mark. */
+async function resolveIdMarksInRequestedName(engine: RenderEngine, cardName: string): Promise<void> {
+  if (!cardName.includes("~")) return;
+  const lexicon = engine.fetcher?.lexicon;
+  if (lexicon === undefined || typeof lexicon.name !== "function") return;
+  for (const m of cardName.matchAll(/~(\d+)/g)) await lexicon.name(Number(m[1]));
 }
 
 async function renderPageBytesWithPageConfig(

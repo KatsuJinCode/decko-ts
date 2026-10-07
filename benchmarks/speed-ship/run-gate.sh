@@ -11,7 +11,7 @@ lane() {
   local start=$1
   while [ "$start" -lt "$N" ]; do
     python benchmarks/speed-ship/gate.py check --bundle "$BUNDLE" --mode "$MODE" --ref-dir "$REF" --out-dir "$OUT" \
-      --start "$start" --count "$SLICE" --extra "$EXTRA" | grep -v '"not_identical"' >> "$RES"
+      --start "$start" --count "$SLICE" --extra "$EXTRA" ${GATE_DB:+--db "$GATE_DB"} | grep -v '"not_identical"' >> "$RES"
     start=$((start + SLICE * LANES))
   done
 }
