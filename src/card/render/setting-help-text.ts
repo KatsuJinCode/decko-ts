@@ -166,6 +166,23 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["variables", {
     right: "    Override bootstrap [[https://github.com/twbs/bootstrap/blob/v5.1.3/scss/_variables.scss|variables]]\n",
   }],
+  // card-mod-search-0.20.0 set/right/<name>.rb: each virtual search includes
+  // Abstract::VirtualSearch with a `raw_help_text:` option, and include_set
+  // turns every option into a cattr_accessor on the Right set module (card
+  // lib/card/set/inheritance.rb:32-36). Right set only. set/right/mates.rb
+  // has its option commented out, so *mates is absent.
+  ["children", {
+    right: "Cards formed by \"mating\" {{_left|name}} with another card. eg: \"{{_left|name}}+mate\".",
+  }],
+  ["created", { right: "Cards created by {{_left|name}}." }],
+  ["edited", { right: "Cards edited by {{_left|name}}." }],
+  ["editors", { right: "Users who have edited {{_left|name}}." }],
+  ["linked_to_by", { right: "Cards that link to {{_left|name}}." }],
+  ["links_to", { right: "Cards that <em>{{_left|name}}</em> links to." }],
+  ["nested_by", { right: "Cards that nest {{_left|name}}." }],
+  ["nests", { right: "Cards that {{_left|name}} includes." }],
+  ["referred_to_by", { right: "Cards that refer to {{_left|name}}." }],
+  ["refers_to", { right: "Cards that {{_left|name}} refers to." }],
 ]);
 
 /** The static raw_help_text a card serves: its OWN codename's self-set string
