@@ -176,6 +176,8 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   private readonly identityRing: boolean;
   private readonly ruleSetsOn =
     typeof process === "undefined" || process.env?.DECKO_LIVE_RULE_SETS !== "0";
+  private readonly askedLefts =
+    typeof process === "undefined" || process.env?.DECKO_LIVE_ASKED_LEFTS !== "0";
   private readonly ruleExpanded = new Set<number>();
   private readonly ruleSetsAsked = new Set<string>();
 
@@ -315,6 +317,73 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     return this.spec.size;
   }
 
+  /** The *all and *all plus set cards, once the store knows their ids and
+   *  only once per request: every rule under them arrives whole (23 rows,
+   *  under 1 KB of content on this deck; every page's rule walk reads
+   *  several of them). DECKO_LIVE_ALL_RULES=0 off. */
+  private globalRulesSent = new Set<string>();
+  private globalRuleSets(): number[] {
+    if (!this.ruleSetsOn || (typeof process !== "undefined" && process.env?.DECKO_LIVE_ALL_RULES === "0")) return [];
+    const out: number[] = [];
+    for (const k of ["*all", "*all_plu"]) {
+      if (this.globalRulesSent.has(k) || !this.store.keyKnown.has(k)) continue;
+      this.globalRulesSent.add(k);
+      const id = this.store.idForKey(k);
+      if (id !== undefined) out.push(id);
+    }
+    return out;
+  }
+
+  /** SET-NAME HINTS (live-render.ts, DECKO_LIVE_SET_HINTS=0 off): names a
+   *  pass asked the prepared map for, which the next pass prepares. A name
+   *  that is a set card (<anchor>+*self / *type / *right, <left+right>+*type
+   *  plus right) has its set card and rules fetched whole in the coming
+   *  trip, the way rule sets of read rows are; the next pass reads them
+   *  whole, a trip later otherwise. Names whose parts the store does not
+   *  know are skipped. */
+  hintSetNames(names: readonly string[]): void {
+    if (!this.ruleSetsOn) return;
+    const CODES: Record<string, string> = { "*self": "self", "*type": "type", "*right": "right" };
+    const idOf = (s: string): number | undefined => {
+      const k = foldNoCase(DeckoName.parse(s).key);
+      return this.store.keyKnown.has(k) ? this.store.idForKey(k) : undefined;
+    };
+    for (const n of names) {
+      let parsed: DeckoName;
+      try {
+        parsed = DeckoName.parse(n);
+      } catch {
+        continue;
+      }
+      if (!parsed.isCompound) continue;
+      const tag = parsed.rightName?.key;
+      const left = parsed.leftName;
+      if (tag === undefined || left === undefined) continue;
+      try {
+        if (tag === "*type_plu_right") {
+          if (!left.isCompound || left.leftName === undefined || left.rightName === undefined) continue;
+          if (left.leftName.isCompound || left.rightName.isCompound) continue;
+          const l = idOf(left.leftName.s);
+          const r = idOf(left.rightName.s);
+          if (l === undefined || r === undefined) continue;
+          const k = `tpr:${l}:${r}`;
+          if (this.ruleSetsAsked.has(k)) continue;
+          this.ruleSetsAsked.add(k);
+          this.spec.tprSets.set(`${l}:${r}`, [l, r]);
+        } else if (CODES[tag] !== undefined && !left.isCompound) {
+          const a = idOf(left.s);
+          if (a === undefined) continue;
+          const k = `${a}:${CODES[tag]}`;
+          if (this.ruleSetsAsked.has(k)) continue;
+          this.ruleSetsAsked.add(k);
+          this.spec.ruleSets.set(k, [a, CODES[tag]!]);
+        }
+      } catch {
+        /* unresolvable part: skip */
+      }
+    }
+  }
+
   /** Diagnostics (DECKO_LIVE_TRACE_STACK=<depth>): pending reads counted by
    *  the engine frames that issued them; reset by the caller per pass. */
   stackTrace: Map<string, number> | undefined = undefined;
@@ -423,6 +492,12 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     // A request whose budget fired sends nothing more (live-render.ts).
     if (this.opts.signal?.aborted === true) throw new LiveRenderAborted();
     // ONE round trip: what the render is waiting on + the ring.
+    // A row the render asked for whole by id is a row it is reading: its
+    // left junctions (the next ring level, which frontier() adds only once
+    // the row is demanded) ride this trip too (DECKO_LIVE_ASKED_LEFTS=0 off).
+    if (this.askedLefts) {
+      for (const x of need.fullIds) if (this.store.present.has(x) && !this.store.leftComplete.has(x)) need.lefts.add(x);
+    }
     this.frontier(need);
     const st = this.store;
     const w: Widening = {
@@ -437,6 +512,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       sideR: [...need.sideR],
       ruleSets: [...need.ruleSets.values()],
       tprSets: [...need.tprSets.values()],
+      wholeLefts: this.globalRuleSets(),
     };
     const widening = st.wideningStatements(w, this.identityRing);
     const exact = [...need.exact.entries()].filter(([k]) => !this.exact.has(k));

@@ -139,6 +139,9 @@ export interface Widening {
    *  <left+right>+*type plus right and its rules. Optional. */
   ruleSets?: [number, string][];
   tprSets?: [number, number][];
+  /** set cards whose every junction (their rules) arrives whole: *all and
+   *  *all plus, which every page's rule walk reads. Optional. */
+  wholeLefts?: number[];
 }
 
 export class RequestStore {
@@ -269,7 +272,7 @@ export class RequestStore {
   ): { full: SQLStatement; identity: SQLStatement; identityColumns: readonly string[] } | undefined {
     const total =
       w.fullKeys.length + w.idKeys.length + w.fullIds.length + w.idIds.length + w.lefts.length + w.leftKeys.length + w.pairs.length +
-      (w.ruleSets?.length ?? 0) + (w.tprSets?.length ?? 0);
+      (w.ruleSets?.length ?? 0) + (w.tprSets?.length ?? 0) + (w.wholeLefts?.length ?? 0);
     if (total === 0) return undefined;
     const ctes: string[] = [];
     const params: unknown[] = [];
@@ -302,6 +305,10 @@ export class RequestStore {
           `JOIN cards r ON r.id = j.right_id AND r."key" COLLATE NOCASE IN (SELECT value FROM json_each(?))`,
       );
       params.push(JSON.stringify(w.sideL), JSON.stringify(w.sideR));
+    }
+    if (w.wholeLefts?.length) {
+      fullParts.push(`SELECT id FROM cards WHERE left_id IN (SELECT value FROM json_each(?))`);
+      params.push(JSON.stringify(w.wholeLefts));
     }
     // RULE SETS of rows the engine reads (live-store-driver.ts frontier):
     // the set cards its rule walk resolves (X+*self, Type+*type,
