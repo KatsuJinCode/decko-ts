@@ -33,7 +33,14 @@ import {
   type PutResult,
 } from "./driver.js";
 
-/** The structural slice of R2Bucket this adapter uses. */
+/** The structural slice of R2Bucket this adapter uses.
+ *
+ *  A miss reads as `null`, not `undefined` — that is R2's actual return
+ *  (verified against miniflare's local emulation, which is where the
+ *  conformance suite caught it). The type says so, and `head`/`get`
+ *  normalize both to undefined, because the blob interface states a
+ *  miss as undefined and a caller must not have to know which provider
+ *  spells it which way. */
 export interface R2BucketLike {
   put(
     key: string,
@@ -43,8 +50,8 @@ export interface R2BucketLike {
       customMetadata?: Record<string, string>;
     },
   ): Promise<{ key: string; size: number; etag: string; uploaded: Date; httpMetadata?: { contentType?: string } }>;
-  get(key: string): Promise<R2ObjectLike | undefined>;
-  head(key: string): Promise<R2ObjectLike | undefined>;
+  get(key: string): Promise<R2ObjectLike | null | undefined>;
+  head(key: string): Promise<R2ObjectLike | null | undefined>;
   delete(key: string): Promise<void>;
   list(options: { prefix?: string; limit?: number; cursor?: string }): Promise<{
     objects: R2ObjectLike[];
@@ -109,21 +116,21 @@ export class R2BlobDriver implements BlobDriver {
   async get(key: string): Promise<BlobBody | undefined> {
     assertBlobKey(key);
     const object = await this.bucket.get(key);
-    if (object === undefined) return undefined;
+    if (object == null) return undefined;
     return { body: object.body, metadata: metadataOf(object) };
   }
 
   async getBytes(key: string): Promise<Uint8Array | undefined> {
     assertBlobKey(key);
     const object = await this.bucket.get(key);
-    if (object === undefined) return undefined;
+    if (object == null) return undefined;
     return new Uint8Array(await object.arrayBuffer());
   }
 
   async head(key: string): Promise<BlobMetadata | undefined> {
     assertBlobKey(key);
     const object = await this.bucket.head(key);
-    return object === undefined ? undefined : metadataOf(object);
+    return object == null ? undefined : metadataOf(object);
   }
 
   async delete(key: string): Promise<void> {

@@ -198,4 +198,19 @@ export function assertBlobPrefix(prefix: string): void {
  *    filesystem walk and Bunny's directory listing are too. No adapter
  *    promises cross-provider consistency for a key written between two
  *    concurrent list calls.
+ *
+ *  - Listing depth. `list(prefix)` reports the keys in ONE directory —
+ *    the directory the prefix names. It is NOT a recursive walk. The
+ *    filesystem and in-memory adapters walk deeper because they can do
+ *    so cheaply, so a caller must not rely on a deep prefix returning
+ *    everything beneath it. The engine's actual call is
+ *    `list("<card_id>/")`, one level, which every adapter answers
+ *    correctly — a card's renditions are all directly in its directory.
+ *
+ *  - How a miss is spelled. Every adapter normalizes a miss to
+ *    undefined, but the providers disagree underneath: R2's binding
+ *    returns null, the filesystem raises ENOENT, and Bunny answers HTTP
+ *    404. The normalization is the adapter's job precisely so no caller
+ *    ever sees the difference — the conformance suite is what proves it
+ *    (it caught R2's null during development).
  */

@@ -219,24 +219,20 @@ export class BunnyStorageBlobDriver implements BlobDriver {
   async list(prefix: string, options: BlobListOptions = {}): Promise<BlobListEntry[]> {
     assertBlobPrefix(prefix);
     const entries: BlobListEntry[] = [];
-    if (prefix === "") {
-      // The root listing. One directory is all Bunny exposes; a prefix
-      // of "" means the caller wants everything, which is one level.
-      for (const entry of await this.listDirectory("")) {
-        if (!entry.IsDirectory) entries.push(this.entryFor("", entry));
-      }
-    } else {
-      const cut = prefix.lastIndexOf("/");
-      const directory = cut === -1 ? "" : prefix.slice(0, cut + 1);
-      const remainder = prefix.slice(cut + 1);
-      for (const entry of await this.listDirectory(directory)) {
-        if (entry.IsDirectory) continue;
-        const key = `${directory}${entry.ObjectName}`;
-        if (!key.startsWith(prefix)) continue;
-        entries.push(this.entryFor(directory, entry));
-        if (options.limit !== undefined && entries.length >= options.limit) break;
-      }
-      void remainder;
+    // One directory per call is all Bunny's API exposes, so the walk is
+    // by DIRECTORY, not by key. The prefix is cut at its last slash: the
+    // part before it names the directory to list, the part after it is a
+    // filter applied to that directory's entries (a prefix like "33"
+    // matches "33-original.png" in the root, which is why the filter is a
+    // plain startsWith rather than a path-boundary test).
+    const cut = prefix.lastIndexOf("/");
+    const directory = cut === -1 ? "" : prefix.slice(0, cut + 1);
+    for (const entry of await this.listDirectory(directory)) {
+      if (entry.IsDirectory) continue;
+      const key = `${directory}${entry.ObjectName}`;
+      if (!key.startsWith(prefix)) continue;
+      entries.push(this.entryFor(directory, entry));
+      if (options.limit !== undefined && entries.length >= options.limit) break;
     }
     entries.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
     return options.limit === undefined ? entries : entries.slice(0, options.limit);
