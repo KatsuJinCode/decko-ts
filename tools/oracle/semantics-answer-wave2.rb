@@ -177,12 +177,12 @@ ordered.each do |question|
           next nil if sid.nil?
 
           r = Card.where(id: sid).pluck(:name, :key, :trash).first
-          r && { "id" => sid, "name" => r[0], "key" => r[1], "trash" => r[2] ? true : false }
+          r && { "id" => sid, "name" => r[0], "key" => r[1], "trash" => [true, 1].include?(r[2]) }
         end
         {
           "id" => cid,
           "row" => row && { "name" => row[0], "key" => row[1], "left_id" => row[2], "right_id" => row[3],
-                            "trash" => row[4] ? true : false },
+                            "trash" => [true, 1].include?(row[4]) },
           "left" => row && side.call(row[2]),
           "right" => row && side.call(row[3]),
           "lexicon_name" => lex_name,

@@ -47,6 +47,10 @@ end
 
 answers = {}
 
+# Optional: answer only these kinds (comma-separated), e.g. to re-answer one
+# category on a cold cache.
+ONLY_KINDS = ENV["SEMANTICS_ONLY_KINDS"]&.split(",")
+
 # The event-name census, read out of the loaded set modules: every
 # `<event>_without_callbacks` method Card::Set::Event defined.
 EVENT_NAMES = (
@@ -60,6 +64,8 @@ EVENT_NAMES = (
 QUESTIONS["questions"].each do |question|
   id = question["id"]
   kind = question["kind"]
+  next if ONLY_KINDS && !ONLY_KINDS.include?(kind)
+
   payload = question["payload"]
 
   answer =
