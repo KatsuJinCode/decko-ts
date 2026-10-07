@@ -38,7 +38,7 @@ import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
-import { renderPageBytes } from "../../src/card/render/page.js";
+import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
@@ -561,9 +561,11 @@ async function dispatchEngineRequest(
           historyParams,
           signal,
         })
-      ).html;
-    const pageHtml = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
-      ? await source.deck().then((d) => withIsolateRenderLock(() => renderPageBytes(d.render, parsed.name, pageView, historyParams)))
+      );
+    // Each arm answers the page's HTML and its status (403 when the main
+    // card is read-denied: Ruby's root.error_status, format/error.rb:27-31).
+    const page = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
+      ? await source.deck().then((d) => withIsolateRenderLock(() => renderPageWithStatus(d.render, parsed.name, pageView, historyParams)))
       : requestContextAvailable()
         ? // CONCURRENT: the live render boots its own engines over its own
           // request store, and runs in its own request context (name
@@ -580,7 +582,7 @@ async function dispatchEngineRequest(
               (await source.deck()).fetcher.installNameEnvironment?.();
             }
           });
-    return html(200, applyServedEnvironmentDeltas(pageHtml));
+    return html(page.status, applyServedEnvironmentDeltas(page.html));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Status mapping aligned with the CF worker's render path

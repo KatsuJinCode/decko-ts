@@ -1096,6 +1096,7 @@ export class RenderFormat {
             predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
         });
         if (denial !== undefined) {
+          this.noteFocalDenial(voo);
           // R16 batch 2: error.rb:27-31 view_for_denial substitutes the
           // configured denial VIEW (:denial), and html/error.rb:75-77
           // `view :denial do focal? ? loud_denial : quiet_denial end` —
@@ -1155,6 +1156,7 @@ export class RenderFormat {
             predicate === "can_configure?" ? this.engine.canConfigure?.(this.card) : undefined,
         });
         if (denial !== undefined) {
+          this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
             return this.mainLoudDenialHtml(voo);
           }
@@ -1185,6 +1187,18 @@ export class RenderFormat {
     } finally {
       this.voo = previous;
     }
+  }
+
+  /** format/error.rb:27-31 view_for_denial: `root.error_status = 403 if
+   *  focal? && voo.root?`. Focal is the page's main format (isMain); the
+   *  voo is the root one when this format has no enclosing view (Ruby's
+   *  `voo.root?` is `!parent`, and a voo's parent is its format's current
+   *  voo, as here). Set before the denial view is chosen, as in Ruby, so a
+   *  configured denial view (view_setting(:denial, view)) still answers
+   *  403. A denied nested card or a denied sub-view inside the main card's
+   *  view leaves the status alone. */
+  private noteFocalDenial(voo: Voo): void {
+    if (this.isMain && voo.parent === undefined) this.engine.pageErrorStatus = 403;
   }
 
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
@@ -3175,6 +3189,10 @@ export interface RenderEngineLike {
    *  (the board sidebar's show_follow?/show_discussion? gates read it;
    *  tab_visibility.rb:11-58). */
   readonly viewer?: { signedIn?: boolean; actorId?: number };
+  /** Ruby's `root.error_status` for the page (render.ts
+   *  RenderEngine#pageErrorStatus). Optional: engines without it ignore
+   *  the status. */
+  pageErrorStatus?: number | undefined;
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific

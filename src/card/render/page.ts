@@ -181,6 +181,21 @@ export async function renderPageBytes(
   }
 }
 
+/** renderPageBytes plus the page's HTTP status: Ruby's `root.error_status`
+ *  when the render set one (403 for a read-denied main card,
+ *  RenderEngine#pageErrorStatus), else 200. Read before anything else runs
+ *  on the engine, so a caller holding the engine for one request gets its
+ *  own page's status. */
+export async function renderPageWithStatus(
+  engine: RenderEngine,
+  cardName: string,
+  requestedView?: string,
+  historyParams?: HistoryRenderParams,
+): Promise<{ html: string; status: number }> {
+  const html = await renderPageBytes(engine, cardName, requestedView, historyParams);
+  return { html, status: engine.pageErrorStatus ?? 200 };
+}
+
 /** A requested name may carry id marks (`/~10`, `/~10+*email`). Its parse
  *  is synchronous, and the synchronous name environment only knows ids some
  *  earlier async read proved. Ruby resolves a mark with a synchronous

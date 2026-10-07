@@ -208,6 +208,27 @@ describe("render-format view-permission gate", () => {
     expect(html).not.toContain('<span class="denied">');
   });
 
+  // format/error.rb:27-31 view_for_denial: `root.error_status = 403 if
+  // focal? && voo.root?`. The page answers 403 when its main card's root
+  // view is denied; nothing else sets the status.
+  it("sets the page status to 403 when the MAIN card's root view is read-denied", () => {
+    const engine = stubEngine({ readDenied: true });
+    new RenderFormat(card(1, "Secret Thing", "body"), engine, { main: true }).renderView("titled");
+    expect(engine.pageErrorStatus).toBe(403);
+  });
+
+  it("leaves the page status alone for a denied NESTED (non-main) card", () => {
+    const engine = stubEngine({ readDenied: true });
+    new RenderFormat(card(1, "Secret Thing", "body"), engine).renderView("titled");
+    expect(engine.pageErrorStatus).toBeUndefined();
+  });
+
+  it("leaves the page status alone for a readable main card", () => {
+    const engine = stubEngine({});
+    new RenderFormat(card(1, "Open Thing", "body"), engine, { main: true }).renderView("titled");
+    expect(engine.pageErrorStatus).toBeUndefined();
+  });
+
   it("renders the signed-in loud denial message branch", () => {
     const fmt = new RenderFormat(
       card(1, "Secret Thing", "body"),

@@ -165,7 +165,8 @@ try {
     const request = async () => {
       const url = `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
       const response = await handleEngineRequest(new Request(url), deck, { anonymous: true });
-      if (response.status !== 200) throw new Error(`status ${response.status}`);
+      // 403 is a page's own status (a read-denied main card); the body is the page.
+      if (response.status !== 200 && response.status !== 403) throw new Error(`status ${response.status}`);
       return await response.text();
     };
     counter.rts = 0;

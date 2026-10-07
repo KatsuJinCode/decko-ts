@@ -88,6 +88,9 @@ export interface LivePassReport {
 
 export interface LiveRenderResult {
   html: string;
+  /** The page's HTTP status, from the final pass's engine (Ruby's
+   *  root.error_status: 403 for a read-denied main card), else 200. */
+  status: number;
   stats: LiveStoreStats;
   passes: LivePassReport[];
   choice: "collect" | "speculate";
@@ -312,7 +315,7 @@ export async function liveRenderPage(
           process.stderr.write(`LIVE-TRACE-FINAL pass ${passes.length} htmlLen ${html.length} htmlHash ${h}\n`);
         }
         if (threw !== undefined) throw threw;
-        return { html: html as string, stats: live.stats, passes, choice };
+        return { html: html as string, status: out.engine?.pageErrorStatus ?? 200, stats: live.stats, passes, choice };
       }
       if (env?.DECKO_LIVE_TRACE === "1") {
         process.stderr.write(

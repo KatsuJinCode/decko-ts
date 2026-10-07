@@ -152,7 +152,10 @@ async function one(page, t00) {
     counters.bytes = 0;
   }
   currentPage = page;
-  const url = `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
+  // A page given with a leading "/" is a raw path (e.g. "/Latest_News/board").
+  const url = page.startsWith("/")
+    ? `https://edge.test${page}`
+    : `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
   const t0 = performance.now();
   let status = 0;
   let text = "";

@@ -76,7 +76,8 @@ try {
     const b = await render(p);
     writer.prepare("UPDATE cards SET db_content = ? WHERE id = ?").run(footer.db_content, footer.id);
     const otherwise = a.text.replace(SLOT, "X") === b.text.replace(SLOT, "X").replace(MARKER, "");
-    const ok = a.status === 200 && b.status === 200 && a.posts === b.posts && !a.text.includes(MARKER) && b.text.includes(MARKER) && otherwise;
+    // 403 is a page's own status (a read-denied main card); both requests must agree.
+    const ok = (a.status === 200 || a.status === 403) && b.status === a.status && a.posts === b.posts && !a.text.includes(MARKER) && b.text.includes(MARKER) && otherwise;
     if (!ok) exitCode = 1;
     console.log(JSON.stringify({ page: p, ok, trips: `${a.posts} -> ${b.posts}`, marker_first: a.text.includes(MARKER), marker_second: b.text.includes(MARKER), same_otherwise: otherwise }));
   }

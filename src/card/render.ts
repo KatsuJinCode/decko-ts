@@ -442,11 +442,20 @@ export class RenderEngine implements RenderEngineLike {
    *  at its own start). */
   private pagePrepareDepth = 0;
 
+  /** The page's HTTP status when the render decided one, as Ruby's
+   *  `root.error_status` (card format.rb:34): format/error.rb:27-31
+   *  view_for_denial sets 403 when the FOCAL (main) card's ROOT view is
+   *  denied (`root.error_status = 403 if focal? && voo.root?`). A denied
+   *  nested card does not set it. Cleared when a page render starts
+   *  (beginPagePrepare); read by renderPageWithStatus. */
+  pageErrorStatus: number | undefined = undefined;
+
   /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
    *  of the sweep surface for the whole page render, its layout warm-ups
    *  included. Pair with endPagePrepare in a finally block. */
   beginPagePrepare(): void {
     this.pagePrepareDepth += 1;
+    if (this.pagePrepareDepth === 1) this.pageErrorStatus = undefined;
     this.renderSeats.clear();
     if (this.sweepAllHeldCards) for (const key of this.renderCards.keys()) this.renderSeats.add(key);
   }
