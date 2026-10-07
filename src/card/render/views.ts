@@ -132,6 +132,8 @@ import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 // the page surface and the view-function surface each render their own
 // Ruby-true `card_url` form instead of one pinned literal.
 import { roleConfigsView, modCardCoreHtml } from "../mod-loader/mods/core-mod.js";
+// card-mod-format set/all/demo.rb :demo (body in ./demo-view.ts; flat entry below).
+import { demoView } from "./demo-view.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -995,6 +997,12 @@ const coreViewBase: ViewFn = (ctx) => {
     ) {
       return fmt.renderRaw();
     }
+    // card-mod-search set/self/search.rb:44-46: *search's core is
+    // `[render_results_for_keyword, super()]`, joined with "\n" by
+    // Format#output (card lib/card/format/content.rb:70-73). With no
+    // keyword the results_for_keyword haml renders "", which leaves the
+    // leading newline.
+    if (fmt.card.record.codename === "search") return `\n${fmt.renderView("card_list")}`;
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
@@ -4217,6 +4225,11 @@ const cardListView: ViewFn = (ctx) => {
   // show_paging? == true case, so unpaged searches keep the pre-paging
   // bytes verbatim.
   const list = `<div class="card-list card-list-${itemView} search-result-list">${rendered.join("\n")}</div>`;
+  // `hide: paging` on the nest (media+GBA+YouTube Browser's
+  // `{{Media+GBA+VideoLinksExternal|hide:paging}}`): render_paging answers
+  // nil for a hidden view, output compacts it away, and nothing is joined,
+  // so the list closes with no trailing newline.
+  if (voo !== undefined && !voo.show("paging")) return list;
   const paging = fmt.engine.searchResultPaging?.(fmt);
   return paging === undefined ? `${list}\n` : `${list}\n${searchPagingNav(fmt.card.name, paging)}`;
 };
@@ -6194,6 +6207,10 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // exactly - Type::Role chains resolve the same fn via the account
   // manifest when a loader is bound).
   configs: roleConfigsView,
+  // card-mod-format set/all/demo.rb view :demo — set/all, so every card has
+  // it. Shark's getting-started content nests `{{:getting_started|demo}}`;
+  // the loader-less page lane rendered "view (demo) not supported".
+  demo: demoView,
   // The email/notification family: the self-nest
   // `{{_|view}}` targets the four notification templates carry. The perms
   // and denial directives are already resolved by

@@ -714,7 +714,7 @@ export function bindModuleAdminHost(host: ModEngineHost): void {
  *  then per category: cardtypes → nested_list_section with the codenames
  *  grouped by title; views → skipped (`next`); everything else →
  *  list_section(cat.capitalize, codenames, :closed_bar). The map's
- *  sections concatenate directly (nil from `next` drops).
+ *  sections join with a newline (nil from `next` drops).
  *
  *  Set scope: the view anchors on Type::Role only — any other card's
  *  dispatch is Ruby's own missing-method unsupported-view error
@@ -767,7 +767,11 @@ export const roleConfigsView: ViewFn = (ctx) => {
       if (section !== undefined) sections.push(section);
     }
   }
-  return sections.join("");
+  // The view returns the map's Array; the view result goes through
+  // output (content.rb: Array.wrap.flatten.compact.join "\n"), so the
+  // `next` nil drops and the sections join with a newline (Shark's
+  // Cardtypes / Settings / Configurations).
+  return sections.join("\n");
 };
 
 /** self/admin.rb:59-61 view :core, cache: :never — task_table(basket[:tasks]).
@@ -1158,37 +1162,19 @@ const typeModDependsOnView: ViewFn = (ctx) => {
  *  gem's own off-by-one slice ("card-mod-email"[8..] = "-email" ->
  *  "mod_-email"), probe-1 verified.
  *
- *  ORDER (engcand, 2026-10-04 — the mm-cstructural sort REVERSED): Ruby is
- *  order-preserving over `mod&.spec&.dependencies`
- *  (card_mods = `yield&.map(&:name).select { "card-mod" }.map { ... }` —
- *  no sort anywhere in the Ruby chain), and `spec.dependencies` reads the
- *  INSTALLED .gemspec files' `add_runtime_dependency` declaration order —
- *  not the Gemfile.lock text, which is a separate Bundler-sorted artifact
- *  the render never reads. The mm-cstructural rationale below the sort it
- *  added in a2f957a9 ("Bundler writes each gem's dependency list SORTED BY
- *  NAME in the lockfile. So the rendered order is alphabetical") conflated
- *  the two, and its one discriminating page could not show it: for
- *  card-mod-edit the lockfile order [list, rules] HAPPENS to equal the
- *  sorted order, while the installed 0.20.0 gemspec declares
- *  [card, card-mod-rules, card-mod-list] — rules first — and today's live
- *  site renders DECLARATION order on all four pages where the two orders
- *  differ (recap23 cold capture 2026-10-04, live==capture byte-equal on
- *  account/bootstrap: email [search, list, permissions] vs sorted
- *  [list, permissions, search]; list [format, collection] vs sorted
- *  [collection, format]; account [email, permissions, list, integrate,
- *  edit]; bootstrap [edit, bar and box, style, script]). So the sort is
- *  removed and MOD_SPECS' declaration order renders verbatim.
- *
- *  ONE capture counterexample stays on record: the graded shard for
- *  `mod: edit` carries [mod: list, mod: rules] — the order NO Ruby-consistent
- *  rule produces (the same shard, same capture run, renders mod: account in
- *  declaration order; the installed gemspec declares rules first). It is
- *  the stale-capture class, recorded in the lane receipt's corpus-decision
- *  package — not a render target. Pin:
+ *  ORDER AND MEMBERSHIP (2026-10-06): the corpus of record, captured with
+ *  the installed 0.20 gems, lists every mod page's dependencies in gem-name
+ *  order (22 of 22 pages) with the installed gemspecs' membership, so
+ *  dependsOn sorts. The gemspec files declare another order on five mods
+ *  (account, bootstrap, edit, email, list); the spec the capture app reads
+ *  hands them over sorted. The 2026-10-04 live-site capture showed the
+ *  declaration order instead, with the live 0.19-era membership; the two
+ *  references disagree, and the port follows the corpus of record. Pin:
  *  tests/card/render/mod-depends-on-declaration-order-pins.test.ts. */
 function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
   if (spec === undefined) return undefined;
-  const names = spec.deps
+  const names = [...spec.deps]
+    .sort()
     .filter((name) => name.startsWith("card-mod"))
     .map((name) => `mod_${name.slice(8)}`);
   return names.length > 0 ? names : undefined;

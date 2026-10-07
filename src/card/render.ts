@@ -36,6 +36,7 @@ import {
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
 import { resolvePointerItemName } from "./render/pointer-list.js";
+import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
@@ -1225,16 +1226,30 @@ export class RenderEngine implements RenderEngineLike {
       // consumes (its doc), and every compound card's name parts are
       // enriched ahead of it, so the sync predicate resolves. Runs once per
       // engine (ruleTypesCold); memory-only, zero queries.
-      for (const card of this.renderCards.values()) {
-        if (!card.name.isCompound) continue;
+      // The map need not hold every part the predicate reads: a rule card
+      // reached by its stored key (`*all+*style` from a set's rules board)
+      // enters without its right part (`*style`). The sync read cannot tell
+      // "not a rule" from "parts not in the map", so a card whose parts are
+      // missing is answered by the fetching predicate, as Ruby's rule?
+      // fetches them. The cards that need it are collected first: the
+      // fetches below can enrich more cards into the map.
+      const repaired = [...this.renderCards.values()].filter((card) => card.name.isCompound);
+      for (const card of repaired) {
         const input = this.structurePatternInputForSync(card);
+        let isRule = input.isRule === true;
+        if (!isRule && !this.rulePartsInMap(card)) {
+          const leftKey = card.name.leftName?.key;
+          const leftRecord =
+            leftKey !== undefined ? this.renderCards.get(leftKey)?.record : undefined;
+          isRule = (await this.computeIsRule(card.name, leftRecord)) === true;
+        }
         card.setKeys = safeSetKeys({
           name: card.name,
           typeId: input.typeId ?? undefined,
           typeName: typeof input.typeName === "string" ? input.typeName : undefined,
           leftTypeName:
             typeof input.leftTypeName === "string" ? input.leftTypeName : undefined,
-          isRule: input.isRule === true,
+          isRule,
         });
       }
     }
@@ -1700,6 +1715,16 @@ export class RenderEngine implements RenderEngineLike {
       if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
+    // A set card's rule list nested by OTHER content (Shark's getting-started
+    // Rules section: `{{:all|bar_setting_list; filter: webpage}}`) reads the
+    // same stored rule children (rule_lists.rb setting_list_item:
+    // `card.fetch setting, new: {}`), so the nested set gets the same
+    // preload; without it every stored `*all+*<setting>` rendered as a
+    // virtual new bar.
+    if (await this.preloadNestedSetRuleLists(rootCard)) {
+      await this.enrichPointerListItemsClosure();
+      await this.ensureVerdicts();
+    }
     // view-fail class V4: the sync render's [[wikilink]] anchors classify
     // known/wanted off the prepared map (Ruby asks a live fetch per anchor,
     // links.rb:140-144) — warm the link targets this render's surface can
@@ -1946,6 +1971,16 @@ export class RenderEngine implements RenderEngineLike {
     // skin/setting warms, the link-target sweep, the follow/rule warms) —
     // process this render's late seats BEFORE the sync dispatch reads their
     // content. See applyLateSeatStructureContent's doc.
+    // A bare view render (the view lane) reaching a Role dashboard's
+    // `{{_L|configs}}` nest needs the admin runtime the page lane builds in
+    // page.ts before its own sync render; same gate, once per engine. The
+    // page lane's inner render leaves it to page.ts.
+    if (
+      this.pagePrepareDepth === 0 &&
+      (view === "configs" || this.renderClosureNeedsCoreAdminRuntime())
+    ) {
+      await this.ensureCoreAdminRuntime();
+    }
     await this.applyLateSeatStructureContent();
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
@@ -2880,6 +2915,9 @@ export class RenderEngine implements RenderEngineLike {
     if (universe === undefined) return;
     for (let round = 0; round < 8; round++) {
       const toFetch = new Map<string, string>(); // ref name -> key
+      // Existing map cards this round's substituted templates reach, seated
+      // into this render's surface (see the ref loop below).
+      let seatedExisting = false;
       // SWEEP-SURFACE (renderSeats): process only cards THIS render seated.
       // The done-sets below are engine-lifetime, so a card seated by an
       // earlier render is either processed already or is that render's
@@ -2945,6 +2983,23 @@ export class RenderEngine implements RenderEngineLike {
             }
             throw err;
           }
+          // A template ref to a card an EARLIER render stored is still this
+          // render's nest: closureSurface ran before the substitution, so it
+          // never saw this edge, and enrichAndStore seats only on insert. Seat
+          // the card's closure here, so this render's sweeps (structure, link
+          // targets, verdicts) process it exactly as a fresh engine would.
+          // Without this, `sabrina mejias`'s `+agree` (whose
+          // `agree+*right+*structure` nests `Intellectual Property+Statement`)
+          // rendered that card's links as wanted on any warm engine.
+          if (refKey !== "" && this.renderCards.has(refKey) && !this.renderSeats.has(refKey)) {
+            for (const k of this.closureSurfaceFromKey(refKey)) {
+              if (!this.renderSeats.has(k)) {
+                this.renderSeats.add(k);
+                seatedExisting = true;
+              }
+            }
+            continue;
+          }
           if (
             refKey === "" ||
             this.renderCards.has(refKey) ||
@@ -2956,7 +3011,10 @@ export class RenderEngine implements RenderEngineLike {
           toFetch.set(refKey, refName);
         }
       }
-      if (toFetch.size === 0) return;
+      if (toFetch.size === 0) {
+        if (seatedExisting) continue;
+        return;
+      }
       // Simple refs: ONE batched IN-query per round (the prefetch fallback's
       // verifyClosure shape — never one query per name). Compound refs ride
       // the fetch ladder individually (corpus templates carry simple and
@@ -3014,7 +3072,7 @@ export class RenderEngine implements RenderEngineLike {
         await this.enrichAndStore(fetched);
         enrichedAny = true;
       }
-      if (!enrichedAny) return; // all misses recorded; nothing new to process
+      if (!enrichedAny && !seatedExisting) return; // all misses recorded; nothing new to process
     }
   }
 
@@ -3896,6 +3954,28 @@ export class RenderEngine implements RenderEngineLike {
    * SLOT classes — the link views carry no slot wrap) exposed it: the
    * capture pins `... RSTAR RULE RIGHT-Xhead ...`.
    */
+  /** Whether every part computeIsRuleSync reads is in the render map, so
+   *  its `false` is an answer rather than a gap: the right part, the left
+   *  part, and for a 3+-part name whose right part is a Setting, the
+   *  preference arm's trunk and preferer. */
+  private rulePartsInMap(card: RenderCard): boolean {
+    const name = card.name;
+    const rightKey = name.rightName?.key;
+    const leftKey = name.leftName?.key;
+    if (rightKey === undefined || leftKey === undefined) return true;
+    const rightCard = this.renderCards.get(rightKey);
+    if (rightCard === undefined || !this.renderCards.has(leftKey)) return false;
+    if (name.parts.length <= 2 || rightCard.record.typeId !== this.ruleTypeIds?.setting) {
+      return true;
+    }
+    const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
+    const prefererKey = DeckoName.parse(name.parts[name.parts.length - 2] ?? "").key;
+    return (
+      (trunkKey === "" || this.renderCards.has(trunkKey)) &&
+      (prefererKey === "" || this.renderCards.has(prefererKey))
+    );
+  }
+
   private computeIsRuleSync(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
     if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
@@ -5178,14 +5258,37 @@ export class RenderEngine implements RenderEngineLike {
    *  `enrichAndStore` skips existing keys, so the second pass costs one map
    *  scan plus zero queries on an already-warm deck. */
   private async warmNestedSkinImages(): Promise<void> {
-    const skinImageNames: string[] = [];
+    const skinImageNames = new Set<string>();
+    const pushSkin = (card: RenderCard | undefined): void => {
+      if (card?.typeCode === "bootswatch_skin" && card.name !== undefined) {
+        skinImageNames.add(`${card.name.s}+Image`);
+      }
+    };
     // SWEEP-SURFACE (renderSeats): skin cards this render seated — a warm
     // render re-walking the whole map fetches the cascade's skin seats'
     // +Image children solo (the flood's skin family).
     for (const card of this.renderCards.values()) {
       if (!this.renderSeats.has(card.key)) continue;
-      if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
-        skinImageNames.push(`${card.name.s}+Image`);
+      pushSkin(card);
+      // A seated search's results and a seated list's items are nested by
+      // this render too, but a result an EARLIER render stored is not
+      // re-seated (enrichAndStore's existing-key guard). On a warm engine
+      // the `Bootswatch skin` cardtype page lists skins an earlier page
+      // stored; their bars nest +Image all the same.
+      for (const result of this.searchResults.get(card.key) ?? []) pushSkin(result);
+      if (this.isPointerLikeHost(card)) {
+        for (const item of this.pointerItemNamesOf(card)) {
+          let key: string;
+          try {
+            key = DeckoName.parse(item).key;
+          } catch (err) {
+            // An item naming a gone id (`~861`) is no skin; the item walk
+            // renders it as missing.
+            if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+            throw err;
+          }
+          pushSkin(this.renderCards.get(key));
+        }
       }
     }
     for (const imageName of skinImageNames) {
@@ -5735,7 +5838,11 @@ export class RenderEngine implements RenderEngineLike {
    *  closure's merged-wave pre-pass (fetch-composer batch lane V3), which
    *  must collect the SAME names the per-host pass would ask. */
   private pointerItemNamesOf(card: RenderCard): string[] {
-    return card.dbContent
+    // A set module's `def content` override replaces the stored items
+    // (`*input type+*right+*content options`: the list-input catalog), and
+    // Ruby fetches the items it actually lists, so the walk reads the same
+    // content the item views render.
+    return (listItemContentOverride(card) ?? card.dbContent)
       .toString()
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
@@ -5858,6 +5965,39 @@ export class RenderEngine implements RenderEngineLike {
    *  themselves (autoname, default, structure, ...) so the before(:bar)
    *  hook can resolve the right part's codename for the _category-*
    *  class chain. */
+  /** The set cards this render's seats nest with a setting-list view
+   *  (`{{<set>|bar_setting_list…}}`, `pill_setting_list`, …), each given
+   *  preloadSetRules. Returns whether any preload ran. Memory-only when no
+   *  seated content names such a view. */
+  private async preloadNestedSetRuleLists(rootCard: RenderCard): Promise<boolean> {
+    const targets: Array<{ target: string; context: DeckoName }> = [];
+    for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
+      const content = card.dbContent;
+      if (content === undefined || !content.includes("setting_list")) continue;
+      for (const m of content.matchAll(/\{\{([^{}|]+)\|([^{}]*)\}\}/g)) {
+        if (!/\b[a-z]+_setting_list\b/.test(m[2] ?? "")) continue;
+        targets.push({ target: (m[1] ?? "").trim(), context: card.name });
+      }
+    }
+    let ran = false;
+    for (const { target, context } of targets) {
+      let name: string;
+      try {
+        const parsed = DeckoName.parse(target);
+        name = parsed.isAbsolute ? parsed.s : parsed.absoluteName(context).s;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+        throw err;
+      }
+      const setCard = await this.prepareItemForRender(name);
+      if (setCard === undefined || setCard.typeCode !== "set" || setCard.key === rootCard.key) continue;
+      await this.preloadSetRules(setCard);
+      ran = true;
+    }
+    return ran;
+  }
+
   private async preloadSetRules(setCard: RenderCard): Promise<void> {
     if (setCard.id === undefined) return;
     // Warm skip: this set card's rule environment is already fully
@@ -7485,6 +7625,12 @@ export class RenderEngine implements RenderEngineLike {
       return false;
     }
     if (!card.name.isCompound) return false;
+    // rule? is standard_rule? OR preference? (all.rb:32-53). The preference
+    // shape (`*all+*all+*follow`: trunk a Set, preferer a User or `*all`)
+    // has a non-Set left, so the two-part check below misses it; the set
+    // keys' RULE token is the computed rule? verdict (enrichAndStore's
+    // fetching predicate) and decides it.
+    if (card.setKeys.split(/\s+/).includes("RULE")) return true;
     const rightKey = card.name.rightName?.key;
     const leftKey = card.name.leftName?.key;
     if (rightKey === undefined || leftKey === undefined) return false;
@@ -7590,10 +7736,14 @@ export class RenderEngine implements RenderEngineLike {
    *  search-card gate is a warmth question, not reachability, and does not
    *  belong here. Memory-only, bounded by the closure the map holds. */
   private closureSurface(record: CardRecord): Set<string> {
+    if (record.key === undefined || record.key === "") return new Set<string>();
+    return this.closureSurfaceFromKey(record.key);
+  }
+
+  private closureSurfaceFromKey(rootKey: string): Set<string> {
     const surface = new Set<string>();
-    if (record.key === undefined || record.key === "") return surface;
-    if (!this.renderCards.has(record.key)) return surface;
-    const queue: string[] = [record.key];
+    if (!this.renderCards.has(rootKey)) return surface;
+    const queue: string[] = [rootKey];
     while (queue.length > 0) {
       const key = queue.pop() as string;
       if (surface.has(key)) continue;
@@ -8106,7 +8256,20 @@ export class RenderEngine implements RenderEngineLike {
         const fetched = await this.fetcher.fetchByName(altered, { new: {} });
         if (fetched !== undefined) {
           if (fetched.typeId === undefined) {
-            const defaulted = this.newCardDefaultType(altered);
+            // The *type plus right candidates anchor on the altered name's
+            // LEFT card's type (set_pattern left_type). `Collection+Item`'s
+            // `"append":"short"` lists `<item>+short`, whose template is
+            // `Item+short+*type plus right+*structure` (HTML-typed); without
+            // the left type the walk read the registry's RichText default,
+            // missed it, and typed the virtual card RichText.
+            const leftKey = altered.leftName?.key;
+            const leftRecord =
+              leftKey !== undefined && leftKey !== ""
+                ? (await this.fetcher.fetchByName(leftKey)) ?? undefined
+                : undefined;
+            const leftTypeName =
+              leftRecord !== undefined ? (await this.enrichAndStore(leftRecord)).typeName : undefined;
+            const defaulted = this.newCardDefaultType(altered, leftTypeName);
             if (defaulted !== undefined) fetched.typeId = defaulted.typeId;
           }
           if (fetched.dbContent === undefined || fetched.dbContent === "") {

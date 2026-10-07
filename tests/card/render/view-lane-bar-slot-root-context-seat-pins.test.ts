@@ -78,21 +78,23 @@ async function seedDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("view-lane bar-slot root-context seat (census M1, Guns:open shape)", () => {
+describe("view-lane bar slots carry no fitted root-context seat (Guns:open shape)", () => {
   it(
-    "bar slots under the view-lane root carry the root's part-filtered name_context and relative titles",
+    "item bars under the view-lane root carry no name_context and render absolute titles",
     async () => {
+      // CORPUS-OF-RECORD CORRECTION (2026-10-06): the seat this pin used to
+      // require was fitted to an older capture (view digest 08c5a287). The
+      // corpus of record (the 2026-10-06 recapture on the graded deck)
+      // carries name_context on 0 of 2,264 view-lane pointer-item and
+      // search-result bars outside the titled +*referred_to_by results
+      // (Guns:open's Guns+rifles reads `"home_view":"bar"}` and
+      // title="Guns+rifles"), and the seat had no Ruby grounding: the 0.20
+      // accordion :open chain adds no name context. The seat is removed.
       const s = await seedDeck();
       const html = await s.engine.render("Weapons", "open");
-      // The Weapons+rifles bar's slot JSON carries the ROOT part key after
-      // home_view (the SLOT_KEYS tail position).
-      expect(html).toContain(
-        "&quot;home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;weapon&quot;}",
-      );
-      // The title relativizes against the seated context (Guns census:
-      // title="+rifles", never the absolute name).
-      expect(html).toContain('title="+Rifles"');
-      expect(html).not.toContain('title="Weapons+Rifles"');
+      expect(html).not.toContain("&quot;name_context&quot;:&quot;weapon&quot;");
+      expect(html).toContain('title="Weapons+Rifles"');
+      expect(html).not.toContain('title="+Rifles"');
     },
   );
 

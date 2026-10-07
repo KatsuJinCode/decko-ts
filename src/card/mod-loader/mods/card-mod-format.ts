@@ -1230,86 +1230,11 @@ const viewListView: ViewFn = ({ fmt }) => {
 // set/all/demo.rb:2-7 view :demo (the mod-porting wave-1 lane, 2026-10-03)
 // ---------------------------------------------------------------------------
 
-/** set/all/demo.rb:23-25 demo_view - `Env.params[:demo_view] || :core`.
- *  The headless render has no Env.params surface (flashView's disclosed
- *  basis - the same request-bag absence), so the body computes :core for
- *  every engine render. */
-const DEMO_VIEW_DEFAULT = "core";
-
-/** set/all/demo.rb:31-35 view_select - `card_form :get, success:
- *  { view: :demo } do select_tag :demo_view, options_for_select(
- *  all_views_from_admin_config, demo_view), class: "_submit-on-select"
- *  end`. The bytes compose through the established Rails form rules:
- *  cardFormShell (form.rb:193-200's shell + html_options_for_form);
- *  action :get -> card_form_url_and_action (:232-240) path(action: :get) =
- *  "/get/<mark>"; the PERSISTED record form_for emits the patch spoof
- *  (form_helper.rb's model method detection - the same rule the edit mod's
- *  nameForm documents for update forms); the class is card_form_html_opts'
- *  add_class order ("slotter card-form" - add_class prepends, form.rb:
- *  218-224); select_tag's class is the caller's verbatim "_submit-on-
- *  select" (NO form-control append: no select_tag override exists in any
- *  installed gem - bootstrap_options' form-control chain attaches to the
- *  INPUT helpers, bootstrap/form.rb:19-29, not to a bare select_tag);
- *  options_for_select marks the selected option first (the captured
- *  options order, card-mod-edit.ts typeField). GEM-SOURCE-DERIVED
- *  RENDERED-UNPINNED: no capture renders ?view=demo and no *demo card
- *  exists on the corpus deck (the census's own usage note) - the harness
- *  oracle replays the composition below. */
-export const demoViewSelect = (ctx: ViewContext): string => {
-  const { fmt } = ctx;
-  const codenames = allAdminConfigCodenamesOfCategory(ctx, "views");
-  const options = codenames
-    .map(
-      (c) =>
-        `<option${c === DEMO_VIEW_DEFAULT ? ` selected="selected"` : ""} value="${h(c)}">${h(c)}</option>`,
-    )
-    .join("");
-  const select = `<select name="demo_view" id="demo_view" class="_submit-on-select">${options}</select>`;
-  return cardFormShell(ctx, {
-    formClass: "slotter card-form",
-    id: `edit_card_${fmt.card.id}`,
-    htmlAttrs: [],
-    action: `/get/${fmt.urlKey()}`,
-    methodSpoof: "patch",
-    success: { view: "demo" },
-    body: select,
-  });
-};
-
-/** set/all/demo.rb:2-7 view :demo:
- *    frame do
- *      [view_select, wrap_with(:div, view_demo, class: "demo-slot")]
- *    end
- *  The frame is `frame` (html/frame.rb:9-11) -> the BOOTSTRAP override
- *  (wrapper.rb:2-7: d0-card-header card-header + d0-card-body card-body
- *  card-text class_ups) -> standard_frame (d0-card-frame card) ->
- *  with_frame - the established framedView composition. The body array
- *  joins with output()'s "\n" (content.rb:70-72). view_demo (:25-29) is
- *  wrap(true) { render demo_view } - a SECOND full slot wrap around the
- *  rendered view (both layers carry the :demo view identity; Ruby emits
- *  the duplicate id exactly so). demo_view is :core (the params absence
- *  above). */
-const demoView: ViewFn = (ctx) => {
-  const { fmt, voo } = ctx;
-  voo.classUp("d0-card-header", "card-header"); // wrapper.rb:3
-  voo.classUp("d0-card-body", "card-body card-text"); // wrapper.rb:4
-  voo.classUp("d0-card-frame", "card"); // wrapper.rb:12 (panel_state nil)
-  voo.hide("help"); // with_frame, frame.rb:20
-  fmt.addNameContext(); // frame.rb:21
-  const header =
-    `<div class="${voo.classy("d0-card-header")}">` +
-    `<h2 class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</h2>\n` +
-    `${fmt.renderView("menu")}</div>`;
-  // demo.rb:25-29 view_demo's wrap(true) slot layer
-  const demoInner = modSlotWrap(ctx, "demo", fmt.renderView(DEMO_VIEW_DEFAULT));
-  const demoDiv = `<div class="demo-slot">${demoInner}</div>`; // wrap_with(:div, ..., class: "demo-slot")
-  const body = `${demoViewSelect(ctx)}\n${demoDiv}`; // output([view_select, demo_div])
-  const panel =
-    `<div class="${voo.classy("d0-card-frame")}">` +
-    `${header}\n\n` +
-    `<div class="${voo.classy("d0-card-body")}">${body}</div></div>`;
-  return modSlotWrap(ctx, "demo", panel);
-};
+// The :demo body lives in render/demo-view.ts so the flat view registry
+// (the loader-less graded page lane: Shark's `{{:getting_started|demo}}`)
+// and this set/all registration share one definition.
+export { demoViewSelect } from "../../render/demo-view.js";
+import { demoView } from "../../render/demo-view.js";
 
 // ---------------------------------------------------------------------------
 // type/mod.rb set/type/mod: :admin

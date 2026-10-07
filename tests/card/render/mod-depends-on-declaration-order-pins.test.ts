@@ -1,29 +1,19 @@
-// Pins for the Depends-on section's membership and order — the
-// serializer-followup2 census mechanism M4 (mod: account / mod: bootstrap /
-// mod: email / mod: list pages, the -958/-954/-956/-958 family).
+// Pins for the Depends-on section's membership and order (mod: account /
+// mod: bootstrap / mod: email / mod: list / mod: edit pages).
 //
-// Census bytes (tmp/serializer-followup/probe-green5, the five failing mod
-// pages): the live "Depends on" bars render in the mods' GEMSPEC DECLARATION
-// order with the LIVE gemspecs' membership:
-//   mod: account  -> mod: email, mod: permission, mod: list
-//   mod: bootstrap-> mod: edit, mod: bar and box, mod: style
-//   mod: email    -> mod: search, mod: list, mod: permission
-//   mod: list     -> mod: format, mod: collection
-// The engine rendered mod: account's section as FIVE bars
-// [edit, email, integrate, list, permissions] — the 0.20-era pinned
-// MOD_SPECS deps (card-mod-account's 0.20 gemspec carries integrate + edit;
-// the live 0.19.1-era gemspec does not) passed through a `.sort()`.
+// Ruby mechanism (card-1.110.0 mod/core set/type/mod.rb:85-87 view
+// :depends_on, :130-132, :222-226): `list_section "Depends on",
+// card.depends_on`, where depends_on = `card_mods { mod&.spec&.dependencies }`
+// filtered to card-mod gems and mapped to mod names.
 //
-// Ruby mechanism (card-1.110.0 mod/core set/type/mod.rb:85-89 view
-// :depends_on): `list_section "Depends on", card.depends_on` where
-// depends_on = `card_mods { mod&.spec&.dependencies }` — the gemspec's
-// dependency list in DECLARATION order, mapped to mod names, filtered to
-// card-mod gems. No sort exists anywhere in the chain; the prior lane's
-// "the lockfile is sorted" observation was a coincidence for the pages
-// tested then (the five census pages refute it).
-//
-// The pinned MOD_SPECS arrays are the byte ground truth (the live bytes are
-// the live-era gemspecs' order): this pin freezes mod: account's sequence.
+// Reference (2026-10-06 corpus of record, captured with the installed 0.20
+// gems): all 22 mod pages with a Depends on section list it in NAME order,
+// and the membership is the installed 0.20 gemspecs' (mod: account carries
+// integrate and edit, mod: bootstrap carries script). The gemspec files
+// declare a different order on five of them (account, bootstrap, edit,
+// email, list), so the spec the app reads hands the dependencies over
+// sorted. An earlier pin froze the live 0.19-era site's declaration order
+// and membership; the corpus of record supersedes it.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -49,30 +39,30 @@ async function seedDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("Depends on section (census M4, gemspec declaration order)", () => {
+describe("Depends on section (installed 0.20 gemspecs, name order)", () => {
   it(
-    "mod: account's Depends on renders exactly the live three bars in live order",
+    "mod: account's Depends on renders the 0.20 gemspec's five deps in name order",
     async () => {
       const s = await seedDeck();
       const html = await s.engine.render("mod: account", "core");
       const i = html.indexOf("Depends on");
       expect(i).toBeGreaterThanOrEqual(0);
-      const seg = html.slice(i, i + 6000);
+      const seg = html.slice(i, i + 60000);
       const ids = [...seg.matchAll(/id="(mod_[a-z_]+)-(?:mini_)?bar-view"/g)].map((m) => m[1]);
-      expect(ids).toEqual(["mod_email", "mod_permission", "mod_list"]);
+      expect(ids).toEqual(["mod_edit", "mod_email", "mod_integrate", "mod_list", "mod_permission"]);
     },
   );
 
   it(
-    "mod: bootstrap's Depends on drops the script dep and keeps live order",
+    "mod: bootstrap's Depends on carries the script dep, in name order",
     async () => {
       const s = await seedDeck();
       await seedCard(s, { id: 41, name: "mod: bootstrap", codename: "mod_bootstrap", typeId: 3 });
       const html = await s.engine.render("mod: bootstrap", "core");
       const i = html.indexOf("Depends on");
-      const seg = html.slice(i, i + 6000);
+      const seg = html.slice(i, i + 60000);
       const ids = [...seg.matchAll(/id="(mod_[a-z_]+)-(?:mini_)?bar-view"/g)].map((m) => m[1]);
-      expect(ids).toEqual(["mod_edit", "mod_bar_and_box", "mod_style"]);
+      expect(ids).toEqual(["mod_bar_and_box", "mod_edit", "mod_script", "mod_style"]);
     },
   );
 });

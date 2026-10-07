@@ -384,11 +384,9 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     version: "0.20.0",
     summary: "Email-based account handling for decko cards",
     description: "",
-    // The LIVE-era gemspec's dependency list in declaration order (the
-    // census-M4 ground truth, mod: account's page bytes: mod: email,
-    // mod: permission, mod: list). The 0.20 gem carried integrate + edit;
-    // the live capture does not — the graded bytes win.
-    deps: ["card", "card-mod-email", "card-mod-permissions", "card-mod-list"],
+    // The installed 0.20 gemspec's dependencies (the corpus of record's
+    // mod: account lists all five; core-mod.ts dependsOn orders them).
+    deps: ["card", "card-mod-email", "card-mod-permissions", "card-mod-list", "card-mod-integrate", "card-mod-edit"],
   },
   ace_editor: {
     gem: "card-mod-ace_editor",
@@ -423,9 +421,8 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     version: "0.20.0",
     summary: "Bootstrap",
     description: "",
-    // Live-era declaration order (census M4: mod: bootstrap's page bytes —
-    // no card-mod-script dep in the live gemspec).
-    deps: ["card", "card-mod-edit", "card-mod-bar_and_box", "card-mod-style"],
+    // The installed 0.20 gemspec's dependencies.
+    deps: ["card", "card-mod-edit", "card-mod-bar_and_box", "card-mod-style", "card-mod-script"],
   },
   carrierwave: {
     gem: "card-mod-carrierwave",

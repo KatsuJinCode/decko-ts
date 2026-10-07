@@ -157,12 +157,29 @@ describe("card-mod-format harness probe: view :demo (the wave-1 oracle replay)",
     expect(line!.demoView).toBe("core");
   });
 
-  it("replays view_select (demo.rb:31-35 + form.rb:193-240 form bytes)", () => {
+  it("view_select: the corpus of record's form shape over the oracle's codename list", () => {
     const line = oracles.find((l) => l.scenario === "view_select");
     expect(line).toBeDefined();
-    // the oracle's codename list IN - the form bytes out (byte-exact)
-    const bytes = demoViewSelect(probeCtx());
-    expect(bytes).toEqual(line!.viewSelect);
+    // The static oracle line was a gem-source reconstruction ("slotter
+    // card-form", "/get/<mark>", no recaptcha, options joined with "").
+    // The corpus of record captured the real view on Shark's page
+    // (`{{:getting_started|demo}}`), which supersedes it: "card-form
+    // slotter", the bare mark, the anonymous reader's recaptcha arm, and
+    // options joined by newline. The codename list is still the oracle's.
+    const listLine = oracles.find((l) => l.scenario === "all_views_from_admin_config");
+    const options = listLine!.codenames!
+      .map((c) => `<option${c === "core" ? ' selected="selected"' : ""} value="${c}">${c}</option>`)
+      .join("\n");
+    const key = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+    const expected =
+      `<form class="card-form slotter" id="edit_card_30" data-recaptcha="on" action="/Sample_Basic" accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+      `<input type="hidden" name="success[view]" id="success_view" value="demo" autocomplete="off" />` +
+      `<script src="https://www.google.com/recaptcha/api.js?render=${key}"></script>\n` +
+      `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value="" data-site-key="${key}" data-action="get" class="_recaptcha-token" autocomplete="off" />` +
+      `<select name="demo_view" id="demo_view" class="_submit-on-select">${options}</select></form>`;
+    expect(demoViewSelect(probeCtx())).toEqual(expected);
   });
 
   it("replays options_for_select (the selected marker on :core)", () => {

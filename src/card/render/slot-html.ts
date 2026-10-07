@@ -229,12 +229,9 @@ export function slotOptionsWithNameContext(
   // empty because the part filter empties the context, not because of
   // any unknown gate.
   //
-  // Census M1 bar-seat: a RenderFormat mid-bar-dispatch under a view-lane
-  // root carries the seated bar context (slotNameContextKeys) — the graded
-  // Guns:open bytes pin ctx="gun" on the item bars while every non-bar
-  // slot of the same walk stays ctx-less. Formats without the method (the
-  // mod-package modSlotWrap's structural fmt) read the parent-derived
-  // initial list exactly as before.
+  // A RenderFormat answers through slotNameContextKeys (its parent-derived
+  // initial list); formats without the method (the mod-package
+  // modSlotWrap's structural fmt) read the initial list directly.
   const initial = fmt.slotNameContextKeys !== undefined
     ? fmt.slotNameContextKeys()
     : fmt.initialContextNames;

@@ -46,17 +46,25 @@
 //
 // Both are closed and both byte-probe PASS solo at this commit. The
 // capture-date pin behind the second one is documented, with its
-// unrecoverable part, at DATE_PARSE_REFERENCE_YEAR in src/card/render/
-// errors.ts — it is a capture artifact, not a wall clock, and it must move
-// if the deck is ever recaptured in another month.
+// capture-date dependence, at fillFromReferenceMonth in src/card/render/
+// errors.ts — the completion reads the engine's wall-clock seam, as Ruby
+// reads Date.today, so a capture run freezes the seam to the capture instant.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
-import {
-  parseRubyDateContent,
-  DATE_PARSE_REFERENCE_YEAR,
-  DATE_PARSE_REFERENCE_MONTH,
-} from "../../../src/card/render/errors.js";
+import { parseRubyDateContent } from "../../../src/card/render/errors.js";
+import { setCaptureWallClock } from "../../../src/card/wall-clock.js";
+
+afterEach(() => setCaptureWallClock(undefined));
+
+function renderLong(date: Date): string {
+  return date.toLocaleString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 interface TableRow {
   input: string;
@@ -107,20 +115,20 @@ describe("parseRubyDateContent is the gem's Date.parse (date.rb:6-8), measured n
     ).toBeNull();
 
     // card 35469 — the gem parses and completes the missing month and year
-    // from Date.today. Pinned to the reference month, the render is
-    // "September 20, 2026", which is the capture's own byte.
+    // from Date.today. With the clock frozen to the capture instant
+    // (2026-09-19T12:00:00Z) the render is "September 20, 2026", the
+    // capture's own byte.
+    setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const white = parseRubyDateContent("20-0405");
     expect(white, "card 35469: the gem parses it").not.toBeNull();
-    const rendered = (white as Date).toLocaleString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    });
-    expect(rendered).toBe("September 20, 2026");
-    // ...and the completion reads the PIN, never the wall clock.
-    expect(DATE_PARSE_REFERENCE_YEAR).toBe(2026);
-    expect(DATE_PARSE_REFERENCE_MONTH).toBe(9);
+    expect(renderLong(white as Date)).toBe("September 20, 2026");
+  });
+
+  it("completes a partial date from the clock seam, in any month", () => {
+    setCaptureWallClock(new Date("2027-01-15T12:00:00Z"));
+    expect(renderLong(parseRubyDateContent("20-0405") as Date)).toBe("January 20, 2027");
+    setCaptureWallClock(new Date("2026-10-07T12:00:00Z"));
+    expect(renderLong(parseRubyDateContent("20-0405") as Date)).toBe("October 20, 2026");
   });
 
   it("the two-component dashed boundary is the gem's, at every width", () => {

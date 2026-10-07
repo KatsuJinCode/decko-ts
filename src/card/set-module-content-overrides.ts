@@ -75,6 +75,7 @@
 //   concrete includers. Dead code in the universe — no registration.
 
 import { randomBytes } from "node:crypto";
+import { cardWallClockNow, setCaptureWallClock } from "./wall-clock.js";
 
 import { ORACLE_BUNDLE_ORDER } from "./mod-loader/default-mod-deck.js";
 import {
@@ -121,18 +122,7 @@ export const ORACLE_DECK_TIME_ZONE = {
   ianaTimeZone: "America/Los_Angeles",
 } as const;
 
-let captureWallClock: Date | undefined;
-
-/** Freeze the card wall clock (the corpus runner and pins set the capture
- *  instant; production code never calls this — Ruby's Time.now is the
- *  default). Pass undefined to restore the real clock. */
-export function setCaptureWallClock(instant: Date | undefined): void {
-  captureWallClock = instant;
-}
-
-function cardWallClockNow(): Date {
-  return captureWallClock ?? new Date();
-}
+export { setCaptureWallClock, cardWallClockNow };
 
 // ---------------------------------------------------------------------------
 // Ruby helpers the override bodies call
