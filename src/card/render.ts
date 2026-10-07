@@ -1941,6 +1941,16 @@ export class RenderEngine implements RenderEngineLike {
     // skin/setting warms, the link-target sweep, the follow/rule warms) —
     // process this render's late seats BEFORE the sync dispatch reads their
     // content. See applyLateSeatStructureContent's doc.
+    // A bare view render (the view lane) reaching a Role dashboard's
+    // `{{_L|configs}}` nest needs the admin runtime the page lane builds in
+    // page.ts before its own sync render; same gate, once per engine. The
+    // page lane's inner render leaves it to page.ts.
+    if (
+      this.pagePrepareDepth === 0 &&
+      (view === "configs" || this.renderClosureNeedsCoreAdminRuntime())
+    ) {
+      await this.ensureCoreAdminRuntime();
+    }
     await this.applyLateSeatStructureContent();
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
