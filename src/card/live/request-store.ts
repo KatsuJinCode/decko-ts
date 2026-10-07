@@ -227,9 +227,17 @@ export class RequestStore {
     return { keys, ids, lefts, leftKeys, fullIds, full: need.full, pairs, sideL, sideR };
   }
 
+  /** The memoized certified answer, or undefined. A statement answered once
+   *  stays answerable (see answerMemo), so the caller may skip missing(). */
+  certifiedAnswer(sql: string, params: readonly unknown[]): SQLQueryResult | undefined {
+    if (this.answerMemo.size === 0) return undefined;
+    const memo = this.answerMemo.get(memoKeyOf(sql, params));
+    return memo === undefined ? undefined : { rows: memo.map((r) => ({ ...r })), rowsAffected: 0 };
+  }
+
   answer(sql: string, params: readonly unknown[]): SQLQueryResult {
     const ps = params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
-    const mk = `${sql}\u0000${JSON.stringify(ps, (_k, v) => (typeof v === "bigint" ? `${v}n` : v))}`;
+    const mk = memoKeyOf(sql, params);
     const memo = this.answerMemo.get(mk);
     if (memo !== undefined) return { rows: memo.map((r) => ({ ...r })), rowsAffected: 0 };
     const rows = this.rows.evaluate(sql, ps);
@@ -393,4 +401,10 @@ export class RequestStore {
     for (const r of rows) this.addRow(r, true);
     for (const i of named) this.idKnown.add(i);
   }
+}
+
+/** answerMemo's key: the statement text and its normalized parameters. */
+function memoKeyOf(sql: string, params: readonly unknown[]): string {
+  const ps = params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
+  return `${sql}\u0000${JSON.stringify(ps, (_k, v) => (typeof v === "bigint" ? `${v}n` : v))}`;
 }

@@ -586,6 +586,40 @@ function scanWarmDeps(
   },
   mode: WarmupMode,
 ): WarmupScan {
+  // Request-scoped memo (DeckoName.requestMemo), shared by every pass of a
+  // live render: the scan is a function of the card's name, type code and
+  // content and the mode. Memoized scans are frozen (callers only read them).
+  // Keyed by the content string first (its hash is computed once per string,
+  // and a row's content string is shared by every pass), then by the rest.
+  const byContent = DeckoName.requestMemo<Map<string, WarmupScan>>(SCAN_WARM_DEPS_MEMO);
+  if (byContent === undefined) return scanWarmDepsUncached(card, mode);
+  let memo = byContent.get(card.dbContent);
+  if (memo === undefined) {
+    memo = new Map();
+    byContent.set(card.dbContent, memo);
+  }
+  const memoKey = `${mode}\n${card.typeCode ?? ""}\n${card.name.s}`;
+  const hit = memo.get(memoKey);
+  if (hit !== undefined) return hit;
+  const found = scanWarmDepsUncached(card, mode);
+  for (const r of found.refs) Object.freeze(r);
+  for (const r of found.leaves ?? []) Object.freeze(r);
+  Object.freeze(found.refs);
+  if (found.leaves !== undefined) Object.freeze(found.leaves);
+  memo.set(memoKey, Object.freeze(found));
+  return found;
+}
+
+const SCAN_WARM_DEPS_MEMO = {};
+
+function scanWarmDepsUncached(
+  card: {
+    name: DeckoName;
+    dbContent: string;
+    typeCode: string | undefined;
+  },
+  mode: WarmupMode,
+): WarmupScan {
   const refs: WarmupRef[] = [];
   const leaves: WarmupRef[] = [];
   const context = card.name.s;

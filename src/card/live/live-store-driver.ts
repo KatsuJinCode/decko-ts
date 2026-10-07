@@ -281,6 +281,13 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       const need = new NeedSet();
       stmts.forEach((s, i) => {
         const params = s.params ?? [];
+        const certified = this.store.certifiedAnswer(s.sql, params);
+        if (certified !== undefined) {
+          results[i] = certified;
+          this.stats.local_answers += 1;
+          this.markDemanded(s, certified);
+          return;
+        }
         const miss = this.store.missing(s.sql, params);
         if (miss !== undefined) {
           if (miss.keys.length + miss.ids.length + miss.lefts.length + miss.leftKeys.length + miss.fullIds.length === 0) {
