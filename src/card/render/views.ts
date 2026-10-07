@@ -995,6 +995,12 @@ const coreViewBase: ViewFn = (ctx) => {
     ) {
       return fmt.renderRaw();
     }
+    // card-mod-search set/self/search.rb:44-46: *search's core is
+    // `[render_results_for_keyword, super()]`, joined with "\n" by
+    // Format#output (card lib/card/format/content.rb:70-73). With no
+    // keyword the results_for_keyword haml renders "", which leaves the
+    // leading newline.
+    if (fmt.card.record.codename === "search") return `\n${fmt.renderView("card_list")}`;
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
