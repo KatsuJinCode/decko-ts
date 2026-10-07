@@ -17,6 +17,15 @@ import { readFileSync } from "node:fs";
  *  Their schemas are still created, empty, so the engine finds the tables. */
 export const ROWS_NEVER_COPIED = new Set(["sessions", "auth_sessions", "decko_edge_render_cache"]);
 
+/** Also never copied: the one-trip stop-gap's tables (one_trip_render_plans,
+ *  one_trip_page_closure, ...), stored render plans and page closures that
+ *  the Bunny edge recorded. They are a cache, and the anonymous page path
+ *  never reads them (the 40 gate pages render byte-identically on a deck
+ *  without them). About 242,000 rows on restore-decko on 2026-10-07. */
+export function rowsNeverCopied(table) {
+  return ROWS_NEVER_COPIED.has(table) || /^one_trip_/.test(table);
+}
+
 /** Tables the engine's render never needs at all; skipped entirely. */
 export const TABLES_SKIPPED = new Set(["decko_edge_render_cache"]);
 
@@ -71,7 +80,7 @@ export function wholeTables(db) {
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
     .all()
     .map((r) => r.name)
-    .filter((t) => !BUNDLED_TABLES.has(t) && !TABLES_SKIPPED.has(t) && !ROWS_NEVER_COPIED.has(t));
+    .filter((t) => !BUNDLED_TABLES.has(t) && !TABLES_SKIPPED.has(t) && !rowsNeverCopied(t));
 }
 
 export function sqliteStat1Rows(db) {

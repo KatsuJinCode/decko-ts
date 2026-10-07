@@ -17,7 +17,9 @@
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
     "deploy": "npm run db:migrations:apply && npx wrangler deploy",
-    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs"
+    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs",
+    "test:cf-hosting": "vitest run tests/tools/d1-trickle tests/server/drivers/d1-bound-parameter-cap.test.ts tests/card/permissions/rule-closure-d1-compound-limit.test.ts tests/card/live/union-ctes-d1-compound-limit.test.ts",
+    "bundle:cf-edge-engine": "node tools/bundle-cf-edge-engine.mjs"
   },
   "devDependencies": {
     "@libsql/client": "^0.18.0",
