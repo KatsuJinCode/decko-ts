@@ -1,0 +1,51 @@
+// Bar-menu page links of VIRTUAL cards — corpus replay.
+//
+// Ruby: bar_menu's full_page_link classes its anchor through
+// add_known_or_wanted_class (card-mod-format set/all/links.rb:140-144):
+// Card.known?(name) = fetch(name).present? (card-1.110.0 mod/core/set/all/
+// states.rb:24-26), and fetch returns VIRTUAL cards (states.rb:52-57
+// virtual? = compound && structure.present?). A new compound card under an
+// applicable *structure rule is therefore known-card.
+//
+// The engine classed every id-less bar card wanted-card (only star-right
+// compounds were special-cased), so media+GBA+YouTube Browser's 30
+// `<video>+GBA YTlinkControl` / `<video>+GBA YTlinkView` bars (virtual
+// through their *right+*structure rules) read wanted-card where Ruby reads
+// known-card.
+//
+// Gate: opt-in via BAR_VIRTUAL_KNOWN_REPLAY=1 (raw bench corpus).
+import Database from "better-sqlite3";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import type { RenderTestStorage } from "./render-test-storage.js";
+
+const REPLAY_REQUESTED = process.env.BAR_VIRTUAL_KNOWN_REPLAY === "1";
+const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+
+describeIfCorpus("bar-menu page links of virtual cards are known-card", () => {
+  let storage: RenderTestStorage | undefined;
+
+  beforeAll(async () => {
+    const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
+    const ids = (
+      idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>
+    ).map((r) => r.id);
+    idLister.close();
+    storage = await createRawStructureSeededStorage(new Set(ids));
+    storage.fetcher.installNameEnvironment();
+    await storage.fetcher.warmLexicon(ids);
+  }, 600_000);
+
+  afterAll(() => {
+    storage?.close();
+  });
+
+  it("media+GBA+YouTube Browser: every +GBA YTlinkControl / +GBA YTlinkView page link is known-card", async () => {
+    const html = await storage!.engine.renderPage("media+GBA+YouTube Browser");
+    const links = [
+      ...html.matchAll(/class="full-page-link (known|wanted)-card" href="\/[^"]*\+GBA_YTlink(?:Control|View)[^"]*"/g),
+    ];
+    expect(links.length).toBe(30);
+    expect(links.filter((m) => m[1] === "wanted").length).toBe(0);
+  }, 300_000);
+});

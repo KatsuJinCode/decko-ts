@@ -200,7 +200,11 @@ import {
   type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
-import { readPermissionOverride, updatePermissionOverride } from "./permissions/read-override.js";
+import {
+  nameHasReadOverride,
+  readPermissionOverride,
+  updatePermissionOverride,
+} from "./permissions/read-override.js";
 import {
   allTaskVerdictsForCard,
   taskVerdictForCard,
@@ -213,7 +217,6 @@ import { viewRequiresTask, type CrudTask } from "./permissions/view-perms.js";
 import { installHelpRules, type HelpRulesApi } from "./render/help-popover.js";
 import { setPrototypeTypeCode } from "./render/views.js";
 import {
-  seatfixPairVisible,
 } from "./render/views.js";
 import type { SQLQueryResult, SQLStatement } from "../server/driver.js";
 import type { Lex } from "./fetch/lexicon.js";
@@ -2271,13 +2274,6 @@ export class RenderEngine implements RenderEngineLike {
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
-    // The verdict-pass memo is derived state like the rest: a reset that
-    // leaves it set lets the next render SKIP re-judgment whenever the
-    // re-populated closure has the same map size — deniedVerdicts then
-    // stays empty and every card renders as allowed (the exact
-    // post-revocation leak the freshness gate exists to close; found by
-    // this file's scenario 4, 2026-10-05).
-    this.verdictsJudgedAtMapSize = -1;
     // The set-once WARM MARKERS complete the same rule (per-viewer-seat
     // lane, 2026-10-06 — landed at 7fa6a045; the warmflood-fix lane ports
     // the block, and this assembly carries it via the warmflood merge).
@@ -2730,21 +2726,6 @@ export class RenderEngine implements RenderEngineLike {
    * cold). Returns undefined when the universe is not loaded (the caller
    * keeps the not-allowed verdict — pre-fix behavior).
    */
-  /** SEATFIX (2026-10-04): whether the set card's collectRules walk
-   *  carries a stored *content options / *content_option_view rule — the
-   *  M10b pairStored arm's input, computed here for the verdict preload so
-   *  it answers the same question the sync accordion's ruleByCodename
-   *  answers (the right part's star key is the setting card's key). */
-  private setHasStoredPairRule(setCard: RenderCard): boolean {
-    for (const rule of this.collectRules(setCard)) {
-      const rightKey = rule.name.rightName?.key;
-      if (rightKey === "*content_options" || rightKey === "*content_option_view") {
-        return true;
-      }
-    }
-    return false;
-  }
-
   defaultRuleTypeIdForSetName(setName: string): number | undefined {
     const universe = this.defaultRuleTypes;
     if (universe === undefined || universe.size === 0) return undefined;
@@ -3752,9 +3733,13 @@ export class RenderEngine implements RenderEngineLike {
         this.deniedVerdictsByKey.set(refKey, read === false);
         continue;
       }
-      // Plain simple names stay unseeded (no setting shape, no rule
-      // universe to consult); the simple-starred arm follows.
-      if (!parsed.s.startsWith("*")) continue;
+      // SIMPLE arm, starred or not: ok_to_read? (permissions.rb:139-146)
+      // walks permission_rule_id(:read) for EVERY new card. A plain simple
+      // name ({{user design|closed}}) types from the *default template
+      // exactly like a starred one, so on this deck it lands on
+      // BasicCs+*type+*read ("Anyone Signed In") and Anonymous is denied.
+      // Leaving it unseated read as ALLOWED in isDenied and rendered the
+      // full bar to readers Ruby denies.
       const defaulted = this.newCardDefaultType(parsed);
       const input = {
         name: parsed,
@@ -4101,29 +4086,19 @@ export class RenderEngine implements RenderEngineLike {
    * the hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
-  /** renderCards.size at the moment the full judgment loop last completed.
-   *  The loop judges EVERY card in the map (already-judged cards hit the
-   *  has-checks and continue), the map only grows, and verdicts are never
-   *  invalidated — so an unchanged size means every card is judged and
-   *  the whole deck-sized sweep can be skipped. On the 47k-row prewarmed
-   *  corpus this turns the per-render re-passes (render.ts:453/498/529)
-   *  into one integer compare on a fully warm engine. */
-  private verdictsJudgedAtMapSize = -1;
-
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;
-    if (this.verdictsJudgedAtMapSize === this.renderCards.size) return;
-    // SWEEP-SURFACE (renderSeats): judge this render's seats. Already-judged
-    // cards hit the has-checks and continue; earlier renders' cards were
-    // judged by their own render (every seat was surface-fresh then), so
-    // re-walking the whole map judges only the cascade's chase seats —
-    // rule-ladder queries for cards no view renders (the flood's verdict
-    // family). An earlier render's seat that stayed unjudged because its
-    // render died mid-prepare is re-surfaced by the page lane's recovery
-    // seam (ensurePermissionVerdicts) over the render that re-seats it.
-    for (const card of this.renderCards.values()) {
-      if (!this.renderSeats.has(card.key)) continue;
+    // SWEEP-SURFACE (renderSeats): judge this render's seats, walked
+    // directly (seats are a small subset of the warm map). Already-judged
+    // cards hit the has-checks and continue. There is deliberately no
+    // "map size unchanged" shortcut: a card can enter the map during one
+    // render without being its seat, so map size never proves every card
+    // was judged, and a skipped pass leaves a seat verdict-less — which
+    // isDenied reads as ALLOWED (the `tags` warm-engine leak).
+    for (const seatKey of this.renderSeats) {
+      const card = this.renderCards.get(seatKey);
+      if (card === undefined) continue;
       if (card.id === undefined) {
         // The virtual cards (states.rb#virtual?): no row, no id — the read
         // rule resolves through the live name walk exactly like Ruby's
@@ -4151,7 +4126,6 @@ export class RenderEngine implements RenderEngineLike {
       );
       this.deniedVerdicts.set(card.id, allowed === false);
     }
-    this.verdictsJudgedAtMapSize = this.renderCards.size;
   }
 
   /**
@@ -4714,7 +4688,17 @@ export class RenderEngine implements RenderEngineLike {
     this.coreAdminRuntimeEnsured = true;
     const host = modEngineHost(this, this.fetcher);
     bindModuleAdminHost(host);
+    const before = new Set(this.renderCards.keys());
     await prepareAdminRuntime(host);
+    // The runtime caches every codename card into the render map AFTER the
+    // page's verdict pass, outside its seats, and the :configs lists nest
+    // them. Judge them now: a card with no verdict reads as allowed, which
+    // rendered *recaptcha settings (read rule: Administrator) as a full
+    // bar to the anonymous reader where Ruby renders the denial.
+    for (const [key, card] of this.renderCards) {
+      if (before.has(key)) continue;
+      await this.canReadCard(card.record, card.typeName);
+    }
   }
 
   /** Interface hook: track an unknown-card nest target. The render
@@ -5227,12 +5211,39 @@ export class RenderEngine implements RenderEngineLike {
    *  lines cheap but never the parsing). The round cap is paranoia —
    *  renderCards strictly grows, so the fixpoint is reached in at most
    *  deck-size rounds; the cap keeps a pathological cycle bounded. */
+  /** A seated pointer/list/search/skin host the closure walk has not done
+   *  (the host filter of enrichPointerListItemsClosure). */
+  private hasUnwalkedSeatedHost(): boolean {
+    for (const key of this.renderSeats) {
+      if (this.pointerListHostsDone.has(key)) continue;
+      const card = this.renderCards.get(key);
+      if (card === undefined) continue;
+      if (
+        card.typeCode === "pointer" ||
+        card.typeCode === "list" ||
+        card.typeCode === "search_type" ||
+        card.typeCode === "skin" ||
+        card.typeName === "Search"
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async enrichPointerListItemsClosure(): Promise<void> {
     // renderCards only grows: no store since the last pass means no new
     // host and no un-walked card — the sweep below would re-visit every
     // deck card only to Set.has-skip each one. Consume the flag here so
     // the pass runs once after whatever stored new cards.
-    if (!this.renderCardsGrewSinceClosure) return;
+    // But map growth is not the only way a host arrives: on a warm engine a
+    // card stored by an EARLIER render (outside that render's seats) can be
+    // seated by this one without the map growing. Such an un-walked seated
+    // host must still get its item type and items (the bench-paired E4
+    // cluster: list/search hosts whose item nests lost `"type"`), so the
+    // pass also runs when any seat is an un-walked host. The check walks
+    // the seats, not the map.
+    if (!this.renderCardsGrewSinceClosure && !this.hasUnwalkedSeatedHost()) return;
     this.renderCardsGrewSinceClosure = false;
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -6115,18 +6126,7 @@ export class RenderEngine implements RenderEngineLike {
       // visibleSettingsForGroup is the prototype-aware enumeration of the
       // SAME rows V1's 62 dump-pinned nav diffs need, per-set instead of
       // deck-wide.)
-      // SEATFIX (2026-10-04): enumerate the SAME final settings list the
-      // sync accordion renders — the restricted pair the M10b/seatfix
-      // escapes re-add must get their verdicts and existing-rule memos
-      // seated here, or their bars render the hide wrongly and the one-line
-      // EMPTY (seatfixPairVisible's doc block carries the corpus bytes).
-      let groupSettings = visibleSettingsForGroup(this, setCard, groupName);
-      if (seatfixPairVisible(this, setCard, groupName, this.setHasStoredPairRule(setCard))) {
-        const extra = ["content_options", "content_option_view"].filter(
-          (c) => !groupSettings.includes(c),
-        );
-        if (extra.length > 0) groupSettings = [...groupSettings, ...extra];
-      }
+      const groupSettings = visibleSettingsForGroup(this, setCard, groupName);
       for (const settingCodename of groupSettings) {
         const settingCard = this.findSettingCard(settingCodename);
         if (settingCard === undefined) continue;
@@ -6178,7 +6178,21 @@ export class RenderEngine implements RenderEngineLike {
    *  key-keyed map (see deniedVerdictsByKey). */
   isDenied(card: RenderCard): boolean {
     if (card.id !== undefined) {
-      return this.deniedVerdicts.get(card.id) === true;
+      const verdict = this.deniedVerdicts.get(card.id);
+      if (verdict !== undefined) return verdict;
+      // A real card that reached a view without being judged (prepare paths
+      // that add cards outside the page's seats: the *help rule prefetch,
+      // the admin runtime). ok_to_read? (permissions.rb:139-146) reads the
+      // STORED read_rule_id first, which is sync — answer from it instead
+      // of reading the missing verdict as allowed. Names a set-module
+      // override may decide stay on the old path (the override is async).
+      const state = this.readPermission;
+      const storedRule = card.record.readRuleId;
+      if (state === undefined || storedRule === undefined) return false;
+      if (nameHasReadOverride(card.name)) return false;
+      const denied = !canReadByStoredRule(storedRule, state);
+      this.deniedVerdicts.set(card.id, denied);
+      return denied;
     }
     return this.deniedVerdictsByKey.get(card.key) === true;
   }

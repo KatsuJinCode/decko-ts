@@ -30,6 +30,7 @@ import { h } from "./slot-html.js";
 import { stripTags } from "./nest-syntax.js";
 import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "./text-helpers.js";
+import { listItemContentOverride } from "./content-overrides.js";
 
 /** The :type view's text — the type card's name (render_type). */
 function typeText(card: RenderCard): string {
@@ -217,7 +218,12 @@ function ruleOneLineContent(
     // reproduced both forms against the capture deck (*all+*create
     // count 1 -> the single-item anchor form is the PERMISSION module's
     // view, *all+*script count 16 -> "16 items").
-    const items = rawItemStrings(card.dbContent).filter((s) => s.length > 0);
+    // item_strings reads card.content, which a set module's `def content`
+    // shadows (listItemContentOverride: *input type+*right+*content
+    // options counts its 11-item catalog, not the stored "overridden").
+    const items = rawItemStrings(listItemContentOverride(card) ?? card.dbContent).filter(
+      (s) => s.length > 0,
+    );
     // view-fail class V9 (2026-09-29): count != 1 renders
     // the "N items" one-line INCLUDING 0 — card-mod-list
     // set/abstract/01_list/html_views.rb:99-105 short_content →

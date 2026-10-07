@@ -1314,6 +1314,90 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
     }
   }
 
+  // -- 3b. the type-specific scoping rules ----------------------------------
+  //  scoping_rule_card is overridden per cardtype, and the override decides
+  //  which rule names the responsible role:
+  //    card-mod-format set/type/cardtype.rb:89-91
+  //      def scoping_rule_card; Card.fetch([self, :type, :update], new: {}); end
+  //    card-mod-rules set/type/setting.rb:23-25
+  //      def scoping_rule_card; Card.fetch([self, :right, :update], new: {}); end
+  //  find_existing_rule_card (set/rule/editor.rb:119-130) returns that rule
+  //  when it exists, else the set prototype's own *update rule:
+  //    - cardtype X: X+*type+*update, else a new X-typed card's walk, whose
+  //      only other candidate is *all+*update;
+  //    - setting X: X+*right+*update, else the "*dummy+X" prototype's walk
+  //      in pattern precedence: *rstar+*update (X is a star name), then
+  //      *all plus+*update, then *all+*update.
+  //  The generic *self walk above is therefore wrong for these two types
+  //  (on the bench deck it gave Administrator every cardtype through
+  //  Setting+*self+*update and *star+*update, and Shark all 35 cardtypes
+  //  through Cardtype+*type+*update, where Ruby lists the 8 cardtypes with
+  //  their own X+*type+*update = Shark and gives Shark the settings via
+  //  *rstar+*update). These scoped answers replace the generic ones.
+  const cardtypeTypeId = host.codenames.peekId("cardtype");
+  const settingTypeId = host.codenames.peekId("setting");
+  const rightPatternId = host.codenames.peekId("right");
+  const rstarId = host.codenames.peekId("rstar");
+  const allPlusId = host.codenames.peekId("all_plus");
+  if (updateId !== undefined) {
+    const anchorlessRule = async (setId: number | undefined): Promise<string | undefined> => {
+      if (setId === undefined) return undefined;
+      const res = await host.batch([
+        {
+          sql: "SELECT db_content AS rule_content FROM cards WHERE trash = 0 AND left_id = ? AND right_id = ?",
+          params: [setId, updateId],
+        },
+      ]);
+      const row = rowsOf(res, 0)[0];
+      return row === undefined ? undefined : ((row.rule_content as string | null) ?? "");
+    };
+    const scopedRules = async (
+      typeId: number | undefined,
+      patternId: number | undefined,
+    ): Promise<Map<number, string | undefined> | undefined> => {
+      if (typeId === undefined || patternId === undefined) return undefined;
+      const res = await host.batch([
+        {
+          sql:
+            "SELECT c.id AS card_id, r.db_content AS rule_content " +
+            "FROM cards c " +
+            "LEFT JOIN cards s ON s.left_id = c.id AND s.right_id = ? AND s.trash = 0 " +
+            "LEFT JOIN cards r ON r.left_id = s.id AND r.right_id = ? AND r.trash = 0 " +
+            "WHERE c.trash = 0 AND c.codename IS NOT NULL AND c.type_id = ?",
+          params: [patternId, updateId, typeId],
+        },
+      ]);
+      // card id -> its own scoped rule's content, undefined when absent.
+      const out = new Map<number, string | undefined>();
+      for (const row of rowsOf(res, 0)) {
+        const cardId = row.card_id as number;
+        const content = row.rule_content as string | null | undefined;
+        if (content !== null && content !== undefined) out.set(cardId, content);
+        else if (!out.has(cardId)) out.set(cardId, undefined);
+      }
+      return out;
+    };
+    const applyScoped = (
+      scoped: Map<number, string | undefined> | undefined,
+      fallback: string | undefined,
+    ): void => {
+      if (scoped === undefined) return;
+      for (const [cardId, content] of scoped) {
+        const resolved = content ?? fallback;
+        if (resolved !== undefined) rulesByCardId.set(cardId, resolved);
+        else rulesByCardId.delete(cardId);
+      }
+    };
+    const allContent = await anchorlessRule(allId);
+    applyScoped(await scopedRules(cardtypeTypeId, typePatternId), allContent);
+    const settingScoped = await scopedRules(settingTypeId, rightPatternId);
+    if (settingScoped !== undefined) {
+      const fallback =
+        (await anchorlessRule(rstarId)) ?? (await anchorlessRule(allPlusId)) ?? allContent;
+      applyScoped(settingScoped, fallback);
+    }
+  }
+
   // the rule items' codenames: one batch over the collected item names
   const itemNameKeys = new Set<string>();
   for (const content of rulesByCardId.values()) {
