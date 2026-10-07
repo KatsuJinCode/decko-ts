@@ -3,7 +3,9 @@
 // format.ts printed an `ENGINE-NEST` line for every nest and lexicon.ts a
 // `LEX-DEBUG` line for account-email names on every render, unconditionally:
 // dozens of stdout lines per page. They are now gated behind
-// DECKO_DEBUG_ENGINE_NEST=1 and DECKO_DEBUG_LEX=1, off by default.
+// DECKO_ENGINE_NEST_TRACE=1 (read once at module load, the same gate the
+// speed-ship lane landed) and DECKO_LEX_TRACE=1 (read per call), both off by
+// default.
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   createRenderTestStorage,
@@ -17,8 +19,7 @@ afterEach(() => {
   storage?.close();
   storage = undefined;
   vi.restoreAllMocks();
-  delete process.env.DECKO_DEBUG_ENGINE_NEST;
-  delete process.env.DECKO_DEBUG_LEX;
+  delete process.env.DECKO_LEX_TRACE;
 });
 
 async function deck(): Promise<RenderTestStorage> {
@@ -33,24 +34,24 @@ const tagged = (spy: { mock: { calls: unknown[][] } }, tag: string): number =>
   spy.mock.calls.filter((args: unknown[]) => args[0] === tag).length;
 
 describe("diagnostic logging is gated behind env flags", () => {
-  it("a render prints no ENGINE-NEST / LEX-DEBUG lines by default", async () => {
-    storage = await deck();
-    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const html = await storage.engine.render("Host", "core");
-    await storage.fetcher.fetchByName("Probe Signup+*account");
-    expect(html).toContain("guest body");
-    expect(tagged(spy, "ENGINE-NEST")).toBe(0);
-    expect(tagged(spy, "LEX-DEBUG")).toBe(0);
-  });
+  it.runIf(process.env.DECKO_ENGINE_NEST_TRACE !== "1")(
+    "a render prints no ENGINE-NEST / LEX-DEBUG lines by default",
+    async () => {
+      storage = await deck();
+      const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      const html = await storage.engine.render("Host", "core");
+      await storage.fetcher.fetchByName("Probe Signup+*account");
+      expect(html).toContain("guest body");
+      expect(tagged(spy, "ENGINE-NEST")).toBe(0);
+      expect(tagged(spy, "LEX-DEBUG")).toBe(0);
+    },
+  );
 
-  it("DECKO_DEBUG_ENGINE_NEST=1 / DECKO_DEBUG_LEX=1 turn them on", async () => {
-    process.env.DECKO_DEBUG_ENGINE_NEST = "1";
-    process.env.DECKO_DEBUG_LEX = "1";
+  it("DECKO_LEX_TRACE=1 turns the lexicon trace on", async () => {
+    process.env.DECKO_LEX_TRACE = "1";
     storage = await deck();
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    await storage.engine.render("Host", "core");
     await storage.fetcher.fetchByName("Probe Signup+*account");
-    expect(tagged(spy, "ENGINE-NEST")).toBeGreaterThan(0);
     expect(tagged(spy, "LEX-DEBUG")).toBeGreaterThan(0);
   });
 });
