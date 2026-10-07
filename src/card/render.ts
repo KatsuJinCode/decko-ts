@@ -5057,14 +5057,28 @@ export class RenderEngine implements RenderEngineLike {
    *  `enrichAndStore` skips existing keys, so the second pass costs one map
    *  scan plus zero queries on an already-warm deck. */
   private async warmNestedSkinImages(): Promise<void> {
-    const skinImageNames: string[] = [];
+    const skinImageNames = new Set<string>();
+    const pushSkin = (card: RenderCard | undefined): void => {
+      if (card?.typeCode === "bootswatch_skin" && card.name !== undefined) {
+        skinImageNames.add(`${card.name.s}+Image`);
+      }
+    };
     // SWEEP-SURFACE (renderSeats): skin cards this render seated — a warm
     // render re-walking the whole map fetches the cascade's skin seats'
     // +Image children solo (the flood's skin family).
     for (const card of this.renderCards.values()) {
       if (!this.renderSeats.has(card.key)) continue;
-      if (card.typeCode === "bootswatch_skin" && card.name !== undefined) {
-        skinImageNames.push(`${card.name.s}+Image`);
+      pushSkin(card);
+      // A seated search's results and a seated list's items are nested by
+      // this render too, but a result an EARLIER render stored is not
+      // re-seated (enrichAndStore's existing-key guard). On a warm engine
+      // the `Bootswatch skin` cardtype page lists skins an earlier page
+      // stored; their bars nest +Image all the same.
+      for (const result of this.searchResults.get(card.key) ?? []) pushSkin(result);
+      if (this.isPointerLikeHost(card)) {
+        for (const item of this.pointerItemNamesOf(card)) {
+          pushSkin(this.renderCards.get(DeckoName.parse(item).key));
+        }
       }
     }
     for (const imageName of skinImageNames) {
