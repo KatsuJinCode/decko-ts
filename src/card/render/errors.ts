@@ -21,6 +21,8 @@
 // Card::Error::BadQuery — search-card JSON parse failure
 // ----------------------------------------------------------------------------
 
+import { cardWallClockNow } from "../wall-clock.js";
+
 /** card-mod-search set/abstract/cql_search.rb#parse_json_cql (line 29-34):
  *  JSON::ParserError on the card's content raises
  *  `Error::BadQuery, "Invalid JSON search query: #{query}"`. The render
@@ -185,57 +187,24 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  year, "123" → day-of-year — are NOT ported: no corpus card carries
  *  those shapes, and porting them would render dates Ruby renders while
  *  the current gate raises. Honest remainder, zero graded surface.) */
-export const DATE_PARSE_REFERENCE_YEAR = 2026;
-export const DATE_PARSE_REFERENCE_MONTH = 9; // 1-based
-
-/** The month Ruby's Date.parse completes a partial date FROM.
- *
- *  WHY THIS EXISTS AT ALL. `Date.parse` fills a missing month and year from
- *  `Date.today` — the gem run makes this explicit:
- *
- *      ruby -rdate -e 'p Date._parse("20-0405")'
- *      => {:mday=>20, :zone=>"-0405", :offset=>-14700}
- *
- *  a day and a zone, no month, no year. There is nothing else in the string
- *  to complete from, so the answer MOVES WITH THE CLOCK: the same input gave
- *  `2026-09-20` when the frozen expected-v2 bytes were photographed and
- *  gives `2026-10-20` on this machine today.
- *
- *  WHY IT IS A CONSTANT AND NOT `new Date()`. This engine has no wall clock
- *  anywhere in its render path — every date it renders comes from a stored
- *  column (`cards.created_at`, `cards.updated_at`). Reading the wall clock
- *  here would make ONE corpus card's bytes change every month and would be
- *  the only non-reproducible render in the engine. The render is a REPLAY of
- *  a frozen capture, so "today" is a property of the capture, and it is held
- *  fixed here.
- *
- *  WHERE THE VALUE COMES FROM, AND WHAT IS NOT RECOVERABLE.
- *  `tmp/raw-ground-truth/expected-v2/capture-manifest.json` records
- *  `startedAt: null` and `finishedAt: null` — the capture date is NOT
- *  written down anywhere in the deck. The only datum that constrains it is
- *  the frozen byte itself, card 35469's `September 20, 2026`, which pins the
- *  capture to September 2026 and to nothing finer. The month and year are
- *  therefore the RECOVERED part; the DAY OF MONTH is not, and this constant
- *  fixes it at the 1st. For card 35469 that is exact, because `:mday` is
- *  supplied by the string and only the month and year are completed. An
- *  input that completed the MONTH from the reference would additionally
- *  depend on the unrecovered day.
- *
- *  THE CORPUS EXPOSES EXACTLY TWO PARTIAL DATES, so this is the whole
- *  surface: a census of all 4,060 type_id=17 (Date) rows in
- *  tmp/raw-ground-truth/bench-corpus-raw.sqlite3 finds 4,045 complete
- *  Y-M-D, 1 two-component dashed (card 13903, which RAISES in the gem and
- *  needs no completion), 1 this one (35469), and 13 non-numeric or
- * malformed. A DECK RECAPTURED IN ANOTHER MONTH MUST MOVE THIS CONSTANT
- *  WITH IT, or card 35469 re-opens. That is the standing caveat and the
- *  only graded surface it can touch. */
+/** Complete a partial date the way Ruby's Date.parse does: the string
+ *  supplies the day (`ruby -rdate -e 'p Date._parse("20-0405")'` gives
+ *  only :mday and a zone), and the month and year come from Date.today.
+ *  Today is read from the engine's wall-clock seam (src/card/wall-clock.ts),
+ *  so a capture run that freezes the clock gets the capture's month. */
 function fillFromReferenceMonth(day: number): Date | null {
-  const date = new Date(Date.UTC(DATE_PARSE_REFERENCE_YEAR, DATE_PARSE_REFERENCE_MONTH - 1, day));
-  // day 0 normalises to the last day of the reference month; Ruby does the
-  // same, so no rejection is needed for the 0 case. day 31 in a 30-day
-  // month would roll, which Ruby's :mday completion also does — accepted
-  // here for the same reason.
-  return date;
+  // Ruby's Date.parse completes the missing month and year from Date.today
+  // in the host's zone. Read the engine's wall-clock seam the same way.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(cardWallClockNow());
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  // day 0 normalises to the last day of the previous month, and day 31 in a
+  // 30-day month rolls; Ruby's :mday completion does the same.
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
 export function parseRubyDateContent(content: string): Date | null {
@@ -278,9 +247,8 @@ export function parseRubyDateContent(content: string): Date | null {
   // branch is checked BEFORE the two-component one because "20-0405" is
   // also a match for a looser two-number split.
   //
-  // THE COMPLETION IS TODAY-DEPENDENT, so the engine holds ONE free
-  // parameter fixed rather than reading a wall clock. See
-  // DATE_PARSE_REFERENCE_YEAR / _MONTH below.
+  // THE COMPLETION IS TODAY-DEPENDENT: the month and year come from the
+  // wall-clock seam, as Ruby's Date.today. See fillFromReferenceMonth.
   const dayZone = /^(\d{1,2})-(\d{3,4})$/.exec(content);
   if (dayZone !== null) {
     const day = Number(dayZone[1]);
@@ -342,8 +310,7 @@ export function parseRubyDateContent(content: string): Date | null {
   // via the single-digit-A offset guard) while preserving the parseable
   // classes. Superset-of-information: no raise case is lost, the
   // gem-parseable classes survive, and the completion's today-dependence
-  // stays pinned by DATE_PARSE_REFERENCE_YEAR/_MONTH instead of a wall
-  // clock. The corpus-uncertain White Fragility residual stays as refill2's
+  // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain White Fragility residual stays as refill2's
   // receipt recorded it.
   // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
   // JS accepts only the US-style "M/D/YYYY" reliably.
