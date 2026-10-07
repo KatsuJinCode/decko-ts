@@ -85,6 +85,7 @@ import {
   validateNameLegality,
 } from "./name-validation.js";
 import { resolveTypeId } from "./type-resolution.js";
+import { findRule } from "../rules/lookup.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
   cascadeAllFieldReadRules,
@@ -793,6 +794,15 @@ export class CardActionEngine {
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
+    // set_default_content (content.rb:12-15, :prepare_to_validate, on:
+    // :create, when: use_default_content?): a create that assigns no content
+    // takes the new-card template's content. Ruby's db_content_changed? is
+    // false only when no content was assigned at all; an explicit "" counts
+    // as assigned. An attaching save derives its own content.
+    if (input.content == null && input.attachment === undefined) {
+      const templateContent = await this.newCardTemplateContent(name, typeId);
+      if (templateContent !== undefined) input.content = templateContent;
+    }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -815,6 +825,13 @@ export class CardActionEngine {
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
     const lex = this.lexOf(name, sides.leftId, sides.rightId);
+    // Known divergence: when a side is created or revived in this act, Ruby's
+    // manage_trash (prepare_to_store) runs before prepare_left_and_right
+    // assigns the side id (:store), so its lex query cannot find the trashed
+    // junction and Ruby INSERTs a second (left_id, right_id) row. On a schema
+    // with the production UNIQUE (left_id, right_id) index that insert fails
+    // the save; on a deck without it a duplicate junction row is left behind.
+    // The port revives the trashed row instead.
     const trashed =
       lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
     // SP (director.rb:20): manage_trash/set_autoname's stage.
@@ -834,7 +851,9 @@ export class CardActionEngine {
       const after: CardFieldState = {
         name: name.isSimple ? name.s : null,
         type_id: typeId,
-        db_content: input.content ?? null,
+        // set_content (content.rb:1-5): prepare_db_content stores
+        // `standard_db_content || ""` — a save never writes NULL content.
+        db_content: input.content ?? "",
         trash: 0,
         left_id: name.isSimple ? null : sides.leftId,
         right_id: name.isSimple ? null : sides.rightId,
@@ -863,6 +882,14 @@ export class CardActionEngine {
         cardId: trashed.id,
         before,
         after,
+        // The revived record is new apart from its id (trash.rb:57-62), so
+        // every assigned field counts as changed against a blank record:
+        // the oracle records name, type_id, db_content and trash changes for
+        // a revived simple card even where the trashed row held the same
+        // values.
+        changedFields: (Object.keys(after) as (keyof CardFieldState)[]).filter(
+          (f) => after[f] !== null,
+        ),
         key: name.isSimple ? name.key : null,
         // set_read_rule store event (permissions.rb:1-5): a revival is a
         // :create save, so the derivation runs (new_card? is true via
@@ -997,7 +1024,9 @@ export class CardActionEngine {
       type_id: typeId,
       // assign_set_specific_attributes (attachment.rb:90-97): an attaching
       // save RESETS content — the identifier replaces any content argument.
-      db_content: input.attachment !== undefined ? null : (input.content ?? null),
+      // set_content (content.rb:1-5): `standard_db_content || ""` — a
+      // content-less create stores "", never NULL.
+      db_content: input.attachment !== undefined ? null : (input.content ?? ""),
       left_id: name.isSimple ? null : sides.leftId,
       right_id: name.isSimple ? null : sides.rightId,
       codename: input.codename ?? null,
@@ -2530,6 +2559,33 @@ export class CardActionEngine {
    *  (:144-150) clears the row and recreates the side as a FRESH subcard —
    *  never the renaming row. The create path passes no selfId: a new card
    *  has no id and cannot obstruct itself. */
+  /** The content set_default_content assigns to a new card, or undefined
+   *  when use_default_content? is false (content.rb:25-32: default_content
+   *  = template&.db_content, used only when present?). The template of a
+   *  new card is new_card_template (card-mod-content set/all/templating.rb:
+   *  52-58): the card's *default rule card, unless a structure rule applies
+   *  (dup_structure, :60-64), in which case the structure wins. A structure
+   *  whose content is "_self" counts as none (structure_rule_card, :44-48).
+   *
+   *  dup_structure sets the copy's type_id to the default rule's type, but
+   *  `dup` carries the card's set patterns, already computed from its own
+   *  type when its set modules were included, so the structure lookup runs
+   *  on the card's own type. The deck shows the effect: every Cardtype card
+   *  stores a copy of Cardtype+*type+*structure although *all+*default is
+   *  RichText-typed. */
+  private async newCardTemplateContent(name: DeckoName, typeId: number): Promise<string | undefined> {
+    const pattern = await ruleWalkPatternInput(this.fetch, { name, isNew: true, typeId });
+    const defaultRule = await findRule(this.fetch, pattern, "*default");
+    const structureRule = await findRule(this.fetch, pattern, "*structure");
+    const structure =
+      structureRule !== undefined && (structureRule.rule.dbContent ?? "").trim() !== "_self"
+        ? structureRule.rule
+        : undefined;
+    const content = (structure ?? defaultRule?.rule)?.dbContent;
+    // present? — nil, "" and whitespace-only are all blank.
+    return typeof content === "string" && content.trim() !== "" ? content : undefined;
+  }
+
   private async ensureSides(
     writer: ActWriter,
     name: DeckoName,
@@ -2544,6 +2600,16 @@ export class CardActionEngine {
       const known = idsByKey.get(key);
       if (known !== undefined) return known;
       let id = await this.fetch.lexicon.id(sideName);
+      // prepare_new_side (name_events.rb:136-141) creates the side when
+      // `!Card[side_id]&.real?`. The Lexicon keeps a trashed card's entry
+      // (trash is not a name change, so update_lexicon never runs), and
+      // Card[id] filters trash, so a side whose lexicon id is a trashed row
+      // is MISSING: it becomes a side subcard, whose own manage_trash then
+      // pulls that row back from the trash.
+      if (id !== undefined && id !== selfId) {
+        const sideRow = await this.fetchRowById(id);
+        if (sideRow === undefined || sideRow.trash === 1) id = undefined;
+      }
       if (selfId !== undefined && id === selfId) {
         id = await this.recreateObstructedSide(writer, sideName, selfId, created);
       } else if (id === undefined) {

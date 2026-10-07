@@ -52,17 +52,21 @@ describe("createCard — revival from trash", () => {
       draft: 0,
     });
     // store_card_changes DOES run (first_create? false — the card already
-    // has history): changed fields = trash (t->f) + db_content
+    // has history). The revived record is new apart from its id
+    // (trash.rb:57-62), so every assigned field is dirty against a blank
+    // record: name and type_id are recorded although the trashed row held
+    // the same values (the Ruby oracle's persistence probe records fields
+    // 0-3 for a revived simple card).
     const changes = await f.storage.selectAll<{ field: number; value: string | null }>(
       "SELECT field, value FROM card_changes WHERE card_action_id = ? ORDER BY field",
       [(actions[2] as { id: number }).id],
     );
     expect(changes).toEqual([
+      { field: 0, value: "Phoenix" },
+      { field: 1, value: "2" },
       { field: 2, value: "reborn" },
       { field: 3, value: "f" },
     ]);
-    // the older history rows survive untouched
-    expect(changes).toHaveLength(2);
     const fetchAgain = await f.engine.fetchByName("Phoenix");
     expect(fetchAgain?.id).toBe(original.id);
   });
@@ -74,11 +78,13 @@ describe("createCard — revival from trash", () => {
     await engine.deleteCard({ cardId: original.id });
     await engine.createCard({ name: "Lantern" });
     // pull_from_trash! reuses only the id (trash.rb:60-62); attributes come
-    // from the NEW record — empty content, default type
+    // from the NEW record — empty content, default type. set_content
+    // (content.rb:1-5) stores `standard_db_content || ""`, so the empty
+    // content is "", never NULL.
     const card = await f.storage.selectOne<Row>("SELECT * FROM cards WHERE id = ?", [
       original.id,
     ]);
-    expect(card).toMatchObject({ db_content: null, trash: 0, type_id: 2 });
+    expect(card).toMatchObject({ db_content: "", trash: 0, type_id: 2 });
   });
 
   it("revives junction rows when both sides are live again", async () => {

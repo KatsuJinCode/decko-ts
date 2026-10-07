@@ -140,6 +140,12 @@ export interface UpdateCardInput {
    *  Without this the no-op detection below silently drops the attachment
    *  save. */
   dirtyFields?: readonly TrackedField[];
+  /** The complete changed-field set, replacing the tracked-field diff. A
+   *  revival from trash needs it: pull_from_trash! (trash.rb:57-62) reuses
+   *  only the trashed row's id on what is otherwise a NEW record, so Ruby's
+   *  dirty tracking compares the assigned values against a blank record,
+   *  not against the trashed row. */
+  changedFields?: readonly TrackedField[];
 }
 
 export interface SavedAction {
@@ -271,7 +277,10 @@ export class ActWriter {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<SavedAction | null> {
-    let changed = diffTrackedFields(input.before, input.after);
+    let changed =
+      input.changedFields !== undefined
+        ? ALL_TRACKED_WRITE_ORDER.filter((f) => input.changedFields!.includes(f))
+        : diffTrackedFields(input.before, input.after);
     if (changed.length === 0 && input.dirtyFields !== undefined) {
       // Caller-asserted dirty fields (the mounted-attachment assignment —
       // see UpdateCardInput.dirtyFields): a real save even when the computed
@@ -282,6 +291,15 @@ export class ActWriter {
       // finalize_action else-branch (events.rb:34-37): with no changed
       // fields and no pre-existing changes the action row is never saved,
       // and ActiveRecord skips the cards-row UPDATE entirely (no-op save).
+      // finalize_act (events.rb:48-50, when: act_card?) still runs:
+      // `Director.act.update! card_id: id` saves the act, so the act card's
+      // no-op save leaves an act row with no actions (the oracle deck holds
+      // such acts; remove_empty_act? is defined but never wired).
+      if (this.actId === null && this.isActCardOp(input.cardId, input.isActCard)) {
+        const stmts: SQLStatement[] = [];
+        const actIdSelect = this.pushInsertAct(stmts, input.cardId, sqlDateTime(this.clock()));
+        await this.runBatch(stmts, { actIdSelect });
+      }
       return null;
     }
     if (changed.includes("name")) {

@@ -114,7 +114,7 @@ async function probeState(driver: LocalSqliteDriver): Promise<Row> {
     };
   }
   const inList = ids.join(",");
-  const q = async (sql: string): Promise<Row[]> => (await driver.query(sql, [])).rows;
+  const q = async (sql: string): Promise<Row[]> => (await driver.query<Row>(sql, [])).rows;
   const actions = await q(
     `SELECT id, card_id, card_act_id, super_action_id, action_type, draft, comment
      FROM card_actions WHERE card_id IN (${inList}) ORDER BY id`,
@@ -190,7 +190,7 @@ async function bootEngine(dbPath: string): Promise<{
     fetcher.lexicon.write(
       id,
       DeckoName.parse(name),
-      row.left_id === null ? row.name : [Number(row.left_id), Number(row.right_id)],
+      row.left_id === null ? String(row.name) : [Number(row.left_id), Number(row.right_id)],
     );
   }
   const [universe] = await driver.batch([structureRuleUniverseStatement()]);
