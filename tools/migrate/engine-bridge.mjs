@@ -33,8 +33,9 @@
 //          cards are absent and this reports cardsPresent: 0, honestly.
 //
 //   - deriveKeyWithEngine(name) — DeckoName.parse(name).key, the real
-//     name algebra from src/card/name.ts, for the importer's simple-card
-//     missing-key repair. The tools never reimplement this algorithm.
+//     name algebra from src/card/name.ts under the deployed deck's
+//     inflection table, for the importer's simple-card missing-key repair.
+//     The tools never reimplement this algorithm.
 //
 // CONTENT RULE: everything returned here is ids, counts, hashes, and the
 // repo's own synthetic fixture names ("Oracle ..." — already committed in
@@ -46,12 +47,26 @@ import { fileURLToPath } from "node:url";
 import { FetchEngine } from "../../src/card/fetch.ts";
 import { RenderEngine } from "../../src/card/render.ts";
 import { DeckoName } from "../../src/card/name.ts";
+import { applyDeckInflections, singularize } from "../../src/card/name/inflect.ts";
+import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.ts";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
+/** True when the process-global inflection tables are the deck's: under the
+ *  deck table "anonymous" is uncountable, under the gem defaults it
+ *  singularizes to "anonymou". */
+function deckInflectionsActive() {
+  return singularize("anonymous") === "anonymous";
+}
+
 /** The real decko-ts name algebra (src/card/name.ts), for import.mjs's
- *  key-repair hook. */
+ *  key-repair hook, under the deployed deck's inflection table
+ *  (src/card/name/oracle-deck-inflections.ts) exactly as a serving boot
+ *  applies it. Without the table, names containing "Anonymous", "this" or a
+ *  lone "s" ("Participant(s)", "Brandon's") get keys no serving engine or
+ *  Ruby deck looks up, and those cards become unreachable by name. */
 export function deriveKeyWithEngine(name) {
+  if (!deckInflectionsActive()) applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   return DeckoName.parse(name).key;
 }
 

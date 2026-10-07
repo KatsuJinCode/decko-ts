@@ -5,8 +5,9 @@
 
 import type { LocalSqliteToolDriver } from "./import.mjs";
 
-/** The real decko-ts name algebra (src/card/name.ts DeckoName.key), for
- *  import.mjs's simple-card missing-key repair hook. */
+/** The real decko-ts name algebra (src/card/name.ts DeckoName.key) under the
+ *  deployed deck's inflection table, for import.mjs's simple-card
+ *  missing-key repair hook. */
 export function deriveKeyWithEngine(name: string): string;
 
 export interface EngineSpotResult {
