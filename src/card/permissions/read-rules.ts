@@ -806,8 +806,12 @@ const TASK_RULE_SETTING_NAMES: readonly string[] = [
  * used where a non-rule key is asked for — set-read-rule.ts's `self`
  * set-pattern member lookup is the one such consumer and stays on
  * RULE_KEY_UNIVERSE_STATEMENT.
+ *
+ * This is the reference text. The render path runs
+ * RULE_KEY_RULE_CLOSURE_STATEMENT below, which returns the same row set;
+ * DECKO_LEGACY_RULE_CLOSURE=1 selects this one instead.
  */
-const RULE_KEY_RULE_CLOSURE_STATEMENT =
+export const LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT =
   `WITH RECURSIVE\n` +
   `anc(id) AS (\n` +
   `  SELECT r.left_id FROM cards r\n` +
@@ -835,6 +839,146 @@ const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `)\n` +
   `SELECT rs.ckey, rs.id FROM resolved rs\n` +
   `WHERE ${TASK_RULE_SETTING_NAMES.map((n) => `rs.ckey LIKE '%+${n}'`).join(" OR ")}`;
+
+// The pruned walk below relies on three facts about the setting names; check
+// them where the names are defined so a new name cannot silently break it.
+for (const n of TASK_RULE_SETTING_NAMES) {
+  if (n.length === 0 || /[+%_]/.test(n) || !/^[\x21-\x7e]+$/.test(n)) {
+    throw new Error(`rule-closure walk: setting name ${JSON.stringify(n)} must be printable ASCII without '+', '%' or '_'`);
+  }
+}
+
+/** `col` ends in "+<setting>" for some task setting — the projection's test. */
+function endsInRuleSuffix(col: string): string {
+  return TASK_RULE_SETTING_NAMES.map((n) => `${col} LIKE '%+${n}'`).join(" OR ");
+}
+
+/** The last characters of the setting names in both ASCII cases: a key that
+ *  matches `LIKE '%+<setting>'` or `LIKE '<setting>'` must end in one of
+ *  them, under case-insensitive and case-sensitive LIKE alike. */
+const RULE_SUFFIX_LAST_CHARS = [
+  ...new Set(TASK_RULE_SETTING_NAMES.flatMap((n) => {
+    const c = n.slice(-1);
+    return [c.toLowerCase(), c.toUpperCase()];
+  })),
+];
+
+/**
+ * The RULE-CLOSURE walk the render path runs: the same rows as
+ * LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT, for any deck, with the arms
+ * pruned to the derivations that can reach a projected row. On the local
+ * mirror of the trial deck the legacy walk builds 11,477 `resolved` rows
+ * (and enumerates about 14k join candidates) to keep 1,489; this one builds
+ * about 3,800 from about 5k candidates, and takes about half the time.
+ * benchmarks/poc-live-batch/check-rule-closure-rewrite.mjs asserts the two
+ * return the same row set on a deck and on randomly perturbed copies of it.
+ *
+ * WHY THE PRUNING IS EXACT. Call a string rule-shaped (T) when it is
+ * `LIKE '%+<setting>'` or `LIKE '<setting>'` for a task setting. Setting
+ * names hold no '+' (checked above), so:
+ *   - a left-arm row `l.ckey || '+' || r.key` is projected iff r.key is T;
+ *   - a right-arm row `l.key || '+' || r.ckey` is projected iff r.ckey is T,
+ *     and the row is then T itself.
+ * A projected row is therefore derived either from a seed, or by the left arm
+ * from ANY row of a card that is the left of a junction with a T right key,
+ * or by the right arm from a T row. Let D be the downward closure, through
+ * both left_id and right_id, of the lefts of every junction whose right key
+ * is T. Every derivation of a row for a card in D runs through cards in D
+ * only (both arms derive a card's rows from its own left or right child).
+ * So the walk keeps exactly the rows the projection can depend on if each
+ * arm only produces a row whose card is in D or whose composed key is T:
+ *   - left arm into D (`dl`), left arm into a T-right junction (`tl`);
+ *   - right arm into D (`dr`), right arm from a T row (the WHERE on r.ckey).
+ * The seed is the legacy seed's row set, read from the two small sets that
+ * define it (anc, and the T-keyed cards) instead of by testing every card.
+ * D only needs to CONTAIN those lefts, so `tc` and `tl` ignore trash and the
+ * NOT NULL key tests; the arms keep the legacy arms' conditions verbatim.
+ *
+ * WHY THE CTEs ARE MATERIALIZED. A recursive step that joins an unindexed
+ * CTE re-reads it once per queue row — the trap the legacy comment records
+ * (20-25 s for `j.id IN (SELECT id FROM anc)`). Here the edge sets are
+ * MATERIALIZED, so SQLite builds them once and probes them through an
+ * automatic index; without the hint the same statement takes about 2 s
+ * locally. Requires SQLite 3.35 or later (the MATERIALIZED keyword).
+ *
+ * Row ORDER is not part of the contract (the legacy statement has no
+ * ORDER BY either); the check script reports whether it matched.
+ */
+export const RULE_KEY_RULE_CLOSURE_STATEMENT =
+  `WITH RECURSIVE\n` +
+  `anc(id) AS (\n` +
+  `  SELECT r.left_id FROM cards r\n` +
+  `    JOIN cards st ON st.id = r.right_id\n` +
+  `    WHERE +r.trash = 0 AND st."key" IN (${TASK_RULE_SETTING_NAMES.map(() => "?").join(", ")})\n` +
+  `      AND r.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.left_id FROM anc a\n` +
+  `    JOIN cards j ON j.id = a.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `tc(id) AS MATERIALIZED (\n` +
+  `  SELECT c.id FROM cards c\n` +
+  `    WHERE substr(c."key", -1) IN (${RULE_SUFFIX_LAST_CHARS.map((c) => `'${c}'`).join(", ")})\n` +
+  `      AND (${TASK_RULE_SETTING_NAMES.map((n) => `c."key" LIKE '%+${n}' OR c."key" LIKE '${n}'`).join("\n        OR ")})\n` +
+  `),\n` +
+  `tl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT j.id, j.left_id FROM tc CROSS JOIN cards j ON j.right_id = tc.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `d(id) AS (\n` +
+  `  SELECT child FROM tl\n` +
+  `  UNION\n` +
+  `  SELECT c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
+  `),\n` +
+  `dl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT c.id, c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n` +
+  `),\n` +
+  `dr(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
+  `),\n` +
+  `resolved(id, ckey) AS (\n` +
+  `  SELECT c.id, c."key" FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `  UNION\n` +
+  `  SELECT c.id, c."key" FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN dl ON dl.child = l.id\n` +
+  `    JOIN cards j ON j.id = dl.parent AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN tl ON tl.child = l.id\n` +
+  `    JOIN cards j ON j.id = tl.parent AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN dr ON dr.child = r.id\n` +
+  `    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `    WHERE ${endsInRuleSuffix(`('+' || r.ckey)`)}\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id FROM resolved rs\n` +
+  `WHERE ${endsInRuleSuffix("rs.ckey")}`;
+
+/** The statement the render path's rule-closure walk runs. */
+function ruleClosureStatement(): string {
+  if (typeof process !== "undefined" && process.env?.DECKO_LEGACY_RULE_CLOSURE === "1") {
+    return LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT;
+  }
+  return RULE_KEY_RULE_CLOSURE_STATEMENT;
+}
+
+/** The setting-name parameters both rule-closure statements bind. */
+export const RULE_CLOSURE_PARAMS: readonly string[] = TASK_RULE_SETTING_NAMES;
 
 /**
  * The same composed-key resolution as resolveRuleIdsByKeys, with the rule
@@ -916,7 +1060,7 @@ async function resolveRowsAgainst(
   }
   if (universeFor(cache, scope) === undefined) {
     const result = await driver.query<{ ckey: string; id: number }>(
-      scope === "ruleClosure" ? RULE_KEY_RULE_CLOSURE_STATEMENT : RULE_KEY_UNIVERSE_STATEMENT,
+      scope === "ruleClosure" ? ruleClosureStatement() : RULE_KEY_UNIVERSE_STATEMENT,
       scope === "ruleClosure" ? [...TASK_RULE_SETTING_NAMES] : [],
     );
     // The statement's await is an expire window: a fixture seed or committed

@@ -143,6 +143,25 @@ describe("templateReferenceNames", () => {
 describe("structureRuleUniverseStatement", () => {
   it("matches rule rows by the *structure setting card's right_id (indexed, composed-key CTE)", () => {
     const statement = structureRuleUniverseStatement();
+    // The rule rows match the setting card's id on right_id (indexed); each
+    // rule's composed key is built by walking UP from its set card (the
+    // speed-fix rule universe: same rows and order as composing every name
+    // in the deck, 34 ms -> 1 ms on the trial deck).
+    expect(statement.sql).toContain("r.right_id = (SELECT id FROM setting)");
+    expect(statement.sql).toContain("up(rid, cur, suffix)");
+    expect(statement.params).toEqual(["*structure", "*structure"]);
+  });
+
+  it("DECKO_LEGACY_RULE_UNIVERSE=1 keeps the whole-deck composed-key statement", () => {
+    const prior = process.env.DECKO_LEGACY_RULE_UNIVERSE;
+    process.env.DECKO_LEGACY_RULE_UNIVERSE = "1";
+    let statement: ReturnType<typeof structureRuleUniverseStatement>;
+    try {
+      statement = structureRuleUniverseStatement();
+    } finally {
+      if (prior === undefined) delete process.env.DECKO_LEGACY_RULE_UNIVERSE;
+      else process.env.DECKO_LEGACY_RULE_UNIVERSE = prior;
+    }
     expect(statement.sql).toContain("r.right_id = (SELECT id FROM cards");
     // Round 9 re-pin: the composed-key side is the RECURSIVE name_walk CTE
     // (landed for the depth-3 *type plus right universe keys — 24/139 rules

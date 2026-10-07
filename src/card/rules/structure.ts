@@ -108,6 +108,46 @@ export const DEFAULT_SETTING_NAME = "*default";
  * perf contract holds: one statement, folded into the cold batch.
  */
 export function ruleUniverseStatementBySetting(settingName: string): SQLStatement {
+  if (typeof process !== "undefined" && process.env?.DECKO_LEGACY_RULE_UNIVERSE === "1") {
+    return legacyRuleUniverseStatement(settingName);
+  }
+  return {
+    // Rule universe by UPWARD walk: start at each rule's set card and climb
+    // left_id to the simple base card, prepending each junction's right key.
+    // Same rows (and order) as composing every name in the deck top-down
+    // and joining, at O(rules x depth) instead of O(deck): measured 34 ms ->
+    // 1 ms on the 21.7k-card trial deck. Trash is not filtered on the walk:
+    // a trashed intermediate still carries its left/right ids (e.g. rule 829
+    // has set card 828 trashed but walks through Gallery).
+    sql:
+      `WITH RECURSIVE\n` +
+      `setting(id) AS (SELECT id FROM cards WHERE ("key" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\n` +
+      `rules(rid, lid, db_content, type_id) AS (\n` +
+      `  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n` +
+      `  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\n` +
+      `up(rid, cur, suffix) AS (\n` +
+      `  SELECT rid, lid, '' FROM rules\n` +
+      `  UNION ALL\n` +
+      `  SELECT u.rid, c.left_id, '+' || COALESCE(rk."key", '') || u.suffix\n` +
+      `  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n` +
+      `  WHERE c.left_id IS NOT NULL)\n` +
+      `SELECT CASE WHEN COALESCE(b."key", '') || u.suffix <> ''\n` +
+      `         THEN COALESCE(b."key", '') || u.suffix || '+' || st."key" ELSE NULL END AS composed_key,\n` +
+      `  rules.db_content AS db_content, rules.type_id AS rule_type_id\n` +
+      `FROM up u\n` +
+      `JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\n` +
+      `JOIN rules ON rules.rid = u.rid\n` +
+      `JOIN cards st ON st.id = (SELECT id FROM setting)\n` +
+      `ORDER BY rules.rid`,
+    // The setting name is bound, never interpolated into the SQL text —
+    // settingName is a caller-supplied string.
+    params: [settingName, settingName],
+  };
+}
+
+/** The previous whole-deck top-down walk, kept for A/B measurement
+ *  (DECKO_LEGACY_RULE_UNIVERSE=1). */
+function legacyRuleUniverseStatement(settingName: string): SQLStatement {
   return {
     sql:
       `WITH RECURSIVE name_walk(id, composed) AS (\n` +
