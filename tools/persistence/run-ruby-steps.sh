@@ -15,7 +15,7 @@ set -u
 APP_DIR="${1:?oracle app dir}"
 SRC="${2:?source deck}"
 OUT="${3:?output dir}"
-STEPS="${4:-19}"
+STEPS="${4:-22}"
 HERE="$(dirname "$(readlink -f "$0")")"
 SCRIPT="$HERE/persist-write-probe.rb"
 WORK="$(dirname "$OUT")"

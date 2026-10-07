@@ -19,7 +19,8 @@
 //   7  revive child (ROUTE path)        17 create child
 //   8  revive parent (ROUTE path)       18 delete parent (trash cascade)
 //   9  no-op update                     19 revive child (MODEL path)
-//  10  create over existing name
+//  10  create over existing name        20 update with unsafe html
+//  21  create without type or content   22 create plain text with html
 //
 // It is a driver, not an assertion: it writes its JSON and asserts only that
 // the op list completed. Nothing skips silently — a missing source deck
@@ -53,6 +54,10 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const PERSIST_DIR = path.join(REPO, "tmp/persist");
 const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json");
 const PREFIX = "PersistProbe";
+// Same string as the Ruby half's UNSAFE_HTML.
+const UNSAFE_HTML =
+  '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
+  '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -386,12 +391,25 @@ describe("persistence write probe (TS half)", () => {
         const childId = await idOf(`${PREFIX} Parent+${PREFIX} Child`);
         return engine.updateCard({ cardId: childId, trash: false } as unknown as UpdateCardInput);
       });
+      await op(20, "update with unsafe html", "update", () =>
+        engine.updateCard({ cardId: revivedId, content: UNSAFE_HTML } as UpdateCardInput),
+      );
+      await op(21, "create without type or content", "create", () =>
+        engine.createCard({ name: `${PREFIX} Bare` } as CreateCardInput),
+      );
+      await op(22, "create plain text with html", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} Plain`,
+          typeName: "PlainText",
+          content: UNSAFE_HTML,
+        } as CreateCardInput),
+      );
     } finally {
       driver.close();
       for (const f of [dbPath, `${dbPath}-shm`, `${dbPath}-wal`]) rmSync(f, { force: true });
     }
     writeFileSync(OUT, JSON.stringify(out, null, 2));
-    expect(out.length).toBe(19);
+    expect(out.length).toBe(22);
   }, 900000);
 });
 

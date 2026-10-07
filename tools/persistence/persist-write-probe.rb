@@ -30,11 +30,15 @@
 
 require "json"
 
-OUTDIR = ARGV[0] or abort "usage: persist-write-probe.rb <outdir> <stepIndex 1..19>"
+OUTDIR = ARGV[0] or abort "usage: persist-write-probe.rb <outdir> <stepIndex 1..22>"
 STEP = Integer(ARGV[1] || "0")
 abort "step index must be >= 1" if STEP < 1
 
 PREFIX = "PersistProbe"
+# Markup Card::Content.clean! must rewrite: an event handler attribute, a
+# script element, a javascript: link, and allowed markup that must survive.
+UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
+              '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>'
 
 # The probe's own cards: the simple ones by name, and everything reachable
 # from them through left_id/right_id (compound cards carry NULL name/key).
@@ -187,6 +191,12 @@ def run_op(step)
     # list on purpose: in Ruby it revives the child alone under a trashed
     # parent, and every later op would inherit that state.
     [:trash, "revive child (model path: update trash=false)", -> { Card.find(id_of("PersistProbe Parent+PersistProbe Child")).update!(trash: false) }]
+  when 20
+    [:update, "update with unsafe html", -> { Card.find(id_of("PersistProbe Renamed")).update!(content: UNSAFE_HTML) }]
+  when 21
+    [:create, "create without type or content", -> { Card.create!(name: "PersistProbe Bare") }]
+  when 22
+    [:create, "create plain text with html", -> { Card.create!(name: "PersistProbe Plain", type: "PlainText", content: UNSAFE_HTML) }]
   else
     abort "unknown step #{step}"
   end
