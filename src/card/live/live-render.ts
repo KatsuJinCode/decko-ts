@@ -186,6 +186,21 @@ export async function liveRenderPage(
     for (let p = 1; p <= MAX_PASSES; p += 1) {
       if (opts.signal?.aborted === true) throw new LiveRenderAborted();
       const asked = new Set<string>();
+      // Diagnostics (DECKO_LIVE_TRACE_STACK): which frames asked for each
+      // new card, by the first two names they asked.
+      const askStacks = new Map<string, string[]>();
+      if (env?.DECKO_LIVE_TRACE_STACK !== undefined) {
+        const add = asked.add.bind(asked);
+        asked.add = (n: string) => {
+          if (!asked.has(n) && !seeds.has(n)) {
+            const k = (new Error().stack ?? "").split("\n").slice(2, 12).map((l) => l.trim().replace(/^at (async )?/, "").replace(/ \(.*$/, "")).join(" < ");
+            const v = askStacks.get(k) ?? [];
+            v.push(n);
+            askStacks.set(k, v);
+          }
+          return add(n);
+        };
+      }
       const lazyAsked = new Set<string>();
       const out: { engine?: RenderEngine } = {};
       live.mode = blockNext ? "block" : "spec";
@@ -231,12 +246,16 @@ export async function liveRenderPage(
       live.blockTrips = undefined;
       if (tailSpent) blockNext = false;
       if (done) {
+        if (env?.DECKO_LIVE_TRACE === "1" && html !== undefined) {
+          const h = [...html.replace(/data-slot-id="[0-9a-f]+"/g, "")].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) | 0, 0);
+          process.stderr.write(`LIVE-TRACE-FINAL pass ${passes.length} htmlLen ${html.length} htmlHash ${h}\n`);
+        }
         if (threw !== undefined) throw threw;
         return { html: html as string, stats: live.stats, passes, choice };
       }
       if (env?.DECKO_LIVE_TRACE === "1") {
         process.stderr.write(
-          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ threw: threw === undefined ? undefined : String((threw as Error)?.stack ?? threw).slice(0, 600), htmlLen: html?.length, fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
+          `LIVE-TRACE pass ${passes.length} ${JSON.stringify({ threw: threw === undefined ? undefined : String((threw as Error)?.stack ?? threw).slice(0, 600), htmlLen: html?.length, htmlHash: html === undefined ? undefined : [...html.replace(/data-slot-id="[0-9a-f]+"/g, "")].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 0), askStacks: [...askStacks].map(([k, v]) => [v.length, v.slice(0, 3), k]), fresh, lazyFresh, pending: live.describePending(), stacks: live.stackTrace === undefined ? undefined : [...live.stackTrace].sort((a, b) => b[1] - a[1]).slice(0, 12) })}\n`,
         );
       }
       if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length + lazyFresh.length === 0 && pendingReads <= tail) blockNext = true;
