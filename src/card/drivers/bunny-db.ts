@@ -345,7 +345,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    *  that is going to fail anyway.
    */
   private async pipeline(requests: HranaPipelineRequest[]): Promise<unknown[]> {
-    const headers: Record<string, string> = { "content-type": "application/json" };
+    // ACCEPT-ENCODING (deploy check 2026-10-06): left to the runtime, the
+    // database gateway answered with brotli, and compressing cost it about
+    // 2 s per decoded MB before the first byte (a 1.77 MB answer: 3.7 s with
+    // brotli, 0.9 s uncompressed, 0.5 s with gzip). Ask for gzip, or no
+    // encoding. readPipelineJson inflates a gzip body itself when the
+    // runtime hands it over still compressed.
+    const headers: Record<string, string> = { "content-type": "application/json", "accept-encoding": "gzip, identity" };
     if (this.authToken !== undefined) {
       headers.authorization = `Bearer ${this.authToken}`;
     }
@@ -403,7 +409,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         { status: response.status },
       );
     }
-    const decoded = (await response.json()) as PipelineResponseBody;
+    const decoded = (await readPipelineJson(response)) as PipelineResponseBody;
     if (decoded === null || typeof decoded !== "object" || !Array.isArray(decoded.results)) {
       throw new BunnyDbError(
         "BunnyDb pipeline response has no results array (protocol violation)",
@@ -415,6 +421,26 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       );
     }
     return decoded.results.map((entry, i) => decodeStreamResult(entry, i, requests[i]));
+  }
+}
+
+/** The pipeline's JSON body. A runtime that leaves a gzip body compressed
+ *  (some do once the caller sets Accept-Encoding itself) is detected by the
+ *  gzip magic bytes, which no JSON text starts with, and inflated here. */
+async function readPipelineJson(response: Response): Promise<unknown> {
+  if (typeof response.arrayBuffer !== "function") return await response.json();
+  let bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    if (typeof DecompressionStream !== "function") {
+      throw new BunnyDbError("BunnyDb pipeline response is gzip-compressed and this runtime cannot inflate it");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new BunnyDbError("BunnyDb pipeline response is not JSON (protocol violation)");
   }
 }
 

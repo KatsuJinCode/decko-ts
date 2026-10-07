@@ -32,6 +32,7 @@ import http from "node:http";
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { gzipSync } from "node:zlib";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
 const [bundlePath, dbPath, outDir, ...pages] = process.argv.slice(2);
@@ -108,9 +109,13 @@ const server = http.createServer((req, res) => {
     });
     const payload = JSON.stringify({ results });
     counters.bytes += Buffer.byteLength(payload);
+    // EDGE_GZIP=1: answer gzip when the request accepts it, as the real
+    // database gateway does (it answers brotli to a runtime default).
+    counters.acceptEncoding = String(req.headers["accept-encoding"] ?? "");
+    const gz = process.env.EDGE_GZIP === "1" && /gzip/.test(counters.acceptEncoding);
     const reply = () => {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(payload);
+      res.writeHead(200, { "content-type": "application/json", ...(gz ? { "content-encoding": "gzip" } : {}) });
+      res.end(gz ? gzipSync(payload) : payload);
     };
     const hold = hopMs + (msPerMb * Buffer.byteLength(payload)) / 1e6;
     if (hold > 0) setTimeout(reply, hold);
@@ -164,7 +169,7 @@ async function one(page, t00) {
   const file = join(outDir, `${page.replace(/[^A-Za-z0-9]+/g, "_")}.html`);
   writeFileSync(file, text);
   const c = concurrent ? { posts: 0, stmts: 0, bytes: 0 } : counters;
-  console.log(JSON.stringify({ page, status, bytes: text.length, posts: c.posts, stmts: c.stmts, db_bytes: c.bytes, wall_ms: wall, finished_at_ms: Math.round(performance.now() - t00), budget: headers["x-decko-edge-budget"], file, head: status === 200 ? undefined : text.slice(0, 300) }));
+  console.log(JSON.stringify({ page, status, bytes: text.length, posts: c.posts, stmts: c.stmts, db_bytes: c.bytes, accept_encoding: counters.acceptEncoding, wall_ms: wall, finished_at_ms: Math.round(performance.now() - t00), budget: headers["x-decko-edge-budget"], file, head: status === 200 ? undefined : text.slice(0, 300) }));
 }
 try {
   const t00 = performance.now();
