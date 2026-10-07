@@ -136,13 +136,20 @@ export async function liveRenderPage(
   // ~10k; on the 40 gate pages local wall at 0 ms is median 304 ms narrow
   // against 586 ms wide.
   const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL === "1";
-  // Compact result encoding and identity-only ring neighbours, both on by
-  // default (DECKO_LIVE_COMPACT=0 / DECKO_LIVE_IDENTITY_RING=0 turn them off).
+  // Compact result encoding: on by default (DECKO_LIVE_COMPACT=0 turns it
+  // off). Ring neighbours travel WHOLE by default; DECKO_LIVE_IDENTITY_RING=1
+  // sends them as identity rows. Identity rows cut a page's database bytes
+  // about in half but cost 2 more round trips at the median (7 more on
+  // Pattern), because the render then reads many of them whole. They paid
+  // off while the database answered brotli at about 2.2 s per MB; since the
+  // driver asks for gzip, a trip costs about 50 ms and the bytes little, so
+  // the trips dominate (40 gate pages at 50 ms per trip in workerd: median
+  // 835 -> 693 ms, slowest 2,223 -> 1,529 ms; trips 9/10/22 -> 7/8/15).
   const live = new LiveStoreDriver(base, {
     ringAll,
     signal: opts.signal,
     compact: env?.DECKO_LIVE_COMPACT !== "0",
-    identityRing: env?.DECKO_LIVE_IDENTITY_RING !== "0",
+    identityRing: env?.DECKO_LIVE_IDENTITY_RING === "1",
   });
   const passes: LivePassReport[] = [];
   // Default: never switch (collect mode throughout). With lazy structure
