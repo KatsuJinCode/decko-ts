@@ -395,8 +395,18 @@ export function templateReferenceNames(
   // every seated card on every render, and the request-local live render
   // re-renders the page once per discovery pass. A result that dropped an
   // unresolved mark is not memoized: a later read may resolve it.
-  const memo = DeckoName.requestMemo<readonly string[]>(TEMPLATE_REFERENCE_MEMO);
-  const memoKey = memo === undefined ? "" : `${contextName?.s ?? ""}\n${templateContent}`;
+  // Keyed by the template string first: its hash is computed once per string
+  // object, where a concatenated key would be re-hashed on every call.
+  const byTemplate = DeckoName.requestMemo<Map<string, readonly string[]>>(TEMPLATE_REFERENCE_MEMO);
+  let memo: Map<string, readonly string[]> | undefined;
+  if (byTemplate !== undefined) {
+    memo = byTemplate.get(templateContent);
+    if (memo === undefined) {
+      memo = new Map();
+      byTemplate.set(templateContent, memo);
+    }
+  }
+  const memoKey = contextName?.s ?? "";
   const hit = memo?.get(memoKey);
   if (hit !== undefined) return [...hit];
   const names: string[] = [];

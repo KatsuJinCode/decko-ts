@@ -149,6 +149,10 @@ try {
     t0 = performance.now();
     cpu0 = process.cpuUsage();
     const r = await liveRenderPage(deck.fetcher.driver, page, (d) => bootEdgeServingEngines(d), {});
+    const cpu1 = process.cpuUsage(cpu0);
+    extra.process_cpu_ms = Math.round((cpu1.user + cpu1.system) / 1000);
+    extra.pass_cpu_ms = r.passes.reduce((a, p) => a + p.cpu_ms, 0);
+    extra.final_pass_ms = r.passes[r.passes.length - 1]?.cpu_ms;
     html = applyServedEnvironmentDeltas(r.html);
     extra.choice = r.choice;
     extra.passes = r.passes.map((p) => `${p.kind}:${p.cpu_ms}ms:${p.recorded}`).join(" ");

@@ -734,6 +734,23 @@ export class DeckoName {
   /** interpret contextual name; string result (contextual.rb #absolute). */
   absolute(context?: Nameish): string {
     const contextName = DeckoName.parse(context ?? "");
+    // Request-scoped memo (DeckoName.requestMemo), shared by every pass of a
+    // live render: the result is a function of the two names' texts and the
+    // inflection tables only, except for the _user and _main parts, which
+    // read the name environment and are never memoized.
+    const memo = DeckoName.requestMemo<string>(ABSOLUTE_MEMO);
+    if (memo === undefined || this.parts.some((part) => ENV_PART.test(part))) {
+      return this.absoluteUncached(contextName);
+    }
+    const memoKey = `${this.s}\n${contextName.s}`;
+    const hit = memo.get(memoKey);
+    if (hit !== undefined) return hit;
+    const resolved = this.absoluteUncached(contextName);
+    memo.set(memoKey, resolved);
+    return resolved;
+  }
+
+  private absoluteUncached(contextName: DeckoName): string {
     const newParts = this.parts.map((part) =>
       absolutizeContextualPart(part, contextName),
     );
@@ -972,6 +989,11 @@ export class DeckoName {
     return DeckoName.baseParse(rubySucc(this.s));
   }
 }
+
+/** Owner of absolute()'s request-scoped memo. */
+const ABSOLUTE_MEMO = {};
+/** Parts whose absolutized form reads the name environment. */
+const ENV_PART = /^_(user|main)$/i;
 
 /** contextual.rb #absolutize_contextual_parts case logic for one part. */
 function absolutizeContextualPart(part: string, context: DeckoName): string {

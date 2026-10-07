@@ -1,3 +1,4 @@
+import { DeckoName } from "../name.js";
 // Nest-reference parsing: TypeScript port of the {{inclusion}} chunk machinery.
 //
 // Truth source (read directly from the installed gems):
@@ -148,6 +149,30 @@ export interface ContentPiece {
 }
 
 export function scanNests(content: string): ContentPiece[] {
+  // Request-scoped memo (DeckoName.requestMemo), shared by every pass of a
+  // live render: the pieces are a function of the content text alone. A
+  // memoized result is deep-frozen, so no caller can change what a later
+  // caller reads (a write would throw, never pass silently).
+  const memo = DeckoName.requestMemo<ContentPiece[]>(SCAN_NESTS_MEMO);
+  if (memo === undefined) return scanNestsUncached(content);
+  const hit = memo.get(content);
+  if (hit !== undefined) return hit;
+  const pieces = deepFreeze(scanNestsUncached(content));
+  memo.set(content, pieces);
+  return pieces;
+}
+
+const SCAN_NESTS_MEMO = {};
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const v of Object.values(value as Record<string, unknown>)) deepFreeze(v);
+  }
+  return value;
+}
+
+function scanNestsUncached(content: string): ContentPiece[] {
   const pieces: ContentPiece[] = [];
   let last = 0;
   for (const match of content.matchAll(NEST_FULL_REGEXP)) {
