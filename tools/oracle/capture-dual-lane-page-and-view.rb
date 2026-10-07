@@ -28,7 +28,10 @@
 #         ActiveSupport::Testing::TimeHelpers#travel_to pinned to
 #         FROZEN_EPOCH -- a constant chosen once, never moved. Photographs
 #         carry no wall clock; the frozen epoch is printed at start so any
-#         clock-bearing bytes are self-identifying.
+#         clock-bearing bytes are self-identifying. travel_to does not reach
+#         Date.parse's completion of a partial date (done in C from the real
+#         clock), so the rig completes those from the frozen day itself
+#         (frozen_date_parse below).
 #
 # WHY THIS EXISTS: the single-lane instrument (capture-disputed-corpus-raw.rb)
 # captured only bare `card.format.render(view)` bytes -- no layout resolver, no
@@ -200,14 +203,61 @@ module CaptureFrozenClock
   extend ActiveSupport::Testing::TimeHelpers
 
   class << self
+    def frozen?
+      @frozen == true
+    end
+
     def with_frozen_clock
       travel_to(FROZEN_EPOCH)
+      @frozen = true
       yield
     ensure
+      @frozen = false
       travel_back
     end
   end
 end
+
+# BEGIN frozen_date_parse (evaluated by capture-frozen-date-parse.test.rb)
+# travel_to stubs Date.today, but Date.parse completes a partial date (no year,
+# or no year and month) inside C (date_core.c rt_complete_frags calls
+# date_s_today directly), which reads the real wall clock. So
+# `Date.parse("20-0405")` (card-mod-date set/type/date.rb view :core; card
+# 35469) photographed the capture day's month ("October 20, 2026" on a
+# 2026-10-06 capture) while every other clock-bearing byte showed the frozen
+# epoch. While the clock is frozen, Date.parse completes the civil shapes the
+# C code completes from today -- {mday}, {mon}, {mon, mday} -- from the stubbed
+# Date.today instead, exactly as rt_complete_frags does (leading missing civil
+# fields from today, trailing ones default to 1). Any other partial shape that
+# would read today raises, so a wall-clock byte can never be photographed
+# silently. Inputs that carry a year (or jd / cwyear / seconds) never read
+# today and go straight to the C implementation.
+module CaptureFrozenDateParse
+  NO_TODAY_KEYS = %i[year jd cwyear seconds].freeze
+  OTHER_DATE_KEYS = %i[yday cweek cwday wday wnum0 wnum1].freeze
+
+  def parse(string = "-4712-01-01", comp = true, start = Date::ITALY, limit: 128)
+    return super unless CaptureFrozenClock.frozen?
+
+    frags = Date._parse(string, comp, limit: limit)
+    # Nothing parsed: the C code raises "invalid date" without reading today.
+    return super if frags.empty? || NO_TODAY_KEYS.any? { |k| frags.key?(k) }
+
+    unless (frags.keys & OTHER_DATE_KEYS).empty? && (frags.key?(:mon) || frags.key?(:mday))
+      raise "CaptureFrozenDateParse: Date.parse(#{string.inspect}) would complete " \
+            "#{frags.inspect} from the wall clock; this shape is not ported"
+    end
+
+    today = Date.today
+    mon = frags[:mon] || today.mon
+    mday = frags[:mday] || 1
+    raise Date::Error, "invalid date" unless Date.valid_civil?(today.year, mon, mday, start)
+
+    Date.civil(today.year, mon, mday, start)
+  end
+end
+Date.singleton_class.prepend(CaptureFrozenDateParse)
+# END frozen_date_parse
 
 # ---- input -------------------------------------------------------------------
 if SAMPLE_PATH
