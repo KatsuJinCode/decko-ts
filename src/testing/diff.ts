@@ -41,6 +41,17 @@ export const RANDOMIZED_SLOT_ATTRIBUTE = 'data-slot-id="RANDOMIZED"';
 const SLOT_ID_PATTERN = /data-slot-id=(['"])([0-9a-f]{20})\1/g;
 
 /**
+ * The same slot id one level of attribute escaping down. A slot rendered
+ * INSIDE an attribute value (a link title carrying a nest: the Item+short
+ * structure's `[[_left|{{_left+image}}]]`, whose title Rails escapes only for
+ * quotes) keeps its random id behind `&quot;`, which the capture's regex never
+ * saw. Same per-process value and the same strict 20-hex shape, normalized to
+ * the escaped placeholder on both sides.
+ */
+const ESCAPED_SLOT_ID_PATTERN = /data-slot-id=&quot;([0-9a-f]{20})&quot;/g;
+const ESCAPED_RANDOMIZED_SLOT_ATTRIBUTE = "data-slot-id=&quot;RANDOMIZED&quot;";
+
+/**
  * The accordion group-hash rule, mirrored from the two admin-card capture
  * scripts (tests/card/mod-loader/oracle-capture-admin-card-views.rb:39 and
  * oracle-capture-admin-view-pins.rb:42) and from the four TS pin suites that
@@ -100,7 +111,9 @@ export function normalizeAccordionGroupIds(html: string): string {
  * Attribute presence is preserved - this only rewrites the value.
  */
 export function normalizeSlotIds(html: string): string {
-  return html.replace(SLOT_ID_PATTERN, RANDOMIZED_SLOT_ATTRIBUTE);
+  return html
+    .replace(SLOT_ID_PATTERN, RANDOMIZED_SLOT_ATTRIBUTE)
+    .replace(ESCAPED_SLOT_ID_PATTERN, ESCAPED_RANDOMIZED_SLOT_ATTRIBUTE);
 }
 
 /**

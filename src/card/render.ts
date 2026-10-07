@@ -8050,7 +8050,20 @@ export class RenderEngine implements RenderEngineLike {
         const fetched = await this.fetcher.fetchByName(altered, { new: {} });
         if (fetched !== undefined) {
           if (fetched.typeId === undefined) {
-            const defaulted = this.newCardDefaultType(altered);
+            // The *type plus right candidates anchor on the altered name's
+            // LEFT card's type (set_pattern left_type). `Collection+Item`'s
+            // `"append":"short"` lists `<item>+short`, whose template is
+            // `Item+short+*type plus right+*structure` (HTML-typed); without
+            // the left type the walk read the registry's RichText default,
+            // missed it, and typed the virtual card RichText.
+            const leftKey = altered.leftName?.key;
+            const leftRecord =
+              leftKey !== undefined && leftKey !== ""
+                ? (await this.fetcher.fetchByName(leftKey)) ?? undefined
+                : undefined;
+            const leftTypeName =
+              leftRecord !== undefined ? (await this.enrichAndStore(leftRecord)).typeName : undefined;
+            const defaulted = this.newCardDefaultType(altered, leftTypeName);
             if (defaulted !== undefined) fetched.typeId = defaulted.typeId;
           }
           if (fetched.dbContent === undefined || fetched.dbContent === "") {

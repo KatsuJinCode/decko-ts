@@ -2569,11 +2569,13 @@ export class RenderFormat {
       // carry complete links of its own).
       out += linkPass(opener.prefix);
       let label = "";
+      let sawNest = false;
       let tail: string | undefined;
       let j = i + 1;
       while (j < pieces.length) {
         const inner = pieces[j]!;
         if (inner.kind === "nest") {
+          sawNest = true;
           if (inner.nest !== undefined) label += this.contentNest(inner);
           j += 1;
           continue;
@@ -2599,7 +2601,7 @@ export class RenderFormat {
         i += 1;
         continue;
       }
-      out += this.renderLinkChunk(opener.target, label);
+      out += this.renderLinkChunk(opener.target, label, sawNest);
       out += linkPass(tail);
       i = j;
     }
@@ -2699,7 +2701,7 @@ export class RenderFormat {
    * (links.rb add_known_or_wanted_class) and the title option carries the
    * rendered label, so the label bytes sit inside the card-title span.
    */
-  private renderLinkChunk(rawTarget: string, label: string): string {
+  private renderLinkChunk(rawTarget: string, label: string, labelHtmlSafe = false): string {
     const target = rawTarget.trim();
     if (/^(\/|https?:|mailto:)/.test(target)) {
       if (/^https?:/.test(target)) {
@@ -2715,7 +2717,10 @@ export class RenderFormat {
       const href = `/${target.replace(/^\/+/, "")}`;
       return `<a class="internal-link" href="${h(href)}">${label}</a>`;
     }
-    const named = this.engine.fetchRenderCard(target);
+    // reference.rb referee_name: the chunk names the target ABSOLUTIZED
+    // against the referencing card (`[[_left|{{_left+image}}]]` inside the
+    // virtual `<item>+short` names `<item>`), as the plain link pass does.
+    const named = this.engine.fetchRenderCard(absolutizeWikiTarget(target, this.card.name));
     // view-fail class V4: a map miss is NOT absence — Ruby's Card.known?
     // (links.rb:140-144) is a live fetch. The codename registry's loaded
     // memo confirms codenamed cards (the static help popover's
@@ -2774,9 +2779,18 @@ export class RenderFormat {
     // the whole delta is that query). Card 34824 `Eagle+description` is the
     // authored mark: `[[Eagle+:members|Eagle users]]`.
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
+    // wrapped_title's title attribute goes through Rails tag_option: a
+    // label rendered from content with a nest is an html_safe buffer, so
+    // only its double quotes are escaped (the Item+short structure's
+    // `[[_left|{{_left+image}}]]` titles the raw denied-nest markup); a
+    // plain-text label is fully escaped.
+    const titleAttr = labelHtmlSafe && label !== "" ? label.replace(/"/g, "&quot;") : h(label || target);
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${h(label || target)}">${label}</span>` +
+      // wrapped_title (title.rb): the inner text is the title's name parts
+      // joined by `<span>+</span>`, over the whole rendered label (the
+      // attribute above keeps the unsplit bytes).
+      `<span class="card-title" title="${titleAttr}">${wrappedTitleInner(label)}</span>` +
       `</a>`
     );
   }
@@ -4320,6 +4334,17 @@ export function expandContentLinks(
  *  verbatim (authored form) - only the fetch/href side resolves. Parse
  *  failures (unknown codename marks etc.) keep the authored form; the
  *  fetch miss then decides, exactly the pre-context behavior. */
+/** link.rb#options' label fallback, `@name.to_name.fully_stripped`, for a
+ *  link with no label. Unparseable marks keep the authored bytes. */
+function linkFallbackTitle(target: string): string {
+  try {
+    return DeckoName.parse(target).fullyStripped.s;
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) return target;
+    throw err;
+  }
+}
+
 function absolutizeWikiTarget(target: string, context: DeckoName | undefined): string {
   if (context === undefined) return target;
   try {
@@ -4592,7 +4617,11 @@ export function expandWikiLinks(
     // corpus has no such row; the R17 probe shows the warm-map answer
     // byte-matches). The earlier hardcoded known-card was the pre-fix
     // shape (every name link claimed known).
-    const displayText = (label ?? targetTrimmed).trim();
+    // link.rb#options: `title: link_text || @name.to_name.fully_stripped` —
+    // with no label, the contextual parts (`_left`, `_self`, ...) and the
+    // blank parts are dropped (cardname variants.rb fully_stripped), so a
+    // bare `[[_left]]` titles "" (the Item+short structure's `<h2>`).
+    const displayText = label !== undefined ? label.trim() : linkFallbackTitle(targetTrimmed);
     // the span's title is NOT the authored bytes — it is
     // title_in_context(voo.title) as run inside the nest subformat
     // (linkTitleInContext above). The nest's `card.name` is the resolved
