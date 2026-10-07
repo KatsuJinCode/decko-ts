@@ -2883,6 +2883,9 @@ export class RenderEngine implements RenderEngineLike {
     if (universe === undefined) return;
     for (let round = 0; round < 8; round++) {
       const toFetch = new Map<string, string>(); // ref name -> key
+      // Existing map cards this round's substituted templates reach, seated
+      // into this render's surface (see the ref loop below).
+      let seatedExisting = false;
       // SWEEP-SURFACE (renderSeats): process only cards THIS render seated.
       // The done-sets below are engine-lifetime, so a card seated by an
       // earlier render is either processed already or is that render's
@@ -2933,6 +2936,23 @@ export class RenderEngine implements RenderEngineLike {
             }
             throw err;
           }
+          // A template ref to a card an EARLIER render stored is still this
+          // render's nest: closureSurface ran before the substitution, so it
+          // never saw this edge, and enrichAndStore seats only on insert. Seat
+          // the card's closure here, so this render's sweeps (structure, link
+          // targets, verdicts) process it exactly as a fresh engine would.
+          // Without this, `sabrina mejias`'s `+agree` (whose
+          // `agree+*right+*structure` nests `Intellectual Property+Statement`)
+          // rendered that card's links as wanted on any warm engine.
+          if (refKey !== "" && this.renderCards.has(refKey) && !this.renderSeats.has(refKey)) {
+            for (const k of this.closureSurfaceFromKey(refKey)) {
+              if (!this.renderSeats.has(k)) {
+                this.renderSeats.add(k);
+                seatedExisting = true;
+              }
+            }
+            continue;
+          }
           if (
             refKey === "" ||
             this.renderCards.has(refKey) ||
@@ -2944,7 +2964,10 @@ export class RenderEngine implements RenderEngineLike {
           toFetch.set(refKey, refName);
         }
       }
-      if (toFetch.size === 0) return;
+      if (toFetch.size === 0) {
+        if (seatedExisting) continue;
+        return;
+      }
       // Simple refs: ONE batched IN-query per round (the prefetch fallback's
       // verifyClosure shape — never one query per name). Compound refs ride
       // the fetch ladder individually (corpus templates carry simple and
@@ -3002,7 +3025,7 @@ export class RenderEngine implements RenderEngineLike {
         await this.enrichAndStore(fetched);
         enrichedAny = true;
       }
-      if (!enrichedAny) return; // all misses recorded; nothing new to process
+      if (!enrichedAny && !seatedExisting) return; // all misses recorded; nothing new to process
     }
   }
 
@@ -7507,10 +7530,14 @@ export class RenderEngine implements RenderEngineLike {
    *  search-card gate is a warmth question, not reachability, and does not
    *  belong here. Memory-only, bounded by the closure the map holds. */
   private closureSurface(record: CardRecord): Set<string> {
+    if (record.key === undefined || record.key === "") return new Set<string>();
+    return this.closureSurfaceFromKey(record.key);
+  }
+
+  private closureSurfaceFromKey(rootKey: string): Set<string> {
     const surface = new Set<string>();
-    if (record.key === undefined || record.key === "") return surface;
-    if (!this.renderCards.has(record.key)) return surface;
-    const queue: string[] = [record.key];
+    if (!this.renderCards.has(rootKey)) return surface;
+    const queue: string[] = [rootKey];
     while (queue.length > 0) {
       const key = queue.pop() as string;
       if (surface.has(key)) continue;
