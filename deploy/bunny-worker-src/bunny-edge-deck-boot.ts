@@ -114,14 +114,22 @@ export async function bootCorpusDeckEngines(
   // is one small statement at boot and keeps the first request off the
   // lazy path.
   fetcher.installNameEnvironment();
-  await fetcher.codenames.ensureLoaded();
 
   // Virtual-card rule universe: one indexed statement, composed on the
   // driver this boot owns. Without the hook, FetchEngine.fetchByName
   // answers undefined for every missing-row + structure-rule junction and
   // the serving path renders them as missing (the person-page section
   // drop).
-  const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+  //
+  // The codename load and the universe statement are independent (the
+  // universe is plain SQL keyed by setting name), so they go out together:
+  // one dependency level instead of two on every cold isolate. Measured on
+  // Bunny, the sequential pair cost about 110 ms (the first carrying the
+  // connection set-up), and most requests land on a fresh isolate.
+  const [, [universeResult]] = await Promise.all([
+    fetcher.codenames.ensureLoaded(),
+    driver.batch([structureRuleUniverseStatement()]),
+  ]);
   fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
     contents: structureUniverseFromResults(universeResult),
     ruleTypeIds: structureRuleTypesFromResults(universeResult),
