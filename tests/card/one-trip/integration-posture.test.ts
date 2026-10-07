@@ -35,6 +35,7 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 const REPORT_PATH = fileURLToPath(
@@ -68,7 +69,7 @@ describe.skipIf(!hasMirror)("one-trip wired render path: OFF vs ON postures (tri
 
   beforeAll(async () => {
     const corpus = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
-    sideDir = mkdtempSync(join(tmpdir(), "one-trip-integration-"));
+    sideDir = scratchDir("one-trip-integration-");
     sidePath = join(sideDir, "one-trip-closure-side.sqlite3");
     const side = new LocalSqliteDriver({ path: sidePath });
     await buildOneTripClosure({ corpus, side, pageNames: [...PROBE_PAGES] });

@@ -75,6 +75,7 @@ import {
   splitSqlStatements,
   CountingRenderDriver,
 } from "../../card/render/render-test-storage.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // ids follow tests/card/permissions/read-permission.test.ts:5-27 so the
 // permission math reads the same way here:
@@ -106,7 +107,7 @@ let runtimeSeq = 0;
 /** Open a runtime on a FRESH temp database, schema applied. */
 function openRuntime(): FileRuntime {
   runtimeSeq += 1;
-  const dir = mkdtempSync(join(tmpdir(), `decko-freshness-${runtimeSeq}-`));
+  const dir = scratchDir(`decko-freshness-${runtimeSeq}-`);
   const dbPath = join(dir, "deck.sqlite");
   const driver = new LocalSqliteDriver({ path: dbPath });
   const engine = new RenderEngine(new FetchEngine(driver));

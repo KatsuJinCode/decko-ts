@@ -31,6 +31,7 @@ import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
 import type { Actor, CanWriteHook } from "../../src/card/actions/types.js";
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import { handleAttachmentRoute, type FileRouteDeps } from "../../src/server/file-routes.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 // ---------------------------------------------------------------------------
 // Storage boot + synthetic fixture seeds.
@@ -212,7 +213,7 @@ beforeAll(async () => {
   await seedSimpleCard(driver, { id: 50, name: "Meeting Notes", typeId: FILE_TYPE_ID });
   await seedSimpleCard(driver, { id: 51, name: "Banner Art", typeId: IMAGE_TYPE_ID });
 
-  filesDir = mkdtempSync(join(tmpdir(), "decko-ts-file-routes-test-"));
+  filesDir = scratchDir("decko-ts-file-routes-test-");
   store = new LocalAttachmentStore(filesDir);
   fetchEngine = new FetchEngine(driver);
 });

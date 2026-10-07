@@ -33,14 +33,15 @@ import {
   EXPECTED_TRANSCRIPT,
   type DeckDriver,
 } from "./adapter-test-deck.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // -- Local SQLite (temp file) -------------------------------------------------
 
-const sqliteTempDir = fs.mkdtempSync(path.join(os.tmpdir(), "decko-deck-parity-sqlite-"));
+const sqliteTempDir = scratchDir("decko-deck-parity-sqlite-");
 
 // -- @libsql/client file: cross-check wrapper ---------------------------------
 
-const libsqlTempDir = fs.mkdtempSync(path.join(os.tmpdir(), "decko-deck-parity-libsql-"));
+const libsqlTempDir = scratchDir("decko-deck-parity-libsql-");
 const libsqlDbPath = path.join(libsqlTempDir, "deck.db").replace(/\\/g, "/");
 
 class LibSqlClientFileDriver implements SQLDatabaseDriver {

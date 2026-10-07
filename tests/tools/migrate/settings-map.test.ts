@@ -16,9 +16,10 @@ import {
   isSettingsTable,
 } from "../../../tools/migrate/settings-map.mjs";
 import { inventorySource } from "../../../tools/migrate/source-sqlite.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 function makeDbWithSettings(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-settings-"));
+  const dir = scratchDir("decko-settings-");
   const path = join(dir, "src.sqlite");
   const db = new Database(path);
   db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)`);
@@ -82,7 +83,7 @@ describe("inventorySettings", () => {
   });
 
   it("returns an empty inventory when there are no settings tables", () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-no-settings-"));
+    const dir = scratchDir("decko-no-settings-");
     const path = join(dir, "src.sqlite");
     const db = new Database(path);
     db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)`);

@@ -12,9 +12,10 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { hashTable, proveDeterminism } from "../../../tools/migrate/determinism.mjs";
 import { importFromSqlite } from "../../../tools/migrate/generalized-import.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 function makeSourceDb(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-det-src-"));
+  const dir = scratchDir("decko-det-src-");
   const path = join(dir, "src.sqlite");
   const db = new Database(path);
   db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, content TEXT, type_id INTEGER, trash INTEGER, left_id INTEGER, right_id INTEGER, creator_id INTEGER, updater_id INTEGER, created_at TEXT, updated_at TEXT)`);
@@ -31,7 +32,7 @@ function makeSourceDb(): string {
   return path;
 }
 
-const REPO_ROOT = mkdtempSync(join(tmpdir(), "decko-det-repo-"));
+const REPO_ROOT = scratchDir("decko-det-repo-");
 // The schema comes from THIS worktree, resolved relative to this file. The
 // prior default was the absolute `C:/localProjects/decko-ts/db/schema.sqlite.sql`
 // — a path into the stale machine-root checkout, which is a live git repo
@@ -46,7 +47,7 @@ const DDL_PATH = process.env.DECKO_MIGRATE_DDL ?? DEFAULT_DDL_PATH;
 
 describe("hashTable", () => {
   it("produces a deterministic per-row hash and a single total hash", () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-det-ht-"));
+    const dir = scratchDir("decko-det-ht-");
     const path = join(dir, "db.sqlite");
     const db = new Database(path);
     db.exec(`CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT, n INTEGER)`);

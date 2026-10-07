@@ -52,6 +52,7 @@ import {
   type EngineBoot,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const PAGE = "Home";
 /** The signed-in viewer the pin renders as: actor 583, the deck's no-role
@@ -263,7 +264,7 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
       "bytes identical to the signed-in ladder; the per-viewer residue is only the party-bound shapes",
     async () => {
       expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
-      dir = mkdtempSync(join(tmpdir(), "perviewer-seat-pin-"));
+      dir = scratchDir("perviewer-seat-pin-");
 
       // ---- the inline store + the plan, at the store-build posture -------
       const inlineDbPath = await buildAndSeedInlineStore(dir);
@@ -402,7 +403,7 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
     // move detected, no reset, no re-seat, and the map serves pre-edit rows
     // indefinitely (397-trip live residue on the next render).
     expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
-    dir = mkdtempSync(join(tmpdir(), "perviewer-seat-stamp-guard-"));
+    dir = scratchDir("perviewer-seat-stamp-guard-");
     const inlineDbPath = await buildAndSeedInlineStore(dir);
     const planEntries = await recordAndSeedPlan(inlineDbPath);
     const stampMembers = planEntries.filter((e) => /deck_data_version/i.test(e.sql));

@@ -34,13 +34,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { dumpFile, cardsInsert, actsInsert } from "./synthetic-dump.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const CLI = join(REPO_ROOT, "tools", "migrate", "import-deck.mjs");
 
 const dirs: string[] = [];
 function makeDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-importdeck-"));
+  const dir = scratchDir("decko-importdeck-");
   dirs.push(dir);
   return dir;
 }

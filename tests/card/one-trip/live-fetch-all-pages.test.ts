@@ -45,6 +45,7 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** An unplanned page: real article content, NO one_trip_render_plans rows
  *  (the deck carries the 45 planned pages' plans; this card is not one). */
@@ -108,7 +109,7 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
     pageNames: readonly string[],
     withPlansTable: boolean,
   ): Promise<string> {
-    if (dir === "") dir = mkdtempSync(join(tmpdir(), "live-fetch-all-pages-"));
+    if (dir === "") dir = scratchDir("live-fetch-all-pages-");
     const sidePath = join(dir, `one-trip-side-${pageNames.join("-")}.sqlite3`);
     const inlineDbPath = join(dir, `deck-inline-${pageNames.join("-")}.sqlite3`);
     const mirror = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
@@ -196,7 +197,7 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
       "zero plan-table reads, head + 1 slice batch, bytes equal to OFF",
     async () => {
       expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
-      dir = mkdtempSync(join(tmpdir(), "live-fetch-all-pages-"));
+      dir = scratchDir("live-fetch-all-pages-");
       // The unplanned store carries the side DDL's plan table EMPTY — the
       // zero-reads assertion below observes the live posture's choice
       // against a table it could have read.

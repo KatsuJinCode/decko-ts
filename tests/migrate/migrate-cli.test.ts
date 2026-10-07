@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { dumpFile, cardsInsert } from "./synthetic-dump.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -34,7 +35,7 @@ afterAll(() => {
 
 describe("migrate CLI", () => {
   it("runs dump -> out -> verify end to end and writes the report", () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-cli-"));
+    const dir = scratchDir("decko-cli-");
     dirs.push(dir);
     const dumpPath = join(dir, "deck.sql");
     const outPath = join(dir, "deck.sqlite");
@@ -97,7 +98,7 @@ describe("migrate CLI", () => {
   }, 180_000);
 
   it("refuses an existing target without --append", () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-cli-"));
+    const dir = scratchDir("decko-cli-");
     dirs.push(dir);
     const dumpPath = join(dir, "deck.sql");
     const outPath = join(dir, "occupied.sqlite");

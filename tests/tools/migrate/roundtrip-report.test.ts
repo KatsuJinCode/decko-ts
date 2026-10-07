@@ -13,6 +13,7 @@ import {
   buildRoundtripReport,
   renderRoundtripMd,
 } from "../../../tools/migrate/roundtrip-report.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const TARGET_TABLES = [
   "cards", "card_acts", "card_actions", "card_changes",
@@ -22,7 +23,7 @@ const TARGET_TABLES = [
 ];
 
 function makeSourceDb(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-rt-"));
+  const dir = scratchDir("decko-rt-");
   const path = join(dir, "src.sqlite");
   const db = new Database(path);
   db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, content TEXT)`);

@@ -49,6 +49,7 @@ import {
   mirrorAvailable,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 
@@ -65,7 +66,7 @@ describe.skipIf(!hasMirror)("inline chunked fetch: byte-equal to the single-row 
   let inlineDb: SQLDatabaseDriver;
 
   beforeAll(async () => {
-    dir = mkdtempSync(join(tmpdir(), "one-trip-inline-"));
+    dir = scratchDir("one-trip-inline-");
     corpusMirror = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
 
     // 1. Build the derived tables once, into a side file (the same build the

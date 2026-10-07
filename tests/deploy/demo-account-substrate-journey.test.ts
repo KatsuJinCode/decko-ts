@@ -58,6 +58,7 @@ import {
   signinAccount,
 } from "../../src/card/auth/index.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -106,7 +107,7 @@ function armDemoProfile(): void {
  * proof needs.
  */
 async function deck(opts: { withSubstrate?: boolean; applySubstrateTwice?: boolean } = {}): Promise<Deck> {
-  const dir = mkdtempSync(join(tmpdir(), "decko-demo-account-"));
+  const dir = scratchDir("decko-demo-account-");
   const path = join(dir, "demo.sqlite");
   openDecks.push(path);
 

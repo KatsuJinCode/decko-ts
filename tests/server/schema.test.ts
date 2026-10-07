@@ -22,6 +22,7 @@ import {
   type CardActionsRow,
   type CardChangesRow,
 } from "../../src/server/schema.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
@@ -78,7 +79,7 @@ let dbPath: string;
 let db: InstanceType<typeof Database>;
 
 beforeAll(() => {
-  dir = mkdtempSync(join(tmpdir(), "decko-ts-schema-"));
+  dir = scratchDir("decko-ts-schema-");
   dbPath = join(dir, "schema-test.sqlite");
   db = new Database(dbPath);
   db.exec(DDL);

@@ -61,6 +61,7 @@ import { type WriteRouteContext } from "../../src/server/write-routes.js";
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import { DeckoName } from "../../src/card/name.js";
 import { makeWriteRouteServer as makeServer } from "./write-routes-test-bridge.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const SET_TYPE_ID = 2;
 const FILE_TYPE_ID = 30;
@@ -232,8 +233,8 @@ beforeAll(async () => {
   await runAuthMigrations(webStorage.counting);
   await seedUploadDeck(webStorage);
 
-  filesDir = mkdtempSync(join(tmpdir(), "decko-ts-uploads2-local-"));
-  webFilesDir = mkdtempSync(join(tmpdir(), "decko-ts-uploads2-web-"));
+  filesDir = scratchDir("decko-ts-uploads2-local-");
+  webFilesDir = scratchDir("decko-ts-uploads2-web-");
 
   ctx = {
     driver: storage.counting,

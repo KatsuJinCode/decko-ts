@@ -19,6 +19,7 @@ import {
   cardsInsert,
   actsInsert,
 } from "./synthetic-dump.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
@@ -67,7 +68,7 @@ async function buildVerifiedFixture(dir: string) {
 
 describe("verifyMigration", () => {
   it("reports full parity for a faithful import", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-verify-"));
+    const dir = scratchDir("decko-verify-");
     dirs.push(dir);
     const { dumpPath, driver, stats } = await buildVerifiedFixture(dir);
     const reportPath = join(dir, "report.json");
@@ -102,7 +103,7 @@ describe("verifyMigration", () => {
   }, 60000);
 
   it("detects tampering (parity failures surface, not hide)", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-verify-"));
+    const dir = scratchDir("decko-verify-");
     dirs.push(dir);
     const { dumpPath, driver, stats } = await buildVerifiedFixture(dir);
     // tamper: delete a card behind the verifier's back
@@ -122,7 +123,7 @@ describe("verifyMigration", () => {
   }, 60000);
 
   it("writes a CONTENT-FREE report (DATA RULE audit)", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-verify-"));
+    const dir = scratchDir("decko-verify-");
     dirs.push(dir);
     const { dumpPath, driver, stats } = await buildVerifiedFixture(dir);
     const reportPath = join(dir, "report.json");

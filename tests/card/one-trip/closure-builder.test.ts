@@ -31,6 +31,7 @@ import {
   isContentIncludeFetch,
   mirrorAvailable,
 } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const hasMirror = mirrorAvailable();
 
@@ -42,7 +43,7 @@ describe.skipIf(!hasMirror)("one-trip closure builder (trial-deck mirror)", () =
   const baselines = new Map<string, Awaited<ReturnType<typeof captureBaselineRender>>>();
 
   beforeAll(async () => {
-    const dir = mkdtempSync(join(tmpdir(), "one-trip-builder-"));
+    const dir = scratchDir("one-trip-builder-");
     sidePath = join(dir, "one-trip-closure-side.sqlite3");
     corpusDriver = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
     sideDriver = new LocalSqliteDriver({ path: sidePath });

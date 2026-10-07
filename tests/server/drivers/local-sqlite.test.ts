@@ -8,8 +8,9 @@ import os from "node:os";
 import path from "node:path";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { runDriverConformance } from "./conformance.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
-const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "decko-local-sqlite-test-"));
+const tempDir = scratchDir("decko-local-sqlite-test-");
 const dbPath = path.join(tempDir, "decko-test.db");
 
 afterAll(() => {

@@ -63,6 +63,7 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const PAGE = "Home";
 
@@ -184,7 +185,7 @@ describe("the seat head carries the freshness stamp and the gate count (stamp-as
 
   it("a planned cold render pays zero trips for the stamp read and the gate count, and a moved stamp is still detected", async () => {
     expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
-    dir = mkdtempSync(join(tmpdir(), "stamp-as-column-pin-"));
+    dir = scratchDir("stamp-as-column-pin-");
     inlineDbPath = await buildStampedInlineStore(dir);
 
     // ---- render 1: the cold planned render -------------------------------

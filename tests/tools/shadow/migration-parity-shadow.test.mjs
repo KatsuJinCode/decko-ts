@@ -33,6 +33,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connect } from 'node:net';
+import { scratchDir } from '../../support/scratch-dir.mjs';
 
 import {
   DEFAULT_PROBE_ROUTES,
@@ -74,7 +75,7 @@ const slotHtml = (ch) => '<i ' + slotAttr(ch) + '></i>';
 // --- scratch dirs (cleaned at the end) ---
 const scratchRoots = [];
 function scratch(label) {
-  const dir = mkdtempSync(join(tmpdir(), 'mps-pin-' + label + '-'));
+  const dir = scratchDir('mps-pin-' + label + '-');
   scratchRoots.push(dir);
   return dir;
 }

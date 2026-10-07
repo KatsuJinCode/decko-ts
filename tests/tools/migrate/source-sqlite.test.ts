@@ -12,9 +12,10 @@ import {
   inventorySource,
   sourceTableRows,
 } from "../../../tools/migrate/source-sqlite.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 function makeDb(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-source-sqlite-"));
+  const dir = scratchDir("decko-source-sqlite-");
   const path = join(dir, "src.sqlite");
   const db = new Database(path);
   db.exec(`CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, content TEXT, type_id INTEGER)`);
@@ -89,7 +90,7 @@ describe("sourceTableRows", () => {
   });
 
   it("yields zero rows for an empty table", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "decko-source-empty-"));
+    const dir = scratchDir("decko-source-empty-");
     const path = join(dir, "empty.sqlite");
     const db = new Database(path);
     db.exec(`CREATE TABLE empty (id INTEGER PRIMARY KEY)`);

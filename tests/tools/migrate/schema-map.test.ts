@@ -17,6 +17,7 @@ import {
   SETTINGS_TABLE_VARIANTS,
   getColumnMap,
 } from "../../../tools/migrate/schema-map.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const TARGET_TABLE_COLUMNS = {
   cards: [
@@ -30,7 +31,7 @@ const TARGET_TABLE_COLUMNS = {
 
 const dirs: string[] = [];
 function makeDb(): string {
-  const dir = mkdtempSync(join(tmpdir(), "decko-schema-map-"));
+  const dir = scratchDir("decko-schema-map-");
   dirs.push(dir);
   const path = join(dir, "src.sqlite");
   const db = new Database(path);

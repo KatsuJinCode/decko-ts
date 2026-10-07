@@ -28,6 +28,7 @@ import {
   PROBE_PAGES,
   mirrorAvailable,
 } from "./one-trip-fixture.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 describe("search-nest posture seam", () => {
   it("defaults to write-time execution (the research verdict's recommendation)", () => {
@@ -46,7 +47,7 @@ describe.skipIf(!mirrorAvailable())("search-nest write-time execution (trial-dec
   let sidePath = "";
 
   beforeAll(async () => {
-    const dir = mkdtempSync(join(tmpdir(), "one-trip-posture-"));
+    const dir = scratchDir("one-trip-posture-");
     sidePath = join(dir, "one-trip-closure-side.sqlite3");
     corpusDriver = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
     sideDriver = new LocalSqliteDriver({ path: sidePath });

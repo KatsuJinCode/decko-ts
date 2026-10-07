@@ -44,6 +44,7 @@ import {
   phaseWeightSec,
   specStageDecision,
 } from "./dual-lane-verifier-fast.mjs";
+import { scratchDir } from "../tests/support/scratch-dir.mjs";
 
 const DEFAULT_48 = Array.from({ length: 48 }, (_, i) => defaultShardName(i));
 const WEIGHTS = buildShardWeights(PASS19_PHASE_WEIGHTS_S);
@@ -191,7 +192,7 @@ describe("instrument-reliability: artifact binding + spec staging", () => {
 
 describe("instrument-reliability: queue runner logs append, never truncate", () => {
   it("a same-id rerun accumulates under an attempt separator instead of destroying the previous attempt's stdout", { timeout: 120_000 }, () => {
-    const queue = fs.mkdtempSync(path.join(os.tmpdir(), "instrrel-queue-"));
+    const queue = scratchDir("instrrel-queue-");
     const sub = (d) => path.join(queue, d);
     for (const d of ["pending", "running", "results", "logs"]) fs.mkdirSync(sub(d), { recursive: true });
     const runner = path.resolve(import.meta.dirname, "test-queue", "run-test-queue-runner.mjs");

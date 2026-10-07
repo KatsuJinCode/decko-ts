@@ -18,6 +18,7 @@ import {
   decodeMysqlEscapes,
 } from "../../tools/migrate/parse-dump.mjs";
 import { BS, dumpFile, sqlTuple } from "./synthetic-dump.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
 
 type Row = { table: string; values: unknown[]; columns: string[] | undefined };
 
@@ -211,7 +212,7 @@ describe("mysqldump INSERT parser", () => {
     const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
-    const dir = mkdtempSync(join(tmpdir(), "decko-parse-"));
+    const dir = scratchDir("decko-parse-");
     try {
       const tuples: string[] = [];
       for (let i = 0; i < 500; i++) {

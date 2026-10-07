@@ -33,6 +33,7 @@ import {
   shouldShadow,
 } from "../../../tools/shadow/shadow-router.mjs";
 import { aggregateLog } from "../../../tools/shadow/shadow-report.mjs";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 // ---------------------------------------------------------------------------
 // Stub server helpers
@@ -118,7 +119,7 @@ beforeAll(async () => {
   rubyUrl = `http://127.0.0.1:${portOf(rubyServer)}`;
   tsUrl = `http://127.0.0.1:${portOf(tsServer)}`;
 
-  logDir = mkdtempSync(join(tmpdir(), "shadow-test-"));
+  logDir = scratchDir("shadow-test-");
   logPath = join(logDir, "shadow.jsonl");
 
   const policy = {

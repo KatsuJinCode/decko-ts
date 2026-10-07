@@ -23,6 +23,7 @@ import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../s
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** The 5 probe pages the lane receipt and the mission name. */
 export const PROBE_PAGES = ["Home", "Aikido", "About", "Eagle", "Taking_Stock"] as const;
@@ -49,7 +50,7 @@ let stampedMirrorCopy: string | undefined;
  *  using MIRROR_COPY_PATH directly. */
 export async function stampedMirrorCopyPath(): Promise<string> {
   if (stampedMirrorCopy === undefined) {
-    const dir = mkdtempSync(join(tmpdir(), "one-trip-stamped-mirror-"));
+    const dir = scratchDir("one-trip-stamped-mirror-");
     stampedMirrorCopy = join(dir, "trial-deck-mirror-stamped.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, stampedMirrorCopy);
     const loader = new LocalSqliteDriver({ path: stampedMirrorCopy });

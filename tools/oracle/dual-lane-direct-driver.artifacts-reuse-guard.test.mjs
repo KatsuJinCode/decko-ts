@@ -45,13 +45,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { priorRunArtifactFiles } from "./dual-lane-direct-driver.mjs";
+import { scratchDir } from "../../tests/support/scratch-dir.mjs";
 
 const DRIVER = fileURLToPath(new URL("./dual-lane-direct-driver.mjs", import.meta.url));
 
 /** One fresh scene: a barren repo (no ground truth at all) and an artifacts
  *  dir seeded the way a first run left it. Caller removes `root`. */
 function makeScene() {
-  const root = mkdtempSync(path.join(tmpdir(), "driver-artifacts-guard-"));
+  const root = scratchDir("driver-artifacts-guard-");
   const repo = path.join(root, "repo");
   const artifacts = path.join(root, "artifacts");
   mkdirSync(repo, { recursive: true });
@@ -147,7 +148,7 @@ describe("priorRunArtifactFiles detection set", () => {
   });
 
   it("ignores files the pipeline never wrote", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "driver-artifacts-guard-"));
+    const root = scratchDir("driver-artifacts-guard-");
     try {
       const dir = path.join(root, "artifacts");
       mkdirSync(dir);
@@ -161,7 +162,7 @@ describe("priorRunArtifactFiles detection set", () => {
   });
 
   it("sees per-worker files, the driver's union file, and a hand-run runner's direct-label files", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "driver-artifacts-guard-"));
+    const root = scratchDir("driver-artifacts-guard-");
     try {
       const dir = path.join(root, "artifacts");
       mkdirSync(dir);

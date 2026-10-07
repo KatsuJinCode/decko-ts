@@ -29,6 +29,7 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 15000,
     teardownTimeout: 5000,
+    setupFiles: ["tests/support/scratch-setup.ts"],
     pool: "forks",
     maxWorkers: 4,
     exclude: [

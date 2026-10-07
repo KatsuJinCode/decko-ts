@@ -51,6 +51,7 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
 
 const PAGE = "Home";
 /** The trip census's floor: 1 boot batch + 2 seat + 1 replay batch. The
@@ -121,7 +122,7 @@ describe("renderplan replay: the cold render's trip profile is plan-driven", () 
     `replays ${PAGE} to the 5-trip floor, zero covered-family live reads, bytes equal to OFF`,
     async () => {
       expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
-      dir = mkdtempSync(join(tmpdir(), "renderplan-replay-pin-"));
+      dir = scratchDir("renderplan-replay-pin-");
       inlineDbPath = join(dir, "deck-inline-materialized.sqlite3");
 
       // ---- the inline store (the chunked-fetch recipe, verbatim) ----------
