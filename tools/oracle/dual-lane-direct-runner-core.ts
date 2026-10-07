@@ -91,7 +91,26 @@ import {
 // the card wall clock to the capture minute — the capture-environment model
 // (deck_origin precedent). Affects ONLY the card-content override path
 // (set-module-content-overrides.ts's clock seam), never Date.now() timing.
-setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+//
+// CAPTURE_FROZEN_CLOCK names the instant the graded corpus was photographed
+// under (an ISO-8601 instant with an explicit zone, e.g. the corpus of
+// record's rig M4 epoch "2026-09-19T12:00:00Z", recorded in its provenance as
+// invocation.frozenClock). The default is the 2026-09-28 capture's minute,
+// which is right only for that older corpus.
+export function captureClockFromEnv(raw: string | undefined): Date {
+  if (raw === undefined || raw === "") return CAPTURE_WALL_CLOCK_CAPTURE_INSTANT;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) {
+    throw new Error(`CAPTURE_FROZEN_CLOCK must be an ISO-8601 instant with a zone, got ${JSON.stringify(raw)}`);
+  }
+  const instant = new Date(raw);
+  if (Number.isNaN(instant.getTime())) throw new Error(`CAPTURE_FROZEN_CLOCK is not a valid instant: ${raw}`);
+  return instant;
+}
+const GRADE_CAPTURE_CLOCK = captureClockFromEnv(process.env.CAPTURE_FROZEN_CLOCK);
+setCaptureWallClock(GRADE_CAPTURE_CLOCK);
+if (process.env.CAPTURE_FROZEN_CLOCK) {
+  process.stderr.write(`CAPTURE-CLOCK ${GRADE_CAPTURE_CLOCK.toISOString()} (CAPTURE_FROZEN_CLOCK)\n`);
+}
 
 const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
 /** Bucket for a result whose entry had no recorded shard. The entry arrays
