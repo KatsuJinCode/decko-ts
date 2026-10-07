@@ -2250,13 +2250,6 @@ export class RenderEngine implements RenderEngineLike {
     this.helpRules = undefined;
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
-    // The verdict-pass memo is derived state like the rest: a reset that
-    // leaves it set lets the next render SKIP re-judgment whenever the
-    // re-populated closure has the same map size — deniedVerdicts then
-    // stays empty and every card renders as allowed (the exact
-    // post-revocation leak the freshness gate exists to close; found by
-    // this file's scenario 4, 2026-10-05).
-    this.verdictsJudgedAtMapSize = -1;
     // The set-once WARM MARKERS complete the same rule (per-viewer-seat
     // lane, 2026-10-06 — landed at 7fa6a045; the warmflood-fix lane ports
     // the block, and this assembly carries it via the warmflood merge).
@@ -4036,29 +4029,19 @@ export class RenderEngine implements RenderEngineLike {
    * the hasReadRules gate, so rule-less seeds cost zero queries and stay
    * allowed (the documented divergence).
    */
-  /** renderCards.size at the moment the full judgment loop last completed.
-   *  The loop judges EVERY card in the map (already-judged cards hit the
-   *  has-checks and continue), the map only grows, and verdicts are never
-   *  invalidated — so an unchanged size means every card is judged and
-   *  the whole deck-sized sweep can be skipped. On the 47k-row prewarmed
-   *  corpus this turns the per-render re-passes (render.ts:453/498/529)
-   *  into one integer compare on a fully warm engine. */
-  private verdictsJudgedAtMapSize = -1;
-
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
     if (state === undefined) return;
-    if (this.verdictsJudgedAtMapSize === this.renderCards.size) return;
-    // SWEEP-SURFACE (renderSeats): judge this render's seats. Already-judged
-    // cards hit the has-checks and continue; earlier renders' cards were
-    // judged by their own render (every seat was surface-fresh then), so
-    // re-walking the whole map judges only the cascade's chase seats —
-    // rule-ladder queries for cards no view renders (the flood's verdict
-    // family). An earlier render's seat that stayed unjudged because its
-    // render died mid-prepare is re-surfaced by the page lane's recovery
-    // seam (ensurePermissionVerdicts) over the render that re-seats it.
-    for (const card of this.renderCards.values()) {
-      if (!this.renderSeats.has(card.key)) continue;
+    // SWEEP-SURFACE (renderSeats): judge this render's seats, walked
+    // directly (seats are a small subset of the warm map). Already-judged
+    // cards hit the has-checks and continue. There is deliberately no
+    // "map size unchanged" shortcut: a card can enter the map during one
+    // render without being its seat, so map size never proves every card
+    // was judged, and a skipped pass leaves a seat verdict-less — which
+    // isDenied reads as ALLOWED (the `tags` warm-engine leak).
+    for (const seatKey of this.renderSeats) {
+      const card = this.renderCards.get(seatKey);
+      if (card === undefined) continue;
       if (card.id === undefined) {
         // The virtual cards (states.rb#virtual?): no row, no id — the read
         // rule resolves through the live name walk exactly like Ruby's
@@ -4086,7 +4069,6 @@ export class RenderEngine implements RenderEngineLike {
       );
       this.deniedVerdicts.set(card.id, allowed === false);
     }
-    this.verdictsJudgedAtMapSize = this.renderCards.size;
   }
 
   /**
