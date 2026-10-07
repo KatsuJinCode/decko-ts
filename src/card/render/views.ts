@@ -132,6 +132,8 @@ import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 // the page surface and the view-function surface each render their own
 // Ruby-true `card_url` form instead of one pinned literal.
 import { roleConfigsView, modCardCoreHtml } from "../mod-loader/mods/core-mod.js";
+// card-mod-format set/all/demo.rb :demo (body in ./demo-view.ts; flat entry below).
+import { demoView } from "./demo-view.js";
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -6200,6 +6202,10 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // exactly - Type::Role chains resolve the same fn via the account
   // manifest when a loader is bound).
   configs: roleConfigsView,
+  // card-mod-format set/all/demo.rb view :demo — set/all, so every card has
+  // it. Shark's getting-started content nests `{{:getting_started|demo}}`;
+  // the loader-less page lane rendered "view (demo) not supported".
+  demo: demoView,
   // The email/notification family: the self-nest
   // `{{_|view}}` targets the four notification templates carry. The perms
   // and denial directives are already resolved by

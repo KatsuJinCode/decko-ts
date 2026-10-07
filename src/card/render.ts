@@ -1695,6 +1695,16 @@ export class RenderEngine implements RenderEngineLike {
       await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
+    // A set card's rule list nested by OTHER content (Shark's getting-started
+    // Rules section: `{{:all|bar_setting_list; filter: webpage}}`) reads the
+    // same stored rule children (rule_lists.rb setting_list_item:
+    // `card.fetch setting, new: {}`), so the nested set gets the same
+    // preload; without it every stored `*all+*<setting>` rendered as a
+    // virtual new bar.
+    if (await this.preloadNestedSetRuleLists(rootCard)) {
+      await this.enrichPointerListItemsClosure();
+      await this.ensureVerdicts();
+    }
     // view-fail class V4: the sync render's [[wikilink]] anchors classify
     // known/wanted off the prepared map (Ruby asks a live fetch per anchor,
     // links.rb:140-144) — warm the link targets this render's surface can
@@ -5798,6 +5808,39 @@ export class RenderEngine implements RenderEngineLike {
    *  themselves (autoname, default, structure, ...) so the before(:bar)
    *  hook can resolve the right part's codename for the _category-*
    *  class chain. */
+  /** The set cards this render's seats nest with a setting-list view
+   *  (`{{<set>|bar_setting_list…}}`, `pill_setting_list`, …), each given
+   *  preloadSetRules. Returns whether any preload ran. Memory-only when no
+   *  seated content names such a view. */
+  private async preloadNestedSetRuleLists(rootCard: RenderCard): Promise<boolean> {
+    const targets: Array<{ target: string; context: DeckoName }> = [];
+    for (const card of this.renderCards.values()) {
+      if (!this.renderSeats.has(card.key)) continue;
+      const content = card.dbContent;
+      if (content === undefined || !content.includes("setting_list")) continue;
+      for (const m of content.matchAll(/\{\{([^{}|]+)\|([^{}]*)\}\}/g)) {
+        if (!/\b[a-z]+_setting_list\b/.test(m[2] ?? "")) continue;
+        targets.push({ target: (m[1] ?? "").trim(), context: card.name });
+      }
+    }
+    let ran = false;
+    for (const { target, context } of targets) {
+      let name: string;
+      try {
+        const parsed = DeckoName.parse(target);
+        name = parsed.isAbsolute ? parsed.s : parsed.absoluteName(context).s;
+      } catch (err) {
+        if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+        throw err;
+      }
+      const setCard = await this.prepareItemForRender(name);
+      if (setCard === undefined || setCard.typeCode !== "set" || setCard.key === rootCard.key) continue;
+      await this.preloadSetRules(setCard);
+      ran = true;
+    }
+    return ran;
+  }
+
   private async preloadSetRules(setCard: RenderCard): Promise<void> {
     if (setCard.id === undefined) return;
     // Warm skip: this set card's rule environment is already fully

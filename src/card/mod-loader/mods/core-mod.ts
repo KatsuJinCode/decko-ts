@@ -714,7 +714,7 @@ export function bindModuleAdminHost(host: ModEngineHost): void {
  *  then per category: cardtypes → nested_list_section with the codenames
  *  grouped by title; views → skipped (`next`); everything else →
  *  list_section(cat.capitalize, codenames, :closed_bar). The map's
- *  sections concatenate directly (nil from `next` drops).
+ *  sections join with a newline (nil from `next` drops).
  *
  *  Set scope: the view anchors on Type::Role only — any other card's
  *  dispatch is Ruby's own missing-method unsupported-view error
@@ -767,7 +767,11 @@ export const roleConfigsView: ViewFn = (ctx) => {
       if (section !== undefined) sections.push(section);
     }
   }
-  return sections.join("");
+  // The view returns the map's Array; the view result goes through
+  // output (content.rb: Array.wrap.flatten.compact.join "\n"), so the
+  // `next` nil drops and the sections join with a newline (Shark's
+  // Cardtypes / Settings / Configurations).
+  return sections.join("\n");
 };
 
 /** self/admin.rb:59-61 view :core, cache: :never — task_table(basket[:tasks]).
