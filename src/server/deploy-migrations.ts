@@ -70,6 +70,10 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   { filename: "0004-demo-account-substrate.sql", number: "0004" },
   { filename: "0005-auth-sessions.sql", number: "0005" },
   { filename: "0006-demo-role-substrate.sql", number: "0006" },
+  // 0007 is skipped on purpose: seat-lineage databases record the stamp
+  // backfill as "0007-deck-data-version-stamp.sql" (see the alias below), and
+  // a second 0007 would make their ledgers ambiguous to read.
+  { filename: "0008-cards-serving-path-indexes.sql", number: "0008" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

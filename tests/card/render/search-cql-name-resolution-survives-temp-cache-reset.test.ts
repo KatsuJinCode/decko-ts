@@ -91,10 +91,14 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       // production-boot shape: warm every live card's lexicon entry. The
       // write volume must fire the Temporary cache's max_keys reset -
       // assert the mechanism is actually engaged, not rendering green by
-      // accident on a still-warm mirror.
+      // accident on a still-warm mirror. Ids are warmed in id order, as the
+      // seeding comment above assumes: without ORDER BY the row order is the
+      // planner's choice (a covering index on (right_id, trash) returns the
+      // two compound cards last, which re-warms the person's entry after the
+      // reset).
       const allIds = (
         await storage.fetcher.driver.query<{ id: number }>(
-          "SELECT id FROM cards WHERE trash = 0",
+          "SELECT id FROM cards WHERE trash = 0 ORDER BY id",
           [],
         )
       ).rows.map((row) => row.id);

@@ -32,6 +32,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalIndexStatements, isRetiredIndex } from '../tools/migrate/serving-indexes.mjs';
 
 // Flags accept both "--name value" and "--name=value". The old parser only
 // understood "--name=value": a space-separated value was dropped on the floor
@@ -208,10 +209,38 @@ async function insertChunk(table, cols, rows) {
 if (!DATA_ONLY) {
   console.log('== SCHEMA phase ==');
   console.log(`  ${tables.length} tables to create`);
-  const requests = [];
-  for (const t of tables) {
-    requests.push({ type: 'execute', stmt: { sql: t.sql } });
+
+  // Indexes come from the source database too, and must be copied in the
+  // same phase. This script used to select only `type='table'`, so every
+  // database it imported landed with zero indexes: the planner then
+  // full-scanned `cards` for every point read. Select `type='index'` and
+  // keep only entries that carry their own SQL -- the implicit
+  // `sqlite_autoindex_*` rows have none, because SQLite creates those for
+  // UNIQUE constraints declared inside CREATE TABLE.
+  const allIndexes = source.prepare(
+    "SELECT name, sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name",
+  ).all();
+  // Indexes the canonical schema has retired (cards_trash_index) are not
+  // copied, even when the source still carries them.
+  const indexes = (TABLE_FILTER
+    ? allIndexes.filter((i) =>
+        TABLE_FILTER.some((t) => new RegExp(`ON\\s+"?${t}"?\\s*\\(`).test(i.sql ?? '')))
+    : allIndexes).filter((i) => !isRetiredIndex(i.name));
+
+  const requests = tables.map((t) => ({ type: 'execute', stmt: { sql: t.sql } }));
+  for (const i of indexes) {
+    requests.push({ type: 'execute', stmt: { sql: i.sql } });
   }
+  // Then the canonical index set from db/schema.sqlite.sql (IF NOT EXISTS),
+  // so a source built before an index joined the schema cannot hand its gap
+  // to the imported database. Bunny Database rejects ANALYZE, so the planner
+  // never has statistics there; the serving-path indexes in the canonical
+  // set are what keep its plans off a whole-table read.
+  const canonical = canonicalIndexStatements({ tables: tables.map((t) => t.name) });
+  for (const c of canonical) {
+    requests.push({ type: 'execute', stmt: { sql: c.sql } });
+  }
+  console.log(`  ${indexes.length} source indexes + ${canonical.length} canonical indexes (IF NOT EXISTS) to create`);
   // One big batch is fine for CREATE TABLE; chunk it for safety.
   const SCHEMA_CHUNK = 10;
   for (let i = 0; i < requests.length; i += SCHEMA_CHUNK) {
@@ -263,6 +292,12 @@ for (const t of tables) {
   const total = source.prepare(`SELECT COUNT(*) AS n FROM ${quoteIdent(t.name)}`).get().n;
   console.log(`  ${t.name}: ${written} rows in ${chunkIdx} chunks${capped ? ` (capped at --limit ${LIMIT} of ${total})` : ` (of ${total})`}`);
 }
+// No ANALYZE phase. Bunny Database answers ANALYZE (and PRAGMA optimize) with
+// "SQL_PARSE_ERROR: unsupported statement", and refuses to create
+// sqlite_stat1 by hand ("object name reserved for internal use"), so planner
+// statistics cannot exist there. The canonical serving-path indexes applied
+// in the schema phase are written for that no-statistics planner.
+
 const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 console.log(`\n== DONE ==`);
 console.log(`  rows written (sum of rows_written per response): ${totalRowsWritten}`);
