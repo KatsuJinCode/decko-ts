@@ -4225,6 +4225,11 @@ const cardListView: ViewFn = (ctx) => {
   // show_paging? == true case, so unpaged searches keep the pre-paging
   // bytes verbatim.
   const list = `<div class="card-list card-list-${itemView} search-result-list">${rendered.join("\n")}</div>`;
+  // `hide: paging` on the nest (media+GBA+YouTube Browser's
+  // `{{Media+GBA+VideoLinksExternal|hide:paging}}`): render_paging answers
+  // nil for a hidden view, output compacts it away, and nothing is joined,
+  // so the list closes with no trailing newline.
+  if (voo !== undefined && !voo.show("paging")) return list;
   const paging = fmt.engine.searchResultPaging?.(fmt);
   return paging === undefined ? `${list}\n` : `${list}\n${searchPagingNav(fmt.card.name, paging)}`;
 };
