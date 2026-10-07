@@ -49,6 +49,10 @@
 #       zero `http://s3.amazonaws.com//files/` carriers in both staged lanes
 #       (the close-71 live-true form). A stale form can never silently
 #       re-collapse a grade on a corpus swap.
+#   4c. The corpus was captured on the deck the engine is seeded from
+#       (tools/oracle/corpus-deck-pairing-gate.mjs): the capture provenance's
+#       deck sha equals the staged bench sha, and every captured row holds the
+#       input card's id. Needs CAPTURE_INPUT_SET and CAPTURE_PROVENANCE.
 #   5. The artifacts directory is fresh (the driver's artifacts-reuse guard
 #      would refuse a reused dir; this script checks first and says so).
 
@@ -180,6 +184,26 @@ if grep -rlF 'http://s3.amazonaws.com//files/' \
   die "stale s3.amazonaws.com asset-host carriers in staged corpus -- replay the close-71 transform before firing"
 fi
 echo "CORPUS-SHAPE OK (0 stale denied-seam occurrences; 0 s3 asset-host carriers)"
+
+# Guard 4c: corpus/deck pairing -- the corpus must have been captured on the
+# deck the engine is seeded from. Grade-11 seam-clean graded a corpus captured
+# on a 21,676-card snapshot (provenance sha ab2d762b) against the 49,829-card
+# bench (6a44dfdc); 2,669 page rows were not-found placeholders or fetch-nil
+# rows for cards the bench holds, and all of them were scored as engine
+# failures. CAPTURE_INPUT_SET is the capture rig's input set
+# (disputed-set-resolved.json); CAPTURE_PROVENANCE is the capture's
+# provenance manifest (its deck sha is compared with the staged bench sha).
+CAPTURE_INPUT_SET="${CAPTURE_INPUT_SET:-}"
+CAPTURE_PROVENANCE="${CAPTURE_PROVENANCE:-}"
+[ -n "$CAPTURE_INPUT_SET" ] || die "CAPTURE_INPUT_SET is blank -- name the capture rig's disputed-set-resolved.json so the corpus/deck pairing can be checked"
+[ -n "$CAPTURE_PROVENANCE" ] || die "CAPTURE_PROVENANCE is blank -- name the corpus's capture-provenance manifest so the capture deck sha can be compared with the graded bench"
+PAIRING_JSON="$DIGEST_DIR/corpus-deck-pairing.json"
+node "$REPO/tools/oracle/corpus-deck-pairing-gate.mjs" \
+  --corpus "$REPO/tmp/raw-ground-truth" \
+  --input-set "$CAPTURE_INPUT_SET" \
+  --provenance "$CAPTURE_PROVENANCE" \
+  --mode gate --json "$PAIRING_JSON" \
+  || die "corpus was not captured on the graded deck (see $PAIRING_JSON) -- re-capture on the bench deck, or seed the engine from the capture deck"
 
 # Guard 5: fresh artifacts dir.
 ARTIFACTS="$REPO/tmp/grade11/full-canvas-$FOLD_TIP-w${WORKERS}-grade11${RUN_SUFFIX}"
