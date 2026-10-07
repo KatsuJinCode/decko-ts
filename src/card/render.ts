@@ -199,7 +199,11 @@ import {
   type ReadViewer,
   type ReadPermissionState,
 } from "./permissions/index.js";
-import { readPermissionOverride, updatePermissionOverride } from "./permissions/read-override.js";
+import {
+  nameHasReadOverride,
+  readPermissionOverride,
+  updatePermissionOverride,
+} from "./permissions/read-override.js";
 import {
   allTaskVerdictsForCard,
   taskVerdictForCard,
@@ -5990,7 +5994,21 @@ export class RenderEngine implements RenderEngineLike {
    *  key-keyed map (see deniedVerdictsByKey). */
   isDenied(card: RenderCard): boolean {
     if (card.id !== undefined) {
-      return this.deniedVerdicts.get(card.id) === true;
+      const verdict = this.deniedVerdicts.get(card.id);
+      if (verdict !== undefined) return verdict;
+      // A real card that reached a view without being judged (prepare paths
+      // that add cards outside the page's seats: the *help rule prefetch,
+      // the admin runtime). ok_to_read? (permissions.rb:139-146) reads the
+      // STORED read_rule_id first, which is sync — answer from it instead
+      // of reading the missing verdict as allowed. Names a set-module
+      // override may decide stay on the old path (the override is async).
+      const state = this.readPermission;
+      const storedRule = card.record.readRuleId;
+      if (state === undefined || storedRule === undefined) return false;
+      if (nameHasReadOverride(card.name)) return false;
+      const denied = !canReadByStoredRule(storedRule, state);
+      this.deniedVerdicts.set(card.id, denied);
+      return denied;
     }
     return this.deniedVerdictsByKey.get(card.key) === true;
   }

@@ -139,6 +139,29 @@ function overrideKeys(): OverrideKeys {
   }
   return keysCache;
 }
+/** Whether a set-module ok_to_read? override may decide this name's read
+ *  verdict (the populations readPermissionOverride dispatches on). Sync and
+ *  query-free: callers that cannot run the async override use it to stay
+ *  out of those populations. */
+export function nameHasReadOverride(name: DeckoName): boolean {
+  const K = overrideKeys();
+  if (!name.isCompound) {
+    return name.key === K.version || name.key === K.signin || name.key === K.accountLinks;
+  }
+  const tag = name.tagKey;
+  return (
+    tag === K.head ||
+    tag === K.script ||
+    tag === K.enabledRoles ||
+    tag === K.email ||
+    tag === K.account ||
+    tag === K.password ||
+    tag === K.apiKey ||
+    tag === K.assetOutput ||
+    tag === K.style
+  );
+}
+
 // A deck-inflection config change invalidates the anchor keys exactly like
 // DeckoName's own memo cache (name.ts static block) — a new config may
 // singularize the anchor pieces differently.
