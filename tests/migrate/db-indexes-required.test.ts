@@ -1,11 +1,13 @@
-// Every schema and import path must land the serving-path indexes. A
-// database that reaches the edge without them is not slow for a reason anyone
-// will find later: on a planner without statistics (Bunny Database rejects
-// ANALYZE) every "AND trash = 0" lookup reads the whole live deck through
-// cards_trash_index.
+// Every schema and import path must land the serving-path indexes and leave
+// out cards_trash_index. A database that reaches the edge otherwise is not
+// slow for a reason anyone will find later: on a planner without statistics
+// (Bunny Database rejects ANALYZE) every "AND trash = 0" lookup reads the
+// whole live deck through cards_trash_index.
 //
 // This guard fails when:
 //   - the canonical DDL stops declaring a required index, or changes its shape;
+//   - the DDL, 0001, 0008 or the canonical statements create a retired index,
+//     0008 stops dropping it, or the Bunny import stops skipping it;
 //   - the generated 0001 migration or the 0008 backfill drifts from the DDL;
 //   - an import path stops applying the canonical indexes (or, for local
 //     SQLite paths, stops running ANALYZE);
@@ -20,7 +22,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canonicalIndexStatements } from "../../tools/migrate/serving-indexes.mjs";
+import { RETIRED_INDEXES, canonicalIndexStatements, isRetiredIndex } from "../../tools/migrate/serving-indexes.mjs";
 import { DEPLOY_MIGRATION_ORDER } from "../../src/server/deploy-migrations.js";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -64,6 +66,37 @@ describe("canonical schema declares the serving-path indexes", () => {
       expect(declared(ddl, name, table), `${name} is not declared in db/schema.sqlite.sql`).toBe(squash(def));
     });
   }
+});
+
+describe("retired indexes stay retired", () => {
+  it("cards_trash_index is on the retired list", () => {
+    expect(RETIRED_INDEXES).toContain("cards_trash_index");
+    expect(isRetiredIndex("cards_trash_index")).toBe(true);
+    expect(isRetiredIndex("cards_name_trash_index")).toBe(false);
+  });
+
+  for (const name of RETIRED_INDEXES) {
+    it(`${name} is created by neither the DDL, 0001, nor canonicalIndexStatements`, () => {
+      // Statements start a line; comments ("-- Reversible: CREATE INDEX ...") do not.
+      const create = new RegExp(`^\\s*CREATE\\s+(UNIQUE\\s+)?INDEX\\s+(IF\\s+NOT\\s+EXISTS\\s+)?"${name}"`, "im");
+      expect(read("db/schema.sqlite.sql")).not.toMatch(create);
+      expect(read("deploy/migrations/0001-schema.sql")).not.toMatch(create);
+      expect(read("deploy/migrations/0008-cards-serving-path-indexes.sql")).not.toMatch(create);
+      expect(canonicalIndexStatements().map((s) => s.name)).not.toContain(name);
+    });
+
+    it(`0008 drops ${name} on provisioned databases`, () => {
+      expect(read("deploy/migrations/0008-cards-serving-path-indexes.sql")).toMatch(
+        new RegExp(`^DROP INDEX IF EXISTS "${name}";`, "m"),
+      );
+    });
+  }
+
+  it("the Bunny import skips retired indexes when it copies a source's indexes", () => {
+    const src = read("scripts/import-to-bunny-db.mjs");
+    expect(src).toMatch(/import \{[^}]*\bisRetiredIndex\b[^}]*\} from '..\/tools\/migrate\/serving-indexes\.mjs'/);
+    expect(src).toMatch(/\.filter\(\(i\) => !isRetiredIndex\(i\.name\)\)/);
+  });
 });
 
 describe("deploy migrations carry the same indexes", () => {

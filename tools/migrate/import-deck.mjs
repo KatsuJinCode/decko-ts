@@ -358,8 +358,8 @@ if (sourceKind === "sqlite") {
   await flush();
   for (const stmt of schema.createIndexes) await stagingDriver.query(stmt, []);
   // Planner statistics, after the rows are in and after the indexes exist.
-  // Without them SQLite guesses: on the deck's read-rules join it picks
-  // cards_trash_index over cards_right_id_index and reads every live row.
+  // Without them SQLite estimates every equality alike and can pick a
+  // low-selectivity index, reading far more rows than the query needs.
   // ANALYZE writes only sqlite_stat1, never a corpus row.
   await stagingDriver.query("ANALYZE", []);
   if (!opts.quiet) process.stderr.write("\n");

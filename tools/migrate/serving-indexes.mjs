@@ -15,6 +15,18 @@ import { fileURLToPath } from "node:url";
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const CANONICAL_DDL = join(REPO, "db", "schema.sqlite.sql");
 
+/** Indexes the canonical schema has retired. A source database built before
+ *  the retirement still carries them; import paths that copy a source's
+ *  indexes skip these names. cards_trash_index: "trash" holds two values, so
+ *  the index never narrows a search, and a planner without statistics picks
+ *  it for every " AND trash = 0" predicate (db/schema.sqlite.sql). */
+export const RETIRED_INDEXES = Object.freeze(["cards_trash_index"]);
+
+/** True when `name` is an index import paths must not create. */
+export function isRetiredIndex(name) {
+  return RETIRED_INDEXES.includes(name);
+}
+
 /**
  * @param {{ tables?: readonly string[] | null, ddlPath?: string }} [opts]
  * @returns {{ name: string, table: string, sql: string }[]}

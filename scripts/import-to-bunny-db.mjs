@@ -33,7 +33,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalIndexStatements } from '../tools/migrate/serving-indexes.mjs';
+import { canonicalIndexStatements, isRetiredIndex } from '../tools/migrate/serving-indexes.mjs';
 
 // Flags accept both "--name value" and "--name=value". The old parser only
 // understood "--name=value": a space-separated value was dropped on the floor
@@ -221,10 +221,12 @@ if (!DATA_ONLY) {
   const allIndexes = source.prepare(
     "SELECT name, sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name",
   ).all();
-  const indexes = TABLE_FILTER
+  // Indexes the canonical schema has retired (cards_trash_index) are not
+  // copied, even when the source still carries them.
+  const indexes = (TABLE_FILTER
     ? allIndexes.filter((i) =>
         TABLE_FILTER.some((t) => new RegExp(`ON\\s+"?${t}"?\\s*\\(`).test(i.sql ?? '')))
-    : allIndexes;
+    : allIndexes).filter((i) => !isRetiredIndex(i.name));
 
   const requests = tables.map((t) => ({ type: 'execute', stmt: { sql: t.sql } }));
   for (const i of indexes) {

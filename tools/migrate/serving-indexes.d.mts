@@ -2,6 +2,10 @@
 
 export const CANONICAL_DDL: string;
 
+/** Indexes the canonical schema has retired; import paths never create them. */
+export const RETIRED_INDEXES: readonly string[];
+export function isRetiredIndex(name: string): boolean;
+
 export interface CanonicalIndexStatement {
   name: string;
   table: string;
