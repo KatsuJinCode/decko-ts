@@ -16,6 +16,15 @@ no_bundle = true
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
+# Smart Placement: run the Worker near the D1 primary it calls about ten
+# times per page, instead of near the visitor. Free on all plans; it decides
+# after steady traffic from several locations, up to 15 minutes after a
+# deploy, and leaves 1% of requests unplaced as a baseline. The cf-placement
+# response header says where a request ran (remote-XXX or local-XXX).
+# https://developers.cloudflare.com/workers/configuration/placement/
+[placement]
+mode = "smart"
+
 # No logs or traces are kept by default; turn on only to debug.
 # [observability]
 # enabled = true
