@@ -37,8 +37,14 @@
 // entries render ctx-less EQUAL (RED pre-fix: the ctx insertion is the first
 // difference), and the three PASSING carriers stay byte-EQUAL (RED pre-fix:
 // already green — they pin the fix's blast radius, not the regression).
-// democracy+tags:open / Wikirate:open / Work Week:open are the corpus's
-// firing carriers — the gate must keep seating them or the corpus regresses.
+// democracy+tags:open / Wikirate:open / Work Week:open were that capture's
+// firing carriers.
+//
+// 2026-10-06: the corpus of record (the recapture on the graded deck)
+// carries name_context on none of these item bars, nor on any other
+// view-lane pointer-item bar, and the seat had no Ruby grounding (the 0.20
+// accordion :open chain adds no name context). The seat is removed; every
+// pin below is now a full-parity ctx-less pin against the staged corpus.
 
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -68,12 +74,15 @@ const CTX_LESS_PINS: Array<[string, string]> = [
   ["*all+*script", "open"],
 ];
 
-/** The corpus's PASSING firing carriers: ctx present in the graded bytes —
- *  the seat must keep seating these (blast radius, must stay green). */
+/** The older capture's firing carriers. The corpus of record (2026-10-06
+ *  recapture on the graded deck) renders their item bars ctx-less too, and
+ *  the fitted seat that served them is removed; they stay as full-parity
+ *  pins. Wikirate:open is dropped: its corpus-of-record row is a capture
+ *  error (the oracle app's unconfigured file bucket). */
 const CARRIER_PINS: Array<[string, string]> = [
   ["democracy+tags", "open"],
-  ["Wikirate", "open"],
   ["Work Week", "open"],
+  ["Guns", "open"],
 ];
 
 let storage: Awaited<ReturnType<typeof createRawStructureSeededStorage>> | undefined;
@@ -132,7 +141,7 @@ describe.runIf(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) &&
     }
 
     for (const [name, view] of CARRIER_PINS) {
-      it(`carrier stays seated: ${name}:${view} (full parity, must not move)`, async () => {
+      it(`former carrier, now ctx-less: ${name}:${view} (full parity)`, async () => {
         const exp = expected.get(name + "|" + view);
         expect(exp, `corpus expected bytes for ${name}:${view}`).toBeDefined();
         const actual = await storage!.engine.render(name, view);

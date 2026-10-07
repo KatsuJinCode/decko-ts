@@ -30,8 +30,8 @@
 // card's :content walk the *default rule bar renders the ABSOLUTE compound
 // name and carries NO name_context, where the pre-fix engine emitted
 // title="+*default" and `name_context:"*input_type,*right"`.
-// Pin 2 (BLAST RADIUS, must stay GREEN across the fix): the pointer-list item
-// bar still relativizes and still seats — the Guns shape is untouched.
+// Pin 2 (BLAST RADIUS): the pointer-list item bar renders ctx-less with an
+// absolute title too (the fitted seat was removed on 2026-10-06; see the pin).
 //
 // Oracles: the committed fixture (fixtures/test-corpus/
 // test-corpus-shard-000000.jsonl entry 268, `views.content`) carries
@@ -180,7 +180,11 @@ describe("relnames: the view-lane bar context seat is scoped to pointer-list ite
     expect(relativeTitles).toEqual([]);
   });
 
-  it("BLAST RADIUS: the pointer-list item bar still seats and still relativizes", async () => {
+  it("BLAST RADIUS: the pointer-list item bar renders ctx-less with an absolute title", async () => {
+    // CORPUS-OF-RECORD CORRECTION (2026-10-06): the fitted view-lane seat
+    // is removed. The corpus of record carries name_context on no
+    // view-lane pointer-item bar (Guns:open reads title="Guns+rifles"), so
+    // the item bar now matches the set card's rule bars: ctx-less, absolute.
     // The census M1 shape this seat exists for (Guns:open): the ROOT card is
     // itself the List host whose item names extend the root part.
     // renderPointerListItem's bar arm.
@@ -216,8 +220,8 @@ describe("relnames: the view-lane bar context seat is scoped to pointer-list ite
     })();
     try {
       const html = await s.engine.render("Weapons", "open");
-      expect(html).toContain("&quot;home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;weapon&quot;}");
-      expect(html).toContain('title="+Rifles"');
+      expect(html).not.toContain("&quot;name_context&quot;:&quot;weapon&quot;");
+      expect(html).toContain('title="Weapons+Rifles"');
       // The part filter still keeps a bar whose name lacks the root part
       // ctx-less (the census control) — unchanged by this lane.
       const standardsAt = html.indexOf('id="standard-bar-view"');
