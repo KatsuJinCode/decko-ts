@@ -50,6 +50,7 @@
 //   headers. Receipt: tmp/wrong-goal-hunt/edge-stack-carry-lane.md.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
   bootEdgeServingEngines,
@@ -186,7 +187,26 @@ let actorEngines: ActorRenderEngines | undefined;
  *    render.imageCdnHost = SPACES_ASSET_HOST (the edge-site-shell lane —
  *    content images resolve exactly as live).
  */
+/** THE DRIVER SEAM FOR OTHER HOSTS (cf-hosting, 2026-10-07): the same
+ *  handler serves Cloudflare Workers over a D1 binding
+ *  (deploy/cf-worker-src/cf-edge-engine-entry.ts). That entry installs a
+ *  factory here once, at module load, before the first request; the deck
+ *  boot then reads through the driver it returns instead of BunnyDbDriver.
+ *  Unset (every Bunny build), bootDeck is exactly as before. The factory is
+ *  configuration, not request state: it holds no rows and no pages. */
+export type EdgeDbDriverFactory = (env: EdgeEnv) => SQLDatabaseDriver;
+let edgeDbDriverFactory: EdgeDbDriverFactory | undefined;
+export function setEdgeDbDriverFactory(factory: EdgeDbDriverFactory | undefined): void {
+  edgeDbDriverFactory = factory;
+}
+
 async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
+  if (edgeDbDriverFactory !== undefined) {
+    return await bootEdgeServingEngines(
+      edgeDbDriverFactory(env),
+      oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {},
+    );
+  }
   // THE EDGE PROFILER (2026-10-05): the driver's two EXISTING instrumentation
   // seams are plugged at boot — `fetchImpl` times every pipeline POST into
   // the per-isolate db ledger (the driver's only network call is the
