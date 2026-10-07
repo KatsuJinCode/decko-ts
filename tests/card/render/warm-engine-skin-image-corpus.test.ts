@@ -45,4 +45,9 @@ describeIfCorpus("warm engine: listed bootswatch skins keep their +Image", () =>
       '<div title="cerulean skin" class="image-box medium"><img alt="cerulean skin+Image" src="/files/:cerulean_skin+:image/bootstrap-small.png" /></div>',
     );
   }, 300_000);
+
+  it("a list item naming a gone id (CB_role+*self's `~861`) does not break the skin walk", async () => {
+    const html = await storage!.engine.render("CB_role+*self", "content");
+    expect(html.startsWith('<div id="cb_role-Xself-content-view"')).toBe(true);
+  }, 300_000);
 });

@@ -5078,7 +5078,16 @@ export class RenderEngine implements RenderEngineLike {
       for (const result of this.searchResults.get(card.key) ?? []) pushSkin(result);
       if (this.isPointerLikeHost(card)) {
         for (const item of this.pointerItemNamesOf(card)) {
-          pushSkin(this.renderCards.get(DeckoName.parse(item).key));
+          let key: string;
+          try {
+            key = DeckoName.parse(item).key;
+          } catch (err) {
+            // An item naming a gone id (`~861`) is no skin; the item walk
+            // renders it as missing.
+            if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
+            throw err;
+          }
+          pushSkin(this.renderCards.get(key));
         }
       }
     }
